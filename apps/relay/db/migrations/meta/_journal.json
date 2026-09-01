@@ -8,6 +8,20 @@
       "when": 1788150000000,
       "tag": "0000_init",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1788250000000,
+      "tag": "0001_email_platform",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1788251000000,
+      "tag": "0002_audit_log",
+      "breakpoints": true
     }
   ]
 }

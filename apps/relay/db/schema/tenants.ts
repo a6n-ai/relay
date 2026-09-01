@@ -5,6 +5,10 @@ export const tenants = pgTable("tenants", {
   ...updatableColumns("tnt"),
   name: text("name").notNull(),
   slug: text("slug").notNull(),
+  /** ISO 3166-1 alpha-2 (or EU) for marketing compliance. */
+  mailingCountry: text("mailing_country").notNull().default("CA"),
+  /** CAN-SPAM / CASL postal address printed in marketing footers. */
+  physicalAddress: text("physical_address"),
 }, (t) => [
   uniqueIndex("tenants_slug_unique").on(t.slug),
 ]);

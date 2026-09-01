@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { InboxIcon, KeyIcon, LayoutDashboardIcon, ScrollTextIcon } from "lucide-react";
+import { GlobeIcon, InboxIcon, KeyIcon, LayoutDashboardIcon, MailIcon, ScrollTextIcon } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -20,6 +20,8 @@ import { Button } from "@foundry/ui/button";
 const ITEMS = [
   { href: "/dashboard", label: "Overview", icon: LayoutDashboardIcon },
   { href: "/dashboard/tenants", label: "Tenants", icon: KeyIcon },
+  { href: "/dashboard/domains", label: "Domains", icon: GlobeIcon },
+  { href: "/dashboard/sending", label: "SMTP", icon: MailIcon },
   { href: "/dashboard/logs", label: "Outbox", icon: ScrollTextIcon },
   { href: "/dashboard/templates", label: "Templates", icon: InboxIcon },
 ];

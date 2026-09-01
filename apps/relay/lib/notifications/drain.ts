@@ -2,7 +2,7 @@ import { buildTenantHandlers, createRateLimiter, drainPending as drain } from "@
 import type { ChannelProvider } from "@relay/engine";
 import { db } from "@/db/client";
 import { notificationTables } from "@/db/schema";
-import { getEmailProvider } from "@/lib/email/provider";
+import { getEmailProvider, hydrateSmtpFromDb } from "@/lib/email/provider";
 
 const SEND_RATE = Number(process.env.NOTIFY_SEND_RATE ?? 5);
 
@@ -19,7 +19,8 @@ function emailChannelProvider(): ChannelProvider {
   };
 }
 
-export function drainPending(limit = 25, maxBatches = 20): Promise<number> {
+export async function drainPending(limit = 25, maxBatches = 20): Promise<number> {
+  await hydrateSmtpFromDb();
   return drain(
     {
       db,

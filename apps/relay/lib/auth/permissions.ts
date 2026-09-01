@@ -4,6 +4,7 @@ export const statement = {
   ...baseStatement,
   tenant: ["read", "write"],
   message: ["read", "write"],
+  sending: ["read", "write"],
 } as const;
 
 export const ac = createAccessControl(statement);
@@ -16,5 +17,6 @@ export const roles = {
     audit: ["read"],
     tenant: ["read", "write"],
     message: ["read", "write"],
+    sending: ["read", "write"],
   }),
 };

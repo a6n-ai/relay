@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { IMPLIED_CONSENT_MS, dedupeRecipients, isConsentValid } from "./audience";
+import { IMPLIED_CONSENT_MS } from "./compliance";
+import { dedupeRecipients, isConsentValid } from "./audience";
 
 const DAY = 86_400_000;
 
@@ -20,6 +21,10 @@ describe("isConsentValid", () => {
 
   it("uses a 24-month window", () => {
     expect(IMPLIED_CONSENT_MS).toBe(730 * DAY);
+  });
+
+  it("rejects a German purchase as not express opt-in", () => {
+    expect(isConsentValid("purchase", Date.now(), Date.now(), "DE")).toBe(false);
   });
 });
 

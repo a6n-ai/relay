@@ -1,4 +1,6 @@
 export * from "./app";
 export * from "./auth";
+export * from "./audit";
 export * from "./tenants";
+export * from "./sending";
 export * from "./notifications";
