@@ -14,13 +14,14 @@
     "db:seed": "tsx db/seed.ts"
   },
   "dependencies": {
-    "@foundry/auth": "workspace:*",
-    "@foundry/commons": "workspace:*",
-    "@foundry/crm": "workspace:*",
-    "@foundry/database": "workspace:*",
-    "@foundry/design-system": "workspace:*",
-    "@foundry/themes": "workspace:*",
-    "@foundry/ui": "workspace:*",
+    "@foundry/auth": "github:a6n-ai/foundry#path:packages/auth",
+    "@foundry/commons": "github:a6n-ai/foundry#path:packages/commons",
+    "@foundry/crm": "github:a6n-ai/foundry#path:packages/crm",
+    "@foundry/database": "github:a6n-ai/foundry#path:packages/database",
+    "@foundry/design-system": "github:a6n-ai/foundry#path:packages/design-system",
+    "@foundry/email": "github:a6n-ai/foundry#path:packages/email",
+    "@foundry/themes": "github:a6n-ai/foundry#path:packages/themes",
+    "@foundry/ui": "github:a6n-ai/foundry#path:packages/ui",
     "@hookform/resolvers": "^5.4.0",
     "@relay/email": "workspace:*",
     "@relay/engine": "workspace:*",
@@ -41,7 +42,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@foundry/eslint-config": "workspace:*",
+    "@foundry/eslint-config": "github:a6n-ai/foundry#path:tooling/eslint-config",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",

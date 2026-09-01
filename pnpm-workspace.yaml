@@ -1,3 +1,22 @@
 packages:
   - "apps/*"
   - "packages/*"
+
+allowBuilds:
+  esbuild: true
+  unrs-resolver: true
+
+# Git tarballs declare workspace:* internals. Overrides turn those into
+# github: path deps, which pnpm 11 treats as exotic subdeps unless this is off.
+blockExoticSubdeps: false
+
+overrides:
+  "@foundry/auth": "github:a6n-ai/foundry#path:packages/auth"
+  "@foundry/commons": "github:a6n-ai/foundry#path:packages/commons"
+  "@foundry/crm": "github:a6n-ai/foundry#path:packages/crm"
+  "@foundry/database": "github:a6n-ai/foundry#path:packages/database"
+  "@foundry/design-system": "github:a6n-ai/foundry#path:packages/design-system"
+  "@foundry/email": "github:a6n-ai/foundry#path:packages/email"
+  "@foundry/realtime": "github:a6n-ai/foundry#path:packages/realtime"
+  "@foundry/themes": "github:a6n-ai/foundry#path:packages/themes"
+  "@foundry/ui": "github:a6n-ai/foundry#path:packages/ui"
