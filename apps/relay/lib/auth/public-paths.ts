@@ -3,6 +3,7 @@ export const SESSION_COOKIES = ["better-auth.session_token", "__Secure-better-au
 export const PUBLIC_PREFIXES = ["/api/auth", "/v1", "/login", "/forgot-password", "/api/webhooks"];
 
 export function isPublicRelayPath(pathname: string): boolean {
+  if (pathname === "/") return true;
   return PUBLIC_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 }
 

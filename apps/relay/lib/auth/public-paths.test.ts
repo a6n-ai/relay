@@ -3,6 +3,7 @@ import { gateRelayPath, isPublicRelayPath } from "./public-paths";
 
 describe("isPublicRelayPath", () => {
   it("allows auth, login, forgot-password, tenant API, and SES webhooks", () => {
+    expect(isPublicRelayPath("/")).toBe(true);
     expect(isPublicRelayPath("/login")).toBe(true);
     expect(isPublicRelayPath("/forgot-password")).toBe(true);
     expect(isPublicRelayPath("/api/auth/ok")).toBe(true);
@@ -14,6 +15,10 @@ describe("isPublicRelayPath", () => {
 });
 
 describe("gateRelayPath", () => {
+  it("lets anonymous visitors onto the marketing home", () => {
+    expect(gateRelayPath("/", [])).toBe("allow");
+  });
+
   it("sends anonymous dashboard visitors to login", () => {
     expect(gateRelayPath("/dashboard/tenants", [])).toBe("login");
   });
