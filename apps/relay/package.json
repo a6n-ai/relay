@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@foundry/auth": "github:a6n-ai/foundry#path:packages/auth",
+    "@foundry/auth-ui": "github:a6n-ai/foundry#path:packages/auth-ui",
     "@foundry/commons": "github:a6n-ai/foundry#path:packages/commons",
     "@foundry/crm": "github:a6n-ai/foundry#path:packages/crm",
     "@foundry/database": "github:a6n-ai/foundry#path:packages/database",

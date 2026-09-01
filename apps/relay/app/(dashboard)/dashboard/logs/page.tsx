@@ -1,4 +1,6 @@
 import { desc } from "drizzle-orm";
+import { ScrollTextIcon } from "lucide-react";
+import { PageHeader, PageShell } from "@foundry/design-system";
 import { db } from "@/db/client";
 import { notificationTables } from "@/db/schema";
 
@@ -11,8 +13,12 @@ export default async function LogsPage() {
     .orderBy(desc(notificationTables.notificationOutbox.createdAt))
     .limit(100);
   return (
-    <div className="space-y-4 p-6">
-      <h1 className="text-2xl font-semibold">Outbox</h1>
+    <PageShell>
+      <PageHeader
+        icon={ScrollTextIcon}
+        title="Outbox"
+        subtitle="Retries use exponential backoff (1m → 1h, six attempts) on notification_outbox."
+      />
       <table className="w-full text-sm">
         <thead>
           <tr className="text-left">
@@ -39,6 +45,6 @@ export default async function LogsPage() {
           ))}
         </tbody>
       </table>
-    </div>
+    </PageShell>
   );
 }

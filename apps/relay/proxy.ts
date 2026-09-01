@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 const SESSION_COOKIES = ["better-auth.session_token", "__Secure-better-auth.session_token"];
-const PUBLIC_PREFIXES = ["/api/auth", "/v1", "/login", "/api/webhooks"];
+const PUBLIC_PREFIXES = ["/api/auth", "/v1", "/login", "/forgot-password", "/api/webhooks"];
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -25,5 +25,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/api/:path*", "/v1/:path*", "/login"],
+  matcher: ["/dashboard/:path*", "/api/:path*", "/v1/:path*", "/login", "/forgot-password"],
 };

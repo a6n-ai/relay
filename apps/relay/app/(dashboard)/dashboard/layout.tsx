@@ -14,7 +14,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
       sidebar={<RelaySidebar email={session.user.email} />}
       breadcrumbs={<span className="text-sm text-muted-foreground">Relay</span>}
     >
-      {children}
+      <div className="p-6">{children}</div>
     </CrmShell>
   );
 }

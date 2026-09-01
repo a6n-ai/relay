@@ -8,7 +8,8 @@ import {
   AbstractEmailProvider,
   type EmailProviderConfig,
 } from "./provider";
-import type { EmailAddress, PreparedEmail, SendResult } from "./types";
+import { formatAddress } from "./address";
+import type { PreparedEmail, SendResult } from "./types";
 
 /** Minimal slice of SESv2Client we use — lets tests inject a fake. */
 export interface SesSendClient {
@@ -25,11 +26,6 @@ export interface SesProviderConfig extends EmailProviderConfig {
   configurationSetName?: string;
   /** Inject for tests; otherwise a real SESv2Client is built (IAM role creds). */
   client?: SesSendClient;
-}
-
-function formatAddress({ email, name }: EmailAddress): string {
-  // ponytail: RFC2047 encoding skipped — add when a sender name needs non-ASCII.
-  return name ? `${name} <${email}>` : email;
 }
 
 export class SesEmailProvider extends AbstractEmailProvider {

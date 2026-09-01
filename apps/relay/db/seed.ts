@@ -45,7 +45,11 @@ async function main() {
 
   const [tenant] = await db.select().from(tenants).where(eq(tenants.slug, "realm-dev")).limit(1);
   if (!tenant) {
-    const [created] = await db.insert(tenants).values({ name: "Realm", slug: "realm-dev" }).returning();
+    const [created] = await db.insert(tenants).values({
+      name: "Realm",
+      slug: "realm-dev",
+      mailingCountry: "CA",
+    }).returning();
     const key = generateApiKey();
     await db.insert(apiKeys).values({
       tenantId: created.id,
@@ -56,6 +60,30 @@ async function main() {
     console.log(`tenant realm-dev API key (copy now): ${key.secret}`);
   } else {
     console.log("tenant realm-dev already exists");
+  }
+
+  for (const spec of [
+    { name: "Tiffin Grab", slug: "tiffin-grab" },
+    { name: "Puchkaman", slug: "puchkaman" },
+  ] as const) {
+    const [existing] = await db.select().from(tenants).where(eq(tenants.slug, spec.slug)).limit(1);
+    if (existing) {
+      console.log(`tenant ${spec.slug} already exists`);
+      continue;
+    }
+    const [created] = await db.insert(tenants).values({
+      name: spec.name,
+      slug: spec.slug,
+      mailingCountry: "CA",
+    }).returning();
+    const key = generateApiKey();
+    await db.insert(apiKeys).values({
+      tenantId: created.id,
+      name: "realm",
+      keyPrefix: key.prefix,
+      keyHash: key.hash,
+    });
+    console.log(`tenant ${spec.slug} API key (copy now): ${key.secret}`);
   }
 }
 
