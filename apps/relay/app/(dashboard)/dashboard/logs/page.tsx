@@ -1,6 +1,15 @@
 import { desc } from "drizzle-orm";
 import { ScrollTextIcon } from "lucide-react";
-import { PageHeader, PageShell } from "@foundry/design-system";
+import { EmptyState, PageHeader, PageShell } from "@foundry/design-system";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@foundry/ui/table";
+import { OutboxStatusBadge } from "@/components/outbox-status-badge";
 import { db } from "@/db/client";
 import { notificationTables } from "@/db/schema";
 
@@ -12,6 +21,7 @@ export default async function LogsPage() {
     .from(notificationTables.notificationOutbox)
     .orderBy(desc(notificationTables.notificationOutbox.createdAt))
     .limit(100);
+
   return (
     <PageShell>
       <PageHeader
@@ -19,32 +29,40 @@ export default async function LogsPage() {
         title="Outbox"
         subtitle="Retries use exponential backoff (1m → 1h, six attempts) on notification_outbox."
       />
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="text-left">
-            <th className="py-2">Status</th>
-            <th>Channel</th>
-            <th>Kind</th>
-            <th>Event</th>
-            <th>To</th>
-            <th>Attempts</th>
-            <th>Error</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r) => (
-            <tr key={r.publicId} className="border-t">
-              <td className="py-2">{r.status}</td>
-              <td>{r.channel}</td>
-              <td>{r.kind}</td>
-              <td>{r.event ?? "—"}</td>
-              <td>{r.recipientEmail ?? r.recipientPhone ?? r.recipientExternalId ?? "—"}</td>
-              <td>{r.attempts}</td>
-              <td className="max-w-xs truncate">{r.lastError ?? ""}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      {rows.length === 0 ? (
+        <EmptyState icon={ScrollTextIcon} message="No messages in the outbox yet." />
+      ) : (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Status</TableHead>
+              <TableHead>Channel</TableHead>
+              <TableHead>Kind</TableHead>
+              <TableHead>Event</TableHead>
+              <TableHead>To</TableHead>
+              <TableHead>Attempts</TableHead>
+              <TableHead>Error</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {rows.map((r) => (
+              <TableRow key={r.publicId}>
+                <TableCell>
+                  <OutboxStatusBadge status={r.status} />
+                </TableCell>
+                <TableCell className="font-mono text-xs">{r.channel}</TableCell>
+                <TableCell>{r.kind}</TableCell>
+                <TableCell>{r.event ?? "—"}</TableCell>
+                <TableCell className="font-mono text-xs">
+                  {r.recipientEmail ?? r.recipientPhone ?? r.recipientExternalId ?? "—"}
+                </TableCell>
+                <TableCell className="nums">{r.attempts}</TableCell>
+                <TableCell className="max-w-xs truncate text-muted-foreground">{r.lastError ?? ""}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      )}
     </PageShell>
   );
 }
