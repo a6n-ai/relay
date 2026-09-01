@@ -1,0 +1,21 @@
+---
+description: Commit and push as GitHub user lawbringr1, not cursor[bot]
+alwaysApply: true
+---
+
+# Git identity
+
+All commits in this repo must be authored and committed as:
+
+- `user.name`: `lawbringr1`
+- `user.email`: `vishwassaini32@gmail.com`
+
+Do not use `Cursor Agent` / `cursoragent@cursor.com`. Before committing, set:
+
+```bash
+git config user.name "lawbringr1"
+git config user.email "vishwassaini32@gmail.com"
+```
+
+Or pass `-c user.name=lawbringr1 -c user.email=vishwassaini32@gmail.com` on `git commit`.
+This Cloud Agent still authenticates to GitHub as the Cursor GitHub App; that does not change commit author.
