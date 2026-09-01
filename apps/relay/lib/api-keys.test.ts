@@ -18,5 +18,11 @@ describe("api keys", () => {
     expect(bearerToken("Bearer pk_live_x")).toBe("pk_live_x");
     expect(bearerToken("Basic x")).toBeNull();
     expect(bearerToken(null)).toBeNull();
+    expect(bearerToken("Bearer")).toBeNull();
+    expect(bearerToken("")).toBeNull();
+  });
+
+  it("issues distinct secrets", () => {
+    expect(generateApiKey().secret).not.toBe(generateApiKey().secret);
   });
 });

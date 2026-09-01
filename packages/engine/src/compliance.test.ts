@@ -106,3 +106,45 @@ describe("tenantCanSendMarketing", () => {
     expect(tenantCanSendMarketing({ country: "US", physicalAddress: "1 King St W, Toronto" })).toBeNull();
   });
 });
+
+describe("AU / IN / missing consent", () => {
+  const now = 1_000 * DAY;
+
+  it("lets Australia send marketing without prior opt-in", () => {
+    expect(complianceProfile("AU").marketingRequiresExpressOptIn).toBe(false);
+    expect(marketingConsentBlockReason({ country: "AU", consentSource: null, consentAt: null, now })).toBeNull();
+  });
+
+  it("requires express opt-in in India; purchase is not enough", () => {
+    expect(
+      marketingConsentBlockReason({
+        country: "IN",
+        consentSource: "purchase",
+        consentAt: now,
+        now,
+      }),
+    ).toBe("purchase_not_express");
+  });
+
+  it("blocks CA marketing with no recorded consent", () => {
+    expect(
+      marketingConsentBlockReason({
+        country: "CA",
+        consentSource: null,
+        consentAt: null,
+        now,
+      }),
+    ).toBe("missing_consent");
+  });
+
+  it("allows a CASL import_other attestation", () => {
+    expect(
+      marketingConsentBlockReason({
+        country: "CA",
+        consentSource: "import_other",
+        consentAt: now,
+        now,
+      }),
+    ).toBeNull();
+  });
+});

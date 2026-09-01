@@ -1,24 +1,8 @@
-import { z } from "zod";
 import { enqueueTenant } from "@relay/engine";
 import { db } from "@/db/client";
 import { notificationTables } from "@/db/schema";
 import { authenticateTenant } from "@/lib/tenants/auth";
-
-const bodySchema = z.object({
-  kind: z.enum(["transactional", "marketing"]).optional(),
-  channels: z.array(z.enum(["email", "in_app", "sms", "whatsapp"])).optional(),
-  to: z.object({
-    userId: z.string().optional(),
-    email: z.string().email().optional(),
-    phone: z.string().optional(),
-  }),
-  event: z.string().optional(),
-  title: z.string().min(1),
-  body: z.string().min(1),
-  href: z.string().optional(),
-  vars: z.record(z.string(), z.unknown()).optional(),
-  idempotencyKey: z.string().optional(),
-});
+import { parseMessageJson } from "@/lib/v1/message-body";
 
 export async function POST(req: Request) {
   const tenant = await authenticateTenant(req);
@@ -31,14 +15,14 @@ export async function POST(req: Request) {
   } catch {
     return Response.json({ title: "Invalid JSON", status: 400 }, { status: 400 });
   }
-  const parsed = bodySchema.safeParse(json);
-  if (!parsed.success) {
-    return Response.json({ title: "Invalid body", status: 400, issues: parsed.error.issues }, { status: 400 });
+  const parsed = parseMessageJson(json);
+  if (!parsed.ok) {
+    return Response.json(
+      { title: parsed.title, status: parsed.status, issues: parsed.issues },
+      { status: parsed.status },
+    );
   }
   const input = parsed.data;
-  if (!input.to.email && !input.to.phone && !input.to.userId) {
-    return Response.json({ title: "Recipient required", status: 400 }, { status: 400 });
-  }
   await enqueueTenant(db, notificationTables, {
     tenantId: tenant.tenantId,
     event: input.event,

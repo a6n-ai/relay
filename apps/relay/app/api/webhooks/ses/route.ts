@@ -1,5 +1,6 @@
 import MessageValidator from "sns-validator";
 import { createLogger } from "@foundry/commons/logger";
+import { parseSnsEnvelope, sesSuppressionsFromEvent } from "@/lib/notifications/ses-events";
 import { suppressEmailRecipient } from "@/lib/notifications/suppression";
 
 export const runtime = "nodejs";
@@ -20,32 +21,19 @@ function verify(msg: unknown): Promise<void> {
 }
 
 export async function processSesEvent(messageJson: string): Promise<void> {
-  const event = JSON.parse(messageJson) as {
-    eventType?: string;
-    notificationType?: string;
-    bounce?: { bounceType?: string; bouncedRecipients?: { emailAddress: string }[] };
-    complaint?: { complainedRecipients?: { emailAddress: string }[] };
-  };
-  const type = event.eventType ?? event.notificationType;
-  if (type === "Bounce" && event.bounce?.bounceType === "Permanent") {
-    for (const r of event.bounce.bouncedRecipients ?? []) {
-      await suppressEmailRecipient(r.emailAddress, "SES hard bounce");
-    }
-  } else if (type === "Complaint") {
-    for (const r of event.complaint?.complainedRecipients ?? []) {
-      await suppressEmailRecipient(r.emailAddress, "SES complaint");
-    }
+  const event = JSON.parse(messageJson) as Parameters<typeof sesSuppressionsFromEvent>[0];
+  for (const row of sesSuppressionsFromEvent(event)) {
+    await suppressEmailRecipient(row.email, row.reason);
   }
 }
 
 export async function POST(req: Request): Promise<Response> {
   const raw = await req.text();
-  let msg: SnsEnvelope;
-  try {
-    msg = JSON.parse(raw) as SnsEnvelope;
-  } catch {
+  const parsed = parseSnsEnvelope(raw);
+  if (!parsed) {
     return Response.json({ title: "Invalid JSON", status: 400 }, { status: 400 });
   }
+  const msg: SnsEnvelope = parsed;
   try {
     await verify(msg);
   } catch (err) {

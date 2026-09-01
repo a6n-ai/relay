@@ -5,20 +5,20 @@ import { revalidatePath } from "next/cache";
 import {
   generateDkimKeyPair,
   generateDomainVerifyToken,
-  normalizeDomain,
   verifySendingDomainOwnership,
 } from "@relay/email";
 import { requirePermission } from "@/lib/auth/guards";
 import { db } from "@/db/client";
 import { emailSmtpSettings } from "@/db/schema";
+import { parseAddSendingDomainForm } from "@/lib/email/domain-form";
 import { sendingDomainsService } from "@/lib/services/sending.service";
 import { tenantsService } from "@/lib/services/tenants.service";
 
 export async function addSendingDomainAction(formData: FormData): Promise<{ error?: string }> {
   await requirePermission({ sending: ["write"] });
-  const slug = String(formData.get("slug") ?? "").trim();
-  const domain = normalizeDomain(String(formData.get("domain") ?? ""));
-  if (!slug || !domain) return { error: "Tenant and domain are required" };
+  const parsed = parseAddSendingDomainForm(formData);
+  if ("error" in parsed) return parsed;
+  const { slug, domain } = parsed.value;
 
   const tenant = await tenantsService.findBySlug(slug);
   if (!tenant) return { error: "Unknown tenant" };
