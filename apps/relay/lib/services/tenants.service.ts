@@ -2,6 +2,7 @@ import { UpdatableRepository } from "@foundry/database";
 import { eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { apiKeys, tenants } from "@/db/schema";
+import { redactFields } from "@/lib/audit/redact";
 import { generateApiKey } from "@/lib/api-keys";
 import { SessionUpdatableService } from "./session-service";
 
@@ -16,10 +17,7 @@ class ApiKeysService extends SessionUpdatableService<typeof apiKeys> {
   protected redactChanges(
     changes: Record<string, { from: unknown; to: unknown }> | null,
   ): Record<string, { from: unknown; to: unknown }> | null {
-    if (!changes) return null;
-    const next = { ...changes };
-    if (next.keyHash) next.keyHash = { from: "***", to: "***" };
-    return next;
+    return redactFields(changes, ["keyHash"]);
   }
 }
 

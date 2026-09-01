@@ -22,4 +22,16 @@ describe("RelayClient", () => {
     expect(init.method).toBe("POST");
     expect((init.headers as Record<string, string>).authorization).toBe("Bearer pk_test_abc");
   });
+
+  it("throws with status and body when Relay rejects the call", async () => {
+    const fetch = vi.fn(async () => new Response(JSON.stringify({ title: "Unauthorized" }), { status: 401 }));
+    const client = new RelayClient({
+      baseUrl: "https://relay.example",
+      apiKey: "bad",
+      fetch: fetch as unknown as typeof globalThis.fetch,
+    });
+    await expect(
+      client.messages.create({ title: "Hello", body: "World", to: { email: "a@b.com" } }),
+    ).rejects.toThrow(/401/);
+  });
 });

@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   buildSendingDomainRecords,
   DOMAIN_VERIFY_HOST,
+  generateDkimKeyPair,
+  generateDomainVerifyToken,
+  normalizeDomain,
   ownershipTxtValue,
   pemToDkimPublic,
   verifySendingDomainOwnership,
@@ -60,5 +63,30 @@ describe("pemToDkimPublic", () => {
 describe("ownershipTxtValue", () => {
   it("prefixes the token", () => {
     expect(ownershipTxtValue("x")).toBe("relay-domain-verify=x");
+  });
+});
+
+describe("normalizeDomain", () => {
+  it("trims, lowercases, and strips a trailing dot", () => {
+    expect(normalizeDomain(" Example.COM. ")).toBe("example.com");
+  });
+});
+
+describe("generateDomainVerifyToken / generateDkimKeyPair", () => {
+  it("issues a hex token and a DKIM p= without PEM headers", () => {
+    const token = generateDomainVerifyToken();
+    expect(token).toMatch(/^[0-9a-f]{32}$/);
+    const keys = generateDkimKeyPair();
+    expect(keys.dkimP).not.toMatch(/BEGIN/);
+    expect(keys.dkimP.length).toBeGreaterThan(100);
+    expect(keys.privateKeyPem).toMatch(/BEGIN PRIVATE KEY/);
+  });
+});
+
+describe("buildSendingDomainRecords without DKIM", () => {
+  it("emits mx SPF when include is omitted", () => {
+    const records = buildSendingDomainRecords({ domain: "example.com", token: "t" });
+    expect(records.find((r) => r.purpose === "spf")?.value).toBe("v=spf1 mx ~all");
+    expect(records.some((r) => r.purpose === "dkim")).toBe(false);
   });
 });

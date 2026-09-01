@@ -2,6 +2,7 @@ import { BaseService, UpdatableService, stripManaged } from "@foundry/database";
 import { createLogger } from "@foundry/commons/logger";
 import { eq } from "drizzle-orm";
 import type { PgTable } from "drizzle-orm/pg-core";
+import { diffChanges, jsonSafe } from "@/lib/audit/diff";
 import { getSession } from "@/lib/auth/session";
 import { db } from "@/db/client";
 import { auditLog, users } from "@/db/schema";
@@ -24,6 +25,8 @@ export function currentUserId(): Promise<bigint | null> {
   return sessionActorId();
 }
 
+export { diffChanges } from "@/lib/audit/diff";
+
 export type AuditEntry = {
   entity: string;
   entityPublicId: string;
@@ -31,37 +34,6 @@ export type AuditEntry = {
   changes: Record<string, unknown> | null;
   createdBy: bigint | null;
 };
-
-export function diffChanges(
-  before: Record<string, unknown> | null,
-  after: Record<string, unknown>,
-  patch: Record<string, unknown>,
-): Record<string, { from: unknown; to: unknown }> | null {
-  const keys = Object.keys(stripManaged(patch));
-  const diff: Record<string, { from: unknown; to: unknown }> = {};
-  for (const k of keys) {
-    const from = before?.[k];
-    const to = after[k];
-    if (from !== to) diff[k] = { from, to };
-  }
-  return Object.keys(diff).length ? diff : null;
-}
-
-function coerceBigints(v: unknown): unknown {
-  if (typeof v === "bigint") return v.toString();
-  if (Array.isArray(v)) return v.map(coerceBigints);
-  if (v && typeof v === "object") {
-    const out: Record<string, unknown> = {};
-    for (const [k, val] of Object.entries(v)) out[k] = coerceBigints(val);
-    return out;
-  }
-  return v;
-}
-
-function jsonSafe(value: Record<string, unknown> | null): Record<string, unknown> | null {
-  if (value == null) return value;
-  return coerceBigints(value) as Record<string, unknown>;
-}
 
 export async function recordAudit(entry: AuditEntry): Promise<void> {
   try {

@@ -2,20 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 import { requirePermission } from "@/lib/auth/guards";
+import { REALM_SLUGS, parseCreateTenantForm } from "@/lib/tenants/forms";
 import { issueTenantApiKey, tenantsService } from "@/lib/services/tenants.service";
-
-const REALM_SLUGS = [
-  { name: "Tiffin Grab", slug: "tiffin-grab", mailingCountry: "CA" },
-  { name: "Puchkaman", slug: "puchkaman", mailingCountry: "CA" },
-] as const;
 
 export async function createTenantAction(formData: FormData): Promise<{ secret?: string; error?: string }> {
   await requirePermission({ tenant: ["write"] });
-  const name = String(formData.get("name") ?? "").trim();
-  const slug = String(formData.get("slug") ?? "").trim();
-  const mailingCountry = String(formData.get("mailingCountry") ?? "CA").trim().toUpperCase() || "CA";
-  const physicalAddress = String(formData.get("physicalAddress") ?? "").trim() || null;
-  if (!name || !slug) return { error: "Name and slug are required" };
+  const parsed = parseCreateTenantForm(formData);
+  if ("error" in parsed) return parsed;
+  const { name, slug, mailingCountry, physicalAddress } = parsed.value;
   try {
     const tenant = await tenantsService.create({ name, slug, mailingCountry, physicalAddress });
     const secret = await issueTenantApiKey(tenant.id, "default");

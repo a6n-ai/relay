@@ -34,6 +34,34 @@ describe("SmtpEmailProvider", () => {
     });
   });
 
+  it("passes cc, bcc, and replyTo", async () => {
+    const sent: unknown[] = [];
+    const p = new SmtpEmailProvider({
+      defaultFrom,
+      host: "smtp.example.com",
+      client: {
+        sendMail: async (opts) => {
+          sent.push(opts);
+          return { messageId: "<id>" };
+        },
+      },
+    });
+    await p.send({
+      to: [{ email: "a@b.com" }, { email: "c@d.com", name: "C" }],
+      cc: [{ email: "cc@x.com" }],
+      bcc: [{ email: "bcc@x.com" }],
+      replyTo: { email: "ops@x.com" },
+      subject: "x",
+      text: "y",
+    });
+    expect(sent[0]).toMatchObject({
+      to: ["a@b.com", "C <c@d.com>"],
+      cc: ["cc@x.com"],
+      bcc: ["bcc@x.com"],
+      replyTo: "ops@x.com",
+    });
+  });
+
   it("throws when SMTP returns no messageId", async () => {
     const client: SmtpSendClient = { sendMail: async () => ({}) };
     const p = new SmtpEmailProvider({ defaultFrom, host: "smtp.example.com", client });

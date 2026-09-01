@@ -27,3 +27,6 @@ pnpm install
 pnpm typecheck
 pnpm test
 ```
+
+Local Postgres, seed, API smoke, and the case catalog: [`TESTING.md`](TESTING.md).
+This VM has no Docker/Postgres daemon; `compose.yaml` is for a machine that can run `docker compose up -d`.
