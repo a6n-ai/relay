@@ -9,6 +9,7 @@ export const dynamic = "force-dynamic";
 
 const MAILBOX_FILTERS: ListingFilter[] = [
   { id: "out", label: "Relay sent" },
+  { id: "in", label: "Received" },
   { id: "automatic", label: "Automatic" },
   { id: "campaign", label: "Campaigns" },
   { id: "failed", label: "Failed" },
@@ -23,7 +24,7 @@ export default async function MailboxPage() {
       <PageHeader
         icon={MailboxIcon}
         title="Mailbox"
-        subtitle="Letters Relay sent (or tried to send) through your mail server. Opens a preview, not a delivery log."
+        subtitle="Letters Relay sent and letters people sent back. Opens a preview, not a delivery log."
       />
       <FilteredResourceList
         title="Letters"

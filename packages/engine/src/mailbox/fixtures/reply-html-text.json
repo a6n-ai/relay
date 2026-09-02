@@ -1,0 +1,11 @@
+{
+  "fromEmail": "cust@example.com",
+  "fromName": "Customer",
+  "toEmail": "ops@relay.local",
+  "subject": "Re: Order ready",
+  "html": "<p>Thanks</p>",
+  "text": "Thanks",
+  "rfcMessageId": "<reply-html@example.com>",
+  "inReplyTo": "<abc@relay.test>",
+  "references": "<abc@relay.test>"
+}

@@ -71,6 +71,14 @@
       "when": 1788378000000,
       "tag": "0009_mailbox_threading",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1788381000000,
+      "tag": "0010_mailbox_inbound",
+      "breakpoints": true
     }
   ]
 }
+

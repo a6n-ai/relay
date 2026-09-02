@@ -135,6 +135,7 @@ export function makeTenantNotificationTables(deps: {
     threadId: text("thread_id"),
   }, (t) => [
     uniqueIndex("email_mailbox_outbox_uidx").on(t.outboxId),
+    uniqueIndex("email_mailbox_rfc_message_id_uidx").on(t.rfcMessageId),
     index("email_mailbox_created_idx").on(t.createdAt),
     index("email_mailbox_tenant_idx").on(t.tenantId),
     index("email_mailbox_thread_idx").on(t.threadId),

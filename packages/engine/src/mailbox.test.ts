@@ -35,9 +35,9 @@ describe("letterFilterKeys", () => {
       keys: ["out", "test"],
     },
     {
-      name: "inbound shape (unused chip until plan 3)",
-      input: { direction: "in" as const, origin: "automatic" as const, outboxStatus: "sent" as const },
-      keys: ["in", "automatic"],
+      name: "inbound is only Received",
+      input: { direction: "in" as const, origin: "automatic" as const, outboxStatus: "failed" as const },
+      keys: ["in"],
     },
   ])("$name", ({ input, keys }) => {
     expect(letterFilterKeys(input)).toEqual(keys);

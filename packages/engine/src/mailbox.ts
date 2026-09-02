@@ -46,8 +46,9 @@ export function letterFilterKeys(input: {
       keys.push("out");
       break;
     case "in":
+      // Received is not Automatic/Campaigns/Failed. Origin stays in the row for storage only.
       keys.push("in");
-      break;
+      return keys;
     default: {
       const _exhaustive: never = input.direction;
       return _exhaustive;

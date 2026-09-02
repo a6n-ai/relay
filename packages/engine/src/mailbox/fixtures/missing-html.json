@@ -1,0 +1,8 @@
+{
+  "from": "cust@example.com",
+  "to": "ops@relay.local",
+  "subject": "Re: Order ready",
+  "text": "Plain only",
+  "rfcMessageId": "<reply-text@example.com>",
+  "inReplyTo": "<abc@relay.test>"
+}

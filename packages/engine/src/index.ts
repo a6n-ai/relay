@@ -19,5 +19,6 @@ export * from "./tenant-handlers";
 export * from "./tenant-template";
 export * from "./handlers";
 export * from "./mailbox";
+export * from "./mailbox-inbound";
 export * from "./drain";
 export * from "./feed";

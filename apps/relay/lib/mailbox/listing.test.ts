@@ -34,6 +34,24 @@ describe("toMailboxListingRow", () => {
     }
   });
 
+  it("treats inbound as Received only, not Automatic or Failed", () => {
+    const row = toMailboxListingRow({
+      publicId: "mbx_in",
+      subject: "Re: Order ready",
+      fromEmail: "cust@example.com",
+      fromName: null,
+      toEmail: "ops@relay.local",
+      tenantName: "Demo",
+      status: "failed",
+      direction: "in",
+      origin: "automatic",
+      html: "<p>UNIQUE_HTML_PAYLOAD</p>",
+    });
+    expect(row.filterKeys).toEqual(["in"]);
+    expect(row.badges?.[0]?.label).toBe("Received");
+    expect(row.searchText).not.toContain("UNIQUE_HTML_PAYLOAD");
+  });
+
   it("treats a missing outbox as sent, not failed", () => {
     const row = toMailboxListingRow({
       publicId: "mbx_2",

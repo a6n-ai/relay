@@ -9,6 +9,7 @@ describe("isPublicRelayPath", () => {
     expect(isPublicRelayPath("/api/auth/ok")).toBe(true);
     expect(isPublicRelayPath("/v1/messages")).toBe(true);
     expect(isPublicRelayPath("/api/webhooks/ses")).toBe(true);
+    expect(isPublicRelayPath("/api/internal/mailbox/inbound")).toBe(true);
     expect(isPublicRelayPath("/unsubscribe")).toBe(true);
     expect(isPublicRelayPath("/dashboard")).toBe(false);
     expect(isPublicRelayPath("/api/internal")).toBe(false);
@@ -31,6 +32,10 @@ describe("gateRelayPath", () => {
   it("lets a session cookie through to the dashboard", () => {
     expect(gateRelayPath("/dashboard", ["better-auth.session_token"])).toBe("allow");
     expect(gateRelayPath("/dashboard", ["__Secure-better-auth.session_token"])).toBe("allow");
+  });
+
+  it("does not session-gate inbound mailbox POST", () => {
+    expect(gateRelayPath("/api/internal/mailbox/inbound", [])).toBe("allow");
   });
 
   it("does not session-gate /v1 (tenant API key is checked in the route)", () => {

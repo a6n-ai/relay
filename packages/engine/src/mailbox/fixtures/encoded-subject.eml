@@ -1,0 +1,9 @@
+From: Customer <cust@example.com>
+To: Relay <ops@relay.local>
+Subject: =?UTF-8?B?UmU6IE9yZGVyIHJlYWR5?=
+Message-ID: <reply-enc@example.com>
+In-Reply-To: <abc@relay.test>
+References: <abc@relay.test>
+Content-Type: text/plain; charset=utf-8
+
+Got it.

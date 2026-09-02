@@ -59,3 +59,11 @@ Inbound arrives through the **existing send provider** (SES inbound, Mailgun rou
 ## Done when
 
 A fixture reply attaches to a fixture send in tests, and a local signed POST appears under Received in the UI.
+
+## Manual checklist (not CI)
+
+1. Send a letter from Relay so Mailbox has an outbound row with a Message-ID.
+2. Reply from the recipient’s mail app (Gmail etc.).
+3. POST the provider payload to `/api/internal/mailbox/inbound` with `X-Relay-Signature` (HMAC of the raw body, `MAILBOX_INBOUND_SECRET`).
+4. Open Mailbox → Received; open the letter and confirm “This conversation” lists the Relay send.
+
