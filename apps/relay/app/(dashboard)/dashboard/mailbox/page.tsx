@@ -1,41 +1,22 @@
 import { MailboxIcon } from "lucide-react";
 import { PageHeader, PageShell } from "@foundry/design-system";
 import { FilteredResourceList } from "@/components/ds/listing-controls";
-import type { ListingFilter, ListingRow } from "@/components/ds/listing-controls";
-import { outboxStatusLabel } from "@/components/ds/plain-labels";
+import type { ListingFilter } from "@/components/ds/listing-controls";
 import { listMailboxLetters } from "@/lib/mailbox/list";
+import { toMailboxListingRow } from "@/lib/mailbox/listing";
 
 export const dynamic = "force-dynamic";
 
 const MAILBOX_FILTERS: ListingFilter[] = [
-  { id: "pending", label: "Waiting" },
-  { id: "processing", label: "Sending" },
-  { id: "sent", label: "Sent" },
+  { id: "out", label: "Relay sent" },
+  { id: "automatic", label: "Automatic" },
+  { id: "campaign", label: "Campaigns" },
   { id: "failed", label: "Failed" },
 ];
 
-function fromLine(fromEmail: string, fromName: string | null): string {
-  if (!fromEmail) return "No From set";
-  return fromName ? `${fromName} <${fromEmail}>` : fromEmail;
-}
-
 export default async function MailboxPage() {
   const rows = await listMailboxLetters();
-  const items: ListingRow[] = rows.map((r) => {
-    const status = r.status ?? "sent";
-    const from = fromLine(r.fromEmail, r.fromName);
-    const app = r.tenantName ?? "Relay";
-    const meta = `To ${r.toEmail} · From ${from} · ${app}`;
-    return {
-      id: r.publicId,
-      title: r.subject,
-      meta,
-      href: `/dashboard/mailbox/${r.publicId}`,
-      searchText: `${r.subject} ${r.toEmail} ${from} ${app} ${outboxStatusLabel(status)}`,
-      filterKeys: [status],
-      badges: [{ label: outboxStatusLabel(status), variant: status === "failed" ? "destructive" : "outline" }],
-    };
-  });
+  const items = rows.map(toMailboxListingRow);
 
   return (
     <PageShell>

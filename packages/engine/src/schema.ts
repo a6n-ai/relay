@@ -38,6 +38,12 @@ export const messageKind = pgEnum("message_kind", ["transactional", "marketing"]
 /** How far a suppression reaches. See messageSuppression for why this is not a boolean. */
 export const suppressionScope = pgEnum("suppression_scope", ["all", "marketing"]);
 
+/** Mailbox letter travel. `in` is unused until inbound landing. */
+export const mailboxDirection = pgEnum("mailbox_direction", ["out", "in"]);
+
+/** Why Relay produced the letter. Distinct from outbox kind (consent). */
+export const mailboxOrigin = pgEnum("mailbox_origin", ["automatic", "campaign", "test"]);
+
 /**
  * Build the notification tables against one app's `users` table and event enum.
  *

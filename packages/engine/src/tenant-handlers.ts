@@ -3,7 +3,7 @@ import type { CampaignTables } from "./campaign-schema";
 import { appendUnsubscribeFooter, renderCampaignEmail, renderCampaignText } from "./template";
 import { buildUnsubscribeUrl } from "./unsubscribe";
 import { renderEmailForTenantEvent, renderTextForTenantEvent } from "./tenant-template";
-import { archiveMailboxLetter } from "./mailbox";
+import { archiveMailboxLetter, mailboxOriginFromCampaignId } from "./mailbox";
 import type { TenantNotificationTables } from "./tenant-schema";
 import type { Channel, ChannelProvider } from "./types";
 import type { ChannelHandler, OutboxRow } from "./handlers";
@@ -113,6 +113,8 @@ export function buildTenantHandlers(deps: {
           subject: rendered.subject,
           html: rendered.html,
           text: rendered.text,
+          direction: "out",
+          origin: mailboxOriginFromCampaignId(row.campaignId as bigint | null | undefined),
         });
         return emailProvider.send({
           to: { email: address },

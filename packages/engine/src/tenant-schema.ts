@@ -11,6 +11,8 @@ import {
   type AnyPgTable,
 } from "drizzle-orm/pg-core";
 import {
+  mailboxDirection,
+  mailboxOrigin,
   messageKind,
   notificationChannel,
   outboxStatus,
@@ -125,6 +127,8 @@ export function makeTenantNotificationTables(deps: {
     subject: text("subject").notNull(),
     html: text("html").notNull(),
     text: text("text").notNull(),
+    direction: mailboxDirection("direction").notNull().default("out"),
+    origin: mailboxOrigin("origin").notNull().default("automatic"),
   }, (t) => [
     uniqueIndex("email_mailbox_outbox_uidx").on(t.outboxId),
     index("email_mailbox_created_idx").on(t.createdAt),
@@ -133,6 +137,7 @@ export function makeTenantNotificationTables(deps: {
 
   return {
     notificationChannel, outboxStatus, messageKind, suppressionScope,
+    mailboxDirection, mailboxOrigin,
     notifications, notificationOutbox, notificationPrefs,
     notificationTemplate, messageSuppression, emailMailbox,
   };

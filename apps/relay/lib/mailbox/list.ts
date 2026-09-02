@@ -13,6 +13,8 @@ export async function listMailboxLetters(limit = 100) {
       createdAt: emailMailbox.createdAt,
       tenantName: tenants.name,
       status: notificationOutbox.status,
+      direction: emailMailbox.direction,
+      origin: emailMailbox.origin,
     })
     .from(emailMailbox)
     .leftJoin(notificationOutbox, eq(emailMailbox.outboxId, notificationOutbox.id))

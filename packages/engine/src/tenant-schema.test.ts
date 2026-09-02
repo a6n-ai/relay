@@ -10,7 +10,16 @@ describe("makeTenantNotificationTables", () => {
     expect(getTableConfig(t.emailMailbox).name).toBe("email_mailbox");
     const names = getTableConfig(t.emailMailbox).columns.map((c) => c.name);
     expect(names).toEqual(
-      expect.arrayContaining(["outbox_id", "from_email", "to_email", "subject", "html", "text"]),
+      expect.arrayContaining([
+        "outbox_id",
+        "from_email",
+        "to_email",
+        "subject",
+        "html",
+        "text",
+        "direction",
+        "origin",
+      ]),
     );
   });
 });

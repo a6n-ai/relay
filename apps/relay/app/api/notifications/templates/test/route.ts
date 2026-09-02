@@ -8,6 +8,7 @@ import { getSession } from "@/lib/auth/session";
 import { operatorGuard } from "@/lib/campaigns/http";
 import { operatorDefaultFrom } from "@/lib/email/from-address";
 import { getEmailProvider, hydrateSmtpFromDb } from "@/lib/email/provider";
+import { templateTestMailboxLetter } from "@/lib/mailbox/template-test";
 
 const schema = z.object({
   subject: z.string().trim().min(1),
@@ -43,15 +44,17 @@ export const POST = handler(async (req: Request) => {
     text,
     from: from ?? undefined,
   });
-  await archiveMailboxLetter(db, notificationTables, {
-    outboxId: null,
-    tenantId: null,
-    fromEmail: from?.email ?? "",
-    fromName: from?.name ?? null,
-    toEmail: to,
-    subject,
-    html,
-    text,
-  });
+  await archiveMailboxLetter(
+    db,
+    notificationTables,
+    templateTestMailboxLetter({
+      fromEmail: from?.email ?? "",
+      fromName: from?.name ?? null,
+      toEmail: to,
+      subject,
+      html,
+      text,
+    }),
+  );
   return json({ ok: true });
 });
