@@ -3,7 +3,7 @@ import type { CampaignTables } from "./campaign-schema";
 import { appendUnsubscribeFooter, renderCampaignEmail, renderCampaignText } from "./template";
 import { buildUnsubscribeUrl } from "./unsubscribe";
 import { renderEmailForTenantEvent, renderTextForTenantEvent } from "./tenant-template";
-import { archiveMailboxLetter, mailboxOriginFromCampaignId } from "./mailbox";
+import { archiveMailboxLetter, attachMailboxSendIds, generateRelayMessageId, mailboxOriginFromCampaignId } from "./mailbox";
 import type { TenantNotificationTables } from "./tenant-schema";
 import type { Channel, ChannelProvider } from "./types";
 import type { ChannelHandler, OutboxRow } from "./handlers";
@@ -104,6 +104,7 @@ export function buildTenantHandlers(deps: {
           };
         }
         const from = (await loadFromAddress?.(row.tenantId as bigint)) ?? undefined;
+        const rfcMessageId = generateRelayMessageId();
         await archiveMailboxLetter(db, tables, {
           outboxId: row.id as bigint,
           tenantId: (row.tenantId as bigint | null) ?? null,
@@ -116,13 +117,19 @@ export function buildTenantHandlers(deps: {
           direction: "out",
           origin: mailboxOriginFromCampaignId(row.campaignId as bigint | null | undefined),
         });
-        return emailProvider.send({
+        const sent = await emailProvider.send({
           to: { email: address },
           subject: rendered.subject,
           html: rendered.html,
           text: rendered.text,
           from,
+          rfcMessageId,
         });
+        await attachMailboxSendIds(db, tables, {
+          outboxId: row.id as bigint,
+          providerMessageId: sent.providerMessageId,
+        });
+        return sent;
       }
     : undefined;
 

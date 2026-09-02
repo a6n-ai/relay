@@ -19,6 +19,10 @@ describe("makeTenantNotificationTables", () => {
         "text",
         "direction",
         "origin",
+        "rfc_message_id",
+        "in_reply_to",
+        "references",
+        "thread_id",
       ]),
     );
   });

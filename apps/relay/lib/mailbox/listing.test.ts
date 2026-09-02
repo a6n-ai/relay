@@ -67,4 +67,22 @@ describe("templateTestMailboxLetter", () => {
       origin: "test",
     });
   });
+
+  it("stores provider Message-ID as conversation ids without putting them in search", () => {
+    const letter = templateTestMailboxLetter({
+      fromEmail: "ops@relay.local",
+      fromName: "Relay",
+      toEmail: "ops@relay.local",
+      subject: "Preview",
+      html: "<p>x</p>",
+      text: "x",
+      providerMessageId: "<abc@relay.test>",
+    });
+    expect(letter).toMatchObject({
+      rfcMessageId: "<abc@relay.test>",
+      threadId: "<abc@relay.test>",
+      origin: "test",
+      direction: "out",
+    });
+  });
 });

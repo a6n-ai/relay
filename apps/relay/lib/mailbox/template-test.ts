@@ -1,4 +1,7 @@
-import type { MailboxLetterInput } from "@relay/engine";
+import {
+  mailboxThreadingFromProviderId,
+  type MailboxLetterInput,
+} from "@relay/engine";
 
 /** Template preview send is not a campaign and not an app receipt. */
 export function templateTestMailboxLetter(input: {
@@ -8,7 +11,11 @@ export function templateTestMailboxLetter(input: {
   subject: string;
   html: string;
   text: string;
+  providerMessageId?: string | null;
 }): MailboxLetterInput {
+  const threading = input.providerMessageId
+    ? mailboxThreadingFromProviderId(input.providerMessageId)
+    : {};
   return {
     outboxId: null,
     tenantId: null,
@@ -20,5 +27,6 @@ export function templateTestMailboxLetter(input: {
     text: input.text,
     direction: "out",
     origin: "test",
+    ...threading,
   };
 }

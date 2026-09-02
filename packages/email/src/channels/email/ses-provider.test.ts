@@ -36,6 +36,21 @@ describe("SesEmailProvider", () => {
     expect(input.Content?.Simple?.Body?.Text).toBeUndefined();
   });
 
+  it("does not put RFC Message-ID on SES Simple (API MessageId is stored instead)", async () => {
+    const { client, sent } = fakeClient();
+    const p = new SesEmailProvider({ defaultFrom, client });
+    await p.send({
+      to: { email: "a@b.com" },
+      subject: "x",
+      text: "y",
+      rfcMessageId: "<abc@relay.test>",
+    });
+    const input = sent[0].input;
+    expect(input.Content?.Raw).toBeUndefined();
+    expect(input.Content?.Simple).toBeTruthy();
+    expect(JSON.stringify(input)).not.toContain("<abc@relay.test>");
+  });
+
   it("throws when SES returns no MessageId", async () => {
     const { client } = fakeClient({ MessageId: undefined });
     const p = new SesEmailProvider({ defaultFrom, client });

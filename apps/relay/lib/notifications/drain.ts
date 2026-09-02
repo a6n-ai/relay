@@ -29,6 +29,7 @@ function emailChannelProvider(): ChannelProvider {
         html: msg.html,
         text: msg.text,
         from: msg.from,
+        rfcMessageId: msg.rfcMessageId,
       }),
   };
 }

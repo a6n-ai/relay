@@ -1,5 +1,9 @@
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
+import { eq } from "drizzle-orm";
 import type { TenantNotificationTables } from "./tenant-schema";
+import { mailboxThreadingFromProviderId } from "./mailbox-thread";
+
+export * from "./mailbox-thread";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Db = PostgresJsDatabase<any>;
@@ -19,6 +23,10 @@ export type MailboxLetterInput = {
   text: string;
   direction?: MailboxDirection;
   origin: MailboxOrigin;
+  rfcMessageId?: string | null;
+  inReplyTo?: string | null;
+  rfcReferences?: string | null;
+  threadId?: string | null;
 };
 
 /** Campaign queue rows are operator-confirmed blasts; everything else is Automatic. */
@@ -76,6 +84,28 @@ export function mailboxInsertValues(letter: MailboxLetterInput) {
     text: letter.text,
     direction: letter.direction ?? "out",
     origin: letter.origin,
+    rfcMessageId: letter.rfcMessageId ?? null,
+    inReplyTo: letter.inReplyTo ?? null,
+    rfcReferences: letter.rfcReferences ?? null,
+    threadId: letter.threadId ?? null,
+  };
+}
+
+/** Retry archive updates the snapshot body, never threading ids. */
+export function mailboxRetryBodySet(
+  letter: MailboxLetterInput,
+  values: ReturnType<typeof mailboxInsertValues>,
+) {
+  return {
+    fromEmail: letter.fromEmail,
+    fromName: letter.fromName,
+    toEmail: letter.toEmail,
+    subject: letter.subject,
+    html: letter.html,
+    text: letter.text,
+    direction: values.direction,
+    origin: letter.origin,
+    updatedAt: Date.now(),
   };
 }
 
@@ -95,16 +125,18 @@ export async function archiveMailboxLetter(
     .values(values)
     .onConflictDoUpdate({
       target: tables.emailMailbox.outboxId,
-      set: {
-        fromEmail: letter.fromEmail,
-        fromName: letter.fromName,
-        toEmail: letter.toEmail,
-        subject: letter.subject,
-        html: letter.html,
-        text: letter.text,
-        direction: values.direction,
-        origin: letter.origin,
-        updatedAt: Date.now(),
-      },
+      set: mailboxRetryBodySet(letter, values),
     });
+}
+
+export async function attachMailboxSendIds(
+  db: Db,
+  tables: TenantNotificationTables,
+  input: { outboxId: bigint; providerMessageId: string },
+): Promise<void> {
+  const { rfcMessageId, threadId } = mailboxThreadingFromProviderId(input.providerMessageId);
+  await db
+    .update(tables.emailMailbox)
+    .set({ rfcMessageId, threadId, updatedAt: Date.now() })
+    .where(eq(tables.emailMailbox.outboxId, input.outboxId));
 }

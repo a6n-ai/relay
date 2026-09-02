@@ -23,6 +23,8 @@ export const emailMessageSchema = z
     subject: z.string().trim().min(1, "Email subject is required"),
     html: z.string().min(1).optional(),
     text: z.string().min(1).optional(),
+    /** Passed through SMTP as `messageId`. SES Simple cannot set RFC Message-ID. */
+    rfcMessageId: z.string().min(1).optional(),
   })
   .refine((m) => m.html || m.text, {
     message: "Email must have an html or text body",

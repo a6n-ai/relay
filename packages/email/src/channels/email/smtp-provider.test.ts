@@ -62,6 +62,27 @@ describe("SmtpEmailProvider", () => {
     });
   });
 
+  it("passes a Message-ID through as nodemailer messageId", async () => {
+    const sent: unknown[] = [];
+    const p = new SmtpEmailProvider({
+      defaultFrom,
+      host: "smtp.example.com",
+      client: {
+        sendMail: async (opts) => {
+          sent.push(opts);
+          return { messageId: opts.messageId ?? "<generated@smtp>" };
+        },
+      },
+    });
+    await p.send({
+      to: { email: "a@b.com" },
+      subject: "x",
+      text: "y",
+      rfcMessageId: "<abc@relay.test>",
+    });
+    expect(sent[0]).toMatchObject({ messageId: "<abc@relay.test>" });
+  });
+
   it("throws when SMTP returns no messageId", async () => {
     const client: SmtpSendClient = { sendMail: async () => ({}) };
     const p = new SmtpEmailProvider({ defaultFrom, host: "smtp.example.com", client });

@@ -1,6 +1,6 @@
 import { ValidationError } from "@foundry/commons";
 import { handler, json } from "@foundry/routes";
-import { archiveMailboxLetter, interpolate } from "@relay/engine";
+import { archiveMailboxLetter, generateRelayMessageId, interpolate } from "@relay/engine";
 import { z } from "zod";
 import { db } from "@/db/client";
 import { notificationTables } from "@/db/schema";
@@ -37,12 +37,14 @@ export const POST = handler(async (req: Request) => {
   const text = interpolate(parsed.data.text, vars);
   await hydrateSmtpFromDb();
   const from = await operatorDefaultFrom();
-  await getEmailProvider().send({
+  const rfcMessageId = generateRelayMessageId();
+  const sent = await getEmailProvider().send({
     to: { email: to },
     subject,
     html,
     text,
     from: from ?? undefined,
+    rfcMessageId,
   });
   await archiveMailboxLetter(
     db,
@@ -54,6 +56,7 @@ export const POST = handler(async (req: Request) => {
       subject,
       html,
       text,
+      providerMessageId: sent.providerMessageId,
     }),
   );
   return json({ ok: true });

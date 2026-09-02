@@ -3,6 +3,7 @@ import {
   letterFilterKeys,
   mailboxInsertValues,
   mailboxOriginFromCampaignId,
+  mailboxRetryBodySet,
 } from "./mailbox";
 
 describe("mailboxOriginFromCampaignId", () => {
@@ -71,5 +72,14 @@ describe("mailboxInsertValues", () => {
         origin: mailboxOriginFromCampaignId(null),
       }),
     ).toMatchObject({ origin: "automatic", direction: "out" });
+  });
+
+  it("leaves threading ids off the retry conflict set so they are not blanked", () => {
+    const letter = { ...base, origin: "automatic" as const, rfcMessageId: "<keep@relay.test>", threadId: "<keep@relay.test>" };
+    const set = mailboxRetryBodySet(letter, mailboxInsertValues(letter));
+    expect(set).not.toHaveProperty("rfcMessageId");
+    expect(set).not.toHaveProperty("threadId");
+    expect(set).not.toHaveProperty("inReplyTo");
+    expect(set).not.toHaveProperty("rfcReferences");
   });
 });

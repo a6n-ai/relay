@@ -129,10 +129,15 @@ export function makeTenantNotificationTables(deps: {
     text: text("text").notNull(),
     direction: mailboxDirection("direction").notNull().default("out"),
     origin: mailboxOrigin("origin").notNull().default("automatic"),
+    rfcMessageId: text("rfc_message_id"),
+    inReplyTo: text("in_reply_to"),
+    rfcReferences: text("references"),
+    threadId: text("thread_id"),
   }, (t) => [
     uniqueIndex("email_mailbox_outbox_uidx").on(t.outboxId),
     index("email_mailbox_created_idx").on(t.createdAt),
     index("email_mailbox_tenant_idx").on(t.tenantId),
+    index("email_mailbox_thread_idx").on(t.threadId),
   ]);
 
   return {

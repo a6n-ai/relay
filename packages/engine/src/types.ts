@@ -17,6 +17,8 @@ export interface OutboundMessage {
   text?: string;
   /** email From; omitted → operator default */
   from?: { email: string; name?: string };
+  /** RFC Message-ID to set on SMTP; SES Simple ignores this. */
+  rfcMessageId?: string;
   /** whatsapp / templated sms: the provider-side approved template id */
   providerTemplateId?: string;
   /** merge values for a provider-side template */
