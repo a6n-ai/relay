@@ -34,7 +34,11 @@ Postgres Mailbox (Plans 1–3) remains source of truth for **operator conversati
 - Creating an address on a sending-only domain is **rejected** (unit test on the rule).
 - Operator UI has no word Stalwart/IMAP.
 
-**Manual / staging (not CI)**
+## CI (this repo)
+
+Mock client: `MemoryPeopleMailClient` (`packages/engine/src/people-mail.ts`). No Stalwart, no port 25, no operator UI words IMAP/Stalwart.
+
+## Manual / staging (not CI)
 
 - Checklist: Mail.app IMAPS to staging host, send from Gmail, message appears in Mail.app.
 - PTR and TLS documented; backup of mail store.

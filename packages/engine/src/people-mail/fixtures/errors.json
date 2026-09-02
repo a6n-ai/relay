@@ -1,0 +1,4 @@
+{
+  "unauthorized": { "status": 401, "code": "unauthorized", "title": "Couldn’t sign in to manage addresses" },
+  "exists": { "status": 409, "code": "exists", "title": "That address is already in use" }
+}
