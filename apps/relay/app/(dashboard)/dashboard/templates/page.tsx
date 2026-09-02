@@ -1,35 +1,72 @@
 import { InboxIcon } from "lucide-react";
-import { Badge } from "@foundry/ui/badge";
-import { EmptyState, PageHeader, PageShell, SectionCard } from "@foundry/design-system";
-import { db } from "@/db/client";
-import { notificationTables } from "@/db/schema";
+import { PageHeader, PageShell, SectionCard } from "@foundry/design-system";
+import { OperatorSplit } from "@/components/ds/operator-split";
+import { FilteredResourceList } from "@/components/ds/listing-controls";
+import type { ListingFilter, ListingRow } from "@/components/ds/listing-controls";
+import { displayChannel } from "@/components/ds/plain-labels";
+import { templatesService } from "@/lib/services/templates.service";
+import { tenantsService } from "@/lib/services/tenants.service";
+import { CreateTemplateForm } from "./create-template-form";
 
 export const dynamic = "force-dynamic";
 
+const TEMPLATE_FILTERS: ListingFilter[] = [
+  { id: "email", label: "Email" },
+  { id: "sms", label: "Text" },
+  { id: "whatsapp", label: "WhatsApp" },
+  { id: "in_app", label: "In the app" },
+  { id: "off", label: "Off" },
+];
+
 export default async function TemplatesPage() {
-  const rows = await db.select().from(notificationTables.notificationTemplate);
+  const [{ items: tenantRows }, { items: rows }] = await Promise.all([
+    tenantsService.listRecent(),
+    templatesService.listRecent(),
+  ]);
+
+  const items: ListingRow[] = rows.map((r) => {
+    const tenant = tenantRows.find((t) => t.id === r.tenantId);
+    const channel = displayChannel(r.channel);
+    const meta = tenant?.name ?? "App";
+    const filterKeys = [r.channel, ...(r.enabled ? [] : ["off"])];
+    return {
+      id: r.publicId,
+      title: r.event,
+      meta,
+      searchText: `${r.event} ${meta} ${channel} ${r.locale}`,
+      filterKeys,
+      badges: [
+        { label: channel, variant: "outline" },
+        { label: r.locale, variant: "secondary" },
+        ...(r.enabled ? [] : [{ label: "Off", variant: "destructive" as const }]),
+      ],
+    };
+  });
 
   return (
     <PageShell>
       <PageHeader
         icon={InboxIcon}
         title="Templates"
-        subtitle="Per-tenant templates. Transactional sends also accept inline title/body when no template exists."
+        subtitle="Reusable email for a specific moment, like “order shipped.” The app uses the same name when it asks Relay to send."
       />
-      {rows.length === 0 ? (
-        <EmptyState icon={InboxIcon} message="No templates yet." />
-      ) : (
-        <div className="flex flex-col gap-3">
-          {rows.map((r) => (
-            <SectionCard key={r.publicId} title={r.event} variant="flat">
-              <div className="flex gap-2">
-                <Badge variant="outline">{r.channel}</Badge>
-                <Badge variant="secondary">{r.locale}</Badge>
-              </div>
-            </SectionCard>
-          ))}
-        </div>
-      )}
+      <OperatorSplit
+        create={
+          <SectionCard title="New email template">
+            <CreateTemplateForm tenants={tenantRows} />
+          </SectionCard>
+        }
+        list={
+          <FilteredResourceList
+            title="Saved templates"
+            glyph="inbox"
+            emptyMessage="No templates yet. Write one on the left."
+            searchPlaceholder="Search templates"
+            filters={TEMPLATE_FILTERS}
+            items={items}
+          />
+        }
+      />
     </PageShell>
   );
 }

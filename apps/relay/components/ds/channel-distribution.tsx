@@ -38,7 +38,7 @@ export function ChannelDistribution({
       <CardHeader className="border-b border-border">
         <div className="flex items-center gap-2">
           <PieChartIcon className="text-muted-foreground" />
-          <CardTitle className="text-sm font-medium">Channel mix</CardTitle>
+          <CardTitle className="text-sm font-medium">Where messages went</CardTitle>
         </div>
       </CardHeader>
       <CardContent className="flex flex-1 flex-col justify-between gap-4">

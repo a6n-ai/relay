@@ -4,19 +4,24 @@ import { Breadcrumbs } from "@foundry/design-system";
 
 const LABELS: Record<string, string> = {
   dashboard: "Relay",
-  logs: "Outbox",
+  logs: "Sends",
+  mailbox: "Mailbox",
   templates: "Templates",
   campaigns: "Campaigns",
-  channels: "Channels",
-  tenants: "Tenants",
+  lists: "People",
+  webhooks: "Status updates",
+  automations: "Automations",
+  channels: "How you reach people",
+  tenants: "Apps",
   domains: "Domains",
-  sending: "SMTP",
-  accounts: "Operators",
-  account: "Account",
+  sending: "Email sending",
+  settings: "Settings",
+  accounts: "Team",
+  account: "Your account",
   email: "Email",
-  sms: "SMS",
+  sms: "Text",
   whatsapp: "WhatsApp",
-  "in-app": "In-app",
+  "in-app": "In the app",
 };
 
 export function RelayBreadcrumbs() {

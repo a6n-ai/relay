@@ -4,7 +4,7 @@ import { Landing } from "@/components/marketing/landing";
 export const metadata: Metadata = {
   title: "Relay — notifications that leave through one door",
   description:
-    "Notification product for email, SMS, WhatsApp, and in-app. Tenants send with an API key. Operators run the outbox.",
+    "Send email, texts, WhatsApp, and in-app messages from one place. Sign in to watch delivery.",
 };
 
 export default function Home() {

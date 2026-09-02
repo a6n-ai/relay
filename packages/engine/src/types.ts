@@ -15,6 +15,8 @@ export interface OutboundMessage {
   subject?: string;
   html?: string;
   text?: string;
+  /** email From; omitted → operator default */
+  from?: { email: string; name?: string };
   /** whatsapp / templated sms: the provider-side approved template id */
   providerTemplateId?: string;
   /** merge values for a provider-side template */

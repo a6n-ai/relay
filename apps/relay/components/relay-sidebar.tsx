@@ -2,18 +2,22 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import type { LucideIcon } from "lucide-react";
 import {
-  GlobeIcon,
-  InboxIcon,
+  FileTextIcon,
   KeyIcon,
   LayoutDashboardIcon,
+  ListIcon,
   MailIcon,
+  MailboxIcon,
   MessageCircleIcon,
   MegaphoneIcon,
   ScrollTextIcon,
   SettingsIcon,
   SmartphoneIcon,
   UsersIcon,
+  WebhookIcon,
+  ZapIcon,
 } from "lucide-react";
 import {
   Sidebar,
@@ -26,35 +30,84 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarMenuSub,
-  SidebarMenuSubButton,
-  SidebarMenuSubItem,
   SidebarSeparator,
 } from "@foundry/ui/sidebar";
 import { Button } from "@foundry/ui/button";
 import { signOut } from "@/lib/auth/client";
 import { RELAY_CHANNELS } from "@/components/ds/channels";
 
-const PRIMARY = [
-  { href: "/dashboard", label: "Overview", icon: LayoutDashboardIcon },
-  { href: "/dashboard/tenants", label: "Tenants", icon: KeyIcon },
-  { href: "/dashboard/domains", label: "Domains", icon: GlobeIcon },
-  { href: "/dashboard/sending", label: "SMTP", icon: MailIcon },
-  { href: "/dashboard/logs", label: "Outbox", icon: ScrollTextIcon },
-  { href: "/dashboard/templates", label: "Templates", icon: InboxIcon },
+type NavItem = {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+  /** Your account is `/dashboard/account`; Team is `/dashboard/accounts`. */
+  exact?: boolean;
+};
+
+const OVERVIEW: NavItem[] = [
+  { href: "/dashboard", label: "Home", icon: LayoutDashboardIcon, exact: true },
+  { href: "/dashboard/tenants", label: "Apps", icon: KeyIcon },
+];
+
+const OUTREACH: NavItem[] = [
   { href: "/dashboard/campaigns", label: "Campaigns", icon: MegaphoneIcon },
-] as const;
+  { href: "/dashboard/lists", label: "People", icon: ListIcon },
+  { href: "/dashboard/templates", label: "Templates", icon: FileTextIcon },
+  { href: "/dashboard/automations", label: "Automations", icon: ZapIcon },
+];
+
+const ACTIVITY: NavItem[] = [
+  { href: "/dashboard/logs", label: "Sends", icon: ScrollTextIcon },
+  { href: "/dashboard/mailbox", label: "Mailbox", icon: MailboxIcon },
+  { href: "/dashboard/webhooks", label: "Status updates", icon: WebhookIcon },
+];
+
+const SETUP: NavItem[] = [
+  { href: "/dashboard/settings/email", label: "Email sending", icon: MailIcon },
+  { href: "/dashboard/accounts", label: "Team", icon: UsersIcon },
+  { href: "/dashboard/account", label: "Your account", icon: SettingsIcon, exact: true },
+];
 
 const CHANNEL_ICONS = {
   email: MailIcon,
   sms: SmartphoneIcon,
   whatsapp: MessageCircleIcon,
-  in_app: InboxIcon,
+  in_app: FileTextIcon,
 } as const;
 
-function pathActive(pathname: string, href: string) {
-  if (href === "/dashboard") return pathname === href;
-  return pathname === href || pathname.startsWith(`${href}/`);
+function pathActive(pathname: string, item: NavItem): boolean {
+  if (item.exact || item.href === "/dashboard") return pathname === item.href;
+  return pathname === item.href || pathname.startsWith(`${item.href}/`);
+}
+
+function NavGroup({
+  label,
+  items,
+  pathname,
+}: {
+  label: string;
+  items: readonly NavItem[];
+  pathname: string;
+}) {
+  return (
+    <SidebarGroup>
+      <SidebarGroupLabel>{label}</SidebarGroupLabel>
+      <SidebarGroupContent>
+        <SidebarMenu>
+          {items.map((item) => (
+            <SidebarMenuItem key={item.href}>
+              <SidebarMenuButton asChild isActive={pathActive(pathname, item)}>
+                <Link href={item.href}>
+                  <item.icon />
+                  <span>{item.label}</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          ))}
+        </SidebarMenu>
+      </SidebarGroupContent>
+    </SidebarGroup>
+  );
 }
 
 export function RelaySidebar({ email }: { email: string }) {
@@ -63,73 +116,35 @@ export function RelaySidebar({ email }: { email: string }) {
     <Sidebar>
       <SidebarHeader className="gap-1 px-4 py-4">
         <p className="text-sm font-semibold tracking-tight">Relay</p>
-        <p className="text-xs text-sidebar-foreground/60">Operator workspace</p>
+        <p className="text-xs text-sidebar-foreground/60">Messages for your apps</p>
       </SidebarHeader>
       <SidebarContent>
+        <NavGroup label="Overview" items={OVERVIEW} pathname={pathname} />
+        <NavGroup label="Outreach" items={OUTREACH} pathname={pathname} />
+        <NavGroup label="Activity" items={ACTIVITY} pathname={pathname} />
         <SidebarGroup>
-          <SidebarGroupLabel>Workspace</SidebarGroupLabel>
+          <SidebarGroupLabel>How you reach people</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {PRIMARY.map((item) => (
-                <SidebarMenuItem key={item.href}>
-                  <SidebarMenuButton asChild isActive={pathActive(pathname, item.href)}>
-                    <Link href={item.href}>
-                      <item.icon />
-                      <span>{item.label}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {RELAY_CHANNELS.map((ch) => {
+                const Icon = CHANNEL_ICONS[ch.key];
+                const href = ch.href;
+                const active = pathname === href || pathname.startsWith(`${href}/`);
+                return (
+                  <SidebarMenuItem key={ch.key}>
+                    <SidebarMenuButton asChild isActive={active}>
+                      <Link href={href}>
+                        <Icon />
+                        <span>{ch.label}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-        <SidebarGroup>
-          <SidebarGroupLabel>Channels</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuSub>
-                  {RELAY_CHANNELS.map((ch) => {
-                    const Icon = CHANNEL_ICONS[ch.key];
-                    return (
-                      <SidebarMenuSubItem key={ch.key}>
-                        <SidebarMenuSubButton asChild isActive={pathActive(pathname, ch.href)}>
-                          <Link href={ch.href}>
-                            <Icon />
-                            <span>{ch.label}</span>
-                          </Link>
-                        </SidebarMenuSubButton>
-                      </SidebarMenuSubItem>
-                    );
-                  })}
-                </SidebarMenuSub>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-        <SidebarGroup>
-          <SidebarGroupLabel>Access</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={pathActive(pathname, "/dashboard/accounts")}>
-                  <Link href="/dashboard/accounts">
-                    <UsersIcon />
-                    <span>Operators</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={pathname === "/dashboard/account"}>
-                  <Link href="/dashboard/account">
-                    <SettingsIcon />
-                    <span>Account</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        <NavGroup label="Setup" items={SETUP} pathname={pathname} />
       </SidebarContent>
       <SidebarSeparator />
       <SidebarFooter className="gap-3 p-3">

@@ -22,6 +22,41 @@
       "when": 1788251000000,
       "tag": "0002_audit_log",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1788356453146,
+      "tag": "0003_campaigns",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1788360000000,
+      "tag": "0004_platform_hooks",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1788365000000,
+      "tag": "0005_campaign_tenant_identity",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1788368000000,
+      "tag": "0006_tenant_email_quota",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1788372000000,
+      "tag": "0007_email_mailbox",
+      "breakpoints": true
     }
   ]
 }

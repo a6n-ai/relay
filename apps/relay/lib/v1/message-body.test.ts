@@ -54,4 +54,15 @@ describe("parseMessageJson", () => {
       expect(parsed.data.idempotencyKey).toBe("sale:1");
     }
   });
+
+  it("accepts a delayed sendAt timestamp", () => {
+    const parsed = parseMessageJson({
+      title: "Later",
+      body: "Hi",
+      to: { email: "a@b.com" },
+      sendAt: 1_800_000_000_000,
+    });
+    expect(parsed.ok).toBe(true);
+    if (parsed.ok) expect(parsed.data.sendAt).toBe(1_800_000_000_000);
+  });
 });

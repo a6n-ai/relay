@@ -40,7 +40,7 @@ export function KeyInsightsCard({
       </CardHeader>
       <CardContent className="flex flex-1 flex-col justify-between gap-6">
         <div className="flex flex-col gap-1">
-          <p className="text-sm text-muted-foreground">Outbox · 7 days</p>
+          <p className="text-sm text-muted-foreground">Last 7 days</p>
           <div className="flex flex-wrap items-center gap-2">
             <p className="nums text-3xl font-semibold tracking-tight">{total.toLocaleString()}</p>
             <Badge className={toneClass(delta.tone)}>

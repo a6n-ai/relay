@@ -1,60 +1,81 @@
-import { desc } from "drizzle-orm";
+import { eq } from "@foundry/commons";
 import { KeyIcon } from "lucide-react";
-import { Badge } from "@foundry/ui/badge";
-import { EmptyState, PageHeader, PageShell, SectionCard } from "@foundry/design-system";
-import { db } from "@/db/client";
-import { apiKeys, tenants } from "@/db/schema";
+import { PageHeader, PageShell, SectionCard } from "@foundry/design-system";
+import { OperatorSplit } from "@/components/ds/operator-split";
+import { FilteredResourceList } from "@/components/ds/listing-controls";
+import type { ListingFilter, ListingRow } from "@/components/ds/listing-controls";
+import { apiKeysService, tenantsService } from "@/lib/services/tenants.service";
+import { countTenantSendsThisMonth } from "@/lib/tenants/usage";
 import { CreateTenantForm } from "./create-tenant-form";
 
 export const dynamic = "force-dynamic";
 
+const APP_FILTERS: ListingFilter[] = [
+  { id: "live", label: "Live" },
+  { id: "no-key", label: "No key" },
+  { id: "revoked", label: "Revoked" },
+];
+
 export default async function TenantsPage() {
-  const list = await db.select().from(tenants).orderBy(desc(tenants.createdAt));
-  const keys = await db.select().from(apiKeys);
+  const { items: list } = await tenantsService.listRecent();
+  const withUsage = await Promise.all(
+    list.map(async (t) => {
+      const [{ items: keys }, used] = await Promise.all([
+        apiKeysService.list(eq("tenantId", t.id), { page: 0, size: 20 }),
+        countTenantSendsThisMonth(t.id),
+      ]);
+      return { t, keys, used };
+    }),
+  );
+
+  const items: ListingRow[] = withUsage.map(({ t, keys, used }) => {
+    const filterKeys: string[] = [];
+    if (keys.length === 0) filterKeys.push("no-key");
+    if (keys.some((k) => !k.revokedAt)) filterKeys.push("live");
+    if (keys.some((k) => k.revokedAt)) filterKeys.push("revoked");
+    const quota = t.monthlyMessageQuota === 0 ? "unlimited" : String(t.monthlyMessageQuota);
+    const meta = `${t.slug} · sent ${used} of ${quota} this month`;
+    return {
+      id: t.publicId,
+      title: t.name,
+      meta,
+      href: `/dashboard/tenants/${t.publicId}`,
+      searchText: `${t.name} ${t.slug} ${meta}`,
+      filterKeys,
+      badges:
+        keys.length === 0
+          ? [{ label: "No key", variant: "outline" }]
+          : keys.slice(0, 2).map((k) => ({
+              label: k.revokedAt ? "Revoked" : "Live",
+              variant: k.revokedAt ? "destructive" : "secondary",
+            })),
+    };
+  });
 
   return (
     <PageShell>
       <PageHeader
         icon={KeyIcon}
-        title="Tenants"
-        subtitle="Realm apps are tenants with API keys. Operators sign in here; apps call POST /v1/messages."
+        title="Apps"
+        subtitle="Each app (Tiffin Grab, Realm) has its own monthly send limit and From address."
       />
-      <SectionCard title="New tenant" subtitle="Issues a one-time API secret. Stamp created_by from the operator session.">
-        <CreateTenantForm />
-      </SectionCard>
-      {list.length === 0 ? (
-        <EmptyState icon={KeyIcon} message="No tenants yet." />
-      ) : (
-        <div className="flex flex-col gap-3">
-          {list.map((t) => {
-            const tKeys = keys.filter((k) => k.tenantId === t.id);
-            return (
-              <SectionCard
-                key={t.publicId}
-                title={t.name}
-                subtitle={`${t.slug} · ${t.mailingCountry}${t.physicalAddress ? ` · ${t.physicalAddress}` : ""}`}
-                variant="flat"
-              >
-                {tKeys.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No keys yet.</p>
-                ) : (
-                  tKeys.map((k) => (
-                    <div key={k.publicId} className="flex items-center gap-2 text-sm">
-                      <span>{k.name}</span>
-                      <code className="text-xs">{k.keyPrefix}…</code>
-                      {k.revokedAt ? (
-                        <Badge variant="destructive">Revoked</Badge>
-                      ) : (
-                        <Badge variant="secondary">Live</Badge>
-                      )}
-                    </div>
-                  ))
-                )}
-              </SectionCard>
-            );
-          })}
-        </div>
-      )}
+      <OperatorSplit
+        create={
+          <SectionCard title="Add an app" subtitle="You’ll get an access key once. Copy it now. We can’t show it again.">
+            <CreateTenantForm />
+          </SectionCard>
+        }
+        list={
+          <FilteredResourceList
+            title="Your apps"
+            glyph="key"
+            emptyMessage="No apps yet. Add one on the left to start sending."
+            searchPlaceholder="Search apps"
+            filters={APP_FILTERS}
+            items={items}
+          />
+        }
+      />
     </PageShell>
   );
 }

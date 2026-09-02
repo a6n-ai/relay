@@ -115,10 +115,26 @@ export function makeTenantNotificationTables(deps: {
     uniqueIndex("notification_template_tenant_key_idx").on(t.tenantId, t.event, t.channel, t.locale),
   ]);
 
+  const emailMailbox = pgTable("email_mailbox", {
+    ...updatableColumns("mbx"),
+    tenantId: bigint("tenant_id", { mode: "bigint" }).references(tenantId),
+    outboxId: bigint("outbox_id", { mode: "bigint" }).references(() => notificationOutbox.id),
+    fromEmail: text("from_email").notNull(),
+    fromName: text("from_name"),
+    toEmail: text("to_email").notNull(),
+    subject: text("subject").notNull(),
+    html: text("html").notNull(),
+    text: text("text").notNull(),
+  }, (t) => [
+    uniqueIndex("email_mailbox_outbox_uidx").on(t.outboxId),
+    index("email_mailbox_created_idx").on(t.createdAt),
+    index("email_mailbox_tenant_idx").on(t.tenantId),
+  ]);
+
   return {
     notificationChannel, outboxStatus, messageKind, suppressionScope,
     notifications, notificationOutbox, notificationPrefs,
-    notificationTemplate, messageSuppression,
+    notificationTemplate, messageSuppression, emailMailbox,
   };
 }
 

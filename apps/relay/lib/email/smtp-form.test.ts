@@ -9,7 +9,7 @@ function form(entries: Record<string, string>): FormData {
 
 describe("parseSmtpSettingsForm", () => {
   it("requires a host", () => {
-    expect(parseSmtpSettingsForm(form({}))).toEqual({ error: "SMTP host is required" });
+    expect(parseSmtpSettingsForm(form({}))).toEqual({ error: "Mail server is required" });
   });
 
   it("defaults port 587 and keeps the stored password when the field is blank", () => {
@@ -21,6 +21,8 @@ describe("parseSmtpSettingsForm", () => {
         username: null,
         password: "stored-secret",
         spfInclude: null,
+        fromEmail: null,
+        fromName: null,
       },
     });
   });
@@ -44,6 +46,8 @@ describe("parseSmtpSettingsForm", () => {
         username: "relay",
         password: "pw",
         spfInclude: "amazonses.com",
+        fromEmail: null,
+        fromName: null,
       },
     });
   });

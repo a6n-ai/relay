@@ -9,6 +9,7 @@ describe("isPublicRelayPath", () => {
     expect(isPublicRelayPath("/api/auth/ok")).toBe(true);
     expect(isPublicRelayPath("/v1/messages")).toBe(true);
     expect(isPublicRelayPath("/api/webhooks/ses")).toBe(true);
+    expect(isPublicRelayPath("/unsubscribe")).toBe(true);
     expect(isPublicRelayPath("/dashboard")).toBe(false);
     expect(isPublicRelayPath("/api/internal")).toBe(false);
   });

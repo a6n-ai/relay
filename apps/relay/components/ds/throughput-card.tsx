@@ -40,7 +40,7 @@ export function ThroughputCard({
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         <div className="flex flex-col gap-1">
-          <span className="text-base font-normal leading-6">Outbox volume</span>
+          <span className="text-base font-normal leading-6">Messages this week</span>
           <div className="flex flex-wrap items-center gap-2">
             <span className="nums text-2xl font-semibold leading-8 tracking-tight">
               {total.toLocaleString()}
@@ -60,7 +60,7 @@ export function ThroughputCard({
         {total === 0 ? (
           <p className="text-sm text-muted-foreground">No sends in the last 7 days.</p>
         ) : (
-          <StackedSparkBars byChannel={byChannel} label="Daily outbox volume by channel, last 7 days" />
+          <StackedSparkBars byChannel={byChannel} label="Messages per day, last 7 days" />
         )}
       </CardContent>
     </Card>

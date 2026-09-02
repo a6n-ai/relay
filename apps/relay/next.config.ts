@@ -11,6 +11,7 @@ const nextConfig: NextConfig = {
     "@foundry/commons",
     "@foundry/database",
     "@foundry/email",
+    "@foundry/routes",
     "@foundry/themes",
     "@foundry/ui",
     "@foundry/design-system",
@@ -20,6 +21,8 @@ const nextConfig: NextConfig = {
     "@relay/engine",
     "@relay/ui",
     "@relay/sdk",
+    "@relay/sms",
+    "@relay/whatsapp",
   ],
   turbopack: { root: monorepoRoot },
 };

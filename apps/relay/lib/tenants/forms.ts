@@ -8,6 +8,7 @@ export type CreateTenantInput = {
   slug: string;
   mailingCountry: string;
   physicalAddress: string | null;
+  monthlyMessageQuota: number;
 };
 
 export function parseCreateTenantForm(formData: FormData): { error: string } | { value: CreateTenantInput } {
@@ -15,6 +16,8 @@ export function parseCreateTenantForm(formData: FormData): { error: string } | {
   const slug = String(formData.get("slug") ?? "").trim();
   const mailingCountry = String(formData.get("mailingCountry") ?? "CA").trim().toUpperCase() || "CA";
   const physicalAddress = String(formData.get("physicalAddress") ?? "").trim() || null;
-  if (!name || !slug) return { error: "Name and slug are required" };
-  return { value: { name, slug, mailingCountry, physicalAddress } };
+  const quotaRaw = Number(formData.get("monthlyMessageQuota") ?? "10000");
+  const monthlyMessageQuota = Number.isFinite(quotaRaw) && quotaRaw >= 0 ? Math.floor(quotaRaw) : 10000;
+  if (!name || !slug) return { error: "Name and short name are required" };
+  return { value: { name, slug, mailingCountry, physicalAddress, monthlyMessageQuota } };
 }

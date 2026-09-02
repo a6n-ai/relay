@@ -14,6 +14,8 @@ export const messageBodySchema = z.object({
   href: z.string().optional(),
   vars: z.record(z.string(), z.unknown()).optional(),
   idempotencyKey: z.string().optional(),
+  /** Epoch ms; row stays pending until then (drip / delayed send). */
+  sendAt: z.number().int().positive().optional(),
 });
 
 export type MessageBody = z.infer<typeof messageBodySchema>;

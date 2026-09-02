@@ -23,5 +23,6 @@ export async function saveSmtpSettingsAction(formData: FormData): Promise<{ erro
   applySmtpRowToEnv(row);
   resetEmailProvider();
   revalidatePath("/dashboard/sending");
+  revalidatePath("/dashboard/settings/email");
   return {};
 }

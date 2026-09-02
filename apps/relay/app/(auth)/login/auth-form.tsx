@@ -35,7 +35,7 @@ export function AuthForm() {
           <div className="bg-muted text-muted-foreground relative hidden flex-col items-center justify-center gap-2 p-8 md:flex">
             <span className="text-foreground text-2xl font-bold">Relay</span>
             <p className="text-balance text-center text-sm">
-              Operator console for tenants, sending domains, and the notification outbox.
+              Sign in to send email, watch delivery, and manage your apps.
             </p>
           </div>
         </CardContent>

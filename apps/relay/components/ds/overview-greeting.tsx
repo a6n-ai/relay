@@ -26,13 +26,12 @@ export function OverviewGreeting({ name }: { name: string }) {
               <Icon className="text-muted-foreground" />
             </h1>
             <p className="max-w-md text-sm font-normal text-muted-foreground">
-              Stay informed with today’s delivery analytics. Outbox, channels, and tenant volume
-              on one canvas.
+              Stay on top of today’s messages — waiting, sent, and anything that needs a look.
             </p>
           </div>
           <Button size="sm" className="w-fit" asChild>
             <Link href="/dashboard/logs">
-              View full report
+              View all sends
               <ArrowRightIcon data-icon="inline-end" />
             </Link>
           </Button>

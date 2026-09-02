@@ -34,7 +34,7 @@ export default async function ChannelPage({
       icon={ICONS[key]}
       title={meta.label}
       subtitle={meta.hint}
-      message="Provider settings, templates, and delivery health for this channel will live here. The shell is in place so nav and overview tiles already resolve."
+      message="Settings for this way of reaching people will live here. Use Email sending to connect mail today."
     />
   );
 }

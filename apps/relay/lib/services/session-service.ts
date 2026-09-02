@@ -54,6 +54,14 @@ export class SessionUpdatableService<TTable extends PgTable> extends UpdatableSe
     return sessionActorId();
   }
 
+  async findById(id: bigint): Promise<TTable["$inferSelect"] | null> {
+    return this.repo.findById(id);
+  }
+
+  async listRecent(condition?: Parameters<SessionUpdatableService<TTable>["list"]>[0], size = 200) {
+    return this.list(condition, { page: 0, size, sort: { field: "createdAt", dir: "desc" } });
+  }
+
   protected redactChanges(
     changes: Record<string, { from: unknown; to: unknown }> | null,
   ): Record<string, { from: unknown; to: unknown }> | null {
@@ -108,5 +116,9 @@ export class SessionUpdatableService<TTable extends PgTable> extends UpdatableSe
 export class SessionBaseService<TTable extends PgTable> extends BaseService<TTable> {
   protected currentUserId(): Promise<bigint | null> {
     return sessionActorId();
+  }
+
+  async findById(id: bigint): Promise<TTable["$inferSelect"] | null> {
+    return this.repo.findById(id);
   }
 }

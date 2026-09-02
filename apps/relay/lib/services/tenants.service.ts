@@ -1,15 +1,15 @@
+import { eq } from "@foundry/commons";
 import { UpdatableRepository } from "@foundry/database";
-import { eq } from "drizzle-orm";
 import { db } from "@/db/client";
-import { apiKeys, tenants } from "@/db/schema";
+import { apiKeys, EMAIL_API_CHANNEL, tenants } from "@/db/schema";
 import { redactFields } from "@/lib/audit/redact";
 import { generateApiKey } from "@/lib/api-keys";
 import { SessionUpdatableService } from "./session-service";
 
 class TenantsService extends SessionUpdatableService<typeof tenants> {
   async findBySlug(slug: string) {
-    const [row] = await db.select().from(tenants).where(eq(tenants.slug, slug)).limit(1);
-    return row ?? null;
+    const page = await this.list(eq("slug", slug), { page: 0, size: 1 });
+    return page.items[0] ?? null;
   }
 }
 
@@ -29,13 +29,18 @@ export const apiKeysService = new ApiKeysService(
   new UpdatableRepository(db, apiKeys, apiKeys.publicId, apiKeys.id),
 );
 
-export async function issueTenantApiKey(tenantId: bigint, name: string): Promise<string> {
+export async function issueTenantApiKey(
+  tenantId: bigint,
+  name: string,
+  channels: string[] = [EMAIL_API_CHANNEL],
+): Promise<string> {
   const key = generateApiKey();
   await apiKeysService.create({
     tenantId,
     name,
     keyPrefix: key.prefix,
     keyHash: key.hash,
+    channels,
   });
   return key.secret;
 }

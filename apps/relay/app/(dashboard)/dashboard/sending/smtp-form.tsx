@@ -12,12 +12,14 @@ import {
 import { Input } from "@foundry/ui/input";
 
 const schema = z.object({
-  host: z.string().trim().min(1, "SMTP host is required"),
+  host: z.string().trim().min(1, "Mail server is required"),
   port: z.number().int().min(1).max(65535),
   secure: z.boolean(),
   username: z.string().optional(),
   password: z.string().optional(),
   spfInclude: z.string().optional(),
+  fromEmail: z.string().optional(),
+  fromName: z.string().optional(),
 });
 
 export function SmtpSettingsForm(props: {
@@ -26,6 +28,8 @@ export function SmtpSettingsForm(props: {
   secure: boolean;
   username: string;
   spfInclude: string;
+  fromEmail: string;
+  fromName: string;
   hasPassword: boolean;
 }) {
   const [error, setError] = useState<string | null>(null);
@@ -39,6 +43,8 @@ export function SmtpSettingsForm(props: {
       username: props.username,
       password: "",
       spfInclude: props.spfInclude,
+      fromEmail: props.fromEmail,
+      fromName: props.fromName,
     },
   });
 
@@ -52,6 +58,8 @@ export function SmtpSettingsForm(props: {
     fd.set("username", values.username ?? "");
     fd.set("password", values.password ?? "");
     fd.set("spfInclude", values.spfInclude ?? "");
+    fd.set("fromEmail", values.fromEmail ?? "");
+    fd.set("fromName", values.fromName ?? "");
     const result = await saveSmtpSettingsAction(fd);
     if (result.error) setError(result.error);
     else setSaved(true);
@@ -62,7 +70,7 @@ export function SmtpSettingsForm(props: {
       <form className="flex max-w-xl flex-col gap-3" onSubmit={form.handleSubmit(onSubmit)}>
         <FormField control={form.control} name="host" render={({ field }) => (
           <FormItem>
-            <FormLabel>Host</FormLabel>
+            <FormLabel>Mail server</FormLabel>
             <FormControl><Input placeholder="smtp.example.com" {...field} /></FormControl>
             <FormMessage />
           </FormItem>
@@ -88,14 +96,14 @@ export function SmtpSettingsForm(props: {
                 checked={field.value}
                 onChange={(e) => field.onChange(e.target.checked)}
               />
-              Implicit TLS (port 465)
+              Use a secure connection (port 465)
             </label>
           </FormItem>
         )} />
         <FormField control={form.control} name="username" render={({ field }) => (
           <FormItem>
             <FormLabel>Username</FormLabel>
-            <FormControl><Input placeholder="SMTP username" {...field} /></FormControl>
+            <FormControl><Input placeholder="Login name" {...field} /></FormControl>
             <FormMessage />
           </FormItem>
         )} />
@@ -105,7 +113,7 @@ export function SmtpSettingsForm(props: {
             <FormControl>
               <Input
                 type="password"
-                placeholder={props.hasPassword ? "Unchanged if left blank" : "SMTP password"}
+                placeholder={props.hasPassword ? "Leave blank to keep the current password" : "Password"}
                 {...field}
               />
             </FormControl>
@@ -114,14 +122,28 @@ export function SmtpSettingsForm(props: {
         )} />
         <FormField control={form.control} name="spfInclude" render={({ field }) => (
           <FormItem>
-            <FormLabel>SPF include</FormLabel>
+            <FormLabel>Domain include (from your email provider)</FormLabel>
             <FormControl><Input placeholder="amazonses.com" {...field} /></FormControl>
             <FormMessage />
           </FormItem>
         )} />
-        <Button type="submit" disabled={form.formState.isSubmitting}>Save SMTP</Button>
+        <FormField control={form.control} name="fromEmail" render={({ field }) => (
+          <FormItem>
+            <FormLabel>Default From email</FormLabel>
+            <FormControl><Input type="email" placeholder="noreply@relay.local" {...field} /></FormControl>
+            <FormMessage />
+          </FormItem>
+        )} />
+        <FormField control={form.control} name="fromName" render={({ field }) => (
+          <FormItem>
+            <FormLabel>Default From name</FormLabel>
+            <FormControl><Input placeholder="Relay" {...field} /></FormControl>
+            <FormMessage />
+          </FormItem>
+        )} />
+        <Button type="submit" disabled={form.formState.isSubmitting}>Save sending settings</Button>
         {error ? <p className="text-destructive text-sm">{error}</p> : null}
-        {saved ? <p className="text-sm">Saved. New sends on this process use these settings.</p> : null}
+        {saved ? <p className="text-sm">Saved. New messages use these settings.</p> : null}
       </form>
     </Form>
   );

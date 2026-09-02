@@ -11,6 +11,7 @@ import { requirePermission } from "@/lib/auth/guards";
 import { db } from "@/db/client";
 import { emailSmtpSettings } from "@/db/schema";
 import { parseAddSendingDomainForm } from "@/lib/email/domain-form";
+import { emailSendersService } from "@/lib/services/email-senders.service";
 import { sendingDomainsService } from "@/lib/services/sending.service";
 import { tenantsService } from "@/lib/services/tenants.service";
 
@@ -39,6 +40,8 @@ export async function addSendingDomainAction(formData: FormData): Promise<{ erro
     return { error: "Could not add domain (it may already exist for this tenant)" };
   }
   revalidatePath("/dashboard/domains");
+  revalidatePath("/dashboard/settings/email");
+  revalidatePath("/dashboard/tenants");
   return {};
 }
 
@@ -55,6 +58,9 @@ export async function verifySendingDomainAction(formData: FormData): Promise<{ e
     lastCheckedAt: Date.now(),
     lastError: ok ? null : "Ownership TXT not found yet",
   });
+  if (ok) await emailSendersService.refreshVerification(row.tenantId);
   revalidatePath("/dashboard/domains");
+  revalidatePath("/dashboard/settings/email");
+  revalidatePath("/dashboard/tenants");
   return ok ? { ok: true } : { error: "TXT record not found yet. DNS can take a few minutes." };
 }

@@ -37,7 +37,7 @@ export function CampaignSendButton({
         },
       );
       if (res.warning) toast.warning(res.warning);
-      else toast.success(`Queued ${res.queued} messages`);
+      else toast.success(`Started sending ${res.queued} messages`);
       setOpen(false);
       router.refresh();
     } catch {
@@ -54,14 +54,14 @@ export function CampaignSendButton({
         open={open}
         onOpenChange={setOpen}
         title="Send this campaign?"
-        description={`${count} recipients will be queued. This cannot be undone.`}
+        description={`${count} people will receive this. You can’t take it back.`}
       >
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="outline" onClick={() => setOpen(false)} disabled={sending}>
             Cancel
           </Button>
           <Button onClick={send} disabled={sending}>
-            {sending ? "Queueing…" : `Send to ${count}`}
+            {sending ? "Sending…" : `Send to ${count}`}
           </Button>
         </div>
       </ResponsiveDialog>

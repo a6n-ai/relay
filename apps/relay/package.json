@@ -11,7 +11,8 @@
     "test": "vitest run --passWithNoTests",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "db:seed": "tsx db/seed.ts"
+    "db:seed": "tsx db/seed.ts",
+    "worker:drain": "tsx workers/notify-drainer.ts"
   },
   "dependencies": {
     "@foundry/auth": "github:a6n-ai/foundry#path:packages/auth",
@@ -21,13 +22,16 @@
     "@foundry/database": "github:a6n-ai/foundry#path:packages/database",
     "@foundry/design-system": "github:a6n-ai/foundry#path:packages/design-system",
     "@foundry/email": "github:a6n-ai/foundry#path:packages/email",
+    "@foundry/routes": "github:a6n-ai/foundry#path:packages/routes",
     "@foundry/themes": "github:a6n-ai/foundry#path:packages/themes",
     "@foundry/ui": "github:a6n-ai/foundry#path:packages/ui",
     "@hookform/resolvers": "^5.4.0",
     "@relay/email": "workspace:*",
     "@relay/engine": "workspace:*",
     "@relay/sdk": "workspace:*",
+    "@relay/sms": "workspace:*",
     "@relay/ui": "workspace:*",
+    "@relay/whatsapp": "workspace:*",
     "better-auth": "1.6.30",
     "drizzle-orm": "^0.45.2",
     "geist": "^1.7.2",

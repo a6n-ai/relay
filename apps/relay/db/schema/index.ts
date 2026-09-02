@@ -3,4 +3,6 @@ export * from "./auth";
 export * from "./audit";
 export * from "./tenants";
 export * from "./sending";
+export * from "./campaigns";
 export * from "./notifications";
+export * from "./webhooks";

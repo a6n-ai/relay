@@ -22,6 +22,8 @@ export interface TenantEnqueueInput {
   kind?: Kind;
   campaignId?: bigint;
   dedupeKey?: string;
+  /** When set, the row stays pending until this epoch ms (delayed / drip sends). */
+  nextAttemptAt?: number;
 }
 
 /**
@@ -78,6 +80,7 @@ export async function enqueueTenant(
         event: input.event ?? null,
         campaignId: input.campaignId ?? null,
         payload,
+        nextAttemptAt: input.nextAttemptAt ?? Date.now(),
         dedupeKey: input.dedupeKey ? `${input.dedupeKey}:${channel}` : null,
       })),
     )

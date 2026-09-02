@@ -32,7 +32,7 @@ export function ChannelPerformance({ counts }: { counts: Record<Channel, number>
       <CardHeader className="border-b border-border">
         <div className="flex items-center gap-2">
           <MegaphoneIcon className="text-muted-foreground" />
-          <CardTitle className="text-sm font-medium">Channel performance</CardTitle>
+          <CardTitle className="text-sm font-medium">By inbox, text, and chat</CardTitle>
         </div>
       </CardHeader>
       <CardContent className="flex flex-1 flex-col gap-0 px-0">

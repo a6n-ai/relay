@@ -5,6 +5,8 @@ export type SmtpSettingsInput = {
   username: string | null;
   password: string | null;
   spfInclude: string | null;
+  fromEmail: string | null;
+  fromName: string | null;
 };
 
 export function parseSmtpSettingsForm(
@@ -16,8 +18,10 @@ export function parseSmtpSettingsForm(
   const username = String(formData.get("username") ?? "").trim() || null;
   const passwordIn = String(formData.get("password") ?? "");
   const spfInclude = String(formData.get("spfInclude") ?? "").trim() || null;
+  const fromEmail = String(formData.get("fromEmail") ?? "").trim() || null;
+  const fromName = String(formData.get("fromName") ?? "").trim() || null;
   const secure = String(formData.get("secure") ?? "") === "on" || String(formData.get("secure") ?? "") === "true";
-  if (!host) return { error: "SMTP host is required" };
+  if (!host) return { error: "Mail server is required" };
   return {
     value: {
       host,
@@ -26,6 +30,8 @@ export function parseSmtpSettingsForm(
       username,
       password: passwordIn || existingPassword || null,
       spfInclude,
+      fromEmail,
+      fromName,
     },
   };
 }

@@ -50,11 +50,20 @@ export function createRateLimiter(perSecond: number, now: () => number = Date.no
   };
 }
 
+export type DrainTerminal = {
+  status: "sent" | "failed";
+  skipped?: boolean;
+  providerMessageId?: string | null;
+  lastError?: string | null;
+};
+
 export interface DrainDeps {
   db: Db;
   tables: NotificationTables;
   handlers: Record<Channel, ChannelHandler | undefined>;
   rateLimiter?: RateLimiter;
+  /** Host hook after a row reaches a terminal or retry-pending state. */
+  onProcessed?: (row: OutboxRow, outcome: DrainTerminal) => Promise<void>;
 }
 
 /**
@@ -94,6 +103,7 @@ async function process(
   tables: NotificationTables,
   row: OutboxRow,
   handler: ChannelHandler | undefined,
+  onProcessed?: DrainDeps["onProcessed"],
 ): Promise<void> {
   const o = tables.notificationOutbox;
   const attempts = row.attempts + 1;
@@ -109,6 +119,11 @@ async function process(
           : { status: "sent", attempts, providerMessageId: null, lastError: "skipped: no template" },
       )
       .where(eq(o.id, row.id));
+    await onProcessed?.(row, {
+      status: "sent",
+      skipped: !result,
+      providerMessageId: result?.providerMessageId ?? null,
+    });
   } catch (err) {
     const lastError = err instanceof Error ? err.message : String(err);
     const dead = attempts >= MAX_ATTEMPTS;
@@ -121,6 +136,7 @@ async function process(
         nextAttemptAt: Date.now() + nextBackoffMs(attempts),
       })
       .where(eq(o.id, row.id));
+    if (dead) await onProcessed?.(row, { status: "failed", lastError });
   }
 }
 
@@ -131,7 +147,7 @@ export async function drainOnce(deps: DrainDeps, limit = 25): Promise<number> {
     // Serialized on purpose: the rate limiter exists to hold a send ceiling,
     // which Promise.all over the batch would blow straight through.
     if (deps.rateLimiter && row.channel !== "in_app") await deps.rateLimiter.take();
-    await process(deps.db, deps.tables, row, deps.handlers[row.channel as Channel]);
+    await process(deps.db, deps.tables, row, deps.handlers[row.channel as Channel], deps.onProcessed);
   }
   return rows.length;
 }

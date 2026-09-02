@@ -17,10 +17,10 @@ import {
 } from "@foundry/ui/select";
 
 const CONSENT_SOURCES = [
-  { value: "purchase", label: "Existing customers (purchase)" },
-  { value: "express_optin", label: "Express opt-in" },
-  { value: "event_signup", label: "Event signup" },
-  { value: "import_other", label: "Other" },
+  { value: "purchase", label: "Customer purchased" },
+  { value: "express_optin", label: "They asked to hear from us" },
+  { value: "event_signup", label: "Signed up at an event" },
+  { value: "import_other", label: "Imported" },
 ] as const;
 
 const NONE = "__none__";
@@ -61,9 +61,9 @@ export function ContactListUpload() {
   }
 
   async function submit() {
-    if (!name.trim()) return toast.error("Name the list");
-    if (!file) return toast.error("Choose a CSV file");
-    if (!mapping.email && !mapping.phone) return toast.error("Map an email or phone column");
+    if (!name.trim()) return toast.error("Name this group");
+    if (!file) return toast.error("Choose a spreadsheet");
+    if (!mapping.email && !mapping.phone) return toast.error("Pick which column is email or phone");
 
     setBusy(true);
     try {
@@ -129,7 +129,7 @@ export function ContactListUpload() {
     <div className="space-y-5">
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">
-          <Label htmlFor="listName">List name</Label>
+          <Label htmlFor="listName">Group name</Label>
           <Input id="listName" value={name} onChange={(e) => setName(e.target.value)} />
         </div>
         <div className="space-y-1.5">
@@ -150,7 +150,7 @@ export function ContactListUpload() {
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="consentNote">Consent note</Label>
+        <Label htmlFor="consentNote">How they agreed</Label>
         <Input
           id="consentNote"
           value={consentNote}
@@ -158,20 +158,19 @@ export function ContactListUpload() {
           placeholder="Where and when these people agreed to hear from you"
         />
         <p className="text-xs text-muted-foreground">
-          Consent from a purchase expires after 24 months and the audience builder drops it
-          automatically. A list you cannot account for should not be mailed.
+          Consent after a purchase lasts 24 months. Don’t import people you can’t explain.
         </p>
       </div>
 
       <div className="space-y-1.5">
         <div className="flex items-center justify-between">
-          <Label htmlFor="csv">CSV file</Label>
+          <Label htmlFor="csv">Spreadsheet</Label>
           <a
             href={SAMPLE_CSV_HREF}
             download="contact-list-sample.csv"
             className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
           >
-            Download sample CSV
+            Download a sample
           </a>
         </div>
         <Input
@@ -191,7 +190,7 @@ export function ContactListUpload() {
       )}
 
       <Button onClick={submit} disabled={busy}>
-        {busy ? "Importing…" : "Create list and import"}
+        {busy ? "Importing…" : "Import people"}
       </Button>
     </div>
   );

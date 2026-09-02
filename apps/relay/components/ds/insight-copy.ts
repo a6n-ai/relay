@@ -7,24 +7,24 @@ export function insightCopy(input: { pending: number; failed: number }): {
 } {
   if (input.failed > 0) {
     return {
-      kicker: "Needs attention",
-      body: `${input.failed} failed ${input.failed === 1 ? "send" : "sends"} in the outbox. Retry or inspect the error.`,
-      cta: "Open outbox",
+      kicker: "Needs a look",
+      body: `${input.failed} ${input.failed === 1 ? "message didn’t send" : "messages didn’t send"}. Open Sends to retry or see why.`,
+      cta: "Open Sends",
       href: "/dashboard/logs",
     };
   }
   if (input.pending > 0) {
     return {
-      kicker: "In flight",
-      body: `${input.pending} ${input.pending === 1 ? "message is" : "messages are"} waiting to drain.`,
-      cta: "Open outbox",
+      kicker: "On the way",
+      body: `${input.pending} ${input.pending === 1 ? "message is" : "messages are"} waiting to go out.`,
+      cta: "Open Sends",
       href: "/dashboard/logs",
     };
   }
   return {
     kicker: "Relay",
-    body: "Tenants send with an API key. Track delivery from this console.",
-    cta: "See tenants",
+    body: "Each app (Tiffin Grab, Realm) sends its own messages. Watch delivery here.",
+    cta: "See apps",
     href: "/dashboard/tenants",
   };
 }

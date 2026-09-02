@@ -4,6 +4,8 @@ export function applySmtpRowToEnv(row: {
   secure: boolean;
   username: string | null;
   password: string | null;
+  fromEmail?: string | null;
+  fromName?: string | null;
 }) {
   process.env.EMAIL_TRANSPORT = "smtp";
   process.env.SMTP_HOST = row.host;
@@ -11,4 +13,6 @@ export function applySmtpRowToEnv(row: {
   process.env.SMTP_SECURE = row.secure ? "true" : "false";
   if (row.username) process.env.SMTP_USER = row.username;
   if (row.password) process.env.SMTP_PASS = row.password;
+  if (row.fromEmail) process.env.NOTIFY_FROM_EMAIL = row.fromEmail;
+  if (row.fromName) process.env.NOTIFY_FROM_NAME = row.fromName;
 }

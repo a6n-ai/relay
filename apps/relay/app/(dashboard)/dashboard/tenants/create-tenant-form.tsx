@@ -13,9 +13,10 @@ import { Input } from "@foundry/ui/input";
 
 const schema = z.object({
   name: z.string().trim().min(1, "Name is required"),
-  slug: z.string().trim().min(1, "Slug is required"),
+  slug: z.string().trim().min(1, "Short name is required"),
   mailingCountry: z.string().trim().min(2).max(8),
   physicalAddress: z.string().optional(),
+  monthlyMessageQuota: z.number().int().min(0),
 });
 
 export function CreateTenantForm() {
@@ -24,7 +25,7 @@ export function CreateTenantForm() {
   const [realmKeys, setRealmKeys] = useState<{ slug: string; secret: string }[] | null>(null);
   const form = useForm<z.infer<typeof schema>>({
     resolver: zodResolver(schema),
-    defaultValues: { name: "", slug: "", mailingCountry: "CA", physicalAddress: "" },
+    defaultValues: { name: "", slug: "", mailingCountry: "CA", physicalAddress: "", monthlyMessageQuota: 10000 },
   });
 
   async function onSubmit(values: z.infer<typeof schema>) {
@@ -34,6 +35,7 @@ export function CreateTenantForm() {
     fd.set("slug", values.slug);
     fd.set("mailingCountry", values.mailingCountry);
     fd.set("physicalAddress", values.physicalAddress ?? "");
+    fd.set("monthlyMessageQuota", String(values.monthlyMessageQuota));
     const result = await createTenantAction(fd);
     if (result.error) setError(result.error);
     setSecret(result.secret ?? null);
@@ -52,7 +54,7 @@ export function CreateTenantForm() {
           )} />
           <FormField control={form.control} name="slug" render={({ field }) => (
             <FormItem>
-              <FormLabel>Slug</FormLabel>
+              <FormLabel>Short name</FormLabel>
               <FormControl><Input placeholder="tiffin-grab" {...field} /></FormControl>
               <FormMessage />
             </FormItem>
@@ -67,11 +69,24 @@ export function CreateTenantForm() {
           <FormField control={form.control} name="physicalAddress" render={({ field }) => (
             <FormItem>
               <FormLabel>Physical address</FormLabel>
-              <FormControl><Input placeholder="Required for CAN-SPAM / CASL footers" {...field} /></FormControl>
+              <FormControl><Input placeholder="Shown in the footer of marketing email" {...field} /></FormControl>
               <FormMessage />
             </FormItem>
           )} />
-          <Button type="submit" disabled={form.formState.isSubmitting}>Create tenant</Button>
+          <FormField control={form.control} name="monthlyMessageQuota" render={({ field }) => (
+            <FormItem>
+              <FormLabel>Messages per month</FormLabel>
+              <FormControl>
+                <Input
+                  type="number"
+                  value={field.value}
+                  onChange={(e) => field.onChange(e.target.valueAsNumber)}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )} />
+          <Button type="submit" disabled={form.formState.isSubmitting}>Add app</Button>
         </form>
       </Form>
       <form
@@ -83,10 +98,10 @@ export function CreateTenantForm() {
         }}
       >
         <Button type="submit" variant="outline">
-          Create Tiffin Grab + Puchkaman API keys
+          Create Tiffin Grab + Puchkaman
         </Button>
         <p className="text-muted-foreground mt-2 text-xs">
-          Skips slugs that already exist. Copy each secret now — they are not stored in plaintext.
+          Skips apps that already exist. Copy each key now. We don’t store the full secret.
         </p>
       </form>
       {error ? <p className="text-destructive text-sm">{error}</p> : null}
@@ -96,7 +111,7 @@ export function CreateTenantForm() {
         </p>
       ) : null}
       {realmKeys && realmKeys.length === 0 ? (
-        <p className="text-muted-foreground text-sm">Realm tenants already exist.</p>
+        <p className="text-muted-foreground text-sm">Those apps already exist.</p>
       ) : null}
       {realmKeys?.map((k) => (
         <p key={k.slug} className="text-sm">

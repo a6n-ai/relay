@@ -10,7 +10,7 @@ function form(entries: Record<string, string>): FormData {
 describe("parseAddSendingDomainForm", () => {
   it("requires tenant slug and domain", () => {
     expect(parseAddSendingDomainForm(form({ slug: "", domain: "x.com" }))).toEqual({
-      error: "Tenant and domain are required",
+      error: "App and domain are required",
     });
   });
 

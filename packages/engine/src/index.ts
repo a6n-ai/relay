@@ -16,6 +16,8 @@ export * from "./phone";
 export * from "./enqueue";
 export * from "./tenant-enqueue";
 export * from "./tenant-handlers";
+export * from "./tenant-template";
 export * from "./handlers";
+export * from "./mailbox";
 export * from "./drain";
 export * from "./feed";

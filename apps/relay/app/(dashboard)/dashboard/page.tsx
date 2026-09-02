@@ -67,7 +67,7 @@ export default async function DashboardPage() {
   };
 
   const firstName =
-    session?.user.name.trim().split(/\s+/)[0] || session?.user.email.split("@")[0] || "operator";
+    session?.user.name.trim().split(/\s+/)[0] || session?.user.email.split("@")[0] || "there";
 
   return (
     <OverviewFrame>
@@ -92,7 +92,7 @@ export default async function DashboardPage() {
       <OverviewSlot span={4}>
         <KpiActionCard
           item={{
-            label: "Tenants",
+            label: "Apps",
             value: tenantCount,
             href: "/dashboard/tenants",
             icon: UsersIcon,
@@ -102,24 +102,24 @@ export default async function DashboardPage() {
       <OverviewSlot span={4}>
         <KpiActionCard
           item={{
-            label: "Pending",
+            label: "Waiting",
             value: pendingCount,
             href: "/dashboard/logs",
             icon: InboxIcon,
             tone: pendingCount > 0 ? "neutral" : "ok",
-            delta: pendingCount > 0 ? "in flight" : "clear",
+            delta: pendingCount > 0 ? "in line" : "clear",
           }}
         />
       </OverviewSlot>
       <OverviewSlot span={4}>
         <KpiActionCard
           item={{
-            label: "Failed",
+            label: "Didn’t send",
             value: failedCount,
             href: "/dashboard/logs",
             icon: XCircleIcon,
             tone: failedCount > 0 ? "bad" : "ok",
-            delta: failedCount > 0 ? "needs retry" : "clear",
+            delta: failedCount > 0 ? "needs a look" : "clear",
           }}
         />
       </OverviewSlot>

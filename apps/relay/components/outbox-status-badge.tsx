@@ -9,9 +9,9 @@ export function OutboxStatusBadge({ status }: { status: OutboxStatus }) {
     case "failed":
       return <Badge variant="destructive">Failed</Badge>;
     case "processing":
-      return <Badge variant="outline">Processing</Badge>;
+      return <Badge variant="outline">Sending</Badge>;
     case "pending":
-      return <Badge variant="outline">Pending</Badge>;
+      return <Badge variant="outline">Waiting</Badge>;
     default: {
       const _exhaustive: never = status;
       return _exhaustive;

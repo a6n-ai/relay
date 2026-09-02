@@ -5,8 +5,9 @@ import { addSendingDomainAction, verifySendingDomainAction } from "./actions";
 import { Button } from "@foundry/ui/button";
 import { Input } from "@foundry/ui/input";
 
-export function AddDomainForm({ slugs }: { slugs: string[] }) {
+export function AddDomainForm({ slugs, lockedSlug }: { slugs: string[]; lockedSlug?: string }) {
   const [error, setError] = useState<string | null>(null);
+  const only = lockedSlug ?? (slugs.length === 1 ? slugs[0] : null);
   return (
     <form
       className="flex flex-col gap-2 sm:flex-row"
@@ -16,11 +17,15 @@ export function AddDomainForm({ slugs }: { slugs: string[] }) {
         if (result.error) setError(result.error);
       }}
     >
-      <select name="slug" className="border-input bg-background h-9 rounded-md border px-2 text-sm" required>
-        {slugs.map((s) => (
-          <option key={s} value={s}>{s}</option>
-        ))}
-      </select>
+      {only ? (
+        <input type="hidden" name="slug" value={only} />
+      ) : (
+        <select name="slug" className="border-input bg-background h-9 border px-2 text-sm" required>
+          {slugs.map((s) => (
+            <option key={s} value={s}>{s}</option>
+          ))}
+        </select>
+      )}
       <Input name="domain" required placeholder="tiffingrab.ca" />
       <Button type="submit">Add domain</Button>
       {error ? <p className="text-destructive text-sm">{error}</p> : null}

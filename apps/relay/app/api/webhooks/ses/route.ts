@@ -2,6 +2,9 @@ import MessageValidator from "sns-validator";
 import { createLogger } from "@foundry/commons/logger";
 import { parseSnsEnvelope, sesSuppressionsFromEvent } from "@/lib/notifications/ses-events";
 import { suppressEmailRecipient } from "@/lib/notifications/suppression";
+import { enqueueTenantWebhooks } from "@/lib/webhooks/enqueue";
+import { db } from "@/db/client";
+import { tenants } from "@/db/schema";
 
 export const runtime = "nodejs";
 
@@ -22,8 +25,16 @@ function verify(msg: unknown): Promise<void> {
 
 export async function processSesEvent(messageJson: string): Promise<void> {
   const event = JSON.parse(messageJson) as Parameters<typeof sesSuppressionsFromEvent>[0];
-  for (const row of sesSuppressionsFromEvent(event)) {
+  const rows = sesSuppressionsFromEvent(event);
+  if (rows.length === 0) return;
+  const type = event.eventType ?? event.notificationType;
+  const webhookEvent = type === "Complaint" ? "message.complained" : "message.bounced";
+  const all = await db.select({ id: tenants.id }).from(tenants);
+  for (const row of rows) {
     await suppressEmailRecipient(row.email, row.reason);
+    for (const t of all) {
+      await enqueueTenantWebhooks(t.id, webhookEvent, { email: row.email, reason: row.reason });
+    }
   }
 }
 
