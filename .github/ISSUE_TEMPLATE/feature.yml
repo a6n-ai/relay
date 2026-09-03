@@ -1,0 +1,19 @@
+name: Feature
+description: Ask for product or API behavior
+title: "[feature] "
+labels: []
+body:
+  - type: textarea
+    id: want
+    attributes:
+      label: What you want
+      description: Operator job or integrator API. Use console names (Apps, Mailbox, Tags) in the UI request; route names are fine for HTTP.
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why
+      description: Who is blocked today without this.
+    validations:
+      required: true

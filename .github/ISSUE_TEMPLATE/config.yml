@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: HTTP API after local run
+    url: https://github.com/a6n-ai/relay/blob/main/README.md#http-apis
+    about: Docs, Scalar, Swagger, and OpenAPI live on localhost:3010 once the app is running.

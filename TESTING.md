@@ -1,10 +1,8 @@
 # Testing Relay
 
-Three layers. Unit tests are the gate (`pnpm test`). Local Postgres is for
-migrate/seed and the operator UI. Manual checks cover DNS and SMTP you cannot
-fake in CI.
+Unit tests are the gate (`pnpm test`). Local Postgres is for migrate/seed and the operator UI. DNS and live SMTP stay manual.
 
-## 1. Automated (always)
+## 1. Automated
 
 ```bash
 pnpm install
@@ -12,18 +10,18 @@ pnpm typecheck
 pnpm test
 ```
 
-Packages already cover engine (outbox, campaigns, lists, compliance, drain),
-email (SES/SMTP/domain DNS), SMS keywords, WhatsApp session window, and the
-HTTP SDK.
+Packages cover engine (outbox, campaigns, lists, compliance, drain), email (SES/SMTP/domain DNS), SMS keywords, WhatsApp session window, and the HTTP SDK.
 
-The operator app (`apps/relay`) now unit-tests:
+The operator app (`apps/relay`) unit-tests include:
 
 | Area | File |
 | --- | --- |
 | API key hash / Bearer | `lib/api-keys.test.ts` |
-| Tenant / SMTP / domain forms | `lib/tenants/forms.test.ts`, `lib/email/smtp-form.test.ts`, `lib/email/domain-form.test.ts` |
+| App / SMTP / domain forms | `lib/tenants/forms.test.ts`, `lib/email/smtp-form.test.ts`, `lib/email/domain-form.test.ts` |
 | `POST /v1/messages` body | `lib/v1/message-body.test.ts` |
-| Session cookie gate | `lib/auth/public-paths.test.ts` |
+| OpenAPI catalog | `lib/v1/openapi.test.ts` |
+| Session cookie gate (`/docs` public) | `lib/auth/public-paths.test.ts` |
+| Mailbox listing / tags | `lib/mailbox/listing.test.ts`, `lib/mailbox/conversation-tag.test.ts` |
 | Audit diffs + secret redaction | `lib/audit/*.test.ts` |
 | SMTP env hydrate | `lib/email/smtp-env.test.ts` |
 | SES bounce/complaint mapping | `lib/notifications/ses-events.test.ts` |
@@ -42,11 +40,11 @@ SEED_ADMIN_PASSWORD=dev pnpm --filter relay db:seed
 pnpm dev   # http://localhost:3010
 ```
 
-Seed prints operator email (`ops@relay.local` unless `SEED_ADMIN_EMAIL` is set)
-and one-time tenant API secrets (`realm-dev`, `tiffin-grab`, `puchkaman`). Copy
-the secrets; they are not stored in plaintext.
+Seed prints operator email (`ops@relay.local` unless `SEED_ADMIN_EMAIL` is set) and one-time app API secrets. Copy the secrets; they are not stored in plaintext.
 
-### Smoke the public API
+Sign-up is disabled. Log in at `/login` with the seed password.
+
+### Smoke send
 
 ```bash
 curl -sS -D - -o /tmp/relay-msg.json \
@@ -59,30 +57,36 @@ curl -sS -D - -o /tmp/relay-msg.json \
 
 Without a key, expect **401**. Invalid JSON / missing recipient → **400**.
 
+### Public docs
+
+While the app is running:
+
+- [http://localhost:3010/docs](http://localhost:3010/docs)
+- [http://localhost:3010/docs/api](http://localhost:3010/docs/api) (Scalar)
+- [http://localhost:3010/docs/api/swagger](http://localhost:3010/docs/api/swagger)
+- [http://localhost:3010/v1/openapi.json](http://localhost:3010/v1/openapi.json)
+
+Operator JSON (mailbox, tags, team, apps, campaigns, people, automations) needs a signed-in session cookie. Send uses the Bearer key only.
+
 ### Operator UI
 
-Sign in at `/login` (password from seed). Then:
-
-1. **Tenants** — create a tenant; copy the API key; provision Tiffin Grab +
-   Puchkaman if they were not seeded.
-2. **Sending** — save SMTP host/port (Mailpit, Mailhog, or a real relay).
-   Password is redacted in audit.
-3. **Domains** — add `example.test`; confirm TXT rows (ownership, SPF, DKIM,
-   DMARC). Check DNS should stay pending until `_relay-verify` exists.
-4. **Logs / templates** — pages render (campaign tables still live in engine;
-   this app is the tenant + sending control plane).
+1. **Apps** — create an app; copy the API key once.
+2. **Email sending** — save SMTP (Mailpit, Mailhog, or a real relay) or SES env. Password is redacted in audit.
+3. **Email sending → domains** — add `example.test`; confirm TXT rows (ownership, SPF, DKIM, DMARC). Check DNS stays pending until `_relay-verify` exists.
+4. **Mailbox** — list conversations; Reply stays on the thread; chips include origin and app tags.
+5. **Tags** (Settings) — add a label on an app; Mailbox listing shows that chip on letters for that app. Letters with no app cannot take those tags.
+6. **Team** — operator user list (no create-user API while sign-up is off).
+7. **Campaigns / People / Templates / Automations / Status updates** — pages render.
 
 ## 3. Manual / live (not in CI)
 
 - Publish `_relay-verify`, SPF, DKIM, DMARC on a real domain and use Check DNS.
 - Send through SMTP and confirm `messageId` in the provider.
-- CASL/CAN-SPAM/GDPR: marketing enqueue vs unsubscribe (engine unit tests cover
-  the rules; live send needs a verified domain).
+- CASL/CAN-SPAM/GDPR: marketing enqueue vs unsubscribe (engine unit tests cover the rules; live send needs a verified domain).
 
 ## Package cases (already implemented)
 
-- **Compliance:** US opt-out, CA 730-day implied purchase, EU/UK express opt-in,
-  physical address, unsubscribe always blocks.
+- **Compliance:** US opt-out, CA 730-day implied purchase, EU/UK express opt-in, physical address, unsubscribe always blocks.
 - **Audience:** consent + recipient dedupe.
 - **SMTP provider:** maps to `sendMail`; errors without `messageId`.
 - **Domain:** chunked TXT ownership, PEM → DKIM `p=`, Hostinger-style hosts.
