@@ -3,6 +3,7 @@ import {
   mailboxThreadingFromProviderId,
   normalizeMessageId,
   parseMessageIdList,
+  replyThreading,
   threadIdForInbound,
   threadIdForOutbound,
 } from "./mailbox-thread";
@@ -90,6 +91,22 @@ describe("mailboxThreadingFromProviderId", () => {
     expect(mailboxThreadingFromProviderId("<abc@relay.test>")).toEqual({
       rfcMessageId: "<abc@relay.test>",
       threadId: "<abc@relay.test>",
+    });
+  });
+});
+
+describe("replyThreading", () => {
+  it("keeps the parent thread and records In-Reply-To", () => {
+    expect(
+      replyThreading({
+        rfcMessageId: "<child@relay.test>",
+        threadId: "<root@relay.test>",
+        rfcReferences: "<root@relay.test>",
+      }),
+    ).toEqual({
+      inReplyTo: "<child@relay.test>",
+      rfcReferences: "<root@relay.test> <child@relay.test>",
+      threadId: "<root@relay.test>",
     });
   });
 });

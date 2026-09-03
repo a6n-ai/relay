@@ -8,6 +8,7 @@ Do **not** start a later plan until the previous plan’s **Done when** and **Re
 | 2 | [02-send-threading.md](./02-send-threading.md) | Letters carry RFC ids so replies can join a thread |
 | 3 | [03-inbound-received.md](./03-inbound-received.md) | Received chip; reply sits on the same thread |
 | 4 | [04-hosted-imap.md](./04-hosted-imap.md) | Optional: `name@people-domain` in Mail.app |
+| 5 | [05-address-catalog.md](./05-address-catalog.md) | App mints send-as / Relay inbox / people inbox on a quota |
 
 Council index: [../STALWART-MAILBOX.md](../STALWART-MAILBOX.md).
 

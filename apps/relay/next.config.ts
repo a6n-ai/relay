@@ -23,6 +23,7 @@ const nextConfig: NextConfig = {
     "@relay/sdk",
     "@relay/sms",
     "@relay/whatsapp",
+    "@scalar/nextjs-api-reference",
   ],
   turbopack: { root: monorepoRoot },
 };

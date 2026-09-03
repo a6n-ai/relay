@@ -44,9 +44,12 @@ export function Landing() {
               <a href="#channels" className="hover:text-foreground">
                 Channels
               </a>
-              <a href="#api" className="hover:text-foreground">
+              <Link href="/docs" className="hover:text-foreground">
+                Docs
+              </Link>
+              <Link href="/docs/api" className="hover:text-foreground">
                 API
-              </a>
+              </Link>
             </nav>
             <Button asChild size="sm">
               <Link href="/login">
@@ -149,23 +152,25 @@ export function Landing() {
               <div className="px-5 py-16 md:px-8 md:py-24 lg:col-span-5">
                 <h2 className="text-3xl font-semibold tracking-tight">One call from the product.</h2>
                 <p className="mt-4 max-w-md text-sm leading-6 text-muted-foreground">
-                  Example request — synthetic host and key. Real tenants use the secret issued in
-                  the console, copied once at create time.
+                  Send with an app key. Mailbox, campaigns, people lists, automations, apps, tags, and
+                  team are in the same OpenAPI file — Scalar and Swagger on the docs site.
                 </p>
                 <Button asChild className="mt-8">
-                  <Link href="/login">
-                    Open the console
+                  <Link href="/docs/api">
+                    Open API docs
                     <ArrowRightIcon data-icon="inline-end" />
                   </Link>
                 </Button>
               </div>
               <pre className="overflow-x-auto bg-card px-5 py-16 font-mono text-xs leading-6 text-card-foreground md:px-8 lg:col-span-7">
 {`curl -X POST "https://relay.example/v1/messages" \\
-  -H "Authorization: Bearer $TENANT_KEY" \\
+  -H "Authorization: Bearer $RELAY_API_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{
     "event": "order.paid",
-    "recipient": { "email": "ops@example.com" }
+    "title": "Order paid",
+    "body": "Thanks — we have your order.",
+    "to": { "email": "ops@example.com" }
   }'`}
               </pre>
             </div>
@@ -188,6 +193,9 @@ export function Landing() {
           <div className="mx-auto flex max-w-6xl flex-col gap-4 px-5 py-8 text-sm text-muted-foreground md:flex-row md:items-center md:justify-between md:px-8">
             <p>Relay</p>
             <div className="flex gap-6">
+              <Link href="/docs" className="hover:text-foreground">
+                Docs
+              </Link>
               <Link href="/login" className="hover:text-foreground">
                 Sign in
               </Link>

@@ -25,6 +25,10 @@ export const emailMessageSchema = z
     text: z.string().min(1).optional(),
     /** Passed through SMTP as `messageId`. SES Simple cannot set RFC Message-ID. */
     rfcMessageId: z.string().min(1).optional(),
+    /** RFC 5322 In-Reply-To. SMTP passes this through; SES Simple may ignore it. */
+    inReplyTo: z.string().min(1).optional(),
+    /** RFC 5322 References. Space-separated Message-IDs. */
+    rfcReferences: z.string().min(1).optional(),
   })
   .refine((m) => m.html || m.text, {
     message: "Email must have an html or text body",

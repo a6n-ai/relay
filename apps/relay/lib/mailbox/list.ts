@@ -9,11 +9,16 @@ const listColumns = {
   fromName: emailMailbox.fromName,
   toEmail: emailMailbox.toEmail,
   createdAt: emailMailbox.createdAt,
+  tenantId: emailMailbox.tenantId,
+  tenantPublicId: tenants.publicId,
   tenantName: tenants.name,
   status: notificationOutbox.status,
   direction: emailMailbox.direction,
   origin: emailMailbox.origin,
   threadId: emailMailbox.threadId,
+  rfcMessageId: emailMailbox.rfcMessageId,
+  inReplyTo: emailMailbox.inReplyTo,
+  rfcReferences: emailMailbox.rfcReferences,
 };
 
 export async function listMailboxLetters(limit = 100) {
@@ -28,7 +33,11 @@ export async function listMailboxLetters(limit = 100) {
 
 export async function listMailboxThread(threadId: string) {
   return db
-    .select(listColumns)
+    .select({
+      ...listColumns,
+      html: emailMailbox.html,
+      text: emailMailbox.text,
+    })
     .from(emailMailbox)
     .leftJoin(notificationOutbox, eq(emailMailbox.outboxId, notificationOutbox.id))
     .leftJoin(tenants, eq(emailMailbox.tenantId, tenants.id))

@@ -42,7 +42,7 @@ export const suppressionScope = pgEnum("suppression_scope", ["all", "marketing"]
 export const mailboxDirection = pgEnum("mailbox_direction", ["out", "in"]);
 
 /** Why Relay produced the letter. Distinct from outbox kind (consent). */
-export const mailboxOrigin = pgEnum("mailbox_origin", ["automatic", "campaign", "test"]);
+export const mailboxOrigin = pgEnum("mailbox_origin", ["automatic", "campaign", "test", "manual"]);
 
 /**
  * Build the notification tables against one app's `users` table and event enum.

@@ -78,6 +78,34 @@
       "when": 1788381000000,
       "tag": "0010_mailbox_inbound",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1788384000000,
+      "tag": "0011_mailbox_manual_origin",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1788387000000,
+      "tag": "0012_tenant_mailboxes",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1788390000000,
+      "tag": "0013_mailbox_conversation_tags",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1788393000000,
+      "tag": "0014_app_message_tags",
+      "breakpoints": true
     }
   ]
 }

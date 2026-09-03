@@ -1,11 +1,12 @@
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import { eq } from "@foundry/commons";
 import { KeyIcon } from "lucide-react";
 import { Badge } from "@foundry/ui/badge";
 import { PageHeader, PageShell, SectionCard } from "@foundry/design-system";
 import { buildSendingDomainRecords } from "@relay/email";
 import { AddDomainForm, VerifyDomainButton } from "@/app/(dashboard)/dashboard/domains/domain-forms";
-import { displayChannel, domainStatusLabel, fromSourceLabel } from "@/components/ds/plain-labels";
+import { displayChannel, domainStatusLabel, fromSourceLabel, mailboxKindLabel } from "@/components/ds/plain-labels";
 import { OperatorSplit } from "@/components/ds/operator-split";
 import { loadEmailChannelSnapshot } from "@/lib/email/load-snapshot";
 import { emailChannelReady, operatorEmailPrereqs } from "@/lib/email/prerequisites";
@@ -13,8 +14,10 @@ import { resolveTenantEmailFrom } from "@/lib/email/from-address";
 import { emailSendersService } from "@/lib/services/email-senders.service";
 import { sendingDomainsService } from "@/lib/services/sending.service";
 import { apiKeysService, tenantsService } from "@/lib/services/tenants.service";
+import { tenantMailboxesService } from "@/lib/services/tenant-mailboxes.service";
+import { appMessageTagsService } from "@/lib/services/mailbox-tags.service";
 import { countTenantSendsThisMonth } from "@/lib/tenants/usage";
-import { AddSenderForm, IssueKeyForm, UpdateQuotaForm } from "../tenant-ops-forms";
+import { AddMailboxForm, AddSenderForm, IssueKeyForm, UpdateQuotaForm } from "../tenant-ops-forms";
 
 export const dynamic = "force-dynamic";
 
@@ -27,12 +30,14 @@ export default async function TenantDetailPage({
   const tenant = await tenantsService.read(id).catch(() => null);
   if (!tenant) notFound();
 
-  const [{ items: keys }, senders, { items: domains }, used, from] = await Promise.all([
+  const [{ items: keys }, senders, { items: domains }, used, from, boxes, tags] = await Promise.all([
     apiKeysService.list(eq("tenantId", tenant.id), { page: 0, size: 50 }),
     emailSendersService.forTenant(tenant.id),
     sendingDomainsService.list(eq("tenantId", tenant.id), { page: 0, size: 50 }),
     countTenantSendsThisMonth(tenant.id),
     resolveTenantEmailFrom(tenant.id),
+    tenantMailboxesService.forTenant(tenant.id),
+    appMessageTagsService.forTenant(tenant.id),
   ]);
   const verifiedCount = domains.filter((d) => d.status === "verified").length;
   const prereqs = operatorEmailPrereqs(await loadEmailChannelSnapshot(verifiedCount));
@@ -49,8 +54,8 @@ export default async function TenantDetailPage({
         create={
           <div className="flex flex-col gap-6">
       <SectionCard title="Monthly send limit" subtitle="0 means no cap. Counts messages started this calendar month (UTC).">
-        <p className="mb-3 text-sm">Sent {used} of {tenant.monthlyMessageQuota === 0 ? "unlimited" : tenant.monthlyMessageQuota}</p>
-        <UpdateQuotaForm publicId={tenant.publicId} quota={tenant.monthlyMessageQuota} />
+        <p className="mb-3 text-sm">Sent {used} of {tenant.monthlyMessageQuota === 0 ? "unlimited" : tenant.monthlyMessageQuota} · {boxes.length} of {tenant.mailboxSeatQuota === 0 ? "unlimited" : tenant.mailboxSeatQuota} addresses</p>
+        <UpdateQuotaForm publicId={tenant.publicId} quota={tenant.monthlyMessageQuota} seatQuota={tenant.mailboxSeatQuota} />
       </SectionCard>
       <SectionCard title="Access keys" subtitle="Each key can send email. Other channels aren’t open yet.">
         {keys.map((k) => (
@@ -148,6 +153,41 @@ export default async function TenantDetailPage({
               ) : (
                 <Badge variant="destructive">Not ready · using default From</Badge>
               )}
+            </li>
+          ))}
+        </ul>
+      </SectionCard>
+      <SectionCard
+        title="Tags"
+        subtitle="A tag here marks every message for this app. Add or remove them under Tags."
+      >
+        <ul className="flex flex-wrap gap-2">
+          {tags.map((t) => (
+            <li key={t.publicId}>
+              <Badge variant="outline">{t.label}</Badge>
+            </li>
+          ))}
+        </ul>
+        {tags.length === 0 ? (
+          <p className="text-muted-foreground text-sm">None yet.</p>
+        ) : null}
+        <Link className="mt-3 inline-block text-sm underline underline-offset-2" href="/dashboard/settings/tags">
+          Open tags
+        </Link>
+      </SectionCard>
+      <SectionCard
+        title="Addresses"
+        subtitle="Local name plus a proven domain. Extra seats if they pay for more. Each address is Send as, a Relay inbox, or a people inbox — never two stores."
+      >
+        <AddMailboxForm
+          publicId={tenant.publicId}
+          domains={domains.filter((d) => d.status === "verified").map((d) => d.domain)}
+        />
+        <ul className="mt-4 space-y-2 text-sm">
+          {boxes.map((b) => (
+            <li key={b.publicId} className="flex flex-wrap items-center gap-2">
+              <span>{b.email}</span>
+              <Badge variant="secondary">{mailboxKindLabel(b.kind)}</Badge>
             </li>
           ))}
         </ul>

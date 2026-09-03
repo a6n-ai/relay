@@ -9,7 +9,7 @@ export * from "./mailbox-thread";
 type Db = PostgresJsDatabase<any>;
 
 export type MailboxDirection = "out" | "in";
-export type MailboxOrigin = "automatic" | "campaign" | "test";
+export type MailboxOrigin = "automatic" | "campaign" | "test" | "manual";
 export type MailboxOutboxStatus = "pending" | "processing" | "sent" | "failed" | null;
 
 export type MailboxLetterInput = {
@@ -63,6 +63,9 @@ export function letterFilterKeys(input: {
       break;
     case "test":
       keys.push("test");
+      break;
+    case "manual":
+      keys.push("manual");
       break;
     default: {
       const _exhaustive: never = input.origin;

@@ -19,6 +19,7 @@ const LABELS: Record<string, string> = {
   accounts: "Team",
   account: "Your account",
   email: "Email",
+  tags: "Tags",
   sms: "Text",
   whatsapp: "WhatsApp",
   "in-app": "In the app",

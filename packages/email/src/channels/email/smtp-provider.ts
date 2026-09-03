@@ -18,6 +18,8 @@ export interface SmtpMailOptions {
   html?: string;
   text?: string;
   messageId?: string;
+  inReplyTo?: string;
+  references?: string;
 }
 
 export interface SmtpSendClient {
@@ -79,6 +81,8 @@ export class SmtpEmailProvider extends AbstractEmailProvider {
       html: message.html,
       text: message.text,
       messageId: message.rfcMessageId,
+      inReplyTo: message.inReplyTo,
+      references: message.rfcReferences,
     });
     if (!info.messageId) {
       throw new AppError("SMTP returned no messageId", 502);

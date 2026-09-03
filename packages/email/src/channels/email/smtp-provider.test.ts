@@ -83,6 +83,31 @@ describe("SmtpEmailProvider", () => {
     expect(sent[0]).toMatchObject({ messageId: "<abc@relay.test>" });
   });
 
+  it("passes In-Reply-To and References so a reply stays one conversation", async () => {
+    const sent: unknown[] = [];
+    const p = new SmtpEmailProvider({
+      defaultFrom,
+      host: "smtp.example.com",
+      client: {
+        sendMail: async (opts) => {
+          sent.push(opts);
+          return { messageId: "<id>" };
+        },
+      },
+    });
+    await p.send({
+      to: { email: "a@b.com" },
+      subject: "Re: x",
+      text: "y",
+      inReplyTo: "<abc@relay.test>",
+      rfcReferences: "<abc@relay.test>",
+    });
+    expect(sent[0]).toMatchObject({
+      inReplyTo: "<abc@relay.test>",
+      references: "<abc@relay.test>",
+    });
+  });
+
   it("throws when SMTP returns no messageId", async () => {
     const client: SmtpSendClient = { sendMail: async () => ({}) };
     const p = new SmtpEmailProvider({ defaultFrom, host: "smtp.example.com", client });

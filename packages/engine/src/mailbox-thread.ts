@@ -63,3 +63,22 @@ export function mailboxThreadingFromProviderId(providerMessageId: string | null 
   const rfcMessageId = normalizeMessageId(providerMessageId) ?? generateRelayMessageId();
   return { rfcMessageId, threadId: threadIdForOutbound({ rfcMessageId }) };
 }
+
+/** Operator reply: keep the parent thread; never key off Re: subject. */
+export function replyThreading(parent: {
+  rfcMessageId?: string | null;
+  threadId?: string | null;
+  rfcReferences?: string | null;
+}): { inReplyTo: string; rfcReferences: string; threadId: string } | null {
+  const parentId = normalizeMessageId(parent.rfcMessageId);
+  const threadRaw = parent.threadId?.trim() || "";
+  const threadId = threadRaw || parentId;
+  if (!threadId) return null;
+  const inReplyTo = parentId ?? threadId;
+  const refs = parseMessageIdList(parent.rfcReferences);
+  if (normalizeMessageId(threadId) && !refs.includes(normalizeMessageId(threadId)!)) {
+    refs.unshift(normalizeMessageId(threadId)!);
+  }
+  if (parentId && !refs.includes(parentId)) refs.push(parentId);
+  return { inReplyTo, rfcReferences: [...new Set(refs)].join(" "), threadId };
+}

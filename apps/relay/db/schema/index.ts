@@ -3,6 +3,8 @@ export * from "./auth";
 export * from "./audit";
 export * from "./tenants";
 export * from "./sending";
+export * from "./mailboxes";
+export * from "./mailbox-tags";
 export * from "./campaigns";
 export * from "./notifications";
 export * from "./webhooks";

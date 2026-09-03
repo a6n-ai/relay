@@ -39,6 +39,11 @@ describe("letterFilterKeys", () => {
       input: { direction: "in" as const, origin: "automatic" as const, outboxStatus: "failed" as const },
       keys: ["in"],
     },
+    {
+      name: "manual send",
+      input: { direction: "out" as const, origin: "manual" as const, outboxStatus: "sent" as const },
+      keys: ["out", "manual"],
+    },
   ])("$name", ({ input, keys }) => {
     expect(letterFilterKeys(input)).toEqual(keys);
   });

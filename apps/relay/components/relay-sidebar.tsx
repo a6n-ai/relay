@@ -15,6 +15,7 @@ import {
   ScrollTextIcon,
   SettingsIcon,
   SmartphoneIcon,
+  TagsIcon,
   UsersIcon,
   WebhookIcon,
   ZapIcon,
@@ -64,6 +65,7 @@ const ACTIVITY: NavItem[] = [
 
 const SETUP: NavItem[] = [
   { href: "/dashboard/settings/email", label: "Email sending", icon: MailIcon },
+  { href: "/dashboard/settings/tags", label: "Tags", icon: TagsIcon },
   { href: "/dashboard/accounts", label: "Team", icon: UsersIcon },
   { href: "/dashboard/account", label: "Your account", icon: SettingsIcon, exact: true },
 ];

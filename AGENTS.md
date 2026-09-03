@@ -8,8 +8,8 @@
 - Do not push `.cursor/` MCP/AI config to GitHub.
 - Use semantic design tokens (`bg-primary`, etc.), not raw color utilities.
 - Use Foundry data-access (`UpdatableRepository`, `SessionUpdatableService`) and `@foundry/routes` for operator CRUD, not ad-hoc Drizzle on those paths.
-- Tenants are consuming apps: monthly send quota, channel-scoped API tokens, and verified tenant senders (unverified From falls back to operator). Email first; operator SMTP/domains/From live in Settings.
-- Operator chrome must stay non-technical: Home, Apps, Campaigns, People, Templates, Automations, Sends, Mailbox, Status updates, Email sending, Team. Group the sidebar by job; do not dump everything into Workspace. Never SMTP, IMAP, webhook, outbox, tenant, POST /v1, Foundry, or skip locked in the UI. Routes and schema keep those names.
+- Tenants are consuming apps: monthly send quota, channel-scoped API tokens, and verified tenant senders (unverified From falls back to operator). A tenant domain can mint send-as addresses or Relay inboxes; people IMAP inboxes stay a later roster. Email first; operator SMTP/domains/From live in Settings.
+- Operator chrome must stay non-technical: Home, Apps, Campaigns, People, Templates, Automations, Sends, Mailbox, Status updates, Email sending, Tags, Team. Group the sidebar by job; do not dump everything into Workspace. Never SMTP, IMAP, webhook, outbox, tenant, POST /v1, Foundry, or skip locked in the UI. Routes and schema keep those names.
 - Operator listings share search plus filter chips (client-side over loaded rows). Empty catalogs stay a plain empty state until there is something to narrow.
 - Collection pages use a shared create/browse split (`OperatorSplit`) and hairline resource rows, not per-page stacked cards.
 
@@ -23,4 +23,5 @@
 - Queue is Postgres `notification_outbox` with SKIP LOCKED drain/retry (no Redis/RabbitMQ). Claim-and-process work and identity-less joins stay as explicit Drizzle transactions.
 - Public send API is `POST /v1/messages` (hashed `api_keys`). Operator CRUD uses Foundry services; `campaign_tenant` is a Foundry entity (`ctn_` public ids).
 - Operator email transport/From/domains live at `/dashboard/settings/email` (old `/dashboard/domains` and `/dashboard/sending` redirect). Tenant senders verify via domain DNS.
-- Mailbox at `/dashboard/mailbox` archives outbound letter HTML in Postgres `email_mailbox`. IMAP and hosted `you@domain` accounts are not in Next.js; inbound is a provider webhook later, not a port-25 listener. `@foundry/email` is send only — do not merge mailbox hosting into it, and do not put people-mail MX on the transactional sending domain.
+- Mailbox at `/dashboard/mailbox` is conversations in Postgres `email_mailbox` (sent + received), chip-filtered by origin (Relay sent / Automatic / Campaigns / Failed) and Received. Threads use Message-ID / In-Reply-To; Reply stays on the thread. Compose/Reply uses the send stack and verified Froms. Inbound is a signed provider webhook, not a port-25 listener. IMAP and hosted `you@domain` accounts are not in Next.js; Stalwart/Mail.app is optional later on a people domain. `@foundry/email` is send only — do not merge mailbox hosting into it, and do not put people-mail MX on the transactional sending domain.
+- Message tags belong to an app and mark every message from that app (mail now, later channels later). Operators manage them at `/dashboard/settings/tags`; Mailbox chips reuse the same tags. Letters with no app cannot take those tags.

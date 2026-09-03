@@ -129,3 +129,16 @@ export function domainStatusLabel(status: string): string {
       return status;
   }
 }
+
+export function mailboxKindLabel(kind: string): string {
+  switch (kind) {
+    case "send_as":
+      return "Send as";
+    case "relay_inbox":
+      return "Relay inbox";
+    case "people_inbox":
+      return "People inbox";
+    default:
+      return kind;
+  }
+}

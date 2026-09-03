@@ -14,6 +14,8 @@ export const tenants = pgTable("tenants", {
   physicalAddress: text("physical_address"),
   /** Monthly outbox rows this app may enqueue. 0 = unlimited. */
   monthlyMessageQuota: integer("monthly_message_quota").notNull().default(10000),
+  /** Max tenant_mailboxes rows. 0 = unlimited. */
+  mailboxSeatQuota: integer("mailbox_seat_quota").notNull().default(5),
 }, (t) => [
   uniqueIndex("tenants_slug_unique").on(t.slug),
 ]);

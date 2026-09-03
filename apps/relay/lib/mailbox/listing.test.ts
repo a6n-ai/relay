@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { MailboxDirection, MailboxOrigin } from "@relay/engine";
-import { toMailboxListingRow } from "./listing";
+import { toMailboxListingRow, groupMailboxConversations, tagListingFilters } from "./listing";
 import { templateTestMailboxLetter } from "./template-test";
 
-const origins: MailboxOrigin[] = ["automatic", "campaign", "test"];
+const origins: MailboxOrigin[] = ["automatic", "campaign", "test", "manual"];
 const directions: MailboxDirection[] = ["out"];
 
 describe("toMailboxListingRow", () => {
@@ -65,6 +65,64 @@ describe("toMailboxListingRow", () => {
       origin: "test",
     });
     expect(row.filterKeys).toEqual(["out", "test"]);
+  });
+
+  it("labels operator-written letters Written here", () => {
+    const row = toMailboxListingRow({
+      publicId: "mbx_m",
+      subject: "Hello",
+      fromEmail: "ops@relay.local",
+      fromName: null,
+      toEmail: "a@b.com",
+      tenantName: null,
+      status: null,
+      direction: "out",
+      origin: "manual",
+    });
+    expect(row.filterKeys).toEqual(["out", "manual"]);
+    expect(row.badges?.map((b) => b.label)).toContain("Written here");
+  });
+
+  it("puts app tags on every conversation for that app", () => {
+    const items = groupMailboxConversations(
+      [
+        {
+          publicId: "mbx_new",
+          subject: "Re: Order ready",
+          fromEmail: "ops@relay.local",
+          fromName: null,
+          toEmail: "a@b.com",
+          tenantName: "Tiffin Grab",
+          tenantPublicId: "tnt_1",
+          status: "sent",
+          direction: "out",
+          origin: "manual",
+          threadId: "<root@relay.test>",
+        },
+        {
+          publicId: "mbx_old",
+          subject: "Order ready",
+          fromEmail: "ops@relay.local",
+          fromName: null,
+          toEmail: "a@b.com",
+          tenantName: "Tiffin Grab",
+          tenantPublicId: "tnt_1",
+          status: "sent",
+          direction: "out",
+          origin: "automatic",
+          threadId: "<root@relay.test>",
+        },
+      ],
+      { tnt_1: [{ slug: "vip", label: "VIP" }] },
+    );
+    expect(items).toHaveLength(1);
+    expect(items[0]?.filterKeys).toContain("tag:vip");
+    expect(items[0]?.filterKeys).toContain("manual");
+    expect(items[0]?.filterKeys).toContain("automatic");
+    expect(items[0]?.meta).toMatch(/^2 letters ·/);
+    expect(tagListingFilters({ tnt_1: [{ slug: "vip", label: "VIP" }] })).toEqual([
+      { id: "tag:vip", label: "VIP" },
+    ]);
   });
 });
 

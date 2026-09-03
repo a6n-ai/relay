@@ -8,6 +8,8 @@ describe("isPublicRelayPath", () => {
     expect(isPublicRelayPath("/forgot-password")).toBe(true);
     expect(isPublicRelayPath("/api/auth/ok")).toBe(true);
     expect(isPublicRelayPath("/v1/messages")).toBe(true);
+    expect(isPublicRelayPath("/docs")).toBe(true);
+    expect(isPublicRelayPath("/docs/api/swagger")).toBe(true);
     expect(isPublicRelayPath("/api/webhooks/ses")).toBe(true);
     expect(isPublicRelayPath("/api/internal/mailbox/inbound")).toBe(true);
     expect(isPublicRelayPath("/unsubscribe")).toBe(true);
