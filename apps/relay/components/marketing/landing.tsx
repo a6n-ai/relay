@@ -1,7 +1,12 @@
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { ArrowRightIcon } from "lucide-react";
 import { Button } from "@foundry/ui/button";
-import { DispatchBurst } from "./dispatch-burst";
+
+const DispatchBurst = dynamic(
+  () => import("./dispatch-burst").then((m) => ({ default: m.DispatchBurst })),
+  { loading: () => <div className="bg-muted/40 min-h-[20rem] w-full" aria-hidden /> },
+);
 
 const CHANNELS = [
   {

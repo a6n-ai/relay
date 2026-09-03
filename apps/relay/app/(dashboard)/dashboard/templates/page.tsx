@@ -24,8 +24,9 @@ export default async function TemplatesPage() {
     templatesService.listRecent(),
   ]);
 
+  const tenantById = new Map(tenantRows.map((t) => [t.id, t]));
   const items: ListingRow[] = rows.map((r) => {
-    const tenant = tenantRows.find((t) => t.id === r.tenantId);
+    const tenant = tenantById.get(r.tenantId);
     const channel = displayChannel(r.channel);
     const meta = tenant?.name ?? "App";
     const filterKeys = [r.channel, ...(r.enabled ? [] : ["off"])];

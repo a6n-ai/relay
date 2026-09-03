@@ -10,10 +10,22 @@ import { notificationTables } from "@/db/schema";
 export const dynamic = "force-dynamic";
 
 export default async function LogsPage() {
+  const o = notificationTables.notificationOutbox;
   const rows = await db
-    .select()
-    .from(notificationTables.notificationOutbox)
-    .orderBy(desc(notificationTables.notificationOutbox.createdAt))
+    .select({
+      publicId: o.publicId,
+      status: o.status,
+      channel: o.channel,
+      kind: o.kind,
+      event: o.event,
+      recipientEmail: o.recipientEmail,
+      recipientPhone: o.recipientPhone,
+      recipientExternalId: o.recipientExternalId,
+      attempts: o.attempts,
+      lastError: o.lastError,
+    })
+    .from(o)
+    .orderBy(desc(o.createdAt))
     .limit(100);
 
   const items: SendListItem[] = rows.map((r) => {

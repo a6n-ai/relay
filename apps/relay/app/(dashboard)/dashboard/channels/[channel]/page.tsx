@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { InboxIcon, MailIcon, MessageCircleIcon, SmartphoneIcon, type LucideIcon } from "lucide-react";
-import { StubPage } from "@/components/ds";
+import { StubPage } from "@/components/ds/stub-page";
 import { RELAY_CHANNELS } from "@/components/ds/channels";
 import type { Channel } from "@relay/engine";
 

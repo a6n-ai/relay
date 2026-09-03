@@ -2,7 +2,8 @@ import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { CrmShell } from "@foundry/crm";
 import { getSession } from "@/lib/auth/session";
-import { RelayBreadcrumbs, ThemeSwitcher } from "@/components/ds";
+import { RelayBreadcrumbs } from "@/components/ds/relay-breadcrumbs";
+import { ThemeSwitcher } from "@/components/ds/theme-switcher";
 import { RelaySidebar } from "@/components/relay-sidebar";
 
 export const dynamic = "force-dynamic";

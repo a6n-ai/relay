@@ -24,7 +24,6 @@ RUN --mount=type=cache,id=next-cache-${APP},target=/app/apps/${APP}/.next/cache 
     DATABASE_URL="postgres://build:build@127.0.0.1:5432/build" \
     BETTER_AUTH_SECRET="build-placeholder-not-used-at-runtime" \
     BETTER_AUTH_URL="http://localhost:3010" \
-    NEXT_PUBLIC_BETTER_AUTH_URL="http://localhost:3010" \
     NODE_ENV=production \
     pnpm --filter "${APP}" build
 

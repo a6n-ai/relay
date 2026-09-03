@@ -9,8 +9,8 @@ import { AddDomainForm, VerifyDomainButton } from "@/app/(dashboard)/dashboard/d
 import { displayChannel, domainStatusLabel, fromSourceLabel, mailboxKindLabel } from "@/components/ds/plain-labels";
 import { OperatorSplit } from "@/components/ds/operator-split";
 import { loadEmailChannelSnapshot } from "@/lib/email/load-snapshot";
+import { loadOperatorSmtpRow, resolveTenantEmailFrom } from "@/lib/email/from-address";
 import { emailChannelReady, operatorEmailPrereqs } from "@/lib/email/prerequisites";
-import { resolveTenantEmailFrom } from "@/lib/email/from-address";
 import { emailSendersService } from "@/lib/services/email-senders.service";
 import { sendingDomainsService } from "@/lib/services/sending.service";
 import { apiKeysService, tenantsService } from "@/lib/services/tenants.service";
@@ -30,17 +30,21 @@ export default async function TenantDetailPage({
   const tenant = await tenantsService.read(id).catch(() => null);
   if (!tenant) notFound();
 
-  const [{ items: keys }, senders, { items: domains }, used, from, boxes, tags] = await Promise.all([
-    apiKeysService.list(eq("tenantId", tenant.id), { page: 0, size: 50 }),
-    emailSendersService.forTenant(tenant.id),
-    sendingDomainsService.list(eq("tenantId", tenant.id), { page: 0, size: 50 }),
-    countTenantSendsThisMonth(tenant.id),
-    resolveTenantEmailFrom(tenant.id),
-    tenantMailboxesService.forTenant(tenant.id),
-    appMessageTagsService.forTenant(tenant.id),
-  ]);
+  const [{ items: keys }, senders, { items: domains }, used, from, boxes, tags, smtpRow] =
+    await Promise.all([
+      apiKeysService.list(eq("tenantId", tenant.id), { page: 0, size: 50 }),
+      emailSendersService.forTenant(tenant.id),
+      sendingDomainsService.list(eq("tenantId", tenant.id), { page: 0, size: 50 }),
+      countTenantSendsThisMonth(tenant.id),
+      resolveTenantEmailFrom(tenant.id),
+      tenantMailboxesService.forTenant(tenant.id),
+      appMessageTagsService.forTenant(tenant.id),
+      loadOperatorSmtpRow(),
+    ]);
   const verifiedCount = domains.filter((d) => d.status === "verified").length;
-  const prereqs = operatorEmailPrereqs(await loadEmailChannelSnapshot(verifiedCount));
+  const prereqs = operatorEmailPrereqs(
+    await loadEmailChannelSnapshot(verifiedCount, smtpRow?.host ?? null),
+  );
   const emailReady = emailChannelReady(prereqs) && verifiedCount > 0;
 
   return (

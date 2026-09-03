@@ -22,8 +22,10 @@ export default async function CampaignDetailPage({
   } catch {
     notFound();
   }
-  const tenant = await campaignsService.tenantForCampaign(row.id);
-  const content = await campaignContentService.forCampaignId(row.id);
+  const [tenant, content] = await Promise.all([
+    campaignsService.tenantForCampaign(row.id),
+    campaignContentService.forCampaignId(row.id),
+  ]);
   const count = await countAudience(
     { ...operatorCampaignDeps(), mailingCountry: tenant?.mailingCountry ?? "CA" },
     row.audience as AudienceDef,

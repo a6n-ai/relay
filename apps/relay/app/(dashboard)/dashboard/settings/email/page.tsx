@@ -6,18 +6,18 @@ import { OperatorSplit } from "@/components/ds/operator-split";
 import { SmtpSettingsForm } from "@/app/(dashboard)/dashboard/sending/smtp-form";
 import { loadEmailChannelSnapshot } from "@/lib/email/load-snapshot";
 import { operatorEmailPrereqs } from "@/lib/email/prerequisites";
-import { sendingDomainsService, smtpSettingsService } from "@/lib/services/sending.service";
+import { loadOperatorSmtpRow } from "@/lib/email/from-address";
+import { sendingDomainsService } from "@/lib/services/sending.service";
 
 export const dynamic = "force-dynamic";
 
 export default async function EmailSettingsPage() {
-  const [{ items: smtpRows }, { items: domains }] = await Promise.all([
-    smtpSettingsService.list(undefined, { page: 0, size: 1 }),
+  const [row, { items: domains }] = await Promise.all([
+    loadOperatorSmtpRow(),
     sendingDomainsService.list(undefined, { page: 0, size: 200 }),
   ]);
-  const row = smtpRows[0];
   const verifiedCount = domains.filter((d) => d.status === "verified").length;
-  const snap = await loadEmailChannelSnapshot(verifiedCount);
+  const snap = await loadEmailChannelSnapshot(verifiedCount, row?.host ?? null);
   const prereqs = operatorEmailPrereqs(snap);
   const envTransport = process.env.EMAIL_TRANSPORT ?? process.env.EMAIL_PROVIDER ?? "ses";
 

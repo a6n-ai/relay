@@ -22,13 +22,13 @@ import { getSession } from "@/lib/auth/session";
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
-  const session = await getSession();
   const now = Date.now();
   const weekStart = now - 6 * DAY_MS;
   const priorStart = now - 13 * DAY_MS;
 
-  const [[{ tenantCount }], [{ pendingCount }], [{ failedCount }], recent, fortnight] =
+  const [session, [{ tenantCount }], [{ pendingCount }], [{ failedCount }], recent, fortnight] =
     await Promise.all([
+      getSession(),
       db.select({ tenantCount: count() }).from(tenants),
       db
         .select({ pendingCount: count() })
@@ -39,7 +39,16 @@ export default async function DashboardPage() {
         .from(notificationTables.notificationOutbox)
         .where(eq(notificationTables.notificationOutbox.status, "failed")),
       db
-        .select()
+        .select({
+          publicId: notificationTables.notificationOutbox.publicId,
+          status: notificationTables.notificationOutbox.status,
+          channel: notificationTables.notificationOutbox.channel,
+          kind: notificationTables.notificationOutbox.kind,
+          event: notificationTables.notificationOutbox.event,
+          recipientEmail: notificationTables.notificationOutbox.recipientEmail,
+          recipientPhone: notificationTables.notificationOutbox.recipientPhone,
+          recipientExternalId: notificationTables.notificationOutbox.recipientExternalId,
+        })
         .from(notificationTables.notificationOutbox)
         .orderBy(desc(notificationTables.notificationOutbox.createdAt))
         .limit(8),
