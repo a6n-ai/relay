@@ -1,0 +1,26 @@
+# Transaction-mode pooler in front of RDS. LISTEN/NOTIFY cannot use this —
+# the drain worker uses DIRECT_DATABASE_URL instead.
+services:
+  pgbouncer:
+    image: edoburu/pgbouncer:latest
+    restart: unless-stopped
+    environment:
+      DB_HOST: ${PGBOUNCER_DB_HOST}
+      DB_PORT: ${PGBOUNCER_DB_PORT:-5432}
+      DB_USER: ${PGBOUNCER_DB_USER}
+      DB_PASSWORD: ${PGBOUNCER_DB_PASSWORD}
+      DB_NAME: ${PGBOUNCER_DB_NAME}
+      LISTEN_PORT: "6432"
+      POOL_MODE: transaction
+      AUTH_TYPE: scram-sha-256
+      DEFAULT_POOL_SIZE: "15"
+      MAX_CLIENT_CONN: "100"
+      SERVER_TLS_SSLMODE: require
+      MAX_PREPARED_STATEMENTS: "0"
+    expose:
+      - "6432"
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 6432"]
+      interval: 10s
+      timeout: 3s
+      retries: 5

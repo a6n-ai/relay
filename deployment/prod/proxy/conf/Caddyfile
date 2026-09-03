@@ -1,0 +1,11 @@
+{
+	email {$ACME_EMAIL}
+}
+
+{$RELAY_DOMAIN} {
+	encode zstd gzip
+
+	reverse_proxy relay-web:3000 {
+		header_up X-Real-IP {remote_host}
+	}
+}

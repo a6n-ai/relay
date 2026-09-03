@@ -1,11 +1,12 @@
 import path from "node:path";
 import type { NextConfig } from "next";
 
-const monorepoRoot = path.join(import.meta.dirname, "..", "..", "..");
+const repoRoot = path.join(import.meta.dirname, "..", "..");
+const turbopackRoot = path.join(repoRoot, "..");
 
 const nextConfig: NextConfig = {
   output: "standalone",
-  outputFileTracingRoot: monorepoRoot,
+  outputFileTracingRoot: repoRoot,
   transpilePackages: [
     "@foundry/auth",
     "@foundry/commons",
@@ -25,7 +26,7 @@ const nextConfig: NextConfig = {
     "@relay/whatsapp",
     "@scalar/nextjs-api-reference",
   ],
-  turbopack: { root: monorepoRoot },
+  turbopack: { root: turbopackRoot },
 };
 
 export default nextConfig;

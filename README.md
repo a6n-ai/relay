@@ -26,7 +26,7 @@ Drain the outbox in a second terminal:
 pnpm --filter relay worker:drain
 ```
 
-Checks: `pnpm typecheck` and `pnpm test`. Local stack notes and UI smoke: [`TESTING.md`](TESTING.md).
+Checks: `pnpm typecheck` and `pnpm test`. Local stack notes and UI smoke: [`TESTING.md`](TESTING.md). Production (EC2 + GHCR, same pattern as Realm): [`deployment/prod/RUNBOOK.md`](deployment/prod/RUNBOOK.md).
 
 ## HTTP APIs
 

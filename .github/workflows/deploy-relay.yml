@@ -1,0 +1,95 @@
+# Build relay-web (runner) + relay-tools (build) → GHCR, then SSH the box to pull.
+# Required repo secrets: EC2_HOST_RELAY, EC2_USER, EC2_SSH_KEY.
+# Optional: DEPLOY_PATH (default ~/relay), ENABLE_SSH_DEPLOY=true to actually SSH.
+name: deploy-relay
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/relay/**"
+      - "packages/**"
+      - "deployment/prod/**"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "package.json"
+      - ".github/workflows/deploy-relay.yml"
+  workflow_dispatch: {}
+
+concurrency:
+  group: deploy-relay
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: docker/setup-buildx-action@v4
+        id: buildx
+        continue-on-error: true
+      - uses: docker/setup-buildx-action@v4
+        if: steps.buildx.outcome == 'failure'
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build + push relay-web (runner)
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: deployment/prod/Dockerfile
+          target: runner
+          build-args: |
+            APP=relay
+          push: true
+          tags: |
+            ghcr.io/a6n-ai/relay-web:${{ github.sha }}
+            ghcr.io/a6n-ai/relay-web:latest
+          cache-from: type=gha,scope=relay
+          cache-to: type=gha,mode=max,scope=relay
+
+      - name: Build + push relay-tools (build)
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: deployment/prod/Dockerfile
+          target: build
+          build-args: |
+            APP=relay
+          push: true
+          tags: |
+            ghcr.io/a6n-ai/relay-tools:${{ github.sha }}
+            ghcr.io/a6n-ai/relay-tools:latest
+          cache-from: type=gha,scope=relay
+          cache-to: type=gha,mode=max,scope=relay
+
+  deploy:
+    needs: build
+    if: ${{ vars.ENABLE_SSH_DEPLOY == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: SSH → deploy Relay
+        uses: appleboy/ssh-action@v1
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+        with:
+          host: ${{ secrets.EC2_HOST_RELAY }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          command_timeout: 20m
+          envs: IMAGE_TAG
+          script: |
+            set -euo pipefail
+            REPO="${{ vars.DEPLOY_PATH }}"; REPO="${REPO:-$HOME/relay}"
+            git -C "$REPO" pull --ff-only
+            cd "$REPO/deployment/prod"
+            docker network inspect edge >/dev/null 2>&1 || docker network create edge
+            (cd proxy && docker compose pull && docker compose up -d --wait)
+            (cd proxy && docker compose exec -T caddy caddy reload --config /etc/caddy/Caddyfile)
+            (cd relay && ./deploy.sh)

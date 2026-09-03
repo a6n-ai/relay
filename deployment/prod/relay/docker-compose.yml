@@ -1,0 +1,57 @@
+# Images are built in CI and pushed to GHCR; the box only pulls (deploy.sh).
+# web = slim Next standalone. tools = full build (drizzle-kit + tsx) for migrate + drain.
+# No Redis or RabbitMQ — outbox is Postgres SKIP LOCKED.
+
+include:
+  - pgbouncer/docker-compose.yml
+
+x-awslogs: &awslogs
+  driver: awslogs
+  options:
+    awslogs-region: ${AWS_REGION:-us-east-1}
+    awslogs-group: /relay/prod
+    awslogs-create-group: "true"
+
+services:
+  web:
+    image: ${WEB_IMAGE:-ghcr.io/a6n-ai/relay-web}:${IMAGE_TAG:-latest}
+    container_name: relay-web
+    restart: unless-stopped
+    logging: *awslogs
+    env_file: .env.production
+    expose:
+      - "3000"
+    networks:
+      - default
+      - edge
+    depends_on:
+      pgbouncer:
+        condition: service_healthy
+
+  worker:
+    image: ${TOOLS_IMAGE:-ghcr.io/a6n-ai/relay-tools}:${IMAGE_TAG:-latest}
+    container_name: relay-worker
+    restart: unless-stopped
+    logging: *awslogs
+    env_file: .env.production
+    environment:
+      DATABASE_URL: ${DIRECT_DATABASE_URL}
+    command: ["pnpm", "--filter", "relay", "exec", "tsx", "workers/notify-drainer.ts"]
+    depends_on:
+      pgbouncer:
+        condition: service_healthy
+
+  migrate:
+    image: ${TOOLS_IMAGE:-ghcr.io/a6n-ai/relay-tools}:${IMAGE_TAG:-latest}
+    logging: *awslogs
+    env_file: .env.production
+    environment:
+      DATABASE_URL: ${DIRECT_DATABASE_URL}
+      DIRECT_DATABASE_URL: ${DIRECT_DATABASE_URL}
+    command: ["pnpm", "--filter", "relay", "exec", "drizzle-kit", "migrate"]
+    profiles:
+      - tools
+
+networks:
+  edge:
+    external: true
