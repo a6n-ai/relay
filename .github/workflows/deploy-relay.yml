@@ -1,4 +1,4 @@
-# Build relay-web (runner) + relay-tools (build) → GHCR, then SSH the box to pull.
+# Build relay-web (runner) + relay-tools (tools stage) → GHCR, then SSH the box to pull.
 # Required repo secrets: EC2_HOST_RELAY, EC2_USER, EC2_SSH_KEY.
 # Optional: DEPLOY_PATH (default ~/relay), ENABLE_SSH_DEPLOY=true to actually SSH.
 name: deploy-relay
@@ -54,12 +54,12 @@ jobs:
           cache-from: type=gha,scope=relay
           cache-to: type=gha,mode=max,scope=relay
 
-      - name: Build + push relay-tools (build)
+      - name: Build + push relay-tools
         uses: docker/build-push-action@v7
         with:
           context: .
           file: deployment/prod/Dockerfile
-          target: build
+          target: tools
           build-args: |
             APP=relay
           push: true

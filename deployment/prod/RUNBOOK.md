@@ -14,7 +14,7 @@ deployment/prod/
   proxy/                     Caddy on the `edge` network
 ```
 
-Images: `ghcr.io/a6n-ai/relay-web`, `ghcr.io/a6n-ai/relay-tools`. Pin with `IMAGE_TAG=<sha>`.
+Images: `ghcr.io/a6n-ai/relay-web` (standalone runner), `ghcr.io/a6n-ai/relay-tools` (`tools` stage: install + migrate/drain, Next cache stripped). Pin with `IMAGE_TAG=<sha>`.
 
 ## First box
 

@@ -7,6 +7,16 @@ const turbopackRoot = path.join(repoRoot, "..");
 const nextConfig: NextConfig = {
   output: "standalone",
   outputFileTracingRoot: repoRoot,
+  poweredByHeader: false,
+  compress: true,
+  productionBrowserSourceMaps: false,
+  compiler: {
+    removeConsole: { exclude: ["error", "warn"] },
+  },
+  serverExternalPackages: ["postgres", "drizzle-orm"],
+  experimental: {
+    optimizePackageImports: ["lucide-react", "recharts", "@foundry/ui"],
+  },
   transpilePackages: [
     "@foundry/auth",
     "@foundry/commons",
