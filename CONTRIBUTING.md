@@ -18,6 +18,10 @@ Local Postgres, seed, and UI smoke: [`TESTING.md`](TESTING.md). Product facts fo
 - Keep Geist and purple accent. Do not restyle dark theme when changing light.
 - Public HTTP surface is [`apps/relay/lib/v1/openapi.ts`](apps/relay/lib/v1/openapi.ts). If you add a route integrators should call, add it there so Scalar and Swagger stay true.
 
+## License
+
+This repository is AGPL-3.0. Pull requests are accepted under the same license. `@foundry/*` remains Apache 2.0 in [a6n-ai/foundry](https://github.com/a6n-ai/foundry).
+
 ## Auth split
 
 - `POST /v1/messages` — hashed app keys (`api_keys`).

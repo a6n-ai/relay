@@ -98,3 +98,9 @@ docs/plans/mailbox/  sequenced mailbox plans
 ```
 
 Do not commit `.env.local` or `.cursor/`.
+
+## License
+
+GNU Affero General Public License v3.0. See [`LICENSE`](LICENSE). That is an OSI license GitHub detects (`agpl-3.0`).
+
+`@foundry/*` stays [Apache 2.0](https://github.com/a6n-ai/foundry). Those files are not relicensed; the Relay application as shipped is AGPL. Realm is AGPL as well.
