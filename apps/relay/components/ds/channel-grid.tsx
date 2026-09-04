@@ -29,6 +29,7 @@ export function ChannelGrid({ counts }: { counts: Partial<Record<Channel, number
               <Link
                 key={ch.key}
                 href={ch.href}
+                prefetch={false}
                 className="flex flex-col justify-between gap-6 bg-card p-6 transition-colors hover:bg-muted/40"
               >
                 <Button variant="outline" size="icon" className="pointer-events-none size-8">

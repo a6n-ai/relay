@@ -99,7 +99,7 @@ function NavGroup({
           {items.map((item) => (
             <SidebarMenuItem key={item.href}>
               <SidebarMenuButton asChild isActive={pathActive(pathname, item)}>
-                <Link href={item.href}>
+                <Link href={item.href} prefetch={false}>
                   <item.icon />
                   <span>{item.label}</span>
                 </Link>
@@ -135,7 +135,7 @@ export function RelaySidebar({ email }: { email: string }) {
                 return (
                   <SidebarMenuItem key={ch.key}>
                     <SidebarMenuButton asChild isActive={active}>
-                      <Link href={href}>
+                      <Link href={href} prefetch={false}>
                         <Icon />
                         <span>{ch.label}</span>
                       </Link>
@@ -152,6 +152,7 @@ export function RelaySidebar({ email }: { email: string }) {
       <SidebarFooter className="gap-3 p-3">
         <Link
           href="/dashboard/account"
+          prefetch={false}
           className="truncate font-mono text-xs text-sidebar-foreground/70 hover:text-sidebar-accent-foreground"
         >
           {email}

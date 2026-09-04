@@ -55,7 +55,7 @@ export function NotificationBell(props: UseNotificationsOptions = {}) {
                 return (
                   <li key={n.publicId}>
                     {n.href ? (
-                      <Link href={n.href} className="block hover:bg-accent">
+                      <Link href={n.href} prefetch={false} className="block hover:bg-accent">
                         {row}
                       </Link>
                     ) : (

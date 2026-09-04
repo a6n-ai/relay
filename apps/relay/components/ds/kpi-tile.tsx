@@ -48,7 +48,7 @@ export function KpiActionCard({ item }: { item: KpiItem }) {
           {item.delta ? <Badge className={badgeClass(item.tone)}>{item.delta}</Badge> : null}
         </div>
         <Button variant="outline" className="w-fit" asChild>
-          <Link href={item.href}>
+          <Link href={item.href} prefetch={false}>
             See statistics
             <ArrowRightIcon data-icon="inline-end" />
           </Link>
@@ -88,7 +88,7 @@ export function KpiStrip({ items }: { items: KpiItem[] }) {
                 {item.delta ? <Badge className={badgeClass(item.tone)}>{item.delta}</Badge> : null}
               </div>
               <Button variant="outline" className="w-fit" asChild>
-                <Link href={item.href}>
+                <Link href={item.href} prefetch={false}>
                   See statistics
                   <ArrowRightIcon data-icon="inline-end" />
                 </Link>

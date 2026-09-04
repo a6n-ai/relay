@@ -63,7 +63,7 @@ export function ResourceRow({
   );
   if (!href) return body;
   return (
-    <Link href={href} className="block outline-none focus-visible:bg-muted/50">
+    <Link href={href} prefetch={false} className="block outline-none focus-visible:bg-muted/50">
       {body}
     </Link>
   );
