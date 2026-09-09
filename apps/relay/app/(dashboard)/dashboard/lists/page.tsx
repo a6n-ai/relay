@@ -1,6 +1,7 @@
 import { UsersIcon } from "lucide-react";
 import { PageHeader, PageShell, SectionCard } from "@foundry/design-system";
-import { ContactListUpload } from "@relay/engine/ui";
+import { ContactListUpload } from "@relay/engine/ui/contact-list-upload";
+import { ContactListManualAdd } from "@relay/engine/ui/contact-list-manual-add";
 import { OperatorSplit } from "@/components/ds/operator-split";
 import { FilteredResourceList } from "@/components/ds/listing-controls";
 import type { ListingFilter, ListingRow } from "@/components/ds/listing-controls";
@@ -41,9 +42,14 @@ export default async function ListsPage() {
       />
       <OperatorSplit
         create={
-          <SectionCard title="Import a spreadsheet">
-            <ContactListUpload />
-          </SectionCard>
+          <div className="space-y-4">
+            <SectionCard title="Import a spreadsheet">
+              <ContactListUpload />
+            </SectionCard>
+            <SectionCard title="Add contacts by hand">
+              <ContactListManualAdd />
+            </SectionCard>
+          </div>
         }
         list={
           <FilteredResourceList

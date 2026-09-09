@@ -1,10 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { parseCsv } from "@relay/engine";
-import { apiFetch } from "./api-fetch";
+import { mapRows, parseCsv, type ParsedContact } from "@relay/engine";
 import { Button } from "@foundry/ui/button";
 import { Input } from "@foundry/ui/input";
 import { Label } from "@foundry/ui/label";
@@ -15,13 +14,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@foundry/ui/select";
-
-const CONSENT_SOURCES = [
-  { value: "purchase", label: "Customer purchased" },
-  { value: "express_optin", label: "They asked to hear from us" },
-  { value: "event_signup", label: "Signed up at an event" },
-  { value: "import_other", label: "Imported" },
-] as const;
+import { ContactListMetaFields, type ListMeta } from "./contact-list-meta-fields";
+import { createListWithContacts } from "./create-list-with-contacts";
 
 const NONE = "__none__";
 
@@ -29,29 +23,30 @@ const SAMPLE_CSV = "name,email,phone\nJane Doe,jane@example.com,+16135551234\nJo
 const SAMPLE_CSV_HREF = `data:text/csv;charset=utf-8,${encodeURIComponent(SAMPLE_CSV)}`;
 
 /**
- * Create a list, then import a CSV into it.
- *
- * Consent provenance is asked for BEFORE the file, because it is a property of
- * how the list was gathered — and because a form that takes the addresses first
- * makes the consent question feel like an afterthought.
+ * Create a list, then import a CSV into it. Column mapping produces a preview
+ * of every valid/rejected row before anything is written — everyone starts
+ * selected, so unchecking is for excluding the odd row rather than the normal
+ * path, but nothing is inserted the admin hasn't seen.
  */
 export function ContactListUpload() {
   const router = useRouter();
-  const [name, setName] = useState("");
-  const [consentSource, setConsentSource] = useState<string>("express_optin");
-  const [consentNote, setConsentNote] = useState("");
+  const [meta, setMeta] = useState<ListMeta>({ name: "", consentSource: "express_optin", consentNote: "" });
   const [file, setFile] = useState<File | null>(null);
+  const [rawText, setRawText] = useState("");
   const [headers, setHeaders] = useState<string[]>([]);
   const [mapping, setMapping] = useState<{ email?: string; phone?: string; name?: string }>({});
+  const [preview, setPreview] = useState<{ valid: ParsedContact[]; rejected: { row: number; reason: string }[] } | null>(null);
+  const [selected, setSelected] = useState<Set<number>>(new Set());
   const [busy, setBusy] = useState(false);
 
   async function pick(f: File | null) {
     setFile(f);
     setHeaders([]);
+    setPreview(null);
     if (!f) return;
-    // Parsed client-side purely to offer the column mapping; the server parses
-    // the file again itself and trusts nothing from here.
-    const { headers: h } = parseCsv(await f.text());
+    const text = await f.text();
+    setRawText(text);
+    const { headers: h } = parseCsv(text);
     setHeaders(h);
     setMapping({
       email: h.find((x) => /e-?mail/i.test(x)),
@@ -60,43 +55,29 @@ export function ContactListUpload() {
     });
   }
 
-  async function submit() {
-    if (!name.trim()) return toast.error("Name this group");
-    if (!file) return toast.error("Choose a spreadsheet");
+  function buildPreview() {
     if (!mapping.name) return toast.error("Pick which column is name");
     if (!mapping.email && !mapping.phone) return toast.error("Pick which column is email or phone");
+    const out = mapRows(parseCsv(rawText), mapping);
+    setPreview(out);
+    setSelected(new Set(out.valid.map((_, i) => i)));
+    if (out.rejected.length) toast.warning(`${out.rejected.length} row(s) can't be imported — see below`);
+  }
+
+  async function submit() {
+    if (!meta.name.trim()) return toast.error("Name this group");
+    if (!preview || selected.size === 0) return toast.error("Select at least one contact");
 
     setBusy(true);
     try {
-      const created = await apiFetch<{ publicId: string }>("/api/notifications/contact-lists", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          name,
-          consentSource,
-          consentAt: Date.now(),
-          consentNote: consentNote || undefined,
-        }),
-      });
-
-      const form = new FormData();
-      form.set("file", file);
-      form.set("mapping", JSON.stringify(mapping));
-      const res = await apiFetch<{ imported: number; rejected: { row: number; reason: string }[] }>(
-        `/api/notifications/contact-lists/${created.publicId}/import`,
-        { method: "POST", body: form },
-      );
-
-      // Rejections are surfaced, not swallowed: a silent drop reads as data loss.
-      toast.success(
-        res.rejected.length
-          ? `Imported ${res.imported}, skipped ${res.rejected.length}`
-          : `Imported ${res.imported}`,
-      );
+      const contacts = preview.valid.filter((_, i) => selected.has(i));
+      const res = await createListWithContacts(meta, contacts);
+      toast.success(`Imported ${res.imported}`);
       router.refresh();
-      setName("");
+      setMeta({ name: "", consentSource: "express_optin", consentNote: "" });
       setFile(null);
       setHeaders([]);
+      setPreview(null);
     } catch {
       // apiFetch already toasted the failure detail.
     } finally {
@@ -104,12 +85,20 @@ export function ContactListUpload() {
     }
   }
 
+  const allSelected = useMemo(
+    () => !!preview && preview.valid.length > 0 && selected.size === preview.valid.length,
+    [preview, selected],
+  );
+
   const columnSelect = (key: "email" | "phone" | "name", label: string) => (
     <div className="space-y-1.5">
       <Label>{label}</Label>
       <Select
         value={mapping[key] ?? NONE}
-        onValueChange={(v) => setMapping((m) => ({ ...m, [key]: v === NONE ? undefined : v }))}
+        onValueChange={(v) => {
+          setMapping((m) => ({ ...m, [key]: v === NONE ? undefined : v }));
+          setPreview(null);
+        }}
       >
         <SelectTrigger>
           <SelectValue placeholder="—" />
@@ -128,40 +117,7 @@ export function ContactListUpload() {
 
   return (
     <div className="space-y-5">
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div className="space-y-1.5">
-          <Label htmlFor="listName">Group name</Label>
-          <Input id="listName" value={name} onChange={(e) => setName(e.target.value)} />
-        </div>
-        <div className="space-y-1.5">
-          <Label>How was consent obtained?</Label>
-          <Select value={consentSource} onValueChange={setConsentSource}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {CONSENT_SOURCES.map((c) => (
-                <SelectItem key={c.value} value={c.value}>
-                  {c.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      <div className="space-y-1.5">
-        <Label htmlFor="consentNote">How they agreed</Label>
-        <Input
-          id="consentNote"
-          value={consentNote}
-          onChange={(e) => setConsentNote(e.target.value)}
-          placeholder="Where and when these people agreed to hear from you"
-        />
-        <p className="text-xs text-muted-foreground">
-          Consent after a purchase lasts 24 months. Don’t import people you can’t explain.
-        </p>
-      </div>
+      <ContactListMetaFields meta={meta} onChange={setMeta} />
 
       <div className="space-y-1.5">
         <div className="flex items-center justify-between">
@@ -190,8 +146,56 @@ export function ContactListUpload() {
         </div>
       )}
 
-      <Button onClick={submit} disabled={busy}>
-        {busy ? "Importing…" : "Import people"}
+      {headers.length > 0 && !preview && (
+        <Button variant="outline" onClick={buildPreview}>
+          Preview contacts
+        </Button>
+      )}
+
+      {preview && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                className="h-4 w-4"
+                checked={allSelected}
+                onChange={(e) =>
+                  setSelected(e.target.checked ? new Set(preview.valid.map((_, i) => i)) : new Set())
+                }
+              />
+              {selected.size} of {preview.valid.length} selected
+            </label>
+            {preview.rejected.length > 0 && (
+              <span className="text-xs text-muted-foreground">{preview.rejected.length} row(s) skipped</span>
+            )}
+          </div>
+          <ul className="max-h-64 divide-y overflow-y-auto rounded-md border">
+            {preview.valid.map((c, i) => (
+              <li key={i} className="flex items-center gap-2 px-3 py-1.5 text-sm">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4"
+                  checked={selected.has(i)}
+                  onChange={(e) =>
+                    setSelected((s) => {
+                      const next = new Set(s);
+                      if (e.target.checked) next.add(i);
+                      else next.delete(i);
+                      return next;
+                    })
+                  }
+                />
+                <span className="min-w-0 flex-1 truncate">{c.name}</span>
+                <span className="shrink-0 text-xs text-muted-foreground">{c.email ?? c.phone}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <Button onClick={submit} disabled={busy || !preview}>
+        {busy ? "Importing…" : preview ? `Import ${selected.size} contacts` : "Preview contacts first"}
       </Button>
     </div>
   );
