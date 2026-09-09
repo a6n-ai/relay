@@ -42,6 +42,42 @@ export function countByChannel(rows: { channel: Channel }[]): Record<Channel, nu
   return out;
 }
 
+export type FortnightCell = {
+  period: "this" | "prior";
+  dayIndex: number;
+  channel: Channel;
+  n: number;
+};
+
+export function foldFortnightCells(cells: FortnightCell[]): {
+  totals: number[];
+  byChannel: Record<Channel, number[]>;
+  channelTotals: Record<Channel, number>;
+  priorMix: Record<Channel, number>;
+} {
+  const byChannel = Object.fromEntries(
+    RELAY_CHANNELS.map((c) => [c.key, Array.from({ length: 7 }, () => 0)]),
+  ) as Record<Channel, number[]>;
+  const priorMix = { ...EMPTY_CHANNEL_COUNTS };
+  for (const cell of cells) {
+    const n = Number(cell.n) || 0;
+    if (!RELAY_CHANNELS.some((c) => c.key === cell.channel)) continue;
+    if (cell.period === "prior") {
+      priorMix[cell.channel] += n;
+      continue;
+    }
+    if (cell.dayIndex < 0 || cell.dayIndex > 6) continue;
+    byChannel[cell.channel][cell.dayIndex] += n;
+  }
+  const totals = Array.from({ length: 7 }, (_, i) =>
+    RELAY_CHANNELS.reduce((sum, c) => sum + byChannel[c.key][i], 0),
+  );
+  const channelTotals = Object.fromEntries(
+    RELAY_CHANNELS.map((c) => [c.key, byChannel[c.key].reduce((a, b) => a + b, 0)]),
+  ) as Record<Channel, number>;
+  return { totals, byChannel, channelTotals, priorMix };
+}
+
 export function lastSevenDayChannelBuckets(
   rows: { createdAt: number; channel: Channel }[],
   now = Date.now(),

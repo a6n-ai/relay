@@ -51,6 +51,7 @@ export function ResourceRow({
         "flex items-center gap-3 px-4 py-3.5",
         href &&
           "transition-colors duration-150 hover:bg-muted/50 active:bg-muted",
+        "[content-visibility:auto] [contain-intrinsic-size:auto_72px]",
       )}
     >
       <div className="min-w-0 flex-1">

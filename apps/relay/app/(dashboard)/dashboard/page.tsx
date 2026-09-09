@@ -1,4 +1,3 @@
-import { count, desc, eq, gte } from "drizzle-orm";
 import { InboxIcon, UsersIcon, XCircleIcon } from "lucide-react";
 import { ChannelDistribution } from "@/components/ds/channel-distribution";
 import { ChannelPerformance } from "@/components/ds/channel-performance";
@@ -7,72 +6,25 @@ import { KeyInsightsCard } from "@/components/ds/key-insights-card";
 import { KpiActionCard } from "@/components/ds/kpi-tile";
 import { OverviewFrame, OverviewSlot } from "@/components/ds/overview-frame";
 import { OverviewGreeting } from "@/components/ds/overview-greeting";
-import {
-  DAY_MS,
-  countByChannel,
-  lastSevenDayChannelBuckets,
-  percentDelta,
-} from "@/components/ds/overview-stats";
+import { percentDelta } from "@/components/ds/overview-stats";
 import { RecentOutboxCard } from "@/components/ds/recent-outbox-card";
 import { ThroughputCard } from "@/components/ds/throughput-card";
-import { db } from "@/db/client";
-import { notificationTables, tenants } from "@/db/schema";
+import { loadHomeMetrics } from "@/lib/dashboard/load-home-metrics";
 import { getSession } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
-  const now = Date.now();
-  const weekStart = now - 6 * DAY_MS;
-  const priorStart = now - 13 * DAY_MS;
-
-  const [session, [{ tenantCount }], [{ pendingCount }], [{ failedCount }], recent, fortnight] =
-    await Promise.all([
-      getSession(),
-      db.select({ tenantCount: count() }).from(tenants),
-      db
-        .select({ pendingCount: count() })
-        .from(notificationTables.notificationOutbox)
-        .where(eq(notificationTables.notificationOutbox.status, "pending")),
-      db
-        .select({ failedCount: count() })
-        .from(notificationTables.notificationOutbox)
-        .where(eq(notificationTables.notificationOutbox.status, "failed")),
-      db
-        .select({
-          publicId: notificationTables.notificationOutbox.publicId,
-          status: notificationTables.notificationOutbox.status,
-          channel: notificationTables.notificationOutbox.channel,
-          kind: notificationTables.notificationOutbox.kind,
-          event: notificationTables.notificationOutbox.event,
-          recipientEmail: notificationTables.notificationOutbox.recipientEmail,
-          recipientPhone: notificationTables.notificationOutbox.recipientPhone,
-          recipientExternalId: notificationTables.notificationOutbox.recipientExternalId,
-        })
-        .from(notificationTables.notificationOutbox)
-        .orderBy(desc(notificationTables.notificationOutbox.createdAt))
-        .limit(8),
-      db
-        .select({
-          createdAt: notificationTables.notificationOutbox.createdAt,
-          channel: notificationTables.notificationOutbox.channel,
-        })
-        .from(notificationTables.notificationOutbox)
-        .where(gte(notificationTables.notificationOutbox.createdAt, priorStart)),
-    ]);
-
-  const thisWeek = fortnight.filter((r) => r.createdAt >= weekStart);
-  const priorWeek = fortnight.filter((r) => r.createdAt < weekStart);
-  const buckets = lastSevenDayChannelBuckets(thisWeek, now);
-  const priorMix = countByChannel(priorWeek);
-  const weekTotal = buckets.totals.reduce((a, b) => a + b, 0);
-  const volumeDelta = percentDelta(weekTotal, priorWeek.length);
-
+  const [session, metrics] = await Promise.all([getSession(), loadHomeMetrics()]);
+  const { tenantCount, pendingCount, failedCount, recent, totals, byChannel, channelTotals, priorMix } =
+    metrics;
+  const weekTotal = totals.reduce((a, b) => a + b, 0);
+  const volumeDelta = percentDelta(weekTotal, priorMix.email + priorMix.sms + priorMix.whatsapp + priorMix.in_app);
   const channelDeltas = {
-    email: percentDelta(buckets.channelTotals.email, priorMix.email),
-    sms: percentDelta(buckets.channelTotals.sms, priorMix.sms),
-    whatsapp: percentDelta(buckets.channelTotals.whatsapp, priorMix.whatsapp),
-    in_app: percentDelta(buckets.channelTotals.in_app, priorMix.in_app),
+    email: percentDelta(channelTotals.email, priorMix.email),
+    sms: percentDelta(channelTotals.sms, priorMix.sms),
+    whatsapp: percentDelta(channelTotals.whatsapp, priorMix.whatsapp),
+    in_app: percentDelta(channelTotals.in_app, priorMix.in_app),
   };
 
   const firstName =
@@ -84,16 +36,16 @@ export default async function DashboardPage() {
         <OverviewGreeting name={firstName} />
       </OverviewSlot>
       <OverviewSlot span={4}>
-        <KeyInsightsCard total={weekTotal} delta={volumeDelta} mix={buckets.channelTotals} />
+        <KeyInsightsCard total={weekTotal} delta={volumeDelta} mix={channelTotals} />
       </OverviewSlot>
       <OverviewSlot className="bg-transparent">
         <DotRule />
       </OverviewSlot>
       <OverviewSlot span={7}>
-        <ThroughputCard total={weekTotal} byChannel={buckets.byChannel} delta={volumeDelta} />
+        <ThroughputCard total={weekTotal} byChannel={byChannel} delta={volumeDelta} />
       </OverviewSlot>
       <OverviewSlot span={5}>
-        <ChannelDistribution counts={buckets.channelTotals} deltas={channelDeltas} />
+        <ChannelDistribution counts={channelTotals} deltas={channelDeltas} />
       </OverviewSlot>
       <OverviewSlot className="bg-transparent">
         <DotRule />
@@ -136,7 +88,7 @@ export default async function DashboardPage() {
         <DotRule />
       </OverviewSlot>
       <OverviewSlot span={4}>
-        <ChannelPerformance counts={buckets.channelTotals} />
+        <ChannelPerformance counts={channelTotals} />
       </OverviewSlot>
       <OverviewSlot span={8}>
         <RecentOutboxCard rows={recent} />

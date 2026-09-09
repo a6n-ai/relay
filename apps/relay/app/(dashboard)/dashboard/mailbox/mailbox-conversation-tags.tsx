@@ -6,7 +6,7 @@ import { XIcon } from "lucide-react";
 import { Badge } from "@foundry/ui/badge";
 import { Button } from "@foundry/ui/button";
 import { Input } from "@foundry/ui/input";
-import { apiFetch } from "@relay/engine/ui";
+import { apiFetch } from "@relay/engine/ui/api-fetch";
 import type { AppMessageTag } from "@/lib/mailbox/listing";
 
 export function MailboxConversationTags({

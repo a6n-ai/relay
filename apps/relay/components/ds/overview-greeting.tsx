@@ -1,6 +1,3 @@
-"use client";
-
-import { useMemo } from "react";
 import Link from "next/link";
 import { ArrowRightIcon, CloudSunIcon, MoonIcon, SunIcon } from "lucide-react";
 import { Button } from "@foundry/ui/button";
@@ -15,7 +12,7 @@ function greetingForHour(hour: number): { label: string; Icon: typeof SunIcon } 
 
 /** Report banner — Shell 03 left hero, Relay copy + geometric mark (not stock art). */
 export function OverviewGreeting({ name }: { name: string }) {
-  const { label, Icon } = useMemo(() => greetingForHour(new Date().getHours()), []);
+  const { label, Icon } = greetingForHour(new Date().getHours());
   return (
     <Card className="h-full gap-0 py-0">
       <CardContent className="flex h-full min-h-44 items-stretch gap-4 p-6">
@@ -30,7 +27,7 @@ export function OverviewGreeting({ name }: { name: string }) {
             </p>
           </div>
           <Button size="sm" className="w-fit" asChild>
-            <Link href="/dashboard/logs">
+            <Link href="/dashboard/logs" prefetch={false}>
               View all sends
               <ArrowRightIcon data-icon="inline-end" />
             </Link>

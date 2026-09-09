@@ -15,6 +15,7 @@ const workspaceRoot = existsSync(path.join(parentRoot, "foundry"))
 const nextConfig: NextConfig = {
   output: "standalone",
   outputFileTracingRoot: workspaceRoot,
+  reactCompiler: true,
   poweredByHeader: false,
   compress: true,
   productionBrowserSourceMaps: false,
@@ -23,7 +24,12 @@ const nextConfig: NextConfig = {
   },
   serverExternalPackages: ["postgres", "drizzle-orm"],
   experimental: {
-    optimizePackageImports: ["lucide-react", "recharts", "@foundry/ui"],
+    optimizePackageImports: [
+      "lucide-react",
+      "@foundry/ui",
+      "@foundry/design-system",
+      "@foundry/crm",
+    ],
   },
   transpilePackages: [
     "@foundry/auth",

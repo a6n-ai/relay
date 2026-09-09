@@ -175,7 +175,7 @@ export default async function TenantDetailPage({
         {tags.length === 0 ? (
           <p className="text-muted-foreground text-sm">None yet.</p>
         ) : null}
-        <Link className="mt-3 inline-block text-sm underline underline-offset-2" href="/dashboard/settings/tags">
+        <Link className="mt-3 inline-block text-sm underline underline-offset-2" href="/dashboard/settings/tags" prefetch={false}>
           Open tags
         </Link>
       </SectionCard>

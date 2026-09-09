@@ -7,7 +7,7 @@ import { Button } from "@foundry/ui/button";
 import { Input } from "@foundry/ui/input";
 import { Label } from "@foundry/ui/label";
 import { Textarea } from "@foundry/ui/textarea";
-import { apiFetch } from "@relay/engine/ui";
+import { apiFetch } from "@relay/engine/ui/api-fetch";
 import type { ComposeFromOption } from "@/lib/mailbox/compose-from";
 
 export function SendMailboxLetterForm({

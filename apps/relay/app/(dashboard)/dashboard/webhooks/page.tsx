@@ -21,8 +21,9 @@ export default async function WebhooksPage() {
     tenantWebhooksService.listRecent(),
   ]);
 
+  const tenantById = new Map(tenantRows.map((t) => [t.id, t]));
   const items: ListingRow[] = rows.map((r) => {
-    const tenant = tenantRows.find((t) => t.id === r.tenantId);
+    const tenant = tenantById.get(r.tenantId);
     const title = tenant?.name ?? "App";
     const eventLabels = r.events.map((ev) => webhookEventLabel(ev));
     return {

@@ -1,11 +1,21 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "globalDependencies": ["tsconfig.base.json"],
+  "globalPassThroughEnv": ["CI", "NEXT_TELEMETRY_DISABLED", "TURBO_TELEMETRY_DISABLED"],
   "tasks": {
-    "build": { "dependsOn": ["^build"], "outputs": [".next/**", "!.next/cache/**"] },
-    "lint": {},
-    "typecheck": { "dependsOn": ["^typecheck"] },
-    "test": {},
+    "transit": { "dependsOn": ["^transit"] },
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": [".next/**", "!.next/cache/**", "!.next/dev/**"],
+      "inputs": ["$TURBO_DEFAULT$", ".env", ".env.*"],
+      "env": ["DATABASE_URL", "BETTER_AUTH_SECRET", "BETTER_AUTH_URL", "NODE_ENV"]
+    },
+    "lint": { "dependsOn": ["transit"] },
+    "typecheck": {
+      "dependsOn": ["transit"],
+      "outputs": ["node_modules/.cache/tsbuildinfo.json"]
+    },
+    "test": { "dependsOn": ["transit"] },
     "dev": { "cache": false, "persistent": true }
   }
 }

@@ -1,9 +1,12 @@
+import { eq } from "drizzle-orm";
 import { MegaphoneIcon } from "lucide-react";
 import { PageHeader, PageShell, SectionCard } from "@foundry/design-system";
 import { OperatorSplit } from "@/components/ds/operator-split";
 import { FilteredResourceList } from "@/components/ds/listing-controls";
 import type { ListingFilter, ListingRow } from "@/components/ds/listing-controls";
 import { campaignStatusLabel } from "@/components/ds/plain-labels";
+import { db } from "@/db/client";
+import { campaignTenant, tenants } from "@/db/schema";
 import { campaignsService, contactListsService } from "@/lib/services/campaigns.service";
 import { tenantsService } from "@/lib/services/tenants.service";
 import { CreateCampaignForm } from "./create-campaign-form";
@@ -20,21 +23,20 @@ const CAMPAIGN_FILTERS: ListingFilter[] = [
 ];
 
 export default async function CampaignsPage() {
-  const [{ items: campaigns }, { items: tenantRows }, { items: lists }] = await Promise.all([
+  const [{ items: campaigns }, { items: tenantRows }, { items: lists }, bindings] = await Promise.all([
     campaignsService.listRecent(),
     tenantsService.listRecent(),
     contactListsService.listRecent(),
+    db
+      .select({ campaignId: campaignTenant.campaignId, tenantName: tenants.name })
+      .from(campaignTenant)
+      .innerJoin(tenants, eq(campaignTenant.tenantId, tenants.id)),
   ]);
-  const withTenant = await Promise.all(
-    campaigns.map(async (c) => ({
-      ...c,
-      tenantName: (await campaignsService.tenantForCampaign(c.id))?.name,
-    })),
-  );
+  const tenantNameByCampaign = new Map(bindings.map((b) => [String(b.campaignId), b.tenantName]));
 
-  const items: ListingRow[] = withTenant.map((c) => {
+  const items: ListingRow[] = campaigns.map((c) => {
     const status = campaignStatusLabel(c.status);
-    const meta = c.tenantName ?? "No app chosen";
+    const meta = tenantNameByCampaign.get(String(c.id)) ?? "No app chosen";
     return {
       id: c.publicId,
       title: c.name,

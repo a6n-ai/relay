@@ -10,6 +10,11 @@ allowBuilds:
 # github: path deps, which pnpm 11 treats as exotic subdeps unless this is off.
 blockExoticSubdeps: false
 
+packageExtensions:
+  next:
+    dependencies:
+      babel-plugin-react-compiler: "^1.0.0"
+
 overrides:
   "@foundry/ai": "github:a6n-ai/foundry#path:packages/ai"
   "@foundry/auth": "github:a6n-ai/foundry#path:packages/auth"

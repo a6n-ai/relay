@@ -7,7 +7,7 @@ import { Button } from "@foundry/ui/button";
 import {
   ResponsiveDialog,
 } from "@foundry/design-system";
-import { apiFetch } from "@relay/engine/ui";
+import { apiFetch } from "./api-fetch";
 
 /**
  * A send is irreversible, so it goes through an explicit confirmation that

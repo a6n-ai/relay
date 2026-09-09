@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { MegaphoneIcon } from "lucide-react";
 import { Badge } from "@foundry/ui/badge";
 import { PageHeader, PageShell, SectionCard } from "@foundry/design-system";
-import { CampaignSendButton } from "@relay/engine/ui";
+import { CampaignSendButton } from "@relay/engine/ui/campaign-send-button";
 import { countAudience, type AudienceDef } from "@relay/engine";
 import { operatorCampaignDeps } from "@/lib/campaigns/deps";
 import { OperatorSplit } from "@/components/ds/operator-split";

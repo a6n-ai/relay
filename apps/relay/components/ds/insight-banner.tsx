@@ -20,7 +20,7 @@ export function InsightBanner({ pending, failed }: { pending: number; failed: nu
           <p className="text-sm font-normal text-pretty">{copy.body}</p>
         </div>
         <Button variant="outline" size="sm" className="shrink-0" asChild>
-          <Link href={copy.href}>
+          <Link href={copy.href} prefetch={false}>
             {copy.cta}
             <ArrowRightIcon data-icon="inline-end" />
           </Link>

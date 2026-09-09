@@ -65,7 +65,7 @@ export default async function EmailSettingsPage() {
               </p>
             </SectionCard>
             <SectionCard title="Domains" subtitle={`${verifiedCount} ready of ${domains.length}. Add and check DNS on each app.`}>
-              <Link className="text-sm underline underline-offset-2" href="/dashboard/tenants">
+              <Link className="text-sm underline underline-offset-2" href="/dashboard/tenants" prefetch={false}>
                 Open apps
               </Link>
             </SectionCard>

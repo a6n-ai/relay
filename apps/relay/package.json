@@ -44,8 +44,6 @@
     "react-dom": "19.2.4",
     "react-hook-form": "^7.79.0",
     "react-phone-number-input": "^3.4.18",
-    "recharts": "3.8.0",
-    "simplebar-react": "^3.3.2",
     "sns-validator": "^0.3.5",
     "sonner": "^2.0.7",
     "zod": "^4.4.3"
@@ -56,6 +54,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "babel-plugin-react-compiler": "^1.0.0",
     "drizzle-kit": "^0.31.10",
     "eslint": "^9",
     "shadcn": "^4.11.0",

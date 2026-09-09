@@ -7,7 +7,8 @@ import { Button } from "@foundry/ui/button";
 import { Input } from "@foundry/ui/input";
 import { Label } from "@foundry/ui/label";
 import { Textarea } from "@foundry/ui/textarea";
-import { EmailEditorField, apiFetch, type EmailEditorFieldHandle } from "@relay/engine/ui";
+import { apiFetch } from "./api-fetch";
+import { EmailEditorField, type EmailEditorFieldHandle } from "./email-editor";
 import { AudienceBuilder, type AudienceValue, type ContactListOption } from "./audience-builder";
 
 const CHANNELS = [

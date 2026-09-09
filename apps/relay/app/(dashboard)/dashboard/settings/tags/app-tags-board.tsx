@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { TagsIcon, XIcon } from "lucide-react";
 import { Button } from "@foundry/ui/button";
-import { apiFetch } from "@relay/engine/ui";
+import { apiFetch } from "@relay/engine/ui/api-fetch";
 import {
   listingCountLabel,
   ListingToolbar,

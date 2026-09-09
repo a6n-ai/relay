@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { Button } from "@foundry/ui/button";
 import { Input } from "@foundry/ui/input";
 import { Label } from "@foundry/ui/label";
-import { apiFetch } from "@relay/engine/ui";
+import { apiFetch } from "@relay/engine/ui/api-fetch";
 
 export function CreateAppTagForm({
   apps,
