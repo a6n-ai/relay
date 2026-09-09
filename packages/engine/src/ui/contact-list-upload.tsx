@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { parseCsv } from "@relay/engine";
-import { apiFetch } from "@relay/engine/ui";
+import { apiFetch } from "./api-fetch";
 import { Button } from "@foundry/ui/button";
 import { Input } from "@foundry/ui/input";
 import { Label } from "@foundry/ui/label";
@@ -63,6 +63,7 @@ export function ContactListUpload() {
   async function submit() {
     if (!name.trim()) return toast.error("Name this group");
     if (!file) return toast.error("Choose a spreadsheet");
+    if (!mapping.name) return toast.error("Pick which column is name");
     if (!mapping.email && !mapping.phone) return toast.error("Pick which column is email or phone");
 
     setBusy(true);

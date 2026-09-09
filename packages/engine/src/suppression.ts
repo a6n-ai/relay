@@ -1,25 +1,16 @@
 import { and, inArray } from "drizzle-orm";
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
+import { normalizeAddress } from "@foundry/commons";
 import type { NotificationTables } from "./schema";
 import type { Channel, Kind } from "./types";
+
+export { normalizeAddress };
 
 // Schema generic is loose (matches @foundry/database's Database type): these
 // helpers only use the core query builder, and pinning a concrete schema would
 // reject every app `db` — each app has its own schema shape.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Db = PostgresJsDatabase<any>;
-
-/**
- * One normalizer for both address kinds. An email is lowercased (bounce
- * payloads echo the envelope as sent, which may differ in case from what
- * better-auth stored); a phone keeps a leading `+` and drops formatting.
- */
-export function normalizeAddress(address: string): string {
-  const trimmed = address.trim();
-  if (trimmed.includes("@")) return trimmed.toLowerCase();
-  const digits = trimmed.replace(/[^\d]/g, "");
-  return trimmed.startsWith("+") ? `+${digits}` : digits;
-}
 
 export type SuppressionScope = "all" | "marketing";
 

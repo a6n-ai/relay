@@ -26,7 +26,7 @@ export const createContactListFromSegmentSchema = createContactListSchema.extend
 export const importMappingSchema = z.object({
   email: z.string().optional(),
   phone: z.string().optional(),
-  name: z.string().optional(),
+  name: z.string(),
 });
 
 export interface ContactListRow {
@@ -176,15 +176,66 @@ export async function resyncContactList(
   return { imported };
 }
 
+export interface ContactListMemberRow {
+  publicId: string;
+  name: string | null;
+  email: string | null;
+  phone: string | null;
+  unsubscribedAt: number | null;
+}
+
+export async function listContactListMembers(
+  deps: CampaignRouteDeps,
+  listPublicId: string,
+): Promise<ContactListMemberRow[] | null> {
+  const { db, tables } = deps;
+  const [list] = await db
+    .select({ id: tables.contactList.id })
+    .from(tables.contactList)
+    .where(eq(tables.contactList.publicId, listPublicId));
+  if (!list) return null;
+
+  return db
+    .select({
+      publicId: tables.contactListMember.publicId,
+      name: tables.contactListMember.name,
+      email: tables.contactListMember.email,
+      phone: tables.contactListMember.phone,
+      unsubscribedAt: tables.contactListMember.unsubscribedAt,
+    })
+    .from(tables.contactListMember)
+    .where(eq(tables.contactListMember.listId, list.id))
+    .orderBy(tables.contactListMember.name);
+}
+
+export async function getContactListMember(
+  deps: CampaignRouteDeps,
+  memberPublicId: string,
+): Promise<ContactListMemberRow | null> {
+  const { db, tables } = deps;
+  const [row] = await db
+    .select({
+      publicId: tables.contactListMember.publicId,
+      name: tables.contactListMember.name,
+      email: tables.contactListMember.email,
+      phone: tables.contactListMember.phone,
+      unsubscribedAt: tables.contactListMember.unsubscribedAt,
+    })
+    .from(tables.contactListMember)
+    .where(eq(tables.contactListMember.publicId, memberPublicId));
+  return row ?? null;
+}
+
 export async function importContactListMembers(
   deps: CampaignRouteDeps,
   listPublicId: string,
   file: File,
-  mapping: { email?: string; phone?: string; name?: string },
+  mapping: { email?: string; phone?: string; name: string },
 ): Promise<{ imported: number; rejected: { row: number; reason: string }[] } | { error: string; status: number }> {
   const { db, tables } = deps;
 
   if (file.size > MAX_IMPORT_BYTES) return { error: "File is larger than 5MB", status: 413 };
+  if (!mapping.name) return { error: "Map a name column", status: 400 };
   if (!mapping.email && !mapping.phone) return { error: "Map an email or phone column", status: 400 };
 
   const [list] = await db
