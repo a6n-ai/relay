@@ -18,6 +18,7 @@ export * from "./tenant-enqueue";
 export * from "./tenant-handlers";
 export * from "./tenant-template";
 export * from "./handlers";
+export * from "./campaign-config";
 export * from "./mailbox";
 export * from "./mailbox-inbound";
 export * from "./people-mail";
