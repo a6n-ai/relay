@@ -1,6 +1,6 @@
 import { eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
-import { mapRows, parseCsv } from "./csv";
+import { mapRows, normalizeAddress, parseCsv } from "./csv";
 import type { CampaignRouteDeps } from "./campaign-routes";
 
 
@@ -22,6 +22,14 @@ export const createContactListFromSegmentSchema = createContactListSchema.extend
     requireVerifiedPhone: z.boolean().optional(),
   }),
 });
+
+export const manualContactSchema = z
+  .object({
+    name: z.string().trim().min(1),
+    email: z.string().trim().email().optional(),
+    phone: z.string().trim().optional(),
+  })
+  .refine((c) => c.email || c.phone, { message: "Enter an email or phone", path: ["email"] });
 
 export const importMappingSchema = z.object({
   email: z.string().optional(),
@@ -224,6 +232,34 @@ export async function getContactListMember(
     .from(tables.contactListMember)
     .where(eq(tables.contactListMember.publicId, memberPublicId));
   return row ?? null;
+}
+
+// Manual, no-CSV path for adding a small handful of contacts by hand. Same
+// mandatory-name/email-or-phone rule as import, applied per contact by
+// manualContactSchema instead of mapRows' per-row CSV logic.
+export async function addContactListMembers(
+  deps: CampaignRouteDeps,
+  listPublicId: string,
+  contacts: z.infer<typeof manualContactSchema>[],
+): Promise<{ imported: number } | { error: string; status: number }> {
+  const { db, tables } = deps;
+  const [list] = await db
+    .select({ id: tables.contactList.id })
+    .from(tables.contactList)
+    .where(eq(tables.contactList.publicId, listPublicId));
+  if (!list) return { error: "List not found", status: 404 };
+
+  const imported = await insertMembersAndRecount(
+    deps,
+    list.id as bigint,
+    contacts.map((c) => ({
+      email: c.email ? normalizeAddress(c.email) : null,
+      phone: c.phone ? normalizeAddress(c.phone) : null,
+      name: c.name,
+      vars: {},
+    })),
+  );
+  return { imported };
 }
 
 export async function importContactListMembers(
