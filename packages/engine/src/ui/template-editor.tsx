@@ -9,21 +9,18 @@
  * than attempted alongside a lint sweep.
  */
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
-import { BellIcon, TriangleAlertIcon } from "lucide-react";
+import { BellIcon } from "lucide-react";
 import { toast } from "sonner";
 import { apiFetch } from "./api-fetch";
-import { lintEmailHtml } from "./email-compat";
-import { formatCode } from "./format";
-import { compileReactEmail, REACT_SOURCE_MARKER } from "./react-template";
 import "@uiw/react-md-editor/markdown-editor.css";
 import { Button } from "@foundry/ui/button";
 import { Input } from "@foundry/ui/input";
 import { Switch } from "@foundry/ui/switch";
 import { Tabs, TabsList, TabsTrigger } from "@foundry/ui/tabs";
 import { Skeleton } from "@foundry/ui/skeleton";
-import { EmailEditorField, type EmailEditorFieldHandle } from "./email-editor";
+import { EmailContentEditor, type EmailContentEditorHandle } from "./email-content-editor";
 
 const MDEditor = dynamic(() => import("@uiw/react-md-editor"), { ssr: false });
 
@@ -39,52 +36,6 @@ const editorShell = {
 
 type Channel = "email" | "in_app";
 type Locale = "en" | "fr";
-type EmailMode = "visual" | "html" | "react";
-
-const REACT_STARTER = `export default function Email() {
-  return (
-    <Html>
-      <Body style={{ fontFamily: "Inter, Arial, sans-serif", backgroundColor: "#faf6f0" }}>
-        <Container style={{ maxWidth: 560, margin: "0 auto", padding: 24 }}>
-          <Heading>Thanks, {"{{order.customerName}}"} 👋</Heading>
-          <Text>Order {"{{order.code}}"} received — we're on it.</Text>
-          <Button href="https://tiffingrab.example/orders/{{order.code}}">View order</Button>
-        </Container>
-      </Body>
-    </Html>
-  );
-}`;
-
-// ponytail: naive tag-strip for the plaintext fallback. Good enough for a text
-// part; upgrade to a real html-to-text pass if deliverability complains.
-function htmlToText(html: string): string {
-  let s = html;
-  for (;;) {
-    const lower = s.toLowerCase();
-    const start = lower.indexOf("<style");
-    if (start < 0) break;
-    const end = lower.indexOf("</style>", start);
-    if (end < 0) {
-      s = s.slice(0, start);
-      break;
-    }
-    s = s.slice(0, start) + s.slice(end + 8);
-  }
-  let out = "";
-  let i = 0;
-  while (i < s.length) {
-    if (s[i] === "<") {
-      const close = s.indexOf(">", i + 1);
-      if (close < 0) break;
-      out += " ";
-      i = close + 1;
-      continue;
-    }
-    out += s[i];
-    i += 1;
-  }
-  return out.replace(/&nbsp;/gi, " ").replace(/\s+/g, " ").trim();
-}
 
 interface Row {
   channel: Channel;
@@ -107,33 +58,12 @@ export function TemplateEditor({
 }) {
   const [channel, setChannel] = useState<Channel>("email");
   const [locale, setLocale] = useState<Locale>("en");
-  const [mode, setMode] = useState<EmailMode>("visual");
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
-  const [rawHtml, setRawHtml] = useState("");
-  const [reactSource, setReactSource] = useState("");
-  const [reactHtml, setReactHtml] = useState("");
-  const [reactError, setReactError] = useState("");
   const [enabled, setEnabled] = useState(true);
-  const [preview, setPreview] = useState("");
   const [testEmail, setTestEmail] = useState("");
   const [busy, setBusy] = useState(false);
-  const emailRef = useRef<EmailEditorFieldHandle>(null);
-  const previewTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
-
-  const compatWarnings = useMemo(
-    () => (channel === "email" && mode === "html" ? lintEmailHtml(rawHtml) : []),
-    [channel, mode, rawHtml],
-  );
-
-  // Debounced live email preview — re-export the rendered HTML shortly after edits.
-  function refreshEmailPreview() {
-    clearTimeout(previewTimer.current);
-    previewTimer.current = setTimeout(async () => {
-      const out = await emailRef.current?.exportEmail();
-      if (out) setPreview(out.body);
-    }, 250);
-  }
+  const emailContentRef = useRef<EmailContentEditorHandle>(null);
 
   // The row for the active channel/locale. The email editor loads its initial
   // content synchronously from this (TipTap won't react to a later prop change),
@@ -141,62 +71,27 @@ export function TemplateEditor({
   const current = initial.find((t) => t.channel === channel && t.locale === locale);
 
   useEffect(() => {
-    const b = current?.body ?? "";
-    const isReact = b.startsWith(REACT_SOURCE_MARKER);
     setSubject(current?.subject ?? "");
-    setBody(b);
-    setRawHtml(current?.html ?? "");
-    setReactSource(isReact ? b.slice(REACT_SOURCE_MARKER.length) : "");
-    setReactHtml(isReact ? (current?.html ?? "") : "");
-    setReactError("");
-    setMode(isReact ? "react" : "visual");
+    setBody(current?.body ?? "");
     setEnabled(current?.enabled ?? true);
-    setPreview("");
   }, [channel, locale, current]);
-
-  // Debounced client-side React compile — transpile + render in this browser.
-  useEffect(() => {
-    if (channel !== "email" || mode !== "react") return;
-    if (!reactSource.trim()) {
-      setReactHtml("");
-      setReactError("");
-      return;
-    }
-    const id = setTimeout(async () => {
-      try {
-        setReactHtml(await compileReactEmail(reactSource));
-        setReactError("");
-      } catch (e) {
-        setReactError(e instanceof Error ? e.message : String(e));
-      }
-    }, 350);
-    return () => clearTimeout(id);
-  }, [channel, mode, reactSource]);
 
   async function save() {
     setBusy(true);
     let payload: Record<string, unknown> = { event, channel, locale, subject, enabled };
     if (channel === "email") {
-      if (mode === "react") {
-        let html: string;
-        try {
-          html = await compileReactEmail(reactSource);
-        } catch (e) {
-          setBusy(false);
-          toast.error(`React compile failed: ${e instanceof Error ? e.message : String(e)}`);
-          return;
-        }
-        payload = { ...payload, body: REACT_SOURCE_MARKER + reactSource, html, text: htmlToText(html) };
-      } else if (mode === "html") {
-        payload = { ...payload, body: rawHtml, html: rawHtml, text: htmlToText(rawHtml) };
-      } else {
-        if (!emailRef.current) {
-          setBusy(false);
-          toast.error("Editor not ready — please wait and try again");
-          return;
-        }
-        const out = await emailRef.current.exportEmail();
+      if (!emailContentRef.current) {
+        setBusy(false);
+        toast.error("Editor not ready — please wait and try again");
+        return;
+      }
+      try {
+        const out = await emailContentRef.current.exportEmail();
         payload = { ...payload, body: out.body, html: out.html, text: out.text };
+      } catch (e) {
+        setBusy(false);
+        toast.error(e instanceof Error ? e.message : "Couldn't export the email");
+        return;
       }
     } else {
       payload = { ...payload, body };
@@ -215,43 +110,24 @@ export function TemplateEditor({
     }
   }
 
-  // Prettify the raw HTML / React source in place. Client-side, so a syntax
-  // error just surfaces as a toast rather than mangling the buffer.
-  async function format() {
-    try {
-      if (mode === "html") setRawHtml(await formatCode(rawHtml, "html"));
-      else if (mode === "react") setReactSource(await formatCode(reactSource, "react"));
-    } catch (e) {
-      toast.error(`Format failed: ${e instanceof Error ? e.message : String(e)}`);
-    }
-  }
-
   async function sendTest() {
     if (channel !== "email") {
       toast.error("Test send is email only");
       return;
     }
+    if (!emailContentRef.current) {
+      toast.error("Editor not ready — please wait and try again");
+      return;
+    }
     let html: string;
     let text: string;
-    if (mode === "react") {
-      try {
-        html = await compileReactEmail(reactSource);
-      } catch (e) {
-        toast.error(`React compile failed: ${e instanceof Error ? e.message : String(e)}`);
-        return;
-      }
-      text = htmlToText(html);
-    } else if (mode === "html") {
-      html = rawHtml;
-      text = htmlToText(rawHtml);
-    } else {
-      if (!emailRef.current) {
-        toast.error("Editor not ready — please wait and try again");
-        return;
-      }
-      const out = await emailRef.current.exportEmail();
+    try {
+      const out = await emailContentRef.current.exportEmail();
       html = out.html;
       text = out.text;
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Couldn't export the email");
+      return;
     }
     setBusy(true);
     try {
@@ -288,161 +164,62 @@ export function TemplateEditor({
         </label>
       </div>
 
-      <div className={editorShell.grid}>
-        {/* Editor column */}
-        <div className={editorShell.editorCol}>
-          <Input
-            value={subject}
-            onChange={(e) => setSubject(e.target.value)}
-            placeholder="Subject / in-app title"
-          />
+      <Input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Subject / in-app title" />
 
-          {channel === "email" ? (
-            <>
-              <div className="flex items-center justify-between gap-2">
-                <Tabs value={mode} onValueChange={(v) => setMode(v as EmailMode)}>
-                  <TabsList>
-                    <TabsTrigger value="visual">Visual</TabsTrigger>
-                    <TabsTrigger value="html">HTML</TabsTrigger>
-                    <TabsTrigger value="react">React</TabsTrigger>
-                  </TabsList>
-                </Tabs>
-                {mode !== "visual" && (
-                  <div className="flex items-center gap-3">
-                    {variables.length > 0 && (
-                      <span className="hidden text-xs text-muted-foreground sm:inline">
-                        Use {`{{var}}`} tokens, e.g. <code className="font-mono">{`{{${variables[0]}}}`}</code>
-                      </span>
-                    )}
-                    <Button type="button" variant="outline" size="sm" onClick={format}>
-                      Format
-                    </Button>
-                  </div>
-                )}
+      {channel === "email" ? (
+        <EmailContentEditor
+          key={`${channel}-${locale}`}
+          ref={emailContentRef}
+          initialBody={current?.body ?? ""}
+          initialHtml={current?.html ?? ""}
+          variables={variables}
+        />
+      ) : (
+        <div className={editorShell.grid}>
+          <div className={editorShell.editorCol}>
+            {variables.length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {variables.map((v) => (
+                  <button
+                    key={v}
+                    type="button"
+                    className="rounded bg-muted px-2 py-0.5 font-mono text-xs hover:bg-accent"
+                    onClick={() => setBody((b) => `${b}{{${v}}}`)}
+                  >
+                    {`{{${v}}}`}
+                  </button>
+                ))}
               </div>
-              {mode === "visual" ? (
-                <EmailEditorField
-                  key={`${channel}-${locale}`}
-                  ref={emailRef}
-                  initialHtml={current?.body ?? ""}
-                  variables={variables}
-                  onChange={refreshEmailPreview}
-                />
-              ) : mode === "html" ? (
-                <>
-                  <textarea
-                    value={rawHtml}
-                    onChange={(e) => setRawHtml(e.target.value)}
-                    spellCheck={false}
-                    placeholder="<!DOCTYPE html> … paste rich email HTML here"
-                    className="h-[600px] w-full resize-y rounded-lg border bg-muted/20 p-3 font-mono text-xs leading-relaxed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  />
-                  {compatWarnings.length > 0 && (
-                    <div className="rounded-lg border border-warn/40 bg-warn/10 p-3 text-xs">
-                      <p className="mb-1.5 flex items-center gap-1.5 font-medium text-warn">
-                        <TriangleAlertIcon className="size-3.5" />
-                        Email client compatibility ({compatWarnings.length})
-                      </p>
-                      <ul className="space-y-0.5 text-muted-foreground">
-                        {compatWarnings.map((w, i) => (
-                          <li key={`${w.line}-${w.property}-${i}`}>
-                            <span className="font-mono">L{w.line}</span> · <strong>{w.property}</strong> — not
-                            supported in {w.clients}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </>
-              ) : (
-                <>
-                  <textarea
-                    value={reactSource}
-                    onChange={(e) => setReactSource(e.target.value)}
-                    spellCheck={false}
-                    placeholder={REACT_STARTER}
-                    className="h-[600px] w-full resize-y rounded-lg border bg-muted/20 p-3 font-mono text-xs leading-relaxed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  />
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs text-muted-foreground">
-                      <code className="font-mono">export default</code> a react-email component. Components
-                      (Html, Body, Container, Heading, Text, Button…) are in scope — no imports needed.
-                    </span>
-                    {!reactSource.trim() && (
-                      <Button type="button" variant="outline" size="sm" onClick={() => setReactSource(REACT_STARTER)}>
-                        Insert starter
-                      </Button>
-                    )}
-                  </div>
-                  {reactError && (
-                    <div className="rounded-lg border border-red-300/60 bg-red-50 p-3 text-xs dark:border-red-500/30 dark:bg-red-950/30">
-                      <p className="flex items-center gap-1.5 font-medium text-red-900 dark:text-red-200">
-                        <TriangleAlertIcon className="size-3.5" /> Compile error
-                      </p>
-                      <pre className="mt-1 whitespace-pre-wrap font-mono text-red-800 dark:text-red-300">{reactError}</pre>
-                    </div>
-                  )}
-                </>
-              )}
-            </>
-          ) : (
-            <>
-              {variables.length > 0 && (
-                <div className="flex flex-wrap gap-1">
-                  {variables.map((v) => (
-                    <button
-                      key={v}
-                      type="button"
-                      className="rounded bg-muted px-2 py-0.5 font-mono text-xs hover:bg-accent"
-                      onClick={() => setBody((b) => `${b}{{${v}}}`)}
-                    >
-                      {`{{${v}}}`}
-                    </button>
-                  ))}
-                </div>
-              )}
-              <div data-color-mode="light">
-                <MDEditor value={body} onChange={(v) => setBody(v ?? "")} height={280} />
-              </div>
-            </>
-          )}
-
-          <div className="flex gap-2">
-            <Button onClick={save} disabled={busy}>
-              Save
-            </Button>
-            {channel === "email" && (
-              <>
-                <Input
-                  type="email"
-                  value={testEmail}
-                  onChange={(e) => setTestEmail(e.target.value)}
-                  placeholder="test recipient (defaults to you)"
-                  className="max-w-64"
-                />
-                <Button variant="outline" onClick={sendTest} disabled={busy}>
-                  Send test
-                </Button>
-              </>
             )}
+            <div data-color-mode="light">
+              <MDEditor value={body} onChange={(v) => setBody(v ?? "")} height={280} />
+            </div>
+          </div>
+          <div className={editorShell.previewCol}>
+            <p className="text-xs font-medium text-muted-foreground">Live preview — in-app</p>
+            <InAppPreview title={subject} body={body} />
           </div>
         </div>
+      )}
 
-        {/* Live preview column */}
-        <div className={editorShell.previewCol}>
-          <p className="text-xs font-medium text-muted-foreground">
-            Live preview {channel === "email" ? "— email" : "— in-app"}
-          </p>
-          {channel === "email" ? (
-            <iframe
-              title="preview"
-              srcDoc={mode === "html" ? rawHtml : mode === "react" ? reactHtml : preview}
-              className="h-[600px] w-full rounded-lg border bg-white"
+      <div className="flex gap-2">
+        <Button onClick={save} disabled={busy}>
+          Save
+        </Button>
+        {channel === "email" && (
+          <>
+            <Input
+              type="email"
+              value={testEmail}
+              onChange={(e) => setTestEmail(e.target.value)}
+              placeholder="test recipient (defaults to you)"
+              className="max-w-64"
             />
-          ) : (
-            <InAppPreview title={subject} body={body} />
-          )}
-        </div>
+            <Button variant="outline" onClick={sendTest} disabled={busy}>
+              Send test
+            </Button>
+          </>
+        )}
       </div>
     </div>
   );
@@ -470,7 +247,7 @@ export function TemplateEditorSkeleton() {
       </div>
     </div>
   );
-};
+}
 
 /** Mirrors renderInApp: interpolated title + plaintext body, no markdown/email chrome. */
 function InAppPreview({ title, body }: { title: string; body: string }) {
@@ -480,9 +257,7 @@ function InAppPreview({ title, body }: { title: string; body: string }) {
         <BellIcon className="mt-0.5 size-5 shrink-0 text-muted-foreground" />
         <div className="min-w-0 space-y-1">
           <p className="font-medium text-foreground">{title || "Notification title"}</p>
-          <p className="whitespace-pre-wrap text-sm text-muted-foreground">
-            {body || "Notification body…"}
-          </p>
+          <p className="whitespace-pre-wrap text-sm text-muted-foreground">{body || "Notification body…"}</p>
         </div>
       </div>
     </div>

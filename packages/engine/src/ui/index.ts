@@ -17,6 +17,7 @@ export * from "./contact-list-upload";
 export * from "./create-list-with-contacts";
 export * from "./date";
 export * from "./email-compat";
+export * from "./email-content-editor";
 export * from "./email-editor";
 export * from "./format";
 export * from "./notification-bell";

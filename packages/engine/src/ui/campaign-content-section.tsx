@@ -11,7 +11,7 @@ import { Label } from "@foundry/ui/label";
 import { Textarea } from "@foundry/ui/textarea";
 import { apiFetch } from "./api-fetch";
 import { CampaignAttachments, type CampaignAttachment } from "./campaign-attachments";
-import { EmailEditorField, type EmailEditorFieldHandle } from "./email-editor";
+import { EmailContentEditor, type EmailContentEditorHandle } from "./email-content-editor";
 
 export interface CampaignContentRow {
   channel: string;
@@ -54,7 +54,7 @@ function EmailRow({
   const [subject, setSubject] = useState(row.subject);
   const [attachments, setAttachments] = useState<CampaignAttachment[]>(row.attachments ?? []);
   const [saving, setSaving] = useState(false);
-  const editor = useRef<EmailEditorFieldHandle>(null);
+  const editor = useRef<EmailContentEditorHandle>(null);
 
   async function save() {
     if (!subject.trim()) return toast.error("Add a subject");
@@ -106,7 +106,12 @@ function EmailRow({
           </div>
           <div className="space-y-1.5">
             <Label>Message</Label>
-            <EmailEditorField ref={editor} initialHtml={row.html ?? ""} variables={CAMPAIGN_VARIABLES} />
+            <EmailContentEditor
+              ref={editor}
+              initialBody={row.body ?? ""}
+              initialHtml={row.html ?? ""}
+              variables={CAMPAIGN_VARIABLES}
+            />
           </div>
           <CampaignAttachments value={attachments} onChange={setAttachments} />
           <div className="flex justify-end gap-2">

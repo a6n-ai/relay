@@ -9,7 +9,7 @@ import { Label } from "@foundry/ui/label";
 import { Textarea } from "@foundry/ui/textarea";
 import { apiFetch } from "./api-fetch";
 import { CampaignAttachments, type CampaignAttachment } from "./campaign-attachments";
-import { EmailEditorField, type EmailEditorFieldHandle } from "./email-editor";
+import { EmailContentEditor, type EmailContentEditorHandle } from "./email-content-editor";
 import { AudienceBuilder, type AudienceValue, type ContactListOption } from "./audience-builder";
 
 const CHANNELS = [
@@ -33,7 +33,7 @@ export function CampaignComposer({
   timeZone: string;
 }) {
   const router = useRouter();
-  const editor = useRef<EmailEditorFieldHandle>(null);
+  const editor = useRef<EmailContentEditorHandle>(null);
 
   const [name, setName] = useState("");
   const [channel, setChannel] = useState<ChannelKey>("email");
@@ -117,7 +117,7 @@ export function CampaignComposer({
           <Label>Message</Label>
           {/* Campaign copy is free-form, so the only merge vars offered are the
               contact fields the CSV importer lifts. */}
-          <EmailEditorField ref={editor} initialHtml="" variables={CAMPAIGN_VARIABLES} />
+          <EmailContentEditor ref={editor} initialBody="" initialHtml="" variables={CAMPAIGN_VARIABLES} />
           <p className="text-xs text-muted-foreground">
             An unsubscribe link, the sender name and the postal address are appended automatically —
             they are legally required and cannot be removed from the copy.
