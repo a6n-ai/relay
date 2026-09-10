@@ -162,3 +162,51 @@ export async function drainPending(deps: DrainDeps, limit = 25, maxBatches = 20)
   }
   return total;
 }
+
+interface DrainLogger {
+  info(obj: Record<string, unknown>, msg: string): void;
+  error(obj: Record<string, unknown>, msg: string): void;
+}
+
+export interface DrainLoopOptions {
+  intervalMs: number;
+  signal?: AbortSignal;
+  /** Bound drainPending call for the host app. */
+  drain: () => Promise<number>;
+  /** Bound materialize-due-campaigns call for the host app. */
+  materialize: () => Promise<number>;
+  log: DrainLogger;
+}
+
+/**
+ * Poll the outbox forever. The one worker loop every app's `notify-drainer`
+ * entrypoint runs — kept here so tiffin-grab and puchkaman can't drift.
+ *
+ * Postgres IS the queue — the outbox has FOR UPDATE SKIP LOCKED claiming,
+ * backoff, attempt counting and a dead-letter status, so no broker is involved.
+ * drainPending() already loops batches until the queue empties, so a burst
+ * clears immediately; the interval only bounds idle latency.
+ */
+export async function runDrainLoop(opts: DrainLoopOptions): Promise<void> {
+  const { drain, materialize, log } = opts;
+  while (!opts.signal?.aborted) {
+    try {
+      const queued = await materialize();
+      if (queued > 0) log.info({ queued }, "campaign materialized");
+    } catch (err) {
+      // Kept separate from the drain try/catch below: a broken segment query
+      // must not stop transactional mail from going out.
+      log.error({ err }, "campaign materialization failed");
+    }
+    try {
+      const n = await drain();
+      if (n > 0) log.info({ processed: n }, "drained");
+    } catch (err) {
+      // The loop must never die: a transient database error would otherwise
+      // leave every queued notification undelivered until the next deploy.
+      log.error({ err }, "drain failed");
+    }
+    if (opts.signal?.aborted) break;
+    await new Promise((r) => setTimeout(r, opts.intervalMs));
+  }
+}
