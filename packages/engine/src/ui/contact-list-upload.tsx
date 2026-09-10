@@ -3,8 +3,8 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { AlertCircleIcon, CheckCircle2Icon } from "lucide-react";
 import { mapRows, parseCsv, looksLikeEmail, type RejectedRow } from "@relay/engine";
+import { Badge } from "@foundry/ui/badge";
 import { Button } from "@foundry/ui/button";
 import { Input } from "@foundry/ui/input";
 import { Label } from "@foundry/ui/label";
@@ -15,6 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@foundry/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@foundry/ui/table";
 import { ContactListMetaFields, type ListMeta } from "./contact-list-meta-fields";
 import { createListWithContacts } from "./create-list-with-contacts";
 
@@ -222,7 +223,7 @@ export function ContactListUpload() {
                   key={key}
                   type="button"
                   size="sm"
-                  variant={filter === key ? "default" : "outline"}
+                  variant={filter === key ? "secondary" : "outline"}
                   onClick={() => {
                     setFilter(key);
                     setPage(0);
@@ -235,52 +236,72 @@ export function ContactListUpload() {
             <span className="text-xs text-muted-foreground">{includedCount} selected to import</span>
           </div>
 
-          <ul className="divide-y rounded-md border">
-            {pageRows.map((r) => (
-              <li key={r.id} className="flex items-start gap-2 px-3 py-2 text-sm">
-                <input
-                  type="checkbox"
-                  className="mt-1 h-4 w-4"
-                  disabled={!!r.reason}
-                  checked={!r.reason && !excluded.has(r.id)}
-                  onChange={(e) =>
-                    setExcluded((s) => {
-                      const next = new Set(s);
-                      if (e.target.checked) next.delete(r.id);
-                      else next.add(r.id);
-                      return next;
-                    })
-                  }
-                />
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5">
-                    {r.reason ? (
-                      <AlertCircleIcon className="size-3.5 shrink-0 text-destructive" />
-                    ) : (
-                      <CheckCircle2Icon className="size-3.5 shrink-0 text-emerald-600" />
-                    )}
-                    <span className="truncate font-medium">{r.name || "(no name)"}</span>
-                  </div>
-                  {r.reason && r.reason !== "invalid email" ? (
-                    <p className="mt-0.5 text-xs text-destructive">{r.reason}</p>
-                  ) : (
-                    <div className="mt-1 flex items-center gap-2">
-                      <Input
-                        value={r.email}
-                        onChange={(e) => updateEmail(r.id, e.target.value)}
-                        placeholder="email@example.com"
-                        className="h-7 max-w-xs text-xs"
+          <div className="overflow-hidden rounded-lg border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-10" />
+                  <TableHead>Name</TableHead>
+                  <TableHead>Contact</TableHead>
+                  <TableHead className="text-right">Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {pageRows.map((r) => (
+                  <TableRow key={r.id}>
+                    <TableCell>
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4"
+                        disabled={!!r.reason}
+                        checked={!r.reason && !excluded.has(r.id)}
+                        onChange={(e) =>
+                          setExcluded((s) => {
+                            const next = new Set(s);
+                            if (e.target.checked) next.delete(r.id);
+                            else next.add(r.id);
+                            return next;
+                          })
+                        }
                       />
-                      {r.phone && <span className="text-xs text-muted-foreground">{r.phone}</span>}
-                    </div>
-                  )}
-                </div>
-              </li>
-            ))}
-            {pageRows.length === 0 && (
-              <li className="px-3 py-6 text-center text-sm text-muted-foreground">No rows match this filter.</li>
-            )}
-          </ul>
+                    </TableCell>
+                    <TableCell className="font-medium">{r.name || "(no name)"}</TableCell>
+                    <TableCell>
+                      {r.reason && r.reason !== "invalid email" ? (
+                        <span className="text-xs text-muted-foreground">{r.phone || r.email || "—"}</span>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <Input
+                            value={r.email}
+                            onChange={(e) => updateEmail(r.id, e.target.value)}
+                            placeholder="email@example.com"
+                            className="h-7 max-w-xs text-xs"
+                          />
+                          {r.phone && <span className="text-xs text-muted-foreground">{r.phone}</span>}
+                        </div>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {r.reason ? (
+                        <Badge variant="destructive" title={r.reason}>
+                          {r.reason}
+                        </Badge>
+                      ) : (
+                        <Badge variant="secondary">valid</Badge>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {pageRows.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={4} className="py-6 text-center text-sm text-muted-foreground">
+                      No rows match this filter.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
 
           {pageCount > 1 && (
             <div className="flex items-center justify-between text-sm">

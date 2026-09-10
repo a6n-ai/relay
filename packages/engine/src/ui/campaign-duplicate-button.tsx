@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { CopyIcon } from "lucide-react";
 import { Button } from "@foundry/ui/button";
 import { ResponsiveDialog } from "@foundry/design-system";
 import { apiFetch } from "./api-fetch";
@@ -13,10 +14,13 @@ export function CampaignDuplicateButton({
   campaignPublicId,
   lists,
   timeZone,
+  /** Icon-only, no label — for a dense row-actions cell (matches RowActionButton elsewhere). */
+  compact,
 }: {
   campaignPublicId: string;
   lists: ContactListOption[];
   timeZone: string;
+  compact?: boolean;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -47,9 +51,15 @@ export function CampaignDuplicateButton({
 
   return (
     <>
-      <Button variant="outline" onClick={() => setOpen(true)}>
-        Duplicate
-      </Button>
+      {compact ? (
+        <Button variant="ghost" size="icon" aria-label="Duplicate" title="Duplicate" onClick={() => setOpen(true)}>
+          <CopyIcon className="size-4" />
+        </Button>
+      ) : (
+        <Button variant="outline" onClick={() => setOpen(true)}>
+          Duplicate
+        </Button>
+      )}
       <ResponsiveDialog
         open={open}
         onOpenChange={setOpen}

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { RotateCcwIcon } from "lucide-react";
 import { Button } from "@foundry/ui/button";
 import { ResponsiveDialog } from "@foundry/design-system";
 import { Switch } from "@foundry/ui/switch";
@@ -19,9 +20,12 @@ import type { ContactListOption } from "./audience-builder";
 export function CampaignRetriggerButton({
   campaignPublicId,
   lists,
+  /** Icon-only, no label — for a dense row-actions cell (matches RowActionButton elsewhere). */
+  compact,
 }: {
   campaignPublicId: string;
   lists: ContactListOption[];
+  compact?: boolean;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -53,9 +57,15 @@ export function CampaignRetriggerButton({
 
   return (
     <>
-      <Button variant="outline" onClick={() => setOpen(true)}>
-        Retrigger
-      </Button>
+      {compact ? (
+        <Button variant="ghost" size="icon" aria-label="Retrigger" title="Retrigger" onClick={() => setOpen(true)}>
+          <RotateCcwIcon className="size-4" />
+        </Button>
+      ) : (
+        <Button variant="outline" onClick={() => setOpen(true)}>
+          Retrigger
+        </Button>
+      )}
       <ResponsiveDialog
         open={open}
         onOpenChange={setOpen}
