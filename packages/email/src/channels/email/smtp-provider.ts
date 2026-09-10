@@ -1,3 +1,4 @@
+/// <reference path="./nodemailer-ambient.d.ts" />
 import { AppError } from "@foundry/commons";
 import { AbstractEmailProvider, type EmailProviderConfig } from "./provider";
 import { formatAddress } from "./address";

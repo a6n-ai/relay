@@ -1,3 +1,4 @@
+/// <reference path="./nodemailer-ambient.d.ts" />
 import {
   SESv2Client,
   SendEmailCommand,
