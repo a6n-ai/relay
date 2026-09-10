@@ -193,3 +193,104 @@ export async function getAudienceCount(
   const count = await countAudience(deps, audience);
   return { count };
 }
+
+export interface DuplicateCampaignInput {
+  /** Defaults to "<original name> (copy)". */
+  name?: string;
+  /** Defaults to the original campaign's audience. Pass to duplicate onto a different list. */
+  audience?: AudienceDef;
+}
+
+/**
+ * Clone a campaign's name/channels/content into a new draft. Content is
+ * copied, not referenced, so editing the copy never touches the original —
+ * campaign_content rows are immutable once a campaign leaves draft.
+ */
+export async function duplicateCampaign(
+  deps: CampaignRouteDeps,
+  campaignPublicId: string,
+  input: DuplicateCampaignInput = {},
+): Promise<{ publicId: string } | { error: string; status: number }> {
+  const { db, tables } = deps;
+
+  const [source] = await db
+    .select({
+      id: tables.campaign.id,
+      name: tables.campaign.name,
+      channels: tables.campaign.channels,
+      audience: tables.campaign.audience,
+    })
+    .from(tables.campaign)
+    .where(eq(tables.campaign.publicId, campaignPublicId));
+  if (!source) return { error: "Campaign not found", status: 404 };
+
+  const content = await db
+    .select({
+      channel: tables.campaignContent.channel,
+      locale: tables.campaignContent.locale,
+      subject: tables.campaignContent.subject,
+      body: tables.campaignContent.body,
+      html: tables.campaignContent.html,
+      text: tables.campaignContent.text,
+      providerTemplateId: tables.campaignContent.providerTemplateId,
+    })
+    .from(tables.campaignContent)
+    .where(eq(tables.campaignContent.campaignId, source.id));
+
+  const [copy] = await db
+    .insert(tables.campaign)
+    .values({
+      name: input.name ?? `${source.name} (copy)`,
+      channels: source.channels,
+      audience: input.audience ?? (source.audience as AudienceDef),
+      status: "draft",
+    })
+    .returning({ id: tables.campaign.id, publicId: tables.campaign.publicId });
+
+  if (content.length > 0) {
+    await db.insert(tables.campaignContent).values(
+      content.map((c) => ({ ...c, campaignId: copy.id })),
+    );
+  }
+
+  return { publicId: copy.publicId as string };
+}
+
+export interface RetriggerCampaignInput {
+  /** Restrict the resend to these contact lists only; omit to reuse the whole original audience. */
+  listIds?: string[];
+}
+
+/**
+ * Resend a campaign that has already gone out. A sent campaign's outbox rows
+ * are keyed by its own publicId (`cmp:<id>:<address>`), so re-materializing
+ * the same campaign row is a no-op by design — a retrigger has to be a new
+ * campaign (new dedupe namespace) that copies the original's content, not a
+ * re-run of the original.
+ */
+export async function retriggerCampaign(
+  deps: CampaignRouteDeps,
+  campaignPublicId: string,
+  input: RetriggerCampaignInput = {},
+): Promise<{ publicId: string; queued: number } | { error: string; status: number }> {
+  const { db, tables } = deps;
+
+  const [source] = await db
+    .select({ name: tables.campaign.name, audience: tables.campaign.audience })
+    .from(tables.campaign)
+    .where(eq(tables.campaign.publicId, campaignPublicId));
+  if (!source) return { error: "Campaign not found", status: 404 };
+
+  const audience: AudienceDef = input.listIds
+    ? { ...(source.audience as AudienceDef), segment: undefined, listIds: input.listIds }
+    : (source.audience as AudienceDef);
+
+  const copy = await duplicateCampaign(deps, campaignPublicId, {
+    name: `${source.name} (retrigger ${new Date().toISOString().slice(0, 10)})`,
+    audience,
+  });
+  if ("error" in copy) return copy;
+
+  const { queued } = await materializeCampaign(deps, copy.publicId);
+  return { publicId: copy.publicId, queued };
+}
