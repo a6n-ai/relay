@@ -36,14 +36,11 @@ export function CampaignAttachments({
     try {
       const body = new FormData();
       body.set("file", file);
-      const detail = await apiFetch<{ url: string; fileName: string; contentType?: string }>(
+      const detail = await apiFetch<{ url: string; fileName: string; type?: string }>(
         "/api/notifications/campaigns/attachments",
         { method: "POST", body },
       );
-      onChange([
-        ...value,
-        { filename: detail.fileName, url: detail.url, contentType: detail.contentType ?? file.type },
-      ]);
+      onChange([...value, { filename: detail.fileName, url: detail.url, contentType: detail.type ?? file.type }]);
     } catch {
       // apiFetch already toasted the failure detail.
     } finally {
