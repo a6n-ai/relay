@@ -79,6 +79,23 @@ export interface HandlerDeps {
   };
 }
 
+/**
+ * Campaign content stores attachments as {filename, url, contentType} —
+ * fetched and base64-embedded per send rather than kept in the DB, so a large
+ * attachment doesn't get duplicated into every one of a campaign's outbox rows.
+ */
+async function fetchAttachments(
+  refs: { filename: string; url: string; contentType: string }[],
+): Promise<{ filename: string; content: string; contentType: string }[]> {
+  return Promise.all(
+    refs.map(async (r) => {
+      const res = await fetch(r.url);
+      const buf = Buffer.from(await res.arrayBuffer());
+      return { filename: r.filename, content: buf.toString("base64"), contentType: r.contentType };
+    }),
+  );
+}
+
 function payloadParts(row: OutboxRow) {
   const p = row.payload as { href?: string | null; vars?: Record<string, unknown> };
   return { href: p.href ?? null, vars: p.vars ?? {} };
@@ -157,6 +174,7 @@ export function buildHandlers(deps: HandlerDeps): Record<Channel, ChannelHandler
 
       if (channel === "email") {
         let rendered: { subject: string; html: string; text: string } | null = null;
+        let attachmentRefs: { filename: string; url: string; contentType: string }[] = [];
         if (row.campaignId && deps.campaigns) {
           const base = await renderCampaignEmail(
             db,
@@ -166,6 +184,7 @@ export function buildHandlers(deps: HandlerDeps): Record<Channel, ChannelHandler
             vars,
           );
           if (base) {
+            attachmentRefs = base.attachments;
             const { unsubscribe, sender } = deps.campaigns;
             rendered = {
               subject: base.subject,
@@ -201,6 +220,7 @@ export function buildHandlers(deps: HandlerDeps): Record<Channel, ChannelHandler
           subject: rendered.subject,
           html: rendered.html,
           text: rendered.text,
+          attachments: attachmentRefs.length > 0 ? await fetchAttachments(attachmentRefs) : undefined,
         });
       }
 

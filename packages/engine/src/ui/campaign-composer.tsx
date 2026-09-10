@@ -8,6 +8,7 @@ import { Input } from "@foundry/ui/input";
 import { Label } from "@foundry/ui/label";
 import { Textarea } from "@foundry/ui/textarea";
 import { apiFetch } from "./api-fetch";
+import { CampaignAttachments, type CampaignAttachment } from "./campaign-attachments";
 import { EmailEditorField, type EmailEditorFieldHandle } from "./email-editor";
 import { AudienceBuilder, type AudienceValue, type ContactListOption } from "./audience-builder";
 
@@ -40,6 +41,7 @@ export function CampaignComposer({
   const [smsBody, setSmsBody] = useState("");
   const [templateId, setTemplateId] = useState("");
   const [audience, setAudience] = useState<AudienceValue>({});
+  const [attachments, setAttachments] = useState<CampaignAttachment[]>([]);
   const [saving, setSaving] = useState(false);
 
   async function save() {
@@ -60,6 +62,7 @@ export function CampaignComposer({
           body: exported?.body ?? "",
           html: exported?.html ?? "",
           text: exported?.text ?? "",
+          attachments: attachments.length > 0 ? attachments : undefined,
         });
       } else {
         Object.assign(content, { body: smsBody, providerTemplateId: templateId || undefined });
@@ -119,6 +122,7 @@ export function CampaignComposer({
             An unsubscribe link, the sender name and the postal address are appended automatically —
             they are legally required and cannot be removed from the copy.
           </p>
+          <CampaignAttachments value={attachments} onChange={setAttachments} />
         </div>
       ) : (
         <div className="space-y-3">

@@ -16,6 +16,8 @@ export interface TemplateRow {
   text: string | null;
   providerTemplateId: string | null;
   enabled: boolean;
+  /** Campaign content only — event templates never carry attachments. */
+  attachments?: { filename: string; url: string; contentType: string }[];
 }
 
 /** Pure: pick the enabled row for `channel`, preferring `locale`, else `en`. */
@@ -100,6 +102,7 @@ async function loadCampaignContent(db: Db, tables: CampaignTables, campaignId: b
       html: c.html,
       text: c.text,
       providerTemplateId: c.providerTemplateId,
+      attachments: c.attachments,
     })
     .from(c)
     .where(eq(c.campaignId, campaignId)) as unknown as Promise<Omit<TemplateRow, "enabled">[]>;
@@ -112,7 +115,12 @@ export async function renderCampaignEmail(
   campaignId: bigint,
   locale: string,
   vars: Record<string, unknown>,
-): Promise<{ subject: string; html: string; text: string } | null> {
+): Promise<{
+  subject: string;
+  html: string;
+  text: string;
+  attachments: { filename: string; url: string; contentType: string }[];
+} | null> {
   const rows = (await loadCampaignContent(db, tables, campaignId)).map((r) => ({ ...r, enabled: true }));
   const t = pickTemplate(rows, "email", locale);
   if (!t || !t.html || !t.text) return null;
@@ -120,6 +128,7 @@ export async function renderCampaignEmail(
     subject: interpolate(t.subject, vars),
     html: interpolate(t.html, vars),
     text: interpolate(t.text, vars),
+    attachments: t.attachments ?? [],
   };
 }
 

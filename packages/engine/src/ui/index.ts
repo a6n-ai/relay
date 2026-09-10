@@ -1,5 +1,6 @@
 export * from "./api-fetch";
 export * from "./audience-builder";
+export * from "./campaign-attachments";
 export * from "./campaign-composer";
 export * from "./campaign-duplicate-button";
 export * from "./campaign-retrigger-button";

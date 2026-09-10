@@ -20,6 +20,7 @@ export interface SmtpMailOptions {
   messageId?: string;
   inReplyTo?: string;
   references?: string;
+  attachments?: { filename: string; content: Buffer; contentType: string }[];
 }
 
 export interface SmtpSendClient {
@@ -83,6 +84,11 @@ export class SmtpEmailProvider extends AbstractEmailProvider {
       messageId: message.rfcMessageId,
       inReplyTo: message.inReplyTo,
       references: message.rfcReferences,
+      attachments: message.attachments?.map((a) => ({
+        filename: a.filename,
+        content: Buffer.from(a.content, "base64"),
+        contentType: a.contentType,
+      })),
     });
     if (!info.messageId) {
       throw new AppError("SMTP returned no messageId", 502);

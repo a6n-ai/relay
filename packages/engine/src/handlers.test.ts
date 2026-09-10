@@ -91,6 +91,68 @@ describe("buildHandlers — email — marketing footer on event-template rows", 
   });
 });
 
+describe("buildHandlers — email — campaign attachments", () => {
+  it("fetches each attachment by url and forwards base64 content to the provider", async () => {
+    const usersTable = { locale: "locale-col" };
+    const campaignContentTable = {};
+    const userRow = { email: "customer@example.test", phone: null, locale: "en" };
+    const contentRows = [
+      {
+        channel: "email",
+        locale: "en",
+        subject: "Your invoice",
+        body: null,
+        html: "<p>see attached</p>",
+        text: "see attached",
+        providerTemplateId: null,
+        attachments: [{ filename: "invoice.pdf", url: "https://files.test/invoice.pdf", contentType: "application/pdf" }],
+      },
+    ];
+    const db = fakeDb(
+      new Map<object, unknown[]>([
+        [usersTable, [userRow]],
+        [campaignContentTable, contentRows],
+      ]),
+    );
+    const send = vi.fn().mockResolvedValue({ providerMessageId: "pid" });
+    const fetchMock = vi.fn().mockResolvedValue({ arrayBuffer: async () => Buffer.from("pdf-bytes") });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const handlers = buildHandlers({
+      db,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      tables: {} as any,
+      users: { table: usersTable, columns: { id: "id-col", email: "email-col" } },
+      providers: { email: { send } },
+      broadcast: vi.fn(),
+      campaigns: {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        tables: { campaignContent: campaignContentTable } as any,
+        unsubscribe: { baseUrl: "https://recover.test", secret: "shh" },
+        sender: { name: "Puchkaman", postalAddress: "123 Main St" },
+      },
+    });
+
+    await handlers.email!({
+      recipientId: 7n,
+      recipientEmail: null,
+      recipientPhone: null,
+      campaignId: 42n,
+      event: null,
+      kind: "marketing",
+      payload: { href: null, vars: {} },
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith("https://files.test/invoice.pdf");
+    expect(send).toHaveBeenCalledTimes(1);
+    const sent = send.mock.calls[0][0];
+    expect(sent.attachments).toEqual([
+      { filename: "invoice.pdf", content: Buffer.from("pdf-bytes").toString("base64"), contentType: "application/pdf" },
+    ]);
+    vi.unstubAllGlobals();
+  });
+});
+
 describe("resolveRecipientAddress", () => {
   it("prefers the literal address on the row", async () => {
     const load = vi.fn();

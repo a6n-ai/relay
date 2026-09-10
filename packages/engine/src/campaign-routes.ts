@@ -97,6 +97,12 @@ export async function createCampaign(
   return { publicId: row.publicId as string };
 }
 
+const campaignAttachmentSchema = z.object({
+  filename: z.string().trim().min(1),
+  url: z.string().trim().min(1),
+  contentType: z.string().trim().min(1),
+});
+
 export const setCampaignContentSchema = z.object({
   channel: z.string(),
   locale: z.string(),
@@ -106,6 +112,8 @@ export const setCampaignContentSchema = z.object({
   text: z.string().optional(),
   /** WhatsApp / templated SMS: the provider-side pre-approved template id. */
   providerTemplateId: z.string().trim().optional(),
+  /** email only. */
+  attachments: z.array(campaignAttachmentSchema).optional(),
 });
 
 export interface SetCampaignContentInput {
@@ -116,6 +124,7 @@ export interface SetCampaignContentInput {
   html?: string;
   text?: string;
   providerTemplateId?: string;
+  attachments?: { filename: string; url: string; contentType: string }[];
 }
 
 export async function setCampaignContent(
@@ -157,6 +166,7 @@ export async function setCampaignContent(
       html: input.html ?? null,
       text: input.text ?? null,
       providerTemplateId: input.providerTemplateId ?? null,
+      attachments: input.attachments ?? [],
     })
     .onConflictDoUpdate({
       target: [tables.campaignContent.campaignId, tables.campaignContent.channel, tables.campaignContent.locale],
@@ -166,6 +176,7 @@ export async function setCampaignContent(
         html: input.html ?? null,
         text: input.text ?? null,
         providerTemplateId: input.providerTemplateId ?? null,
+        attachments: input.attachments ?? [],
       },
     });
 
@@ -233,6 +244,7 @@ export async function duplicateCampaign(
       html: tables.campaignContent.html,
       text: tables.campaignContent.text,
       providerTemplateId: tables.campaignContent.providerTemplateId,
+      attachments: tables.campaignContent.attachments,
     })
     .from(tables.campaignContent)
     .where(eq(tables.campaignContent.campaignId, source.id));

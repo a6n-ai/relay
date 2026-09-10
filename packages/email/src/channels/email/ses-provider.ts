@@ -50,15 +50,21 @@ export class SesEmailProvider extends AbstractEmailProvider {
       },
       ReplyToAddresses: message.replyTo ? [formatAddress(message.replyTo)] : undefined,
       ConfigurationSetName: this.configurationSetName,
-      Content: {
-        Simple: {
-          Subject: { Data: message.subject, Charset: "UTF-8" },
-          Body: {
-            Html: message.html ? { Data: message.html, Charset: "UTF-8" } : undefined,
-            Text: message.text ? { Data: message.text, Charset: "UTF-8" } : undefined,
-          },
-        },
-      },
+      // SESv2's Simple content has no attachment field at all, so any message
+      // carrying one must go through Raw (a hand-assembled MIME document)
+      // instead — the two are mutually exclusive send paths, not a superset.
+      Content:
+        message.attachments && message.attachments.length > 0
+          ? { Raw: { Data: await buildRawMessage(message) } }
+          : {
+              Simple: {
+                Subject: { Data: message.subject, Charset: "UTF-8" },
+                Body: {
+                  Html: message.html ? { Data: message.html, Charset: "UTF-8" } : undefined,
+                  Text: message.text ? { Data: message.text, Charset: "UTF-8" } : undefined,
+                },
+              },
+            },
     });
 
     const out = await this.client.send(command);
@@ -67,4 +73,32 @@ export class SesEmailProvider extends AbstractEmailProvider {
     }
     return { providerMessageId: out.MessageId, provider: this.name };
   }
+}
+
+async function buildRawMessage(message: PreparedEmail): Promise<Uint8Array> {
+  const to = Array.isArray(message.to) ? message.to : [message.to];
+  // nodemailer's MailComposer assembles a valid MIME document without a
+  // transport — used here purely as a MIME builder, nothing is sent over SMTP.
+  const { default: MailComposer } = await import("nodemailer/lib/mail-composer/index.js");
+  const mail = new MailComposer({
+    from: formatAddress(message.from),
+    to: to.map(formatAddress),
+    cc: message.cc?.map(formatAddress),
+    bcc: message.bcc?.map(formatAddress),
+    replyTo: message.replyTo ? formatAddress(message.replyTo) : undefined,
+    subject: message.subject,
+    html: message.html,
+    text: message.text,
+    attachments: message.attachments?.map((a) => ({
+      filename: a.filename,
+      content: Buffer.from(a.content, "base64"),
+      contentType: a.contentType,
+    })),
+  });
+  return new Promise((resolve, reject) => {
+    mail.compile().build((err: Error | null, buffer: Buffer) => {
+      if (err) reject(err);
+      else resolve(new Uint8Array(buffer));
+    });
+  });
 }

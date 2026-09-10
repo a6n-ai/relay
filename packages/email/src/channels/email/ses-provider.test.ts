@@ -51,6 +51,27 @@ describe("SesEmailProvider", () => {
     expect(JSON.stringify(input)).not.toContain("<abc@relay.test>");
   });
 
+  it("sends Raw MIME (not Simple) when the message has attachments", async () => {
+    const { client, sent } = fakeClient();
+    const p = new SesEmailProvider({ defaultFrom, client });
+
+    await p.send({
+      to: { email: "a@b.com" },
+      subject: "Invoice",
+      html: "<p>see attached</p>",
+      attachments: [
+        { filename: "invoice.pdf", content: Buffer.from("pdf-bytes").toString("base64"), contentType: "application/pdf" },
+      ],
+    });
+
+    const input = sent[0].input;
+    expect(input.Content?.Simple).toBeUndefined();
+    expect(input.Content?.Raw?.Data).toBeInstanceOf(Uint8Array);
+    const raw = Buffer.from(input.Content!.Raw!.Data!).toString("utf8");
+    expect(raw).toContain("invoice.pdf");
+    expect(raw).toContain("application/pdf");
+  });
+
   it("throws when SES returns no MessageId", async () => {
     const { client } = fakeClient({ MessageId: undefined });
     const p = new SesEmailProvider({ defaultFrom, client });

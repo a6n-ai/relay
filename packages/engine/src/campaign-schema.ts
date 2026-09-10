@@ -69,6 +69,11 @@ export function makeCampaignTables<L extends [string, ...string[]]>(deps: { loca
     html: text("html"),
     text: text("text"),
     providerTemplateId: text("provider_template_id"),
+    /** email only. Fetched by url and base64-embedded into the MIME message at send time. */
+    attachments: jsonb("attachments")
+      .$type<{ filename: string; url: string; contentType: string }[]>()
+      .notNull()
+      .default([]),
   }, (t) => [
     uniqueIndex("campaign_content_key_idx").on(t.campaignId, t.channel, t.locale),
   ]);

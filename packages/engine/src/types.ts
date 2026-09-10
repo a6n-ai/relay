@@ -23,6 +23,8 @@ export interface OutboundMessage {
   providerTemplateId?: string;
   /** merge values for a provider-side template */
   vars?: Record<string, unknown>;
+  /** email only. content is base64. */
+  attachments?: { filename: string; content: string; contentType: string }[];
 }
 
 export interface ChannelProvider {
