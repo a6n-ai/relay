@@ -11,6 +11,7 @@ describe("isPublicRelayPath", () => {
     expect(isPublicRelayPath("/docs")).toBe(true);
     expect(isPublicRelayPath("/docs/api/swagger")).toBe(true);
     expect(isPublicRelayPath("/api/webhooks/ses")).toBe(true);
+    expect(isPublicRelayPath("/api/webhooks/whatsapp")).toBe(true);
     expect(isPublicRelayPath("/api/internal/mailbox/inbound")).toBe(true);
     expect(isPublicRelayPath("/unsubscribe")).toBe(true);
     expect(isPublicRelayPath("/dashboard")).toBe(false);

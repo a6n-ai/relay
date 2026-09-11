@@ -15,7 +15,7 @@ Queue decision: **keep Postgres transactional outbox** (`SKIP LOCKED` + backoff)
 - **Scheduled campaigns** (worker calls `dueCampaigns`)
 - App **webhooks** (HMAC `X-Relay-Signature`, retry table)
 - **List triggers** (API event → append to a contact list)
-- SMS / WhatsApp drain via Twilio when env is set
+- SMS drain via Twilio when env is set; WhatsApp prefers Meta Cloud API (`WHATSAPP_ACCESS_TOKEN` + `WHATSAPP_PHONE_NUMBER_ID`), else Twilio
 - LISTEN/NOTIFY on `relay_work` plus interval poll (`pnpm --filter relay worker:drain`)
 
 ## Later

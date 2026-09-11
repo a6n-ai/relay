@@ -1,7 +1,7 @@
 # WhatsApp in Relay — research brief
 
-Date: 2026-09-09  
-Status: research only (no implementation yet)
+Date: 2026-09-09 (updated 2026-09-11)  
+Status: Phase 1+2 landed — Meta Graph client, drain provider, `/api/webhooks/whatsapp`. Embedded Signup / multi-WABA / conversation persist still open.
 
 ## Optimized prompt (use this going forward)
 
@@ -45,7 +45,7 @@ Relay needs **both** Cloud API and Business Management API. Same Graph host, dif
 | Piece | Today |
 | --- | --- |
 | Channel enum | `whatsapp` in engine schema, campaigns, OpenAPI |
-| Package | `@relay/whatsapp` — `SERVICE_WINDOW_MS` (24h), `requiresTemplate()`, **Twilio only** |
+| Package | `@relay/whatsapp` — window helpers, Twilio provider, **Meta Graph client (Cloud + BM)**, `MetaCloudWhatsAppProvider`, webhook signature/challenge helpers |
 | Email precedent | `@relay/email` (SMTP/SES send) + `@foundry/email` (shared send types); Mailbox stays in Relay |
 | Roadmap | Twilio when env set ([PLATFORM-ROADMAP.md](../PLATFORM-ROADMAP.md)) |
 
@@ -180,8 +180,8 @@ Persist `last_inbound_at` per `(tenant, phone_number_id, wa_user_id)`. Composer:
 | Phase | Outcome |
 | --- | --- |
 | **0 — Spike** | Meta app + Embedded Signup; one WABA + number; `hello_world` via Cloud API; list templates via BM API |
-| **1 — Client + provider** | Thin Graph client (Cloud + BM); `MetaCloudWhatsAppProvider`; drain; Twilio fallback |
-| **2 — Webhooks** | Inbound + statuses + account_update; conversation threads |
+| **1 — Client + provider** | ✅ Thin Graph client (Cloud + BM); `MetaCloudWhatsAppProvider`; drain via `createWhatsAppProviderFromEnv`; Twilio fallback |
+| **2 — Webhooks** | ✅ `GET/POST /api/webhooks/whatsapp` (signature + challenge); status → outbox / campaign counts / `message.failed`; inbound + account_update logged until conversation storage |
 | **3 — Multi-asset** | Multi WABA/number per app; default sender |
 | **4 — Templates** | BM sync into Templates UI; campaigns use approved only |
 | **5 — Console UX** | Lyra chat UI |
