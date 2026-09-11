@@ -56,10 +56,10 @@ export function ContactListMemberRow({
   }
 
   return (
-    <li className="flex flex-wrap items-center justify-between gap-2 py-2">
+    <li className="flex flex-wrap items-center justify-between gap-3 px-3 py-2.5 transition-colors hover:bg-accent">
       <div className="min-w-0">
         <p className="text-sm font-medium">{member.name ?? "—"}</p>
-        <p className="text-xs text-muted-foreground">{member.email ?? member.phone ?? "no contact info"}</p>
+        <p className="text-muted-foreground font-mono text-xs">{member.email ?? member.phone ?? "no contact info"}</p>
       </div>
       {onConvert && (
         <div className="flex items-center gap-2">

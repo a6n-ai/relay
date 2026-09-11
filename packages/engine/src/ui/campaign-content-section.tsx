@@ -85,11 +85,11 @@ function EmailRow({
   }
 
   return (
-    <div className="space-y-3 rounded-lg border p-4">
+    <div className="bg-card space-y-4 rounded-lg border p-4">
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 text-sm">
           <Badge variant="outline">{row.channel}</Badge>
-          <span className="text-muted-foreground">{row.locale}</span>
+          <span className="text-muted-foreground font-mono text-xs uppercase tracking-wide">{row.locale}</span>
         </div>
         {editable && !editing && (
           <Button size="sm" variant="ghost" onClick={() => setEditing(true)}>
@@ -99,7 +99,7 @@ function EmailRow({
       </div>
 
       {editing ? (
-        <div className="space-y-3">
+        <div className="space-y-4">
           <div className="space-y-1.5">
             <Label>Subject</Label>
             <Input value={subject} onChange={(e) => setSubject(e.target.value)} />
@@ -132,15 +132,15 @@ function EmailRow({
           </div>
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-3">
           <p className="text-sm font-medium">{row.subject}</p>
           {row.html ? (
             <EmailPreview html={row.html} />
           ) : (
-            <p className="text-sm text-muted-foreground">No content yet.</p>
+            <p className="text-muted-foreground text-sm">No content yet.</p>
           )}
           {row.attachments && row.attachments.length > 0 && (
-            <p className="text-xs text-muted-foreground">
+            <p className="text-muted-foreground text-xs">
               {row.attachments.length} attachment{row.attachments.length === 1 ? "" : "s"}:{" "}
               {row.attachments.map((a) => a.filename).join(", ")}
             </p>
@@ -191,11 +191,11 @@ function TextRow({
   }
 
   return (
-    <div className="space-y-3 rounded-lg border p-4">
+    <div className="bg-card space-y-4 rounded-lg border p-4">
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 text-sm">
           <Badge variant="outline">{row.channel}</Badge>
-          <span className="text-muted-foreground">{row.locale}</span>
+          <span className="text-muted-foreground font-mono text-xs uppercase tracking-wide">{row.locale}</span>
         </div>
         {editable && !editing && (
           <Button size="sm" variant="ghost" onClick={() => setEditing(true)}>
@@ -244,7 +244,7 @@ export function CampaignContentSection({
     );
   }
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       {content.map((c) =>
         c.channel === "email" ? (
           <EmailRow key={`${c.channel}-${c.locale}`} campaignPublicId={campaignPublicId} row={c} editable={editable} />
