@@ -10,7 +10,7 @@ import { Textarea } from "@foundry/ui/textarea";
 import { cn } from "@foundry/ui/cn";
 import { apiFetch } from "./api-fetch";
 import { CampaignAttachments, type CampaignAttachment } from "./campaign-attachments";
-import { EmailContentEditor, type EmailContentEditorHandle } from "./email-content-editor";
+import { EmailTemplateBuilder, type EmailTemplateBuilderHandle } from "./email-template-builder";
 import { AudienceBuilder, type AudienceValue, type ContactListOption } from "./audience-builder";
 
 const CHANNELS = [
@@ -56,7 +56,7 @@ export function CampaignComposer({
   timeZone: string;
 }) {
   const router = useRouter();
-  const editor = useRef<EmailContentEditorHandle>(null);
+  const editor = useRef<EmailTemplateBuilderHandle>(null);
 
   const [name, setName] = useState("");
   const [channel, setChannel] = useState<ChannelKey>("email");
@@ -152,34 +152,49 @@ export function CampaignComposer({
       </FormSection>
 
       <FormSection title="Content" description="What recipients will see.">
-        <div className="space-y-1.5">
-          <Label htmlFor="subject">{channel === "email" ? "Subject" : "Title"}</Label>
-          <Input
-            id="subject"
-            value={subject}
-            onChange={(e) => {
-              setSubject(e.target.value);
-              if (errors.subject) setErrors((prev) => ({ ...prev, subject: undefined }));
-            }}
-            aria-invalid={!!errors.subject}
-            className={cn(errors.subject && "border-destructive focus-visible:ring-destructive")}
-          />
-          <FieldError message={errors.subject} />
-        </div>
-
         {channel === "email" ? (
           <div className="space-y-1.5">
-            <Label>Message</Label>
             {/* Campaign copy is free-form, so the only merge vars offered are the
                 contact fields the CSV importer lifts. */}
-            <EmailContentEditor ref={editor} initialBody="" initialHtml="" variables={CAMPAIGN_VARIABLES} />
-            <p className="text-muted-foreground text-xs">
-              An unsubscribe link, the sender name and the postal address are appended automatically —
-              they are legally required and cannot be removed from the copy.
-            </p>
-            <CampaignAttachments value={attachments} onChange={setAttachments} />
+            <EmailTemplateBuilder
+              ref={editor}
+              subject={subject}
+              onSubjectChange={(v) => {
+                setSubject(v);
+                if (errors.subject) setErrors((prev) => ({ ...prev, subject: undefined }));
+              }}
+              subjectError={errors.subject}
+              initialBody=""
+              initialHtml=""
+              variables={CAMPAIGN_VARIABLES}
+              disabled={saving}
+              extra={
+                <>
+                  <p className="text-muted-foreground text-xs">
+                    An unsubscribe link, the sender name and the postal address are appended automatically —
+                    they are legally required and cannot be removed from the copy.
+                  </p>
+                  <CampaignAttachments value={attachments} onChange={setAttachments} />
+                </>
+              }
+            />
           </div>
         ) : (
+          <>
+            <div className="space-y-1.5">
+              <Label htmlFor="subject">Title</Label>
+              <Input
+                id="subject"
+                value={subject}
+                onChange={(e) => {
+                  setSubject(e.target.value);
+                  if (errors.subject) setErrors((prev) => ({ ...prev, subject: undefined }));
+                }}
+                aria-invalid={!!errors.subject}
+                className={cn(errors.subject && "border-destructive focus-visible:ring-destructive")}
+              />
+              <FieldError message={errors.subject} />
+            </div>
           <div className="space-y-4">
             <div className="space-y-1.5">
               <Label htmlFor="smsBody">Message</Label>
@@ -197,6 +212,7 @@ export function CampaignComposer({
               </p>
             </div>
           </div>
+          </>
         )}
       </FormSection>
 

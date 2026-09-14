@@ -11,7 +11,7 @@ import { Label } from "@foundry/ui/label";
 import { Textarea } from "@foundry/ui/textarea";
 import { apiFetch } from "./api-fetch";
 import { CampaignAttachments, type CampaignAttachment } from "./campaign-attachments";
-import { EmailContentEditor, type EmailContentEditorHandle } from "./email-content-editor";
+import { EmailTemplateBuilder, type EmailTemplateBuilderHandle } from "./email-template-builder";
 
 export interface CampaignContentRow {
   channel: string;
@@ -54,7 +54,7 @@ function EmailRow({
   const [subject, setSubject] = useState(row.subject);
   const [attachments, setAttachments] = useState<CampaignAttachment[]>(row.attachments ?? []);
   const [saving, setSaving] = useState(false);
-  const editor = useRef<EmailContentEditorHandle>(null);
+  const editor = useRef<EmailTemplateBuilderHandle>(null);
 
   async function save() {
     if (!subject.trim()) return toast.error("Add a subject");
@@ -99,38 +99,34 @@ function EmailRow({
       </div>
 
       {editing ? (
-        <div className="space-y-4">
-          <div className="space-y-1.5">
-            <Label>Subject</Label>
-            <Input value={subject} onChange={(e) => setSubject(e.target.value)} />
-          </div>
-          <div className="space-y-1.5">
-            <Label>Message</Label>
-            <EmailContentEditor
-              ref={editor}
-              initialBody={row.body ?? ""}
-              initialHtml={row.html ?? ""}
-              variables={CAMPAIGN_VARIABLES}
-            />
-          </div>
-          <CampaignAttachments value={attachments} onChange={setAttachments} />
-          <div className="flex justify-end gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={saving}
-              onClick={() => {
-                setEditing(false);
-                setSubject(row.subject);
-              }}
-            >
-              Cancel
-            </Button>
-            <Button size="sm" onClick={save} disabled={saving}>
-              {saving ? "Saving…" : "Save"}
-            </Button>
-          </div>
-        </div>
+        <EmailTemplateBuilder
+          ref={editor}
+          subject={subject}
+          onSubjectChange={setSubject}
+          initialBody={row.body ?? ""}
+          initialHtml={row.html ?? ""}
+          variables={CAMPAIGN_VARIABLES}
+          disabled={saving}
+          extra={<CampaignAttachments value={attachments} onChange={setAttachments} />}
+          actions={
+            <div className="ml-auto flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={saving}
+                onClick={() => {
+                  setEditing(false);
+                  setSubject(row.subject);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button size="sm" onClick={save} disabled={saving}>
+                {saving ? "Saving…" : "Save"}
+              </Button>
+            </div>
+          }
+        />
       ) : (
         <div className="space-y-3">
           <p className="text-sm font-medium">{row.subject}</p>

@@ -20,7 +20,8 @@ import { Input } from "@foundry/ui/input";
 import { Switch } from "@foundry/ui/switch";
 import { Tabs, TabsList, TabsTrigger } from "@foundry/ui/tabs";
 import { Skeleton } from "@foundry/ui/skeleton";
-import { EmailContentEditor, type EmailContentEditorHandle } from "./email-content-editor";
+import { type EmailContentEditorHandle } from "./email-content-editor";
+import { EmailTemplateBuilder } from "./email-template-builder";
 
 const MDEditor = dynamic(() => import("@uiw/react-md-editor"), { ssr: false });
 
@@ -61,7 +62,6 @@ export function TemplateEditor({
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const [enabled, setEnabled] = useState(true);
-  const [testEmail, setTestEmail] = useState("");
   const [busy, setBusy] = useState(false);
   const emailContentRef = useRef<EmailContentEditorHandle>(null);
 
@@ -110,40 +110,6 @@ export function TemplateEditor({
     }
   }
 
-  async function sendTest() {
-    if (channel !== "email") {
-      toast.error("Test send is email only");
-      return;
-    }
-    if (!emailContentRef.current) {
-      toast.error("Editor not ready — please wait and try again");
-      return;
-    }
-    let html: string;
-    let text: string;
-    try {
-      const out = await emailContentRef.current.exportEmail();
-      html = out.html;
-      text = out.text;
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Couldn't export the email");
-      return;
-    }
-    setBusy(true);
-    try {
-      await apiFetch("/api/notifications/templates/test", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ event, subject, html, text, to: testEmail.trim() || undefined }),
-      });
-      toast.success(`Test sent${testEmail.trim() ? ` to ${testEmail.trim()}` : ""}`);
-    } catch {
-      // apiFetch already toasted the failure detail.
-    } finally {
-      setBusy(false);
-    }
-  }
-
   return (
     <div className={editorShell.root}>
       <div className={editorShell.toolbar}>
@@ -164,63 +130,55 @@ export function TemplateEditor({
         </label>
       </div>
 
-      <Input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Subject / in-app title" />
-
       {channel === "email" ? (
-        <EmailContentEditor
+        <EmailTemplateBuilder
           key={`${channel}-${locale}`}
           ref={emailContentRef}
+          subject={subject}
+          onSubjectChange={setSubject}
           initialBody={current?.body ?? ""}
           initialHtml={current?.html ?? ""}
           variables={variables}
+          disabled={busy}
+          actions={
+            <Button onClick={save} disabled={busy}>
+              Save
+            </Button>
+          }
         />
       ) : (
-        <div className={editorShell.grid}>
-          <div className={editorShell.editorCol}>
-            {variables.length > 0 && (
-              <div className="flex flex-wrap gap-1">
-                {variables.map((v) => (
-                  <button
-                    key={v}
-                    type="button"
-                    className="rounded bg-muted px-2 py-0.5 font-mono text-xs hover:bg-accent"
-                    onClick={() => setBody((b) => `${b}{{${v}}}`)}
-                  >
-                    {`{{${v}}}`}
-                  </button>
-                ))}
+        <>
+          <Input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Subject / in-app title" />
+          <div className={editorShell.grid}>
+            <div className={editorShell.editorCol}>
+              {variables.length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  {variables.map((v) => (
+                    <button
+                      key={v}
+                      type="button"
+                      className="rounded bg-muted px-2 py-0.5 font-mono text-xs hover:bg-accent"
+                      onClick={() => setBody((b) => `${b}{{${v}}}`)}
+                    >
+                      {`{{${v}}}`}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <div data-color-mode="light">
+                <MDEditor value={body} onChange={(v) => setBody(v ?? "")} height={280} />
               </div>
-            )}
-            <div data-color-mode="light">
-              <MDEditor value={body} onChange={(v) => setBody(v ?? "")} height={280} />
+            </div>
+            <div className={editorShell.previewCol}>
+              <p className="text-xs font-medium text-muted-foreground">Live preview — in-app</p>
+              <InAppPreview title={subject} body={body} />
             </div>
           </div>
-          <div className={editorShell.previewCol}>
-            <p className="text-xs font-medium text-muted-foreground">Live preview — in-app</p>
-            <InAppPreview title={subject} body={body} />
-          </div>
-        </div>
+          <Button onClick={save} disabled={busy}>
+            Save
+          </Button>
+        </>
       )}
-
-      <div className="flex gap-2">
-        <Button onClick={save} disabled={busy}>
-          Save
-        </Button>
-        {channel === "email" && (
-          <>
-            <Input
-              type="email"
-              value={testEmail}
-              onChange={(e) => setTestEmail(e.target.value)}
-              placeholder="test recipient (defaults to you)"
-              className="max-w-64"
-            />
-            <Button variant="outline" onClick={sendTest} disabled={busy}>
-              Send test
-            </Button>
-          </>
-        )}
-      </div>
     </div>
   );
 }
