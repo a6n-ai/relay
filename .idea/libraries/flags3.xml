@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="flags3">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/node_modules/.pnpm/node_modules/country-flag-icons/3x2/flags.zip!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

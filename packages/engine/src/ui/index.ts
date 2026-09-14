@@ -23,6 +23,7 @@ export * from "./format";
 export * from "./notification-bell";
 export * from "./notifications-nav";
 export * from "./react-template";
+export * from "./suppressed-addresses-table";
 export * from "./template-editor";
 export * from "./template-status";
 export * from "./use-notifications";
