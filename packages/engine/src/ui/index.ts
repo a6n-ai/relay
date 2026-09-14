@@ -9,6 +9,7 @@ export * from "./campaign-duplicate-button";
 export * from "./campaign-retrigger-button";
 export * from "./campaign-send-button";
 export * from "./contact-list-add-member";
+export * from "./contact-list-delete-button";
 export * from "./contact-list-from-segment";
 export * from "./contact-list-manual-add";
 export * from "./contact-list-member-row";

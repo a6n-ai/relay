@@ -289,3 +289,36 @@ export async function importContactListMembers(
 
   return { imported, rejected };
 }
+
+/**
+ * Delete a list — refused once any campaign (any status, past or present)
+ * has named it in its audience, since deleting it out from under a sent
+ * campaign would make that campaign's own record of who it mailed
+ * unrecoverable. audience.listIds is jsonb (no FK), so this checks by
+ * containment rather than a join.
+ */
+export async function deleteContactList(
+  deps: CampaignRouteDeps,
+  listPublicId: string,
+): Promise<{ ok: true } | { error: string; status: number }> {
+  const { db, tables } = deps;
+
+  const [list] = await db
+    .select({ id: tables.contactList.id })
+    .from(tables.contactList)
+    .where(eq(tables.contactList.publicId, listPublicId));
+  if (!list) return { error: "List not found", status: 404 };
+
+  const [used] = await db
+    .select({ id: tables.campaign.id })
+    .from(tables.campaign)
+    .where(sql`${tables.campaign.audience} -> 'listIds' @> ${JSON.stringify([listPublicId])}::jsonb`)
+    .limit(1);
+  if (used) return { error: "This list has been used in a campaign and can't be deleted", status: 409 };
+
+  await db.transaction(async (tx) => {
+    await tx.delete(tables.contactListMember).where(eq(tables.contactListMember.listId, list.id));
+    await tx.delete(tables.contactList).where(eq(tables.contactList.id, list.id));
+  });
+  return { ok: true };
+}
