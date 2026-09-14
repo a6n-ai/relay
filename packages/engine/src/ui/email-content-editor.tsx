@@ -89,6 +89,18 @@ export const EmailContentEditor = forwardRef<EmailContentEditorHandle, Props>(
     const emailRef = useRef<EmailEditorFieldHandle>(null);
     const previewTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
+    // Which mode was actually last TYPED in, as opposed to merely viewed.
+    // Visual (TipTap) is lossy for markup it doesn't understand — tables,
+    // inline styles, an Outlook/Word export, a hand-built footer — so just
+    // clicking the Visual tab to look, then hitting Save while it's active,
+    // must not silently export TipTap's re-serialized (and possibly mangled)
+    // doc over content nobody touched. TipTap's onUpdate only fires on a real
+    // edit (not on the initial mount), so this stays null — meaning "trust
+    // the mode implied by the stored content" — until the admin actually
+    // types somewhere.
+    const [editedMode, setEditedMode] = useState<EmailMode | null>(null);
+    const exportMode = editedMode ?? mode;
+
     const compatWarnings = useMemo(() => (mode === "html" ? lintEmailHtml(rawHtml) : []), [mode, rawHtml]);
 
     function refreshVisualPreview() {
@@ -97,6 +109,7 @@ export const EmailContentEditor = forwardRef<EmailContentEditorHandle, Props>(
         const out = await emailRef.current?.exportEmail();
         if (out) setPreview(out.body);
       }, 250);
+      setEditedMode("visual");
       onChange?.();
     }
 
@@ -122,11 +135,11 @@ export const EmailContentEditor = forwardRef<EmailContentEditorHandle, Props>(
 
     useImperativeHandle(ref, () => ({
       async exportEmail() {
-        if (mode === "react") {
+        if (exportMode === "react") {
           const html = await compileReactEmail(reactSource);
           return { html, text: htmlToText(html), body: REACT_SOURCE_MARKER + reactSource };
         }
-        if (mode === "html") {
+        if (exportMode === "html") {
           return { html: rawHtml, text: htmlToText(rawHtml), body: rawHtml };
         }
         if (!emailRef.current) throw new Error("Editor not ready — please wait and try again");
@@ -136,8 +149,13 @@ export const EmailContentEditor = forwardRef<EmailContentEditorHandle, Props>(
 
     async function format() {
       try {
-        if (mode === "html") setRawHtml(await formatCode(rawHtml, "html"));
-        else if (mode === "react") setReactSource(await formatCode(reactSource, "react"));
+        if (mode === "html") {
+          setRawHtml(await formatCode(rawHtml, "html"));
+          setEditedMode("html");
+        } else if (mode === "react") {
+          setReactSource(await formatCode(reactSource, "react"));
+          setEditedMode("react");
+        }
       } catch (e) {
         toast.error(`Format failed: ${e instanceof Error ? e.message : String(e)}`);
       }
@@ -181,6 +199,7 @@ export const EmailContentEditor = forwardRef<EmailContentEditorHandle, Props>(
                 value={rawHtml}
                 onChange={(e) => {
                   setRawHtml(e.target.value);
+                  setEditedMode("html");
                   onChange?.();
                 }}
                 spellCheck={false}
@@ -210,6 +229,7 @@ export const EmailContentEditor = forwardRef<EmailContentEditorHandle, Props>(
                 value={reactSource}
                 onChange={(e) => {
                   setReactSource(e.target.value);
+                  setEditedMode("react");
                   onChange?.();
                 }}
                 spellCheck={false}

@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { PencilIcon } from "lucide-react";
+import { ExternalLinkIcon, PencilIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@foundry/ui/badge";
 import { Button } from "@foundry/ui/button";
@@ -27,16 +27,31 @@ export interface CampaignContentRow {
 const CAMPAIGN_VARIABLES = ["contact.name"];
 
 function EmailPreview({ html }: { html: string }) {
-  // srcDoc sandboxes the campaign's own HTML/CSS from the dashboard's — a
-  // recipient-facing email is untrusted markup as far as the admin UI is
-  // concerned, same as previewing anyone else's HTML.
+  // Blob URL rather than a server route — this is the same HTML already in
+  // hand, so opening it full-page needs no round trip.
+  function openFull() {
+    const url = URL.createObjectURL(new Blob([html], { type: "text/html" }));
+    window.open(url, "_blank", "noopener,noreferrer");
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  }
+
   return (
-    <iframe
-      title="Email preview"
-      srcDoc={html}
-      sandbox=""
-      className="h-[420px] w-full rounded-lg border bg-white"
-    />
+    <div className="space-y-1.5">
+      <div className="flex justify-end">
+        <Button type="button" size="sm" variant="ghost" onClick={openFull}>
+          <ExternalLinkIcon className="size-3.5" /> Open
+        </Button>
+      </div>
+      {/* srcDoc sandboxes the campaign's own HTML/CSS from the dashboard's — a
+          recipient-facing email is untrusted markup as far as the admin UI is
+          concerned, same as previewing anyone else's HTML. */}
+      <iframe
+        title="Email preview"
+        srcDoc={html}
+        sandbox=""
+        className="h-[420px] w-full rounded-lg border bg-white"
+      />
+    </div>
   );
 }
 

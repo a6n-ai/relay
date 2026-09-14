@@ -30,6 +30,8 @@ const audienceSchema = z.object({
   listIds: z.array(z.string()).optional(),
 });
 
+export const updateCampaignAudienceSchema = z.object({ audience: audienceSchema });
+
 export function createCampaignSchema(channels: [string, ...string[]]) {
   return z.object({
     name: z.string().trim().min(1),
@@ -180,6 +182,29 @@ export async function setCampaignContent(
       },
     });
 
+  return { ok: true };
+}
+
+export async function updateCampaignAudience(
+  deps: CampaignRouteDeps,
+  campaignPublicId: string,
+  audience: AudienceDef,
+): Promise<{ ok: true } | { error: string; status: number }> {
+  const { db, tables } = deps;
+
+  const [row] = await db
+    .select({ status: tables.campaign.status })
+    .from(tables.campaign)
+    .where(eq(tables.campaign.publicId, campaignPublicId));
+  if (!row) return { error: "Campaign not found", status: 404 };
+  // Same rule as content: once outbox rows exist for a send, the audience is
+  // the record of who was actually mailed — changing it after the fact would
+  // disagree with reality.
+  if (row.status !== "draft" && row.status !== "scheduled") {
+    return { error: "Audience can only be edited while a campaign is draft or scheduled", status: 409 };
+  }
+
+  await db.update(tables.campaign).set({ audience }).where(eq(tables.campaign.publicId, campaignPublicId));
   return { ok: true };
 }
 

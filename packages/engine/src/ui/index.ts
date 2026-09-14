@@ -1,6 +1,7 @@
 export * from "./api-fetch";
 export * from "./audience-builder";
 export * from "./campaign-analytics";
+export * from "./campaign-audience-editor";
 export * from "./campaign-attachments";
 export * from "./campaign-composer";
 export * from "./campaign-content-section";
