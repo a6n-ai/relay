@@ -97,13 +97,25 @@ export function ContactListUpload() {
     if (out.rejected.length) toast.warning(`${out.rejected.length} row(s) need fixing before they can import`);
   }
 
-  function updateEmail(id: number, email: string) {
+  // Re-validates with the exact rules mapRows used to reject the row, so a
+  // fixed row passes for the same reason a fresh CSV row would. Only per-row
+  // reasons are fixable here — "duplicate in file" depends on every other
+  // row's current value, not just this one, so it stays as reported.
+  function revalidate(r: Row): string | null {
+    if (r.reason === "duplicate in file") return r.reason;
+    if (!r.name.trim()) return "missing name";
+    if (!r.email.trim() && !r.phone.trim()) return "no email or phone";
+    if (r.email.trim() && !looksLikeEmail(r.email.trim())) return "invalid email";
+    return null;
+  }
+
+  function updateRow(id: number, patch: Partial<Pick<Row, "name" | "email" | "phone">>) {
     setRows((prev) =>
       prev
         ? prev.map((r) => {
             if (r.id !== id) return r;
-            const ok = looksLikeEmail(email) || (!email && r.phone);
-            return { ...r, email, reason: ok ? null : r.reason === "invalid email" || !r.reason ? "invalid email" : r.reason };
+            const next = { ...r, ...patch };
+            return { ...next, reason: revalidate(next) };
           })
         : prev,
     );
@@ -265,19 +277,35 @@ export function ContactListUpload() {
                         }
                       />
                     </TableCell>
-                    <TableCell className="font-medium">{r.name || "(no name)"}</TableCell>
+                    <TableCell className="font-medium">
+                      {r.reason === "missing name" ? (
+                        <Input
+                          value={r.name}
+                          onChange={(e) => updateRow(r.id, { name: e.target.value })}
+                          placeholder="Name"
+                          className="h-7 max-w-40 text-xs"
+                        />
+                      ) : (
+                        r.name || "(no name)"
+                      )}
+                    </TableCell>
                     <TableCell>
-                      {r.reason && r.reason !== "invalid email" ? (
+                      {r.reason === "duplicate in file" ? (
                         <span className="text-xs text-muted-foreground">{r.phone || r.email || "—"}</span>
                       ) : (
                         <div className="flex items-center gap-2">
                           <Input
                             value={r.email}
-                            onChange={(e) => updateEmail(r.id, e.target.value)}
+                            onChange={(e) => updateRow(r.id, { email: e.target.value })}
                             placeholder="email@example.com"
                             className="h-7 max-w-xs text-xs"
                           />
-                          {r.phone && <span className="text-xs text-muted-foreground">{r.phone}</span>}
+                          <Input
+                            value={r.phone}
+                            onChange={(e) => updateRow(r.id, { phone: e.target.value })}
+                            placeholder="+1…"
+                            className="h-7 max-w-32 text-xs"
+                          />
                         </div>
                       )}
                     </TableCell>
