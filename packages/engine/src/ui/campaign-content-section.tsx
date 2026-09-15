@@ -22,6 +22,8 @@ export interface CampaignContentRow {
   text: string | null;
   providerTemplateId: string | null;
   attachments?: CampaignAttachment[];
+  /** Footer-stamped copy for read-only preview — falls back to `html` when absent. */
+  previewHtml?: string | null;
 }
 
 const CAMPAIGN_VARIABLES = ["contact.name"];
@@ -146,7 +148,7 @@ function EmailRow({
         <div className="space-y-3">
           <p className="text-sm font-medium">{row.subject}</p>
           {row.html ? (
-            <EmailPreview html={row.html} />
+            <EmailPreview html={row.previewHtml ?? row.html} />
           ) : (
             <p className="text-muted-foreground text-sm">No content yet.</p>
           )}

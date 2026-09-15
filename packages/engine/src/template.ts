@@ -91,6 +91,24 @@ export function appendUnsubscribeFooter(
   return { html, text };
 }
 
+/**
+ * Stamp the same CASL footer onto content for admin preview, returned as
+ * separate `previewHtml`/`previewText` fields rather than overwriting `html`/
+ * `text` — those stay the raw stored source so an editable row still edits
+ * (and saves) the real content, not a copy with a placeholder unsubscribe
+ * link baked in.
+ */
+export function withPreviewFooter<T extends { channel: string; html: string | null; text: string | null }>(
+  rows: T[],
+  footer: FooterInfo,
+): (T & { previewHtml: string | null; previewText: string | null })[] {
+  return rows.map((r) => {
+    if (r.channel !== "email" || !r.html || !r.text) return { ...r, previewHtml: r.html, previewText: r.text };
+    const stamped = appendUnsubscribeFooter({ html: r.html, text: r.text }, footer);
+    return { ...r, previewHtml: stamped.html, previewText: stamped.text };
+  });
+}
+
 async function loadCampaignContent(db: Db, tables: CampaignTables, campaignId: bigint) {
   const c = tables.campaignContent;
   return db
