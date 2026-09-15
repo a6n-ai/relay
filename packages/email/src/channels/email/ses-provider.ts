@@ -1,5 +1,6 @@
 /// <reference path="./nodemailer-ambient.d.ts" />
 import {
+  GetAccountCommand,
   SESv2Client,
   SendEmailCommand,
   type SendEmailCommandOutput,
@@ -74,6 +75,34 @@ export class SesEmailProvider extends AbstractEmailProvider {
     }
     return { providerMessageId: out.MessageId, provider: this.name };
   }
+}
+
+export interface SesSendQuota {
+  /** Max sends allowed in a rolling 24h window. */
+  max24HourSend: number;
+  /** Sends already used in the current 24h window. */
+  sentLast24Hours: number;
+  /** Max sends per second. */
+  maxSendRate: number;
+  /** False in the SES sandbox (200/day, verified recipients only) until production access is granted. */
+  productionAccessEnabled: boolean;
+}
+
+/**
+ * Account-wide SES sending limits — surfaced in the campaigns UI so an admin
+ * can see headroom before a large send, not just find out from a bounced
+ * SendEmail call mid-campaign.
+ */
+export async function getSesSendQuota(config: { region?: string; client?: SESv2Client } = {}): Promise<SesSendQuota> {
+  const client = config.client ?? new SESv2Client({ region: config.region });
+  const out = await client.send(new GetAccountCommand({}));
+  const quota = out.SendQuota ?? {};
+  return {
+    max24HourSend: quota.Max24HourSend ?? 0,
+    sentLast24Hours: quota.SentLast24Hours ?? 0,
+    maxSendRate: quota.MaxSendRate ?? 0,
+    productionAccessEnabled: out.ProductionAccessEnabled ?? false,
+  };
 }
 
 async function buildRawMessage(message: PreparedEmail): Promise<Uint8Array> {
