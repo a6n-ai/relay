@@ -12,6 +12,7 @@ import { Textarea } from "@foundry/ui/textarea";
 import { apiFetch } from "./api-fetch";
 import { CampaignAttachments, type CampaignAttachment } from "./campaign-attachments";
 import { EmailTemplateBuilder, type EmailTemplateBuilderHandle } from "./email-template-builder";
+import type { FooterInfo } from "../template";
 
 export interface CampaignContentRow {
   channel: string;
@@ -61,10 +62,12 @@ function EmailRow({
   campaignPublicId,
   row,
   editable,
+  footer,
 }: {
   campaignPublicId: string;
   row: CampaignContentRow;
   editable: boolean;
+  footer?: FooterInfo;
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
@@ -124,6 +127,7 @@ function EmailRow({
           initialHtml={row.html ?? ""}
           variables={CAMPAIGN_VARIABLES}
           disabled={saving}
+          footer={footer}
           extra={<CampaignAttachments value={attachments} onChange={setAttachments} />}
           actions={
             <div className="ml-auto flex gap-2">
@@ -244,10 +248,13 @@ export function CampaignContentSection({
   campaignPublicId,
   content,
   editable,
+  footer,
 }: {
   campaignPublicId: string;
   content: CampaignContentRow[];
   editable: boolean;
+  /** Stamped onto each email row's live preview while editing — see EmailContentEditor's `footer` prop. */
+  footer?: FooterInfo;
 }) {
   if (content.length === 0) {
     return (
@@ -260,7 +267,7 @@ export function CampaignContentSection({
     <div className="space-y-4">
       {content.map((c) =>
         c.channel === "email" ? (
-          <EmailRow key={`${c.channel}-${c.locale}`} campaignPublicId={campaignPublicId} row={c} editable={editable} />
+          <EmailRow key={`${c.channel}-${c.locale}`} campaignPublicId={campaignPublicId} row={c} editable={editable} footer={footer} />
         ) : (
           <TextRow key={`${c.channel}-${c.locale}`} campaignPublicId={campaignPublicId} row={c} editable={editable} />
         ),

@@ -9,6 +9,7 @@ import { lintEmailHtml } from "./email-compat";
 import { formatCode } from "./format";
 import { compileReactEmail, REACT_SOURCE_MARKER } from "./react-template";
 import { EmailEditorField, type EmailEditorFieldHandle } from "./email-editor";
+import { appendUnsubscribeFooter, type FooterInfo } from "../template";
 
 type EmailMode = "visual" | "html" | "react";
 
@@ -68,6 +69,13 @@ interface Props {
   variables: string[];
   /** Fires on every edit (any mode) so a parent tracking dirty state can react. */
   onChange?: () => void;
+  /**
+   * Stamped onto the live preview ONLY — never into rawHtml/reactHtml/preview
+   * state, so it's never exported or saved. Lets an admin see the same CASL
+   * footer a recipient gets while still editing the real, footer-less
+   * content underneath.
+   */
+  footer?: FooterInfo;
 }
 
 /**
@@ -78,7 +86,7 @@ interface Props {
  * visual editor before can swap in this component with no other changes.
  */
 export const EmailContentEditor = forwardRef<EmailContentEditorHandle, Props>(
-  function EmailContentEditor({ initialBody, initialHtml, variables, onChange }, ref) {
+  function EmailContentEditor({ initialBody, initialHtml, variables, onChange, footer }, ref) {
     const isReact = initialBody.startsWith(REACT_SOURCE_MARKER);
     const [mode, setMode] = useState<EmailMode>(isReact ? "react" : "visual");
     const [rawHtml, setRawHtml] = useState(isReact ? "" : initialHtml);
@@ -102,6 +110,11 @@ export const EmailContentEditor = forwardRef<EmailContentEditorHandle, Props>(
     const exportMode = editedMode ?? mode;
 
     const compatWarnings = useMemo(() => (mode === "html" ? lintEmailHtml(rawHtml) : []), [mode, rawHtml]);
+
+    function withFooter(html: string): string {
+      if (!footer || !html) return html;
+      return appendUnsubscribeFooter({ html, text: "" }, footer).html;
+    }
 
     function refreshVisualPreview() {
       clearTimeout(previewTimer.current);
@@ -162,7 +175,7 @@ export const EmailContentEditor = forwardRef<EmailContentEditorHandle, Props>(
     }
 
     return (
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
         <div className="min-w-0 space-y-4">
           <div className="flex items-center justify-between gap-2">
             <Tabs value={mode} onValueChange={(v) => setMode(v as EmailMode)}>
@@ -204,7 +217,7 @@ export const EmailContentEditor = forwardRef<EmailContentEditorHandle, Props>(
                 }}
                 spellCheck={false}
                 placeholder="<!DOCTYPE html> … paste rich email HTML here"
-                className="h-[600px] w-full resize-y rounded-lg border bg-muted/20 p-3 font-mono text-xs leading-relaxed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="h-[75vh] min-h-[500px] w-full resize-y rounded-lg border bg-muted/20 p-3 font-mono text-xs leading-relaxed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               />
               {compatWarnings.length > 0 && (
                 <div className="rounded-lg border border-warn/40 bg-warn/10 p-3 text-xs">
@@ -234,7 +247,7 @@ export const EmailContentEditor = forwardRef<EmailContentEditorHandle, Props>(
                 }}
                 spellCheck={false}
                 placeholder={REACT_STARTER}
-                className="h-[600px] w-full resize-y rounded-lg border bg-muted/20 p-3 font-mono text-xs leading-relaxed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="h-[75vh] min-h-[500px] w-full resize-y rounded-lg border bg-muted/20 p-3 font-mono text-xs leading-relaxed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               />
               <div className="flex items-center justify-between gap-2">
                 <span className="text-xs text-muted-foreground">
@@ -263,8 +276,8 @@ export const EmailContentEditor = forwardRef<EmailContentEditorHandle, Props>(
           <p className="text-xs font-medium text-muted-foreground">Live preview</p>
           <iframe
             title="Email preview"
-            srcDoc={mode === "html" ? rawHtml : mode === "react" ? reactHtml : preview}
-            className="h-[600px] w-full rounded-lg border bg-white"
+            srcDoc={withFooter(mode === "html" ? rawHtml : mode === "react" ? reactHtml : preview)}
+            className="h-[75vh] min-h-[500px] w-full rounded-lg border bg-white"
           />
         </div>
       </div>

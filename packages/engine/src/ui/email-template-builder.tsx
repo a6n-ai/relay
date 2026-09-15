@@ -5,6 +5,7 @@ import { Input } from "@foundry/ui/input";
 import { Label } from "@foundry/ui/label";
 import { EmailContentEditor, type EmailContentEditorHandle } from "./email-content-editor";
 import { SendTestEmailButton } from "./send-test-email-button";
+import type { FooterInfo } from "../template";
 
 export type EmailTemplateBuilderHandle = EmailContentEditorHandle;
 
@@ -32,9 +33,11 @@ export const EmailTemplateBuilder = forwardRef<
     /** Save/Cancel buttons — caller-specific save flow. Omit when Save lives outside this block. */
     actions?: ReactNode;
     disabled?: boolean;
+    /** Stamped onto the live preview only — see EmailContentEditor's `footer` prop. */
+    footer?: FooterInfo;
   }
 >(function EmailTemplateBuilder(
-  { subject, onSubjectChange, subjectLabel = "Subject", subjectError, initialBody, initialHtml, variables, onChange, extra, actions, disabled },
+  { subject, onSubjectChange, subjectLabel = "Subject", subjectError, initialBody, initialHtml, variables, onChange, extra, actions, disabled, footer },
   ref,
 ) {
   const editorRef = useRef<EmailContentEditorHandle>(null);
@@ -57,7 +60,14 @@ export const EmailTemplateBuilder = forwardRef<
         )}
       </div>
 
-      <EmailContentEditor ref={editorRef} initialBody={initialBody} initialHtml={initialHtml} variables={variables} onChange={onChange} />
+      <EmailContentEditor
+        ref={editorRef}
+        initialBody={initialBody}
+        initialHtml={initialHtml}
+        variables={variables}
+        onChange={onChange}
+        footer={footer}
+      />
 
       {extra}
 
