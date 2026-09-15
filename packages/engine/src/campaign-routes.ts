@@ -293,6 +293,31 @@ export async function duplicateCampaign(
   return { publicId: copy.publicId as string };
 }
 
+/**
+ * Delete a draft/scheduled campaign that never sent. Refused once a campaign
+ * has queued outbox rows (sending/sent/paused/cancelled) — those are the send
+ * record and a duplicate/retrigger, not a delete, is how you walk it back.
+ */
+export async function deleteCampaign(
+  deps: CampaignRouteDeps,
+  campaignPublicId: string,
+): Promise<{ ok: true } | { error: string; status: number }> {
+  const { db, tables } = deps;
+
+  const [source] = await db
+    .select({ id: tables.campaign.id, status: tables.campaign.status })
+    .from(tables.campaign)
+    .where(eq(tables.campaign.publicId, campaignPublicId));
+  if (!source) return { error: "Campaign not found", status: 404 };
+  if (source.status !== "draft" && source.status !== "scheduled") {
+    return { error: "Only a draft or scheduled campaign can be deleted", status: 409 };
+  }
+
+  await db.delete(tables.campaignContent).where(eq(tables.campaignContent.campaignId, source.id));
+  await db.delete(tables.campaign).where(eq(tables.campaign.id, source.id));
+  return { ok: true };
+}
+
 export interface RetriggerCampaignInput {
   /** Restrict the resend to these contact lists only; omit to reuse the whole original audience. */
   listIds?: string[];
