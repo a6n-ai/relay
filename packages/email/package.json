@@ -15,7 +15,7 @@
     "@aws-sdk/client-sesv2": "^3.700.0",
     "@react-email/components": "^1.0.12",
     "@foundry/commons": "github:a6n-ai/foundry#path:packages/commons",
-    "nodemailer": "^7.0.11",
+    "nodemailer": "^9.0.1",
     "zod": "^4.4.3"
   },
   "peerDependencies": {
