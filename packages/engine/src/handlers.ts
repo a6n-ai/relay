@@ -189,7 +189,7 @@ export function buildHandlers(deps: HandlerDeps): Record<Channel, ChannelHandler
             rendered = {
               subject: base.subject,
               ...appendUnsubscribeFooter(base, {
-                url: buildUnsubscribeUrl(unsubscribe.baseUrl, unsubscribe.secret, target.address),
+                url: buildUnsubscribeUrl(unsubscribe.baseUrl, unsubscribe.secret, target.address, row.campaignId),
                 sender: sender.name,
                 address: sender.postalAddress,
               }),

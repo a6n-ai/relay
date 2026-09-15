@@ -24,7 +24,7 @@ export type SuppressionScope = "all" | "marketing";
 export async function suppress(
   db: Db,
   tables: NotificationTables,
-  input: { address: string; channel: Channel; reason: string; scope?: SuppressionScope },
+  input: { address: string; channel: Channel; reason: string; scope?: SuppressionScope; campaignId?: bigint },
 ): Promise<void> {
   await db
     .insert(tables.messageSuppression)
@@ -33,6 +33,7 @@ export async function suppress(
       channel: input.channel,
       scope: input.scope ?? "all",
       reason: input.reason,
+      campaignId: input.campaignId ?? null,
     })
     .onConflictDoUpdate({
       target: [
@@ -40,7 +41,7 @@ export async function suppress(
         tables.messageSuppression.channel,
         tables.messageSuppression.scope,
       ],
-      set: { reason: input.reason },
+      set: { reason: input.reason, campaignId: input.campaignId ?? null },
     });
 }
 

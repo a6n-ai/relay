@@ -29,12 +29,18 @@ export function verifyUnsubscribeToken(secret: string, address: string, token: s
   return expected.length === given.length && timingSafeEqual(expected, given);
 }
 
-/** Absolute unsubscribe link for a campaign footer. `baseUrl` is the app's own origin. */
-export function buildUnsubscribeUrl(baseUrl: string, secret: string, address: string): string {
+/**
+ * Absolute unsubscribe link for a campaign footer. `baseUrl` is the app's own
+ * origin. `campaignId` is attribution only — plain, not part of the signed
+ * token, so tampering with it can misattribute an unsubscribe to the wrong
+ * campaign but can never unsubscribe an address the token wasn't issued for.
+ */
+export function buildUnsubscribeUrl(baseUrl: string, secret: string, address: string, campaignId?: bigint): string {
   const url = new URL("/unsubscribe", baseUrl);
   const normalized = normalizeAddress(address);
   url.searchParams.set("address", normalized);
   url.searchParams.set("token", signUnsubscribeToken(secret, normalized));
+  if (campaignId != null) url.searchParams.set("campaignId", campaignId.toString());
   return url.toString();
 }
 
@@ -50,7 +56,7 @@ export function buildUnsubscribeUrl(baseUrl: string, secret: string, address: st
 export async function handleUnsubscribe(
   db: Db,
   tables: NotificationTables & CampaignTables,
-  input: { address: string | null; token: string | null; secret: string; channel?: Channel },
+  input: { address: string | null; token: string | null; secret: string; channel?: Channel; campaignId?: bigint },
 ): Promise<void> {
   const { address, token, secret } = input;
   if (!address || !token || !verifyUnsubscribeToken(secret, address, token)) return;
@@ -63,6 +69,7 @@ export async function handleUnsubscribe(
     channel,
     reason: "unsubscribe",
     scope: "marketing",
+    campaignId: input.campaignId,
   });
 
   const column = channel === "email" ? tables.contactListMember.email : tables.contactListMember.phone;

@@ -86,7 +86,7 @@ export function buildTenantHandlers(deps: {
           rendered = {
             subject: base.subject,
             ...appendUnsubscribeFooter(base, {
-              url: buildUnsubscribeUrl(campaigns.unsubscribe.baseUrl, campaigns.unsubscribe.secret, address),
+              url: buildUnsubscribeUrl(campaigns.unsubscribe.baseUrl, campaigns.unsubscribe.secret, address, row.campaignId),
               sender: sender.name,
               address: sender.postalAddress,
             }),

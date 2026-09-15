@@ -158,6 +158,13 @@ export function makeNotificationTables<
     scope: suppressionScope("scope").notNull().default("all"),
     /** bounce | complaint | unsubscribe | manual */
     reason: text("reason").notNull(),
+    /**
+     * Which campaign send triggered this — an unsubscribe click only, never
+     * set for bounce/complaint/manual. No FK: campaign lives in a sibling
+     * table set (CampaignTables) that isn't in scope here, and the two are
+     * only ever joined for display, not integrity.
+     */
+    campaignId: bigint("campaign_id", { mode: "bigint" }),
   }, (t) => [
     // Non-null scope on purpose: a nullable "applies to everything" column would
     // need NULLS NOT DISTINCT for the unique index to behave.

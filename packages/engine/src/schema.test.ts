@@ -44,7 +44,7 @@ describe("makeNotificationTables", () => {
 
   it("keys suppression on the address, not a user, and scopes it", () => {
     expect(columns(t.messageSuppression)).toEqual(
-      ["address", "app_id", "channel", "created_at", "created_by", "id", "public_id", "reason", "scope"],
+      ["address", "app_id", "campaign_id", "channel", "created_at", "created_by", "id", "public_id", "reason", "scope"],
     );
   });
 
