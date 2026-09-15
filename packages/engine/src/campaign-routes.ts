@@ -318,6 +318,33 @@ export async function deleteCampaign(
   return { ok: true };
 }
 
+/**
+ * Mark a "sent" (fully queued) campaign as "completed" — an admin's manual
+ * call that its results are final, since nothing here watches outbox drain
+ * progress to flip it automatically. Idempotent from "completed" itself;
+ * refused from any other status so a paused/cancelled send can't be closed
+ * out as if it finished.
+ */
+export async function completeCampaign(
+  deps: CampaignRouteDeps,
+  campaignPublicId: string,
+): Promise<{ ok: true } | { error: string; status: number }> {
+  const { db, tables } = deps;
+
+  const [source] = await db
+    .select({ id: tables.campaign.id, status: tables.campaign.status })
+    .from(tables.campaign)
+    .where(eq(tables.campaign.publicId, campaignPublicId));
+  if (!source) return { error: "Campaign not found", status: 404 };
+  if (source.status === "completed") return { ok: true };
+  if (source.status !== "sent") {
+    return { error: "Only a sent campaign can be marked completed", status: 409 };
+  }
+
+  await db.update(tables.campaign).set({ status: "completed" }).where(eq(tables.campaign.id, source.id));
+  return { ok: true };
+}
+
 export interface RetriggerCampaignInput {
   /** Restrict the resend to these contact lists only; omit to reuse the whole original audience. */
   listIds?: string[];

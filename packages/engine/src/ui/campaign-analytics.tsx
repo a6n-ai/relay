@@ -1,3 +1,8 @@
+"use client";
+
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import type { TooltipContentProps } from "recharts/types/component/Tooltip";
+
 const STAGES = [
   { key: "queued", label: "Queued" },
   { key: "delivered", label: "Delivered" },
@@ -5,37 +10,44 @@ const STAGES = [
   { key: "clicked", label: "Clicked" },
 ] as const;
 
-/** Queued→delivered→opened→clicked funnel, each stage sized relative to queued, plus a bounce rate. */
+// Matches the app's theme-aware chart tokens (--chart-1..5 in globals.css) —
+// this package has no app-local CSS to import, so the var name is the contract.
+const CHART_COLOR = "var(--color-chart-1)";
+
+function FunnelTooltip({ active, payload, label }: TooltipContentProps) {
+  if (!active || !payload?.length) return null;
+  const p = payload[0];
+  return (
+    <div className="bg-popover text-popover-foreground rounded-md border px-3 py-2 text-xs shadow-md">
+      <div className="text-muted-foreground mb-1 font-medium">{label}</div>
+      <div className="flex items-center gap-2">
+        <span className="size-2 rounded-full" style={{ background: p.color }} />
+        <span className="font-medium tabular-nums">{p.value}</span>
+      </div>
+    </div>
+  );
+}
+
+/** Queued→delivered→opened→clicked funnel as a bar chart, plus a bounce/complaint line. */
 export function CampaignAnalytics({ counts }: { counts: Record<string, number> }) {
   const queued = counts.queued ?? 0;
   const bounced = counts.bounced ?? 0;
   const complained = counts.complained ?? 0;
   const bounceRate = queued > 0 ? Math.round((bounced / queued) * 100) : 0;
 
+  const data = STAGES.map((s) => ({ stage: s.label, value: counts[s.key] ?? 0 }));
+
   return (
     <div className="space-y-4">
-      <div className="space-y-3">
-        {STAGES.map((s, i) => {
-          const value = counts[s.key] ?? 0;
-          const pct = queued > 0 ? Math.min(100, Math.round((value / queued) * 100)) : 0;
-          const prev = i > 0 ? (counts[STAGES[i - 1].key] ?? 0) : null;
-          const ofPrev = prev && prev > 0 ? Math.round((value / prev) * 100) : null;
-          return (
-            <div key={s.key} className="space-y-1">
-              <div className="flex items-baseline justify-between text-sm">
-                <span className="text-muted-foreground">{s.label}</span>
-                <span className="tabular-nums">
-                  <span className="font-semibold">{value}</span>
-                  {ofPrev !== null && <span className="ml-1.5 text-xs text-muted-foreground">({ofPrev}% of {STAGES[i - 1].label.toLowerCase()})</span>}
-                </span>
-              </div>
-              <div className="h-2 overflow-hidden rounded-full bg-muted">
-                <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${pct}%` }} />
-              </div>
-            </div>
-          );
-        })}
-      </div>
+      <ResponsiveContainer width="100%" height={240}>
+        <BarChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" className="stroke-border" vertical={false} />
+          <XAxis dataKey="stage" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} className="fill-muted-foreground" />
+          <YAxis tick={{ fontSize: 12 }} tickLine={false} axisLine={false} width={36} allowDecimals={false} className="fill-muted-foreground" />
+          <Tooltip content={(props) => <FunnelTooltip {...props} />} cursor={{ fill: "var(--muted)", opacity: 0.4 }} />
+          <Bar dataKey="value" fill={CHART_COLOR} radius={[4, 4, 0, 0]} />
+        </BarChart>
+      </ResponsiveContainer>
       {(bounced > 0 || complained > 0) && (
         <div className="flex gap-4 border-t pt-3 text-sm">
           {bounced > 0 && (

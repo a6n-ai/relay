@@ -13,7 +13,7 @@ import {
 import { notificationChannel } from "./schema";
 
 export const campaignStatus = pgEnum("campaign_status", [
-  "draft", "scheduled", "sending", "sent", "paused", "cancelled",
+  "draft", "scheduled", "sending", "sent", "completed", "paused", "cancelled",
 ]);
 
 /**
