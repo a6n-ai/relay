@@ -78,16 +78,36 @@ const escapeHtml = (s: string) =>
 export function appendUnsubscribeFooter(
   parts: { html: string; text: string },
   footer: FooterInfo,
+  opts: { preview?: boolean } = {},
 ): { html: string; text: string } {
   if (parts.html.includes(FOOTER_MARKER)) return parts;
   const sender = escapeHtml(footer.sender);
   const address = escapeHtml(footer.address);
   const url = escapeHtml(footer.url);
+  // A centered, divider-topped signature block — reads as part of the
+  // template's own layout rather than a disclaimer bolted underneath it.
+  // Inherits font-family from whatever the admin designed above; only size
+  // and color are set, both muted so it recedes under the actual content.
+  // Table-based (not div/p) for email-client-safe centering.
+  //
+  // In an admin preview only, tint the block and add a caption — otherwise
+  // it's easy to miss entirely (muted-by-design against a long email) and an
+  // admin can end up unsure whether it's there at all. Never shown to a
+  // recipient: `opts.preview` only affects previewHtml/the editor's live
+  // preview, never the html actually sent.
+  const bg = opts.preview ? "background:#fffbeb;border:1px dashed #d4a72c;border-radius:8px;padding:12px 16px" : "";
+  const caption = opts.preview
+    ? `<div style="font-size:11px;font-weight:600;letter-spacing:.02em;text-transform:uppercase;color:#b45309;margin-bottom:6px">Added automatically at send</div>`
+    : "";
   const html =
-    `${parts.html}\n<div ${FOOTER_MARKER} style="margin-top:24px;font-size:12px;color:#666">` +
-    `<p>${sender} — ${address}</p>` +
-    `<p><a href="${url}">Unsubscribe</a></p></div>`;
-  const text = `${parts.text}\n\n--\n${footer.sender}\n${footer.address}\nUnsubscribe: ${footer.url}\n`;
+    `${parts.html}\n<table ${FOOTER_MARKER} role="presentation" width="100%" cellpadding="0" cellspacing="0" ` +
+    `style="margin-top:32px;${opts.preview ? "" : "border-top:1px solid #e5e5e5;"}${bg}"><tr><td align="center" ` +
+    `style="${opts.preview ? "" : "padding-top:16px;"}font-size:12px;line-height:1.6;color:#8a8a8a">` +
+    `${caption}` +
+    `${sender} · ${address}<br/>` +
+    `<a href="${url}" style="color:#8a8a8a;text-decoration:underline">Unsubscribe</a>` +
+    `</td></tr></table>`;
+  const text = `${parts.text}\n\n--\n${footer.sender} · ${footer.address}\nUnsubscribe: ${footer.url}\n`;
   return { html, text };
 }
 
@@ -104,7 +124,7 @@ export function withPreviewFooter<T extends { channel: string; html: string | nu
 ): (T & { previewHtml: string | null; previewText: string | null })[] {
   return rows.map((r) => {
     if (r.channel !== "email" || !r.html || !r.text) return { ...r, previewHtml: r.html, previewText: r.text };
-    const stamped = appendUnsubscribeFooter({ html: r.html, text: r.text }, footer);
+    const stamped = appendUnsubscribeFooter({ html: r.html, text: r.text }, footer, { preview: true });
     return { ...r, previewHtml: stamped.html, previewText: stamped.text };
   });
 }

@@ -104,8 +104,11 @@ export const EmailEditorField = forwardRef<EmailEditorFieldHandle, Props>(
             </span>
           </div>
 
-          {/* Paper canvas — the email as recipients see it */}
-          <div className="flex justify-center p-4 sm:p-6">
+          {/* Paper canvas — the email as recipients see it. Bounded to the
+              same height as the HTML/React tabs (h-[75vh]) and scrolls
+              internally, so switching tabs doesn't change the page's overall
+              height or make one mode feel smaller than another. */}
+          <div className="flex h-[75vh] min-h-[500px] justify-center overflow-y-auto p-4 sm:p-6">
             <div className="tg-email-canvas w-full max-w-[680px] rounded-lg bg-white shadow-[0_1px_2px_rgba(0,0,0,0.05),0_10px_28px_rgba(0,0,0,0.07)] ring-1 ring-black/5">
               <EmailEditor
                 ref={editorRef}

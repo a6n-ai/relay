@@ -113,7 +113,7 @@ export const EmailContentEditor = forwardRef<EmailContentEditorHandle, Props>(
 
     function withFooter(html: string): string {
       if (!footer || !html) return html;
-      return appendUnsubscribeFooter({ html, text: "" }, footer).html;
+      return appendUnsubscribeFooter({ html, text: "" }, footer, { preview: true }).html;
     }
 
     function refreshVisualPreview() {
