@@ -7,6 +7,7 @@ export * from "./campaign-composer";
 export * from "./campaign-content-section";
 export * from "./campaign-complete-button";
 export * from "./campaign-delete-button";
+export * from "./campaign-logs-panel";
 export * from "./campaign-duplicate-button";
 export * from "./campaign-retrigger-button";
 export * from "./campaign-send-button";
