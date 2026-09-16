@@ -27,12 +27,26 @@ const COLUMNS: readonly Column<"time" | "address" | "scope" | "reason">[] = [
  */
 export function SuppressedAddressesTable({
   rows,
-  formatTime = (at) => new Date(at).toLocaleString(),
+  timeZone,
 }: {
   rows: SuppressionRow[];
-  /** Defaults to the browser's locale/timezone; pass one to render in the app's configured timezone instead. */
-  formatTime?: (at: number) => string;
+  /**
+   * A plain string, not a formatter function — this is a Client Component
+   * usually rendered from a Server Component page, and a function prop can't
+   * cross that boundary (RSC can't serialize it, so the page fails to
+   * render). Omit to fall back to the browser's own locale/timezone.
+   */
+  timeZone?: string;
 }) {
+  const formatTime = (at: number) =>
+    new Intl.DateTimeFormat("en-US", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      timeZone,
+    }).format(at);
   return (
     <DataTable
       columns={COLUMNS}

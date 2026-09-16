@@ -34,12 +34,26 @@ const STATUS_STYLE: Record<string, string> = {
 export function CampaignLogsPanel({
   campaignPublicId,
   campaignId,
-  formatTime,
+  timeZone,
 }: {
   campaignPublicId: string;
   campaignId: string;
-  formatTime: (ms: number) => string;
+  /**
+   * A plain string, not a formatter function — this is a Client Component
+   * rendered from a Server Component page, and a function prop can't cross
+   * that boundary (RSC can't serialize it, so the page fails to render).
+   */
+  timeZone: string;
 }) {
+  const formatTime = (ms: number) =>
+    new Intl.DateTimeFormat("en-US", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      timeZone,
+    }).format(ms);
   const [rows, setRows] = useState<LogRow[] | null>(null);
   const [cursor, setCursor] = useState<number | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
