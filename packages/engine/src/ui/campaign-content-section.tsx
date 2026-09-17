@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ExternalLinkIcon, PencilIcon } from "lucide-react";
+import { ExternalLinkIcon, PencilIcon, TriangleAlertIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@foundry/ui/badge";
 import { Button } from "@foundry/ui/button";
@@ -52,7 +52,7 @@ function EmailPreview({ html }: { html: string }) {
         title="Email preview"
         srcDoc={html}
         sandbox=""
-        className="h-[420px] w-full rounded-lg border bg-white"
+        className="h-[60vh] min-h-[420px] w-full resize-y overflow-auto rounded-lg border bg-white"
       />
     </div>
   );
@@ -263,8 +263,18 @@ export function CampaignContentSection({
       </p>
     );
   }
+  const hasEmail = content.some((c) => c.channel === "email");
   return (
     <div className="space-y-4">
+      {hasEmail && !footer && (
+        <div className="flex items-center gap-2 rounded-lg border border-warn/40 bg-warn/10 p-3 text-xs">
+          <TriangleAlertIcon className="size-3.5 shrink-0" />
+          <span>
+            Sender/unsubscribe config missing (UNSUBSCRIBE_SECRET, CAMPAIGN_POSTAL_ADDRESS, CAMPAIGN_BASE_URL) —
+            no CASL footer will be added to this email, in preview or at send time.
+          </span>
+        </div>
+      )}
       {content.map((c) =>
         c.channel === "email" ? (
           <EmailRow key={`${c.channel}-${c.locale}`} campaignPublicId={campaignPublicId} row={c} editable={editable} footer={footer} />

@@ -11,7 +11,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
-import { BellIcon } from "lucide-react";
+import { BellIcon, TriangleAlertIcon } from "lucide-react";
 import { toast } from "sonner";
 import { apiFetch } from "./api-fetch";
 import "@uiw/react-md-editor/markdown-editor.css";
@@ -22,6 +22,7 @@ import { Tabs, TabsList, TabsTrigger } from "@foundry/ui/tabs";
 import { Skeleton } from "@foundry/ui/skeleton";
 import { type EmailContentEditorHandle } from "./email-content-editor";
 import { EmailTemplateBuilder } from "./email-template-builder";
+import type { FooterInfo } from "../template";
 
 const MDEditor = dynamic(() => import("@uiw/react-md-editor"), { ssr: false });
 
@@ -52,10 +53,13 @@ export function TemplateEditor({
   event,
   variables,
   initial,
+  footer,
 }: {
   event: string;
   variables: string[];
   initial: Row[];
+  /** Some event templates carry kind "marketing" (abandoned-cart, checkout recovery) and get the same CASL footer a campaign does — shown in preview here too. */
+  footer?: FooterInfo;
 }) {
   const [channel, setChannel] = useState<Channel>("email");
   const [locale, setLocale] = useState<Locale>("en");
@@ -130,6 +134,16 @@ export function TemplateEditor({
         </label>
       </div>
 
+      {channel === "email" && !footer && (
+        <div className="flex items-center gap-2 rounded-lg border border-warn/40 bg-warn/10 p-3 text-xs">
+          <TriangleAlertIcon className="size-3.5 shrink-0" />
+          <span>
+            Sender/unsubscribe config missing (UNSUBSCRIBE_SECRET, CAMPAIGN_POSTAL_ADDRESS, CAMPAIGN_BASE_URL) — if
+            this template is ever marked marketing kind, no CASL footer would be added.
+          </span>
+        </div>
+      )}
+
       {channel === "email" ? (
         <EmailTemplateBuilder
           key={`${channel}-${locale}`}
@@ -140,6 +154,7 @@ export function TemplateEditor({
           initialHtml={current?.html ?? ""}
           variables={variables}
           disabled={busy}
+          footer={footer}
           actions={
             <Button onClick={save} disabled={busy}>
               Save

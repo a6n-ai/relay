@@ -32,12 +32,17 @@ export function SendTestEmailButton({
     setBusy(true);
     try {
       const { html, text } = await exportEmail();
-      await apiFetch("/api/notifications/templates/test", {
+      const res = await apiFetch<{ sent: boolean; footerIncluded: boolean }>("/api/notifications/templates/test", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ subject, html, text, to: testEmail.trim() || undefined }),
       });
-      toast.success(`Test sent${testEmail.trim() ? ` to ${testEmail.trim()}` : ""}`);
+      const dest = testEmail.trim() ? ` to ${testEmail.trim()}` : "";
+      if (res.footerIncluded) {
+        toast.success(`Test sent${dest}`);
+      } else {
+        toast.warning(`Test sent${dest} — no unsubscribe footer (sender/unsubscribe config missing)`);
+      }
     } catch {
       // apiFetch already toasted the failure detail.
     } finally {
