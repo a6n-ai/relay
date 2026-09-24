@@ -1,4 +1,5 @@
 import { baseColumns, updatableColumns } from "@foundry/database";
+import { sql } from "drizzle-orm";
 import {
   bigint,
   boolean,
@@ -119,6 +120,14 @@ export function makeNotificationTables<
     index("notification_outbox_due_idx").on(t.kind, t.status, t.nextAttemptAt),
     index("notification_outbox_campaign_idx").on(t.campaignId, t.status),
     uniqueIndex("notification_outbox_dedupe_idx").on(t.dedupeKey),
+    // FK: Postgres never auto-indexes FOREIGN KEY, only PRIMARY KEY/UNIQUE.
+    index("notification_outbox_recipient_idx").on(t.recipientId),
+    // drain() polls status='pending' AND next_attempt_at<=now with no kind
+    // filter — the composite above can't serve that (seen 400k+ seq scans on
+    // tiffin-grab prod).
+    index("notification_outbox_pending_idx").on(t.nextAttemptAt).where(sql`${t.status} = 'pending'`),
+    // Webhook/bounce correlation by provider id.
+    index("notification_outbox_provider_message_idx").on(t.providerMessageId).where(sql`${t.providerMessageId} is not null`),
   ]);
 
   /**

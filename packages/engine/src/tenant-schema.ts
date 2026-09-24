@@ -1,4 +1,5 @@
 import { baseColumns, updatableColumns } from "@foundry/database";
+import { sql } from "drizzle-orm";
 import {
   bigint,
   boolean,
@@ -71,6 +72,12 @@ export function makeTenantNotificationTables(deps: {
     index("notification_outbox_due_idx").on(t.kind, t.status, t.nextAttemptAt),
     index("notification_outbox_tenant_idx").on(t.tenantId, t.status),
     uniqueIndex("notification_outbox_dedupe_idx").on(t.dedupeKey),
+    // FK (when deps.campaign is wired) and not covered by either index above.
+    index("notification_outbox_campaign_idx").on(t.campaignId),
+    // drain() polls status='pending' AND next_attempt_at<=now with no kind
+    // filter — the composite above can't serve that.
+    index("notification_outbox_pending_idx").on(t.nextAttemptAt).where(sql`${t.status} = 'pending'`),
+    index("notification_outbox_provider_message_idx").on(t.providerMessageId).where(sql`${t.providerMessageId} is not null`),
   ]);
 
   const notificationPrefs = pgTable("notification_prefs", {
