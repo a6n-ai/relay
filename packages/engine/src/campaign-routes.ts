@@ -1,4 +1,4 @@
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import { z } from "zod";
 import type { AudienceDef, CampaignTables } from "./campaign-schema";
@@ -382,4 +382,30 @@ export async function retriggerCampaign(
 
   const { queued } = await materializeCampaign(deps, copy.publicId);
   return { publicId: copy.publicId, queued };
+}
+
+/**
+ * Put a campaign's failed sends back in the queue. Delivery sends each row once
+ * and never retries on its own, so this is the only way a failed campaign
+ * message goes out again — a person decides. Rows keep their dedupe keys, so a
+ * recipient who already got the message is never mailed twice.
+ */
+export async function retryFailedCampaign(
+  deps: Pick<CampaignRouteDeps, "db" | "tables">,
+  campaignPublicId: string,
+): Promise<{ requeued: number } | { error: string; status: number }> {
+  const { db, tables } = deps;
+  const [campaign] = await db
+    .select({ id: tables.campaign.id })
+    .from(tables.campaign)
+    .where(eq(tables.campaign.publicId, campaignPublicId));
+  if (!campaign) return { error: "Campaign not found", status: 404 };
+
+  const o = tables.notificationOutbox;
+  const rows = await db
+    .update(o)
+    .set({ status: "pending", nextAttemptAt: Date.now() })
+    .where(and(eq(o.campaignId, campaign.id), eq(o.status, "failed")))
+    .returning({ id: o.id });
+  return { requeued: rows.length };
 }

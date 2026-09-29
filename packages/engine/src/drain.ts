@@ -62,6 +62,11 @@ export interface DrainDeps {
   tables: NotificationTables;
   handlers: Record<Channel, ChannelHandler | undefined>;
   rateLimiter?: RateLimiter;
+  /**
+   * Sends per row before it is marked failed. Defaults to MAX_ATTEMPTS; 1 means
+   * send once and leave recovery to a person (Retry failed, or a resend).
+   */
+  maxAttempts?: number;
   /** Host hook after a row reaches a terminal or retry-pending state. */
   onProcessed?: (row: OutboxRow, outcome: DrainTerminal) => Promise<void>;
 }
@@ -103,6 +108,7 @@ async function process(
   tables: NotificationTables,
   row: OutboxRow,
   handler: ChannelHandler | undefined,
+  maxAttempts: number,
   onProcessed?: DrainDeps["onProcessed"],
 ): Promise<void> {
   const o = tables.notificationOutbox;
@@ -126,7 +132,7 @@ async function process(
     });
   } catch (err) {
     const lastError = err instanceof Error ? err.message : String(err);
-    const dead = attempts >= MAX_ATTEMPTS;
+    const dead = attempts >= maxAttempts;
     await db
       .update(o)
       .set({
@@ -147,7 +153,14 @@ export async function drainOnce(deps: DrainDeps, limit = 25): Promise<number> {
     // Serialized on purpose: the rate limiter exists to hold a send ceiling,
     // which Promise.all over the batch would blow straight through.
     if (deps.rateLimiter && row.channel !== "in_app") await deps.rateLimiter.take();
-    await process(deps.db, deps.tables, row, deps.handlers[row.channel as Channel], deps.onProcessed);
+    await process(
+      deps.db,
+      deps.tables,
+      row,
+      deps.handlers[row.channel as Channel],
+      deps.maxAttempts ?? MAX_ATTEMPTS,
+      deps.onProcessed,
+    );
   }
   return rows.length;
 }
@@ -168,36 +181,43 @@ interface DrainLogger {
   error(obj: Record<string, unknown>, msg: string): void;
 }
 
-export interface DrainLoopOptions {
-  intervalMs: number;
-  signal?: AbortSignal;
+export interface SignalLoopOptions {
+  /**
+   * Block until work is signalled (true) or a wait times out (false). Backed by
+   * a Redis BLPOP in the apps; waiting must not touch Postgres.
+   */
+  waitForSignal: () => Promise<boolean>;
   /** Bound drainPending call for the host app. */
   drain: () => Promise<number>;
-  /** Bound materialize-due-campaigns call for the host app. */
-  materialize: () => Promise<number>;
+  /**
+   * Pause between a signal and the drain. Apps signal from inside the caller's
+   * transaction, so the row may not be committed yet when the signal lands.
+   */
+  settleMs?: number;
+  /** Pause after waitForSignal throws (signal store down) before waiting again. */
+  errorBackoffMs?: number;
+  signal?: AbortSignal;
   log: DrainLogger;
 }
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
 /**
- * Poll the outbox forever. The one worker loop every app's `notify-drainer`
- * entrypoint runs — kept here so tiffin-grab and puchkaman can't drift.
+ * Drain the outbox when told to, never on a timer. The one loop every app runs
+ * — kept here so tiffin-grab and puchkaman can't drift.
  *
- * Postgres IS the queue — the outbox has FOR UPDATE SKIP LOCKED claiming,
- * backoff, attempt counting and a dead-letter status, so no broker is involved.
- * drainPending() already loops batches until the queue empties, so a burst
- * clears immediately; the interval only bounds idle latency.
+ * Postgres stays the record (claiming, attempt counting, failed status); the
+ * signal only says "look now", so an idle app sends zero queries and a
+ * scale-to-zero database can sleep. Drains once on start so rows left pending
+ * by a restart go out. Scheduled campaigns are not this loop's job: the host's
+ * cron materializes them and signals.
  */
-export async function runDrainLoop(opts: DrainLoopOptions): Promise<void> {
-  const { drain, materialize, log } = opts;
-  while (!opts.signal?.aborted) {
-    try {
-      const queued = await materialize();
-      if (queued > 0) log.info({ queued }, "campaign materialized");
-    } catch (err) {
-      // Kept separate from the drain try/catch below: a broken segment query
-      // must not stop transactional mail from going out.
-      log.error({ err }, "campaign materialization failed");
-    }
+export async function runSignalLoop(opts: SignalLoopOptions): Promise<void> {
+  const { drain, log } = opts;
+  const settleMs = opts.settleMs ?? 1000;
+  const errorBackoffMs = opts.errorBackoffMs ?? 5000;
+
+  const drainSafely = async () => {
     try {
       const n = await drain();
       if (n > 0) log.info({ processed: n }, "drained");
@@ -206,7 +226,20 @@ export async function runDrainLoop(opts: DrainLoopOptions): Promise<void> {
       // leave every queued notification undelivered until the next deploy.
       log.error({ err }, "drain failed");
     }
-    if (opts.signal?.aborted) break;
-    await new Promise((r) => setTimeout(r, opts.intervalMs));
+  };
+
+  await drainSafely();
+  while (!opts.signal?.aborted) {
+    let signalled: boolean;
+    try {
+      signalled = await opts.waitForSignal();
+    } catch (err) {
+      log.error({ err }, "waiting for outbox signal failed");
+      await sleep(errorBackoffMs);
+      continue;
+    }
+    if (!signalled || opts.signal?.aborted) continue;
+    await sleep(settleMs);
+    await drainSafely();
   }
 }

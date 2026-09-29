@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { duplicateCampaign, retriggerCampaign, setCampaignContent } from "./campaign-routes";
+import { duplicateCampaign, retriggerCampaign, retryFailedCampaign, setCampaignContent } from "./campaign-routes";
 
 function fakeDeps(campaignRow: { id: bigint; status: string } | undefined) {
   const insertChain = {
@@ -94,5 +94,36 @@ describe("retriggerCampaign", () => {
     const deps = { db, tables: { campaign: {}, campaignContent: {} }, users: {}, resolveSegment: vi.fn() } as any;
     const result = await retriggerCampaign(deps, "cmp_missing");
     expect(result).toEqual({ error: "Campaign not found", status: 404 });
+  });
+});
+
+describe("retryFailedCampaign", () => {
+  function retryDeps(campaignRow: { id: bigint } | undefined, requeued: number) {
+    const updateChain = {
+      set: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      returning: vi.fn().mockResolvedValue(Array.from({ length: requeued }, (_, i) => ({ id: BigInt(i) }))),
+    };
+    const db = {
+      select: vi.fn().mockReturnValue({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockResolvedValue(campaignRow ? [campaignRow] : []),
+        }),
+      }),
+      update: vi.fn().mockReturnValue(updateChain),
+    };
+    return { deps: { db, tables: { campaign: {}, notificationOutbox: {} } } as any, updateChain };
+  }
+
+  it("404s an unknown campaign without touching the outbox", async () => {
+    const { deps } = retryDeps(undefined, 0);
+    expect(await retryFailedCampaign(deps, "cmp_missing")).toEqual({ error: "Campaign not found", status: 404 });
+    expect(deps.db.update).not.toHaveBeenCalled();
+  });
+
+  it("flips failed rows back to pending and reports how many", async () => {
+    const { deps, updateChain } = retryDeps({ id: 7n }, 3);
+    expect(await retryFailedCampaign(deps, "cmp_1")).toEqual({ requeued: 3 });
+    expect(updateChain.set).toHaveBeenCalledWith(expect.objectContaining({ status: "pending" }));
   });
 });
