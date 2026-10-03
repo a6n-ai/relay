@@ -58,6 +58,19 @@ function htmlToText(html: string): string {
   return out.replace(/&nbsp;/gi, " ").replace(/\s+/g, " ").trim();
 }
 
+/**
+ * Which tab an existing email opens on. HTML mode saves the whole document as
+ * both body and html (and seeded templates do the same, or leave body empty);
+ * the visual editor saves only its fragment as body. Opening hand-built HTML in
+ * Visual would show TipTap's lossy re-render of it, so it opens on HTML.
+ */
+export function initialEmailMode(body: string, html: string): EmailMode {
+  if (body.startsWith(REACT_SOURCE_MARKER)) return "react";
+  if (!html.trim()) return "visual";
+  const b = body.trim();
+  return !b || b === html.trim() || /^<(!doctype|html)/i.test(b) ? "html" : "visual";
+}
+
 export interface EmailContentEditorHandle {
   exportEmail: () => Promise<{ html: string; text: string; body: string }>;
 }
@@ -88,7 +101,7 @@ interface Props {
 export const EmailContentEditor = forwardRef<EmailContentEditorHandle, Props>(
   function EmailContentEditor({ initialBody, initialHtml, variables, onChange, footer }, ref) {
     const isReact = initialBody.startsWith(REACT_SOURCE_MARKER);
-    const [mode, setMode] = useState<EmailMode>(isReact ? "react" : "visual");
+    const [mode, setMode] = useState<EmailMode>(() => initialEmailMode(initialBody, initialHtml));
     const [rawHtml, setRawHtml] = useState(isReact ? "" : initialHtml);
     const [reactSource, setReactSource] = useState(isReact ? initialBody.slice(REACT_SOURCE_MARKER.length) : "");
     const [reactHtml, setReactHtml] = useState(isReact ? initialHtml : "");
