@@ -112,6 +112,9 @@ export function makeNotificationTables<
     lastError: text("last_error"),
     /** Provider id (e.g. SES MessageId) once sent — bounce/complaint correlation. */
     providerMessageId: text("provider_message_id"),
+    /** First SES Delivery / Open event for this message; drives per-recipient status in admin lists. */
+    deliveredAt: bigint("delivered_at", { mode: "number" }),
+    openedAt: bigint("opened_at", { mode: "number" }),
     /** Optional idempotency guard: same event+channel enqueued once. */
     dedupeKey: text("dedupe_key"),
   }, (t) => [

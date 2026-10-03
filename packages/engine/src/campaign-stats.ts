@@ -13,8 +13,8 @@ export interface CampaignStatsDeps {
 
 /**
  * Attribute an SES event to its campaign via the provider message id stamped on
- * the outbox row when it was sent. A transactional send has no campaign_id, so
- * its events fall through as a no-op — the email_log row is its record.
+ * the outbox row when it was sent. Delivery/Open are also stamped on the row
+ * itself; a transactional send has no campaign_id, so that is all it records.
  */
 export async function recordCampaignEvent(
   deps: CampaignStatsDeps,
@@ -22,12 +22,23 @@ export async function recordCampaignEvent(
   type: string,
 ): Promise<void> {
   const { db, tables } = deps;
+  const o = tables.notificationOutbox;
   const [row] = await db
-    .select({ campaignId: tables.notificationOutbox.campaignId })
-    .from(tables.notificationOutbox)
-    .where(eq(tables.notificationOutbox.providerMessageId, providerMessageId))
+    .select({ id: o.id, campaignId: o.campaignId })
+    .from(o)
+    .where(eq(o.providerMessageId, providerMessageId))
     .limit(1);
-  if (!row?.campaignId) return;
+  if (!row) return;
+
+  // Per-message state, for every send (transactional too): first event wins.
+  const stamp = type === "delivered" ? o.deliveredAt : type === "opened" ? o.openedAt : undefined;
+  if (stamp) {
+    await db
+      .update(o)
+      .set({ [type === "delivered" ? "deliveredAt" : "openedAt"]: sql`coalesce(${stamp}, ${Date.now()})` })
+      .where(eq(o.id, row.id));
+  }
+  if (!row.campaignId) return;
 
   await db
     .update(tables.campaign)
