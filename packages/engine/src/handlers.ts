@@ -75,7 +75,8 @@ export interface HandlerDeps {
   campaigns?: {
     tables: CampaignTables;
     unsubscribe: { baseUrl: string; secret: string };
-    sender: { name: string; postalAddress: string };
+    /** `email` set → marketing mail goes From it, keeping its reputation off transactional mail. */
+    sender: { name: string; postalAddress: string; email?: string };
   };
 }
 
@@ -174,6 +175,7 @@ export function buildHandlers(deps: HandlerDeps): Record<Channel, ChannelHandler
 
       if (channel === "email") {
         let rendered: { subject: string; html: string; text: string } | null = null;
+        let marketing = false;
         let attachmentRefs: { filename: string; url: string; contentType: string }[] = [];
         if (row.campaignId && deps.campaigns) {
           const base = await renderCampaignEmail(
@@ -184,6 +186,7 @@ export function buildHandlers(deps: HandlerDeps): Record<Channel, ChannelHandler
             vars,
           );
           if (base) {
+            marketing = true;
             attachmentRefs = base.attachments;
             const { unsubscribe, sender } = deps.campaigns;
             rendered = {
@@ -201,6 +204,7 @@ export function buildHandlers(deps: HandlerDeps): Record<Channel, ChannelHandler
           // checkout recovery emails) — CASL requires the same footer they'd get via
           // the campaign path, so this is keyed on kind, not on how the row was queued.
           if (base && row.kind === "marketing" && deps.campaigns) {
+            marketing = true;
             const { unsubscribe, sender } = deps.campaigns;
             rendered = {
               subject: base.subject,
@@ -215,8 +219,10 @@ export function buildHandlers(deps: HandlerDeps): Record<Channel, ChannelHandler
           }
         }
         if (!rendered) return null; // no DB template → don't send
+        const marketingEmail = marketing ? deps.campaigns?.sender.email : undefined;
         return provider.send({
           to: { email: target.address },
+          from: marketingEmail ? { email: marketingEmail, name: deps.campaigns!.sender.name } : undefined,
           subject: rendered.subject,
           html: rendered.html,
           text: rendered.text,

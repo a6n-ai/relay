@@ -24,6 +24,10 @@ export function buildCampaignConfig(
   return {
     tables,
     unsubscribe: { baseUrl, secret },
-    sender: { name: env.CAMPAIGN_SENDER_NAME ?? defaults.senderName, postalAddress },
+    sender: {
+      name: env.CAMPAIGN_SENDER_NAME ?? defaults.senderName,
+      postalAddress,
+      email: env.CAMPAIGN_FROM_EMAIL || undefined,
+    },
   };
 }

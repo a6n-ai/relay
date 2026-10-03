@@ -35,7 +35,7 @@ describe("buildHandlers — email — marketing footer on event-template rows", 
     },
   ];
 
-  function setup() {
+  function setup(senderEmail?: string) {
     const db = fakeDb(
       new Map<object, unknown[]>([
         [usersTable, [userRow]],
@@ -54,7 +54,7 @@ describe("buildHandlers — email — marketing footer on event-template rows", 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         tables: {} as any,
         unsubscribe: { baseUrl: "https://recover.test", secret: "shh" },
-        sender: { name: "Puchkaman", postalAddress: "123 Main St" },
+        sender: { name: "Puchkaman", postalAddress: "123 Main St", email: senderEmail },
       },
     });
     return { handlers, send };
@@ -88,6 +88,20 @@ describe("buildHandlers — email — marketing footer on event-template rows", 
     expect(send).toHaveBeenCalledTimes(1);
     const sent = send.mock.calls[0][0];
     expect(sent.html).not.toContain("Unsubscribe");
+  });
+
+  it("sends marketing From the campaign sender email; transactional keeps the provider default", async () => {
+    const { handlers, send } = setup("hello@example.test");
+    await handlers.email!(row("marketing"));
+    await handlers.email!(row("transactional"));
+    expect(send.mock.calls[0][0].from).toEqual({ email: "hello@example.test", name: "Puchkaman" });
+    expect(send.mock.calls[1][0].from).toBeUndefined();
+  });
+
+  it("leaves marketing on the provider default when no campaign sender email is set", async () => {
+    const { handlers, send } = setup();
+    await handlers.email!(row("marketing"));
+    expect(send.mock.calls[0][0].from).toBeUndefined();
   });
 });
 
