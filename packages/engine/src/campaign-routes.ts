@@ -137,13 +137,15 @@ export async function setCampaignContent(
   const { db, tables } = deps;
 
   const [row] = await db
-    .select({ id: tables.campaign.id, status: tables.campaign.status })
+    .select({ id: tables.campaign.id, status: tables.campaign.status, systemKey: tables.campaign.systemKey })
     .from(tables.campaign)
     .where(eq(tables.campaign.publicId, campaignPublicId));
   if (!row) return { error: "Campaign not found", status: 404 };
   // Editing copy after the outbox rows exist would not change what was sent,
   // and would make the stored content disagree with the delivered message.
-  if (row.status !== "draft" && row.status !== "scheduled") {
+  // A system campaign is the exception: its content is the template for every
+  // future run.
+  if (!row.systemKey && row.status !== "draft" && row.status !== "scheduled") {
     return { error: "Content can only be edited while a campaign is draft or scheduled", status: 409 };
   }
 
