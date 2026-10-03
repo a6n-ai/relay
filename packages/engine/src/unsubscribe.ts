@@ -45,6 +45,21 @@ export function buildUnsubscribeUrl(baseUrl: string, secret: string, address: st
 }
 
 /**
+ * RFC 8058 one-click target for the List-Unsubscribe header. Mail clients POST
+ * to it with no user present, so it must be the API route, not the page.
+ */
+export function buildOneClickUnsubscribeUrl(baseUrl: string, secret: string, address: string, campaignId?: bigint): string {
+  const url = new URL(buildUnsubscribeUrl(baseUrl, secret, address, campaignId));
+  url.pathname = "/api/unsubscribe";
+  return url.toString();
+}
+
+/** Headers Gmail/Yahoo require on bulk marketing mail: without them it goes to spam. */
+export function listUnsubscribeHeaders(oneClickUrl: string): Record<string, string> {
+  return { "List-Unsubscribe": `<${oneClickUrl}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" };
+}
+
+/**
  * Apply an unsubscribe. Idempotent, works for a logged-out guest (the token IS
  * the auth), and scoped to MARKETING only — a receipt for an order the person
  * actually placed is still owed to them, and withholding it is the wrong kind

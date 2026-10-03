@@ -9,7 +9,7 @@ import {
   renderEmailForEvent,
   renderInAppForEvent,
 } from "./template";
-import { buildUnsubscribeUrl } from "./unsubscribe";
+import { buildOneClickUnsubscribeUrl, buildUnsubscribeUrl, listUnsubscribeHeaders } from "./unsubscribe";
 import type { Channel, ChannelProvider } from "./types";
 import type { UsersRef } from "./enqueue";
 
@@ -176,6 +176,7 @@ export function buildHandlers(deps: HandlerDeps): Record<Channel, ChannelHandler
       if (channel === "email") {
         let rendered: { subject: string; html: string; text: string } | null = null;
         let marketing = false;
+        let headers: Record<string, string> | undefined;
         let attachmentRefs: { filename: string; url: string; contentType: string }[] = [];
         if (row.campaignId && deps.campaigns) {
           const base = await renderCampaignEmail(
@@ -194,6 +195,9 @@ export function buildHandlers(deps: HandlerDeps): Record<Channel, ChannelHandler
             marketing = !c?.systemKey;
             attachmentRefs = base.attachments;
             const { unsubscribe, sender } = deps.campaigns;
+            headers = listUnsubscribeHeaders(
+              buildOneClickUnsubscribeUrl(unsubscribe.baseUrl, unsubscribe.secret, target.address, row.campaignId),
+            );
             rendered = {
               subject: base.subject,
               ...appendUnsubscribeFooter(base, {
@@ -211,6 +215,9 @@ export function buildHandlers(deps: HandlerDeps): Record<Channel, ChannelHandler
           if (base && row.kind === "marketing" && deps.campaigns) {
             marketing = true;
             const { unsubscribe, sender } = deps.campaigns;
+            headers = listUnsubscribeHeaders(
+              buildOneClickUnsubscribeUrl(unsubscribe.baseUrl, unsubscribe.secret, target.address),
+            );
             rendered = {
               subject: base.subject,
               ...appendUnsubscribeFooter(base, {
@@ -231,6 +238,7 @@ export function buildHandlers(deps: HandlerDeps): Record<Channel, ChannelHandler
           subject: rendered.subject,
           html: rendered.html,
           text: rendered.text,
+          headers,
           attachments: attachmentRefs.length > 0 ? await fetchAttachments(attachmentRefs) : undefined,
         });
       }

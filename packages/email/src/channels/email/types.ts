@@ -39,6 +39,8 @@ export const emailMessageSchema = z
     /** RFC 5322 References. Space-separated Message-IDs. */
     rfcReferences: z.string().min(1).optional(),
     attachments: z.array(emailAttachmentSchema).optional(),
+    /** Extra RFC 5322 headers, e.g. List-Unsubscribe for one-click unsubscribe. */
+    headers: z.record(z.string(), z.string()).optional(),
   })
   .refine((m) => m.html || m.text, {
     message: "Email must have an html or text body",

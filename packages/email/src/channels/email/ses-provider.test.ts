@@ -36,6 +36,21 @@ describe("SesEmailProvider", () => {
     expect(input.Content?.Simple?.Body?.Text).toBeUndefined();
   });
 
+  it("passes extra headers (List-Unsubscribe) on Simple", async () => {
+    const { client, sent } = fakeClient();
+    const p = new SesEmailProvider({ defaultFrom, client });
+    await p.send({
+      to: { email: "a@b.com" },
+      subject: "x",
+      text: "y",
+      headers: { "List-Unsubscribe": "<https://x.test/api/unsubscribe>", "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" },
+    });
+    expect(sent[0].input.Content?.Simple?.Headers).toEqual([
+      { Name: "List-Unsubscribe", Value: "<https://x.test/api/unsubscribe>" },
+      { Name: "List-Unsubscribe-Post", Value: "List-Unsubscribe=One-Click" },
+    ]);
+  });
+
   it("does not put RFC Message-ID on SES Simple (API MessageId is stored instead)", async () => {
     const { client, sent } = fakeClient();
     const p = new SesEmailProvider({ defaultFrom, client });

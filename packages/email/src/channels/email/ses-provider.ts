@@ -61,6 +61,9 @@ export class SesEmailProvider extends AbstractEmailProvider {
           : {
               Simple: {
                 Subject: { Data: message.subject, Charset: "UTF-8" },
+                Headers: message.headers
+                  ? Object.entries(message.headers).map(([Name, Value]) => ({ Name, Value }))
+                  : undefined,
                 Body: {
                   Html: message.html ? { Data: message.html, Charset: "UTF-8" } : undefined,
                   Text: message.text ? { Data: message.text, Charset: "UTF-8" } : undefined,
@@ -119,6 +122,7 @@ async function buildRawMessage(message: PreparedEmail): Promise<Uint8Array> {
     subject: message.subject,
     html: message.html,
     text: message.text,
+    headers: message.headers,
     attachments: message.attachments?.map((a) => ({
       filename: a.filename,
       content: Buffer.from(a.content, "base64"),

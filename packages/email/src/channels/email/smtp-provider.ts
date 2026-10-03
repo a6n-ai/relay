@@ -22,6 +22,7 @@ export interface SmtpMailOptions {
   inReplyTo?: string;
   references?: string;
   attachments?: { filename: string; content: Buffer; contentType: string }[];
+  headers?: Record<string, string>;
 }
 
 export interface SmtpSendClient {
@@ -85,6 +86,7 @@ export class SmtpEmailProvider extends AbstractEmailProvider {
       messageId: message.rfcMessageId,
       inReplyTo: message.inReplyTo,
       references: message.rfcReferences,
+      headers: message.headers,
       attachments: message.attachments?.map((a) => ({
         filename: a.filename,
         content: Buffer.from(a.content, "base64"),

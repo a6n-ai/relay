@@ -88,6 +88,7 @@ describe("buildHandlers — email — marketing footer on event-template rows", 
     expect(send).toHaveBeenCalledTimes(1);
     const sent = send.mock.calls[0][0];
     expect(sent.html).not.toContain("Unsubscribe");
+    expect(sent.headers).toBeUndefined();
   });
 
   it("sends marketing From the campaign sender email; transactional keeps the provider default", async () => {
@@ -206,6 +207,14 @@ describe("buildHandlers — email — system campaign sender", () => {
     await run();
     expect(send.mock.calls[0][0].from).toBeUndefined();
     expect(send.mock.calls[0][0].html).toContain("Unsubscribe");
+  });
+
+  it("sets one-click List-Unsubscribe headers pointing at the API route", async () => {
+    const { send, run } = setup("menu_reminder");
+    await run();
+    const h = send.mock.calls[0][0].headers;
+    expect(h["List-Unsubscribe-Post"]).toBe("List-Unsubscribe=One-Click");
+    expect(h["List-Unsubscribe"]).toMatch(/^<https:\/\/recover\.test\/api\/unsubscribe\?address=customer%40example\.test&token=[0-9a-f]+&campaignId=42>$/);
   });
 
   it("a normal campaign still leaves from the marketing sender", async () => {
