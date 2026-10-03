@@ -37,3 +37,14 @@ describe("unsubscribe tokens", () => {
     expect(verifyUnsubscribeToken(SECRET, "a@x.com", url.searchParams.get("token")!)).toBe(true);
   });
 });
+
+describe("resubscribe tokens", () => {
+  it("round-trips through the url and never accepts an unsubscribe token", async () => {
+    const { buildResubscribeUrl, verifyResubscribeToken } = await import("./unsubscribe");
+    const url = new URL(buildResubscribeUrl("https://app.test", SECRET, "A@X.com"));
+    expect(url.pathname).toBe("/resubscribe");
+    expect(verifyResubscribeToken(SECRET, "a@x.com", url.searchParams.get("token")!)).toBe(true);
+    expect(verifyResubscribeToken(SECRET, "a@x.com", signUnsubscribeToken(SECRET, "a@x.com"))).toBe(false);
+    expect(verifyResubscribeToken(SECRET, "a@x.com", "zz")).toBe(false);
+  });
+});

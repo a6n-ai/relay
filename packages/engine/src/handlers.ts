@@ -186,7 +186,12 @@ export function buildHandlers(deps: HandlerDeps): Record<Channel, ChannelHandler
             vars,
           );
           if (base) {
-            marketing = true;
+            // A system campaign keeps the footer but leaves from the transactional sender.
+            const [c] = await db
+              .select({ systemKey: deps.campaigns.tables.campaign.systemKey })
+              .from(deps.campaigns.tables.campaign)
+              .where(eq(deps.campaigns.tables.campaign.id, row.campaignId));
+            marketing = !c?.systemKey;
             attachmentRefs = base.attachments;
             const { unsubscribe, sender } = deps.campaigns;
             rendered = {

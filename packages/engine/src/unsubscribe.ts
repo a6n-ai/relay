@@ -78,3 +78,45 @@ export async function handleUnsubscribe(
     .set({ unsubscribedAt: Date.now() })
     .where(and(eq(column, normalized), isNull(tables.contactListMember.unsubscribedAt)));
 }
+
+// Different message from the unsubscribe token, so an unsubscribe link can
+// never be replayed as a re-subscribe (or the reverse).
+function signResubscribeToken(secret: string, address: string): string {
+  return createHmac("sha256", secret).update(`resubscribe:${normalizeAddress(address)}`).digest("hex");
+}
+
+export function verifyResubscribeToken(secret: string, address: string, token: string): boolean {
+  const expected = Buffer.from(signResubscribeToken(secret, address), "hex");
+  const given = Buffer.from(token, "hex");
+  return expected.length === given.length && timingSafeEqual(expected, given);
+}
+
+/** Link an admin sends to someone who unsubscribed and asked to get mail again. */
+export function buildResubscribeUrl(baseUrl: string, secret: string, address: string): string {
+  const url = new URL("/resubscribe", baseUrl);
+  const normalized = normalizeAddress(address);
+  url.searchParams.set("address", normalized);
+  url.searchParams.set("token", signResubscribeToken(secret, normalized));
+  return url.toString();
+}
+
+/**
+ * Undo an unsubscribe. Only the marketing-scope row goes: a bounce or
+ * complaint is scope "all" and stays, since re-subscribing cannot make a dead
+ * or hostile address safe to mail. Returns false on a bad token.
+ */
+export async function handleResubscribe(
+  db: Db,
+  tables: NotificationTables & CampaignTables,
+  input: { address: string | null; token: string | null; secret: string },
+): Promise<boolean> {
+  const { address, token, secret } = input;
+  if (!address || !token || !verifyResubscribeToken(secret, address, token)) return false;
+  const normalized = normalizeAddress(address);
+  await db
+    .delete(tables.messageSuppression)
+    .where(and(eq(tables.messageSuppression.address, normalized), eq(tables.messageSuppression.scope, "marketing")));
+  const column = normalized.includes("@") ? tables.contactListMember.email : tables.contactListMember.phone;
+  await db.update(tables.contactListMember).set({ unsubscribedAt: null }).where(eq(column, normalized));
+  return true;
+}

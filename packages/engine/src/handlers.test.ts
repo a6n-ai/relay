@@ -141,7 +141,7 @@ describe("buildHandlers — email — campaign attachments", () => {
       broadcast: vi.fn(),
       campaigns: {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        tables: { campaignContent: campaignContentTable } as any,
+        tables: { campaignContent: campaignContentTable, campaign: { systemKey: "sk-col" } } as any,
         unsubscribe: { baseUrl: "https://recover.test", secret: "shh" },
         sender: { name: "Puchkaman", postalAddress: "123 Main St" },
       },
@@ -164,6 +164,54 @@ describe("buildHandlers — email — campaign attachments", () => {
       { filename: "invoice.pdf", content: Buffer.from("pdf-bytes").toString("base64"), contentType: "application/pdf" },
     ]);
     vi.unstubAllGlobals();
+  });
+});
+
+describe("buildHandlers — email — system campaign sender", () => {
+  function setup(systemKey: string | null) {
+    const usersTable = { locale: "locale-col" };
+    const campaignContentTable = {};
+    const campaignTable = { systemKey: "sk-col" };
+    const db = fakeDb(
+      new Map<object, unknown[]>([
+        [usersTable, [{ email: "customer@example.test", phone: null, locale: "en" }]],
+        [
+          campaignContentTable,
+          [{ channel: "email", locale: "en", subject: "Pick your meals", body: null, html: "<p>hi</p>", text: "hi", providerTemplateId: null, attachments: [] }],
+        ],
+        [campaignTable, [{ systemKey }]],
+      ]),
+    );
+    const send = vi.fn().mockResolvedValue({ providerMessageId: "pid" });
+    const handlers = buildHandlers({
+      db,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      tables: {} as any,
+      users: { table: usersTable, columns: { id: "id-col", email: "email-col" } },
+      providers: { email: { send } },
+      broadcast: vi.fn(),
+      campaigns: {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        tables: { campaignContent: campaignContentTable, campaign: campaignTable } as any,
+        unsubscribe: { baseUrl: "https://recover.test", secret: "shh" },
+        sender: { name: "TiffinGrab", postalAddress: "123 Main St", email: "info@example.test" },
+      },
+    });
+    const row = { recipientId: 7n, recipientEmail: null, recipientPhone: null, campaignId: 42n, event: null, kind: "marketing", payload: { href: null, vars: {} } };
+    return { send, run: () => handlers.email!(row) };
+  }
+
+  it("keeps the footer but leaves from the transactional default", async () => {
+    const { send, run } = setup("menu_reminder");
+    await run();
+    expect(send.mock.calls[0][0].from).toBeUndefined();
+    expect(send.mock.calls[0][0].html).toContain("Unsubscribe");
+  });
+
+  it("a normal campaign still leaves from the marketing sender", async () => {
+    const { send, run } = setup(null);
+    await run();
+    expect(send.mock.calls[0][0].from).toEqual({ email: "info@example.test", name: "TiffinGrab" });
   });
 });
 

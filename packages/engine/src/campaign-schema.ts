@@ -53,9 +53,17 @@ export function makeCampaignTables<L extends [string, ...string[]]>(deps: { loca
     sentAt: bigint("sent_at", { mode: "number" }),
     /** { queued, sent, failed, delivered, opened, clicked, bounced, unsubscribed } */
     counts: jsonb("counts").$type<Record<string, number>>().notNull().default({}),
+    /**
+     * Set on a system campaign: one row the app re-runs (e.g. a weekly menu
+     * reminder) instead of building a new campaign each time. It leaves from
+     * the transactional sender, not the marketing one, because it goes to
+     * existing customers about their own subscription.
+     */
+    systemKey: text("system_key"),
   }, (t) => [
     // Scheduler poll: due campaigns are (status, scheduled_at) lookups.
     index("campaign_status_scheduled_idx").on(t.status, t.scheduledAt),
+    uniqueIndex("campaign_system_key_idx").on(t.systemKey),
   ]);
 
   /** Same shape as notification_template, keyed on a campaign instead of an event. */
