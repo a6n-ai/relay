@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { apiFetch } from "./api-fetch";
 
 export interface FeedItem {
@@ -34,19 +34,32 @@ export interface UseNotificationsOptions {
   subscribe?: (onEvent: (n?: RealtimeNotification) => void) => Promise<() => void>;
   /** Feed endpoint. Defaults to the convention both apps use. */
   endpoint?: string;
+  /**
+   * Feed rendered on the server. When given, the bell paints with its badge at
+   * once and skips the fetch on mount.
+   */
+  initial?: FeedResponse;
 }
 
-interface FeedResponse {
+export interface FeedResponse {
   items: FeedItem[];
   unread: number;
 }
 
+// Live push keeps the feed current; the focus refetch only covers a dropped
+// stream, so it runs once the feed is this old, not on every tab switch.
+const FOCUS_STALE_MS = 60_000;
+
 export function useNotifications(options: UseNotificationsOptions = {}) {
-  const { subscribe, endpoint = "/api/notifications" } = options;
-  const [items, setItems] = useState<FeedItem[]>([]);
-  const [unread, setUnread] = useState(0);
+  const { subscribe, endpoint = "/api/notifications", initial } = options;
+  const [items, setItems] = useState<FeedItem[]>(initial?.items ?? []);
+  const [unread, setUnread] = useState(initial?.unread ?? 0);
+  // 0 = never loaded. Set when a fetch starts, so mount + the focus event that
+  // fires on page load don't both fetch.
+  const loadedAt = useRef(initial ? Date.now() : 0);
 
   const refresh = useCallback(async () => {
+    loadedAt.current = Date.now();
     const res = await fetch(endpoint);
     if (!res.ok) return;
     const data = (await res.json()) as FeedResponse;
@@ -63,13 +76,16 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
     await apiFetch(endpoint, { method: "POST", body: JSON.stringify({}) });
   }, [unread, endpoint]);
 
-  // Initial load + refresh when the tab regains focus.
+  // Initial load (unless server-rendered) + refresh when the tab regains focus
+  // after the feed went stale.
   useEffect(() => {
     // Fetch-on-mount: every setState in `refresh` runs after an await, but the rule
     // cannot see through the call.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    void refresh();
-    const onFocus = () => void refresh();
+    if (loadedAt.current === 0) void refresh();
+    const onFocus = () => {
+      if (Date.now() - loadedAt.current >= FOCUS_STALE_MS) void refresh();
+    };
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);
   }, [refresh]);
