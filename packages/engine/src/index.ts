@@ -27,3 +27,4 @@ export * from "./mailbox-inbound";
 export * from "./people-mail";
 export * from "./drain";
 export * from "./feed";
+export * from "./email-content";
