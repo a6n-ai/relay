@@ -10,6 +10,7 @@ import { Textarea } from "@foundry/ui/textarea";
 import { cn } from "@foundry/ui/cn";
 import { apiFetch } from "./api-fetch";
 import { CampaignAttachments, type CampaignAttachment } from "./campaign-attachments";
+import { CAMPAIGN_VARIABLE_SAMPLES, CAMPAIGN_VARIABLES } from "../email-content/variables";
 import { EmailTemplateBuilder, type EmailTemplateBuilderHandle } from "./email-template-builder";
 import { AudienceBuilder, type AudienceValue, type ContactListOption } from "./audience-builder";
 import type { FooterInfo } from "../template";
@@ -24,7 +25,6 @@ type ChannelKey = (typeof CHANNELS)[number]["key"];
 
 // materializeCampaign puts the recipient's name and CSV merge fields under
 // `contact`, so those are the variables a campaign template can resolve.
-const CAMPAIGN_VARIABLES = ["contact.name"];
 
 /** Section heading shared by every group below — matches SectionCard's title weight, a step down in size. */
 function FormSection({ title, description, children }: { title: string; description?: string; children: React.ReactNode }) {
@@ -100,6 +100,7 @@ export function CampaignComposer({
           body: exported?.body ?? "",
           html: exported?.html ?? "",
           preheader: exported?.preheader ?? "",
+          revision: 0,
           attachments: attachments.length > 0 ? attachments : undefined,
         });
       } else {
@@ -174,6 +175,7 @@ export function CampaignComposer({
               initialBody=""
               initialHtml=""
               variables={CAMPAIGN_VARIABLES}
+              samples={CAMPAIGN_VARIABLE_SAMPLES}
               marketing
               footer={footer} from={from}
               disabled={saving}

@@ -14,6 +14,9 @@ import { CampaignAttachments, type CampaignAttachment } from "./campaign-attachm
 import { EmailTemplateBuilder, type EmailTemplateBuilderHandle } from "./email-template-builder";
 import { openEmailPreview } from "./email-content-editor";
 import type { FooterInfo } from "../template";
+import { CAMPAIGN_VARIABLE_SAMPLES, CAMPAIGN_VARIABLES } from "../email-content/variables";
+import { useAutosave } from "./email-editor/autosave";
+import { SaveStatus } from "./email-editor/save-status";
 
 export interface CampaignContentRow {
   channel: string;
@@ -26,9 +29,9 @@ export interface CampaignContentRow {
   attachments?: CampaignAttachment[];
   /** Footer-stamped copy for read-only preview — falls back to `html` when absent. */
   previewHtml?: string | null;
+  /** Optimistic-concurrency revision; a save carrying a stale one gets 409. */
+  revision?: number;
 }
-
-const CAMPAIGN_VARIABLES = ["contact.name"];
 
 function EmailPreview({ html }: { html: string }) {
   // Same HTML already in hand, so opening it full-page needs no round trip.
@@ -60,6 +63,7 @@ function EmailRow({
   editable,
   footer,
   from,
+  isSystemCampaign = false,
 }: {
   campaignPublicId: string;
   row: CampaignContentRow;
@@ -67,40 +71,55 @@ function EmailRow({
   footer?: FooterInfo;
   /** Display-only sender line on the email header. */
   from?: string;
+  /** System (bulk) campaigns run on a schedule, so they are live: explicit Save only, never autosave. */
+  isSystemCampaign?: boolean;
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [subject, setSubject] = useState(row.subject);
   const [attachments, setAttachments] = useState<CampaignAttachment[]>(row.attachments ?? []);
-  const [saving, setSaving] = useState(false);
   const editor = useRef<EmailTemplateBuilderHandle>(null);
+  const revision = useRef(row.revision ?? 0);
+
+  async function persist(): Promise<"ok" | "conflict"> {
+    if (!subject.trim()) {
+      toast.error("Add a subject");
+      throw new Error("subject required");
+    }
+    const exported = await editor.current!.exportEmail();
+    const res = await fetch(`/api/notifications/campaigns/${campaignPublicId}/content`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        channel: row.channel,
+        locale: row.locale,
+        subject,
+        body: exported.body,
+        html: exported.html,
+        preheader: exported.preheader,
+        attachments: attachments.length > 0 ? attachments : undefined,
+        revision: revision.current,
+      }),
+    });
+    if (res.status === 409) return "conflict";
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      toast.error(data.detail ?? data.title ?? "Save failed");
+      throw new Error("save failed");
+    }
+    revision.current = data.revision;
+    if (data.removed?.length) toast.warning(`Removed ${data.removed.length} unsafe item(s): ${data.removed.join(", ")}`);
+    return "ok";
+  }
+  const autosave = useAutosave({ enabled: editing && !isSystemCampaign, save: persist });
+  const saving = autosave.state.status === "saving";
 
   async function save() {
-    if (!subject.trim()) return toast.error("Add a subject");
-    setSaving(true);
-    try {
-      const exported = await editor.current?.exportEmail();
-      await apiFetch(`/api/notifications/campaigns/${campaignPublicId}/content`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          channel: row.channel,
-          locale: row.locale,
-          subject,
-          body: exported?.body ?? "",
-          html: exported?.html ?? "",
-          preheader: exported?.preheader ?? "",
-          attachments: attachments.length > 0 ? attachments : undefined,
-        }),
-      });
-      toast.success("Content saved");
-      setEditing(false);
-      router.refresh();
-    } catch {
-      // apiFetch already toasted the failure detail.
-    } finally {
-      setSaving(false);
-    }
+    const outcome = await autosave.saveNow();
+    if (outcome !== "ok") return;
+    toast.success("Content saved");
+    setEditing(false);
+    router.refresh();
   }
 
   return (
@@ -121,16 +140,22 @@ function EmailRow({
         <EmailTemplateBuilder
           ref={editor}
           subject={subject}
-          onSubjectChange={setSubject}
+          onSubjectChange={(v) => {
+            setSubject(v);
+            autosave.markDirty();
+          }}
+          onChange={autosave.markDirty}
           initialBody={row.body ?? ""}
           initialHtml={row.html ?? ""}
           variables={CAMPAIGN_VARIABLES}
+          samples={CAMPAIGN_VARIABLE_SAMPLES}
           marketing
           disabled={saving}
           footer={footer} from={from}
           extra={<CampaignAttachments value={attachments} onChange={setAttachments} />}
           actions={
-            <div className="ml-auto flex gap-2">
+            <div className="ml-auto flex items-center gap-2">
+              <SaveStatus state={autosave.state} onRetry={() => void autosave.saveNow()} onReload={() => location.reload()} />
               <Button
                 variant="outline"
                 size="sm"
@@ -250,6 +275,7 @@ export function CampaignContentSection({
   editable,
   footer,
   from,
+  isSystemCampaign = false,
 }: {
   campaignPublicId: string;
   content: CampaignContentRow[];
@@ -258,6 +284,8 @@ export function CampaignContentSection({
   footer?: FooterInfo;
   /** Display-only sender line on the email header. */
   from?: string;
+  /** System (bulk) campaigns are live: explicit Save only. */
+  isSystemCampaign?: boolean;
 }) {
   if (content.length === 0) {
     return (
@@ -280,7 +308,7 @@ export function CampaignContentSection({
       )}
       {content.map((c) =>
         c.channel === "email" ? (
-          <EmailRow key={`${c.channel}-${c.locale}`} campaignPublicId={campaignPublicId} row={c} editable={editable} footer={footer} from={from} />
+          <EmailRow key={`${c.channel}-${c.locale}`} campaignPublicId={campaignPublicId} row={c} editable={editable} footer={footer} from={from} isSystemCampaign={isSystemCampaign} />
         ) : (
           <TextRow key={`${c.channel}-${c.locale}`} campaignPublicId={campaignPublicId} row={c} editable={editable} />
         ),

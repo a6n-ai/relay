@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 /* eslint-disable react-hooks/set-state-in-effect --
  * The draft fields are seeded from the row for the active channel/locale tab, and both
  * tab state and draft state live in this one component, so there is no prop to key a
@@ -46,6 +47,8 @@ interface Row {
   html: string;
   text: string;
   enabled: boolean;
+  /** Optimistic-concurrency revision; a save carrying a stale one gets 409. */
+  revision?: number;
 }
 
 export function TemplateEditor({
@@ -54,9 +57,12 @@ export function TemplateEditor({
   initial,
   footer,
   from,
+  samples,
 }: {
   event: string;
   variables: string[];
+  /** Preview values for `{{vars}}`, e.g. { "order.code": "<Order code>" }. */
+  samples?: Record<string, string>;
   initial: Row[];
   /** Some event templates carry kind "marketing" (abandoned-cart, checkout recovery) and get the same CASL footer a campaign does — shown in preview here too. */
   footer?: FooterInfo;
@@ -70,6 +76,7 @@ export function TemplateEditor({
   const [enabled, setEnabled] = useState(true);
   const [busy, setBusy] = useState(false);
   const emailContentRef = useRef<EmailTemplateBuilderHandle>(null);
+  const router = useRouter();
 
   // The row for the active channel/locale. The email editor loads its initial
   // content synchronously from this (TipTap won't react to a later prop change),
@@ -93,7 +100,7 @@ export function TemplateEditor({
       }
       try {
         const out = await emailContentRef.current.exportEmail();
-        payload = { ...payload, body: out.body, html: out.html, preheader: out.preheader };
+        payload = { ...payload, body: out.body, html: out.html, preheader: out.preheader, revision: current?.revision ?? 0 };
       } catch (e) {
         setBusy(false);
         toast.error(e instanceof Error ? e.message : "Couldn't export the email");
@@ -109,6 +116,8 @@ export function TemplateEditor({
         body: JSON.stringify(payload),
       });
       toast.success("Template saved");
+      // Picks up the new revision for the next save (templates are live: explicit Save only, no autosave).
+      router.refresh();
     } catch {
       // apiFetch already toasted the failure detail.
     } finally {
@@ -156,7 +165,7 @@ export function TemplateEditor({
           initialHtml={current?.html ?? ""}
           variables={variables}
           disabled={busy}
-          footer={footer} from={from}
+          footer={footer} from={from} samples={samples}
           actions={
             <Button onClick={save} disabled={busy}>
               Save

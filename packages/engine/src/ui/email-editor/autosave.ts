@@ -47,15 +47,18 @@ export function useAutosave({
   const stateRef = useRef(state);
   stateRef.current = state;
 
-  const saveNow = useCallback(async () => {
+  // Resolves with the outcome so an explicit Save button can act on it.
+  const saveNow = useCallback(async (): Promise<"ok" | "conflict" | "error"> => {
     clearTimeout(timer.current);
-    if (stateRef.current.status === "conflict") return;
+    if (stateRef.current.status === "conflict") return "conflict";
     dispatch({ type: "start" });
     try {
       const r = await saveRef.current();
       dispatch(r === "conflict" ? { type: "conflict" } : { type: "ok", at: Date.now() });
+      return r;
     } catch {
       dispatch({ type: "fail" });
+      return "error";
     }
   }, []);
 
