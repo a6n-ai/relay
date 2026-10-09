@@ -1,4 +1,4 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import { z } from "zod";
 import type { AudienceDef, CampaignTables } from "./campaign-schema";
@@ -6,6 +6,8 @@ import type { NotificationTables } from "./schema";
 import type { UsersRef } from "./enqueue";
 import { countAudience, type AudienceDeps } from "./audience";
 import { materializeCampaign } from "./campaign";
+import { CAMPAIGN_VARIABLES, prepareEmailContent } from "./email-content";
+import type { CompatWarning } from "./ui/email-compat";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Db = PostgresJsDatabase<any>;
@@ -108,14 +110,17 @@ const campaignAttachmentSchema = z.object({
 export const setCampaignContentSchema = z.object({
   channel: z.string(),
   locale: z.string(),
-  subject: z.string().trim().min(1),
-  body: z.string().optional(),
-  html: z.string().optional(),
-  text: z.string().optional(),
+  subject: z.string().trim().min(1).max(200),
+  body: z.string().max(524288).optional(),
+  html: z.string().max(524288).optional(),
+  /** email only: inbox preview text; the server injects it (prepareEmailContent). */
+  preheader: z.string().max(300).default(""),
   /** WhatsApp / templated SMS: the provider-side pre-approved template id. */
   providerTemplateId: z.string().trim().optional(),
   /** email only. */
   attachments: z.array(campaignAttachmentSchema).optional(),
+  /** The revision the editor last loaded; a stale one gets 409. */
+  revision: z.number().int().min(0).default(0),
 });
 
 export interface SetCampaignContentInput {
@@ -124,16 +129,17 @@ export interface SetCampaignContentInput {
   subject: string;
   body?: string;
   html?: string;
-  text?: string;
+  preheader?: string;
   providerTemplateId?: string;
   attachments?: { filename: string; url: string; contentType: string }[];
+  revision?: number;
 }
 
 export async function setCampaignContent(
   deps: CampaignRouteDeps,
   campaignPublicId: string,
   input: SetCampaignContentInput,
-): Promise<{ ok: true } | { error: string; status: number }> {
+): Promise<{ revision: number; removed: string[]; lint: CompatWarning[] } | { error: string; status: number }> {
   const { db, tables } = deps;
 
   const [row] = await db
@@ -149,14 +155,36 @@ export async function setCampaignContent(
     return { error: "Content can only be edited while a campaign is draft or scheduled", status: 409 };
   }
 
-  if (input.channel === "email" && (!input.html || !input.text)) {
-    return { error: "Email content needs html and text", status: 400 };
-  }
-  if (input.channel !== "email" && !input.body && !input.providerTemplateId) {
+  let html: string | null = null;
+  let text: string | null = null;
+  let removed: string[] = [];
+  let lint: CompatWarning[] = [];
+  if (input.channel === "email") {
+    if (!input.html) return { error: "Email content needs html", status: 400 };
+    const prepared = prepareEmailContent({
+      html: input.html,
+      preheader: input.preheader ?? "",
+      subject: input.subject,
+      source: input.body ?? "",
+      known: CAMPAIGN_VARIABLES,
+    });
+    if (prepared.unknownVariables.length) {
+      return { error: `Unknown variables: ${prepared.unknownVariables.join(", ")}`, status: 422 };
+    }
+    ({ html, text, removed, lint } = prepared);
+  } else if (!input.body && !input.providerTemplateId) {
     return { error: "Content needs a body or a provider template id", status: 400 };
   }
 
-  await db
+  const values = {
+    subject: input.subject,
+    body: input.body ?? null,
+    html,
+    text,
+    providerTemplateId: input.providerTemplateId ?? null,
+    attachments: input.attachments ?? [],
+  };
+  const rows = await db
     .insert(tables.campaignContent)
     .values({
       campaignId: row.id,
@@ -165,26 +193,18 @@ export async function setCampaignContent(
       // same reason as channels above.
       channel: input.channel as never,
       locale: input.locale as never,
-      subject: input.subject,
-      body: input.body ?? null,
-      html: input.html ?? null,
-      text: input.text ?? null,
-      providerTemplateId: input.providerTemplateId ?? null,
-      attachments: input.attachments ?? [],
+      ...values,
+      revision: 1,
     })
     .onConflictDoUpdate({
       target: [tables.campaignContent.campaignId, tables.campaignContent.channel, tables.campaignContent.locale],
-      set: {
-        subject: input.subject,
-        body: input.body ?? null,
-        html: input.html ?? null,
-        text: input.text ?? null,
-        providerTemplateId: input.providerTemplateId ?? null,
-        attachments: input.attachments ?? [],
-      },
-    });
-
-  return { ok: true };
+      set: { ...values, revision: sql`${tables.campaignContent.revision} + 1` },
+      // Only the writer holding the current revision wins; a stale tab updates nothing.
+      setWhere: eq(tables.campaignContent.revision, input.revision ?? 0),
+    })
+    .returning({ revision: tables.campaignContent.revision });
+  if (rows.length === 0) return { error: "This content was changed in another tab — reload to continue", status: 409 };
+  return { revision: rows[0]!.revision, removed, lint };
 }
 
 export async function updateCampaignAudience(

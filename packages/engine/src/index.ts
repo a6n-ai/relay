@@ -28,3 +28,4 @@ export * from "./people-mail";
 export * from "./drain";
 export * from "./feed";
 export * from "./email-content";
+export * from "./template-routes";

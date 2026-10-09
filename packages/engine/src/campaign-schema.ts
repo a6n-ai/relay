@@ -76,6 +76,8 @@ export function makeCampaignTables<L extends [string, ...string[]]>(deps: { loca
     body: text("body"),
     html: text("html"),
     text: text("text"),
+    /** Optimistic-concurrency counter for editor saves; bumped on every write. */
+    revision: integer("revision").notNull().default(0),
     providerTemplateId: text("provider_template_id"),
     /** email only. Fetched by url and base64-embedded into the MIME message at send time. */
     attachments: jsonb("attachments")

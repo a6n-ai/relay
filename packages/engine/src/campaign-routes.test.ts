@@ -25,7 +25,6 @@ describe("setCampaignContent", () => {
       locale: "en",
       subject: "Hi",
       html: "<p>hi</p>",
-      text: "hi",
     });
     expect(result).toEqual({
       error: "Content can only be edited while a campaign is draft or scheduled",
@@ -40,9 +39,53 @@ describe("setCampaignContent", () => {
       locale: "en",
       subject: "Hi",
       html: "<p>hi</p>",
-      text: "hi",
     });
     expect(result).toEqual({ error: "Campaign not found", status: 404 });
+  });
+});
+
+function contentDeps(campaignRow: { id: bigint; status: string; systemKey?: string | null }, returned: { revision: number }[] = [{ revision: 1 }]) {
+  const insertChain = {
+    values: vi.fn().mockReturnThis(),
+    onConflictDoUpdate: vi.fn().mockReturnThis(),
+    returning: vi.fn().mockResolvedValue(returned),
+  };
+  const db = {
+    select: vi.fn().mockReturnValue({
+      from: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue([campaignRow]) }),
+    }),
+    insert: vi.fn().mockReturnValue(insertChain),
+  };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const deps = { db, tables: { campaign: {}, campaignContent: { revision: {} } }, users: {}, resolveSegment: vi.fn() } as any;
+  return { deps, insertChain };
+}
+
+describe("setCampaignContent — sanitize, variables, revision", () => {
+  const email = { channel: "email", locale: "en", subject: "Hi", html: "<p>hi</p>", preheader: "", revision: 0 };
+
+  it("stores sanitized html and generated text, returning the new revision", async () => {
+    const { deps, insertChain } = contentDeps({ id: 1n, status: "draft" }, [{ revision: 4 }]);
+    const result = await setCampaignContent(deps, "cmp_1", { ...email, html: '<p onclick="x()">hi</p>', revision: 3 });
+    expect(result).toEqual({ revision: 4, removed: ["onclick on <p>"], lint: [] });
+    const values = insertChain.values.mock.calls[0][0];
+    expect(values.html).toBe("<p>hi</p>");
+    expect(values.text).toBe("hi");
+  });
+
+  it("409s when another tab saved first (no row returned)", async () => {
+    const { deps } = contentDeps({ id: 1n, status: "draft" }, []);
+    expect(await setCampaignContent(deps, "cmp_1", email)).toEqual({
+      error: "This content was changed in another tab — reload to continue",
+      status: 409,
+    });
+  });
+
+  it("422s on unknown variables and does not write", async () => {
+    const { deps, insertChain } = contentDeps({ id: 1n, status: "draft" });
+    const result = await setCampaignContent(deps, "cmp_1", { ...email, subject: "Hi {{first_name}}" });
+    expect(result).toEqual({ error: "Unknown variables: first_name", status: 422 });
+    expect(insertChain.values).not.toHaveBeenCalled();
   });
 });
 

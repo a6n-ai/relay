@@ -198,6 +198,8 @@ export function makeNotificationTables<
     // email only: exported email-safe HTML + plaintext (pre-interpolation).
     html: text("html"),
     text: text("text"),
+    /** Optimistic-concurrency counter for editor saves; bumped on every write. */
+    revision: integer("revision").notNull().default(0),
     /** WhatsApp / templated SMS: the provider-side pre-approved template id. */
     providerTemplateId: text("provider_template_id"),
     enabled: boolean("enabled").notNull().default(true),
