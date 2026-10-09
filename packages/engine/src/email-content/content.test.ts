@@ -6,6 +6,14 @@ describe("htmlToText", () => {
   it("drops style blocks and tags, collapses whitespace, decodes nbsp", () => {
     expect(htmlToText("<style>p{x:y}</style><p>Hi&nbsp;there</p>\n<p>Bye</p>")).toBe("Hi there Bye");
   });
+  it("decodes entities the way a reader sees them", () => {
+    expect(htmlToText("<p>We&#x27;re here &amp; ready&zwnj;</p>")).toBe("We're here & ready");
+  });
+  it("leaves out <head>, <title> and MSO conditional comments", () => {
+    expect(
+      htmlToText("<html><head><title>Promo</title><!--[if mso]><xml><o:PixelsPerInch>96</o:PixelsPerInch></xml><![endif]--></head><body><p>Hi</p></body></html>"),
+    ).toBe("Hi");
+  });
 });
 
 describe("variables", () => {

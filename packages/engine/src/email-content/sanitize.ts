@@ -1,20 +1,25 @@
 import { parseDocument } from "htmlparser2";
 import render from "dom-serializer";
-import { isTag, type AnyNode, type Element } from "domhandler";
+import { isComment, isTag, type AnyNode, type Element } from "domhandler";
+import { decodeHTML } from "entities";
 
 // Email HTML is untrusted input (pasted or AI-generated). Parse → walk → drop
 // what can execute or exfiltrate; keep everything email layouts depend on:
 // <style>, MSO conditional comments, entities, doctype, inline styles.
-const DROP_TAGS = new Set(["script", "iframe", "object", "embed", "form", "base", "frame", "frameset", "applet"]);
+const DROP_TAGS = new Set([
+  "script", "iframe", "object", "embed", "form", "base", "frame", "frameset", "applet",
+  // Raw-text containers htmlparser2 and browsers disagree on — classic mXSS vectors.
+  "noscript", "xmp", "noembed", "noframes", "plaintext", "template",
+]);
+// Inside svg/math browsers parse these as markup, not raw text, so their "text" can break out.
+const DROP_IN_FOREIGN = new Set(["style", "title", "foreignobject"]);
 const URL_ATTRS = new Set(["href", "src", "action", "formaction", "background", "poster", "xlink:href"]);
 const SAFE_FONT_CSS = /^https:\/\/fonts\.googleapis\.com\//i;
 
 // Entities and whitespace/control chars are how `javascript:` gets disguised.
+// decodeHTML covers named (&colon; &Tab;), numeric and legacy no-semicolon forms, as a browser does.
 function normalizeUrl(value: string): string {
-  return value
-    .replace(/&#(x?)([0-9a-f]+);?/gi, (_m, hex: string, n: string) => String.fromCharCode(parseInt(n, hex ? 16 : 10)))
-    .replace(/[\u0000- ]/g, "")
-    .toLowerCase();
+  return decodeHTML(value).replace(/[\u0000- ]/g, "").toLowerCase();
 }
 
 function unsafeUrl(attr: string, tag: string, value: string): boolean {
@@ -28,15 +33,29 @@ export function sanitizeEmailHtml(html: string): { html: string; removed: string
   const removed: string[] = [];
   const doc = parseDocument(html, { decodeEntities: false, lowerCaseAttributeNames: false, recognizeSelfClosing: true });
 
-  const walk = (nodes: AnyNode[]) => {
+  const drop = (node: AnyNode) => {
+    const siblings = node.parent ? node.parent.children : doc.children;
+    siblings.splice(siblings.indexOf(node), 1);
+  };
+
+  const walk = (nodes: AnyNode[], inForeign: boolean) => {
     for (const node of [...nodes]) {
+      // Browsers end a comment at `--!>`; htmlparser2 doesn't, so whatever follows would hide from us.
+      if (isComment(node) && node.data.includes("--!>")) {
+        removed.push("<!-- --!> comment");
+        drop(node);
+        continue;
+      }
       if (!isTag(node)) continue;
       const el = node as Element;
       const tag = el.name.toLowerCase();
-      if (DROP_TAGS.has(tag) || (tag === "link" && !SAFE_FONT_CSS.test(el.attribs.href ?? ""))) {
+      if (
+        DROP_TAGS.has(tag) ||
+        (inForeign && DROP_IN_FOREIGN.has(tag)) ||
+        (tag === "link" && !SAFE_FONT_CSS.test(el.attribs.href ?? ""))
+      ) {
         removed.push(`<${tag}>`);
-        const siblings = el.parent ? el.parent.children : doc.children;
-        siblings.splice(siblings.indexOf(el), 1);
+        drop(el);
         continue;
       }
       for (const name of Object.keys(el.attribs)) {
@@ -53,10 +72,10 @@ export function sanitizeEmailHtml(html: string): { html: string; removed: string
           delete el.attribs[name];
         }
       }
-      walk(el.children);
+      walk(el.children, inForeign || tag === "svg" || tag === "math");
     }
   };
-  walk(doc.children);
+  walk(doc.children, false);
 
   return { html: render(doc, { decodeEntities: false, encodeEntities: false }), removed };
 }

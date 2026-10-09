@@ -67,4 +67,29 @@ describe("sanitizeEmailHtml", () => {
     expect(out.html).not.toContain("evil.example");
     expect(out.removed).toEqual(["<link>"]);
   });
+
+  it("decodes named entities before checking URLs (&colon; &Tab; &NewLine;)", () => {
+    for (const href of ["javascript&colon;alert(1)", "java&Tab;script:x", "java&NewLine;script:x", "&#x6A;avascript:x", "&#106avascript:x"]) {
+      expect(sanitizeEmailHtml(`<a href="${href}">x</a>`).html).toBe("<a>x</a>");
+    }
+  });
+
+  it("drops a comment the browser would close early at --!>", () => {
+    const out = sanitizeEmailHtml("<p>a</p><!-- --!><img src=x onerror=alert(1)> -->");
+    expect(out.html).not.toContain("onerror");
+    expect(out.removed).toContain("<!-- --!> comment");
+  });
+
+  it("drops raw-text containers browsers parse differently (noscript, xmp, template…)", () => {
+    const out = sanitizeEmailHtml('<noscript><p title="</noscript><img src=x onerror=alert(1)>"></noscript><xmp>x</xmp><template>t</template>');
+    expect(out.html).not.toMatch(/onerror|noscript|xmp|template/);
+  });
+
+  it("drops style, title and foreignObject inside svg/math, where browsers parse markup", () => {
+    const out = sanitizeEmailHtml(
+      "<svg><style><img src=x onerror=alert(1)></style><title><img src=x onerror=alert(2)></title><foreignObject><p>x</p></foreignObject><rect/></svg><math><style>y</style></math>",
+    );
+    expect(out.html).not.toMatch(/onerror|<style|<title|foreignObject/i);
+    expect(out.html).toContain("<rect");
+  });
 });
