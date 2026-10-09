@@ -122,8 +122,9 @@ export const EmailTemplateBuilder = forwardRef<
 
       <EmailContentEditor
         ref={editorRef}
-        initialBody={initialBody}
-        initialHtml={initialHtml}
+        // Ours is re-added on export; left in, TipTap would keep the hidden div but drop its marker.
+        initialBody={withPreheader(initialBody, "")}
+        initialHtml={withPreheader(initialHtml, "")}
         variables={variables}
         onChange={onChange}
         footer={footer}

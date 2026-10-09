@@ -14,6 +14,7 @@ import { Inspector } from "@react-email/editor/ui";
 import "@react-email/editor/themes/default.css";
 import { LockIcon } from "lucide-react";
 import type { FooterInfo } from "../template";
+import { parseVisualSource, toVisualSource } from "./visual-source";
 import { uploadEmailImage } from "./upload-email-image";
 
 export type EmailThemeOverrides = Record<string, CSSProperties>;
@@ -62,11 +63,8 @@ export const EmailEditorField = forwardRef<EmailEditorFieldHandle, Props>(
 
     useImperativeHandle(ref, () => ({
       async exportEmail() {
-        const [{ html, text }, body] = await Promise.all([
-          editorRef.current!.getEmail(),
-          editorRef.current!.getEmailHTML(),
-        ]);
-        return { html, text, body };
+        const { html, text } = await editorRef.current!.getEmail();
+        return { html, text, body: toVisualSource(editorRef.current!.getJSON()) };
       },
     }));
 
@@ -112,7 +110,7 @@ export const EmailEditorField = forwardRef<EmailEditorFieldHandle, Props>(
         >
           <EmailEditor
             ref={editorRef}
-            content={initialHtml || "<p></p>"}
+            content={parseVisualSource(initialHtml) ?? (initialHtml || "<p></p>")}
             theme={theme}
             placeholder="Press '/' for blocks — text, button, image, columns…"
             onUploadImage={uploadEmailImage}

@@ -136,10 +136,10 @@ function htmlToText(html: string): string {
 }
 
 /**
- * Which tab an existing email opens on. HTML mode saves the whole document as
- * both body and html (and seeded templates do the same, or leave body empty);
- * the visual editor saves only its fragment as body. Opening hand-built HTML in
- * Visual would show TipTap's lossy re-render of it, so it opens on HTML.
+ * Which tab an existing email opens on. Visual saves the editor's JSON behind
+ * VISUAL_SOURCE_MARKER as body; HTML mode saves the whole document as both body
+ * and html (seeded templates do the same, or leave body empty). Opening
+ * hand-built HTML in Visual would show TipTap's lossy re-render, so it opens on HTML.
  */
 export function initialEmailMode(body: string, html: string): EmailMode {
   if (body.startsWith(REACT_SOURCE_MARKER)) return "react";
