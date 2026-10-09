@@ -3,7 +3,10 @@
 import { forwardRef, useImperativeHandle, useRef, type ReactNode } from "react";
 import { Input } from "@foundry/ui/input";
 import { Label } from "@foundry/ui/label";
-import { EmailContentEditor, type EmailContentEditorHandle } from "./email-content-editor";
+import {
+  EmailContentEditor,
+  type EmailContentEditorHandle,
+} from "./email-content-editor";
 import { SendTestEmailButton } from "./send-test-email-button";
 import type { FooterInfo } from "../template";
 
@@ -39,13 +42,28 @@ export const EmailTemplateBuilder = forwardRef<
     marketing?: boolean;
   }
 >(function EmailTemplateBuilder(
-  { subject, onSubjectChange, subjectLabel = "Subject", subjectError, initialBody, initialHtml, variables, onChange, extra, actions, disabled, footer, marketing },
+  {
+    subject,
+    onSubjectChange,
+    subjectLabel = "Subject",
+    subjectError,
+    initialBody,
+    initialHtml,
+    variables,
+    onChange,
+    extra,
+    actions,
+    disabled,
+    footer,
+    marketing,
+  },
   ref,
 ) {
   const editorRef = useRef<EmailContentEditorHandle>(null);
   useImperativeHandle(ref, () => ({
     exportEmail: () => {
-      if (!editorRef.current) throw new Error("Editor not ready — please wait and try again");
+      if (!editorRef.current)
+        throw new Error("Editor not ready — please wait and try again");
       return editorRef.current.exportEmail();
     },
   }));
@@ -54,7 +72,11 @@ export const EmailTemplateBuilder = forwardRef<
     <div className="space-y-4">
       <div className="space-y-1.5">
         <Label>{subjectLabel}</Label>
-        <Input value={subject} onChange={(e) => onSubjectChange(e.target.value)} aria-invalid={!!subjectError} />
+        <Input
+          value={subject}
+          onChange={(e) => onSubjectChange(e.target.value)}
+          aria-invalid={!!subjectError}
+        />
         {subjectError && (
           <p className="text-destructive text-xs" role="alert">
             {subjectError}
@@ -73,17 +95,20 @@ export const EmailTemplateBuilder = forwardRef<
 
       {extra}
 
-      <div className="flex flex-wrap items-center gap-2">
-        {actions}
-        <SendTestEmailButton
-          subject={subject}
-          disabled={disabled}
-          marketing={marketing}
-          exportEmail={async () => {
-            if (!editorRef.current) throw new Error("Editor not ready — please wait and try again");
-            return editorRef.current.exportEmail();
-          }}
-        />
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2">{actions}</div>
+        <div className="flex flex-wrap items-center gap-2">
+          <SendTestEmailButton
+            subject={subject}
+            disabled={disabled}
+            marketing={marketing}
+            exportEmail={async () => {
+              if (!editorRef.current)
+                throw new Error("Editor not ready — please wait and try again");
+              return editorRef.current.exportEmail();
+            }}
+          />
+        </div>
       </div>
     </div>
   );

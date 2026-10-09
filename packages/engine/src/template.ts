@@ -99,14 +99,23 @@ export function appendUnsubscribeFooter(
   const caption = opts.preview
     ? `<div style="font-size:11px;font-weight:600;letter-spacing:.02em;text-transform:uppercase;color:#b45309;margin-bottom:6px">Added automatically at send</div>`
     : "";
-  const html =
-    `${parts.html}\n<table ${FOOTER_MARKER} role="presentation" width="100%" cellpadding="0" cellspacing="0" ` +
+  // Explicit font: a full-document email often sets fonts on its cells, not
+  // <body>, so the block would otherwise fall back to the client's serif.
+  const block =
+    `<table ${FOOTER_MARKER} role="presentation" width="100%" cellpadding="0" cellspacing="0" ` +
     `style="margin-top:32px;${opts.preview ? "" : "border-top:1px solid #e5e5e5;"}${bg}"><tr><td align="center" ` +
-    `style="${opts.preview ? "" : "padding-top:16px;"}font-size:12px;line-height:1.6;color:#8a8a8a">` +
+    `style="${opts.preview ? "" : "padding-top:16px;"}font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:12px;line-height:1.6;color:#6e6558">` +
     `${caption}` +
     `${sender} · ${address}<br/>` +
-    `<a href="${url}" style="color:#8a8a8a;text-decoration:underline">Unsubscribe</a>` +
+    `<a href="${url}" style="color:#6e6558;text-decoration:underline">Unsubscribe</a>` +
     `</td></tr></table>`;
+  // A full document (pasted HTML, react-email) gets the block inside <body>:
+  // after </html> it renders outside the layout, and some clients drop it.
+  const bodyEnd = parts.html.toLowerCase().lastIndexOf("</body>");
+  const html =
+    bodyEnd < 0
+      ? `${parts.html}\n${block}`
+      : `${parts.html.slice(0, bodyEnd)}${block}\n${parts.html.slice(bodyEnd)}`;
   const text = `${parts.text}\n\n--\n${footer.sender} · ${footer.address}\nUnsubscribe: ${footer.url}\n`;
   return { html, text };
 }
@@ -123,8 +132,8 @@ export function withPreviewFooter<T extends { channel: string; html: string | nu
   footer: FooterInfo,
 ): (T & { previewHtml: string | null; previewText: string | null })[] {
   return rows.map((r) => {
-    if (r.channel !== "email" || !r.html || !r.text) return { ...r, previewHtml: r.html, previewText: r.text };
-    const stamped = appendUnsubscribeFooter({ html: r.html, text: r.text }, footer, { preview: true });
+    if (r.channel !== "email" || !r.html) return { ...r, previewHtml: r.html, previewText: r.text };
+    const stamped = appendUnsubscribeFooter({ html: r.html, text: r.text ?? "" }, footer, { preview: true });
     return { ...r, previewHtml: stamped.html, previewText: stamped.text };
   });
 }

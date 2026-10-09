@@ -12,6 +12,7 @@ import { apiFetch } from "./api-fetch";
 import { CampaignAttachments, type CampaignAttachment } from "./campaign-attachments";
 import { EmailTemplateBuilder, type EmailTemplateBuilderHandle } from "./email-template-builder";
 import { AudienceBuilder, type AudienceValue, type ContactListOption } from "./audience-builder";
+import type { FooterInfo } from "../template";
 
 const CHANNELS = [
   { key: "email", label: "Email" },
@@ -50,8 +51,11 @@ function FieldError({ message }: { message?: string }) {
 export function CampaignComposer({
   lists,
   timeZone,
+  footer,
 }: {
   lists: ContactListOption[];
+  /** Stamped onto the live preview only — see EmailContentEditor's `footer` prop. */
+  footer?: FooterInfo;
   /** App-settings timezone, e.g. "America/Toronto" — threaded to AudienceBuilder. */
   timeZone: string;
 }) {
@@ -168,16 +172,9 @@ export function CampaignComposer({
               initialHtml=""
               variables={CAMPAIGN_VARIABLES}
               marketing
+              footer={footer}
               disabled={saving}
-              extra={
-                <>
-                  <p className="text-muted-foreground text-xs">
-                    An unsubscribe link, the sender name and the postal address are appended automatically —
-                    they are legally required and cannot be removed from the copy.
-                  </p>
-                  <CampaignAttachments value={attachments} onChange={setAttachments} />
-                </>
-              }
+              extra={<CampaignAttachments value={attachments} onChange={setAttachments} />}
             />
           </div>
         ) : (

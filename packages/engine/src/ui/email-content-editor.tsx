@@ -1,10 +1,24 @@
 "use client";
 
-import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
-import { TriangleAlertIcon } from "lucide-react";
+import {
+  forwardRef,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import {
+  CircleCheckIcon,
+  ExternalLinkIcon,
+  MonitorIcon,
+  SmartphoneIcon,
+  TriangleAlertIcon,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@foundry/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@foundry/ui/tabs";
+import { cn } from "@foundry/ui/cn";
 import { lintEmailHtml } from "./email-compat";
 import { formatCode } from "./format";
 import { compileReactEmail, REACT_SOURCE_MARKER } from "./react-template";
@@ -26,6 +40,46 @@ const REACT_STARTER = `export default function Email() {
     </Html>
   );
 }`;
+
+// Both panes share one height so the split reads as a single, even surface.
+export const EDITOR_PANE_HEIGHT = "h-[72vh] min-h-[560px]";
+
+/** Code pane: wide enough type to read markup, no wrapping, Tab indents instead of leaving the field. */
+function CodeArea({
+  value,
+  onChange,
+  placeholder,
+  label,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder: string;
+  label: string;
+}) {
+  return (
+    <textarea
+      aria-label={label}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      onKeyDown={(e) => {
+        if (e.key !== "Tab" || e.shiftKey || e.metaKey || e.ctrlKey || e.altKey)
+          return;
+        e.preventDefault();
+        const el = e.currentTarget;
+        const { selectionStart: a, selectionEnd: b } = el;
+        onChange(el.value.slice(0, a) + "  " + el.value.slice(b));
+        requestAnimationFrame(() => el.setSelectionRange(a + 2, a + 2));
+      }}
+      spellCheck={false}
+      wrap="off"
+      placeholder={placeholder}
+      className={cn(
+        EDITOR_PANE_HEIGHT,
+        "block w-full resize-none bg-transparent p-4 font-mono text-[13px] leading-6 [tab-size:2] placeholder:text-muted-foreground/70 focus-visible:outline-none",
+      )}
+    />
+  );
+}
 
 // ponytail: naive tag-strip for the plaintext fallback. Good enough for a text
 // part; upgrade to a real html-to-text pass if deliverability complains.
@@ -55,7 +109,10 @@ function htmlToText(html: string): string {
     out += s[i];
     i += 1;
   }
-  return out.replace(/&nbsp;/gi, " ").replace(/\s+/g, " ").trim();
+  return out
+    .replace(/&nbsp;/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 /**
@@ -68,7 +125,9 @@ export function initialEmailMode(body: string, html: string): EmailMode {
   if (body.startsWith(REACT_SOURCE_MARKER)) return "react";
   if (!html.trim()) return "visual";
   const b = body.trim();
-  return !b || b === html.trim() || /^<(!doctype|html)/i.test(b) ? "html" : "visual";
+  return !b || b === html.trim() || /^<(!doctype|html)/i.test(b)
+    ? "html"
+    : "visual";
 }
 
 export interface EmailContentEditorHandle {
@@ -99,14 +158,22 @@ interface Props {
  * visual editor before can swap in this component with no other changes.
  */
 export const EmailContentEditor = forwardRef<EmailContentEditorHandle, Props>(
-  function EmailContentEditor({ initialBody, initialHtml, variables, onChange, footer }, ref) {
+  function EmailContentEditor(
+    { initialBody, initialHtml, variables, onChange, footer },
+    ref,
+  ) {
     const isReact = initialBody.startsWith(REACT_SOURCE_MARKER);
-    const [mode, setMode] = useState<EmailMode>(() => initialEmailMode(initialBody, initialHtml));
+    const [mode, setMode] = useState<EmailMode>(() =>
+      initialEmailMode(initialBody, initialHtml),
+    );
     const [rawHtml, setRawHtml] = useState(isReact ? "" : initialHtml);
-    const [reactSource, setReactSource] = useState(isReact ? initialBody.slice(REACT_SOURCE_MARKER.length) : "");
+    const [reactSource, setReactSource] = useState(
+      isReact ? initialBody.slice(REACT_SOURCE_MARKER.length) : "",
+    );
     const [reactHtml, setReactHtml] = useState(isReact ? initialHtml : "");
     const [reactError, setReactError] = useState("");
     const [preview, setPreview] = useState("");
+    const [device, setDevice] = useState<"desktop" | "mobile">("desktop");
     const emailRef = useRef<EmailEditorFieldHandle>(null);
     const previewTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
@@ -122,11 +189,16 @@ export const EmailContentEditor = forwardRef<EmailContentEditorHandle, Props>(
     const [editedMode, setEditedMode] = useState<EmailMode | null>(null);
     const exportMode = editedMode ?? mode;
 
-    const compatWarnings = useMemo(() => (mode === "html" ? lintEmailHtml(rawHtml) : []), [mode, rawHtml]);
+    const compatWarnings = useMemo(
+      () => (mode === "html" ? lintEmailHtml(rawHtml) : []),
+      [mode, rawHtml],
+    );
 
     function withFooter(html: string): string {
       if (!footer || !html) return html;
-      return appendUnsubscribeFooter({ html, text: "" }, footer, { preview: true }).html;
+      return appendUnsubscribeFooter({ html, text: "" }, footer, {
+        preview: true,
+      }).html;
     }
 
     function refreshVisualPreview() {
@@ -163,12 +235,17 @@ export const EmailContentEditor = forwardRef<EmailContentEditorHandle, Props>(
       async exportEmail() {
         if (exportMode === "react") {
           const html = await compileReactEmail(reactSource);
-          return { html, text: htmlToText(html), body: REACT_SOURCE_MARKER + reactSource };
+          return {
+            html,
+            text: htmlToText(html),
+            body: REACT_SOURCE_MARKER + reactSource,
+          };
         }
         if (exportMode === "html") {
           return { html: rawHtml, text: htmlToText(rawHtml), body: rawHtml };
         }
-        if (!emailRef.current) throw new Error("Editor not ready — please wait and try again");
+        if (!emailRef.current)
+          throw new Error("Editor not ready — please wait and try again");
         return emailRef.current.exportEmail();
       },
     }));
@@ -183,14 +260,32 @@ export const EmailContentEditor = forwardRef<EmailContentEditorHandle, Props>(
           setEditedMode("react");
         }
       } catch (e) {
-        toast.error(`Format failed: ${e instanceof Error ? e.message : String(e)}`);
+        toast.error(
+          `Format failed: ${e instanceof Error ? e.message : String(e)}`,
+        );
       }
     }
 
+    const previewHtml = withFooter(
+      mode === "html" ? rawHtml : mode === "react" ? reactHtml : preview,
+    );
+
+    function openFull() {
+      const url = URL.createObjectURL(
+        new Blob([previewHtml], { type: "text/html" }),
+      );
+      window.open(url, "_blank", "noopener,noreferrer");
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    }
+
+    const paneHeader =
+      "flex h-12 items-center justify-between gap-2 border-b px-3";
+
     return (
-      <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
-        <div className="min-w-0 space-y-4">
-          <div className="flex items-center justify-between gap-2">
+      <div className="grid overflow-hidden rounded-xl border bg-card lg:grid-cols-2 lg:divide-x">
+        {/* Source */}
+        <section aria-label="Email source" className="flex min-w-0 flex-col">
+          <div className={paneHeader}>
             <Tabs value={mode} onValueChange={(v) => setMode(v as EmailMode)}>
               <TabsList>
                 <TabsTrigger value="visual">Visual</TabsTrigger>
@@ -198,101 +293,182 @@ export const EmailContentEditor = forwardRef<EmailContentEditorHandle, Props>(
                 <TabsTrigger value="react">React</TabsTrigger>
               </TabsList>
             </Tabs>
-            {mode !== "visual" && (
-              <div className="flex items-center gap-3">
-                {variables.length > 0 && (
-                  <span className="hidden text-xs text-muted-foreground sm:inline">
-                    Use {`{{var}}`} tokens, e.g. <code className="font-mono">{`{{${variables[0]}}}`}</code>
-                  </span>
-                )}
-                <Button type="button" variant="outline" size="sm" onClick={format}>
+            <div className="flex items-center gap-2">
+              {mode === "react" && !reactSource.trim() && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setReactSource(REACT_STARTER)}
+                >
+                  Insert starter
+                </Button>
+              )}
+              {mode !== "visual" && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={format}
+                >
                   Format
                 </Button>
-              </div>
-            )}
+              )}
+            </div>
           </div>
 
           {mode === "visual" ? (
-            <EmailEditorField
-              ref={emailRef}
-              initialHtml={isReact ? "" : initialBody}
-              variables={variables}
-              onChange={refreshVisualPreview}
-            />
-          ) : mode === "html" ? (
-            <>
-              <textarea
-                value={rawHtml}
-                onChange={(e) => {
-                  setRawHtml(e.target.value);
-                  setEditedMode("html");
-                  onChange?.();
-                }}
-                spellCheck={false}
-                placeholder="<!DOCTYPE html> … paste rich email HTML here"
-                className="h-[75vh] min-h-[500px] w-full resize-y rounded-lg border bg-muted/20 p-3 font-mono text-xs leading-relaxed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            <div className="p-3">
+              <EmailEditorField
+                ref={emailRef}
+                initialHtml={isReact ? "" : initialBody}
+                variables={variables}
+                onChange={refreshVisualPreview}
               />
-              {compatWarnings.length > 0 && (
-                <div className="rounded-lg border border-warn/40 bg-warn/10 p-3 text-xs">
-                  <p className="mb-1.5 flex items-center gap-1.5 font-medium text-warn">
+            </div>
+          ) : (
+            <div className="bg-muted/20">
+              {mode === "html" ? (
+                <CodeArea
+                  label="Email HTML"
+                  value={rawHtml}
+                  onChange={(v) => {
+                    setRawHtml(v);
+                    setEditedMode("html");
+                    onChange?.();
+                  }}
+                  placeholder="<!DOCTYPE html> … paste rich email HTML here"
+                />
+              ) : (
+                <CodeArea
+                  label="React email source"
+                  value={reactSource}
+                  onChange={(v) => {
+                    setReactSource(v);
+                    setEditedMode("react");
+                    onChange?.();
+                  }}
+                  placeholder={REACT_STARTER}
+                />
+              )}
+            </div>
+          )}
+
+          {mode !== "visual" && (
+            <div className="space-y-2 border-t px-3 py-2.5 text-xs text-muted-foreground">
+              <p>
+                {mode === "react" ? (
+                  <>
+                    <code className="font-mono">export default</code> a
+                    react-email component — Html, Body, Container, Heading,
+                    Text, Button… are in scope, no imports.{" "}
+                  </>
+                ) : null}
+                {variables.length > 0 && (
+                  <>
+                    Variables:{" "}
+                    <code className="font-mono">{`{{${variables[0]}}}`}</code>
+                    {variables.length > 1
+                      ? ` +${variables.length - 1} more`
+                      : ""}{" "}
+                    — empty when missing.
+                  </>
+                )}
+              </p>
+              {mode === "html" && compatWarnings.length > 0 && (
+                <details className="rounded-lg border border-warn/40 bg-warn/10 px-3 py-2">
+                  <summary className="flex cursor-pointer items-center gap-1.5 font-medium text-warn">
                     <TriangleAlertIcon className="size-3.5" />
                     Email client compatibility ({compatWarnings.length})
-                  </p>
-                  <ul className="space-y-0.5 text-muted-foreground">
+                  </summary>
+                  <ul className="mt-1.5 max-h-40 space-y-0.5 overflow-y-auto">
                     {compatWarnings.map((w, i) => (
                       <li key={`${w.line}-${w.property}-${i}`}>
-                        <span className="font-mono">L{w.line}</span> · <strong>{w.property}</strong> — not
-                        supported in {w.clients}
+                        <span className="font-mono">L{w.line}</span> ·{" "}
+                        <strong>{w.property}</strong> — not supported in{" "}
+                        {w.clients}
                       </li>
                     ))}
                   </ul>
-                </div>
+                </details>
               )}
-            </>
-          ) : (
-            <>
-              <textarea
-                value={reactSource}
-                onChange={(e) => {
-                  setReactSource(e.target.value);
-                  setEditedMode("react");
-                  onChange?.();
-                }}
-                spellCheck={false}
-                placeholder={REACT_STARTER}
-                className="h-[75vh] min-h-[500px] w-full resize-y rounded-lg border bg-muted/20 p-3 font-mono text-xs leading-relaxed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              />
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-xs text-muted-foreground">
-                  <code className="font-mono">export default</code> a react-email component. Components
-                  (Html, Body, Container, Heading, Text, Button…) are in scope — no imports needed.
-                </span>
-                {!reactSource.trim() && (
-                  <Button type="button" variant="outline" size="sm" onClick={() => setReactSource(REACT_STARTER)}>
-                    Insert starter
-                  </Button>
-                )}
-              </div>
-              {reactError && (
-                <div className="rounded-lg border border-red-300/60 bg-red-50 p-3 text-xs dark:border-red-500/30 dark:bg-red-950/30">
-                  <p className="flex items-center gap-1.5 font-medium text-red-900 dark:text-red-200">
+              {mode === "react" && reactError && (
+                <div
+                  role="alert"
+                  className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2"
+                >
+                  <p className="flex items-center gap-1.5 font-medium text-destructive">
                     <TriangleAlertIcon className="size-3.5" /> Compile error
                   </p>
-                  <pre className="mt-1 whitespace-pre-wrap font-mono text-red-800 dark:text-red-300">{reactError}</pre>
+                  <pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap font-mono text-destructive">
+                    {reactError}
+                  </pre>
                 </div>
               )}
-            </>
+            </div>
           )}
-        </div>
+        </section>
 
-        <div className="h-fit space-y-2 lg:sticky lg:top-4">
-          <p className="text-xs font-medium text-muted-foreground">Live preview</p>
-          <iframe
-            title="Email preview"
-            srcDoc={withFooter(mode === "html" ? rawHtml : mode === "react" ? reactHtml : preview)}
-            className="h-[75vh] min-h-[500px] w-full rounded-lg border bg-white"
-          />
-        </div>
+        {/* Preview */}
+        <section
+          aria-label="Email preview"
+          className="flex min-w-0 flex-col border-t lg:border-t-0"
+        >
+          <div className={paneHeader}>
+            <Tabs
+              value={device}
+              onValueChange={(v) => setDevice(v as "desktop" | "mobile")}
+            >
+              <TabsList>
+                <TabsTrigger value="desktop" aria-label="Desktop width">
+                  <MonitorIcon className="size-3.5" /> Desktop
+                </TabsTrigger>
+                <TabsTrigger value="mobile" aria-label="Mobile width">
+                  <SmartphoneIcon className="size-3.5" /> Mobile
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={openFull}
+              disabled={!previewHtml}
+            >
+              <ExternalLinkIcon className="size-3.5" /> Open
+            </Button>
+          </div>
+          <div
+            className={cn(
+              EDITOR_PANE_HEIGHT,
+              "flex justify-center overflow-hidden bg-muted/40 p-4",
+            )}
+          >
+            <iframe
+              title="Email preview"
+              srcDoc={previewHtml}
+              className={cn(
+                "h-full rounded-lg bg-white shadow-sm ring-1 ring-black/5 transition-[width] duration-200 ease-out motion-reduce:transition-none",
+                device === "mobile" ? "w-[375px] max-w-full" : "w-full",
+              )}
+            />
+          </div>
+          <p className="flex items-center gap-1.5 border-t px-3 py-2.5 text-xs text-muted-foreground">
+            {footer ? (
+              <>
+                <CircleCheckIcon className="size-3.5 text-success" />
+                Sender, postal address and unsubscribe link are added at send
+                (highlighted in preview).
+              </>
+            ) : (
+              <>
+                <TriangleAlertIcon className="size-3.5 text-warn" />
+                No unsubscribe footer configured — marketing sends will go out
+                without one.
+              </>
+            )}
+          </p>
+        </section>
       </div>
     );
   },

@@ -15,6 +15,15 @@ describe("appendUnsubscribeFooter", () => {
     expect(out.html).toContain("<p>hi</p>");
   });
 
+  it("lands inside <body> of a full html document, not after </html>", () => {
+    const doc = "<!DOCTYPE html><html><head></head><body style=\"background:#fff\"><table><tr><td>hi</td></tr></table></BODY>\n</html>";
+    const out = appendUnsubscribeFooter({ html: doc, text: "hi" }, footer);
+    const unsub = out.html.indexOf(footer.url);
+    expect(unsub).toBeGreaterThan(out.html.indexOf("<td>hi</td>"));
+    expect(unsub).toBeLessThan(out.html.indexOf("</BODY>"));
+    expect(out.html.trimEnd().endsWith("</html>")).toBe(true);
+  });
+
   it("appends the same information to the plaintext part", () => {
     const out = appendUnsubscribeFooter({ html: "<p>hi</p>", text: "hi" }, footer);
     expect(out.text).toContain(footer.url);
