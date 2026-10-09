@@ -2,12 +2,27 @@ import { describe, expect, it, vi } from "vitest";
 import { createReactCompiler, type WorkerLike } from "./react-compiler";
 import { compileReactSource } from "../react-template";
 
-function fakeWorker(reply?: (m: { id: number; source: string }) => unknown) {
+function fakeWorker(reply?: (m: { id: number; source: string }) => unknown, { ready = true } = {}) {
   const listeners = new Set<(e: { data: unknown }) => void>();
-  const w: WorkerLike & { terminated: boolean } = {
+  let isReady = false;
+  const queued: { id: number; source: string }[] = [];
+  const deliver = (m: { id: number; source: string }) => {
+    if (reply) queueMicrotask(() => listeners.forEach((f) => f({ data: reply(m) })));
+  };
+  // Like the real worker: messages wait until chunks are loaded and globals locked, then it says so.
+  const announce = () => {
+    isReady = true;
+    listeners.forEach((f) => f({ data: { ready: true } }));
+    queued.splice(0).forEach(deliver);
+  };
+  if (ready) queueMicrotask(announce);
+  const w: WorkerLike & { terminated: boolean; announce: () => void } = {
     terminated: false,
+    announce,
     postMessage: (m) => {
-      if (reply) queueMicrotask(() => listeners.forEach((f) => f({ data: reply(m as { id: number; source: string }) })));
+      const msg = m as { id: number; source: string };
+      if (isReady) deliver(msg);
+      else queued.push(msg);
     },
     addEventListener: (_t, f) => listeners.add(f),
     removeEventListener: (_t, f) => listeners.delete(f),
@@ -32,11 +47,26 @@ describe("createReactCompiler", () => {
     const workers: ReturnType<typeof fakeWorker>[] = [];
     const c = createReactCompiler({ timeoutMs: 2000, spawn: () => (workers.push(fakeWorker()), workers.at(-1)!) });
     const p = c.compile("while(true){}");
-    vi.advanceTimersByTime(2001);
-    await expect(p).rejects.toThrow("took longer than 2s");
+    const settled = expect(p).rejects.toThrow("took longer than 2s");
+    await vi.advanceTimersByTimeAsync(2001);
+    await settled;
     expect(workers[0]!.terminated).toBe(true);
     void c.compile("x").catch(() => {});
     expect(workers).toHaveLength(2);
+    vi.useRealTimers();
+  });
+});
+
+describe("createReactCompiler — slow worker start-up", () => {
+  it("does not count worker start-up against the render timeout", async () => {
+    vi.useFakeTimers();
+    const w = fakeWorker((m) => ({ id: m.id, html: "<p>late but fine</p>" }), { ready: false });
+    const c = createReactCompiler({ timeoutMs: 2000, spawn: () => w });
+    const p = c.compile("x");
+    await vi.advanceTimersByTimeAsync(5000); // chunks still downloading
+    w.announce();
+    await vi.advanceTimersByTimeAsync(10);
+    await expect(p).resolves.toBe("<p>late but fine</p>");
     vi.useRealTimers();
   });
 });

@@ -15,6 +15,8 @@ const ready = prepareCompileWorker({
   warmUp: () => compileReactSource("export default () => null"),
   lock: () => lockDownGlobals(self, BLOCKED_WORKER_GLOBALS),
 });
+// Tell the page we're ready: its render timeout starts now, not during chunk download.
+void ready.then(() => self.postMessage({ ready: true }));
 
 self.addEventListener("message", async (e: MessageEvent<{ id: number; source: string }>) => {
   await ready; // never run template code before the lockdown is in place
