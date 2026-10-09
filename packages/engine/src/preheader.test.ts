@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readPreheader, withPreheader } from "./preheader";
+import { foreignPreheader, readPreheader, withPreheader } from "./preheader";
 
 const DOC = '<!DOCTYPE html><html><head></head><body style="margin:0"><p>Hi</p></body></html>';
 
@@ -41,5 +41,23 @@ describe("preheader", () => {
 
   it("reads nothing from html without one", () => {
     expect(readPreheader(DOC)).toBe("");
+  });
+});
+
+describe("foreignPreheader", () => {
+  const theirs =
+    '<html><body><div style="display:none;max-height:0;mso-hide:all;">\n  Thanksgiving only: save $65.\n  &#847;&zwnj;&nbsp;\n</div><table><tr><td>Hi</td></tr></table></body></html>';
+
+  it("finds an author's hidden preview text", () => {
+    expect(foreignPreheader(theirs)).toBe("Thanksgiving only: save $65.");
+  });
+  it("ignores ours", () => {
+    expect(foreignPreheader(withPreheader(DOC, "ours"))).toBe("");
+  });
+  it("finds theirs even when ours is also present", () => {
+    expect(foreignPreheader(withPreheader(theirs, "ours"))).toBe("Thanksgiving only: save $65.");
+  });
+  it("is empty for an email without one", () => {
+    expect(foreignPreheader(DOC)).toBe("");
   });
 });

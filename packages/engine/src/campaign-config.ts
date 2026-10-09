@@ -31,3 +31,10 @@ export function buildCampaignConfig(
     },
   };
 }
+
+/** The read-only From line the email builder shows for campaign mail. */
+export function campaignFromLine(config: HandlerDeps["campaigns"]): string | undefined {
+  if (!config) return undefined;
+  const { name, email } = config.sender;
+  return email ? `${name} <${email}>` : name;
+}

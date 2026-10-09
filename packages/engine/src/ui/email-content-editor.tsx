@@ -195,6 +195,7 @@ export const EmailContentEditor = forwardRef<EmailContentEditorHandle, Props>(
     const [reactHtml, setReactHtml] = useState(isReact ? initialHtml : "");
     const [reactError, setReactError] = useState("");
     const [device, setDevice] = useState<"desktop" | "mobile">("desktop");
+    const [visualOpened, setVisualOpened] = useState(mode === "visual");
     const emailRef = useRef<EmailEditorFieldHandle>(null);
 
     // Which mode was actually last TYPED in, as opposed to merely viewed.
@@ -289,7 +290,13 @@ export const EmailContentEditor = forwardRef<EmailContentEditorHandle, Props>(
       "flex h-12 items-center justify-between gap-2 border-b px-3";
 
     const modeTabs = (
-      <Tabs value={mode} onValueChange={(v) => setMode(v as EmailMode)}>
+      <Tabs
+        value={mode}
+        onValueChange={(v) => {
+          if (v === "visual") setVisualOpened(true);
+          setMode(v as EmailMode);
+        }}
+      >
         <TabsList>
           <TabsTrigger value="visual">Visual</TabsTrigger>
           <TabsTrigger value="html">HTML</TabsTrigger>
@@ -298,17 +305,27 @@ export const EmailContentEditor = forwardRef<EmailContentEditorHandle, Props>(
       </Tabs>
     );
 
-    // Visual is the email itself — canvas + inspector, no separate preview.
-    if (mode === "visual") {
-      return (
-        <div className="overflow-hidden rounded-xl border bg-card">
+    async function previewVisual() {
+      const out = await emailRef.current?.exportEmail();
+      if (out) openEmailPreview(withFooter(out.html));
+    }
+
+    // Visual is the email itself — canvas + inspector. Once opened it stays
+    // mounted (hidden) so a trip to HTML/React and back keeps unsaved edits.
+    const visualPane = visualOpened && (
+        <div className={cn("overflow-hidden rounded-xl border bg-card", mode !== "visual" && "hidden")}>
           <div className={paneHeader}>
             {modeTabs}
-            <span className="text-xs text-muted-foreground">
-              Type{" "}
-              <kbd className="rounded border bg-muted px-1 font-mono">/</kbd>{" "}
-              for blocks · click anything to style it
-            </span>
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-muted-foreground">
+                Type{" "}
+                <kbd className="rounded border bg-muted px-1 font-mono">/</kbd>{" "}
+                for blocks · click anything to style it
+              </span>
+              <Button type="button" variant="outline" size="sm" onClick={previewVisual}>
+                <ExternalLinkIcon className="size-3.5" /> Preview
+              </Button>
+            </div>
           </div>
           <div className={EDITOR_PANE_HEIGHT}>
             <EmailEditorField
@@ -321,10 +338,13 @@ export const EmailContentEditor = forwardRef<EmailContentEditorHandle, Props>(
             />
           </div>
         </div>
-      );
-    }
+    );
+
+    if (mode === "visual") return visualPane;
 
     return (
+      <>
+      {visualPane}
       <div className="grid overflow-hidden rounded-xl border bg-card lg:grid-cols-2 lg:divide-x">
         {/* Source */}
         <section aria-label="Email source" className="flex min-w-0 flex-col">
@@ -378,8 +398,7 @@ export const EmailContentEditor = forwardRef<EmailContentEditorHandle, Props>(
             )}
           </div>
 
-          {
-            <div className="space-y-2 border-t px-3 py-2.5 text-xs text-muted-foreground">
+          <div className="space-y-2 border-t px-3 py-2.5 text-xs text-muted-foreground">
               <p>
                 {mode === "react" ? (
                   <>
@@ -430,7 +449,6 @@ export const EmailContentEditor = forwardRef<EmailContentEditorHandle, Props>(
                 </div>
               )}
             </div>
-          }
         </section>
 
         {/* Preview */}
@@ -495,6 +513,7 @@ export const EmailContentEditor = forwardRef<EmailContentEditorHandle, Props>(
           </p>
         </section>
       </div>
+      </>
     );
   },
 );

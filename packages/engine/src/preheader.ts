@@ -24,3 +24,14 @@ export function withPreheader(html: string, text: string): string {
   const at = body.index + body[0].length;
   return stripped.slice(0, at) + block + stripped.slice(at);
 }
+
+// An author's own hidden preview text (e.g. a pasted campaign): the first
+// display:none div/span in the html that isn't ours. Read-only — we never edit it.
+const HIDDEN = /<(div|span)\b(?![^>]*data-relay-preheader)[^>]*style="[^"]*display\s*:\s*none[^"]*"[^>]*>([\s\S]*?)<\/\1>/i;
+
+export function foreignPreheader(html: string): string {
+  const m = HIDDEN.exec(html);
+  if (!m) return "";
+  const text = m[2]!.replace(/<[^>]*>/g, " ").replace(/&[#\w]+;/g, " ");
+  return text.replace(/[\s͏‌]+/g, " ").trim();
+}

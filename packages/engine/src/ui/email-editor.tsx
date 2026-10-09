@@ -6,10 +6,9 @@ import {
   useMemo,
   useRef,
   useState,
-  type CSSProperties,
 } from "react";
 import { EmailEditor, type EmailEditorRef } from "@react-email/editor";
-import { extendTheme } from "@react-email/editor/plugins";
+import { extendTheme, type ThemeComponentStyles } from "@react-email/editor/plugins";
 import { Inspector } from "@react-email/editor/ui";
 import "@react-email/editor/themes/default.css";
 import { LockIcon } from "lucide-react";
@@ -17,7 +16,8 @@ import type { FooterInfo } from "../template";
 import { parseVisualSource, toVisualSource } from "./visual-source";
 import { uploadEmailImage } from "./upload-email-image";
 
-export type EmailThemeOverrides = Record<string, CSSProperties>;
+/** Keys the editor actually themes (body, container, h1–h3, paragraph, link, button, image, lists, code); others are a type error. */
+export type EmailThemeOverrides = ThemeComponentStyles;
 
 export interface EmailEditorFieldHandle {
   exportEmail: () => Promise<{ html: string; text: string; body: string }>;
@@ -26,7 +26,7 @@ export interface EmailEditorFieldHandle {
 interface Props {
   initialHtml: string;
   variables: string[];
-  /** Fires on every edit (and once on ready) so the parent can track dirty state. */
+  /** Fires on every real edit (not on mount) so the parent can track dirty state. */
   onChange?: () => void;
   /** App brand styles, inlined at export by EmailTheming (keys: body, container, h1, h2, h3, paragraph, link, button, hr, image…). */
   themeOverrides?: EmailThemeOverrides;
@@ -48,15 +48,10 @@ export const EmailEditorField = forwardRef<EmailEditorFieldHandle, Props>(
   ) {
     const editorRef = useRef<EmailEditorRef>(null);
     const [ready, setReady] = useState(false);
-    // Overrides arrive as plain CSS maps so apps need no @react-email dependency; cast at this one boundary.
-    // ponytail: theme is fixed per mount (EmailEditor re-keys on theme change, which would drop edits).
+      // ponytail: theme is fixed per mount (EmailEditor re-keys on theme change, which would drop edits).
     const theme = useMemo(
       () =>
-        themeOverrides
-          ? extendTheme(
-              "basic",
-              themeOverrides as Parameters<typeof extendTheme>[1],
-            )
+        themeOverrides ? extendTheme("basic", themeOverrides)
           : "basic",
       [themeOverrides],
     );
@@ -94,8 +89,8 @@ export const EmailEditorField = forwardRef<EmailEditorFieldHandle, Props>(
               </button>
             ))}
             <span className="text-xs text-muted-foreground">
-              · fallback:{" "}
-              <code className="font-mono">{`{{${variables[0]}|there}}`}</code>
+              · add a fallback:{" "}
+              <code className="font-mono">{"{{variable|fallback}}"}</code>
             </span>
           </div>
         )}
@@ -114,10 +109,9 @@ export const EmailEditorField = forwardRef<EmailEditorFieldHandle, Props>(
             theme={theme}
             placeholder="Press '/' for blocks — text, button, image, columns…"
             onUploadImage={uploadEmailImage}
-            onReady={() => {
-              setReady(true);
-              onChange?.();
-            }}
+            // Not onChange: mounting isn't an edit, and the parent treats onChange
+            // as "the admin typed in Visual" when deciding what to export.
+            onReady={() => setReady(true)}
             onUpdate={() => onChange?.()}
             className="tg-email-canvas col-start-1 row-start-1 mx-auto mt-6 w-full max-w-[720px] overflow-hidden rounded-lg bg-white shadow-[0_1px_2px_rgba(0,0,0,0.05),0_10px_28px_rgba(0,0,0,0.07)] ring-1 ring-black/5"
           >

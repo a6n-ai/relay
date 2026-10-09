@@ -5,7 +5,7 @@ import { cn } from "@foundry/ui/cn";
 import { EmailContentEditor, type EmailContentEditorHandle } from "./email-content-editor";
 import type { EmailThemeOverrides } from "./email-editor";
 import { SendTestEmailButton } from "./send-test-email-button";
-import { readPreheader, withPreheader } from "../preheader";
+import { foreignPreheader, readPreheader, withPreheader } from "../preheader";
 import type { FooterInfo } from "../template";
 
 export type EmailTemplateBuilderHandle = EmailContentEditorHandle;
@@ -65,6 +65,8 @@ export const EmailTemplateBuilder = forwardRef<
 ) {
   const editorRef = useRef<EmailContentEditorHandle>(null);
   const [previewText, setPreviewText] = useState(() => readPreheader(initialHtml));
+  // A pasted email may carry its own hidden preview text; we never edit it, so say so.
+  const theirPreview = foreignPreheader(initialHtml);
 
   async function exportWithPreheader() {
     if (!editorRef.current) throw new Error("Editor not ready — please wait and try again");
@@ -113,6 +115,13 @@ export const EmailTemplateBuilder = forwardRef<
             />
           </label>
         </div>
+        {theirPreview && (
+          <p className="text-muted-foreground text-xs">
+            This email already has its own preview text: “{theirPreview.slice(0, 90)}
+            {theirPreview.length > 90 ? "…" : ""}”.{" "}
+            {previewText.trim() ? "Yours shows first, then theirs." : "Leave Preview text empty to keep it as is."}
+          </p>
+        )}
         {subjectError && (
           <p className="text-destructive text-xs" role="alert">
             {subjectError}
