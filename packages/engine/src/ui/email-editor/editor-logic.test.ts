@@ -45,6 +45,8 @@ describe("fillSamples", () => {
   it("fills sample values", () => expect(fillSamples("Hi {{contact.first_name|there}}", samples, "sample")).toBe("Hi Priya"));
   it("uses fallbacks when values are missing", () =>
     expect(fillSamples("Hi {{contact.first_name|there}}", samples, "missing")).toBe("Hi there"));
+  it("escapes sample values so placeholders like <Order code> show as text in the preview", () =>
+    expect(fillSamples("Order {{order.code}}", { "order.code": "<Order code>" }, "sample")).toBe("Order &lt;Order code&gt;"));
   it("stretches values for the long-name check", () =>
     expect(fillSamples("{{contact.first_name}}", samples, "long").length).toBeGreaterThanOrEqual(40));
 });

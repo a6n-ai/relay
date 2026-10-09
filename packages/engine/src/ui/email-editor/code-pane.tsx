@@ -28,6 +28,19 @@ const theme = EditorView.theme({
   ".cm-activeLine, .cm-activeLineGutter": { backgroundColor: "color-mix(in oklch, var(--foreground) 5%, transparent)" },
   ".cm-content": { caretColor: "var(--foreground)" },
   "&.cm-focused": { outline: "none" },
+  // Autocomplete / lint tooltips follow the app's popover tokens (CodeMirror's default is light-only).
+  ".cm-tooltip": {
+    backgroundColor: "var(--popover)",
+    color: "var(--popover-foreground)",
+    border: "1px solid var(--border)",
+    borderRadius: "8px",
+    overflow: "hidden",
+  },
+  ".cm-tooltip-autocomplete > ul > li": { padding: "2px 8px" },
+  ".cm-tooltip-autocomplete > ul > li[aria-selected]": {
+    backgroundColor: "var(--accent)",
+    color: "var(--accent-foreground)",
+  },
 });
 
 const languageFor = (l: "html" | "tsx") => (l === "html" ? html() : javascript({ jsx: true, typescript: true }));
