@@ -126,6 +126,7 @@ function EmailRow({
           initialBody={row.body ?? ""}
           initialHtml={row.html ?? ""}
           variables={CAMPAIGN_VARIABLES}
+          marketing
           disabled={saving}
           footer={footer}
           extra={<CampaignAttachments value={attachments} onChange={setAttachments} />}

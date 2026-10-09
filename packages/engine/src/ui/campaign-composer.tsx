@@ -167,6 +167,7 @@ export function CampaignComposer({
               initialBody=""
               initialHtml=""
               variables={CAMPAIGN_VARIABLES}
+              marketing
               disabled={saving}
               extra={
                 <>

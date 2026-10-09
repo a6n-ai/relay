@@ -35,9 +35,11 @@ export const EmailTemplateBuilder = forwardRef<
     disabled?: boolean;
     /** Stamped onto the live preview only — see EmailContentEditor's `footer` prop. */
     footer?: FooterInfo;
+    /** Campaign mail: "Send test" uses the campaign sender and CASL footer. */
+    marketing?: boolean;
   }
 >(function EmailTemplateBuilder(
-  { subject, onSubjectChange, subjectLabel = "Subject", subjectError, initialBody, initialHtml, variables, onChange, extra, actions, disabled, footer },
+  { subject, onSubjectChange, subjectLabel = "Subject", subjectError, initialBody, initialHtml, variables, onChange, extra, actions, disabled, footer, marketing },
   ref,
 ) {
   const editorRef = useRef<EmailContentEditorHandle>(null);
@@ -76,6 +78,7 @@ export const EmailTemplateBuilder = forwardRef<
         <SendTestEmailButton
           subject={subject}
           disabled={disabled}
+          marketing={marketing}
           exportEmail={async () => {
             if (!editorRef.current) throw new Error("Editor not ready — please wait and try again");
             return editorRef.current.exportEmail();

@@ -12,17 +12,20 @@ import { apiFetch } from "./api-fetch";
  * own copy. Defaults to the acting admin's own address; an explicit
  * recipient lets them test across clients.
  *
- * The endpoint takes a bare {subject, html, text, to} — no event/campaign
- * context — so it's the same route regardless of caller.
+ * The endpoint takes {subject, html, text, to, marketing}. `marketing` makes
+ * the test leave from the campaign sender with the CASL footer, as a real
+ * campaign send does; without it the test goes out as transactional mail.
  */
 export function SendTestEmailButton({
   subject,
   exportEmail,
   disabled,
+  marketing,
 }: {
   subject: string;
   exportEmail: () => Promise<{ html: string; text: string }>;
   disabled?: boolean;
+  marketing?: boolean;
 }) {
   const [testEmail, setTestEmail] = useState("");
   const [busy, setBusy] = useState(false);
@@ -35,10 +38,10 @@ export function SendTestEmailButton({
       const res = await apiFetch<{ sent: boolean; footerIncluded: boolean }>("/api/notifications/templates/test", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ subject, html, text, to: testEmail.trim() || undefined }),
+        body: JSON.stringify({ subject, html, text, to: testEmail.trim() || undefined, marketing }),
       });
       const dest = testEmail.trim() ? ` to ${testEmail.trim()}` : "";
-      if (res.footerIncluded) {
+      if (!marketing || res.footerIncluded) {
         toast.success(`Test sent${dest}`);
       } else {
         toast.warning(`Test sent${dest} — no unsubscribe footer (sender/unsubscribe config missing)`);
