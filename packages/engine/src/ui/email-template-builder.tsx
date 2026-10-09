@@ -1,24 +1,22 @@
 "use client";
 
-import { forwardRef, useImperativeHandle, useRef, type ReactNode } from "react";
-import { Input } from "@foundry/ui/input";
-import { Label } from "@foundry/ui/label";
-import {
-  EmailContentEditor,
-  type EmailContentEditorHandle,
-} from "./email-content-editor";
+import { forwardRef, useImperativeHandle, useRef, useState, type ReactNode } from "react";
+import { cn } from "@foundry/ui/cn";
+import { EmailContentEditor, type EmailContentEditorHandle } from "./email-content-editor";
+import type { EmailThemeOverrides } from "./email-editor";
 import { SendTestEmailButton } from "./send-test-email-button";
+import { readPreheader, withPreheader } from "../preheader";
 import type { FooterInfo } from "../template";
 
 export type EmailTemplateBuilderHandle = EmailContentEditorHandle;
 
 /**
- * The one email-building surface: subject + the Visual/HTML/React content
- * editor + "Send test", used everywhere an admin builds an email — event
- * templates, campaign drafts, campaign content edits. A caller owns its own
- * Save/Cancel flow (passed as `actions`, since that differs: templates POST
- * to /templates, campaigns POST to /campaigns/:id/content) but the editing
- * surface and test-send affordance are never re-implemented per screen.
+ * The one email-building surface: an inbox-style From / Subject / Preview text
+ * header, the Visual/HTML/React content editor and "Send test", used everywhere
+ * an admin builds an email — event templates, campaign drafts, campaign content
+ * edits. A caller owns its own Save/Cancel flow (passed as `actions`, since that
+ * differs: templates POST to /templates, campaigns POST to /campaigns/:id/content)
+ * but the editing surface and test-send affordance are never re-implemented per screen.
  */
 export const EmailTemplateBuilder = forwardRef<
   EmailTemplateBuilderHandle,
@@ -40,6 +38,10 @@ export const EmailTemplateBuilder = forwardRef<
     footer?: FooterInfo;
     /** Campaign mail: "Send test" uses the campaign sender and CASL footer. */
     marketing?: boolean;
+    /** Display-only sender line, e.g. "TiffinGrab <hello@tiffingrab.ca>". */
+    from?: string;
+    /** App brand styles for the visual editor — see EmailEditorField. */
+    themeOverrides?: EmailThemeOverrides;
   }
 >(function EmailTemplateBuilder(
   {
@@ -56,27 +58,61 @@ export const EmailTemplateBuilder = forwardRef<
     disabled,
     footer,
     marketing,
+    from,
+    themeOverrides,
   },
   ref,
 ) {
   const editorRef = useRef<EmailContentEditorHandle>(null);
-  useImperativeHandle(ref, () => ({
-    exportEmail: () => {
-      if (!editorRef.current)
-        throw new Error("Editor not ready — please wait and try again");
-      return editorRef.current.exportEmail();
-    },
-  }));
+  const [previewText, setPreviewText] = useState(() => readPreheader(initialHtml));
+
+  async function exportWithPreheader() {
+    if (!editorRef.current) throw new Error("Editor not ready — please wait and try again");
+    const out = await editorRef.current.exportEmail();
+    const html = withPreheader(out.html, previewText);
+    // HTML mode stores the whole document as body too; keep them identical.
+    const body = out.body === out.html ? html : out.body;
+    return { ...out, html, body };
+  }
+
+  useImperativeHandle(ref, () => ({ exportEmail: exportWithPreheader }));
+
+  const row = "grid grid-cols-[7rem_minmax(0,1fr)] items-center gap-3 border-b px-4 py-2.5 text-sm";
+  const field = "w-full bg-transparent outline-none placeholder:text-muted-foreground/60";
 
   return (
     <div className="space-y-4">
       <div className="space-y-1.5">
-        <Label>{subjectLabel}</Label>
-        <Input
-          value={subject}
-          onChange={(e) => onSubjectChange(e.target.value)}
-          aria-invalid={!!subjectError}
-        />
+        <div className="overflow-hidden rounded-xl border bg-card">
+          {from && (
+            <div className={row}>
+              <span className="text-muted-foreground">From</span>
+              <span className="truncate">{from}</span>
+            </div>
+          )}
+          <label className={row}>
+            <span className="text-muted-foreground">{subjectLabel}</span>
+            <input
+              value={subject}
+              onChange={(e) => onSubjectChange(e.target.value)}
+              aria-invalid={!!subjectError}
+              placeholder="What's this email about?"
+              className={field}
+            />
+          </label>
+          <label className={cn(row, "border-b-0")}>
+            <span className="text-muted-foreground">Preview text</span>
+            <input
+              value={previewText}
+              onChange={(e) => {
+                setPreviewText(e.target.value);
+                onChange?.();
+              }}
+              placeholder="Shown after the subject in the inbox"
+              className={field}
+            />
+          </label>
+        </div>
         {subjectError && (
           <p className="text-destructive text-xs" role="alert">
             {subjectError}
@@ -91,6 +127,7 @@ export const EmailTemplateBuilder = forwardRef<
         variables={variables}
         onChange={onChange}
         footer={footer}
+        themeOverrides={themeOverrides}
       />
 
       {extra}
@@ -102,11 +139,7 @@ export const EmailTemplateBuilder = forwardRef<
             subject={subject}
             disabled={disabled}
             marketing={marketing}
-            exportEmail={async () => {
-              if (!editorRef.current)
-                throw new Error("Editor not ready — please wait and try again");
-              return editorRef.current.exportEmail();
-            }}
+            exportEmail={exportWithPreheader}
           />
         </div>
       </div>
