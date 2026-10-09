@@ -22,7 +22,11 @@ import { cn } from "@foundry/ui/cn";
 import { lintEmailHtml } from "./email-compat";
 import { formatCode } from "./format";
 import { compileReactEmail, REACT_SOURCE_MARKER } from "./react-template";
-import { EmailEditorField, type EmailEditorFieldHandle } from "./email-editor";
+import {
+  EmailEditorField,
+  type EmailEditorFieldHandle,
+  type EmailThemeOverrides,
+} from "./email-editor";
 import { appendUnsubscribeFooter, type FooterInfo } from "../template";
 
 type EmailMode = "visual" | "html" | "react";
@@ -164,6 +168,8 @@ interface Props {
    * content underneath.
    */
   footer?: FooterInfo;
+  /** App brand styles for the visual editor — see EmailEditorField. */
+  themeOverrides?: EmailThemeOverrides;
 }
 
 /**
@@ -175,7 +181,7 @@ interface Props {
  */
 export const EmailContentEditor = forwardRef<EmailContentEditorHandle, Props>(
   function EmailContentEditor(
-    { initialBody, initialHtml, variables, onChange, footer },
+    { initialBody, initialHtml, variables, onChange, footer, themeOverrides },
     ref,
   ) {
     const isReact = initialBody.startsWith(REACT_SOURCE_MARKER);
@@ -188,10 +194,8 @@ export const EmailContentEditor = forwardRef<EmailContentEditorHandle, Props>(
     );
     const [reactHtml, setReactHtml] = useState(isReact ? initialHtml : "");
     const [reactError, setReactError] = useState("");
-    const [preview, setPreview] = useState("");
     const [device, setDevice] = useState<"desktop" | "mobile">("desktop");
     const emailRef = useRef<EmailEditorFieldHandle>(null);
-    const previewTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
     // Which mode was actually last TYPED in, as opposed to merely viewed.
     // Visual (TipTap) is lossy for markup it doesn't understand — tables,
@@ -217,12 +221,7 @@ export const EmailContentEditor = forwardRef<EmailContentEditorHandle, Props>(
       }).html;
     }
 
-    function refreshVisualPreview() {
-      clearTimeout(previewTimer.current);
-      previewTimer.current = setTimeout(async () => {
-        const out = await emailRef.current?.exportEmail();
-        if (out) setPreview(out.body);
-      }, 250);
+    function markVisualEdited() {
       setEditedMode("visual");
       onChange?.();
     }
@@ -282,27 +281,55 @@ export const EmailContentEditor = forwardRef<EmailContentEditorHandle, Props>(
       }
     }
 
-    const previewHtml = withFooter(
-      mode === "html" ? rawHtml : mode === "react" ? reactHtml : preview,
-    );
+    const previewHtml = withFooter(mode === "html" ? rawHtml : reactHtml);
 
     const openFull = () => openEmailPreview(previewHtml);
 
     const paneHeader =
       "flex h-12 items-center justify-between gap-2 border-b px-3";
 
+    const modeTabs = (
+      <Tabs value={mode} onValueChange={(v) => setMode(v as EmailMode)}>
+        <TabsList>
+          <TabsTrigger value="visual">Visual</TabsTrigger>
+          <TabsTrigger value="html">HTML</TabsTrigger>
+          <TabsTrigger value="react">React</TabsTrigger>
+        </TabsList>
+      </Tabs>
+    );
+
+    // Visual is the email itself — canvas + inspector, no separate preview.
+    if (mode === "visual") {
+      return (
+        <div className="overflow-hidden rounded-xl border bg-card">
+          <div className={paneHeader}>
+            {modeTabs}
+            <span className="text-xs text-muted-foreground">
+              Type{" "}
+              <kbd className="rounded border bg-muted px-1 font-mono">/</kbd>{" "}
+              for blocks · click anything to style it
+            </span>
+          </div>
+          <div className={EDITOR_PANE_HEIGHT}>
+            <EmailEditorField
+              ref={emailRef}
+              initialHtml={isReact ? "" : initialBody}
+              variables={variables}
+              onChange={markVisualEdited}
+              themeOverrides={themeOverrides}
+              footer={footer}
+            />
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="grid overflow-hidden rounded-xl border bg-card lg:grid-cols-2 lg:divide-x">
         {/* Source */}
         <section aria-label="Email source" className="flex min-w-0 flex-col">
           <div className={paneHeader}>
-            <Tabs value={mode} onValueChange={(v) => setMode(v as EmailMode)}>
-              <TabsList>
-                <TabsTrigger value="visual">Visual</TabsTrigger>
-                <TabsTrigger value="html">HTML</TabsTrigger>
-                <TabsTrigger value="react">React</TabsTrigger>
-              </TabsList>
-            </Tabs>
+            {modeTabs}
             <div className="flex items-center gap-2">
               {mode === "react" && !reactSource.trim() && (
                 <Button
@@ -314,57 +341,44 @@ export const EmailContentEditor = forwardRef<EmailContentEditorHandle, Props>(
                   Insert starter
                 </Button>
               )}
-              {mode !== "visual" && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={format}
-                >
-                  Format
-                </Button>
-              )}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={format}
+              >
+                Format
+              </Button>
             </div>
           </div>
 
-          {mode === "visual" ? (
-            <div className="p-3">
-              <EmailEditorField
-                ref={emailRef}
-                initialHtml={isReact ? "" : initialBody}
-                variables={variables}
-                onChange={refreshVisualPreview}
+          <div className="bg-muted/20">
+            {mode === "html" ? (
+              <CodeArea
+                label="Email HTML"
+                value={rawHtml}
+                onChange={(v) => {
+                  setRawHtml(v);
+                  setEditedMode("html");
+                  onChange?.();
+                }}
+                placeholder="<!DOCTYPE html> … paste rich email HTML here"
               />
-            </div>
-          ) : (
-            <div className="bg-muted/20">
-              {mode === "html" ? (
-                <CodeArea
-                  label="Email HTML"
-                  value={rawHtml}
-                  onChange={(v) => {
-                    setRawHtml(v);
-                    setEditedMode("html");
-                    onChange?.();
-                  }}
-                  placeholder="<!DOCTYPE html> … paste rich email HTML here"
-                />
-              ) : (
-                <CodeArea
-                  label="React email source"
-                  value={reactSource}
-                  onChange={(v) => {
-                    setReactSource(v);
-                    setEditedMode("react");
-                    onChange?.();
-                  }}
-                  placeholder={REACT_STARTER}
-                />
-              )}
-            </div>
-          )}
+            ) : (
+              <CodeArea
+                label="React email source"
+                value={reactSource}
+                onChange={(v) => {
+                  setReactSource(v);
+                  setEditedMode("react");
+                  onChange?.();
+                }}
+                placeholder={REACT_STARTER}
+              />
+            )}
+          </div>
 
-          {mode !== "visual" && (
+          {
             <div className="space-y-2 border-t px-3 py-2.5 text-xs text-muted-foreground">
               <p>
                 {mode === "react" ? (
@@ -416,7 +430,7 @@ export const EmailContentEditor = forwardRef<EmailContentEditorHandle, Props>(
                 </div>
               )}
             </div>
-          )}
+          }
         </section>
 
         {/* Preview */}

@@ -33,3 +33,4 @@ export * from "./send-test-email-button";
 export * from "./template-editor";
 export * from "./template-status";
 export * from "./use-notifications";
+export type { EmailThemeOverrides } from "./email-editor";
