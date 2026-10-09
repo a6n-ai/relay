@@ -72,7 +72,7 @@ export async function materializeCampaign(
           kind: "marketing",
           campaignId: campaign.id as bigint,
           channels: campaign.channels as Channel[],
-          data: { contact: { name: r.name ?? "", ...(r.vars ?? {}) } },
+          data: { contact: contactVars(r) },
           dedupeKey: `cmp:${campaignPublicId}:${(r.email ?? r.phone ?? "").toLowerCase()}`,
         });
         queued += 1;
@@ -103,4 +103,11 @@ export async function dueCampaigns(
     .from(tables.campaign)
     .where(and(eq(tables.campaign.status, "scheduled"), lte(tables.campaign.scheduledAt, now)));
   return rows.map((r) => r.publicId as string);
+}
+
+/** The `contact` object a campaign template interpolates against (see CAMPAIGN_VARIABLES). */
+export function contactVars(r: { name?: string | null; email?: string | null; vars?: Record<string, unknown> | null }) {
+  const name = (r.name ?? "").trim();
+  const [first = "", ...rest] = name.split(/\s+/).filter(Boolean);
+  return { name, first_name: first, last_name: rest.join(" "), email: r.email ?? "", ...(r.vars ?? {}) };
 }
