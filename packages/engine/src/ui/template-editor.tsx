@@ -22,6 +22,7 @@ import { Tabs, TabsList, TabsTrigger } from "@foundry/ui/tabs";
 import { Skeleton } from "@foundry/ui/skeleton";
 import { type EmailContentEditorHandle } from "./email-content-editor";
 import { EmailTemplateBuilder } from "./email-template-builder";
+import type { EmailThemeOverrides } from "./email-editor";
 import type { FooterInfo } from "../template";
 
 const MDEditor = dynamic(() => import("@uiw/react-md-editor"), { ssr: false });
@@ -54,12 +55,18 @@ export function TemplateEditor({
   variables,
   initial,
   footer,
+  from,
+  themeOverrides,
 }: {
   event: string;
   variables: string[];
   initial: Row[];
   /** Some event templates carry kind "marketing" (abandoned-cart, checkout recovery) and get the same CASL footer a campaign does — shown in preview here too. */
   footer?: FooterInfo;
+  /** Display-only sender line on the email header. */
+  from?: string;
+  /** App brand styles for the visual editor. */
+  themeOverrides?: EmailThemeOverrides;
 }) {
   const [channel, setChannel] = useState<Channel>("email");
   const [locale, setLocale] = useState<Locale>("en");
@@ -154,7 +161,7 @@ export function TemplateEditor({
           initialHtml={current?.html ?? ""}
           variables={variables}
           disabled={busy}
-          footer={footer}
+          footer={footer} from={from} themeOverrides={themeOverrides}
           actions={
             <Button onClick={save} disabled={busy}>
               Save

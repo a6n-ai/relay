@@ -12,6 +12,7 @@ import { Textarea } from "@foundry/ui/textarea";
 import { apiFetch } from "./api-fetch";
 import { CampaignAttachments, type CampaignAttachment } from "./campaign-attachments";
 import { EmailTemplateBuilder, type EmailTemplateBuilderHandle } from "./email-template-builder";
+import type { EmailThemeOverrides } from "./email-editor";
 import { openEmailPreview } from "./email-content-editor";
 import type { FooterInfo } from "../template";
 
@@ -59,11 +60,17 @@ function EmailRow({
   row,
   editable,
   footer,
+  from,
+  themeOverrides,
 }: {
   campaignPublicId: string;
   row: CampaignContentRow;
   editable: boolean;
   footer?: FooterInfo;
+  /** Display-only sender line on the email header. */
+  from?: string;
+  /** App brand styles for the visual editor. */
+  themeOverrides?: EmailThemeOverrides;
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
@@ -124,7 +131,7 @@ function EmailRow({
           variables={CAMPAIGN_VARIABLES}
           marketing
           disabled={saving}
-          footer={footer}
+          footer={footer} from={from} themeOverrides={themeOverrides}
           extra={<CampaignAttachments value={attachments} onChange={setAttachments} />}
           actions={
             <div className="ml-auto flex gap-2">
@@ -246,12 +253,18 @@ export function CampaignContentSection({
   content,
   editable,
   footer,
+  from,
+  themeOverrides,
 }: {
   campaignPublicId: string;
   content: CampaignContentRow[];
   editable: boolean;
   /** Stamped onto each email row's live preview while editing — see EmailContentEditor's `footer` prop. */
   footer?: FooterInfo;
+  /** Display-only sender line on the email header. */
+  from?: string;
+  /** App brand styles for the visual editor. */
+  themeOverrides?: EmailThemeOverrides;
 }) {
   if (content.length === 0) {
     return (
@@ -274,7 +287,7 @@ export function CampaignContentSection({
       )}
       {content.map((c) =>
         c.channel === "email" ? (
-          <EmailRow key={`${c.channel}-${c.locale}`} campaignPublicId={campaignPublicId} row={c} editable={editable} footer={footer} />
+          <EmailRow key={`${c.channel}-${c.locale}`} campaignPublicId={campaignPublicId} row={c} editable={editable} footer={footer} from={from} themeOverrides={themeOverrides} />
         ) : (
           <TextRow key={`${c.channel}-${c.locale}`} campaignPublicId={campaignPublicId} row={c} editable={editable} />
         ),

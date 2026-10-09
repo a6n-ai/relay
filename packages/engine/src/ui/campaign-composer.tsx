@@ -11,6 +11,7 @@ import { cn } from "@foundry/ui/cn";
 import { apiFetch } from "./api-fetch";
 import { CampaignAttachments, type CampaignAttachment } from "./campaign-attachments";
 import { EmailTemplateBuilder, type EmailTemplateBuilderHandle } from "./email-template-builder";
+import type { EmailThemeOverrides } from "./email-editor";
 import { AudienceBuilder, type AudienceValue, type ContactListOption } from "./audience-builder";
 import type { FooterInfo } from "../template";
 
@@ -52,10 +53,16 @@ export function CampaignComposer({
   lists,
   timeZone,
   footer,
+  from,
+  themeOverrides,
 }: {
   lists: ContactListOption[];
   /** Stamped onto the live preview only — see EmailContentEditor's `footer` prop. */
   footer?: FooterInfo;
+  /** Display-only sender line on the email header. */
+  from?: string;
+  /** App brand styles for the visual editor. */
+  themeOverrides?: EmailThemeOverrides;
   /** App-settings timezone, e.g. "America/Toronto" — threaded to AudienceBuilder. */
   timeZone: string;
 }) {
@@ -172,7 +179,7 @@ export function CampaignComposer({
               initialHtml=""
               variables={CAMPAIGN_VARIABLES}
               marketing
-              footer={footer}
+              footer={footer} from={from} themeOverrides={themeOverrides}
               disabled={saving}
               extra={<CampaignAttachments value={attachments} onChange={setAttachments} />}
             />
