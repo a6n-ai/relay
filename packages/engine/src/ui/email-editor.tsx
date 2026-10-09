@@ -121,7 +121,7 @@ export const EmailEditorField = forwardRef<EmailEditorFieldHandle, Props>(
               onChange?.();
             }}
             onUpdate={() => onChange?.()}
-            className="tg-email-canvas col-start-1 row-start-1 mx-auto mt-6 w-full max-w-[640px] rounded-lg bg-white px-2 shadow-[0_1px_2px_rgba(0,0,0,0.05),0_10px_28px_rgba(0,0,0,0.07)] ring-1 ring-black/5"
+            className="tg-email-canvas col-start-1 row-start-1 mx-auto mt-6 w-full max-w-[720px] overflow-hidden rounded-lg bg-white shadow-[0_1px_2px_rgba(0,0,0,0.05),0_10px_28px_rgba(0,0,0,0.07)] ring-1 ring-black/5"
           >
             {footer && <LockedFooter footer={footer} />}
             <Inspector.Root className="sticky top-0 col-start-2 row-span-2 row-start-1 max-h-full self-start overflow-y-auto border-l bg-card p-4 text-sm">
@@ -139,7 +139,7 @@ export const EmailEditorField = forwardRef<EmailEditorFieldHandle, Props>(
 
 function LockedFooter({ footer }: { footer: FooterInfo }) {
   return (
-    <div className="col-start-1 row-start-2 mx-auto mb-6 w-full max-w-[640px] self-start px-4 py-4 text-center text-xs text-muted-foreground">
+    <div className="col-start-1 row-start-2 mx-auto mb-6 w-full max-w-[720px] self-start px-4 py-4 text-center text-xs text-muted-foreground">
       <p className="mb-1 inline-flex items-center gap-1 font-medium">
         <LockIcon className="size-3" aria-hidden /> Required footer · added at
         send
