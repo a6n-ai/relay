@@ -47,8 +47,8 @@ interface Row {
   html: string;
   text: string;
   enabled: boolean;
-  /** Optimistic-concurrency revision; a save carrying a stale one gets 409. */
-  revision?: number;
+  /** Optimistic-concurrency revision; a save carrying a stale one gets 409. Required so a page can't forget it. */
+  revision: number;
 }
 
 export function TemplateEditor({

@@ -23,6 +23,12 @@ describe("autosaveReducer", () => {
     const s = autosaveReducer({ status: "saving", attempt: 0 }, { type: "conflict" });
     expect(autosaveReducer(s, { type: "edit" }).status).toBe("conflict");
   });
+  it("an edit made while a save was in flight keeps the editor dirty after that save succeeds", () => {
+    let s = autosaveReducer({ status: "dirty", attempt: 0 }, { type: "start" });
+    s = autosaveReducer(s, { type: "edit" });
+    s = autosaveReducer(s, { type: "ok", at: 9, stale: true });
+    expect(s).toEqual({ status: "dirty", savedAt: 9, attempt: 0 });
+  });
   it("an edit during an error keeps the attempt count", () => {
     expect(autosaveReducer({ status: "error", attempt: 2 }, { type: "edit" })).toEqual({ status: "dirty", attempt: 2 });
   });

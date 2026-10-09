@@ -29,8 +29,8 @@ export interface CampaignContentRow {
   attachments?: CampaignAttachment[];
   /** Footer-stamped copy for read-only preview — falls back to `html` when absent. */
   previewHtml?: string | null;
-  /** Optimistic-concurrency revision; a save carrying a stale one gets 409. */
-  revision?: number;
+  /** Optimistic-concurrency revision; a save carrying a stale one gets 409. Required so a page can't forget it. */
+  revision: number;
 }
 
 function EmailPreview({ html }: { html: string }) {
@@ -63,7 +63,7 @@ function EmailRow({
   editable,
   footer,
   from,
-  isSystemCampaign = false,
+  autosaveDraft = false,
 }: {
   campaignPublicId: string;
   row: CampaignContentRow;
@@ -71,8 +71,8 @@ function EmailRow({
   footer?: FooterInfo;
   /** Display-only sender line on the email header. */
   from?: string;
-  /** System (bulk) campaigns run on a schedule, so they are live: explicit Save only, never autosave. */
-  isSystemCampaign?: boolean;
+  /** Only a plain draft autosaves; scheduled and system campaigns are live, so explicit Save only. */
+  autosaveDraft?: boolean;
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
@@ -86,7 +86,8 @@ function EmailRow({
       toast.error("Add a subject");
       throw new Error("subject required");
     }
-    const exported = await editor.current!.exportEmail();
+    if (!editor.current) return "ok"; // editor closed; nothing left to save
+    const exported = await editor.current.exportEmail();
     const res = await fetch(`/api/notifications/campaigns/${campaignPublicId}/content`, {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -108,10 +109,12 @@ function EmailRow({
       throw new Error("save failed");
     }
     revision.current = data.revision;
+    autosaved.current = true;
     if (data.removed?.length) toast.warning(`Removed ${data.removed.length} unsafe item(s): ${data.removed.join(", ")}`);
     return "ok";
   }
-  const autosave = useAutosave({ enabled: editing && !isSystemCampaign, save: persist });
+  const autosave = useAutosave({ enabled: editing && autosaveDraft, save: persist });
+  const autosaved = useRef(false);
   const saving = autosave.state.status === "saving";
 
   async function save() {
@@ -161,11 +164,14 @@ function EmailRow({
                 size="sm"
                 disabled={saving}
                 onClick={() => {
+                  autosave.cancel();
                   setEditing(false);
                   setSubject(row.subject);
+                  // Autosaved work is already stored; reload the row so reopening shows it, not the old copy.
+                  if (autosaved.current) router.refresh();
                 }}
               >
-                Cancel
+                {autosaveDraft ? "Close" : "Cancel"}
               </Button>
               <Button size="sm" onClick={save} disabled={saving}>
                 {saving ? "Saving…" : "Save"}
@@ -220,6 +226,7 @@ function TextRow({
           subject: row.subject,
           body,
           providerTemplateId: templateId || undefined,
+          revision: row.revision,
         }),
       });
       toast.success("Content saved");
@@ -275,7 +282,7 @@ export function CampaignContentSection({
   editable,
   footer,
   from,
-  isSystemCampaign = false,
+  autosaveDraft = false,
 }: {
   campaignPublicId: string;
   content: CampaignContentRow[];
@@ -284,8 +291,8 @@ export function CampaignContentSection({
   footer?: FooterInfo;
   /** Display-only sender line on the email header. */
   from?: string;
-  /** System (bulk) campaigns are live: explicit Save only. */
-  isSystemCampaign?: boolean;
+  /** True only for a plain draft: scheduled and system campaigns are live, so explicit Save only. */
+  autosaveDraft?: boolean;
 }) {
   if (content.length === 0) {
     return (
@@ -308,7 +315,7 @@ export function CampaignContentSection({
       )}
       {content.map((c) =>
         c.channel === "email" ? (
-          <EmailRow key={`${c.channel}-${c.locale}`} campaignPublicId={campaignPublicId} row={c} editable={editable} footer={footer} from={from} isSystemCampaign={isSystemCampaign} />
+          <EmailRow key={`${c.channel}-${c.locale}`} campaignPublicId={campaignPublicId} row={c} editable={editable} footer={footer} from={from} autosaveDraft={autosaveDraft} />
         ) : (
           <TextRow key={`${c.channel}-${c.locale}`} campaignPublicId={campaignPublicId} row={c} editable={editable} />
         ),
