@@ -5,6 +5,7 @@ export * from "./schema";
 export * from "./campaign-schema";
 export * from "./interpolate";
 export * from "./template";
+export * from "./preheader";
 export * from "./suppression";
 export * from "./unsubscribe";
 export * from "./audience";
