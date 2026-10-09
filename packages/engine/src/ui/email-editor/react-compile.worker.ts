@@ -1,23 +1,14 @@
 /// <reference lib="webworker" />
 import { compileReactSource } from "../react-template";
+import { BLOCKED_WORKER_GLOBALS, lockDownGlobals } from "./lockdown";
 
 // Admin-pasted code runs here, never on the dashboard page. A worker has no DOM
-// or cookies; disabling the network globals stops it calling our API as the admin.
-// ponytail: global stubs, not a true sandbox — a determined author can still
-// reach `self` internals; acceptable because only admins author templates.
-for (const name of ["fetch", "XMLHttpRequest", "WebSocket", "EventSource", "importScripts", "BroadcastChannel", "indexedDB", "caches"]) {
-  try {
-    Object.defineProperty(self, name, {
-      value: () => {
-        throw new Error(`${name} is not available in email templates`);
-      },
-      writable: false,
-      configurable: false,
-    });
-  } catch {
-    // already non-configurable in this runtime; leave it
-  }
-}
+// or cookies of its own; locking the network globals (whole prototype chain)
+// stops template code calling our API with the admin's session.
+// ponytail: not a true sandbox — `import()` can still ping an outside URL, but
+// with fetch/XHR gone there is nothing of ours for it to read; only admins
+// author templates.
+lockDownGlobals(self, BLOCKED_WORKER_GLOBALS);
 
 self.addEventListener("message", async (e: MessageEvent<{ id: number; source: string }>) => {
   try {
