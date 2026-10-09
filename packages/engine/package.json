@@ -32,7 +32,6 @@
     "@foundry/ui": "github:a6n-ai/foundry#path:packages/ui",
     "@lezer/highlight": "^1.2.5",
     "@react-email/components": "^1.0.12",
-    "@react-email/editor": "^1.5.10",
     "@react-email/render": "^2.0.9",
     "@uiw/react-md-editor": "^4.0.7",
     "codemirror": "^6.0.2",

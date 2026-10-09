@@ -2,17 +2,20 @@
 
 import { forwardRef, useImperativeHandle, useRef, useState, type ReactNode } from "react";
 import { cn } from "@foundry/ui/cn";
-import { EmailContentEditor, type EmailContentEditorHandle } from "./email-content-editor";
-import type { EmailThemeOverrides } from "./email-editor";
+import { EmailContentEditor, type EmailContentEditorHandle, type EmailMode } from "./email-content-editor";
 import { SendTestEmailButton } from "./send-test-email-button";
 import { foreignPreheader, readPreheader, withPreheader } from "../preheader";
+import { htmlToText } from "../email-content/text";
 import type { FooterInfo } from "../template";
 
-export type EmailTemplateBuilderHandle = EmailContentEditorHandle;
+export interface EmailTemplateBuilderHandle {
+  /** Source + html for the server; the server sanitizes and adds `preheader` (prepareEmailContent). */
+  exportEmail: () => Promise<{ format: EmailMode; body: string; html: string; preheader: string }>;
+}
 
 /**
  * The one email-building surface: an inbox-style From / Subject / Preview text
- * header, the Visual/HTML/React content editor and "Send test", used everywhere
+ * header, the HTML/React code editor and "Send test", used everywhere
  * an admin builds an email — event templates, campaign drafts, campaign content
  * edits. A caller owns its own Save/Cancel flow (passed as `actions`, since that
  * differs: templates POST to /templates, campaigns POST to /campaigns/:id/content)
@@ -27,7 +30,9 @@ export const EmailTemplateBuilder = forwardRef<
     subjectError?: string;
     initialBody: string;
     initialHtml: string;
-    variables: string[];
+    variables: readonly string[];
+    /** Preview values for `{{vars}}`. */
+    samples?: Record<string, string>;
     onChange?: () => void;
     /** e.g. CampaignAttachments — only campaigns have this, so it's a slot rather than a baked-in field. */
     extra?: ReactNode;
@@ -40,8 +45,6 @@ export const EmailTemplateBuilder = forwardRef<
     marketing?: boolean;
     /** Display-only sender line, e.g. "TiffinGrab <hello@tiffingrab.ca>". */
     from?: string;
-    /** App brand styles for the visual editor — see EmailEditorField. */
-    themeOverrides?: EmailThemeOverrides;
   }
 >(function EmailTemplateBuilder(
   {
@@ -59,7 +62,7 @@ export const EmailTemplateBuilder = forwardRef<
     footer,
     marketing,
     from,
-    themeOverrides,
+    samples,
   },
   ref,
 ) {
@@ -68,16 +71,14 @@ export const EmailTemplateBuilder = forwardRef<
   // A pasted email may carry its own hidden preview text; we never edit it, so say so.
   const theirPreview = foreignPreheader(initialHtml);
 
-  async function exportWithPreheader() {
+  async function exportForSave() {
     if (!editorRef.current) throw new Error("Editor not ready — please wait and try again");
     const out = await editorRef.current.exportEmail();
-    const html = withPreheader(out.html, previewText);
-    // HTML mode stores the whole document as body too; keep them identical.
-    const body = out.body === out.html ? html : out.body;
-    return { ...out, html, body };
+    // The server adds the preheader (prepareEmailContent); never bake it in client-side.
+    return { ...out, preheader: previewText };
   }
 
-  useImperativeHandle(ref, () => ({ exportEmail: exportWithPreheader }));
+  useImperativeHandle(ref, () => ({ exportEmail: exportForSave }));
 
   const row = "grid grid-cols-[7rem_minmax(0,1fr)] items-center gap-3 border-b px-4 py-2.5 text-sm";
   const field = "w-full bg-transparent outline-none placeholder:text-muted-foreground/60";
@@ -131,13 +132,13 @@ export const EmailTemplateBuilder = forwardRef<
 
       <EmailContentEditor
         ref={editorRef}
-        // Ours is re-added on export; left in, TipTap would keep the hidden div but drop its marker.
+        // Ours lives in the Preview text field and is re-added by the server on save.
         initialBody={withPreheader(initialBody, "")}
         initialHtml={withPreheader(initialHtml, "")}
         variables={variables}
         onChange={onChange}
         footer={footer}
-        themeOverrides={themeOverrides}
+        samples={samples}
       />
 
       {extra}
@@ -149,7 +150,12 @@ export const EmailTemplateBuilder = forwardRef<
             subject={subject}
             disabled={disabled}
             marketing={marketing}
-            exportEmail={exportWithPreheader}
+            exportEmail={async () => {
+              // The test route takes finished html + text, so mirror the server's preheader pass here.
+              const out = await exportForSave();
+              const html = withPreheader(out.html, out.preheader);
+              return { html, text: htmlToText(html) };
+            }}
           />
         </div>
       </div>

@@ -37,5 +37,3 @@ export async function compileReactSource(source: string): Promise<string> {
   return render(React.createElement(Email as React.ComponentType));
 }
 
-/** @deprecated main-thread compile; the editor moves to the worker (createReactCompiler). */
-export const compileReactEmail = compileReactSource;

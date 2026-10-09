@@ -20,9 +20,7 @@ import { Input } from "@foundry/ui/input";
 import { Switch } from "@foundry/ui/switch";
 import { Tabs, TabsList, TabsTrigger } from "@foundry/ui/tabs";
 import { Skeleton } from "@foundry/ui/skeleton";
-import { type EmailContentEditorHandle } from "./email-content-editor";
-import { EmailTemplateBuilder } from "./email-template-builder";
-import type { EmailThemeOverrides } from "./email-editor";
+import { EmailTemplateBuilder, type EmailTemplateBuilderHandle } from "./email-template-builder";
 import type { FooterInfo } from "../template";
 
 const MDEditor = dynamic(() => import("@uiw/react-md-editor"), { ssr: false });
@@ -56,7 +54,6 @@ export function TemplateEditor({
   initial,
   footer,
   from,
-  themeOverrides,
 }: {
   event: string;
   variables: string[];
@@ -65,8 +62,6 @@ export function TemplateEditor({
   footer?: FooterInfo;
   /** Display-only sender line on the email header. */
   from?: string;
-  /** App brand styles for the visual editor. */
-  themeOverrides?: EmailThemeOverrides;
 }) {
   const [channel, setChannel] = useState<Channel>("email");
   const [locale, setLocale] = useState<Locale>("en");
@@ -74,7 +69,7 @@ export function TemplateEditor({
   const [body, setBody] = useState("");
   const [enabled, setEnabled] = useState(true);
   const [busy, setBusy] = useState(false);
-  const emailContentRef = useRef<EmailContentEditorHandle>(null);
+  const emailContentRef = useRef<EmailTemplateBuilderHandle>(null);
 
   // The row for the active channel/locale. The email editor loads its initial
   // content synchronously from this (TipTap won't react to a later prop change),
@@ -98,7 +93,7 @@ export function TemplateEditor({
       }
       try {
         const out = await emailContentRef.current.exportEmail();
-        payload = { ...payload, body: out.body, html: out.html, text: out.text };
+        payload = { ...payload, body: out.body, html: out.html, preheader: out.preheader };
       } catch (e) {
         setBusy(false);
         toast.error(e instanceof Error ? e.message : "Couldn't export the email");
@@ -161,7 +156,7 @@ export function TemplateEditor({
           initialHtml={current?.html ?? ""}
           variables={variables}
           disabled={busy}
-          footer={footer} from={from} themeOverrides={themeOverrides}
+          footer={footer} from={from}
           actions={
             <Button onClick={save} disabled={busy}>
               Save
