@@ -41,6 +41,22 @@ const REACT_STARTER = `export default function Email() {
   );
 }`;
 
+/**
+ * Open email HTML full-page without giving it the dashboard's origin: a blob
+ * URL inherits it, so the email goes into a sandboxed iframe (opaque origin,
+ * no scripts) inside a wrapper page that carries no untrusted markup itself.
+ */
+export function openEmailPreview(html: string) {
+  const escaped = html.replace(/&/g, "&amp;").replace(/"/g, "&quot;");
+  const page =
+    `<!doctype html><meta charset="utf-8"><title>Email preview</title>` +
+    `<style>html,body,iframe{margin:0;border:0;width:100%;height:100%;display:block}</style>` +
+    `<iframe sandbox="allow-popups allow-popups-to-escape-sandbox" srcdoc="${escaped}"></iframe>`;
+  const url = URL.createObjectURL(new Blob([page], { type: "text/html" }));
+  window.open(url, "_blank", "noopener,noreferrer");
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+
 // Both panes share one height so the split reads as a single, even surface.
 export const EDITOR_PANE_HEIGHT = "h-[72vh] min-h-[560px]";
 
@@ -270,13 +286,7 @@ export const EmailContentEditor = forwardRef<EmailContentEditorHandle, Props>(
       mode === "html" ? rawHtml : mode === "react" ? reactHtml : preview,
     );
 
-    function openFull() {
-      const url = URL.createObjectURL(
-        new Blob([previewHtml], { type: "text/html" }),
-      );
-      window.open(url, "_blank", "noopener,noreferrer");
-      setTimeout(() => URL.revokeObjectURL(url), 60_000);
-    }
+    const openFull = () => openEmailPreview(previewHtml);
 
     const paneHeader =
       "flex h-12 items-center justify-between gap-2 border-b px-3";
@@ -447,6 +457,7 @@ export const EmailContentEditor = forwardRef<EmailContentEditorHandle, Props>(
             <iframe
               title="Email preview"
               srcDoc={previewHtml}
+              sandbox=""
               className={cn(
                 "h-full rounded-lg bg-white shadow-sm ring-1 ring-black/5 transition-[width] duration-200 ease-out motion-reduce:transition-none",
                 device === "mobile" ? "w-[375px] max-w-full" : "w-full",

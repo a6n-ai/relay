@@ -12,6 +12,7 @@ import { Textarea } from "@foundry/ui/textarea";
 import { apiFetch } from "./api-fetch";
 import { CampaignAttachments, type CampaignAttachment } from "./campaign-attachments";
 import { EmailTemplateBuilder, type EmailTemplateBuilderHandle } from "./email-template-builder";
+import { openEmailPreview } from "./email-content-editor";
 import type { FooterInfo } from "../template";
 
 export interface CampaignContentRow {
@@ -30,13 +31,8 @@ export interface CampaignContentRow {
 const CAMPAIGN_VARIABLES = ["contact.name"];
 
 function EmailPreview({ html }: { html: string }) {
-  // Blob URL rather than a server route — this is the same HTML already in
-  // hand, so opening it full-page needs no round trip.
-  function openFull() {
-    const url = URL.createObjectURL(new Blob([html], { type: "text/html" }));
-    window.open(url, "_blank", "noopener,noreferrer");
-    setTimeout(() => URL.revokeObjectURL(url), 60_000);
-  }
+  // Same HTML already in hand, so opening it full-page needs no round trip.
+  const openFull = () => openEmailPreview(html);
 
   return (
     <div className="space-y-1.5">
