@@ -240,6 +240,15 @@ importers:
       '@uiw/react-md-editor':
         specifier: ^4.0.7
         version: 4.1.2(@types/react@19.2.18)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(supports-color@7.2.0)
+      dom-serializer:
+        specifier: ^2.0.0
+        version: 2.0.0
+      domhandler:
+        specifier: ^5.0.3
+        version: 5.0.3
+      htmlparser2:
+        specifier: ^8.0.2
+        version: 8.0.2
       lucide-react:
         specifier: ^1.20.0
         version: 1.38.0(react@19.2.4)
@@ -1195,8 +1204,8 @@ packages:
     resolution: {gitHosted: true, integrity: sha512-dN0lESLWrD5HktBRPkhIyc38Q40q3/vU85wypfPvCBmyY2+G8hNnyVPG7PTLzWwsOXMVYOk1FyLdgx5zqfrdYA==, path: packages/auth, tarball: https://codeload.github.com/a6n-ai/foundry/tar.gz/572f2437a45e0e58a30126e3964b8397d2f3bcba}
     version: 0.0.0
 
-  '@foundry/commons@https://codeload.github.com/a6n-ai/foundry/tar.gz/c3e44fa08a4dd7262a6ac50ffdd2cefcfeb55e52#path:packages/commons':
-    resolution: {gitHosted: true, path: packages/commons, tarball: https://codeload.github.com/a6n-ai/foundry/tar.gz/c3e44fa08a4dd7262a6ac50ffdd2cefcfeb55e52}
+  '@foundry/commons@https://codeload.github.com/a6n-ai/foundry/tar.gz/02b2132e8acdab5e7011fa851810ef7b5f21e506#path:packages/commons':
+    resolution: {gitHosted: true, path: packages/commons, tarball: https://codeload.github.com/a6n-ai/foundry/tar.gz/02b2132e8acdab5e7011fa851810ef7b5f21e506}
     version: 0.0.0
 
   '@foundry/commons@https://codeload.github.com/a6n-ai/foundry/tar.gz/e4981de3e9c631c57d17c57798ab65b95f3c4f90#path:packages/commons':
@@ -1242,8 +1251,8 @@ packages:
     peerDependencies:
       eslint: ^9
 
-  '@foundry/realtime@https://codeload.github.com/a6n-ai/foundry/tar.gz/c3e44fa08a4dd7262a6ac50ffdd2cefcfeb55e52#path:packages/realtime':
-    resolution: {gitHosted: true, path: packages/realtime, tarball: https://codeload.github.com/a6n-ai/foundry/tar.gz/c3e44fa08a4dd7262a6ac50ffdd2cefcfeb55e52}
+  '@foundry/realtime@https://codeload.github.com/a6n-ai/foundry/tar.gz/02b2132e8acdab5e7011fa851810ef7b5f21e506#path:packages/realtime':
+    resolution: {gitHosted: true, path: packages/realtime, tarball: https://codeload.github.com/a6n-ai/foundry/tar.gz/02b2132e8acdab5e7011fa851810ef7b5f21e506}
     version: 0.0.0
     peerDependencies:
       react: ^19
@@ -7770,7 +7779,7 @@ snapshots:
       - vitest
       - vue
 
-  '@foundry/commons@https://codeload.github.com/a6n-ai/foundry/tar.gz/c3e44fa08a4dd7262a6ac50ffdd2cefcfeb55e52#path:packages/commons':
+  '@foundry/commons@https://codeload.github.com/a6n-ai/foundry/tar.gz/02b2132e8acdab5e7011fa851810ef7b5f21e506#path:packages/commons':
     dependencies:
       libphonenumber-js: 1.13.12
       lru-cache: 11.5.2
@@ -7812,7 +7821,7 @@ snapshots:
   '@foundry/design-system@https://codeload.github.com/a6n-ai/foundry/tar.gz/572f2437a45e0e58a30126e3964b8397d2f3bcba#path:packages/design-system(@types/react-dom@19.2.5(@types/react@19.2.18))(@types/react@19.2.18)(next@16.3.3(@babel/core@7.29.7(supports-color@7.2.0))(@types/node@20.19.43)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
     dependencies:
       '@foundry/commons': https://codeload.github.com/a6n-ai/foundry/tar.gz/e4981de3e9c631c57d17c57798ab65b95f3c4f90#path:packages/commons
-      '@foundry/realtime': https://codeload.github.com/a6n-ai/foundry/tar.gz/c3e44fa08a4dd7262a6ac50ffdd2cefcfeb55e52#path:packages/realtime(react@19.2.4)
+      '@foundry/realtime': https://codeload.github.com/a6n-ai/foundry/tar.gz/02b2132e8acdab5e7011fa851810ef7b5f21e506#path:packages/realtime(react@19.2.4)
       '@foundry/ui': https://codeload.github.com/a6n-ai/foundry/tar.gz/572f2437a45e0e58a30126e3964b8397d2f3bcba#path:packages/ui(@types/react-dom@19.2.5(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       lucide-react: 1.38.0(react@19.2.4)
       maplibre-gl: 5.24.0
@@ -7826,7 +7835,7 @@ snapshots:
   '@foundry/design-system@https://codeload.github.com/a6n-ai/foundry/tar.gz/572f2437a45e0e58a30126e3964b8397d2f3bcba#path:packages/design-system(@types/react-dom@19.2.5(@types/react@19.2.18))(@types/react@19.2.18)(next@16.3.3(@babel/core@7.29.7(supports-color@7.2.0))(@types/node@22.20.1)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
     dependencies:
       '@foundry/commons': https://codeload.github.com/a6n-ai/foundry/tar.gz/e4981de3e9c631c57d17c57798ab65b95f3c4f90#path:packages/commons
-      '@foundry/realtime': https://codeload.github.com/a6n-ai/foundry/tar.gz/c3e44fa08a4dd7262a6ac50ffdd2cefcfeb55e52#path:packages/realtime(react@19.2.4)
+      '@foundry/realtime': https://codeload.github.com/a6n-ai/foundry/tar.gz/02b2132e8acdab5e7011fa851810ef7b5f21e506#path:packages/realtime(react@19.2.4)
       '@foundry/ui': https://codeload.github.com/a6n-ai/foundry/tar.gz/572f2437a45e0e58a30126e3964b8397d2f3bcba#path:packages/ui(@types/react-dom@19.2.5(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       lucide-react: 1.38.0(react@19.2.4)
       maplibre-gl: 5.24.0
@@ -7857,9 +7866,9 @@ snapshots:
       - supports-color
       - typescript
 
-  '@foundry/realtime@https://codeload.github.com/a6n-ai/foundry/tar.gz/c3e44fa08a4dd7262a6ac50ffdd2cefcfeb55e52#path:packages/realtime(react@19.2.4)':
+  '@foundry/realtime@https://codeload.github.com/a6n-ai/foundry/tar.gz/02b2132e8acdab5e7011fa851810ef7b5f21e506#path:packages/realtime(react@19.2.4)':
     dependencies:
-      '@foundry/commons': https://codeload.github.com/a6n-ai/foundry/tar.gz/c3e44fa08a4dd7262a6ac50ffdd2cefcfeb55e52#path:packages/commons
+      '@foundry/commons': https://codeload.github.com/a6n-ai/foundry/tar.gz/02b2132e8acdab5e7011fa851810ef7b5f21e506#path:packages/commons
       react: 19.2.4
 
   '@foundry/routes@https://codeload.github.com/a6n-ai/foundry/tar.gz/216e096a695666927b412e9a3a7c0733876d82a4#path:packages/routes(drizzle-orm@0.45.2(kysely@0.29.5)(postgres@3.4.9))(next@16.3.3(@babel/core@7.29.7(supports-color@7.2.0))(@types/node@20.19.43)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))':
