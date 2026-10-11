@@ -1,5 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
-import { duplicateCampaign, retriggerCampaign, retryFailedCampaign, setCampaignContent } from "./campaign-routes";
+import {
+  claimForSend,
+  duplicateCampaign,
+  retriggerCampaign,
+  retryFailedCampaign,
+  scheduleDecision,
+  setCampaignContent,
+} from "./campaign-routes";
 
 function fakeDeps(campaignRow: { id: bigint; status: string } | undefined) {
   const insertChain = {
@@ -168,5 +175,41 @@ describe("retryFailedCampaign", () => {
     const { deps, updateChain } = retryDeps({ id: 7n }, 3);
     expect(await retryFailedCampaign(deps, "cmp_1")).toEqual({ requeued: 3 });
     expect(updateChain.set).toHaveBeenCalledWith(expect.objectContaining({ status: "pending" }));
+  });
+});
+
+describe("scheduleDecision", () => {
+  const now = 1_000_000;
+  it("schedules a draft for a future time", () => {
+    expect(scheduleDecision({ status: "draft", scheduledAt: now + 60_000, now })).toEqual({ status: "scheduled", scheduledAt: now + 60_000 });
+  });
+  it("rejects a time that is not in the future", () => {
+    expect(scheduleDecision({ status: "draft", scheduledAt: now, now })).toEqual({ error: "Pick a time in the future", status: 422 });
+  });
+  it("unschedules back to draft", () => {
+    expect(scheduleDecision({ status: "scheduled", scheduledAt: null, now })).toEqual({ status: "draft", scheduledAt: null });
+  });
+  it("refuses once the campaign has left draft/scheduled", () => {
+    expect(scheduleDecision({ status: "sending", scheduledAt: now + 1, now })).toMatchObject({ status: 409 });
+  });
+});
+
+describe("claimForSend", () => {
+  function fakeDb(returned: { id: bigint }[]) {
+    const chain = { set: vi.fn().mockReturnThis(), where: vi.fn().mockReturnThis(), returning: vi.fn().mockResolvedValue(returned) };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return { db: { update: vi.fn().mockReturnValue(chain) } as any, chain };
+  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const tables = { campaign: { id: {}, publicId: {}, status: {} } } as any;
+
+  it("returns the campaign id when this request made the transition", async () => {
+    const { db, chain } = fakeDb([{ id: 7n }]);
+    expect(await claimForSend(db, tables, "cmp_1")).toBe(7n);
+    expect(chain.set).toHaveBeenCalledWith({ status: "sending" });
+  });
+  it("returns null when another request already claimed it", async () => {
+    const { db } = fakeDb([]);
+    expect(await claimForSend(db, tables, "cmp_1")).toBeNull();
   });
 });

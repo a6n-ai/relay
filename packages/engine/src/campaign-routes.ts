@@ -1,4 +1,4 @@
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import { z } from "zod";
 import type { AudienceDef, CampaignTables } from "./campaign-schema";
@@ -6,7 +6,7 @@ import type { NotificationTables } from "./schema";
 import type { UsersRef } from "./enqueue";
 import { resolveAudienceDetailed, type AudienceBreakdown, type AudienceDeps } from "./audience";
 import { materializeCampaign } from "./campaign";
-import { CAMPAIGN_VARIABLES, prepareEmailContent } from "./email-content";
+import { CAMPAIGN_VARIABLES, campaignChecklist, prepareEmailContent, type ChecklistItem } from "./email-content";
 import type { CompatWarning } from "./ui/email-compat";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -230,11 +230,155 @@ export async function updateCampaignAudience(
   return { ok: true };
 }
 
+export async function renameCampaign(deps: CampaignRouteDeps, campaignPublicId: string, name: string) {
+  const { db, tables } = deps;
+  const trimmed = name.trim();
+  if (!trimmed) return { error: "Name the campaign", status: 400 } as const;
+  const rows = await db
+    .update(tables.campaign)
+    .set({ name: trimmed })
+    .where(and(eq(tables.campaign.publicId, campaignPublicId), inArray(tables.campaign.status, ["draft", "scheduled"])))
+    .returning({ id: tables.campaign.id });
+  return rows.length
+    ? ({ ok: true } as const)
+    : ({ error: "Only a draft or scheduled campaign can be renamed", status: 409 } as const);
+}
+
+/** Pure schedule rule: a future time schedules, null unschedules, and only draft/scheduled may change. */
+export function scheduleDecision(input: { status: string; scheduledAt: number | null; now: number }) {
+  if (input.status !== "draft" && input.status !== "scheduled") {
+    return { error: "This campaign has already started sending", status: 409 } as const;
+  }
+  if (input.scheduledAt === null) return { status: "draft", scheduledAt: null } as const;
+  if (input.scheduledAt <= input.now) return { error: "Pick a time in the future", status: 422 } as const;
+  return { status: "scheduled", scheduledAt: input.scheduledAt } as const;
+}
+
+export interface CampaignReview {
+  name: string;
+  status: string;
+  channels: string[];
+  scheduledAt: number | null;
+  content: { channel: string; locale: string; subject: string; html: string | null; body: string | null }[];
+  breakdown: AudienceBreakdown;
+  blocking: ChecklistItem[];
+  warnings: ChecklistItem[];
+}
+
+/** Everything the Review step shows and the send/schedule routes enforce. */
+export async function reviewCampaign(
+  deps: CampaignRouteDeps,
+  campaignPublicId: string,
+  opts: { footerConfigured: boolean },
+): Promise<CampaignReview | null> {
+  const { db, tables } = deps;
+  const [row] = await db
+    .select({
+      id: tables.campaign.id,
+      name: tables.campaign.name,
+      status: tables.campaign.status,
+      channels: tables.campaign.channels,
+      audience: tables.campaign.audience,
+      scheduledAt: tables.campaign.scheduledAt,
+    })
+    .from(tables.campaign)
+    .where(eq(tables.campaign.publicId, campaignPublicId));
+  if (!row) return null;
+  const content = await db
+    .select({
+      channel: tables.campaignContent.channel,
+      locale: tables.campaignContent.locale,
+      subject: tables.campaignContent.subject,
+      html: tables.campaignContent.html,
+      body: tables.campaignContent.body,
+    })
+    .from(tables.campaignContent)
+    .where(eq(tables.campaignContent.campaignId, row.id));
+  const { breakdown } = await resolveAudienceDetailed(deps, row.audience as AudienceDef);
+
+  const blocking: ChecklistItem[] = [];
+  const warnings: ChecklistItem[] = [];
+  const channels = row.channels as string[];
+  for (const channel of channels) {
+    const c = content.find((x) => x.channel === channel);
+    const result = campaignChecklist({
+      channel,
+      subject: (c?.subject as string | undefined) ?? "",
+      html: (c?.html as string | null | undefined) ?? null,
+      body: (c?.body as string | null | undefined) ?? null,
+      footerConfigured: opts.footerConfigured,
+      eligible: breakdown.eligible,
+      known: CAMPAIGN_VARIABLES,
+    });
+    for (const item of result.blocking) if (!blocking.some((b) => b.code === item.code)) blocking.push(item);
+    for (const item of result.warnings) if (!warnings.some((w) => w.code === item.code)) warnings.push(item);
+  }
+  return {
+    name: row.name as string,
+    status: row.status as string,
+    channels,
+    scheduledAt: (row.scheduledAt as number | null) ?? null,
+    content: content as CampaignReview["content"],
+    breakdown,
+    blocking,
+    warnings,
+  };
+}
+
+export async function scheduleCampaign(
+  deps: CampaignRouteDeps,
+  campaignPublicId: string,
+  scheduledAt: number | null,
+  opts: { footerConfigured: boolean },
+) {
+  const review = await reviewCampaign(deps, campaignPublicId, opts);
+  if (!review) return { error: "Campaign not found", status: 404 } as const;
+  const decision = scheduleDecision({ status: review.status, scheduledAt, now: Date.now() });
+  if ("error" in decision) return decision;
+  if (decision.status === "scheduled" && review.blocking.length) {
+    return { error: "Fix the blocking items before scheduling", status: 422, blocking: review.blocking } as const;
+  }
+  const rows = await deps.db
+    .update(deps.tables.campaign)
+    .set({ status: decision.status, scheduledAt: decision.scheduledAt })
+    .where(
+      and(
+        eq(deps.tables.campaign.publicId, campaignPublicId),
+        inArray(deps.tables.campaign.status, ["draft", "scheduled"]),
+      ),
+    )
+    .returning({ id: deps.tables.campaign.id });
+  if (!rows.length) return { error: "This campaign has already started sending", status: 409 } as const;
+  return decision;
+}
+
+/** The one place a user-initiated send takes ownership: exactly one caller moves draft|scheduled → sending. */
+export async function claimForSend(
+  db: CampaignRouteDeps["db"],
+  tables: CampaignRouteDeps["tables"],
+  campaignPublicId: string,
+): Promise<bigint | null> {
+  const rows = await db
+    .update(tables.campaign)
+    .set({ status: "sending" })
+    .where(and(eq(tables.campaign.publicId, campaignPublicId), inArray(tables.campaign.status, ["draft", "scheduled"])))
+    .returning({ id: tables.campaign.id });
+  return rows[0] ? (rows[0].id as bigint) : null;
+}
+
 export async function sendCampaign(
   deps: CampaignRouteDeps,
   campaignPublicId: string,
   confirmedCount: number,
-): Promise<{ queued: number; warning?: string }> {
+  opts: { footerConfigured: boolean },
+): Promise<{ queued: number; warning?: string } | { error: string; status: number; blocking?: ChecklistItem[] }> {
+  const review = await reviewCampaign(deps, campaignPublicId, opts);
+  if (!review) return { error: "Campaign not found", status: 404 };
+  if (review.blocking.length) return { error: "Fix the blocking items before sending", status: 422, blocking: review.blocking };
+  // Claim before materializing: a double click or a second tab loses here instead of queueing twice.
+  if ((await claimForSend(deps.db, deps.tables, campaignPublicId)) === null) {
+    return { error: "This campaign is already sending", status: 409 };
+  }
   const { queued } = await materializeCampaign(deps, campaignPublicId);
   // A send is irreversible. If the audience moved between the admin approving
   // a number and this call, say so rather than quietly mailing a different set.
