@@ -84,6 +84,7 @@ export function appendUnsubscribeFooter(
   const sender = escapeHtml(footer.sender);
   const address = escapeHtml(footer.address);
   const url = escapeHtml(footer.url);
+  const reason = `You're receiving this because you subscribed to updates from ${footer.sender}.`;
   // A centered, divider-topped signature block — reads as part of the
   // template's own layout rather than a disclaimer bolted underneath it.
   // Inherits font-family from whatever the admin designed above; only size
@@ -106,6 +107,7 @@ export function appendUnsubscribeFooter(
     `style="margin-top:32px;${opts.preview ? "" : "border-top:1px solid #e5e5e5;"}${bg}"><tr><td align="center" ` +
     `style="${opts.preview ? "" : "padding-top:16px;"}font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:12px;line-height:1.6;color:#6e6558">` +
     `${caption}` +
+    `${escapeHtml(reason)}<br/>` +
     `${sender} · ${address}<br/>` +
     `<a href="${url}" style="color:#6e6558;text-decoration:underline">Unsubscribe</a>` +
     `</td></tr></table>`;
@@ -116,7 +118,7 @@ export function appendUnsubscribeFooter(
     bodyEnd < 0
       ? `${parts.html}\n${block}`
       : `${parts.html.slice(0, bodyEnd)}${block}\n${parts.html.slice(bodyEnd)}`;
-  const text = `${parts.text}\n\n--\n${footer.sender} · ${footer.address}\nUnsubscribe: ${footer.url}\n`;
+  const text = `${parts.text}\n\n--\n${reason}\n${footer.sender} · ${footer.address}\nUnsubscribe: ${footer.url}\n`;
   return { html, text };
 }
 

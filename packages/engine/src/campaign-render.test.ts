@@ -8,6 +8,12 @@ describe("appendUnsubscribeFooter", () => {
     address: "1 Main St, Toronto ON",
   };
 
+  it("says why the recipient is getting this, in html and text", () => {
+    const out = appendUnsubscribeFooter({ html: "<p>hi</p>", text: "hi" }, footer);
+    expect(out.html).toMatch(/You(&#39;|&#x27;|')re receiving this because you subscribed to updates from /);
+    expect(out.text).toContain(`You're receiving this because you subscribed to updates from ${footer.sender}.`);
+  });
+
   it("appends an unsubscribe link and the sender's postal address to html", () => {
     const out = appendUnsubscribeFooter({ html: "<p>hi</p>", text: "hi" }, footer);
     expect(out.html).toContain(footer.url);
