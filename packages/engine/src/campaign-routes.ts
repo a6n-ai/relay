@@ -4,7 +4,7 @@ import { z } from "zod";
 import type { AudienceDef, CampaignTables } from "./campaign-schema";
 import type { NotificationTables } from "./schema";
 import type { UsersRef } from "./enqueue";
-import { countAudience, type AudienceDeps } from "./audience";
+import { resolveAudienceDetailed, type AudienceBreakdown, type AudienceDeps } from "./audience";
 import { materializeCampaign } from "./campaign";
 import { CAMPAIGN_VARIABLES, prepareEmailContent } from "./email-content";
 import type { CompatWarning } from "./ui/email-compat";
@@ -247,9 +247,9 @@ export async function sendCampaign(
 export async function getAudienceCount(
   deps: CampaignRouteDeps,
   audience: AudienceDef,
-): Promise<{ count: number }> {
-  const count = await countAudience(deps, audience);
-  return { count };
+): Promise<{ count: number; breakdown: AudienceBreakdown }> {
+  const { breakdown } = await resolveAudienceDetailed(deps, audience);
+  return { count: breakdown.eligible, breakdown };
 }
 
 export interface DuplicateCampaignInput {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { IMPLIED_CONSENT_MS } from "./compliance";
-import { dedupeRecipients, isConsentValid } from "./audience";
+import { classifyAudience, dedupeRecipients, isConsentValid } from "./audience";
 
 const DAY = 86_400_000;
 
@@ -56,5 +56,45 @@ describe("dedupeRecipients", () => {
 
   it("drops an entry with neither an email nor a phone", () => {
     expect(dedupeRecipients([{ userId: 1n }])).toHaveLength(0);
+  });
+});
+
+describe("classifyAudience", () => {
+  const base = { lapsedListMembers: 0, unsubscribedListMembers: 0, suppressions: [] as { address: string; reason: string }[] };
+
+  it("counts duplicates, invalid addresses and suppressions separately", () => {
+    const out = classifyAudience({
+      ...base,
+      candidates: [
+        { userId: 1n, email: "a@x.com" },
+        { email: "A@X.com" },
+        { email: "not-an-email" },
+        { email: "b@x.com" },
+        { email: "c@x.com" },
+        { email: "d@x.com" },
+      ],
+      suppressions: [
+        { address: "b@x.com", reason: "unsubscribe" },
+        { address: "c@x.com", reason: "bounce" },
+      ],
+    });
+    expect(out.recipients.map((r) => r.email)).toEqual(["a@x.com", "d@x.com"]);
+    expect(out.breakdown).toEqual({
+      eligible: 2,
+      excluded: { unsubscribed: 1, suppressed: 1, noConsent: 0, invalid: 1, duplicates: 1 },
+    });
+  });
+
+  it("adds list-level exclusions that never became candidates", () => {
+    const out = classifyAudience({ ...base, candidates: [], lapsedListMembers: 40, unsubscribedListMembers: 3 });
+    expect(out.breakdown).toEqual({
+      eligible: 0,
+      excluded: { unsubscribed: 3, suppressed: 0, noConsent: 40, invalid: 0, duplicates: 0 },
+    });
+  });
+
+  it("keeps a phone-only recipient (sms audiences have no email)", () => {
+    const out = classifyAudience({ ...base, candidates: [{ phone: "+14165550100" }] });
+    expect(out.breakdown.eligible).toBe(1);
   });
 });
