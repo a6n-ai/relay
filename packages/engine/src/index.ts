@@ -29,3 +29,4 @@ export * from "./drain";
 export * from "./feed";
 export * from "./email-content";
 export * from "./template-routes";
+export * from "./local-time";
