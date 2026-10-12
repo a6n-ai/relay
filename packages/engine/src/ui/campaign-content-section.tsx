@@ -199,7 +199,7 @@ function EmailRow({
   );
 }
 
-function TextRow({
+export function TextRow({
   campaignPublicId,
   row,
   editable,

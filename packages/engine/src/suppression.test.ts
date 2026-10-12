@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { canClearSuppression, normalizeAddress, suppressManually } from "./suppression";
+import { canClearSuppression, clearSuppression, normalizeAddress, suppressManually } from "./suppression";
 
 describe("normalizeAddress", () => {
   it("lowercases and trims an email", () => {
@@ -46,5 +46,32 @@ describe("suppressManually", () => {
       expect.objectContaining({ address: "a@x.com", reason: "manual", scope: "marketing", source: "admin" }),
     );
     expect(chain.onConflictDoNothing).toHaveBeenCalled();
+  });
+});
+
+describe("clearSuppression", () => {
+  function fakeDb(deleted: { id: bigint }[], existing: { id: bigint }[]) {
+    const del = { where: vi.fn().mockReturnThis(), returning: vi.fn().mockResolvedValue(deleted) };
+    const sel = { from: vi.fn().mockReturnThis(), where: vi.fn().mockResolvedValue(existing) };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return { db: { delete: vi.fn().mockReturnValue(del), select: vi.fn().mockReturnValue(sel) } as any, del };
+  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const tables = { messageSuppression: { id: {}, publicId: {}, reason: {} } } as any;
+
+  it("deletes in one conditional statement — no read-then-delete window for an unsubscribe to land in", async () => {
+    const { db, del } = fakeDb([{ id: 1n }], []);
+    expect(await clearSuppression(db, tables, "msp_1")).toEqual({ ok: true });
+    expect(db.delete).toHaveBeenCalledTimes(1);
+    expect(del.returning).toHaveBeenCalled();
+    expect(db.select).not.toHaveBeenCalled();
+  });
+  it("refuses when the row is an unsubscribe", async () => {
+    const { db } = fakeDb([], [{ id: 1n }]);
+    expect(await clearSuppression(db, tables, "msp_1")).toMatchObject({ status: 409 });
+  });
+  it("reports a missing row", async () => {
+    const { db } = fakeDb([], []);
+    expect(await clearSuppression(db, tables, "msp_1")).toMatchObject({ status: 404 });
   });
 });

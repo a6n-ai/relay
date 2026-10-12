@@ -1,4 +1,4 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, ne } from "drizzle-orm";
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import { normalizeAddress } from "@foundry/commons";
 import type { NotificationTables } from "./schema";
@@ -79,19 +79,22 @@ export function canClearSuppression(reason: string): boolean {
 }
 
 export async function clearSuppression(db: Db, tables: NotificationTables, publicId: string) {
+  // One conditional delete: the reason is checked by the statement that removes the row, so an
+  // unsubscribe arriving between a read and a delete can never be wiped.
+  const deleted = await db
+    .delete(tables.messageSuppression)
+    .where(and(eq(tables.messageSuppression.publicId, publicId), ne(tables.messageSuppression.reason, "unsubscribe")))
+    .returning({ id: tables.messageSuppression.id });
+  if (deleted.length) return { ok: true } as const;
   const [row] = await db
-    .select({ id: tables.messageSuppression.id, reason: tables.messageSuppression.reason })
+    .select({ id: tables.messageSuppression.id })
     .from(tables.messageSuppression)
     .where(eq(tables.messageSuppression.publicId, publicId));
   if (!row) return { error: "Not found", status: 404 } as const;
-  if (!canClearSuppression(row.reason as string)) {
-    return {
-      error: "An unsubscribe can only be reversed by the recipient — send them a resubscribe link",
-      status: 409,
-    } as const;
-  }
-  await db.delete(tables.messageSuppression).where(eq(tables.messageSuppression.id, row.id));
-  return { ok: true } as const;
+  return {
+    error: "An unsubscribe can only be reversed by the recipient — send them a resubscribe link",
+    status: 409,
+  } as const;
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
