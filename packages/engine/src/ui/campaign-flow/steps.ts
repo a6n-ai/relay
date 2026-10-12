@@ -19,7 +19,7 @@ export function stepGate(input: { hasSubject: boolean; hasContent: boolean; elig
   if (!input.hasSubject) reason = email ? "Add a subject line to continue." : "Add a title to continue.";
   else if (!input.hasContent) reason = email ? "Add the email content to continue." : "Add the message to continue.";
   else if (input.eligible === 0) {
-    reason = "No one is eligible — everyone in this audience is unsubscribed, suppressed or missing consent.";
+    reason = "No one is eligible yet. Pick a list or a rule; if you have, everyone in it is unsubscribed, suppressed or missing consent.";
   }
   return { canLeaveContent, canLeaveAudience, reason };
 }

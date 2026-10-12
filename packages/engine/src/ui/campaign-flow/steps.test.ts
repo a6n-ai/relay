@@ -19,7 +19,7 @@ describe("stepGate", () => {
     expect(stepGate({ hasSubject: true, hasContent: true, eligible: 0 })).toEqual({
       canLeaveContent: true,
       canLeaveAudience: false,
-      reason: "No one is eligible — everyone in this audience is unsubscribed, suppressed or missing consent.",
+      reason: "No one is eligible yet. Pick a list or a rule; if you have, everyone in it is unsubscribed, suppressed or missing consent.",
     });
   });
   it("is undecided while the count is still loading", () => {

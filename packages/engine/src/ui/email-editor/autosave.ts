@@ -78,6 +78,8 @@ export function useAutosave({
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const saveRef = useRef(save);
   saveRef.current = save;
+  const enabledRef = useRef(enabled);
+  enabledRef.current = enabled;
   const stateRef = useRef(state);
   stateRef.current = state;
   const edits = useRef(0);
@@ -112,7 +114,10 @@ export function useAutosave({
     dispatch({ type: "edit" });
     if (!enabled) return;
     clearTimeout(timer.current);
-    timer.current = setTimeout(saveNow, debounceMs);
+    // Checked again when it fires: the edit may have made the draft unsaveable (e.g. the editor was cleared).
+    timer.current = setTimeout(() => {
+      if (enabledRef.current) void saveNow();
+    }, debounceMs);
   }, [enabled, debounceMs, saveNow]);
 
   // Autosave switched on while edits are already waiting (the edit that made the draft saveable): arm it.
