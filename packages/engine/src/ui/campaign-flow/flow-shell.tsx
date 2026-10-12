@@ -41,7 +41,7 @@ export function FlowShell({
   const current = FLOW_STEPS.findIndex((s) => s.key === step);
 
   return (
-    <div className="space-y-5 pb-24">
+    <div className="space-y-5">
       <div className="flex flex-wrap items-center gap-3">
         <Link
           href={backHref}
@@ -112,8 +112,9 @@ export function FlowShell({
 
       {children}
 
-      <div className="bg-background/95 fixed inset-x-0 bottom-0 z-30 border-t backdrop-blur">
-        <div className="mx-auto flex max-w-screen-2xl items-center justify-end gap-2 px-6 py-3">{bottom}</div>
+      {/* Sticky, not fixed: it stays inside the content column instead of sliding under the app sidebar. */}
+      <div className="bg-background/95 sticky bottom-0 z-30 flex items-center justify-end gap-2 border-t py-3 backdrop-blur">
+        {bottom}
       </div>
     </div>
   );
