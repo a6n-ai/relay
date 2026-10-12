@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { canClearSuppression, clearSuppression, normalizeAddress, suppressManually } from "./suppression";
+import { canClearSuppression, clearSuppression, normalizeAddress, suppress, suppressManually } from "./suppression";
 
 describe("normalizeAddress", () => {
   it("lowercases and trims an email", () => {
@@ -73,5 +73,26 @@ describe("clearSuppression", () => {
   it("reports a missing row", async () => {
     const { db } = fakeDb([], []);
     expect(await clearSuppression(db, tables, "msp_1")).toMatchObject({ status: 404 });
+  });
+});
+
+describe("suppress", () => {
+  function fakeDb() {
+    const chain = { values: vi.fn().mockReturnThis(), onConflictDoUpdate: vi.fn().mockResolvedValue(undefined) };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return { db: { insert: vi.fn().mockReturnValue(chain) } as any, chain };
+  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const tables = { messageSuppression: { address: {}, channel: {}, scope: {}, reason: {} } } as any;
+
+  it("never relabels an existing unsubscribe as another reason (which would make it clearable)", async () => {
+    const { db, chain } = fakeDb();
+    await suppress(db, tables, { address: "a@x.com", channel: "email", reason: "manual", scope: "marketing" });
+    expect(chain.onConflictDoUpdate.mock.calls[0]![0].setWhere).toBeDefined();
+  });
+  it("lets an unsubscribe overwrite any earlier reason", async () => {
+    const { db, chain } = fakeDb();
+    await suppress(db, tables, { address: "a@x.com", channel: "email", reason: "unsubscribe", scope: "marketing" });
+    expect(chain.onConflictDoUpdate.mock.calls[0]![0].setWhere).toBeUndefined();
   });
 });

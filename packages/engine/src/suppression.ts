@@ -44,6 +44,8 @@ export async function suppress(
         tables.messageSuppression.scope,
       ],
       set: { reason: input.reason, campaignId: input.campaignId ?? null, source: input.source ?? null },
+      // An unsubscribe is the recipient's decision: no later bounce/manual write may relabel it.
+      setWhere: input.reason === "unsubscribe" ? undefined : ne(tables.messageSuppression.reason, "unsubscribe"),
     });
 }
 
