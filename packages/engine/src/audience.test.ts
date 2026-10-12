@@ -98,3 +98,16 @@ describe("classifyAudience", () => {
     expect(out.breakdown.eligible).toBe(1);
   });
 });
+
+describe("classifyAudience — review minors", () => {
+  it("excludes an address whose suppression row has an empty reason", () => {
+    const out = classifyAudience({
+      candidates: [{ email: "a@x.com" }],
+      lapsedListMembers: 0,
+      unsubscribedListMembers: 0,
+      suppressions: [{ address: "a@x.com", reason: "" }],
+    });
+    expect(out.recipients).toEqual([]);
+    expect(out.breakdown.excluded.suppressed).toBe(1);
+  });
+});

@@ -64,3 +64,14 @@ describe("campaignChecklist", () => {
     expect(codes(campaignChecklist({ ...sms, body: "" }).blocking)).toEqual(["content"]);
   });
 });
+
+describe("checklist — review minors", () => {
+  it("accepts a WhatsApp campaign that sends a provider template with no body", () => {
+    const wa = { ...ok, channel: "whatsapp", html: null, body: "", providerTemplateId: "HX123", footerConfigured: false };
+    expect(campaignChecklist(wa).blocking).toEqual([]);
+  });
+  it("rejects a variable href with no link fallback; allows in-page anchors", () => {
+    const html = '<a href="{{contact.email}}">a</a><a href="{{contact.url|https://x.ca}}">b</a><a href="#top">c</a><a href="#">d</a>';
+    expect(invalidLinks(html)).toEqual(["{{contact.email}}", "#"]);
+  });
+});

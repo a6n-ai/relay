@@ -82,13 +82,16 @@ export function classifyAudience(input: {
   const duplicates = valid.length - deduped.length;
 
   const reasonByAddress = new Map(input.suppressions.map((s) => [normalizeAddress(s.address), s.reason]));
+  // Presence decides, not the text: a row with an empty reason still suppresses.
+  const reasonFor = (address?: string) => {
+    const key = address ? normalizeAddress(address) : "";
+    return key && reasonByAddress.has(key) ? reasonByAddress.get(key)! : undefined;
+  };
   let unsubscribed = input.unsubscribedListMembers;
   let suppressed = 0;
   const recipients = deduped.filter((r) => {
-    const reason =
-      (r.email && reasonByAddress.get(normalizeAddress(r.email))) ||
-      (r.phone && reasonByAddress.get(normalizeAddress(r.phone)));
-    if (!reason) return true;
+    const reason = reasonFor(r.email) ?? reasonFor(r.phone);
+    if (reason === undefined) return true;
     if (reason === "unsubscribe") unsubscribed += 1;
     else suppressed += 1;
     return false;

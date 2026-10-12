@@ -23,14 +23,19 @@ function elements(html: string, tag: string): Record<string, string>[] {
 }
 
 const LINK_OK = /^(https?:\/\/|mailto:|tel:)\S+/i;
-const VARIABLE_LINK = /^\{\{\s*[\w.]+\s*(\|[^}]*)?\}\}/;
+// A variable is a link only through its fallback: no campaign variable holds a URL.
+const VARIABLE_LINK = /^\{\{\s*[\w.]+\s*\|\s*((https?:\/\/|mailto:|tel:)[^}\s]+)\s*\}\}/i;
+const IN_PAGE = /^#\S+/;
 
-/** hrefs a recipient could not follow: relative, empty, `#`, or a bare domain. Anchors without href are ignored. */
+/**
+ * hrefs a recipient could not follow: relative, empty, a bare `#`, a bare domain,
+ * or a variable with no link fallback. Anchors without href and in-page `#id` links pass.
+ */
 export function invalidLinks(html: string): string[] {
   return elements(html, "a")
     .filter((a) => "href" in a)
     .map((a) => a.href.trim())
-    .filter((href) => !LINK_OK.test(href) && !VARIABLE_LINK.test(href));
+    .filter((href) => !LINK_OK.test(href) && !VARIABLE_LINK.test(href) && !IN_PAGE.test(href));
 }
 
 /** Images with no alt attribute at all. `alt=""` is a deliberate "decorative" marker and passes. */
@@ -48,6 +53,8 @@ export function campaignChecklist(input: {
   subject: string;
   html: string | null;
   body: string | null;
+  /** A provider-approved template (WhatsApp) is content on its own, with no body. */
+  providerTemplateId?: string | null;
   footerConfigured: boolean;
   eligible: number;
   known: readonly string[];
@@ -58,7 +65,7 @@ export function campaignChecklist(input: {
   const content = (email ? input.html : input.body) ?? "";
 
   if (!input.subject.trim()) blocking.push({ code: "subject", message: email ? "Add a subject line." : "Add a title." });
-  if (!content.trim()) blocking.push({ code: "content", message: "The message is empty." });
+  if (!content.trim() && !(!email && input.providerTemplateId)) blocking.push({ code: "content", message: "The message is empty." });
   if (email && !input.footerConfigured) {
     blocking.push({
       code: "footer",

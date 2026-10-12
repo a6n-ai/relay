@@ -46,7 +46,10 @@ export function AudienceBuilder({
   onChange,
   requiresVerifiedPhone,
   timeZone,
+  hideCount = false,
 }: {
+  /** The caller shows its own count (the campaign flow's breakdown), so skip this one and its request. */
+  hideCount?: boolean;
   lists: ContactListOption[];
   value: AudienceValue;
   onChange: (v: AudienceValue) => void;
@@ -75,9 +78,10 @@ export function AudienceBuilder({
 
   // Debounced so typing a spend threshold does not fire a query per keystroke.
   useEffect(() => {
+    if (hideCount) return;
     const t = setTimeout(() => void refresh(value), 400);
     return () => clearTimeout(t);
-  }, [value, refresh]);
+  }, [value, refresh, hideCount]);
 
   const setSegment = (patch: Partial<NonNullable<AudienceValue["segment"]>>) =>
     onChange({ ...value, segment: { ...value.segment, ...patch } });
@@ -167,17 +171,19 @@ export function AudienceBuilder({
         )}
       </div>
 
-      <div className="flex items-center gap-2 rounded-lg border p-3 text-sm">
-        <UsersIcon className="size-4 text-muted-foreground" />
-        {loading || count === null ? (
-          <Skeleton className="h-4 w-40" />
-        ) : (
-          <span>
-            <span className="font-semibold tabular-nums">{count}</span> recipients after removing
-            suppressed addresses, unsubscribes and lapsed consent.
-          </span>
-        )}
-      </div>
+      {!hideCount && (
+        <div className="flex items-center gap-2 rounded-lg border p-3 text-sm">
+          <UsersIcon className="size-4 text-muted-foreground" />
+          {loading || count === null ? (
+            <Skeleton className="h-4 w-40" />
+          ) : (
+            <span>
+              <span className="font-semibold tabular-nums">{count}</span> recipients after removing
+              suppressed addresses, unsubscribes and lapsed consent.
+            </span>
+          )}
+        </div>
+      )}
     </div>
   );
 }

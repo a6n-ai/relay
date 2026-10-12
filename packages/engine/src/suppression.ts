@@ -23,11 +23,16 @@ export type SuppressionSource = "link" | "one-click" | "admin";
  * "marketing only" has to say so, because getting it backwards silently
  * suppresses receipts.
  */
+// A repeat opt-out is a no-op for attribution: keep the campaign and source of the first one.
+const keepFirst = (reason: AnyPgColumn, existing: AnyPgColumn, next: unknown): SQL =>
+  sql`case when ${recipientDecision(reason)} then ${existing} else ${next} end`;
+
 export async function suppress(
   db: Db,
   tables: NotificationTables,
   input: { address: string; channel: Channel; reason: string; scope?: SuppressionScope; campaignId?: bigint; source?: SuppressionSource },
 ): Promise<void> {
+  const m = tables.messageSuppression;
   await db
     .insert(tables.messageSuppression)
     .values({
@@ -44,7 +49,14 @@ export async function suppress(
         tables.messageSuppression.channel,
         tables.messageSuppression.scope,
       ],
-      set: { reason: input.reason, campaignId: input.campaignId ?? null, source: input.source ?? null },
+      set:
+        suppressionKind(input.reason) === "unsubscribe"
+          ? {
+              reason: input.reason,
+              campaignId: keepFirst(m.reason, m.campaignId, input.campaignId ?? null),
+              source: keepFirst(m.reason, m.source, input.source ?? null),
+            }
+          : { reason: input.reason, campaignId: input.campaignId ?? null, source: input.source ?? null },
       // A recipient's own opt-out is never relabelled by a later bounce, carrier or staff write.
       setWhere:
         suppressionKind(input.reason) === "unsubscribe"

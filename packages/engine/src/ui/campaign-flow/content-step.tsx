@@ -33,9 +33,12 @@ export const ContentStep = forwardRef<
   const editor = useRef<EmailTemplateBuilderHandle>(null);
   const revision = useRef(content?.revision ?? 0);
   const router = useRouter();
+  const probe = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(() => () => clearTimeout(probe.current), []);
 
   async function persist(): Promise<"ok" | "conflict"> {
-    if (!editor.current) return "ok";
+    // Never report a save that did not happen.
+    if (!editor.current) throw new Error("editor not ready");
     const out = await editor.current.exportEmail();
     setHasContent(!!out.html.trim());
     // The row needs both; until then there is nothing the server would accept.
@@ -88,8 +91,15 @@ export const ContentStep = forwardRef<
         autosave.markDirty();
       }}
       onChange={() => {
-        setHasContent(true);
         autosave.markDirty();
+        // Ask the editor what it really holds, so clearing it blocks Continue instead of failing a save.
+        clearTimeout(probe.current);
+        probe.current = setTimeout(() => {
+          void editor.current
+            ?.exportEmail()
+            .then((out) => setHasContent(!!out.html.trim()))
+            .catch(() => {});
+        }, 300);
       }}
       initialBody={content?.body ?? ""}
       initialHtml={content?.html ?? ""}

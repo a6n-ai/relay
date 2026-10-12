@@ -12,3 +12,10 @@ describe("zonedLocalToEpoch", () => {
     expect(zonedLocalToEpoch("tomorrow", "America/Toronto")).toBeNull();
   });
 });
+
+describe("zonedLocalToEpoch — review minors", () => {
+  it("rejects out-of-range parts instead of rolling them over", () => {
+    expect(zonedLocalToEpoch("2026-13-45T25:61", "America/Toronto")).toBeNull();
+    expect(zonedLocalToEpoch("2026-02-30T09:00", "America/Toronto")).toBeNull();
+  });
+});

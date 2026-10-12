@@ -131,3 +131,17 @@ describe("suppressionKind — the reasons production actually stores", () => {
     expect(chain.onConflictDoUpdate.mock.calls[1]![0].setWhere).toBeDefined();
   });
 });
+
+describe("suppress — repeat unsubscribe keeps the first attribution", () => {
+  it("does not overwrite campaign and source with plain values", async () => {
+    const chain = { values: vi.fn().mockReturnThis(), onConflictDoUpdate: vi.fn().mockResolvedValue(undefined) };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const db = { insert: vi.fn().mockReturnValue(chain) } as any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const tables = { messageSuppression: { address: {}, channel: {}, scope: {}, reason: {}, campaignId: {}, source: {} } } as any;
+    await suppress(db, tables, { address: "a@x.com", channel: "email", reason: "unsubscribe", scope: "marketing", source: "one-click" });
+    const set = chain.onConflictDoUpdate.mock.calls[0]![0].set;
+    expect(set.campaignId).not.toBeNull();
+    expect(typeof set.source).toBe("object");
+  });
+});

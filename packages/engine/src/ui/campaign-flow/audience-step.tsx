@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { AudienceBreakdown } from "../../audience";
@@ -21,37 +21,46 @@ const post = (body: unknown): RequestInit => ({
   body: JSON.stringify(body),
 });
 
+export interface AudienceStepHandle {
+  /** Run any pending save now and wait for it, so leaving the step never drops an edit. */
+  settle: () => Promise<void>;
+}
+
 /** Step 2: pick lists and rules; the server says who is eligible and who is left out, and why. */
-export function AudienceStep({
-  campaignPublicId,
-  initial,
-  lists,
-  timeZone,
-  requiresVerifiedPhone,
-  unsubscribedHref,
-  onEligible,
-}: {
-  campaignPublicId: string;
-  initial: AudienceValue;
-  lists: ContactListOption[];
-  timeZone: string;
-  requiresVerifiedPhone: boolean;
-  unsubscribedHref: string;
-  /** null while an edit is still being saved and counted. */
-  onEligible: (eligible: number | null) => void;
-}) {
+export const AudienceStep = forwardRef<
+  AudienceStepHandle,
+  {
+    campaignPublicId: string;
+    initial: AudienceValue;
+    lists: ContactListOption[];
+    timeZone: string;
+    requiresVerifiedPhone: boolean;
+    unsubscribedHref: string;
+    /** null while an edit is still being saved and counted. */
+    onEligible: (eligible: number | null) => void;
+  }
+>(function AudienceStep(
+  { campaignPublicId, initial, lists, timeZone, requiresVerifiedPhone, unsubscribedHref, onEligible },
+  ref,
+) {
   const [value, setValue] = useState<AudienceValue>(initial);
   const [breakdown, setBreakdown] = useState<AudienceBreakdown | null>(null);
   const seq = useRef(0);
+  const first = useRef(initial);
+  const lastEligible = useRef<number | null>(null);
+  // One save at a time, in edit order: a slow earlier save can never land on top of a later one.
+  const chain = useRef<Promise<void>>(Promise.resolve());
+  const pending = useRef<(() => void) | null>(null);
   const router = useRouter();
 
   // Save, then count, debounced: the count on screen is always for the saved audience.
   useEffect(() => {
     onEligible(null);
     const mine = ++seq.current;
-    const edited = mine > 1;
-    const id = setTimeout(
-      async () => {
+    const edited = value !== first.current;
+    const run = () => {
+      pending.current = null;
+      chain.current = chain.current.then(async () => {
         try {
           if (edited) {
             await apiFetch(`/api/notifications/campaigns/${campaignPublicId}/audience`, post({ audience: value }));
@@ -64,16 +73,29 @@ export function AudienceStep({
           );
           if (mine !== seq.current) return;
           setBreakdown(res.breakdown);
+          lastEligible.current = res.breakdown.eligible;
           onEligible(res.breakdown.eligible);
         } catch {
-          // apiFetch already toasted the failure detail.
+          // apiFetch already toasted the failure. Unlock Back; Continue stays blocked unless a count is known.
+          if (mine === seq.current) onEligible(lastEligible.current ?? 0);
         }
-      },
-      edited ? 400 : 0,
-    );
+      });
+    };
+    const id = setTimeout(run, edited ? 400 : 0);
+    pending.current = () => {
+      clearTimeout(id);
+      run();
+    };
     return () => clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- re-run on audience edits only
   }, [value, campaignPublicId]);
+
+  useImperativeHandle(ref, () => ({
+    settle: async () => {
+      pending.current?.();
+      await chain.current;
+    },
+  }));
 
   const excludedTotal = breakdown ? Object.values(breakdown.excluded).reduce((a, b) => a + b, 0) : 0;
 
@@ -86,6 +108,7 @@ export function AudienceStep({
           lists={lists}
           timeZone={timeZone}
           requiresVerifiedPhone={requiresVerifiedPhone}
+          hideCount
         />
       </div>
       <aside className="space-y-4 rounded-xl border p-5 lg:sticky lg:top-4" aria-live="polite">
@@ -95,7 +118,7 @@ export function AudienceStep({
         </div>
         {breakdown && excludedTotal > 0 && (
           <div className="space-y-1.5 border-t pt-4 text-sm">
-            <p className="font-medium">{excludedTotal.toLocaleString()} left out</p>
+            <p className="font-medium">Up to {excludedTotal.toLocaleString()} left out</p>
             {EXCLUDED.filter((e) => breakdown.excluded[e.key] > 0).map((e) => (
               <p key={e.key} className="text-muted-foreground flex justify-between gap-3">
                 {e.filter ? (
@@ -111,10 +134,11 @@ export function AudienceStep({
           </div>
         )}
         <p className="text-muted-foreground text-xs">
-          Counted on the server with the same rules the send uses. Consent, unsubscribes and suppressions always win over
+          Eligible is exact. The left-out figures count list rows, so someone on two lists, or left out for two
+          reasons, appears twice. Counted on the server with the same rules the send uses. Consent, unsubscribes and suppressions always win over
           these filters.
         </p>
       </aside>
     </div>
   );
-}
+});

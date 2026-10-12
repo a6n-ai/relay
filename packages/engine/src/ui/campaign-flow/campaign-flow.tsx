@@ -13,7 +13,7 @@ import { TextRow, type CampaignContentRow } from "../campaign-content-section";
 import type { SaveState } from "../email-editor/autosave";
 import { SaveStatus } from "../email-editor/save-status";
 import { SendTestEmailButton } from "../send-test-email-button";
-import { AudienceStep } from "./audience-step";
+import { AudienceStep, type AudienceStepHandle } from "./audience-step";
 import { ContentStep, type ContentStepHandle } from "./content-step";
 import { FlowShell } from "./flow-shell";
 import { ReviewStep, ScheduleDialog, SendDialog } from "./review-step";
@@ -48,6 +48,8 @@ export function CampaignFlow(props: {
   const page = `/dashboard/notifications/campaigns/${campaignPublicId}`;
   const api = `/api/notifications/campaigns/${campaignPublicId}`;
   const contentRef = useRef<ContentStepHandle>(null);
+  const audienceRef = useRef<AudienceStepHandle>(null);
+  const [reviewNonce, setReviewNonce] = useState(0);
   const [editor, setEditor] = useState<{ hasSubject: boolean; hasContent: boolean; save: SaveState }>({
     hasSubject: !!props.content?.subject?.trim(),
     hasContent: !!props.content?.html?.trim(),
@@ -61,8 +63,14 @@ export function CampaignFlow(props: {
 
   // Text channels save through TextRow + router.refresh, so their state is just the props.
   const hasSubject = email ? editor.hasSubject : !!props.content?.subject?.trim();
-  const hasContent = email ? editor.hasContent : !!props.content?.body?.trim();
-  const gate = stepGate({ hasSubject, hasContent, eligible: step === "audience" ? eligible : 1 });
+  // A provider template (WhatsApp) is content on its own.
+  const hasContent = email ? editor.hasContent : !!(props.content?.body?.trim() || props.content?.providerTemplateId);
+  const gate = stepGate({ hasSubject, hasContent, eligible: step === "audience" ? eligible : 1, email });
+  // After a refused send or schedule, show what the server now says instead of the stale screen.
+  const resync = () => {
+    router.refresh();
+    setReviewNonce((n) => n + 1);
+  };
   const go = (to: FlowStep) => router.push(`${page}?step=${to}`);
 
   async function rename(name: string) {
@@ -94,6 +102,8 @@ export function CampaignFlow(props: {
       router.refresh();
     } catch {
       // apiFetch already toasted the reason (422 blocking items, 409 already sending).
+      setSendOpen(false);
+      resync();
     } finally {
       setBusy(false);
     }
@@ -108,6 +118,7 @@ export function CampaignFlow(props: {
       router.refresh();
     } catch {
       // apiFetch already toasted the failure detail.
+      resync();
     } finally {
       setBusy(false);
     }
@@ -134,7 +145,13 @@ export function CampaignFlow(props: {
     ) : step === "audience" ? (
       <>
         {hint}
-        <Button variant="outline" onClick={() => go("content")} disabled={!audienceSettled}>
+        <Button
+          variant="outline"
+          onClick={async () => {
+            await audienceRef.current?.settle();
+            go("content");
+          }}
+        >
           Back
         </Button>
         <Button onClick={() => go("review")} disabled={!gate.canLeaveAudience}>
@@ -171,6 +188,7 @@ export function CampaignFlow(props: {
       onRename={rename}
       onBack={async () => {
         if (step === "content" && email && gate.canLeaveContent) await contentRef.current?.save();
+        if (step === "audience") await audienceRef.current?.settle();
       }}
       saveStatus={
         step === "content" && email ? (
@@ -212,6 +230,7 @@ export function CampaignFlow(props: {
         ))}
       {step === "audience" && (
         <AudienceStep
+          ref={audienceRef}
           campaignPublicId={campaignPublicId}
           initial={props.audience}
           lists={props.lists}
@@ -225,7 +244,7 @@ export function CampaignFlow(props: {
         <div className="space-y-4">
           <ReviewStep
             // Refetch after schedule/unschedule so the summary shows the new state.
-            key={`${props.status}`}
+            key={`${props.status}:${reviewNonce}`}
             campaignPublicId={campaignPublicId}
             from={props.from}
             footer={props.footer}

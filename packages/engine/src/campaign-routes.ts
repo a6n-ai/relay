@@ -301,6 +301,7 @@ export async function reviewCampaign(
       subject: tables.campaignContent.subject,
       html: tables.campaignContent.html,
       body: tables.campaignContent.body,
+      providerTemplateId: tables.campaignContent.providerTemplateId,
     })
     .from(tables.campaignContent)
     .where(eq(tables.campaignContent.campaignId, row.id));
@@ -316,6 +317,7 @@ export async function reviewCampaign(
       subject: (c?.subject as string | undefined) ?? "",
       html: (c?.html as string | null | undefined) ?? null,
       body: (c?.body as string | null | undefined) ?? null,
+      providerTemplateId: (c?.providerTemplateId as string | null | undefined) ?? null,
       footerConfigured: opts.footerConfigured,
       eligible: breakdown.eligible,
       known: CAMPAIGN_VARIABLES,

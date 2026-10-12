@@ -29,3 +29,9 @@ describe("stepGate", () => {
     expect(stepGate({ hasSubject: true, hasContent: true, eligible: 3 })).toEqual({ canLeaveContent: true, canLeaveAudience: true, reason: null });
   });
 });
+
+describe("stepGate — review minors", () => {
+  it("words the content hint for a text channel", () => {
+    expect(stepGate({ hasSubject: true, hasContent: false, eligible: 1, email: false }).reason).toBe("Add the message to continue.");
+  });
+});
