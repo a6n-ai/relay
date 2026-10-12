@@ -230,7 +230,13 @@ export async function updateCampaignAudience(
   return { ok: true };
 }
 
-export async function renameCampaign(deps: CampaignRouteDeps, campaignPublicId: string, name: string) {
+type RouteError = { error: string; status: number; blocking?: ChecklistItem[] };
+
+export async function renameCampaign(
+  deps: CampaignRouteDeps,
+  campaignPublicId: string,
+  name: string,
+): Promise<{ ok: true } | RouteError> {
   const { db, tables } = deps;
   const trimmed = name.trim();
   if (!trimmed) return { error: "Name the campaign", status: 400 } as const;
@@ -245,7 +251,11 @@ export async function renameCampaign(deps: CampaignRouteDeps, campaignPublicId: 
 }
 
 /** Pure schedule rule: a future time schedules, null unschedules, and only draft/scheduled may change. */
-export function scheduleDecision(input: { status: string; scheduledAt: number | null; now: number }) {
+export function scheduleDecision(input: {
+  status: string;
+  scheduledAt: number | null;
+  now: number;
+}): { status: "draft" | "scheduled"; scheduledAt: number | null } | RouteError {
   if (input.status !== "draft" && input.status !== "scheduled") {
     return { error: "This campaign has already started sending", status: 409 } as const;
   }
@@ -330,7 +340,7 @@ export async function scheduleCampaign(
   campaignPublicId: string,
   scheduledAt: number | null,
   opts: { footerConfigured: boolean },
-) {
+): Promise<{ status: "draft" | "scheduled"; scheduledAt: number | null } | RouteError> {
   const review = await reviewCampaign(deps, campaignPublicId, opts);
   if (!review) return { error: "Campaign not found", status: 404 } as const;
   const decision = scheduleDecision({ status: review.status, scheduledAt, now: Date.now() });
@@ -371,7 +381,7 @@ export async function sendCampaign(
   campaignPublicId: string,
   confirmedCount: number,
   opts: { footerConfigured: boolean },
-): Promise<{ queued: number; warning?: string } | { error: string; status: number; blocking?: ChecklistItem[] }> {
+): Promise<{ queued: number; warning?: string } | RouteError> {
   const review = await reviewCampaign(deps, campaignPublicId, opts);
   if (!review) return { error: "Campaign not found", status: 404 };
   if (review.blocking.length) return { error: "Fix the blocking items before sending", status: 422, blocking: review.blocking };

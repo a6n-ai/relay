@@ -80,7 +80,9 @@ export function canClearSuppression(reason: string): boolean {
   return reason !== "unsubscribe";
 }
 
-export async function clearSuppression(db: Db, tables: NotificationTables, publicId: string) {
+type Outcome = { ok: true } | { error: string; status: number };
+
+export async function clearSuppression(db: Db, tables: NotificationTables, publicId: string): Promise<Outcome> {
   // One conditional delete: the reason is checked by the statement that removes the row, so an
   // unsubscribe arriving between a read and a delete can never be wiped.
   const deleted = await db
@@ -102,7 +104,11 @@ export async function clearSuppression(db: Db, tables: NotificationTables, publi
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_RE = /^\+?[0-9]{7,15}$/;
 
-export async function suppressManually(db: Db, tables: NotificationTables, input: { address: string; channel: Channel }) {
+export async function suppressManually(
+  db: Db,
+  tables: NotificationTables,
+  input: { address: string; channel: Channel },
+): Promise<Outcome> {
   const address = input.address.trim();
   if (input.channel === "email" ? !EMAIL_RE.test(address) : !PHONE_RE.test(address.replace(/[\s()-]/g, ""))) {
     return {
