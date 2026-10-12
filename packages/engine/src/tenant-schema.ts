@@ -102,6 +102,8 @@ export function makeTenantNotificationTables(deps: {
     channel: notificationChannel("channel").notNull(),
     scope: suppressionScope("scope").notNull().default("all"),
     reason: text("reason").notNull(),
+    /** How it got here: an unsubscribe `link`, a mail client's `one-click` header, or an `admin`. Null for older rows and provider feedback. */
+    source: text("source"),
   }, (t) => [
     uniqueIndex("message_suppression_tenant_address_channel_scope_idx").on(
       t.tenantId, t.address, t.channel, t.scope,

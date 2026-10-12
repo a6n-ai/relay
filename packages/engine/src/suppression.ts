@@ -1,4 +1,4 @@
-import { and, inArray } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import { normalizeAddress } from "@foundry/commons";
 import type { NotificationTables } from "./schema";
@@ -13,6 +13,7 @@ export { normalizeAddress };
 type Db = PostgresJsDatabase<any>;
 
 export type SuppressionScope = "all" | "marketing";
+export type SuppressionSource = "link" | "one-click" | "admin";
 
 /**
  * Record a bounce, complaint, unsubscribe or manual block. Idempotent.
@@ -24,7 +25,7 @@ export type SuppressionScope = "all" | "marketing";
 export async function suppress(
   db: Db,
   tables: NotificationTables,
-  input: { address: string; channel: Channel; reason: string; scope?: SuppressionScope; campaignId?: bigint },
+  input: { address: string; channel: Channel; reason: string; scope?: SuppressionScope; campaignId?: bigint; source?: SuppressionSource },
 ): Promise<void> {
   await db
     .insert(tables.messageSuppression)
@@ -34,6 +35,7 @@ export async function suppress(
       scope: input.scope ?? "all",
       reason: input.reason,
       campaignId: input.campaignId ?? null,
+      source: input.source ?? null,
     })
     .onConflictDoUpdate({
       target: [
@@ -41,7 +43,7 @@ export async function suppress(
         tables.messageSuppression.channel,
         tables.messageSuppression.scope,
       ],
-      set: { reason: input.reason, campaignId: input.campaignId ?? null },
+      set: { reason: input.reason, campaignId: input.campaignId ?? null, source: input.source ?? null },
     });
 }
 
@@ -69,4 +71,44 @@ export async function suppressedChannelsFor(
       ),
     );
   return [...new Set(rows.map((r) => r.channel as Channel))];
+}
+
+/** An unsubscribe is the recipient's decision; only they can reverse it (the resubscribe link). */
+export function canClearSuppression(reason: string): boolean {
+  return reason !== "unsubscribe";
+}
+
+export async function clearSuppression(db: Db, tables: NotificationTables, publicId: string) {
+  const [row] = await db
+    .select({ id: tables.messageSuppression.id, reason: tables.messageSuppression.reason })
+    .from(tables.messageSuppression)
+    .where(eq(tables.messageSuppression.publicId, publicId));
+  if (!row) return { error: "Not found", status: 404 } as const;
+  if (!canClearSuppression(row.reason as string)) {
+    return {
+      error: "An unsubscribe can only be reversed by the recipient — send them a resubscribe link",
+      status: 409,
+    } as const;
+  }
+  await db.delete(tables.messageSuppression).where(eq(tables.messageSuppression.id, row.id));
+  return { ok: true } as const;
+}
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PHONE_RE = /^\+?[0-9]{7,15}$/;
+
+export async function suppressManually(db: Db, tables: NotificationTables, input: { address: string; channel: Channel }) {
+  const address = input.address.trim();
+  if (input.channel === "email" ? !EMAIL_RE.test(address) : !PHONE_RE.test(address.replace(/[\s()-]/g, ""))) {
+    return {
+      error: input.channel === "email" ? "Enter a valid email address" : "Enter a valid phone number",
+      status: 422,
+    } as const;
+  }
+  // Insert-only: overwriting would relabel a recipient's unsubscribe as "manual", which an admin could then clear.
+  await db
+    .insert(tables.messageSuppression)
+    .values({ address: normalizeAddress(address), channel: input.channel, scope: "marketing", reason: "manual", source: "admin" })
+    .onConflictDoNothing();
+  return { ok: true } as const;
 }

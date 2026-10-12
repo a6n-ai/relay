@@ -170,6 +170,8 @@ export function makeNotificationTables<
     scope: suppressionScope("scope").notNull().default("all"),
     /** bounce | complaint | unsubscribe | manual */
     reason: text("reason").notNull(),
+    /** How it got here: an unsubscribe `link`, a mail client's `one-click` header, or an `admin`. Null for older rows and provider feedback. */
+    source: text("source"),
     /**
      * Which campaign send triggered this — an unsubscribe click only, never
      * set for bounce/complaint/manual. No FK: campaign lives in a sibling

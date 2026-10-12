@@ -71,7 +71,7 @@ export function listUnsubscribeHeaders(oneClickUrl: string): Record<string, stri
 export async function handleUnsubscribe(
   db: Db,
   tables: NotificationTables & CampaignTables,
-  input: { address: string | null; token: string | null; secret: string; channel?: Channel; campaignId?: bigint },
+  input: { address: string | null; token: string | null; secret: string; channel?: Channel; campaignId?: bigint; source?: "link" | "one-click" },
 ): Promise<void> {
   const { address, token, secret } = input;
   if (!address || !token || !verifyUnsubscribeToken(secret, address, token)) return;
@@ -85,6 +85,7 @@ export async function handleUnsubscribe(
     reason: "unsubscribe",
     scope: "marketing",
     campaignId: input.campaignId,
+    source: input.source ?? "link",
   });
 
   const column = channel === "email" ? tables.contactListMember.email : tables.contactListMember.phone;
