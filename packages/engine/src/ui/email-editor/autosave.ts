@@ -115,6 +115,13 @@ export function useAutosave({
     timer.current = setTimeout(saveNow, debounceMs);
   }, [enabled, debounceMs, saveNow]);
 
+  // Autosave switched on while edits are already waiting (the edit that made the draft saveable): arm it.
+  useEffect(() => {
+    if (!enabled || stateRef.current.status !== "dirty") return;
+    clearTimeout(timer.current);
+    timer.current = setTimeout(saveNow, debounceMs);
+  }, [enabled, debounceMs, saveNow]);
+
   // Automatic retries after a failure; past the last backoff step the UI shows Retry.
   useEffect(() => {
     if (!enabled || state.status !== "error") return;

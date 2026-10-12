@@ -5,6 +5,7 @@ import {
   retriggerCampaign,
   retryFailedCampaign,
   scheduleDecision,
+  sendScheduledCampaign,
   setCampaignContent,
 } from "./campaign-routes";
 
@@ -211,5 +212,17 @@ describe("claimForSend", () => {
   it("returns null when another request already claimed it", async () => {
     const { db } = fakeDb([]);
     expect(await claimForSend(db, tables, "cmp_1")).toBeNull();
+  });
+});
+
+describe("sendScheduledCampaign", () => {
+  it("sends nothing when the campaign is no longer scheduled and due (e.g. just unscheduled)", async () => {
+    const chain = { set: vi.fn().mockReturnThis(), where: vi.fn().mockReturnThis(), returning: vi.fn().mockResolvedValue([]) };
+    const db = { update: vi.fn().mockReturnValue(chain), select: vi.fn() };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const deps = { db, tables: { campaign: { id: {}, publicId: {}, status: {}, scheduledAt: {} } }, users: {}, resolveSegment: vi.fn() } as any;
+    expect(await sendScheduledCampaign(deps, "cmp_1", { footerConfigured: true })).toEqual({ queued: 0 });
+    expect(db.update).toHaveBeenCalledTimes(1);
+    expect(db.select).not.toHaveBeenCalled();
   });
 });

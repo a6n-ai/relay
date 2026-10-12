@@ -2,6 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ArrowLeftIcon, CheckIcon } from "lucide-react";
 import { Badge } from "@foundry/ui/badge";
 import { cn } from "@foundry/ui/cn";
@@ -16,6 +17,7 @@ export function FlowShell({
   backHref,
   saveStatus,
   onRename,
+  onBack,
   bottom,
   reachable,
   children,
@@ -27,18 +29,29 @@ export function FlowShell({
   backHref: string;
   saveStatus?: ReactNode;
   onRename: (name: string) => Promise<void>;
+  /** Runs before leaving for the list, e.g. to flush a pending save. */
+  onBack?: () => Promise<void>;
   bottom: ReactNode;
   /** A step is a link only once the steps before it are complete. */
   reachable: Record<FlowStep, boolean>;
   children: ReactNode;
 }) {
+  const router = useRouter();
   const [draftName, setDraftName] = useState(name);
   const current = FLOW_STEPS.findIndex((s) => s.key === step);
 
   return (
     <div className="space-y-5 pb-24">
       <div className="flex flex-wrap items-center gap-3">
-        <Link href={backHref} className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-sm">
+        <Link
+          href={backHref}
+          onClick={(e) => {
+            if (!onBack) return;
+            e.preventDefault();
+            void onBack().then(() => router.push(backHref));
+          }}
+          className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-sm"
+        >
           <ArrowLeftIcon className="size-4" /> All campaigns
         </Link>
         <input

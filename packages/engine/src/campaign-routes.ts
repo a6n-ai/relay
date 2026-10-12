@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, lte, sql } from "drizzle-orm";
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import { z } from "zod";
 import type { AudienceDef, CampaignTables } from "./campaign-schema";
@@ -374,6 +374,36 @@ export async function claimForSend(
     .where(and(eq(tables.campaign.publicId, campaignPublicId), inArray(tables.campaign.status, ["draft", "scheduled"])))
     .returning({ id: tables.campaign.id });
   return rows[0] ? (rows[0].id as bigint) : null;
+}
+
+/**
+ * The scheduler's send. Claims only a campaign that is still `scheduled` and
+ * due, so one unscheduled a moment ago is left alone, and re-runs the checklist
+ * because a scheduled campaign stays editable. A campaign that no longer
+ * passes goes back to draft instead of being sent.
+ */
+export async function sendScheduledCampaign(
+  deps: CampaignRouteDeps,
+  campaignPublicId: string,
+  opts: { footerConfigured: boolean; now?: number },
+): Promise<{ queued: number; blocked?: ChecklistItem[] }> {
+  const { db, tables } = deps;
+  const byId = eq(tables.campaign.publicId, campaignPublicId);
+  const claimed = await db
+    .update(tables.campaign)
+    .set({ status: "sending" })
+    .where(and(byId, eq(tables.campaign.status, "scheduled"), lte(tables.campaign.scheduledAt, opts.now ?? Date.now())))
+    .returning({ id: tables.campaign.id });
+  if (!claimed.length) return { queued: 0 };
+  const review = await reviewCampaign(deps, campaignPublicId, opts);
+  if (!review || review.blocking.length) {
+    await db
+      .update(tables.campaign)
+      .set({ status: "draft", scheduledAt: null })
+      .where(and(byId, eq(tables.campaign.status, "sending")));
+    return { queued: 0, blocked: review?.blocking ?? [] };
+  }
+  return materializeCampaign(deps, campaignPublicId);
 }
 
 export async function sendCampaign(

@@ -32,6 +32,8 @@ export function ReviewStep({
 
   useEffect(() => {
     let live = true;
+    // Never leave the parent holding an older review (and its recipient count) while this one loads.
+    onReview(null);
     apiFetch<CampaignReview>(`/api/notifications/campaigns/${campaignPublicId}/review`)
       .then((r) => {
         if (!live) return;

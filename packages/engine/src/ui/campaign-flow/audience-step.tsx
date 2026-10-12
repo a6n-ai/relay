@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { AudienceBreakdown } from "../../audience";
 import { apiFetch } from "../api-fetch";
 import { AudienceBuilder, type AudienceValue, type ContactListOption } from "../audience-builder";
@@ -42,6 +43,7 @@ export function AudienceStep({
   const [value, setValue] = useState<AudienceValue>(initial);
   const [breakdown, setBreakdown] = useState<AudienceBreakdown | null>(null);
   const seq = useRef(0);
+  const router = useRouter();
 
   // Save, then count, debounced: the count on screen is always for the saved audience.
   useEffect(() => {
@@ -51,7 +53,11 @@ export function AudienceStep({
     const id = setTimeout(
       async () => {
         try {
-          if (edited) await apiFetch(`/api/notifications/campaigns/${campaignPublicId}/audience`, post({ audience: value }));
+          if (edited) {
+            await apiFetch(`/api/notifications/campaigns/${campaignPublicId}/audience`, post({ audience: value }));
+            // Keep the cached page current for browser Back/Forward.
+            router.refresh();
+          }
           const res = await apiFetch<{ count: number; breakdown: AudienceBreakdown }>(
             "/api/notifications/campaigns/audience-count",
             post(value),

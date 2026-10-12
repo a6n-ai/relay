@@ -1,4 +1,5 @@
-import { and, eq, inArray, ne } from "drizzle-orm";
+import { and, eq, inArray, not, sql, type SQL } from "drizzle-orm";
+import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import { normalizeAddress } from "@foundry/commons";
 import type { NotificationTables } from "./schema";
@@ -44,8 +45,11 @@ export async function suppress(
         tables.messageSuppression.scope,
       ],
       set: { reason: input.reason, campaignId: input.campaignId ?? null, source: input.source ?? null },
-      // An unsubscribe is the recipient's decision: no later bounce/manual write may relabel it.
-      setWhere: input.reason === "unsubscribe" ? undefined : ne(tables.messageSuppression.reason, "unsubscribe"),
+      // A recipient's own opt-out is never relabelled by a later bounce, carrier or staff write.
+      setWhere:
+        suppressionKind(input.reason) === "unsubscribe"
+          ? undefined
+          : not(recipientDecision(tables.messageSuppression.reason)),
     });
 }
 
@@ -75,10 +79,35 @@ export async function suppressedChannelsFor(
   return [...new Set(rows.map((r) => r.channel as Channel))];
 }
 
-/** An unsubscribe is the recipient's decision; only they can reverse it (the resubscribe link). */
-export function canClearSuppression(reason: string): boolean {
-  return reason !== "unsubscribe";
+export type SuppressionKind = "unsubscribe" | "bounce" | "complaint" | "manual" | "other";
+
+/**
+ * `reason` is free text ("sms STOP keyword", "SES hard bounce", "SES complaint",
+ * "carrier undeliverable 30006", "unsubscribe", "manual"), so every rule about
+ * it goes through this one classifier and its SQL twins below.
+ */
+export function suppressionKind(reason: string): SuppressionKind {
+  if (/unsubscribe|stop/i.test(reason)) return "unsubscribe";
+  if (/complaint/i.test(reason)) return "complaint";
+  if (/bounce|undeliverable/i.test(reason)) return "bounce";
+  return reason === "manual" ? "manual" : "other";
 }
+
+/**
+ * Staff may clear provider feedback and their own blocks. A recipient's own
+ * opt-out (unsubscribe link, SMS STOP) is theirs to reverse, and a reason we do
+ * not recognise is never clearable.
+ */
+export function canClearSuppression(reason: string): boolean {
+  const kind = suppressionKind(reason);
+  return kind === "bounce" || kind === "complaint" || kind === "manual";
+}
+
+// SQL twins of suppressionKind, so the check and the write are one statement.
+const recipientDecision = (reason: AnyPgColumn): SQL =>
+  sql`(${reason} ilike '%unsubscribe%' or ${reason} ilike '%stop%')`;
+const clearable = (reason: AnyPgColumn): SQL =>
+  sql`(not ${recipientDecision(reason)} and (${reason} = 'manual' or ${reason} ilike '%complaint%' or ${reason} ilike '%bounce%' or ${reason} ilike '%undeliverable%'))`;
 
 type Outcome = { ok: true } | { error: string; status: number };
 
@@ -87,7 +116,7 @@ export async function clearSuppression(db: Db, tables: NotificationTables, publi
   // unsubscribe arriving between a read and a delete can never be wiped.
   const deleted = await db
     .delete(tables.messageSuppression)
-    .where(and(eq(tables.messageSuppression.publicId, publicId), ne(tables.messageSuppression.reason, "unsubscribe")))
+    .where(and(eq(tables.messageSuppression.publicId, publicId), clearable(tables.messageSuppression.reason)))
     .returning({ id: tables.messageSuppression.id });
   if (deleted.length) return { ok: true } as const;
   const [row] = await db
@@ -96,7 +125,7 @@ export async function clearSuppression(db: Db, tables: NotificationTables, publi
     .where(eq(tables.messageSuppression.publicId, publicId));
   if (!row) return { error: "Not found", status: 404 } as const;
   return {
-    error: "An unsubscribe can only be reversed by the recipient — send them a resubscribe link",
+    error: "This block can't be cleared here. An opt-out can only be reversed by the recipient.",
     status: 409,
   } as const;
 }

@@ -169,6 +169,9 @@ export function CampaignFlow(props: {
       step={step}
       backHref="/dashboard/notifications/campaigns"
       onRename={rename}
+      onBack={async () => {
+        if (step === "content" && email && gate.canLeaveContent) await contentRef.current?.save();
+      }}
       saveStatus={
         step === "content" && email ? (
           <SaveStatus state={editor.save} onRetry={() => void contentRef.current?.save()} onReload={() => location.reload()} />

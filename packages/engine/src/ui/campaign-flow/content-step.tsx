@@ -1,6 +1,7 @@
 "use client";
 
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { CAMPAIGN_VARIABLE_SAMPLES, CAMPAIGN_VARIABLES } from "../../email-content/variables";
 import type { FooterInfo } from "../../template";
@@ -31,6 +32,7 @@ export const ContentStep = forwardRef<
   const [hasContent, setHasContent] = useState(!!content?.html?.trim());
   const editor = useRef<EmailTemplateBuilderHandle>(null);
   const revision = useRef(content?.revision ?? 0);
+  const router = useRouter();
 
   async function persist(): Promise<"ok" | "conflict"> {
     if (!editor.current) return "ok";
@@ -59,6 +61,8 @@ export const ContentStep = forwardRef<
       throw new Error("save failed");
     }
     revision.current = data.revision;
+    // Keep the cached page current, so browser Back/Forward never shows an older email or revision.
+    router.refresh();
     if (data.removed?.length) toast.warning(`Removed ${data.removed.length} unsafe item(s): ${data.removed.join(", ")}`);
     return "ok";
   }

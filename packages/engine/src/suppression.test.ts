@@ -1,5 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
-import { canClearSuppression, clearSuppression, normalizeAddress, suppress, suppressManually } from "./suppression";
+import {
+  canClearSuppression,
+  clearSuppression,
+  normalizeAddress,
+  suppress,
+  suppressManually,
+  suppressionKind,
+} from "./suppression";
 
 describe("normalizeAddress", () => {
   it("lowercases and trims an email", () => {
@@ -94,5 +101,33 @@ describe("suppress", () => {
     const { db, chain } = fakeDb();
     await suppress(db, tables, { address: "a@x.com", channel: "email", reason: "unsubscribe", scope: "marketing" });
     expect(chain.onConflictDoUpdate.mock.calls[0]![0].setWhere).toBeUndefined();
+  });
+});
+
+describe("suppressionKind — the reasons production actually stores", () => {
+  it("treats an SMS STOP as the recipient's own decision, never clearable", () => {
+    expect(suppressionKind("sms STOP keyword")).toBe("unsubscribe");
+    expect(canClearSuppression("sms STOP keyword")).toBe(false);
+  });
+  it("classifies provider feedback", () => {
+    expect(suppressionKind("SES hard bounce")).toBe("bounce");
+    expect(suppressionKind("carrier undeliverable 30006")).toBe("bounce");
+    expect(suppressionKind("SES complaint")).toBe("complaint");
+    expect(["SES hard bounce", "carrier undeliverable 30006", "SES complaint"].map(canClearSuppression)).toEqual([true, true, true]);
+  });
+  it("never clears a reason it does not recognise", () => {
+    expect(suppressionKind("something new")).toBe("other");
+    expect(canClearSuppression("something new")).toBe(false);
+  });
+  it("lets a STOP overwrite, and protects it from a later carrier write", async () => {
+    const chain = { values: vi.fn().mockReturnThis(), onConflictDoUpdate: vi.fn().mockResolvedValue(undefined) };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const db = { insert: vi.fn().mockReturnValue(chain) } as any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const tables = { messageSuppression: { address: {}, channel: {}, scope: {}, reason: {} } } as any;
+    await suppress(db, tables, { address: "+14165550100", channel: "sms", reason: "sms STOP keyword" });
+    expect(chain.onConflictDoUpdate.mock.calls[0]![0].setWhere).toBeUndefined();
+    await suppress(db, tables, { address: "+14165550100", channel: "sms", reason: "carrier undeliverable 30006" });
+    expect(chain.onConflictDoUpdate.mock.calls[1]![0].setWhere).toBeDefined();
   });
 });
