@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { CircleAlertIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@foundry/ui/button";
 import type { CampaignReview } from "../../campaign-routes";
@@ -199,6 +200,14 @@ export function CampaignFlow(props: {
       reachable={{ content: step === "review" || audienceSettled, audience: step === "review", review: false }}
       bottom={bottom}
     >
+      {/* Same rule as the checklist's "footer" item, shown from step 1 so nobody builds an email that can never send. */}
+      {email && !props.footer && (
+        <p role="alert" className="text-destructive flex items-start gap-2 rounded-xl border border-destructive/40 p-4 text-sm">
+          <CircleAlertIcon className="mt-0.5 size-4 shrink-0" />
+          No unsubscribe footer: sender details (postal address, unsubscribe link) are not configured, so this campaign
+          can&apos;t be sent. Ask an engineer to set them.
+        </p>
+      )}
       {step === "content" &&
         (email ? (
           <ContentStep

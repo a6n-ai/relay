@@ -92,7 +92,11 @@ describe("setCampaignContent — sanitize, variables, revision", () => {
   it("422s on unknown variables and does not write", async () => {
     const { deps, insertChain } = contentDeps({ id: 1n, status: "draft" });
     const result = await setCampaignContent(deps, "cmp_1", { ...email, subject: "Hi {{first_name}}" });
-    expect(result).toEqual({ error: "Unknown variables: first_name", status: 422 });
+    expect(result).toEqual({
+      error:
+        "Unknown variables: first_name. Campaigns can use {{contact.name}}, {{contact.first_name}}, {{contact.last_name}}, {{contact.email}}.",
+      status: 422,
+    });
     expect(insertChain.values).not.toHaveBeenCalled();
   });
 });

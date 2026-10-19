@@ -169,7 +169,11 @@ export async function setCampaignContent(
       known: CAMPAIGN_VARIABLES,
     });
     if (prepared.unknownVariables.length) {
-      return { error: `Unknown variables: ${prepared.unknownVariables.join(", ")}`, status: 422 };
+      const allowed = CAMPAIGN_VARIABLES.map((v) => `{{${v}}}`).join(", ");
+      return {
+        error: `Unknown variables: ${prepared.unknownVariables.join(", ")}. Campaigns can use ${allowed}.`,
+        status: 422,
+      };
     }
     ({ html, text, removed, lint } = prepared);
   } else if (!input.body && !input.providerTemplateId) {

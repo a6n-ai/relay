@@ -60,7 +60,8 @@ export const ContentStep = forwardRef<
     if (res.status === 409) return "conflict";
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
-      toast.error(data.detail ?? data.title ?? "Save failed");
+      // One id: autosave retries the same failure, which would otherwise stack identical toasts.
+      toast.error(data.detail ?? data.title ?? "Save failed", { id: `campaign-content-${campaignPublicId}` });
       throw new Error("save failed");
     }
     revision.current = data.revision;
