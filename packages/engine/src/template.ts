@@ -123,6 +123,23 @@ export function appendUnsubscribeFooter(
 }
 
 /**
+ * Admin preview only: where the footer would go when sender details are not
+ * configured, so a missing footer is visible instead of looking like nothing
+ * was added. Such a campaign can't send (campaignChecklist blocks it).
+ */
+export function missingFooterPreview(html: string): string {
+  const block =
+    `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" ` +
+    `style="margin-top:32px;background:#fef2f2;border:1px dashed #dc2626;border-radius:8px;padding:12px 16px"><tr><td align="center" ` +
+    `style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:12px;line-height:1.6;color:#991b1b">` +
+    `<div style="font-size:11px;font-weight:600;letter-spacing:.02em;text-transform:uppercase;margin-bottom:6px">Unsubscribe footer missing</div>` +
+    `Sender details (postal address, unsubscribe link) are not configured, so this campaign can't be sent.` +
+    `</td></tr></table>`;
+  const bodyEnd = html.toLowerCase().lastIndexOf("</body>");
+  return bodyEnd < 0 ? `${html}\n${block}` : `${html.slice(0, bodyEnd)}${block}\n${html.slice(bodyEnd)}`;
+}
+
+/**
  * Stamp the same CASL footer onto content for admin preview, returned as
  * separate `previewHtml`/`previewText` fields rather than overwriting `html`/
  * `text` — those stay the raw stored source so an editable row still edits

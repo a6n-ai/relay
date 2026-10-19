@@ -6,7 +6,7 @@ import { Button } from "@foundry/ui/button";
 import { ResponsiveDialog } from "@foundry/design-system";
 import type { CampaignReview } from "../../campaign-routes";
 import { CAMPAIGN_VARIABLE_SAMPLES } from "../../email-content/variables";
-import { appendUnsubscribeFooter, type FooterInfo } from "../../template";
+import { appendUnsubscribeFooter, missingFooterPreview, type FooterInfo } from "../../template";
 import { apiFetch } from "../api-fetch";
 import { openEmailPreview } from "../email-content-editor";
 import { fillSamples } from "../email-editor/samples";
@@ -52,7 +52,9 @@ export function ReviewStep({
   const email = review.content.find((c) => c.channel === "email");
   const html = email?.html
     ? fillSamples(
-        footer ? appendUnsubscribeFooter({ html: email.html, text: "" }, footer, { preview: true }).html : email.html,
+        footer
+          ? appendUnsubscribeFooter({ html: email.html, text: "" }, footer, { preview: true }).html
+          : missingFooterPreview(email.html),
         CAMPAIGN_VARIABLE_SAMPLES,
         "sample",
       )

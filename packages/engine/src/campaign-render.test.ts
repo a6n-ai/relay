@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { appendUnsubscribeFooter } from "./template";
+import { appendUnsubscribeFooter, missingFooterPreview } from "./template";
 
 describe("appendUnsubscribeFooter", () => {
   const footer = {
@@ -48,5 +48,12 @@ describe("appendUnsubscribeFooter", () => {
       { ...footer, sender: '<script>alert(1)</script>' },
     );
     expect(out.html).not.toContain("<script>");
+  });
+});
+
+describe("missingFooterPreview", () => {
+  it("puts the warning inside <body> of a full document", () => {
+    const out = missingFooterPreview("<html><body><p>hi</p></body></html>");
+    expect(out.indexOf("Unsubscribe footer missing")).toBeLessThan(out.indexOf("</body>"));
   });
 });

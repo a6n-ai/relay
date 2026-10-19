@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { Button } from "@foundry/ui/button";
 import { cn } from "@foundry/ui/cn";
 import { Tabs, TabsList, TabsTrigger } from "@foundry/ui/tabs";
-import { appendUnsubscribeFooter, type FooterInfo } from "../template";
+import { appendUnsubscribeFooter, missingFooterPreview, type FooterInfo } from "../template";
 import { CodePane } from "./email-editor/code-pane";
 import { createReactCompiler } from "./email-editor/react-compiler";
 import { fillSamples } from "./email-editor/samples";
@@ -70,11 +70,13 @@ interface Props {
   onChange?: () => void;
   /** Stamped onto the preview only, never saved; the real footer is added at send. */
   footer?: FooterInfo;
+  /** Campaign mail must carry a footer: with none configured, the preview says so instead of showing nothing. */
+  marketing?: boolean;
 }
 
 /** The one email editor for campaigns and event templates: HTML or React source + a sandboxed live preview. */
 export const EmailContentEditor = forwardRef<EmailContentEditorHandle, Props>(function EmailContentEditor(
-  { initialBody, initialHtml, variables, samples, onChange, footer },
+  { initialBody, initialHtml, variables, samples, onChange, footer, marketing },
   ref,
 ) {
   const isReact = initialBody.startsWith(REACT_SOURCE_MARKER);
@@ -133,9 +135,11 @@ export const EmailContentEditor = forwardRef<EmailContentEditorHandle, Props>(fu
     if (!sourceHtml) return "";
     const withFooter = footer
       ? appendUnsubscribeFooter({ html: sourceHtml, text: "" }, footer, { preview: true }).html
-      : sourceHtml;
+      : marketing
+        ? missingFooterPreview(sourceHtml)
+        : sourceHtml;
     return fillSamples(withFooter, samples ?? {}, sampleMode);
-  }, [sourceHtml, footer, samples, sampleMode]);
+  }, [sourceHtml, footer, marketing, samples, sampleMode]);
 
   const paneHeader = "flex h-12 items-center justify-between gap-2 border-b px-3";
   const empty = mode === "html" ? !rawHtml.trim() : !reactSource.trim();
@@ -240,10 +244,15 @@ export const EmailContentEditor = forwardRef<EmailContentEditorHandle, Props>(fu
               <CircleCheckIcon className="size-3.5 text-success" />
               Sender, postal address and unsubscribe link are added at send (highlighted in preview).
             </>
+          ) : marketing ? (
+            <>
+              <TriangleAlertIcon className="size-3.5 text-destructive" />
+              No unsubscribe footer configured — this campaign can&apos;t be sent until sender details are set.
+            </>
           ) : (
             <>
               <TriangleAlertIcon className="size-3.5 text-warn" />
-              No unsubscribe footer configured — marketing sends will go out without one.
+              No unsubscribe footer configured.
             </>
           )}
         </p>

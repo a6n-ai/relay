@@ -138,6 +138,7 @@ export const EmailTemplateBuilder = forwardRef<
         variables={variables}
         onChange={onChange}
         footer={footer}
+        marketing={marketing}
         samples={samples}
       />
 
