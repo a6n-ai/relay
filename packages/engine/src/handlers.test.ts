@@ -158,7 +158,7 @@ describe("buildHandlers — email — campaign attachments", () => {
       payload: { href: null, vars: {} },
     });
 
-    expect(fetchMock).toHaveBeenCalledWith("https://files.test/invoice.pdf");
+    expect(fetchMock).toHaveBeenCalledWith("https://files.test/invoice.pdf", expect.objectContaining({ signal: expect.anything() }));
     expect(send).toHaveBeenCalledTimes(1);
     const sent = send.mock.calls[0][0];
     expect(sent.attachments).toEqual([

@@ -85,15 +85,23 @@ export interface HandlerDeps {
  * fetched and base64-embedded per send rather than kept in the DB, so a large
  * attachment doesn't get duplicated into every one of a campaign's outbox rows.
  */
+const ATTACHMENT_TIMEOUT_MS = 15_000;
+// SES raw messages cap at 40MB after base64 (+33%); 10MB per file leaves room for a few.
+const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
+
 async function fetchAttachments(
   refs: { filename: string; url: string; contentType: string }[],
 ): Promise<{ filename: string; content: string; contentType: string }[]> {
   return Promise.all(
     refs.map(async (r) => {
-      const res = await fetch(r.url);
+      // Refs are written by server code only (enqueue callers, admin campaign uploads), never
+      // by recipients. The timeout and cap keep one slow or huge file from stalling the drain.
+      const res = await fetch(r.url, { signal: AbortSignal.timeout(ATTACHMENT_TIMEOUT_MS) });
       // Throwing fails the row so the drain retries; never mail an error page as the file.
       if (!res.ok) throw new Error(`attachment ${r.filename}: HTTP ${res.status}`);
+      if (Number(res.headers?.get("content-length") ?? 0) > MAX_ATTACHMENT_BYTES) throw new Error(`attachment ${r.filename}: too large`);
       const buf = Buffer.from(await res.arrayBuffer());
+      if (buf.byteLength > MAX_ATTACHMENT_BYTES) throw new Error(`attachment ${r.filename}: too large`);
       return { filename: r.filename, content: buf.toString("base64"), contentType: r.contentType };
     }),
   );
