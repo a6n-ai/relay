@@ -28,6 +28,12 @@ export interface EnqueueInput {
   campaignId?: bigint;
   /** Idempotency base; suffixed per channel so the same event enqueues once. */
   dedupeKey?: string;
+  /**
+   * Email only: files fetched by url at send time (like campaign attachments),
+   * so the outbox row stores a link, not the bytes. The url must stay fetchable
+   * without a session until the row sends or exhausts its retries.
+   */
+  attachments?: { filename: string; url: string; contentType: string }[];
 }
 
 /**
@@ -98,7 +104,13 @@ export async function enqueue(
   if (allowed.length === 0) return;
 
   // vars = entity-field snapshot used by templates; title/body feed the generic fallback.
-  const payload = { title: input.title, body: input.body, href: input.href ?? null, vars: input.data ?? {} };
+  const payload = {
+    title: input.title,
+    body: input.body,
+    href: input.href ?? null,
+    vars: input.data ?? {},
+    ...(input.attachments?.length ? { attachments: input.attachments } : {}),
+  };
 
   await tx
     .insert(tables.notificationOutbox)

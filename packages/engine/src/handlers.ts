@@ -91,6 +91,8 @@ async function fetchAttachments(
   return Promise.all(
     refs.map(async (r) => {
       const res = await fetch(r.url);
+      // Throwing fails the row so the drain retries; never mail an error page as the file.
+      if (!res.ok) throw new Error(`attachment ${r.filename}: HTTP ${res.status}`);
       const buf = Buffer.from(await res.arrayBuffer());
       return { filename: r.filename, content: buf.toString("base64"), contentType: r.contentType };
     }),
@@ -98,8 +100,12 @@ async function fetchAttachments(
 }
 
 function payloadParts(row: OutboxRow) {
-  const p = row.payload as { href?: string | null; vars?: Record<string, unknown> };
-  return { href: p.href ?? null, vars: p.vars ?? {} };
+  const p = row.payload as {
+    href?: string | null;
+    vars?: Record<string, unknown>;
+    attachments?: { filename: string; url: string; contentType: string }[];
+  };
+  return { href: p.href ?? null, vars: p.vars ?? {}, attachments: p.attachments ?? [] };
 }
 
 export function buildHandlers(deps: HandlerDeps): Record<Channel, ChannelHandler | undefined> {
@@ -169,7 +175,7 @@ export function buildHandlers(deps: HandlerDeps): Record<Channel, ChannelHandler
     const provider = providers[channel];
     if (!provider) return undefined;
     return async (row) => {
-      const { vars } = payloadParts(row);
+      const { vars, attachments: rowAttachments } = payloadParts(row);
       const target = await resolveRecipientAddress(row, channel, loadUser);
       if (!target) return null;
 
@@ -177,7 +183,7 @@ export function buildHandlers(deps: HandlerDeps): Record<Channel, ChannelHandler
         let rendered: { subject: string; html: string; text: string } | null = null;
         let marketing = false;
         let headers: Record<string, string> | undefined;
-        let attachmentRefs: { filename: string; url: string; contentType: string }[] = [];
+        let attachmentRefs: { filename: string; url: string; contentType: string }[] = rowAttachments;
         if (row.campaignId && deps.campaigns) {
           const base = await renderCampaignEmail(
             db,
@@ -193,7 +199,7 @@ export function buildHandlers(deps: HandlerDeps): Record<Channel, ChannelHandler
               .from(deps.campaigns.tables.campaign)
               .where(eq(deps.campaigns.tables.campaign.id, row.campaignId));
             marketing = !c?.systemKey;
-            attachmentRefs = base.attachments;
+            attachmentRefs = [...base.attachments, ...rowAttachments];
             const { unsubscribe, sender } = deps.campaigns;
             headers = listUnsubscribeHeaders(
               buildOneClickUnsubscribeUrl(unsubscribe.baseUrl, unsubscribe.secret, target.address, row.campaignId),

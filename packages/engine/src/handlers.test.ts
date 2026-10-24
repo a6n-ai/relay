@@ -130,7 +130,7 @@ describe("buildHandlers — email — campaign attachments", () => {
       ]),
     );
     const send = vi.fn().mockResolvedValue({ providerMessageId: "pid" });
-    const fetchMock = vi.fn().mockResolvedValue({ arrayBuffer: async () => Buffer.from("pdf-bytes") });
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200, arrayBuffer: async () => Buffer.from("pdf-bytes") });
     vi.stubGlobal("fetch", fetchMock);
 
     const handlers = buildHandlers({
@@ -164,6 +164,56 @@ describe("buildHandlers — email — campaign attachments", () => {
     expect(sent.attachments).toEqual([
       { filename: "invoice.pdf", content: Buffer.from("pdf-bytes").toString("base64"), contentType: "application/pdf" },
     ]);
+    vi.unstubAllGlobals();
+  });
+});
+
+describe("buildHandlers — email — event-row attachments", () => {
+  const usersTable = { locale: "locale-col" };
+  const templateTable = {};
+  const templateRows = [
+    { channel: "email", locale: "en", subject: "Payment confirmed", body: null, html: "<p>paid</p>", text: "paid", providerTemplateId: null, enabled: true },
+  ];
+  const ref = { filename: "receipt.pdf", url: "https://app.test/receipt.pdf?sig=x", contentType: "application/pdf" };
+
+  function setup() {
+    const db = fakeDb(new Map<object, unknown[]>([[usersTable, [{ email: "c@example.test", phone: null, locale: "en" }]], [templateTable, templateRows]]));
+    const send = vi.fn().mockResolvedValue({ providerMessageId: "pid" });
+    const handlers = buildHandlers({
+      db,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      tables: { notificationTemplate: templateTable } as any,
+      users: { table: usersTable, columns: { id: "id-col", email: "email-col" } },
+      providers: { email: { send } },
+      broadcast: vi.fn(),
+    });
+    const row = {
+      recipientId: 7n,
+      recipientEmail: null,
+      recipientPhone: null,
+      campaignId: null,
+      event: "payment_approved",
+      kind: "transactional",
+      payload: { href: null, vars: {}, attachments: [ref] },
+    };
+    return { handlers, send, row };
+  }
+
+  it("fetches the row's attachment refs and forwards them", async () => {
+    const { handlers, send, row } = setup();
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, status: 200, arrayBuffer: async () => Buffer.from("receipt") }));
+    await handlers.email!(row);
+    expect(send.mock.calls[0][0].attachments).toEqual([
+      { filename: "receipt.pdf", content: Buffer.from("receipt").toString("base64"), contentType: "application/pdf" },
+    ]);
+    vi.unstubAllGlobals();
+  });
+
+  it("fails the send instead of attaching an error response", async () => {
+    const { handlers, send, row } = setup();
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 403, arrayBuffer: async () => Buffer.from("nope") }));
+    await expect(handlers.email!(row)).rejects.toThrow("HTTP 403");
+    expect(send).not.toHaveBeenCalled();
     vi.unstubAllGlobals();
   });
 });
