@@ -13,7 +13,7 @@ import * as React from "react";
 import * as components from "@react-email/components";
 import { render } from "@react-email/render";
 
-export const REACT_SOURCE_MARKER = "/*react-email*/";
+export { REACT_SOURCE_MARKER } from "./react-source-marker";
 
 /** Transpile + evaluate + render a react-email component source to HTML. */
 export async function compileReactSource(source: string): Promise<string> {

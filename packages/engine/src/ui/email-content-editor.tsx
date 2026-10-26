@@ -1,17 +1,17 @@
 "use client";
 
-import { forwardRef, useEffect, useImperativeHandle, useMemo, useState } from "react";
+import { forwardRef, lazy, Suspense, useEffect, useImperativeHandle, useMemo, useState } from "react";
 import { CircleCheckIcon, ExternalLinkIcon, MonitorIcon, SmartphoneIcon, TriangleAlertIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@foundry/ui/button";
 import { cn } from "@foundry/ui/cn";
+import { Skeleton } from "@foundry/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@foundry/ui/tabs";
 import { appendUnsubscribeFooter, missingFooterPreview, type FooterInfo } from "../template";
-import { CodePane } from "./email-editor/code-pane";
 import { createReactCompiler } from "./email-editor/react-compiler";
 import { fillSamples } from "./email-editor/samples";
 import { formatCode } from "./format";
-import { REACT_SOURCE_MARKER } from "./react-template";
+import { REACT_SOURCE_MARKER } from "./react-source-marker";
 
 export type EmailMode = "html" | "react";
 
@@ -30,6 +30,9 @@ const REACT_STARTER = `export default function Email() {
 }`;
 
 export const EDITOR_PANE_HEIGHT = "h-[72vh] min-h-[560px]";
+
+// CodeMirror is most of the editor's weight; split it so the page and preview paint first.
+const CodePane = lazy(() => import("./email-editor/code-pane").then((m) => ({ default: m.CodePane })));
 
 /**
  * Open email HTML full-page without giving it the dashboard's origin: a blob
@@ -180,17 +183,19 @@ export const EmailContentEditor = forwardRef<EmailContentEditorHandle, Props>(fu
               <code className="font-mono">{"{{"}</code> for variables.
             </p>
           )}
-          <CodePane
-            label={mode === "html" ? "Email HTML" : "React email source"}
-            language={mode === "html" ? "html" : "tsx"}
-            value={mode === "html" ? rawHtml : reactSource}
-            variables={variables}
-            onChange={(v) => {
-              if (mode === "html") setRawHtml(v);
-              else setReactSource(v);
-              onChange?.();
-            }}
-          />
+          <Suspense fallback={<Skeleton className="size-full rounded-none" />}>
+            <CodePane
+              label={mode === "html" ? "Email HTML" : "React email source"}
+              language={mode === "html" ? "html" : "tsx"}
+              value={mode === "html" ? rawHtml : reactSource}
+              variables={variables}
+              onChange={(v) => {
+                if (mode === "html") setRawHtml(v);
+                else setReactSource(v);
+                onChange?.();
+              }}
+            />
+          </Suspense>
         </div>
         {mode === "react" && reactError && (
           <div role="alert" className="border-t bg-destructive/10 px-3 py-2 text-xs text-destructive">
