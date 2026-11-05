@@ -41,6 +41,8 @@ export const emailMessageSchema = z
     attachments: z.array(emailAttachmentSchema).optional(),
     /** Extra RFC 5322 headers, e.g. List-Unsubscribe for one-click unsubscribe. */
     headers: z.record(z.string(), z.string()).optional(),
+    /** SES message tags (name -> value, [A-Za-z0-9_-]); event destinations can key metrics on them. SMTP ignores them. */
+    tags: z.record(z.string(), z.string().regex(/^[A-Za-z0-9_-]+$/)).optional(),
   })
   .refine((m) => m.html || m.text, {
     message: "Email must have an html or text body",

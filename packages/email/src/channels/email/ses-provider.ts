@@ -52,6 +52,7 @@ export class SesEmailProvider extends AbstractEmailProvider {
       },
       ReplyToAddresses: message.replyTo ? [formatAddress(message.replyTo)] : undefined,
       ConfigurationSetName: this.configurationSetName,
+      EmailTags: message.tags ? Object.entries(message.tags).map(([Name, Value]) => ({ Name, Value })) : undefined,
       // SESv2's Simple content has no attachment field at all, so any message
       // carrying one must go through Raw (a hand-assembled MIME document)
       // instead — the two are mutually exclusive send paths, not a superset.

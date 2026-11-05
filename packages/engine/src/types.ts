@@ -27,6 +27,8 @@ export interface OutboundMessage {
   headers?: Record<string, string>;
   /** email only. content is base64. */
   attachments?: { filename: string; content: string; contentType: string }[];
+  /** email only: provider message tags (SES EmailTags), e.g. { campaign: "42" }. */
+  tags?: Record<string, string>;
 }
 
 export interface ChannelProvider {

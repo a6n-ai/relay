@@ -272,6 +272,12 @@ describe("buildHandlers — email — system campaign sender", () => {
     await run();
     expect(send.mock.calls[0][0].from).toEqual({ email: "info@example.test", name: "TiffinGrab" });
   });
+
+  it("tags a campaign send with its campaign id, for SES CloudWatch counts", async () => {
+    const { send, run } = setup(null);
+    await run();
+    expect(send.mock.calls[0][0].tags).toEqual({ campaign: "42" });
+  });
 });
 
 describe("resolveRecipientAddress", () => {

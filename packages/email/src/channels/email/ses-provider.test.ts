@@ -36,6 +36,16 @@ describe("SesEmailProvider", () => {
     expect(input.Content?.Simple?.Body?.Text).toBeUndefined();
   });
 
+  it("sends tags as SES EmailTags and rejects a tag value SES would refuse", async () => {
+    const { client, sent } = fakeClient();
+    const p = new SesEmailProvider({ defaultFrom, client });
+    await p.send({ to: { email: "a@b.com" }, subject: "x", text: "y", tags: { campaign: "42" } });
+    expect(sent[0].input.EmailTags).toEqual([{ Name: "campaign", Value: "42" }]);
+    await expect(p.send({ to: { email: "a@b.com" }, subject: "x", text: "y", tags: { campaign: "a b" } })).rejects.toThrow();
+    await p.send({ to: { email: "a@b.com" }, subject: "x", text: "y" });
+    expect(sent[1].input.EmailTags).toBeUndefined();
+  });
+
   it("passes extra headers (List-Unsubscribe) on Simple", async () => {
     const { client, sent } = fakeClient();
     const p = new SesEmailProvider({ defaultFrom, client });
