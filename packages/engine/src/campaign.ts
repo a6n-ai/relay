@@ -3,7 +3,7 @@ import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import type { AudienceDef, CampaignTables } from "./campaign-schema";
 import type { NotificationTables } from "./schema";
 import { resolveAudience, type AudienceDeps } from "./audience";
-import { enqueue, type UsersRef } from "./enqueue";
+import { enqueueMany, type UsersRef } from "./enqueue";
 import type { Channel } from "./types";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -61,23 +61,26 @@ export async function materializeCampaign(
     const slice = recipients.slice(i, i + BATCH);
     // One transaction per batch, not per campaign: a single transaction over
     // 10k recipients would hold locks for minutes and block the drainer.
-    await db.transaction(async (tx) => {
-      for (const r of slice) {
-        await enqueue(tx, tables, users, {
+    await db.transaction((tx) =>
+      enqueueMany(
+        tx,
+        tables,
+        users,
+        slice.map((r) => ({
           recipientId: r.userId,
           recipientEmail: r.email,
           recipientPhone: r.phone,
           title: "",
           body: "",
-          kind: "marketing",
+          kind: "marketing" as const,
           campaignId: campaign.id as bigint,
           channels: campaign.channels as Channel[],
           data: { contact: contactVars(r) },
           dedupeKey: `cmp:${campaignPublicId}:${(r.email ?? r.phone ?? "").toLowerCase()}`,
-        });
-        queued += 1;
-      }
-    });
+        })),
+      ),
+    );
+    queued += slice.length;
   }
 
   await db

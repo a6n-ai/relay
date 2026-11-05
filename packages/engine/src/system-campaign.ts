@@ -2,7 +2,7 @@ import { eq, sql } from "drizzle-orm";
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import type { AudienceDef, CampaignTables } from "./campaign-schema";
 import type { NotificationTables } from "./schema";
-import { enqueue, type UsersRef } from "./enqueue";
+import { enqueueMany, type UsersRef } from "./enqueue";
 import type { Channel } from "./types";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -78,21 +78,24 @@ export async function runSystemCampaign(
   const before = await db.$count(tables.notificationOutbox, eq(tables.notificationOutbox.campaignId, campaign.id));
   for (let i = 0; i < input.recipients.length; i += BATCH) {
     const slice = input.recipients.slice(i, i + BATCH);
-    await db.transaction(async (tx) => {
-      for (const r of slice) {
-        await enqueue(tx, tables, users, {
+    await db.transaction((tx) =>
+      enqueueMany(
+        tx,
+        tables,
+        users,
+        slice.map((r) => ({
           recipientId: r.userId,
           title: "",
           body: "",
           href: input.href,
-          kind: "marketing",
+          kind: "marketing" as const,
           campaignId: campaign.id as bigint,
           channels: campaign.channels as Channel[],
           data: { contact: { name: r.name ?? "" }, ...(input.vars ?? {}) },
           dedupeKey: `cmp:${campaign.publicId}:${input.runKey}:${r.userId}`,
-        });
-      }
-    });
+        })),
+      ),
+    );
   }
   // Counted from the outbox, not the loop: suppressed and already-sent recipients write no row.
   const queued =

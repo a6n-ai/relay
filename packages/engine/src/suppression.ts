@@ -91,6 +91,28 @@ export async function suppressedChannelsFor(
   return [...new Set(rows.map((r) => r.channel as Channel))];
 }
 
+/**
+ * Every suppression row for any of `addresses`, for callers that resolve many
+ * recipients at once (enqueueMany) and filter by scope in memory.
+ */
+export async function suppressionRowsFor(
+  db: Db,
+  tables: NotificationTables,
+  addresses: string[],
+): Promise<{ address: string; channel: Channel; scope: SuppressionScope }[]> {
+  const normalized = [...new Set(addresses.filter(Boolean).map(normalizeAddress))];
+  if (normalized.length === 0) return [];
+  const rows = await db
+    .select({
+      address: tables.messageSuppression.address,
+      channel: tables.messageSuppression.channel,
+      scope: tables.messageSuppression.scope,
+    })
+    .from(tables.messageSuppression)
+    .where(inArray(tables.messageSuppression.address, normalized));
+  return rows as { address: string; channel: Channel; scope: SuppressionScope }[];
+}
+
 export type SuppressionKind = "unsubscribe" | "bounce" | "complaint" | "manual" | "other";
 
 /**
