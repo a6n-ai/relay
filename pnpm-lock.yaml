@@ -179,9 +179,9 @@ importers:
 
   packages/email:
     dependencies:
-      '@aws-sdk/client-sesv2':
-        specifier: ^3.700.0
-        version: 3.1121.0
+      '@foundry/aws':
+        specifier: github:a6n-ai/foundry#path:packages/aws
+        version: https://codeload.github.com/a6n-ai/foundry/tar.gz/95b9828a2f1f051e7904ee38d7a85285e82656b0#path:packages/aws
       '@foundry/commons':
         specifier: github:a6n-ai/foundry#path:packages/commons
         version: https://codeload.github.com/a6n-ai/foundry/tar.gz/e4981de3e9c631c57d17c57798ab65b95f3c4f90#path:packages/commons
@@ -1258,8 +1258,12 @@ packages:
     resolution: {gitHosted: true, integrity: sha512-dN0lESLWrD5HktBRPkhIyc38Q40q3/vU85wypfPvCBmyY2+G8hNnyVPG7PTLzWwsOXMVYOk1FyLdgx5zqfrdYA==, path: packages/auth, tarball: https://codeload.github.com/a6n-ai/foundry/tar.gz/572f2437a45e0e58a30126e3964b8397d2f3bcba}
     version: 0.0.0
 
-  '@foundry/commons@https://codeload.github.com/a6n-ai/foundry/tar.gz/02b2132e8acdab5e7011fa851810ef7b5f21e506#path:packages/commons':
-    resolution: {gitHosted: true, path: packages/commons, tarball: https://codeload.github.com/a6n-ai/foundry/tar.gz/02b2132e8acdab5e7011fa851810ef7b5f21e506}
+  '@foundry/aws@https://codeload.github.com/a6n-ai/foundry/tar.gz/95b9828a2f1f051e7904ee38d7a85285e82656b0#path:packages/aws':
+    resolution: {gitHosted: true, integrity: sha512-P1I4p78xuywcBP2sErQ6XLcptuUm25quwt3bogRtFSxGH16n6yDG+QHP++crUZ4SNWz5SN9WZxV6wxKuhbhjig==, path: packages/aws, tarball: https://codeload.github.com/a6n-ai/foundry/tar.gz/95b9828a2f1f051e7904ee38d7a85285e82656b0}
+    version: 0.0.0
+
+  '@foundry/commons@https://codeload.github.com/a6n-ai/foundry/tar.gz/95b9828a2f1f051e7904ee38d7a85285e82656b0#path:packages/commons':
+    resolution: {gitHosted: true, integrity: sha512-P1I4p78xuywcBP2sErQ6XLcptuUm25quwt3bogRtFSxGH16n6yDG+QHP++crUZ4SNWz5SN9WZxV6wxKuhbhjig==, path: packages/commons, tarball: https://codeload.github.com/a6n-ai/foundry/tar.gz/95b9828a2f1f051e7904ee38d7a85285e82656b0}
     version: 0.0.0
 
   '@foundry/commons@https://codeload.github.com/a6n-ai/foundry/tar.gz/e4981de3e9c631c57d17c57798ab65b95f3c4f90#path:packages/commons':
@@ -1305,8 +1309,8 @@ packages:
     peerDependencies:
       eslint: ^9
 
-  '@foundry/realtime@https://codeload.github.com/a6n-ai/foundry/tar.gz/02b2132e8acdab5e7011fa851810ef7b5f21e506#path:packages/realtime':
-    resolution: {gitHosted: true, path: packages/realtime, tarball: https://codeload.github.com/a6n-ai/foundry/tar.gz/02b2132e8acdab5e7011fa851810ef7b5f21e506}
+  '@foundry/realtime@https://codeload.github.com/a6n-ai/foundry/tar.gz/95b9828a2f1f051e7904ee38d7a85285e82656b0#path:packages/realtime':
+    resolution: {gitHosted: true, integrity: sha512-P1I4p78xuywcBP2sErQ6XLcptuUm25quwt3bogRtFSxGH16n6yDG+QHP++crUZ4SNWz5SN9WZxV6wxKuhbhjig==, path: packages/realtime, tarball: https://codeload.github.com/a6n-ai/foundry/tar.gz/95b9828a2f1f051e7904ee38d7a85285e82656b0}
     version: 0.0.0
     peerDependencies:
       react: ^19
@@ -2807,6 +2811,7 @@ packages:
   '@smithy/core@3.33.3':
     resolution: {integrity: sha512-CsOeKq/9kA3y6VJHt+/+VTCtBaxJ4OTFpgrjIUhPpDIKxBci1k2bJaQASF2h/ELWrulGp+t97DZ0mevfAD8idg==}
     engines: {node: '>=18.0.0'}
+    deprecated: Deprecated due to a bug in custom logger data redaction. See https://github.com/aws/aws-sdk-js-v3/issues/8393.
 
   '@smithy/credential-provider-imds@4.5.2':
     resolution: {integrity: sha512-A9uSdn72ozbRUSit0eib0TW7nXuNPlaeM0zcGkJ+nE6tFcSDbnmtwoxbTCFBukVQcszDAyvsd7+rTduPTXpygg==}
@@ -3417,6 +3422,9 @@ packages:
   available-typed-arrays@1.0.7:
     resolution: {integrity: sha512-wvUjBtSGN7+7SjNpq/9M2Tg350UZD3q62IFZLbRAR1bSMlCo1ZaeW+BJ+D090e4hIIZLBcTDWe4Mh4jvUDajzQ==}
     engines: {node: '>= 0.4'}
+
+  aws4fetch@1.0.20:
+    resolution: {integrity: sha512-/djoAN709iY65ETD6LKCtyyEI04XIBP5xVvfmNxsEP0uJB5tyaGBztSryRr4HqMStr9R06PisQE7m9zDTXKu6g==}
 
   axe-core@4.13.0:
     resolution: {integrity: sha512-UzGt8zg7Ny8djbYMhxl2zuEevVa7r2gJjYY5Lwr1xM7+XU2nd6CkIWFTVcCIbAP63vSz71NaVyyuSk9lHKcy0A==}
@@ -4958,6 +4966,9 @@ packages:
   libphonenumber-js@1.13.12:
     resolution: {integrity: sha512-uLVeV1c9OTk6qkdqnj+mpMD+ZdnZ0szVyWu58HwMmpwkHA1gCEkyjd3veZQXDnuw9KEwSRjcc9B1pS9XKIN1fA==}
 
+  libphonenumber-js@1.13.15:
+    resolution: {integrity: sha512-AHdhEQeDFEJ4GKDAQ9AwxChy+v2kUILUB3TGQRpkXMkWePjXTU/WQEzWVQoIx/Gz8fE73Wr5SEuZCy2vk8jrMQ==}
+
   lightningcss-android-arm64@1.32.0:
     resolution: {integrity: sha512-YK7/ClTt4kAK0vo6w3X+Pnm0D2cf2vPHbhOXdoNti1Ga0al1P4TBZhwjATvjNwLEBCnKvjJc2jQgHXH0NEwlAg==}
     engines: {node: '>= 12.0.0'}
@@ -5133,6 +5144,10 @@ packages:
 
   lru-cache@11.5.2:
     resolution: {integrity: sha512-4pfM1Ff0x50o0tQwb5ucw/RzNyD0/YJME6IVcStalZuMWxdt3sR3huStTtxz4PUmvZfRguvDejasvQ2kifR11g==}
+    engines: {node: 20 || >=22}
+
+  lru-cache@11.5.3:
+    resolution: {integrity: sha512-U4N8FgzmWxc8k1VH8Kr6lQg18U7Fjvby6wXHVRX/ZZ7IwWbRMgrRbP0Wrb5q5NVinryp4SQampHKdvtecItxUg==}
     engines: {node: 20 || >=22}
 
   lru-cache@5.1.1:
@@ -5614,8 +5629,15 @@ packages:
   pino-abstract-transport@2.0.0:
     resolution: {integrity: sha512-F63x5tizV6WCh4R6RHyi2Ml+M70DNRXt/+HANowMflpgGFMAym/VKm6G7ZOQRjqN7XbGxK1Lg9t6ZrtzOaivMw==}
 
+  pino-abstract-transport@3.0.0:
+    resolution: {integrity: sha512-wlfUczU+n7Hy/Ha5j9a/gZNy7We5+cXp8YL+X+PG8S0KXxw7n/JXA3c46Y0zQznIJ83URJiwy7Lh56WLokNuxg==}
+
   pino-std-serializers@7.1.0:
     resolution: {integrity: sha512-BndPH67/JxGExRgiX1dX0w1FvZck5Wa4aal9198SrRhZjH3GxKQUKIBnYJTdj2HDN3UQAS06HlfcSbQj2OHmaw==}
+
+  pino@10.4.0:
+    resolution: {integrity: sha512-bk1ZMTwG/Vymx+zPoa28MhNzucFvXJWp3csrSuxuHPSMeUettaCoQ5Jvg07mtC4JGNpcfTwz41oVCnNgBK9+vA==}
+    hasBin: true
 
   pino@9.14.0:
     resolution: {integrity: sha512-8OEwKp5juEvb/MjpIc4hjqfgCNysrS94RIOMXYvpYCdm/jglrKEiAYmiumbmGhCvs+IcInsphYDFwqrjr7398w==}
@@ -5824,6 +5846,9 @@ packages:
   real-require@0.2.0:
     resolution: {integrity: sha512-57frrGM/OCTLqLOAh0mhVA9VBMHd+9U7Zb2THMGdBUoZVOtGbJzjxsYGDJ3A9AYYCP4hn6y1TVbaOfzWtm5GFg==}
     engines: {node: '>= 12.13.0'}
+
+  real-require@1.0.0:
+    resolution: {integrity: sha512-P4nbQYQfePJxRSmY+v/KINxVucm4NF3p3s7pJveMTtom52FR4YGltUQLB8idDXwDDWW+eYrWDFbuzUnjoWHF7g==}
 
   recast@0.23.21:
     resolution: {integrity: sha512-mFAyJq9vUbSTARLZUvAEf1z3YxlvAwswbmxMx2mPA/MSm4KmpwvwvhsH/NIrZhyOuwD60Lzyw2qh83uCbgTPYw==}
@@ -6242,6 +6267,10 @@ packages:
   thread-stream@3.2.0:
     resolution: {integrity: sha512-zLBvqpwr4Esa0kRjcrzGU6zL25lePWaCLMx0RQFrmteozIfeNdaMLpG5U7PeHzvlFkAWaRKA9/KVW4F60iB+qw==}
 
+  thread-stream@4.2.1:
+    resolution: {integrity: sha512-Stg6edJXC/6/xqGwSXwFokrUhChJ18amEjpKH89WrQQ0oVFDF+pUUcTpiwWhFUrE89Vf16FBOlwhaw+lescxMQ==}
+    engines: {node: '>=20'}
+
   tiny-invariant@1.3.3:
     resolution: {integrity: sha512-+FbBPE1o9QAYvviau/qC5SE3caw21q3xkvWKBtja5vgqOWIHHJ3ioaq1VPfn/Szqctz2bU/oYeKd9/z5BL+PVg==}
 
@@ -6647,6 +6676,9 @@ packages:
 
   zod@4.5.4:
     resolution: {integrity: sha512-sC95tT5iHHH9gtpj6A81kh+NEaRAUFN+qlUPDUbRfOMvNf5QCBqsb3WgvnpVtK5Y+4UfA6KqufotuTvMGiTlsA==}
+
+  zod@4.6.7:
+    resolution: {integrity: sha512-g8W2D2kU6a8untc053fX1uVBKzM7yqAxW/3zwk83+6RyF2+SKOuV+c0wBDhUwzV1PaGapmZH+rmcUzPf+3CGwg==}
 
   zwitch@2.0.4:
     resolution: {integrity: sha512-bXE4cR/kVZhKZX/RjPEflHaKVhUVl85noU3v6b8apfQEc1x4A+zBxjZ4lN8LqGd6WZ3dl98pY4o717VFmoPp+A==}
@@ -7541,12 +7573,16 @@ snapshots:
       - vitest
       - vue
 
-  '@foundry/commons@https://codeload.github.com/a6n-ai/foundry/tar.gz/02b2132e8acdab5e7011fa851810ef7b5f21e506#path:packages/commons':
+  '@foundry/aws@https://codeload.github.com/a6n-ai/foundry/tar.gz/95b9828a2f1f051e7904ee38d7a85285e82656b0#path:packages/aws':
     dependencies:
-      libphonenumber-js: 1.13.12
-      lru-cache: 11.5.2
-      pino: 9.14.0
-      zod: 4.5.4
+      aws4fetch: 1.0.20
+
+  '@foundry/commons@https://codeload.github.com/a6n-ai/foundry/tar.gz/95b9828a2f1f051e7904ee38d7a85285e82656b0#path:packages/commons':
+    dependencies:
+      libphonenumber-js: 1.13.15
+      lru-cache: 11.5.3
+      pino: 10.4.0
+      zod: 4.6.7
 
   '@foundry/commons@https://codeload.github.com/a6n-ai/foundry/tar.gz/e4981de3e9c631c57d17c57798ab65b95f3c4f90#path:packages/commons':
     dependencies:
@@ -7583,7 +7619,7 @@ snapshots:
   '@foundry/design-system@https://codeload.github.com/a6n-ai/foundry/tar.gz/572f2437a45e0e58a30126e3964b8397d2f3bcba#path:packages/design-system(@types/react-dom@19.2.5(@types/react@19.2.18))(@types/react@19.2.18)(next@16.3.3(@babel/core@7.29.7(supports-color@7.2.0))(@types/node@20.19.43)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
     dependencies:
       '@foundry/commons': https://codeload.github.com/a6n-ai/foundry/tar.gz/e4981de3e9c631c57d17c57798ab65b95f3c4f90#path:packages/commons
-      '@foundry/realtime': https://codeload.github.com/a6n-ai/foundry/tar.gz/02b2132e8acdab5e7011fa851810ef7b5f21e506#path:packages/realtime(react@19.2.4)
+      '@foundry/realtime': https://codeload.github.com/a6n-ai/foundry/tar.gz/95b9828a2f1f051e7904ee38d7a85285e82656b0#path:packages/realtime(react@19.2.4)
       '@foundry/ui': https://codeload.github.com/a6n-ai/foundry/tar.gz/572f2437a45e0e58a30126e3964b8397d2f3bcba#path:packages/ui(@types/react-dom@19.2.5(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       lucide-react: 1.38.0(react@19.2.4)
       maplibre-gl: 5.24.0
@@ -7597,7 +7633,7 @@ snapshots:
   '@foundry/design-system@https://codeload.github.com/a6n-ai/foundry/tar.gz/572f2437a45e0e58a30126e3964b8397d2f3bcba#path:packages/design-system(@types/react-dom@19.2.5(@types/react@19.2.18))(@types/react@19.2.18)(next@16.3.3(@babel/core@7.29.7(supports-color@7.2.0))(@types/node@22.20.1)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
     dependencies:
       '@foundry/commons': https://codeload.github.com/a6n-ai/foundry/tar.gz/e4981de3e9c631c57d17c57798ab65b95f3c4f90#path:packages/commons
-      '@foundry/realtime': https://codeload.github.com/a6n-ai/foundry/tar.gz/02b2132e8acdab5e7011fa851810ef7b5f21e506#path:packages/realtime(react@19.2.4)
+      '@foundry/realtime': https://codeload.github.com/a6n-ai/foundry/tar.gz/95b9828a2f1f051e7904ee38d7a85285e82656b0#path:packages/realtime(react@19.2.4)
       '@foundry/ui': https://codeload.github.com/a6n-ai/foundry/tar.gz/572f2437a45e0e58a30126e3964b8397d2f3bcba#path:packages/ui(@types/react-dom@19.2.5(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       lucide-react: 1.38.0(react@19.2.4)
       maplibre-gl: 5.24.0
@@ -7628,9 +7664,9 @@ snapshots:
       - supports-color
       - typescript
 
-  '@foundry/realtime@https://codeload.github.com/a6n-ai/foundry/tar.gz/02b2132e8acdab5e7011fa851810ef7b5f21e506#path:packages/realtime(react@19.2.4)':
+  '@foundry/realtime@https://codeload.github.com/a6n-ai/foundry/tar.gz/95b9828a2f1f051e7904ee38d7a85285e82656b0#path:packages/realtime(react@19.2.4)':
     dependencies:
-      '@foundry/commons': https://codeload.github.com/a6n-ai/foundry/tar.gz/02b2132e8acdab5e7011fa851810ef7b5f21e506#path:packages/commons
+      '@foundry/commons': https://codeload.github.com/a6n-ai/foundry/tar.gz/95b9828a2f1f051e7904ee38d7a85285e82656b0#path:packages/commons
       react: 19.2.4
 
   '@foundry/routes@https://codeload.github.com/a6n-ai/foundry/tar.gz/216e096a695666927b412e9a3a7c0733876d82a4#path:packages/routes(drizzle-orm@0.45.2(kysely@0.29.5)(postgres@3.4.9))(next@16.3.3(@babel/core@7.29.7(supports-color@7.2.0))(@types/node@20.19.43)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))':
@@ -9580,6 +9616,8 @@ snapshots:
     dependencies:
       possible-typed-array-names: 1.1.0
 
+  aws4fetch@1.0.20: {}
+
   axe-core@4.13.0: {}
 
   axobject-query@4.1.0: {}
@@ -11257,6 +11295,8 @@ snapshots:
 
   libphonenumber-js@1.13.12: {}
 
+  libphonenumber-js@1.13.15: {}
+
   lightningcss-android-arm64@1.32.0:
     optional: true
 
@@ -11380,6 +11420,8 @@ snapshots:
       js-tokens: 4.0.0
 
   lru-cache@11.5.2: {}
+
+  lru-cache@11.5.3: {}
 
   lru-cache@5.1.1:
     dependencies:
@@ -12110,7 +12152,25 @@ snapshots:
     dependencies:
       split2: 4.2.0
 
+  pino-abstract-transport@3.0.0:
+    dependencies:
+      split2: 4.2.0
+
   pino-std-serializers@7.1.0: {}
+
+  pino@10.4.0:
+    dependencies:
+      '@pinojs/redact': 0.4.0
+      atomic-sleep: 1.0.0
+      on-exit-leak-free: 2.1.2
+      pino-abstract-transport: 3.0.0
+      pino-std-serializers: 7.1.0
+      process-warning: 5.1.0
+      quick-format-unescaped: 4.0.4
+      real-require: 1.0.0
+      safe-stable-stringify: 2.5.0
+      sonic-boom: 4.2.1
+      thread-stream: 4.2.1
 
   pino@9.14.0:
     dependencies:
@@ -12364,6 +12424,8 @@ snapshots:
   react@19.2.4: {}
 
   real-require@0.2.0: {}
+
+  real-require@1.0.0: {}
 
   recast@0.23.21:
     dependencies:
@@ -13014,6 +13076,10 @@ snapshots:
     dependencies:
       real-require: 0.2.0
 
+  thread-stream@4.2.1:
+    dependencies:
+      real-require: 1.0.0
+
   tiny-invariant@1.3.3: {}
 
   tinybench@2.9.0: {}
@@ -13487,5 +13553,7 @@ snapshots:
   zod@3.25.76: {}
 
   zod@4.5.4: {}
+
+  zod@4.6.7: {}
 
   zwitch@2.0.4: {}

@@ -1,5 +1,5 @@
 import { SesEmailProvider } from "./ses-provider";
-import { SmtpEmailProvider, type SmtpProviderConfig } from "./smtp-provider";
+import { AppError } from "@foundry/commons";
 import type { EmailAddress } from "./types";
 import type { EmailProvider } from "./provider";
 
@@ -23,37 +23,16 @@ export function defaultFromAddress(
   };
 }
 
-function smtpConfigFromEnv(env: EmailEnv, defaultFrom: EmailAddress): SmtpProviderConfig {
-  const port = Number(env.SMTP_PORT ?? "587");
-  const dkim =
-    env.SMTP_DKIM_DOMAIN && env.SMTP_DKIM_PRIVATE_KEY
-      ? {
-          domainName: env.SMTP_DKIM_DOMAIN,
-          keySelector: env.SMTP_DKIM_SELECTOR ?? "relay",
-          privateKey: env.SMTP_DKIM_PRIVATE_KEY.replace(/\\n/g, "\n"),
-        }
-      : undefined;
-  return {
-    defaultFrom,
-    host: env.SMTP_HOST ?? "127.0.0.1",
-    port: Number.isFinite(port) ? port : 587,
-    secure: env.SMTP_SECURE === "true" || env.SMTP_PORT === "465",
-    auth: env.SMTP_USER ? { user: env.SMTP_USER, pass: env.SMTP_PASS ?? "" } : undefined,
-    dkim,
-  };
-}
-
-/** SES by default; set EMAIL_TRANSPORT=smtp for a configured SMTP relay. */
+/** SES only; SMTP lives behind @relay/email/smtp so nodemailer's SMTP transport stays out of edge bundles. */
 export function createEmailProviderFromEnv(
   env: EmailEnv = process.env,
   opts?: { defaultFrom?: EmailAddress },
 ): EmailProvider {
-  const defaultFrom = opts?.defaultFrom ?? defaultFromAddress(env);
   if (emailTransportKind(env) === "smtp") {
-    return new SmtpEmailProvider(smtpConfigFromEnv(env, defaultFrom));
+    throw new AppError("EMAIL_TRANSPORT=smtp: import createSmtpProviderFromEnv from @relay/email/smtp", 500);
   }
   return new SesEmailProvider({
-    defaultFrom,
+    defaultFrom: opts?.defaultFrom ?? defaultFromAddress(env),
     region: env.AWS_REGION,
     configurationSetName: env.SES_CONFIGURATION_SET,
   });

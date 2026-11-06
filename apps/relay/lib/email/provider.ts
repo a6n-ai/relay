@@ -1,4 +1,5 @@
-import { type EmailAddress, type EmailMessage, type EmailProvider, createEmailProviderFromEnv } from "@relay/email";
+import { type EmailAddress, type EmailMessage, type EmailProvider, createEmailProviderFromEnv, emailTransportKind } from "@relay/email";
+import { createSmtpProviderFromEnv } from "@relay/email/smtp";
 import { createLogger } from "@foundry/commons/logger";
 import { applySmtpRowToEnv } from "./smtp-env";
 
@@ -31,12 +32,16 @@ export async function hydrateSmtpFromDb(): Promise<void> {
 
 export function getEmailProvider(): EmailProvider {
   if (!cached) {
-    const inner = createEmailProviderFromEnv(process.env, {
+    const opts = {
       defaultFrom: {
         email: process.env.NOTIFY_FROM_EMAIL ?? "noreply@localhost",
         name: process.env.NOTIFY_FROM_NAME ?? "Relay",
       },
-    });
+    };
+    const inner =
+      emailTransportKind(process.env) === "smtp"
+        ? createSmtpProviderFromEnv(process.env, opts)
+        : createEmailProviderFromEnv(process.env, opts);
     cached = {
       name: inner.name,
       async send(message) {

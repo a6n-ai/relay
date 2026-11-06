@@ -1,14 +1,21 @@
 import { describe, expect, it } from "vitest";
 import { createEmailProviderFromEnv, defaultFromAddress, emailTransportKind } from "./from-env";
+import { createSmtpProviderFromEnv } from "../../smtp";
 
 describe("createEmailProviderFromEnv", () => {
-  it("defaults to SES", () => {
+  it("defaults to SES and wires the configuration set", () => {
     expect(emailTransportKind({})).toBe("ses");
-    expect(createEmailProviderFromEnv({}).name).toBe("ses");
+    const p = createEmailProviderFromEnv({ SES_CONFIGURATION_SET: "tg-events" });
+    expect(p.name).toBe("ses");
+    expect(p).toMatchObject({ configurationSetName: "tg-events" });
   });
 
-  it("selects SMTP when EMAIL_TRANSPORT=smtp", () => {
-    const p = createEmailProviderFromEnv({
+  it("throws pointing at @relay/email/smtp when EMAIL_TRANSPORT=smtp", () => {
+    expect(() => createEmailProviderFromEnv({ EMAIL_TRANSPORT: "smtp" })).toThrow(/@relay\/email\/smtp/);
+  });
+
+  it("createSmtpProviderFromEnv builds the SMTP provider", () => {
+    const p = createSmtpProviderFromEnv({
       EMAIL_TRANSPORT: "smtp",
       SMTP_HOST: "smtp.example.com",
       NOTIFY_FROM_EMAIL: "noreply@example.com",
@@ -18,7 +25,7 @@ describe("createEmailProviderFromEnv", () => {
 
   it("treats EMAIL_PROVIDER=smtp as SMTP and port 465 as implicit TLS", () => {
     expect(emailTransportKind({ EMAIL_PROVIDER: "smtp" })).toBe("smtp");
-    const p = createEmailProviderFromEnv({
+    const p = createSmtpProviderFromEnv({
       EMAIL_TRANSPORT: "smtp",
       SMTP_PORT: "465",
     });
