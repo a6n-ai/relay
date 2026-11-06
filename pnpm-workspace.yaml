@@ -29,3 +29,6 @@ overrides:
   "@foundry/storage": "github:a6n-ai/foundry#path:packages/storage"
   "@foundry/themes": "github:a6n-ai/foundry#path:packages/themes"
   "@foundry/ui": "github:a6n-ai/foundry#path:packages/ui"
+
+minimumReleaseAgeExclude:
+  - react-email@6.11.7

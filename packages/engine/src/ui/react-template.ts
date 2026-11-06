@@ -10,8 +10,8 @@
 
 import { transform } from "sucrase";
 import * as React from "react";
-import * as components from "@react-email/components";
-import { render } from "@react-email/render";
+import * as components from "react-email";
+import { render } from "react-email";
 
 export { REACT_SOURCE_MARKER } from "./react-source-marker";
 
@@ -24,7 +24,12 @@ export async function compileReactSource(source: string): Promise<string> {
   });
   // Components and React are injected as scope; `import` statements in the source
   // are stripped to no-ops by the imports transform, so it never pulls modules.
-  const scope: Record<string, unknown> = { React, ...components };
+  // Only PascalCase exports: react-email v6 also exports lowercase helpers/themes (render, pretty, nord, cb…)
+  // and a `const x` in template source clashing with an injected parameter is a SyntaxError.
+  const scope: Record<string, unknown> = {
+    React,
+    ...Object.fromEntries(Object.entries(components).filter(([k]) => /^[A-Z]/.test(k))),
+  };
   const mod: { exports: Record<string, unknown> } = { exports: {} };
   const factory = new Function(
     "module",
