@@ -11,9 +11,20 @@ export interface CampaignStatsDeps {
   tables: NotificationTables & CampaignTables;
 }
 
+const STAMP_COLUMNS = {
+  delivered: "deliveredAt",
+  opened: "openedAt",
+  clicked: "clickedAt",
+  bounced: "bouncedAt",
+  complained: "complainedAt",
+  delayed: "delayedAt",
+  rejected: "rejectedAt",
+  render_failed: "renderFailedAt",
+} as const;
+
 /**
  * Attribute an SES event to its campaign via the provider message id stamped on
- * the outbox row when it was sent. Delivery/Open are also stamped on the row
+ * the outbox row when it was sent. Every status is also stamped on the row
  * itself; a transactional send has no campaign_id, so that is all it records.
  */
 export async function recordCampaignEvent(
@@ -31,11 +42,11 @@ export async function recordCampaignEvent(
   if (!row) return;
 
   // Per-message state, for every send (transactional too): first event wins.
-  const stamp = type === "delivered" ? o.deliveredAt : type === "opened" ? o.openedAt : undefined;
-  if (stamp) {
+  const column = Object.hasOwn(STAMP_COLUMNS, type) ? STAMP_COLUMNS[type as keyof typeof STAMP_COLUMNS] : undefined;
+  if (column) {
     await db
       .update(o)
-      .set({ [type === "delivered" ? "deliveredAt" : "openedAt"]: sql`coalesce(${stamp}, ${Date.now()})` })
+      .set({ [column]: sql`coalesce(${o[column]}, ${Date.now()})` })
       .where(eq(o.id, row.id));
   }
   if (!row.campaignId) return;
