@@ -7,6 +7,7 @@ import { SmtpSettingsForm } from "@/app/(dashboard)/dashboard/sending/smtp-form"
 import { loadEmailChannelSnapshot } from "@/lib/email/load-snapshot";
 import { operatorEmailPrereqs } from "@/lib/email/prerequisites";
 import { loadOperatorSmtpRow } from "@/lib/email/from-address";
+import { EmailEventsSection } from "./email-events-section";
 import { sendingDomainsService } from "@/lib/services/sending.service";
 
 export const dynamic = "force-dynamic";
@@ -72,6 +73,9 @@ export default async function EmailSettingsPage() {
           </div>
         }
       />
+      <SectionCard title="Email events" subtitle="Which delivery events each sending stream reports, and where they go.">
+        <EmailEventsSection />
+      </SectionCard>
     </PageShell>
   );
 }

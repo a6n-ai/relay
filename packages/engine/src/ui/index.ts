@@ -34,3 +34,4 @@ export * from "./template-status";
 export * from "./use-notifications";
 export * from "./campaign-flow/campaign-flow";
 export * from "./campaign-flow/steps";
+export * from "./email-events-settings";
