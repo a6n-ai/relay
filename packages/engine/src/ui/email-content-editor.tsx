@@ -1,6 +1,7 @@
 "use client";
 
-import { forwardRef, lazy, Suspense, useEffect, useImperativeHandle, useMemo, useState } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 import { CircleCheckIcon, ExternalLinkIcon, MonitorIcon, SmartphoneIcon, TriangleAlertIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@foundry/ui/button";
@@ -31,8 +32,11 @@ const REACT_STARTER = `export default function Email() {
 
 export const EDITOR_PANE_HEIGHT = "h-[72vh] min-h-[560px]";
 
-// CodeMirror is most of the editor's weight; split it so the page and preview paint first.
-const CodePane = lazy(() => import("./email-editor/code-pane").then((m) => ({ default: m.CodePane })));
+// ssr:false keeps CodeMirror out of the server bundle: Workers bundle every reachable import().
+const CodePane = dynamic(() => import("./email-editor/code-pane").then((m) => m.CodePane), {
+  ssr: false,
+  loading: () => <Skeleton className="size-full rounded-none" />,
+});
 
 /**
  * Open email HTML full-page without giving it the dashboard's origin: a blob
@@ -183,19 +187,17 @@ export const EmailContentEditor = forwardRef<EmailContentEditorHandle, Props>(fu
               <code className="font-mono">{"{{"}</code> for variables.
             </p>
           )}
-          <Suspense fallback={<Skeleton className="size-full rounded-none" />}>
-            <CodePane
-              label={mode === "html" ? "Email HTML" : "React email source"}
-              language={mode === "html" ? "html" : "tsx"}
-              value={mode === "html" ? rawHtml : reactSource}
-              variables={variables}
-              onChange={(v) => {
-                if (mode === "html") setRawHtml(v);
-                else setReactSource(v);
-                onChange?.();
-              }}
-            />
-          </Suspense>
+          <CodePane
+            label={mode === "html" ? "Email HTML" : "React email source"}
+            language={mode === "html" ? "html" : "tsx"}
+            value={mode === "html" ? rawHtml : reactSource}
+            variables={variables}
+            onChange={(v) => {
+              if (mode === "html") setRawHtml(v);
+              else setReactSource(v);
+              onChange?.();
+            }}
+          />
         </div>
         {mode === "react" && reactError && (
           <div role="alert" className="border-t bg-destructive/10 px-3 py-2 text-xs text-destructive">
