@@ -1,18 +1,19 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Badge } from "@foundry/ui/badge";
 import { Button } from "@foundry/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@foundry/ui/dialog";
 import { Switch } from "@foundry/ui/switch";
 import {
   EMAIL_EVENT_TYPES, FORCED_WEBHOOK, routingDiff, typeLabel,
-  type EmailEventRouting, type EmailEventType, type EmailStreamInfo,
+  type EmailEventRouting, type EmailEventType, type EmailStream,
 } from "./email-events-diff";
 
 export interface EmailTypeRow { event: string; label: string; category: string; categoryLabel: string; tracked: boolean; locked: boolean }
 export interface StreamState {
-  stream: EmailStreamInfo;
+  stream: EmailStream;
   routing: EmailEventRouting;
   volume: Partial<Record<EmailEventType, number>>;
   /** Set when the stream's SES destinations could not be read; the rest of the page still renders. */
@@ -105,7 +106,7 @@ function StreamSection({ state, onSave }: { state: StreamState; onSave: (id: str
         <Badge variant="secondary">{stream.kind}</Badge>
       </div>
       {state.error ? (
-        <p role="alert" className="text-sm text-destructive">{state.error}</p>
+        <StreamReadError message={state.error} />
       ) : (
         <>
           <table className="w-full text-sm">
@@ -123,10 +124,11 @@ function StreamSection({ state, onSave }: { state: StreamState; onSave: (id: str
                 return (
                   <tr key={t} className="border-t">
                     <td className="py-1.5">{typeLabel(t)}</td>
-                    <td className="py-1.5 text-muted-foreground">{volume[t] === undefined ? "—" : volume[t]!.toLocaleString()}</td>
+                    <td className="py-1.5 text-muted-foreground">{volume[t]?.toLocaleString() ?? "—"}</td>
                     <td className="py-1.5">
                       <input
                         type="checkbox"
+                        className="size-4 accent-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                         aria-label={`${typeLabel(t)} webhook`}
                         checked={forced || draft.webhook.includes(t)}
                         disabled={forced || pending}
@@ -136,6 +138,7 @@ function StreamSection({ state, onSave }: { state: StreamState; onSave: (id: str
                     <td className="py-1.5">
                       <input
                         type="checkbox"
+                        className="size-4 accent-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                         aria-label={`${typeLabel(t)} counts`}
                         checked={draft.counts?.includes(t) ?? false}
                         disabled={draft.counts === null || pending}
@@ -168,5 +171,18 @@ function StreamSection({ state, onSave }: { state: StreamState; onSave: (id: str
         </>
       )}
     </section>
+  );
+}
+
+function StreamReadError({ message }: { message: string }) {
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  return (
+    <div className="flex flex-col items-start gap-2">
+      <p role="alert" className="text-sm text-destructive">{message}</p>
+      <Button size="sm" variant="outline" disabled={pending} onClick={() => start(() => router.refresh())}>
+        {pending ? "Retrying…" : "Retry"}
+      </Button>
+    </div>
   );
 }

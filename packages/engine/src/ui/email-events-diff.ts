@@ -1,12 +1,7 @@
-// Mirrors @relay/email events/types: the engine UI can't depend on that package
-// (it would drag AWS client code into client bundles). Shapes stay structurally compatible.
-export const EMAIL_EVENT_TYPES = [
-  "send", "delivery", "delivery_delay", "open", "click",
-  "bounce", "complaint", "reject", "rendering_failure", "subscription",
-] as const;
-export type EmailEventType = (typeof EMAIL_EVENT_TYPES)[number];
-export interface EmailEventRouting { webhook: EmailEventType[]; counts: EmailEventType[] | null }
-export interface EmailStreamInfo { id: string; label: string; kind: "untracked" | "tracked" | "marketing" }
+import { EMAIL_EVENT_TYPES, type EmailEventRouting, type EmailEventType, type EmailStream } from "@relay/email/events/types";
+
+export { EMAIL_EVENT_TYPES };
+export type { EmailEventRouting, EmailEventType, EmailStream };
 
 export const typeLabel = (t: string) => t.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
 

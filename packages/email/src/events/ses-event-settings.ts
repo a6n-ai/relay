@@ -34,6 +34,12 @@ interface SesDestination {
 type Routing = { webhook: EmailEventType[]; counts?: EmailEventType[] };
 
 export function normalizeRouting(stream: EmailStream, r: Routing): Routing {
+  for (const t of [...r.webhook, ...(r.counts ?? [])]) {
+    // Exact match only: toSes() upper-cases, so "OPEN" would slip past the lowercase untracked check below.
+    if (typeof t !== "string" || !(EMAIL_EVENT_TYPES as readonly string[]).includes(t)) {
+      throw new Error(`Unknown event type: ${String(t)}`);
+    }
+  }
   if (stream.kind === "untracked") {
     for (const t of [...r.webhook, ...(r.counts ?? [])]) {
       if (t === "open" || t === "click") throw new Error(`${t} events cannot be routed on an untracked stream`);

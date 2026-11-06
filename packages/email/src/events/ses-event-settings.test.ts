@@ -138,3 +138,15 @@ describe("normalizeRouting", () => {
     expect(normalizeRouting(stream, { webhook: ["delivery", "bounce", "delivery"] }).webhook).toEqual(["bounce", "complaint", "delivery"]);
   });
 });
+
+describe("normalizeRouting strict entries", () => {
+  it.each([["OPEN"], ["Delivery"], [1]])("rejects %s without case folding", (bad) => {
+    expect(() => normalizeRouting(untracked, { webhook: [bad as never] })).toThrow(/Unknown event type/);
+    expect(() => normalizeRouting(stream, { webhook: [], counts: [bad as never] })).toThrow(/Unknown event type/);
+  });
+  it("sends no request for an invalid entry", async () => {
+    const { provider, reqs } = setup([]);
+    await expect(provider.setRouting(untracked, { webhook: ["OPEN" as never] })).rejects.toThrow();
+    expect(reqs).toHaveLength(0);
+  });
+});

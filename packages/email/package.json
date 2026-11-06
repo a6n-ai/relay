@@ -5,7 +5,8 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./smtp": "./src/smtp.ts"
+    "./smtp": "./src/smtp.ts",
+    "./events/types": "./src/events/types.ts"
   },
   "types": "./src/index.ts",
   "scripts": {
