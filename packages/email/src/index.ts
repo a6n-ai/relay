@@ -8,3 +8,5 @@ export * from "./render/interpolate";
 export * from "./render/email";
 export * from "./metrics/types";
 export * from "./metrics/cloudwatch-provider";
+export * from "./events/types";
+export * from "./events/ses-event-settings";
