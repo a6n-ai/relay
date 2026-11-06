@@ -69,7 +69,26 @@ describe("sesEventSettings", () => {
     await provider.setRouting(stream, { webhook: [], counts: ["open"] });
     const cwPut = puts(reqs).find((r) => r.url.endsWith("/cw"))!;
     expect(cwPut.json.EventDestination.MatchingEventTypes).toEqual(["OPEN"]);
-    expect(cwPut.json.EventDestination.CloudWatchDestination).toBeDefined();
+    expect(cwPut.json.EventDestination.CloudWatchDestination).toEqual(cw([]).CloudWatchDestination);
+  });
+
+  it("setRouting writes delivery_delay and rendering_failure as UPPER_SNAKE", async () => {
+    const { provider, reqs } = setup([{ EventDestinations: [sns([]), cw([])] }, {}, {}]);
+    await provider.setRouting(stream, { webhook: [], counts: ["delivery_delay", "rendering_failure"] });
+    const cwPut = puts(reqs).find((r) => r.url.endsWith("/cw"))!;
+    expect(cwPut.json.EventDestination.MatchingEventTypes).toEqual(["DELIVERY_DELAY", "RENDERING_FAILURE"]);
+  });
+
+  it.each([
+    ["two SNS", [sns([]), { ...sns([]), Name: "sns2" }], /sns destinations \(sns, sns2\)/],
+    ["two CloudWatch", [sns([]), cw([]), { ...cw([]), Name: "cw2" }], /cloudwatch destinations \(cw, cw2\)/],
+    ["no SNS", [cw([])], /No SNS destination/],
+  ])("ambiguous or missing destinations (%s) reject in get and set with no PUT", async (_n, dests, msg) => {
+    const g = setup([{ EventDestinations: dests }]);
+    await expect(g.provider.getRouting(stream)).rejects.toThrow(msg);
+    const s = setup([{ EventDestinations: dests }]);
+    await expect(s.provider.setRouting(stream, { webhook: ["delivery"] })).rejects.toThrow(msg);
+    expect(puts(s.reqs)).toHaveLength(0);
   });
 
   it("setRouting forces bounce and complaint into webhook", async () => {

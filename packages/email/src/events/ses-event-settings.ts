@@ -43,6 +43,17 @@ export function normalizeRouting(stream: EmailStream, r: Routing): Routing {
   return r.counts ? { webhook, counts: [...new Set(r.counts)] } : { webhook };
 }
 
+function pickDestination(dests: SesDestination[], kind: "sns" | "cloudwatch", configSet: string): SesDestination | undefined {
+  const matches = dests.filter((d) => (kind === "sns" ? d.SnsDestination : d.CloudWatchDestination));
+  if (matches.length > 1) {
+    throw new Error(`Configuration set ${configSet} has ${matches.length} ${kind} destinations (${matches.map((d) => d.Name).join(", ")}); expected one`);
+  }
+  if (!matches[0] && kind === "sns") {
+    throw new Error(`No SNS destination on configuration set ${configSet}; bounce and complaint suppression needs one`);
+  }
+  return matches[0];
+}
+
 export function sesEventSettings(opts: AwsConfig = {}): EmailEventSettingsProvider {
   const env = awsConfigFromEnv();
   const config = { region: opts.region ?? env.region, credentials: opts.credentials ?? env.credentials, fetch: opts.fetch };
@@ -76,17 +87,16 @@ export function sesEventSettings(opts: AwsConfig = {}): EmailEventSettingsProvid
     async getRouting(stream): Promise<EmailEventRouting> {
       const dests = await list(stream);
       const known = (d?: SesDestination) => (d?.MatchingEventTypes ?? []).map(fromSes).filter((t): t is EmailEventType => !!t);
-      const snsDest = dests.find((d) => d.SnsDestination);
-      const cwDest = dests.find((d) => d.CloudWatchDestination);
+      const snsDest = pickDestination(dests, "sns", stream.configSet);
+      const cwDest = pickDestination(dests, "cloudwatch", stream.configSet);
       return { webhook: known(snsDest), counts: cwDest ? known(cwDest) : null };
     },
 
     async setRouting(stream, routing) {
       const r = normalizeRouting(stream, routing);
       const dests = await list(stream);
-      const snsDest = dests.find((d) => d.SnsDestination);
-      const cwDest = dests.find((d) => d.CloudWatchDestination);
-      if (!snsDest) throw new Error(`No SNS destination on configuration set ${stream.configSet}`);
+      const snsDest = pickDestination(dests, "sns", stream.configSet)!;
+      const cwDest = pickDestination(dests, "cloudwatch", stream.configSet);
       if (r.counts && !cwDest) throw new Error(`No CloudWatch destination on configuration set ${stream.configSet}`);
       await put(stream, snsDest, merge(snsDest.MatchingEventTypes, r.webhook));
       if (r.counts && cwDest) await put(stream, cwDest, merge(cwDest.MatchingEventTypes, r.counts));
