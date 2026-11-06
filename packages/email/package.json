@@ -13,7 +13,7 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "react-email": "^6.11.7",
+    "react-email": "^6.11.6",
     "@foundry/commons": "github:a6n-ai/foundry#path:packages/commons",
     "nodemailer": "^7.0.11",
     "zod": "^4.4.3",

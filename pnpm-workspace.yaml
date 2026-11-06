@@ -31,4 +31,3 @@ overrides:
   "@foundry/ui": "github:a6n-ai/foundry#path:packages/ui"
 
 minimumReleaseAgeExclude:
-  - react-email@6.11.7
