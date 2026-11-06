@@ -15,7 +15,7 @@
   "dependencies": {
     "react-email": "^6.11.6",
     "@foundry/commons": "github:a6n-ai/foundry#path:packages/commons",
-    "nodemailer": "^7.0.11",
+    "nodemailer": "^10.3.1",
     "zod": "^4.4.3",
     "@foundry/aws": "github:a6n-ai/foundry#path:packages/aws"
   },
@@ -24,7 +24,7 @@
     "react-dom": "19.2.4"
   },
   "devDependencies": {
-    "@types/nodemailer": "^8.0.1",
+    "@types/nodemailer": "^8.0.2",
     "@types/react": "^19",
     "react": "19.2.4",
     "react-dom": "19.2.4",
