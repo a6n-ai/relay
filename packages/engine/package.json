@@ -52,14 +52,14 @@
   },
   "peerDependencies": {
     "drizzle-orm": "^0.45.2",
-    "next": "16.3.3",
+    "next": "16.4.3",
     "react": "^19"
   },
   "devDependencies": {
     "@types/node": "^22",
     "@types/react": "^19",
     "drizzle-orm": "^0.45.2",
-    "next": "16.3.3",
+    "next": "16.4.3",
     "postgres": "^3.4.9",
     "react": "19.2.4",
     "typescript": "^5",
