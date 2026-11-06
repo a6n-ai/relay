@@ -16,6 +16,7 @@ packageExtensions:
       babel-plugin-react-compiler: "^1.0.0"
 
 overrides:
+  better-auth: "^1.7.12"
   "@foundry/ai": "github:a6n-ai/foundry#path:packages/ai"
   "@foundry/auth": "github:a6n-ai/foundry#path:packages/auth"
   "@foundry/auth-ui": "github:a6n-ai/foundry#path:packages/auth-ui"
