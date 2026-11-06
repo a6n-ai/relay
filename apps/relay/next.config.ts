@@ -32,6 +32,7 @@ const nextConfig: NextConfig = {
     ],
   },
   transpilePackages: [
+    "@foundry/aws",
     "@foundry/auth",
     "@foundry/commons",
     "@foundry/database",

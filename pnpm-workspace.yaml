@@ -18,6 +18,7 @@ packageExtensions:
 overrides:
   better-auth: "^1.7.12"
   "@foundry/ai": "github:a6n-ai/foundry#path:packages/ai"
+  "@foundry/aws": "github:a6n-ai/foundry#path:packages/aws"
   "@foundry/auth": "github:a6n-ai/foundry#path:packages/auth"
   "@foundry/auth-ui": "github:a6n-ai/foundry#path:packages/auth-ui"
   "@foundry/commons": "github:a6n-ai/foundry#path:packages/commons"
