@@ -67,6 +67,11 @@ export interface HandlerDeps {
   tables: NotificationTables;
   users: UsersRef;
   providers: Partial<Record<Channel, ChannelProvider>>;
+  /**
+   * Routes a non-campaign email event to another provider (e.g. a separate SES
+   * stream). Undefined falls back to `providers.email`. Campaign mail never uses it.
+   */
+  emailProviderFor?: (event: string) => ChannelProvider | undefined | Promise<ChannelProvider | undefined>;
   broadcast: BroadcastFn;
   /**
    * Campaign tables + the footer every commercial message must carry. Omitted,
@@ -246,7 +251,10 @@ export function buildHandlers(deps: HandlerDeps): Record<Channel, ChannelHandler
         }
         if (!rendered) return null; // no DB template → don't send
         const marketingEmail = marketing ? deps.campaigns?.sender.email : undefined;
-        return provider.send({
+        const emailSender = row.campaignId
+          ? provider
+          : ((await deps.emailProviderFor?.(row.event)) ?? provider);
+        return emailSender.send({
           to: { email: target.address },
           from: marketingEmail ? { email: marketingEmail, name: deps.campaigns!.sender.name } : undefined,
           subject: rendered.subject,

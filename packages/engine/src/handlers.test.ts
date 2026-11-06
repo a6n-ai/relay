@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { buildHandlers, resolveRecipientAddress } from "./handlers";
+import { buildHandlers, type HandlerDeps, resolveRecipientAddress } from "./handlers";
 
 /**
  * Minimal fake db: dispatches `.select().from(table).where()` by table
@@ -277,6 +277,97 @@ describe("buildHandlers — email — system campaign sender", () => {
     const { send, run } = setup(null);
     await run();
     expect(send.mock.calls[0][0].tags).toEqual({ campaign: "42" });
+  });
+});
+
+describe("buildHandlers — email — per-event provider selector", () => {
+  const usersTable = { locale: "locale-col" };
+  const templateTable = {};
+  const contentTable = {};
+  const userRow = { email: "customer@example.test", phone: null, locale: "en" };
+  const templateRows = [
+    { channel: "email", locale: "en", subject: "Hi", body: null, html: "<p>hi</p>", text: "hi", providerTemplateId: null, enabled: true },
+  ];
+  const contentRows = [
+    { channel: "email", locale: "en", subject: "Campaign", body: null, html: "<p>c</p>", text: "c", providerTemplateId: null, attachments: [] },
+  ];
+
+  function setup(emailProviderFor?: HandlerDeps["emailProviderFor"]) {
+    const db = fakeDb(
+      new Map<object, unknown[]>([
+        [usersTable, [userRow]],
+        [templateTable, templateRows],
+        [contentTable, contentRows],
+      ]),
+    );
+    const defaultSend = vi.fn().mockResolvedValue({ providerMessageId: "default" });
+    const altSend = vi.fn().mockResolvedValue({ providerMessageId: "alt" });
+    const handlers = buildHandlers({
+      db,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      tables: { notificationTemplate: templateTable } as any,
+      users: { table: usersTable, columns: { id: "id-col", email: "email-col" } },
+      providers: { email: { send: defaultSend } },
+      broadcast: vi.fn(),
+      campaigns: {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        tables: { campaignContent: contentTable, campaign: {} } as any,
+        unsubscribe: { baseUrl: "https://recover.test", secret: "shh" },
+        sender: { name: "Puchkaman", postalAddress: "123 Main St" },
+      },
+      emailProviderFor,
+    });
+    return { handlers, defaultSend, altSend };
+  }
+
+  const eventRow = {
+    recipientId: 7n,
+    recipientEmail: null,
+    recipientPhone: null,
+    campaignId: null,
+    event: "order_confirmed",
+    kind: "transactional",
+    payload: { href: null, vars: {} },
+  };
+  const campaignRow = { ...eventRow, campaignId: 42n, event: null, kind: "marketing" };
+
+  it("routes a non-campaign email through the provider the selector returns", async () => {
+    const selector = vi.fn().mockReturnValue({ send: vi.fn().mockResolvedValue({ providerMessageId: "alt" }) });
+    const { handlers, defaultSend } = setup(selector);
+    const result = await handlers.email!(eventRow);
+    expect(selector).toHaveBeenCalledWith("order_confirmed");
+    const alt = selector.mock.results[0].value;
+    expect(alt.send).toHaveBeenCalledTimes(1);
+    expect(defaultSend).not.toHaveBeenCalled();
+    expect(result).toEqual({ providerMessageId: "alt" });
+  });
+
+  it("awaits an async selector", async () => {
+    const alt = { send: vi.fn().mockResolvedValue({ providerMessageId: "alt" }) };
+    const { handlers, defaultSend } = setup(async () => alt);
+    await handlers.email!(eventRow);
+    expect(alt.send).toHaveBeenCalledTimes(1);
+    expect(defaultSend).not.toHaveBeenCalled();
+  });
+
+  it("falls back to the default provider when the selector returns undefined", async () => {
+    const { handlers, defaultSend } = setup(() => undefined);
+    await handlers.email!(eventRow);
+    expect(defaultSend).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps campaign rows on the default provider even when a selector is set", async () => {
+    const selector = vi.fn().mockReturnValue({ send: vi.fn() });
+    const { handlers, defaultSend } = setup(selector);
+    await handlers.email!(campaignRow);
+    expect(selector).not.toHaveBeenCalled();
+    expect(defaultSend).toHaveBeenCalledTimes(1);
+  });
+
+  it("uses the default provider when no selector is configured", async () => {
+    const { handlers, defaultSend } = setup();
+    await handlers.email!(eventRow);
+    expect(defaultSend).toHaveBeenCalledTimes(1);
   });
 });
 
