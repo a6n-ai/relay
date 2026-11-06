@@ -1,4 +1,4 @@
-import { createAwsClient, awsConfigFromEnv, type AwsConfig } from "@foundry/aws";
+import { createAwsClient, awsConfigFromEnv, type AwsConfig } from "@foundry/cloud";
 import type { CampaignTotals, EmailMetricsProvider } from "./types";
 
 interface GetMetricDataResponse {

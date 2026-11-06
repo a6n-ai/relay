@@ -15,7 +15,7 @@
     "worker:drain": "tsx workers/notify-drainer.ts"
   },
   "dependencies": {
-    "@foundry/aws": "github:a6n-ai/foundry#path:packages/aws",
+    "@foundry/cloud": "github:a6n-ai/foundry#path:packages/cloud",
     "@foundry/auth": "github:a6n-ai/foundry#path:packages/auth",
     "@foundry/auth-ui": "github:a6n-ai/foundry#path:packages/auth-ui",
     "@foundry/commons": "github:a6n-ai/foundry#path:packages/commons",
