@@ -185,9 +185,27 @@ importers:
       '@foundry/commons':
         specifier: github:a6n-ai/foundry#path:packages/commons
         version: https://codeload.github.com/a6n-ai/foundry/tar.gz/e4981de3e9c631c57d17c57798ab65b95f3c4f90#path:packages/commons
-      '@react-email/components':
-        specifier: ^1.0.12
-        version: 1.0.12(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@react-email/body':
+        specifier: 0.3.0
+        version: 0.3.0(react@19.2.4)
+      '@react-email/container':
+        specifier: 0.0.16
+        version: 0.0.16(react@19.2.4)
+      '@react-email/head':
+        specifier: 0.0.13
+        version: 0.0.13(react@19.2.4)
+      '@react-email/heading':
+        specifier: 0.0.16
+        version: 0.0.16(react@19.2.4)
+      '@react-email/html':
+        specifier: 0.0.12
+        version: 0.0.12(react@19.2.4)
+      '@react-email/markdown':
+        specifier: 0.0.18
+        version: 0.0.18(react@19.2.4)
+      '@react-email/render':
+        specifier: 2.0.6
+        version: 2.0.6(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       nodemailer:
         specifier: ^7.0.11
         version: 7.0.13

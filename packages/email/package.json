@@ -13,7 +13,13 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@react-email/components": "^1.0.12",
+    "@react-email/body": "0.3.0",
+    "@react-email/container": "0.0.16",
+    "@react-email/head": "0.0.13",
+    "@react-email/heading": "0.0.16",
+    "@react-email/html": "0.0.12",
+    "@react-email/markdown": "0.0.18",
+    "@react-email/render": "2.0.6",
     "@foundry/commons": "github:a6n-ai/foundry#path:packages/commons",
     "nodemailer": "^7.0.11",
     "zod": "^4.4.3",

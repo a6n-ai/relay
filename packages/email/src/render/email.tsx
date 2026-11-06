@@ -1,4 +1,11 @@
-import { Body, Container, Head, Heading, Html, Markdown, render } from "@react-email/components";
+// Per-package imports: the @react-email/components barrel drags tailwind/prism into the server bundle.
+import { Body } from "@react-email/body";
+import { Container } from "@react-email/container";
+import { Head } from "@react-email/head";
+import { Heading } from "@react-email/heading";
+import { Html } from "@react-email/html";
+import { Markdown } from "@react-email/markdown";
+import { render } from "@react-email/render";
 import { interpolate } from "./interpolate";
 
 const CONTAINER = { fontFamily: "system-ui, sans-serif", color: "#111", maxWidth: "520px", margin: "0 auto", padding: "24px", background: "#fff" };
