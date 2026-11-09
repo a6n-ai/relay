@@ -137,6 +137,12 @@ export function makeNotificationTables<
     index("notification_outbox_pending_idx").on(t.nextAttemptAt).where(sql`${t.status} = 'pending'`),
     // Webhook/bounce correlation by provider id.
     index("notification_outbox_provider_message_idx").on(t.providerMessageId).where(sql`${t.providerMessageId} is not null`),
+    // "Already sent?" checks match a dedupe key by prefix (the engine appends `:<channel>`).
+    // Under a non-C collation the unique index above cannot serve LIKE 'x%'; this one can
+    // (seen 900 ms full scans per check on tiffin-grab prod, once per order on a holiday).
+    index("notification_outbox_dedupe_prefix_idx").on(t.dedupeKey.op("text_pattern_ops")),
+    // Logs and analytics list newest first and filter by created_at range.
+    index("notification_outbox_created_idx").on(t.createdAt),
   ]);
 
   /**
