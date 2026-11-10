@@ -1,5 +1,6 @@
 import { and, asc, eq, inArray, lte, sql } from "drizzle-orm";
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
+import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import { MAX_ATTEMPTS, nextBackoffMs } from "./policy";
 import type { NotificationTables } from "./schema";
 import type { ChannelHandler, OutboxRow } from "./handlers";
@@ -79,6 +80,18 @@ export interface DrainDeps {
  * Transactional rows are claimed first: a large campaign must never delay an
  * order receipt queued a moment later.
  */
+/** A claimed row is leased this long; if its tick dies mid-send, the row is claimable again after. */
+export const CLAIM_LEASE_MS = 5 * 60_000;
+
+/** Due rows a drain may claim: pending ones, and processing ones whose lease ran out. */
+export function claimableWhere(cols: { status: AnyPgColumn; nextAttemptAt: AnyPgColumn }, now: number) {
+  return and(inArray(cols.status, ["pending", "processing"]), lte(cols.nextAttemptAt, now));
+}
+
+export function claimLease(now: number): { status: "processing"; nextAttemptAt: number } {
+  return { status: "processing", nextAttemptAt: now + CLAIM_LEASE_MS };
+}
+
 async function claim(
   db: Db,
   tables: NotificationTables,
@@ -90,14 +103,14 @@ async function claim(
     const rows = await tx
       .select()
       .from(o)
-      .where(and(eq(o.status, "pending"), lte(o.nextAttemptAt, now)))
+      .where(claimableWhere(o, now))
       .orderBy(sql`${o.kind} = 'transactional' desc`, asc(o.nextAttemptAt))
       .limit(limit)
       .for("update", { skipLocked: true });
     if (rows.length === 0) return [];
     await tx
       .update(o)
-      .set({ status: "processing" })
+      .set(claimLease(now))
       .where(inArray(o.id, rows.map((r) => r.id)));
     return rows;
   });

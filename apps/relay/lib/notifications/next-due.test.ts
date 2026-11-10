@@ -18,7 +18,8 @@ describe("nextDueAt", () => {
     expect(sql).toContain('"notification_outbox"');
     expect(sql).toContain('"tenant_webhook_delivery"');
     expect(sql).toContain('"campaign"');
-    expect(sql.match(/= 'pending'/g)).toHaveLength(2);
+    // Leased (processing) rows come due again when their lease runs out.
+    expect(sql.match(/in \('pending', 'processing'\)/g)).toHaveLength(2);
     expect(sql).toContain("= 'scheduled'");
   });
 

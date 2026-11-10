@@ -95,3 +95,24 @@ describe("runSignalLoop", () => {
     expect(waitForSignal).not.toHaveBeenCalled();
   });
 });
+
+describe("claim lease", () => {
+  it("claims pending rows and rows whose processing lease ran out, once due", async () => {
+    const { PgDialect } = await import("drizzle-orm/pg-core");
+    const { claimableWhere } = await import("./drain");
+    const { bigint, pgTable } = await import("drizzle-orm/pg-core");
+    const { makeTenantNotificationTables } = await import("./tenant-schema");
+    const tenants = pgTable("tenants", { id: bigint("id", { mode: "bigint" }).primaryKey() });
+    const o = makeTenantNotificationTables({ tenants }).notificationOutbox;
+    const { sql, params } = new PgDialect().sqlToQuery(claimableWhere(o, 1000)!);
+    expect(sql).toMatch(/"status" in \(\$\d+, \$\d+\)/);
+    expect(params).toEqual(expect.arrayContaining(["pending", "processing", 1000]));
+    expect(sql).toContain('"next_attempt_at" <=');
+  });
+
+  it("leases a claimed row so a tick cut off mid-send frees it again", async () => {
+    const { CLAIM_LEASE_MS, claimLease } = await import("./drain");
+    expect(CLAIM_LEASE_MS).toBe(5 * 60_000);
+    expect(claimLease(1000)).toEqual({ status: "processing", nextAttemptAt: 1000 + 5 * 60_000 });
+  });
+});

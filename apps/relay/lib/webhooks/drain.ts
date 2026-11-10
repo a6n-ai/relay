@@ -1,5 +1,5 @@
-import { and, asc, eq, inArray, lte } from "drizzle-orm";
-import { MAX_ATTEMPTS, nextBackoffMs } from "@relay/engine";
+import { asc, inArray } from "drizzle-orm";
+import { MAX_ATTEMPTS, claimLease, claimableWhere, nextBackoffMs } from "@relay/engine";
 import { db } from "@/db/client";
 import { tenantWebhookDelivery } from "@/db/schema";
 import { tenantWebhooksService, webhookDeliveryService } from "@/lib/services/webhooks.service";
@@ -13,14 +13,14 @@ export async function drainWebhookDeliveries(limit = 25): Promise<number> {
     const due = await tx
       .select()
       .from(tenantWebhookDelivery)
-      .where(and(eq(tenantWebhookDelivery.status, "pending"), lte(tenantWebhookDelivery.nextAttemptAt, now)))
+      .where(claimableWhere(tenantWebhookDelivery, now))
       .orderBy(asc(tenantWebhookDelivery.nextAttemptAt))
       .limit(limit)
       .for("update", { skipLocked: true });
     if (due.length === 0) return [];
     await tx
       .update(tenantWebhookDelivery)
-      .set({ status: "processing" })
+      .set(claimLease(now))
       .where(inArray(tenantWebhookDelivery.id, due.map((r) => r.id)));
     return due;
   });

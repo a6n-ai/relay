@@ -47,6 +47,17 @@ describe("POST /api/internal/tick", () => {
     expect(body.drained).toBe(2);
     expect(body.retryAfterMs).toBeGreaterThan(80_000);
     expect(body.retryAfterMs).toBeLessThanOrEqual(90_000);
+  });
+
+  it("always books the next wake while something is waiting, so the chain never stalls", async () => {
+    const at = Date.now() + 90_000;
+    nextDueAt.mockResolvedValue(at);
+    await call("Bearer s3cret");
+    expect(scheduleWake).toHaveBeenCalledWith(at);
+  });
+
+  it("books no wake when nothing is waiting", async () => {
+    await call("Bearer s3cret");
     expect(scheduleWake).not.toHaveBeenCalled();
   });
 
