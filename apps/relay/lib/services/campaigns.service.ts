@@ -1,4 +1,5 @@
 import { AppError, eq } from "@foundry/commons";
+import { signalOutbox } from "@/lib/runtime/outbox-signal";
 import { BaseRepository, UpdatableRepository } from "@foundry/database";
 import type { AudienceDef } from "@relay/engine";
 import { setCampaignContent, type SetCampaignContentInput } from "@relay/engine";
@@ -26,6 +27,8 @@ class CampaignsService extends SessionUpdatableService<typeof campaign> {
       scheduledAt: input.scheduledAt ?? null,
     });
     await campaignTenantsService.bind(row.id, tenant.id);
+    // The tick reads scheduled_at and books the wake for it.
+    if (input.scheduledAt) await signalOutbox();
     return row;
   }
 

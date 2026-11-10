@@ -7,6 +7,7 @@ import { deniedChannels } from "@/lib/tenants/channels";
 import { quotaExceeded } from "@/lib/tenants/quota";
 import { countTenantSendsThisMonth } from "@/lib/tenants/usage";
 import { parseMessageJson } from "@/lib/v1/message-body";
+import { signalOutbox } from "@/lib/runtime/outbox-signal";
 import { enqueueTenantWebhooks } from "@/lib/webhooks/enqueue";
 
 export async function POST(req: Request) {
@@ -72,5 +73,6 @@ export async function POST(req: Request) {
     recipientPhone: input.to.phone ?? null,
     sendAt: input.sendAt ?? null,
   });
+  await signalOutbox();
   return Response.json({ accepted: true }, { status: 202 });
 }

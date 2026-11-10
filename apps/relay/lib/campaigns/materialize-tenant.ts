@@ -1,4 +1,5 @@
 import { eq as foundryEq } from "@foundry/commons";
+import { signalOutbox } from "@/lib/runtime/outbox-signal";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { enqueueTenant, resolveAudience, type AudienceDef, type Channel } from "@relay/engine";
 import { db } from "@/db/client";
@@ -90,5 +91,6 @@ export async function materializeTenantCampaign(
     })
     .where(eq(campaign.id, row.id));
 
+  if (queued > 0) await signalOutbox();
   return { queued };
 }

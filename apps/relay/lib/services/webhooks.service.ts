@@ -1,4 +1,5 @@
 import { and, eq } from "@foundry/commons";
+import { signalOutbox } from "@/lib/runtime/outbox-signal";
 import { UpdatableRepository, UpdatableService } from "@foundry/database";
 import { db } from "@/db/client";
 import { tenantWebhook, tenantWebhookDelivery, type WebhookEvent } from "@/db/schema";
@@ -74,4 +75,5 @@ export async function enqueueTenantWebhooks(
       payload,
     });
   }
+  if (matching.length > 0) await signalOutbox();
 }
