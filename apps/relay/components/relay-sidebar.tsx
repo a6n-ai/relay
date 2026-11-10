@@ -14,19 +14,23 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarSeparator,
+  SidebarTrigger,
 } from "@foundry/ui/sidebar";
 import { Button } from "@foundry/ui/button";
 import { signOut } from "@/lib/auth/client";
 import { NAV_GROUPS, activeNavHref } from "@/components/ds/nav";
 import { iconColorVar } from "@/components/ds/icon-color";
+import { ThemeSwitcher } from "@/components/ds/theme-switcher";
 
 export function RelaySidebar({ email }: { email: string }) {
   const active = activeNavHref(usePathname());
   // Inset: the sidebar sits on the canvas and the page is a lifted panel (Linear's inverted-L chrome).
   return (
-    <Sidebar variant="inset">
-      <SidebarHeader className="px-4 pt-4 pb-2">
-        <p className="text-sm font-semibold tracking-tight">Relay</p>
+    <Sidebar variant="inset" collapsible="icon">
+      {/* No top bar on desktop (Linear): the collapse toggle lives here, the theme switch in the footer. */}
+      <SidebarHeader className="flex-row items-center justify-between px-4 pt-3 pb-2 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-2">
+        <p className="text-sm font-semibold tracking-tight group-data-[collapsible=icon]:hidden">Relay</p>
+        <SidebarTrigger className="-mr-1 max-md:hidden" />
       </SidebarHeader>
       <SidebarContent>
         {NAV_GROUPS.map((group, i) => (
@@ -52,7 +56,11 @@ export function RelaySidebar({ email }: { email: string }) {
         ))}
       </SidebarContent>
       <SidebarSeparator />
-      <SidebarFooter className="gap-3 p-3">
+      <SidebarFooter className="gap-3 p-3 group-data-[collapsible=icon]:hidden">
+        <div className="flex items-center justify-between gap-2 max-md:hidden">
+          <span className="text-xs text-muted-foreground">Theme</span>
+          <ThemeSwitcher />
+        </div>
         <Link
           href="/dashboard/account"
           prefetch={false}

@@ -110,7 +110,7 @@
   --chart-4: #b4baf5;
   --chart-5: #27a644;
   --radius: 0.5rem; /* Linear: 8px buttons and inputs, ~12px cards (radius-xl) */
-  --sidebar: #f7f7f8;
+  --sidebar: #f2f2f4; /* level 0: the base, a step below the page */
   --sidebar-foreground: #0f1011;
   --sidebar-primary: #5e6ad2;
   --sidebar-primary-foreground: #ffffff;
@@ -142,27 +142,27 @@
 }
 
 .dark {
-  /* Dark (default): Linear — #010102 canvas, charcoal surface ladder, hairlines, lavender only on actions. */
+  /* Dark (default): Linear's stacked ladder, darkest at the bottom: sidebar #08090a, page #0f1011, cards #161718, popovers #1c1d1f. */
   --brand: #5e6ad2;
   --brand-foreground: #ffffff;
-  --background: #010102; /* Linear canvas */
+  --background: #0f1011; /* level 1: the page panel */
   --foreground: #f7f8f8;
-  --card: #0f1011;
+  --card: #161718; /* level 2: cards on the panel */
   --card-foreground: #f7f8f8;
-  --popover: #141516;
+  --popover: #1c1d1f; /* level 3: menus, popovers, dialogs */
   --popover-foreground: #f7f8f8;
   /* White on #7a73ff is 3.9:1; buttons fill with #635bff (4.7:1), #7a73ff stays the hover, ring and brand. */
   --primary: #5e6ad2;
   --primary-foreground: #ffffff;
   --primary-hover: #5561c9;
-  --secondary: #18191a;
+  --secondary: #1f2023;
   --secondary-foreground: #f7f8f8;
-  --muted: #18191a;
-  --muted-foreground: #8a8f98; /* 5.8:1 on #0f1011 */
-  --accent: #1b1d33; /* lavender-tinted surface */
+  --muted: #1f2023;
+  --muted-foreground: #8a8f98; /* 5.4:1 on --card */
+  --accent: #1d2035; /* lavender tint, one step up */
   --accent-foreground: #c9cdff;
   --destructive: #ff6369;
-  --border: #23252a;
+  --border: #26282d;
   --input: #34343a;
   --ring: #5e69d1;
   --chart-1: #5e6ad2;
@@ -170,13 +170,13 @@
   --chart-3: #a5adff;
   --chart-4: #3e47a8;
   --chart-5: #4cb782;
-  --sidebar: #0f1011;
+  --sidebar: #08090a; /* level 0: darkest, the base under everything */
   --sidebar-foreground: #f7f8f8;
   --sidebar-primary: #5e6ad2;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #1b1d33;
+  --sidebar-accent: #1d2035;
   --sidebar-accent-foreground: #c9cdff; /* 11:1 on the tint */
-  --sidebar-border: #23252a;
+  --sidebar-border: #1b1c1f;
   --sidebar-ring: #5e69d1;
   --ok: #4cb782;
   --warn: #f2994a;
@@ -256,6 +256,13 @@
 
 [data-slot="sidebar-inset"] {
   border: 1px solid var(--border);
+}
+
+/* Pages run full height on desktop: the app header only exists on phones, where it opens the sidebar. */
+@media (min-width: 768px) {
+  [data-slot="sidebar-inset"] > header {
+    display: none;
+  }
 }
 
 [data-slot="sidebar-inset"] > header {
