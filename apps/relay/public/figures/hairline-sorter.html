@@ -6,11 +6,11 @@
 <title>Hairline figure</title>
 <link rel="icon" href="data:,">
 <style>
-  :root { color-scheme: light; --ground: #ffffff; --ink: #232327; --muted: #6f6f78; --line: #e0e0e4; }
+  :root { color-scheme: light; --ground: #fbfbfc; --ink: #232327; --muted: #6f6f78; --line: #e0e0e4; }
   @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) { color-scheme: dark; --ground: #08090a; --ink: #d0d6e0; --muted: #8a8c95; --line: #29292d; }
+    :root:not([data-theme="light"]) { color-scheme: dark; --ground: #0f1011; --ink: #d0d6e0; --muted: #8a8c95; --line: #29292d; }
   }
-  :root[data-theme="dark"] { color-scheme: dark; --ground: #08090a; --ink: #d0d6e0; --muted: #8a8c95; --line: #29292d; }
+  :root[data-theme="dark"] { color-scheme: dark; --ground: #0f1011; --ink: #d0d6e0; --muted: #8a8c95; --line: #29292d; }
   :root[data-theme="light"] { color-scheme: light; }
   * { box-sizing: border-box; }
   body {
@@ -47,9 +47,20 @@
   #means { margin: 14px 0 0; text-wrap: pretty; }
   #rules { margin: 6px 0 0; line-height: 1.6; }
   #error { margin: 12px 0 0; padding-left: 10px; border-left: 1px solid var(--ink); }
-  body[data-embed] { min-height: 0; padding: 0; background: transparent; }
+  /* Embed: paint the public page canvas, and drop silhouette fills so the
+     isometric faces don't read as a mismatched plate/card on the page. */
+  html:has(body[data-embed]),
+  body[data-embed] { min-height: 0; padding: 0; background: var(--ground); }
   body[data-embed] main { max-width: none; }
-  body[data-embed] .plate { border: 0; border-radius: 0; }
+  body[data-embed] .plate { border: 0; border-radius: 0; background: var(--ground); }
+  body[data-embed] [data-hairline] {
+    --hl-plate: var(--ground);
+    --hairline-plate: var(--ground);
+  }
+  body[data-embed] [data-hairline] > svg :where(path, polygon) { fill: none; }
+  body[data-embed] [data-hairline] > svg :where(.dot) { fill: var(--hl-hi); }
+  body[data-embed] [data-hairline] > svg :where(.dot.m) { fill: var(--hl-edge); }
+  body[data-embed] [data-hairline] > svg :where(.dot.off) { fill: var(--hl-lo); }
   body[data-embed] .controls, body[data-embed] #means, body[data-embed] #rules, body[data-embed] .tag { display: none; }
 </style>
 </head>
@@ -728,8 +739,8 @@ var HL = (() => {
   }
 
   // packages/hairline/src/core/styles.ts
-  var LIGHT = { plate: "#ffffff", hi: "#232327", edge: "#a4a4ac", mid: "#c3c3c9", lo: "#e0e0e4" };
-  var DARK = { plate: "#08090a", hi: "#d0d6e0", edge: "#5b5d64", mid: "#3e3e44", lo: "#29292d" };
+  var LIGHT = { plate: "#fbfbfc", hi: "#232327", edge: "#a4a4ac", mid: "#c3c3c9", lo: "#e0e0e4" };
+  var DARK = { plate: "#0f1011", hi: "#d0d6e0", edge: "#5b5d64", mid: "#3e3e44", lo: "#29292d" };
   var KEYS = ["plate", "hi", "edge", "mid", "lo"];
   var vars = (p) => KEYS.map((k) => `--hl-${k}:var(--hairline-${k},${p[k]});`).join("");
   var EASE = "cubic-bezier(0.5,0,0.1,1)";

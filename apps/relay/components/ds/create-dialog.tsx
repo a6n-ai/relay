@@ -89,7 +89,7 @@ export function CreateDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size={pill ? "default" : "sm"} className={cn(pill && "rounded-full")}>
+        <Button size={pill ? "default" : "sm"}>
           <PlusIcon data-icon="inline-start" />
           {label}
         </Button>

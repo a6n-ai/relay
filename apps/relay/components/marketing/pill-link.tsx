@@ -1,18 +1,27 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Button } from "@foundry/ui/button";
+import { cn } from "@foundry/ui/cn";
 
-type Props = { href: string; children: ReactNode; tone?: "solid" | "ghost"; size?: "sm" | "lg" };
+type Props = {
+  href: string;
+  children: ReactNode;
+  tone?: "solid" | "ghost";
+  size?: "sm" | "default" | "lg";
+};
 
-const TONE = {
-  solid: "bg-foreground text-background hover:bg-foreground/85",
-  ghost: "border border-border bg-transparent text-foreground hover:bg-muted",
-} as const;
-
-/** The landing's pill: solid is ink on light and white on dark. */
+/**
+ * Public CTA — Foundry Button, full-pill like Linear homepage (globals force
+ * 9999px on every [data-slot=button]). Solid is invert; ghost is translucent.
+ */
 export function PillLink({ href, children, tone = "solid", size = "lg" }: Props) {
   return (
-    <Button asChild size={size} className={`rounded-full px-5 ${TONE[tone]}`}>
+    <Button
+      asChild
+      size={size}
+      variant={tone === "ghost" ? "outline" : "default"}
+      className={cn(tone === "solid" && "marketing-cta-solid")}
+    >
       <Link href={href}>{children}</Link>
     </Button>
   );

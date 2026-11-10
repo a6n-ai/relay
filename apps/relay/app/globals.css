@@ -362,29 +362,80 @@ h2, h3 { letter-spacing: -0.012em; font-weight: 600; }
   Linear buttons (DESIGN.md button-primary / -secondary / -tertiary): 8px corners, 14px/500 labels,
   8px 14px padding. Primary is lavender; secondary is the surface-1 charcoal with a hairline;
   tertiary (ghost) is plain until hovered. Hover shifts one surface step; arrows nudge forward.
+  Motion mirrors linear.app homepage: 0.16s ease-out-quad on color/surface/shadow/press.
 */
+[data-slot="button"],
+.ss-button {
+  /* Linear homepage CTAs: full pill. Inputs/cards keep --radius (8px). */
+  border-radius: 9999px !important;
+}
 [data-slot="button"] {
   font-weight: 500;
+  transition:
+    border-color 0.16s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    background-color 0.16s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    color 0.16s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    box-shadow 0.16s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    opacity 0.16s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    filter 0.16s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    transform 0.16s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 [data-slot="button"]:is([data-size="default"], [data-size="lg"]) {
   padding-inline: 14px;
 }
+[data-slot="button"]:not([disabled]):active {
+  transform: scale(0.97);
+}
+[data-slot="button"][data-variant="default"]:not([data-slot="sidebar"] *) {
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--primary) 35%, transparent),
+    0 1px 2px color-mix(in srgb, black 18%, transparent);
+}
 [data-slot="button"][data-variant="default"]:not([data-slot="sidebar"] *):hover {
   background-color: var(--primary-hover);
+  filter: brightness(1.06);
+}
+[data-slot="button"][data-variant="default"]:not([data-slot="sidebar"] *):active {
+  filter: brightness(0.98);
 }
 [data-slot="button"]:is([data-variant="outline"], [data-variant="secondary"]):not([data-slot="sidebar"] *) {
-  background-color: var(--card);
-  border-color: var(--border);
+  background-color: color-mix(in srgb, var(--foreground) 5%, transparent);
+  border-color: transparent;
   color: var(--foreground);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--foreground) 10%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--foreground) 4%, transparent);
 }
 [data-slot="button"]:is([data-variant="outline"], [data-variant="secondary"]):not([data-slot="sidebar"] *):hover {
-  background-color: var(--accent);
-  color: var(--accent-foreground);
-  border-color: color-mix(in oklch, var(--primary) 45%, transparent);
+  background-color: color-mix(in srgb, var(--foreground) 9%, transparent);
+  color: var(--foreground);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--foreground) 16%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--foreground) 6%, transparent);
+  filter: brightness(1.05);
 }
 [data-slot="button"][data-variant="ghost"]:not([data-slot="sidebar"] *):hover {
   background-color: var(--accent);
   color: var(--accent-foreground);
+}
+
+/* Marketing invert CTA (Linear homepage Sign up): light fill on dark, same 8px radius. */
+[data-slot="button"].marketing-cta-solid {
+  background-color: var(--foreground) !important;
+  color: var(--background) !important;
+  border-color: transparent !important;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--foreground) 18%, transparent),
+    0 1px 2px color-mix(in srgb, black 22%, transparent);
+  filter: none;
+}
+[data-slot="button"].marketing-cta-solid:hover {
+  background-color: color-mix(in srgb, var(--foreground) 90%, transparent) !important;
+  color: var(--background) !important;
+  filter: none;
+}
+[data-slot="button"].marketing-cta-solid:active {
+  filter: brightness(0.98);
 }
 [data-slot="sidebar-menu-button"][data-active="true"] svg {
   color: var(--primary);

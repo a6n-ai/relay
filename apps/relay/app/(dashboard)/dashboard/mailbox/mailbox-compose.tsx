@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { PenLineIcon } from "lucide-react";
 import { Button } from "@foundry/ui/button";
-import { cn } from "@foundry/ui/cn";
 import {
   Dialog,
   DialogContent,
@@ -28,7 +27,7 @@ export function MailboxCompose({
   defaultSubject?: string;
   replyToId?: string;
   label?: string;
-  /** The rounded lavender button used as an empty state's call to action. */
+  /** Larger default size when used as an empty-state call to action. */
   pill?: boolean;
 }) {
   const [open, setOpen] = useState(false);
@@ -37,7 +36,7 @@ export function MailboxCompose({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button type="button" size={pill ? "default" : "sm"} className={cn(pill && "rounded-full")}>
+        <Button type="button" size={pill ? "default" : "sm"}>
           <PenLineIcon />
           {label}
         </Button>

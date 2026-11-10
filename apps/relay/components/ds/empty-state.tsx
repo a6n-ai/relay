@@ -5,8 +5,8 @@ import { Button } from "@foundry/ui/button";
 import { cn } from "@foundry/ui/cn";
 
 /**
- * Linear empty state: an outlined glyph, a bold title, two or three muted lines, a lavender pill
- * call to action (a link, or any node such as a pill CreateDialog) and an optional ghost Docs link.
+ * Linear empty state: an outlined glyph, a bold title, two or three muted lines, a lavender
+ * call to action (a link, or any node such as CreateDialog) and an optional ghost Docs link.
  */
 export function EmptyState({
   icon: Icon,
@@ -37,7 +37,7 @@ export function EmptyState({
       {cta || action || docsHref ? (
         <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
           {cta ? (
-            <Button asChild className="rounded-full">
+            <Button asChild>
               <Link href={cta.href} prefetch={false}>
                 {cta.label}
               </Link>
@@ -45,7 +45,7 @@ export function EmptyState({
           ) : null}
           {action}
           {docsHref ? (
-            <Button asChild variant="ghost" className="rounded-full">
+            <Button asChild variant="ghost">
               <Link href={docsHref} prefetch={false}>
                 Docs
               </Link>

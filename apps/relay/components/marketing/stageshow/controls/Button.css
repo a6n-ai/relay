@@ -21,7 +21,8 @@
     box-sizing: border-box;
     min-height: var(--ss-button-height);
     padding: 0 var(--ss-button-pad);
-    border-radius: var(--ss-radius-sm);
+    /* Full pill — same as page/console buttons (Linear homepage). */
+    border-radius: 9999px;
     font-size: 13px;
     font-weight: 500;
     letter-spacing: -0.005em;
@@ -53,7 +54,6 @@
     --ss-button-pad-icon: 11px;
     --ss-button-icon: 16px;
     --ss-button-gap: 7px;
-    border-radius: var(--ss-radius-md);
     font-size: 14px;
   }
 

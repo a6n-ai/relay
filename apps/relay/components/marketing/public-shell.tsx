@@ -5,10 +5,41 @@ import { PillLink } from "./pill-link";
 const link =
   "inline-flex min-h-11 items-center text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:text-foreground md:min-h-0";
 
+/** Plain link columns. Only routes that exist (no Privacy/Terms until those pages ship). */
 const FOOTER = [
-  { title: "Product", links: [{ href: "/docs", label: "Docs" }, { href: "/docs/api", label: "API" }] },
-  { title: "Developers", links: [{ href: "/docs/api/swagger", label: "Swagger" }, { href: "/v1/openapi.json", label: "openapi.json" }] },
-  { title: "Account", links: [{ href: "/login", label: "Sign in" }, { href: "/forgot-password", label: "Forgot password" }] },
+  {
+    title: "Product",
+    links: [
+      { href: "/#send", label: "One send" },
+      { href: "/#inbox", label: "Inbox" },
+      { href: "/#campaigns", label: "Campaigns" },
+      { href: "/docs", label: "Docs" },
+    ],
+  },
+  {
+    title: "Channels",
+    links: [
+      { href: "/docs", label: "Email" },
+      { href: "/docs", label: "Text" },
+      { href: "/docs", label: "WhatsApp" },
+      { href: "/docs", label: "In the app" },
+    ],
+  },
+  {
+    title: "Developers",
+    links: [
+      { href: "/docs/api", label: "API" },
+      { href: "/docs/api/swagger", label: "Swagger" },
+      { href: "/v1/openapi.json", label: "openapi.json" },
+    ],
+  },
+  {
+    title: "Account",
+    links: [
+      { href: "/login", label: "Sign in" },
+      { href: "/forgot-password", label: "Forgot password" },
+    ],
+  },
 ] as const;
 
 export function Wordmark() {
@@ -39,7 +70,7 @@ export function PublicShell({ children }: { children: ReactNode }) {
               API
             </Link>
             <span className="h-4 w-px bg-border" aria-hidden />
-            <PillLink href="/login" size="sm">
+            <PillLink href="/login">
               Sign in
             </PillLink>
           </nav>
@@ -47,21 +78,33 @@ export function PublicShell({ children }: { children: ReactNode }) {
       </header>
       <div id="content">{children}</div>
       <footer className="border-t border-border">
-        <div className="mx-auto grid max-w-6xl gap-10 px-5 py-12 md:grid-cols-[1.5fr_repeat(3,1fr)] md:px-8">
-          <div className="flex flex-col gap-3">
+        <div className="mx-auto grid max-w-6xl gap-10 px-5 pt-14 pb-10 sm:grid-cols-2 md:grid-cols-[1.4fr_repeat(4,1fr)] md:px-8">
+          <div className="flex flex-col gap-3 sm:col-span-2 md:col-span-1">
             <Wordmark />
-            <p className="max-w-56 text-sm text-muted-foreground">Every message, from one place.</p>
+            <p className="max-w-56 text-sm leading-6 text-muted-foreground">
+              Every message, from one place. Email, text, WhatsApp and in the app.
+            </p>
           </div>
           {FOOTER.map((col) => (
-            <div key={col.title} className="flex flex-col gap-1 md:gap-3">
-              <p className="text-sm font-medium">{col.title}</p>
-              {col.links.map((l) => (
-                <Link key={l.href} href={l.href} className={link}>
-                  {l.label}
-                </Link>
-              ))}
+            <div key={col.title} className="flex flex-col gap-3">
+              <p className="text-sm font-medium text-foreground">{col.title}</p>
+              <ul className="flex flex-col gap-1">
+                {col.links.map((l) => (
+                  <li key={`${col.title}-${l.label}`}>
+                    <Link href={l.href} className={link}>
+                      {l.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
             </div>
           ))}
+        </div>
+        <div className="border-t border-border">
+          <div className="mx-auto flex max-w-6xl flex-col gap-2 px-5 py-6 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between md:px-8">
+            <p>© {new Date().getFullYear()} Relay</p>
+            <p>Built for operators who send for real.</p>
+          </div>
         </div>
       </footer>
     </div>
