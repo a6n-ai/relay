@@ -241,12 +241,31 @@
   box-shadow: 0 8px 24px rgb(0 0 0 / 0.16);
 }
 
+[data-slot="sidebar-inset"] {
+  border: 1px solid var(--border);
+}
+
 [data-slot="sidebar-inset"] > header {
   position: sticky;
   top: 0;
   z-index: 20;
   background: var(--background);
   border-bottom: 1px solid var(--border);
+  border-top-left-radius: inherit;
+  border-top-right-radius: inherit;
+}
+
+/* Linear's sidebar: a compact 13px list with 14px icons and quiet section labels. */
+[data-slot="sidebar-menu-button"] {
+  height: 1.75rem;
+  font-size: 13px;
+}
+[data-slot="sidebar-menu-button"] svg {
+  width: 14px;
+  height: 14px;
+}
+[data-slot="sidebar-group"] {
+  padding-block: 0.25rem;
 }
 
 /* Linear display tracking: tight on large type, near zero on body. */

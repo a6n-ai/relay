@@ -21,11 +21,11 @@ import { NAV_GROUPS, activeNavHref } from "@/components/ds/nav";
 
 export function RelaySidebar({ email }: { email: string }) {
   const active = activeNavHref(usePathname());
+  // Inset: the sidebar sits on the canvas and the page is a lifted panel (Linear's inverted-L chrome).
   return (
-    <Sidebar>
-      <SidebarHeader className="gap-1 px-4 py-4">
-        <p className="text-[15px] font-semibold tracking-tight">Relay</p>
-        <p className="text-xs text-muted-foreground">Messages for your apps</p>
+    <Sidebar variant="inset">
+      <SidebarHeader className="px-4 pt-4 pb-2">
+        <p className="text-sm font-semibold tracking-tight">Relay</p>
       </SidebarHeader>
       <SidebarContent>
         {NAV_GROUPS.map((group, i) => (

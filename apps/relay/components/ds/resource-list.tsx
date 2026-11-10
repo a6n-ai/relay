@@ -49,7 +49,7 @@ export function ResourceRow({
   const body = (
     <div
       className={cn(
-        "flex items-center gap-3 px-4 py-3.5",
+        "flex items-center gap-3 px-4 py-2.5",
         href &&
           "transition-colors duration-150 hover:bg-muted/50 active:bg-muted",
         "[content-visibility:auto] [contain-intrinsic-size:auto_72px]",
