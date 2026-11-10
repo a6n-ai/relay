@@ -121,6 +121,7 @@ export async function addTenantMailboxAction(formData: FormData): Promise<{ erro
   });
   if ("error" in result) return { error: result.error };
   revalidatePath(`/dashboard/tenants/${publicId}`);
+  revalidatePath("/dashboard/settings/mailboxes");
   return {};
 }
 

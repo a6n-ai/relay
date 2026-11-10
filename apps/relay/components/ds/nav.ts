@@ -35,6 +35,7 @@ export const SECTION_TABS = {
   channels: RELAY_CHANNELS.map((c) => ({ href: c.href, label: c.label })),
   settings: [
     { href: "/dashboard/settings/email", label: "Email sending" },
+    { href: "/dashboard/settings/mailboxes", label: "Mailboxes" },
     { href: "/dashboard/settings/tags", label: "Tags" },
     { href: "/dashboard/accounts", label: "Team" },
   ],

@@ -17,6 +17,7 @@ describe("sidebar", () => {
     ["/dashboard/webhooks", "/dashboard/logs"],
     ["/dashboard/channels/sms", "/dashboard/channels/email"],
     ["/dashboard/settings/tags", "/dashboard/settings/email"],
+    ["/dashboard/settings/mailboxes", "/dashboard/settings/email"],
     ["/dashboard/accounts", "/dashboard/settings/email"],
     ["/dashboard/tenants/tnt_1", "/dashboard/tenants"],
   ])("%s highlights %s", (path, href) => {
