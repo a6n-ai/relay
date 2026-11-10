@@ -1,0 +1,167 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  IAM user for an app running on Cloudflare Workers (copied from realm). Workers have no
+  instance role, so the app signs AWS calls (SES send, files bucket) with this
+  user's key. The secret key is kept in Secrets Manager, never in outputs.
+  One stack per app, named <app>-workers-iam.
+
+Parameters:
+  AppName:
+    Type: String
+    AllowedPattern: "^[a-z0-9-]+$"
+    Description: Realm app name, for example xplorers
+  ResourceRegion:
+    Type: String
+    Description: Region of the files bucket and SES identity, for example ap-southeast-1
+  FilesBucketName:
+    Type: String
+    Default: ""
+    Description: Name of the app's AWS S3 files bucket; leave empty when files live in R2 (Worker binding, no AWS access needed)
+  SesIdentity:
+    Type: String
+    Description: Verified SES domain identity, for example xplorers.a6n.ai
+  SesExtraIdentity:
+    Type: String
+    Default: ""
+    Description: Optional second SES identity, for example tiffingrab.ca when campaigns send from the root domain
+  SesConfigurationSet:
+    Type: String
+    Description: SES configuration set name, for example xplorers-prod
+  SesExtraConfigurationSet:
+    Type: String
+    Default: ""
+    Description: Optional second SES configuration set (for example a transactional one)
+  SesEventConfigSets:
+    Type: CommaDelimitedList
+    Default: ""
+    Description: Optional. Exactly three SES configuration set names whose event destinations the app may read and edit (empty = no access)
+  EnableAwsLocation:
+    Type: String
+    AllowedValues: ["true", "false"]
+    Default: "false"
+    Description: Grant the Amazon Location maps (tiles/style/glyphs/sprites) and places (autocomplete/geocode/get) calls the app makes
+
+Conditions:
+  AwsLocation: !Equals [!Ref EnableAwsLocation, "true"]
+  ExtraConfigSet: !Not [!Equals [!Ref SesExtraConfigurationSet, ""]]
+  ExtraIdentity: !Not [!Equals [!Ref SesExtraIdentity, ""]]
+  SesEventSettings: !Not [!Equals [!Join ["", !Ref SesEventConfigSets], ""]]
+  S3Files: !Not [!Equals [!Ref FilesBucketName, ""]]
+
+Resources:
+  WorkerAccessPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: !Sub "${AppName}-workers-access"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - !If
+            - S3Files
+            - Sid: S3FilesObjects
+              Effect: Allow
+              Action: [s3:GetObject, s3:PutObject, s3:DeleteObject]
+              Resource: !Sub "arn:aws:s3:::${FilesBucketName}/*"
+            - !Ref AWS::NoValue
+          - !If
+            - S3Files
+            - Sid: S3FilesList
+              Effect: Allow
+              Action: s3:ListBucket
+              Resource: !Sub "arn:aws:s3:::${FilesBucketName}"
+            - !Ref AWS::NoValue
+          - Sid: SesSend
+            Effect: Allow
+            Action: [ses:SendEmail, ses:SendRawEmail]
+            Resource:
+              - !Sub "arn:aws:ses:${ResourceRegion}:${AWS::AccountId}:identity/${SesIdentity}"
+              - !If
+                - ExtraIdentity
+                - !Sub "arn:aws:ses:${ResourceRegion}:${AWS::AccountId}:identity/${SesExtraIdentity}"
+                - !Ref AWS::NoValue
+              - !Sub "arn:aws:ses:${ResourceRegion}:${AWS::AccountId}:configuration-set/${SesConfigurationSet}"
+              - !If
+                - ExtraConfigSet
+                - !Sub "arn:aws:ses:${ResourceRegion}:${AWS::AccountId}:configuration-set/${SesExtraConfigurationSet}"
+                - !Ref AWS::NoValue
+          # Campaign Delivered/Opened/Clicked come from SES's CloudWatch counts (Refresh results).
+          # GetMetricData has no resource-level scoping.
+          - Sid: CampaignMetricsRead
+            Effect: Allow
+            Action: cloudwatch:GetMetricData
+            Resource: "*"
+          # Account-wide send quota shown on the campaigns page before a large send.
+          # GetAccount has no resource-level scoping.
+          - Sid: SesQuotaRead
+            Effect: Allow
+            Action: ses:GetAccount
+            Resource: "*"
+          - !If
+            - SesEventSettings
+            - Sid: SesEventSettings
+              Effect: Allow
+              Action: [ses:GetConfigurationSetEventDestinations, ses:UpdateConfigurationSetEventDestination]
+              Resource:
+                - !Sub
+                  - "arn:aws:ses:${ResourceRegion}:${AWS::AccountId}:configuration-set/${Name}"
+                  - Name: !Select [0, !Ref SesEventConfigSets]
+                - !Sub
+                  - "arn:aws:ses:${ResourceRegion}:${AWS::AccountId}:configuration-set/${Name}"
+                  - Name: !Select [1, !Ref SesEventConfigSets]
+                - !Sub
+                  - "arn:aws:ses:${ResourceRegion}:${AWS::AccountId}:configuration-set/${Name}"
+                  - Name: !Select [2, !Ref SesEventConfigSets]
+            - !Ref AWS::NoValue
+          - !If
+            - AwsLocation
+            - Sid: GeoMaps
+              Effect: Allow
+              Action: [geo-maps:GetTile, geo-maps:GetStyleDescriptor, geo-maps:GetSprites, geo-maps:GetGlyphs]
+              Resource: !Sub "arn:aws:geo-maps:${ResourceRegion}::provider/default"
+            - !Ref AWS::NoValue
+          - !If
+            - AwsLocation
+            - Sid: GeoPlaces
+              Effect: Allow
+              Action: [geo-places:Autocomplete, geo-places:Geocode, geo-places:GetPlace]
+              Resource: !Sub "arn:aws:geo-places:${ResourceRegion}::provider/default"
+            - !Ref AWS::NoValue
+
+  WorkerGroup:
+    Type: AWS::IAM::Group
+    Properties:
+      GroupName: !Sub "${AppName}-workers"
+      ManagedPolicyArns:
+        - !Ref WorkerAccessPolicy
+
+  # Programmatic only: no LoginProfile, so no console password.
+  WorkerUser:
+    Type: AWS::IAM::User
+    Properties:
+      UserName: !Sub "${AppName}-workers"
+      Groups:
+        - !Ref WorkerGroup
+      Tags:
+        - { Key: app, Value: !Ref AppName }
+        - { Key: env, Value: prod }
+        - { Key: project, Value: !Ref AppName }
+        - { Key: runtime, Value: cloudflare-workers }
+
+  WorkerAccessKey:
+    Type: AWS::IAM::AccessKey
+    Properties:
+      UserName: !Ref WorkerUser
+
+  WorkerAccessKeySecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub "/${AppName}/workers/aws-access-key"
+      Description: !Sub "Access key for ${AppName}-workers; copy into wrangler secrets, then rotate by updating the stack"
+      SecretString: !Sub '{"accessKeyId":"${WorkerAccessKey}","secretAccessKey":"${WorkerAccessKey.SecretAccessKey}"}'
+
+Outputs:
+  UserName:
+    Value: !Ref WorkerUser
+  AccessKeySecretArn:
+    Description: Read with aws secretsmanager get-secret-value, then wrangler secret put
+    Value: !Ref WorkerAccessKeySecret

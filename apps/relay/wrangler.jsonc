@@ -12,8 +12,8 @@
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
   "assets": { "binding": "ASSETS", "directory": ".open-next/assets", "run_worker_first": false },
   "observability": { "enabled": true },
-  // Run next to Neon (aws-us-east-1) and SES us-east-1: pages make many queries.
-  "placement": { "mode": "targeted", "region": "aws:us-east-1" },
+  // Run next to Neon (aws-ap-southeast-1): pages make many queries, so DB round trips dominate.
+  "placement": { "mode": "targeted", "region": "aws:ap-southeast-1" },
   "workers_dev": false,
   "preview_urls": false,
   "routes": [{ "pattern": "relay.a6n.ai", "custom_domain": true }],
@@ -22,15 +22,15 @@
   "triggers": { "crons": [] },
   // Deployment id, read by cloudflare/bootstrap.js so the wake chain restarts once per deploy.
   "version_metadata": { "binding": "CF_VERSION_METADATA" },
-  // Hyperdrive relay-prod -> Neon relay (direct endpoint), created with --caching-disabled true.
+  // Hyperdrive relay-prod -> Neon relay flat-mud-70723399 (ap-southeast-1, direct endpoint), caching disabled.
   "hyperdrive": [
     {
       "binding": "HYPERDRIVE",
-      "id": "PLACEHOLDER",
+      "id": "d3aaf35d88c14dfc9578f0dbb94a9154",
       "localConnectionString": "postgres://relay:relay@localhost:5432/relay"
     }
   ],
-  "kv_namespaces": [{ "binding": "CACHE", "id": "PLACEHOLDER" }], // relay-cache
+  "kv_namespaces": [{ "binding": "CACHE", "id": "be4ce70d6b8a4bac8c958a1a213b7a5f" }], // relay-cache
   "queues": {
     "producers": [{ "binding": "OUTBOX", "queue": "relay-outbox" }],
     "consumers": [{ "queue": "relay-outbox", "max_batch_size": 10, "max_retries": 5, "dead_letter_queue": "relay-outbox-dlq" }]
@@ -39,7 +39,8 @@
   "vars": {
     "NODE_ENV": "production",
     "LOG_LEVEL": "info",
-    "AWS_REGION": "us-east-1",
+    // SES in ap-south-1 (Mumbai).
+    "AWS_REGION": "ap-south-1",
     "EMAIL_TRANSPORT": "ses",
     "SES_CONFIGURATION_SET": "relay-prod",
     "NOTIFY_FROM_EMAIL": "no-reply@relay.a6n.ai",

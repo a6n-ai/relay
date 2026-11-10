@@ -1,0 +1,89 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  Relay SES in ap-south-1 (Mumbai). Two sending identities: relay.a6n.ai (operator default
+  From) and a6n.ai (first app, a6n). EasyDKIM plus custom MAIL FROM; the DKIM and MAIL FROM
+  records live in Cloudflare DNS for a6n.ai. Events go to SNS relay-ses-events; its HTTPS
+  subscription to https://relay.a6n.ai/api/webhooks/ses is added after that route is live
+  (SNS auto-confirm needs it). Stack name relay-ses.
+
+Parameters:
+  OperatorDomain:
+    Type: String
+    Default: relay.a6n.ai
+  AppDomain:
+    Type: String
+    Default: a6n.ai
+  MailFromSubdomain:
+    Type: String
+    Default: mail
+  ConfigurationSetName:
+    Type: String
+    Default: relay-prod
+
+Resources:
+  ConfigurationSet:
+    Type: AWS::SES::ConfigurationSet
+    Properties:
+      Name: !Ref ConfigurationSetName
+      Tags:
+        - { Key: app, Value: relay }
+        - { Key: env, Value: prod }
+
+  EventsTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: relay-ses-events
+      Tags:
+        - { Key: app, Value: relay }
+        - { Key: env, Value: prod }
+
+  EventsDestination:
+    Type: AWS::SES::ConfigurationSetEventDestination
+    Properties:
+      ConfigurationSetName: !Ref ConfigurationSet
+      EventDestination:
+        Name: sns-relay-events
+        Enabled: true
+        MatchingEventTypes: [send, delivery, bounce, complaint, reject, deliveryDelay, renderingFailure]
+        SnsDestination:
+          TopicARN: !Ref EventsTopic
+
+  OperatorIdentity:
+    Type: AWS::SES::EmailIdentity
+    Properties:
+      EmailIdentity: !Ref OperatorDomain
+      DkimSigningAttributes:
+        NextSigningKeyLength: RSA_2048_BIT
+      MailFromAttributes:
+        BehaviorOnMxFailure: REJECT_MESSAGE
+        MailFromDomain: !Sub "${MailFromSubdomain}.${OperatorDomain}"
+      ConfigurationSetAttributes:
+        ConfigurationSetName: !Ref ConfigurationSet
+      Tags:
+        - { Key: app, Value: relay }
+        - { Key: env, Value: prod }
+
+  AppIdentity:
+    Type: AWS::SES::EmailIdentity
+    Properties:
+      EmailIdentity: !Ref AppDomain
+      DkimSigningAttributes:
+        NextSigningKeyLength: RSA_2048_BIT
+      MailFromAttributes:
+        BehaviorOnMxFailure: REJECT_MESSAGE
+        MailFromDomain: !Sub "${MailFromSubdomain}.${AppDomain}"
+      ConfigurationSetAttributes:
+        ConfigurationSetName: !Ref ConfigurationSet
+      Tags:
+        - { Key: app, Value: relay }
+        - { Key: env, Value: prod }
+
+Outputs:
+  EventsTopicArn:
+    Value: !Ref EventsTopic
+  OperatorDkim:
+    Description: Three CNAMEs, <token>._domainkey.relay.a6n.ai -> <token>.dkim.amazonses.com
+    Value: !Join [",", [!GetAtt OperatorIdentity.DkimDNSTokenValue1, !GetAtt OperatorIdentity.DkimDNSTokenValue2, !GetAtt OperatorIdentity.DkimDNSTokenValue3]]
+  AppDkim:
+    Description: Three CNAMEs, <token>._domainkey.a6n.ai -> <token>.dkim.amazonses.com
+    Value: !Join [",", [!GetAtt AppIdentity.DkimDNSTokenValue1, !GetAtt AppIdentity.DkimDNSTokenValue2, !GetAtt AppIdentity.DkimDNSTokenValue3]]
