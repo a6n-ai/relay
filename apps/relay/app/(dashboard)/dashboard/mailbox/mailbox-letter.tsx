@@ -13,7 +13,6 @@ const READER_STYLES =
 
 const FRAME_HEAD =
   '<base target="_blank"><meta name="referrer" content="no-referrer"><style>html,body{margin:0}body{padding:16px}</style>';
-const MAX_FRAME_HEIGHT = 2000;
 
 function Reader({ html, className }: { html: string; className?: string }) {
   // html comes from emailHtmlToReader (strict allowlist, server side).
@@ -59,26 +58,17 @@ function ReaderMessage({ reader }: { reader: ReaderLetter }) {
   );
 }
 
+// No allow-same-origin: the letter gets an opaque origin, so its relative URLs can't
+// reach Relay with the operator's cookies. The cost is no auto-height; the box resizes by hand.
 function OriginalFrame({ htmlSafe }: { htmlSafe: string }) {
-  const [height, setHeight] = useState(200);
-  const measure = (frame: HTMLIFrameElement) => {
-    const h = frame.contentDocument?.documentElement.scrollHeight;
-    if (h) setHeight(Math.min(h, MAX_FRAME_HEIGHT));
-  };
   return (
-    <div className="overflow-hidden rounded-lg border border-border bg-white">
+    <div className="h-[32rem] resize-y overflow-hidden rounded-lg border border-border bg-white">
       <iframe
         title="Letter preview"
-        sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox"
+        sandbox="allow-popups allow-popups-to-escape-sandbox"
         referrerPolicy="no-referrer"
         srcDoc={FRAME_HEAD + htmlSafe}
-        style={{ height }}
-        className="block w-full border-0"
-        onLoad={(e) => {
-          const frame = e.currentTarget;
-          measure(frame);
-          setTimeout(() => measure(frame), 300);
-        }}
+        className="block size-full border-0"
       />
     </div>
   );
