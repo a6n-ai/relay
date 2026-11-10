@@ -7,7 +7,7 @@ import type { TenantNotificationTables } from "./tenant-schema";
 /** Raw inbound payload cap (UTF-8 bytes). Over this → 413. */
 export const MAX_MAILBOX_INBOUND_BYTES = 256 * 1024;
 
-export type MailboxInboundErrorCode = "too_large" | "invalid";
+export type MailboxInboundErrorCode = "too_large" | "invalid" | "unknown_mailbox";
 
 export class MailboxInboundError extends Error {
   readonly code: MailboxInboundErrorCode;
@@ -17,7 +17,7 @@ export class MailboxInboundError extends Error {
     super(message);
     this.name = "MailboxInboundError";
     this.code = code;
-    this.status = code === "too_large" ? 413 : 400;
+    this.status = code === "too_large" ? 413 : code === "unknown_mailbox" ? 404 : 400;
   }
 }
 
@@ -201,6 +201,8 @@ export async function ingestInboundLetter(
   db: Db,
   tables: TenantNotificationTables,
   parsed: ParsedInboundLetter,
+  /** When given, the letter belongs to this app, and a parent thread only counts if it is the same app's. */
+  opts?: { recipientTenantId: bigint | null },
 ): Promise<"inserted" | "duplicate"> {
   const rfcMessageId = normalizeMessageId(parsed.rfcMessageId) ?? parsed.rfcMessageId.trim();
   const inReplyTo = normalizeMessageId(parsed.inReplyTo);
@@ -221,8 +223,10 @@ export async function ingestInboundLetter(
       .from(tables.emailMailbox)
       .where(inArray(tables.emailMailbox.rfcMessageId, parentIds))
       .limit(1);
-    if (parent) {
-      tenantId = (parent.tenantId as bigint | null) ?? null;
+    const parentTenantId = (parent?.tenantId as bigint | null | undefined) ?? null;
+    // A forged References header must not drop a letter into another app's conversation.
+    if (parent && (opts === undefined || parentTenantId === opts.recipientTenantId)) {
+      tenantId = parentTenantId;
       threadId =
         typeof parent.threadId === "string" && parent.threadId
           ? parent.threadId
@@ -234,6 +238,7 @@ export async function ingestInboundLetter(
             });
     }
   }
+  if (opts !== undefined) tenantId = opts.recipientTenantId;
   const values = mailboxInsertValues({
     outboxId: null,
     tenantId,

@@ -181,3 +181,39 @@ describe("ingestInboundLetter", () => {
     expect(await ingestInboundLetter(db as never, tables, parsed)).toBe("duplicate");
   });
 });
+
+describe("ingestInboundLetter with a known recipient app", () => {
+  function fakeDb(parentTenantId: bigint) {
+    const inserted: Record<string, unknown>[] = [];
+    const db = {
+      select: () => ({
+        from: () => ({
+          where: () => ({ limit: async () => [{ tenantId: parentTenantId, threadId: "<abc@relay.test>" }] }),
+        }),
+      }),
+      insert: () => ({
+        values: (v: Record<string, unknown>) => {
+          inserted.push(v);
+          return { onConflictDoNothing: () => ({ returning: async () => [{ publicId: "mbx_in" }] }) };
+        },
+      }),
+    };
+    return { db, inserted };
+  }
+
+  it("keeps a reply in the parent thread when that thread belongs to the recipient's app", async () => {
+    const { db, inserted } = fakeDb(9n);
+    await ingestInboundLetter(db as never, tables, parseMailboxInbound(readFixture("reply-simple.json")), {
+      recipientTenantId: 9n,
+    });
+    expect(inserted[0]).toMatchObject({ threadId: "<abc@relay.test>", tenantId: 9n });
+  });
+
+  it("starts a new thread when References point at another app's thread", async () => {
+    const { db, inserted } = fakeDb(9n);
+    await ingestInboundLetter(db as never, tables, parseMailboxInbound(readFixture("reply-simple.json")), {
+      recipientTenantId: 5n,
+    });
+    expect(inserted[0]).toMatchObject({ threadId: "<reply-1@example.com>", tenantId: 5n });
+  });
+});

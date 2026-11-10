@@ -11,6 +11,8 @@ export type InboundHttpResult = { status: number; body?: { ok?: boolean; duplica
 
 export async function handleMailboxInboundPost(input: {
   raw: string;
+  /** Envelope from Cloudflare Email Routing. When present the signature covers it, and it decides the recipient. */
+  envelope?: { to: string; from: string } | null;
   signature: string | null;
   secret: string | undefined;
   ingest: (letter: ParsedInboundLetter) => Promise<"inserted" | "duplicate">;
@@ -26,7 +28,8 @@ export async function handleMailboxInboundPost(input: {
     }
     throw err;
   }
-  if (!input.signature || !verifyWebhookSignature(input.secret, input.raw, input.signature)) {
+  const signed = input.envelope ? `${input.envelope.to}\n${input.envelope.from}\n${input.raw}` : input.raw;
+  if (!input.signature || !verifyWebhookSignature(input.secret, signed, input.signature)) {
     return { status: 401, body: { title: "Invalid signature" } };
   }
   let payload = input.raw;
@@ -46,7 +49,8 @@ export async function handleMailboxInboundPost(input: {
     }
   }
   try {
-    const letter = parseMailboxInbound(payload);
+    const parsed = parseMailboxInbound(payload);
+    const letter = input.envelope ? { ...parsed, toEmail: input.envelope.to.trim().toLowerCase() } : parsed;
     const result = await input.ingest(letter);
     return { status: 200, body: { ok: true, duplicate: result === "duplicate" } };
   } catch (err) {

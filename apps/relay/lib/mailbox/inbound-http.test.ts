@@ -56,4 +56,49 @@ describe("handleMailboxInboundPost", () => {
     expect(fetchSpy).not.toHaveBeenCalled();
     fetchSpy.mockRestore();
   });
+
+  describe("with a signed envelope (Cloudflare Email Routing)", () => {
+    const envelope = { to: "hello@a6n.ai", from: "bounce@out.test" };
+    const canonical = `${envelope.to}\n${envelope.from}\n${fixture}`;
+
+    it("accepts a signature over envelope plus body and files under the envelope recipient", async () => {
+      const ingest = vi.fn().mockResolvedValue("inserted");
+      const res = await handleMailboxInboundPost({
+        raw: fixture,
+        envelope,
+        signature: signWebhookBody(secret, canonical),
+        secret,
+        ingest,
+      });
+      expect(res.status).toBe(200);
+      expect(ingest.mock.calls[0][0].toEmail).toBe("hello@a6n.ai");
+    });
+
+    it("rejects a body-only signature when envelope headers are present", async () => {
+      const ingest = vi.fn();
+      const res = await handleMailboxInboundPost({
+        raw: fixture,
+        envelope,
+        signature: signWebhookBody(secret, fixture),
+        secret,
+        ingest,
+      });
+      expect(res.status).toBe(401);
+      expect(ingest).not.toHaveBeenCalled();
+    });
+
+    it("answers 404 when the recipient is not a Relay inbox", async () => {
+      const { MailboxInboundError } = await import("@relay/engine");
+      const ingest = vi.fn().mockRejectedValue(new MailboxInboundError("unknown_mailbox", "No such mailbox"));
+      const res = await handleMailboxInboundPost({
+        raw: fixture,
+        envelope,
+        signature: signWebhookBody(secret, canonical),
+        secret,
+        ingest,
+      });
+      expect(res.status).toBe(404);
+    });
+  });
 });
+
