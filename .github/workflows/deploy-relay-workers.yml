@@ -1,0 +1,63 @@
+# Relay on Cloudflare Workers (OpenNext). Push to main deploys production; a manual run on
+# main redeploys it. Runbook: deployment/cloudflare/README.md.
+#
+# Repo secrets: CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID, RELAY_DIRECT_DATABASE_URL (Neon
+# relay production, direct endpoint).
+name: deploy-relay-workers
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "apps/relay/**"
+      - "packages/**"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "package.json"
+      - ".github/workflows/deploy-relay-workers.yml"
+
+concurrency:
+  group: deploy-relay
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    # Production only from main: it migrates the prod DB.
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+      TURBO_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run check
+      - name: Resolve DB URL
+        env:
+          SECRET_URL: ${{ secrets.RELAY_DIRECT_DATABASE_URL }}
+          # Neon relay production endpoint; guards against a wrong secret migrating another DB.
+          DB_HOST: ep-empty-lab-b3r7yhrs
+        run: |
+          echo "::add-mask::$SECRET_URL"
+          host=$(SECRET_URL="$SECRET_URL" node -e 'try { console.log(new URL(process.env.SECRET_URL).hostname) } catch { console.log("") }')
+          [[ -n "$host" && "$host" == "$DB_HOST"* ]] || { echo "RELAY_DIRECT_DATABASE_URL is missing or not on $DB_HOST*"; exit 1; }
+          echo "DATABASE_URL=$SECRET_URL" >> "$GITHUB_ENV"
+      - name: Migrate
+        run: pnpm --dir apps/relay exec drizzle-kit migrate
+      - name: Build
+        run: pnpm --dir apps/relay cf:build
+        env:
+          NEXT_PUBLIC_BETTER_AUTH_URL: https://relay.a6n.ai
+      - name: Deploy
+        run: pnpm --dir apps/relay cf:deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

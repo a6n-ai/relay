@@ -4,16 +4,8 @@
 name: deploy-relay
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "apps/relay/**"
-      - "packages/**"
-      - "deployment/prod/**"
-      - "pnpm-lock.yaml"
-      - "pnpm-workspace.yaml"
-      - "package.json"
-      - ".github/workflows/deploy-relay.yml"
+  # Legacy EC2/Docker path, kept for manual use since the move to Cloudflare Workers
+  # (deploy-relay-workers.yml).
   workflow_dispatch: {}
 
 concurrency:
