@@ -2,13 +2,13 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@foundry/ui/button";
 import { Input } from "@foundry/ui/input";
 import { Label } from "@foundry/ui/label";
 import { Textarea } from "@foundry/ui/textarea";
 import { apiFetch } from "@relay/engine/ui/api-fetch";
+import { CreateFooter, CreateTitleField, useCreateDialog } from "@/components/ds/create-dialog";
 
 export function CreateCampaignForm({
   tenants,
@@ -17,7 +17,7 @@ export function CreateCampaignForm({
   tenants: { publicId: string; name: string; slug: string }[];
   lists: { publicId: string; name: string; memberCount: number }[];
 }) {
-  const router = useRouter();
+  const { created: notifyCreated } = useCreateDialog();
   const [name, setName] = useState("");
   const [tenantPublicId, setTenantPublicId] = useState(tenants[0]?.publicId ?? "");
   const [listIds, setListIds] = useState<string[]>(lists[0] ? [lists[0].publicId] : []);
@@ -30,7 +30,7 @@ export function CreateCampaignForm({
 
   async function save() {
     if (!name.trim()) return toast.error("Name the campaign");
-    if (!tenantPublicId) return toast.error("Pick an app — From address and footer come from that app");
+    if (!tenantPublicId) return toast.error("Pick an app. The From address and footer come from that app");
     if (listIds.length === 0) return toast.error("Pick at least one group of people");
     if (!subject.trim()) return toast.error("Add a subject");
     setSaving(true);
@@ -57,9 +57,8 @@ export function CreateCampaignForm({
           ),
         });
       }
-      toast.success(scheduledAtLocal ? "Scheduled" : "Draft saved");
-      router.push(`/dashboard/campaigns/${created.publicId}`);
-      router.refresh();
+      setName("");
+      notifyCreated({ noun: "Campaign", name, href: `/dashboard/campaigns/${created.publicId}` });
     } catch {
       /* apiFetch toasted */
     } finally {
@@ -77,11 +76,8 @@ export function CreateCampaignForm({
   }
 
   return (
-    <div className="flex max-w-xl flex-col gap-3">
-      <div className="space-y-1.5">
-        <Label htmlFor="cmp-name">Name</Label>
-        <Input id="cmp-name" value={name} onChange={(e) => setName(e.target.value)} />
-      </div>
+    <div className="flex flex-col gap-3">
+      <CreateTitleField label="Name" placeholder="Campaign name" value={name} onChange={(e) => setName(e.target.value)} />
       <div className="space-y-1.5">
         <Label htmlFor="cmp-tenant">Send as</Label>
         <select
@@ -92,7 +88,7 @@ export function CreateCampaignForm({
         >
           {tenants.map((t) => (
             <option key={t.publicId} value={t.publicId}>
-              {t.name} ({t.slug})
+              {t.name}
             </option>
           ))}
         </select>
@@ -152,9 +148,11 @@ export function CreateCampaignForm({
         <Label htmlFor="cmp-text">Plain text</Label>
         <Textarea id="cmp-text" rows={4} value={text} onChange={(e) => setText(e.target.value)} />
       </div>
-      <Button type="button" onClick={() => void save()} disabled={saving}>
-        {saving ? "Saving…" : "Save draft"}
-      </Button>
+      <CreateFooter>
+        <Button type="button" onClick={() => void save()} disabled={saving}>
+          {saving ? "Saving…" : "Create campaign"}
+        </Button>
+      </CreateFooter>
     </div>
   );
 }

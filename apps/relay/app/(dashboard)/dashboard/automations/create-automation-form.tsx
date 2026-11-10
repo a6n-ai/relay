@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { LoadingButton } from "@/components/interior/loading-button";
 import { Input } from "@foundry/ui/input";
 import { Label } from "@foundry/ui/label";
 import { apiFetch } from "@relay/engine/ui/api-fetch";
+import { CreateFooter, CreateTitleField, useCreateDialog } from "@/components/ds/create-dialog";
 
 export function CreateAutomationForm({
   tenants,
@@ -15,7 +15,7 @@ export function CreateAutomationForm({
   tenants: { publicId: string; name: string; slug: string }[];
   lists: { publicId: string; name: string }[];
 }) {
-  const router = useRouter();
+  const { created } = useCreateDialog();
   const [tenantPublicId, setTenantPublicId] = useState(tenants[0]?.publicId ?? "");
   const [listPublicId, setListPublicId] = useState(lists[0]?.publicId ?? "");
   const [name, setName] = useState("Add signups to list");
@@ -30,8 +30,7 @@ export function CreateAutomationForm({
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ tenantPublicId, listPublicId, name, triggerEvent }),
       });
-      toast.success("Automation saved");
-      router.refresh();
+      created({ noun: "Automation", name });
       return true;
     } catch {
       return false; // apiFetch already toasted
@@ -43,11 +42,8 @@ export function CreateAutomationForm({
   }
 
   return (
-    <div className="flex max-w-xl flex-col gap-3">
-      <div className="space-y-1.5">
-        <Label htmlFor="au-name">Name</Label>
-        <Input id="au-name" value={name} onChange={(e) => setName(e.target.value)} />
-      </div>
+    <div className="flex flex-col gap-3">
+      <CreateTitleField label="Name" placeholder="Automation name" value={name} onChange={(e) => setName(e.target.value)} />
       <div className="space-y-1.5">
         <Label htmlFor="au-event">When this happens</Label>
         <Input id="au-event" value={triggerEvent} onChange={(e) => setTriggerEvent(e.target.value)} />
@@ -78,7 +74,9 @@ export function CreateAutomationForm({
           ))}
         </select>
       </div>
-      <LoadingButton onAction={async () => { if (!(await save())) throw new Error("not saved"); }} pendingLabel="Saving…" successLabel="Saved">Save automation</LoadingButton>
+      <CreateFooter>
+        <LoadingButton onAction={async () => { if (!(await save())) throw new Error("not saved"); }} pendingLabel="Saving…" successLabel="Saved">Create automation</LoadingButton>
+      </CreateFooter>
     </div>
   );
 }

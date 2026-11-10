@@ -1,4 +1,3 @@
-import { UsersIcon } from "lucide-react";
 import { PageShell } from "@foundry/design-system";
 import { getSession } from "@/lib/auth/session";
 import { AccountSettingsForm } from "./account-settings-form";
@@ -14,7 +13,6 @@ export default async function AccountPage() {
   return (
     <PageShell>
       <ViewHeader
-        icon={UsersIcon}
         title="Your account"
         subtitle="Name, appearance, and password."
       />

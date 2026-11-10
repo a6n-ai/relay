@@ -228,6 +228,23 @@
 */
 .dashboard-canvas {
   background-color: var(--background);
+  /* Lets the view header's hairlines run edge to edge (cqw) past the page's own padding. */
+  container-type: inline-size;
+}
+
+/* Linear panel title row and view row: a hairline under each, full width of the panel. */
+.view-rule {
+  position: relative;
+}
+.view-rule::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: calc(100cqw + 3rem);
+  height: 1px;
+  transform: translateX(-50%);
+  background: var(--border);
 }
 
 .dashboard-shell-grid {
@@ -286,6 +303,20 @@
 }
 [data-slot="sidebar-group"] {
   padding-block: 0.25rem;
+}
+/* Hover is a half tint so it never reads as the current page, even when the pointer is left over
+   a link after Back; the current page keeps the full tint, a lavender bar and bolder text. */
+[data-slot="sidebar-menu-button"]:not([data-active="true"]):hover {
+  background-color: color-mix(in oklch, var(--sidebar-accent) 45%, transparent);
+}
+[data-slot="sidebar-menu-button"][data-active="true"] {
+  box-shadow: inset 2px 0 0 var(--primary);
+}
+
+/* Settings rows: the label is the row's own text, not a muted form caption. */
+[data-settings-row] :is([data-slot="label"], [data-slot="form-label"]) {
+  color: var(--foreground);
+  font-size: 14px;
 }
 
 /* Lavender text in dark mode is the lighter step: #5e6ad2 on the page is 4.05:1, #828fff is 6.5:1. Fills keep --primary. */

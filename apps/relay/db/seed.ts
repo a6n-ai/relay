@@ -67,10 +67,14 @@ async function seedDemoApps() {
     console.log("tenant realm-dev already exists");
   }
 
-  for (const spec of [
-    { name: "Tiffin Grab", slug: "tiffin-grab" },
-    { name: "Puchkaman", slug: "puchkaman" },
-  ] as const) {
+  // Sample apps only when asked, so they never leak into a real operator's app pickers.
+  const sampleApps = process.env.SEED_SAMPLE_APPS === "true"
+    ? ([
+        { name: "Tiffin Grab", slug: "tiffin-grab" },
+        { name: "Puchkaman", slug: "puchkaman" },
+      ] as const)
+    : [];
+  for (const spec of sampleApps) {
     const [existing] = await db.select().from(tenants).where(eq(tenants.slug, spec.slug)).limit(1);
     if (existing) {
       console.log(`tenant ${spec.slug} already exists`);

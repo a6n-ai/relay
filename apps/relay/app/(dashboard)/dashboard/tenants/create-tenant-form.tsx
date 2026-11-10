@@ -10,6 +10,8 @@ import {
   Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
 } from "@foundry/ui/form";
 import { Input } from "@foundry/ui/input";
+import { CreateFooter, CreateTitleField, useCreateDialog } from "@/components/ds/create-dialog";
+import { isCreateSuccess } from "@/components/ds/create-success";
 
 const schema = z.object({
   name: z.string().trim().min(1, "Name is required"),
@@ -20,7 +22,7 @@ const schema = z.object({
 });
 
 export function CreateTenantForm() {
-  const [secret, setSecret] = useState<string | null>(null);
+  const { created } = useCreateDialog();
   const [error, setError] = useState<string | null>(null);
   const [realmKeys, setRealmKeys] = useState<{ slug: string; secret: string }[] | null>(null);
   const form = useForm<z.infer<typeof schema>>({
@@ -37,25 +39,29 @@ export function CreateTenantForm() {
     fd.set("physicalAddress", values.physicalAddress ?? "");
     fd.set("monthlyMessageQuota", String(values.monthlyMessageQuota));
     const result = await createTenantAction(fd);
-    if (result.error) setError(result.error);
-    setSecret(result.secret ?? null);
+    if (!isCreateSuccess(result)) return setError(result.error ?? "Could not add the app");
+    created({
+      noun: "App",
+      name: values.name,
+      href: result.publicId ? `/dashboard/tenants/${result.publicId}` : undefined,
+      secret: result.secret,
+    });
   }
 
   return (
-    <div className="flex max-w-xl flex-col gap-6">
+    <div className="flex flex-col gap-6">
       <Form {...form}>
         <form className="flex flex-col gap-3" onSubmit={form.handleSubmit(onSubmit)}>
           <FormField control={form.control} name="name" render={({ field }) => (
             <FormItem>
-              <FormLabel>Name</FormLabel>
-              <FormControl><Input placeholder="Tiffin Grab" {...field} /></FormControl>
+              <FormControl><CreateTitleField label="Name" placeholder="App name" {...field} /></FormControl>
               <FormMessage />
             </FormItem>
           )} />
           <FormField control={form.control} name="slug" render={({ field }) => (
             <FormItem>
               <FormLabel>Short name</FormLabel>
-              <FormControl><Input placeholder="tiffin-grab" {...field} /></FormControl>
+              <FormControl><Input placeholder="your-app" {...field} /></FormControl>
               <FormMessage />
             </FormItem>
           )} />
@@ -86,7 +92,10 @@ export function CreateTenantForm() {
               <FormMessage />
             </FormItem>
           )} />
-          <Button type="submit" disabled={form.formState.isSubmitting}>Add app</Button>
+          {error ? <p className="text-destructive text-sm">{error}</p> : null}
+          <CreateFooter>
+            <Button type="submit" disabled={form.formState.isSubmitting}>Create app</Button>
+          </CreateFooter>
         </form>
       </Form>
       {process.env.NODE_ENV !== "production" ? (
@@ -99,18 +108,12 @@ export function CreateTenantForm() {
           }}
         >
           <Button type="submit" variant="outline">
-            Create Tiffin Grab + Puchkaman
+            Add the sample apps
           </Button>
           <p className="text-muted-foreground mt-2 text-xs">
             Skips apps that already exist. Copy each key now. We don’t store the full secret.
           </p>
         </form>
-      ) : null}
-      {error ? <p className="text-destructive text-sm">{error}</p> : null}
-      {secret ? (
-        <p className="text-sm">
-          Copy this key now; it is not shown again: <code className="break-all">{secret}</code>
-        </p>
       ) : null}
       {realmKeys && realmKeys.length === 0 ? (
         <p className="text-muted-foreground text-sm">Those apps already exist.</p>

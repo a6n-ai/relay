@@ -101,3 +101,16 @@ export function lastSevenDayChannelBuckets(
 
   return { totals, byChannel, channelTotals };
 }
+
+/** Nothing has been sent or is waiting, now or in the week before: show a first step, not a wall of zeros. */
+export function isHomeEmpty(metrics: {
+  pendingCount: number;
+  failedCount: number;
+  recent: readonly unknown[];
+  totals: readonly number[];
+  priorMix: Record<Channel, number>;
+}): boolean {
+  const week = metrics.totals.reduce((a, b) => a + b, 0);
+  const prior = Object.values(metrics.priorMix).reduce((a, b) => a + b, 0);
+  return week === 0 && prior === 0 && metrics.pendingCount === 0 && metrics.failedCount === 0 && metrics.recent.length === 0;
+}

@@ -43,7 +43,7 @@ type FilterKey = "all" | "valid" | "invalid";
  * only skipped: editing its email re-runs the same check that rejected it,
  * and a row that now passes is included automatically.
  */
-export function ContactListUpload() {
+export function ContactListUpload({ onCreated }: { onCreated?: (result: { name: string; imported: number }) => void } = {}) {
   const router = useRouter();
   const [meta, setMeta] = useState<ListMeta>({ name: "", consentSource: "express_optin", consentNote: "" });
   const [file, setFile] = useState<File | null>(null);
@@ -145,8 +145,11 @@ export function ContactListUpload() {
         .filter((r) => !r.reason && !excluded.has(r.id))
         .map((r) => ({ name: r.name, email: r.email || undefined, phone: r.phone || undefined }));
       const res = await createListWithContacts(meta, contacts);
-      toast.success(`Imported ${res.imported}`);
-      router.refresh();
+      if (onCreated) onCreated({ name: meta.name, imported: res.imported });
+      else {
+        toast.success(`Imported ${res.imported}`);
+        router.refresh();
+      }
       setMeta({ name: "", consentSource: "express_optin", consentNote: "" });
       setFile(null);
       setHeaders([]);

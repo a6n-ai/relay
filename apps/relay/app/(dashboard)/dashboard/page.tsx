@@ -1,14 +1,16 @@
-import { InboxIcon, UsersIcon, XCircleIcon } from "lucide-react";
+import { InboxIcon, SendIcon, UsersIcon, XCircleIcon } from "lucide-react";
 import { ChannelDistribution } from "@/components/ds/channel-distribution";
 import { ChannelPerformance } from "@/components/ds/channel-performance";
 import { DotRule } from "@/components/ds/dot-rule";
+import { EmptyState } from "@/components/ds/empty-state";
 import { KeyInsightsCard } from "@/components/ds/key-insights-card";
 import { KpiActionCard } from "@/components/ds/kpi-tile";
 import { OverviewFrame, OverviewSlot } from "@/components/ds/overview-frame";
 import { OverviewGreeting } from "@/components/ds/overview-greeting";
-import { percentDelta } from "@/components/ds/overview-stats";
+import { isHomeEmpty, percentDelta } from "@/components/ds/overview-stats";
 import { RecentOutboxCard } from "@/components/ds/recent-outbox-card";
 import { ThroughputCard } from "@/components/ds/throughput-card";
+import { ViewHeader } from "@/components/ds/view-header";
 import { loadHomeMetrics } from "@/lib/dashboard/load-home-metrics";
 import { operatorFirstName } from "@/lib/dashboard/operator-name";
 import { getSession } from "@/lib/auth/session";
@@ -32,7 +34,28 @@ export default async function DashboardPage() {
 
   const firstName = operatorFirstName(session?.user);
 
+  if (isHomeEmpty(metrics)) {
+    return (
+      <div className="flex flex-col gap-6">
+        <ViewHeader title="Home" />
+        <EmptyState
+          icon={SendIcon}
+          title="Nothing has been sent yet"
+          lines={[
+            "Apps send through Relay with an access key.",
+            tenantCount === 0 ? "Add your first app and copy its key." : "Open an app, copy its key, and send your first message.",
+            "Every delivery shows up here.",
+          ]}
+          cta={{ label: tenantCount === 0 ? "Add an app" : "Open apps", href: "/dashboard/tenants" }}
+          docsHref="/docs"
+        />
+      </div>
+    );
+  }
+
   return (
+    <div className="flex flex-col gap-6">
+    <ViewHeader title="Home" />
     <OverviewFrame>
       <OverviewSlot span={8}>
         <OverviewGreeting name={firstName} />
@@ -96,5 +119,6 @@ export default async function DashboardPage() {
         <RecentOutboxCard rows={recent} />
       </OverviewSlot>
     </OverviewFrame>
+    </div>
   );
 }

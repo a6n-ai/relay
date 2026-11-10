@@ -1,6 +1,7 @@
 import { ZapIcon } from "lucide-react";
-import { PageShell, SectionCard } from "@foundry/design-system";
-import { OperatorSplit } from "@/components/ds/operator-split";
+import { PageShell } from "@foundry/design-system";
+import { CreateDialog } from "@/components/ds/create-dialog";
+import { EmptyState } from "@/components/ds/empty-state";
 import { FilteredResourceList } from "@/components/ds/listing-controls";
 import type { ListingFilter, ListingRow } from "@/components/ds/listing-controls";
 import { listAutomationsService } from "@/lib/services/automations.service";
@@ -34,30 +35,34 @@ export default async function AutomationsPage() {
     badges: [{ label: r.enabled ? "On" : "Off", variant: r.enabled ? "secondary" : "outline" }],
   }));
 
+  const create = (pill: boolean) => (
+    <CreateDialog label="New automation" pill={pill}>
+      <CreateAutomationForm tenants={tenantRows} lists={lists} />
+    </CreateDialog>
+  );
+
   return (
     <PageShell>
       <ViewHeader
-        icon={ZapIcon}
         title="Automations"
         subtitle="When something happens in an app, add that person to a group so you can email them later."
+        section="campaigns"
+        actions={create(false)}
       />
-      <OperatorSplit
-        createLabel="New automation"
-        create={
-          <SectionCard title="New automation">
-            <CreateAutomationForm tenants={tenantRows} lists={lists} />
-          </SectionCard>
-        }
-        list={
-          <FilteredResourceList
-            title="Rules"
-            glyph="zap"
-            emptyMessage="No automations yet. Use New automation to add one."
-            searchPlaceholder="Search automations"
-            filters={AUTOMATION_FILTERS}
-            items={items}
+      <FilteredResourceList
+        title="Rules"
+        empty={
+          <EmptyState
+            icon={ZapIcon}
+            title="No automations yet"
+            lines={["An automation adds people to a group when something happens in an app.", "Later you can email that group."]}
+            action={create(true)}
+            docsHref="/docs"
           />
         }
+        searchPlaceholder="Search automations"
+        filters={AUTOMATION_FILTERS}
+        items={items}
       />
     </PageShell>
   );

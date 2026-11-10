@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import nextDynamic from "next/dynamic";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth/session";
@@ -7,6 +8,8 @@ const LoginForm = nextDynamic(() => import("./auth-form").then((m) => ({ default
 });
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = { title: "Sign in" };
 
 export default async function LoginPage() {
   const session = await getSession();

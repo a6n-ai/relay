@@ -73,6 +73,22 @@ Sources: [A design reset](https://linear.app/now/a-design-reset), [How we redesi
 - **Lists** (`FilteredResourceList`, `ResourceRow`): compact rows on hairlines, search and filter chips above, an empty state that names the next action.
 - **Feedback**: `loading.tsx` skeletons for waits, `LoadingButton` for in-place saving/saved/try-again, toasts only for results that leave the screen.
 
+## Observed in Linear (workspace tour, 2026-11-10)
+
+Measured by using the product, not from screenshots of marketing pages.
+
+- **Panel title row** (~44px, hairline below): breadcrumb (`A6n › Issues › A6N-5 Title`), favourite star, `⋯`; right side: bell + "+ New issue" ghost button. On detail pages the right side becomes `1 / 5` with up/down arrows.
+- **View row** (~40px): filled pill tabs (Active, Backlog, All issues) + a "save view" icon; right side: round icon buttons for Filter, Display, Side panel.
+- **Lists**: rows ~40px, no card, full-width hover tint. Row = priority glyph or `⋯`, mono ID, status ring, title, then right-aligned label chip (coloured dot + name), avatar, date. Group header strip ("○ Todo 5", `+` at the end) on a slightly lighter fill. Right-click opens a context menu with every action + its key.
+- **Create dialog**: top-anchored (~110px from top, not centred), ~670px wide, light scrim. Breadcrumb chip (team › New issue), expand + close icons. Title input is borderless 18px semibold, description borderless muted. A row of property chips (Status, Priority, Assignee, Labels, `⋯`) each opens a searchable picker with number shortcuts. Footer: attach icon, "Create more" toggle, lavender "Create issue". On create: dialog closes, new row highlighted, toast bottom-right ("Issue created", item, "View issue" link).
+- **Pickers / menus**: level-3 surface, search input at top with its shortcut key on the right, rows 28px with icon, label, check for current, number key on the right.
+- **Display popover**: List/Board segmented toggle, then label-left / select-right rows (Grouping, Ordering), toggles, and "Display properties" as toggle pills.
+- **Detail page**: content column (title 24px semibold, inline-editable; description; Activity feed; comment box) + right properties rail with small muted headings (Properties, Labels, Project) and inline-editable chips. No boxes around either.
+- **Command menu (⌘K)**: top-anchored, context chip for the current item, every command with its key.
+- **Settings**: own sidebar ("‹ Back to app", search, grouped links). Content is a centred ~600px column: page title, section heading, then a rounded card of rows; each row is label + one muted line on the left, control (select, toggle, button) on the right, hairline between rows.
+- **Empty states**: line-art glyph, bold title, 2-3 muted lines, lavender pill CTA showing its shortcut, ghost "Documentation".
+- **Public site** (linear.app): sticky 64px nav, wordmark left, text links right, divider, "Docs", white pill "Open app". Hero left-aligned: two-line ~64px headline at tight tracking, one muted sentence, a "New · <feature> →" link on the right, then a real product frame (the app itself, sidebar and all) on a lit floor gradient. Then logo row, a large two-tone statement paragraph (bold first sentence, rest muted), three columns of line-art isometric drawings with title + two muted lines split by vertical hairlines, alternating "Heading / paragraph + Learn more →" sections each showing a live slice of the app, a centred closing CTA (white pill + dark pill), and a six-column footer of plain links.
+
 ## Components (reuse, never restyle ad hoc)
 
 Every DESIGN.md surface maps to one Relay component. Build screens from these and the semantic tokens (`bg-card`, `text-muted-foreground`, `bg-primary`); a new pattern becomes a component in `apps/relay/components/ds/` before a second page uses it.

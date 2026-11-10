@@ -1,25 +1,30 @@
 import type { LucideIcon } from "lucide-react";
-import type { ReactNode } from "react";
-import { EmptyState, PageShell } from "@foundry/design-system";
+import { PageShell } from "@foundry/design-system";
+import { EmptyState } from "./empty-state";
+import type { SectionKey } from "./section-labels";
 import { ViewHeader } from "./view-header";
 
 export function StubPage({
   icon,
   title,
   subtitle,
-  message,
-  action,
+  section,
+  emptyTitle,
+  lines,
+  cta,
 }: {
   icon: LucideIcon;
   title: string;
   subtitle: string;
-  message: string;
-  action?: ReactNode;
+  section?: SectionKey;
+  emptyTitle: string;
+  lines: readonly string[];
+  cta?: { label: string; href: string };
 }) {
   return (
     <PageShell>
-      <ViewHeader icon={icon} title={title} subtitle={subtitle} />
-      <EmptyState icon={icon} message={message} action={action} />
+      <ViewHeader title={title} subtitle={subtitle} section={section} />
+      <EmptyState icon={icon} title={emptyTitle} lines={lines} cta={cta} docsHref="/docs" />
     </PageShell>
   );
 }

@@ -1,19 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@foundry/ui/button";
 import { Input } from "@foundry/ui/input";
 import { Label } from "@foundry/ui/label";
 import { apiFetch } from "@relay/engine/ui/api-fetch";
+import { CreateFooter, CreateTitleField, useCreateDialog } from "@/components/ds/create-dialog";
 
 export function CreateAppTagForm({
   apps,
 }: {
   apps: { publicId: string; name: string }[];
 }) {
-  const router = useRouter();
+  const { created } = useCreateDialog();
   const [tenantPublicId, setTenantPublicId] = useState(apps[0]?.publicId ?? "");
   const [label, setLabel] = useState("");
   const [busy, setBusy] = useState(false);
@@ -28,9 +28,7 @@ export function CreateAppTagForm({
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ tenantPublicId, label: label.trim() }),
       });
-      toast.success("Tag saved");
-      setLabel("");
-      router.refresh();
+      created({ noun: "Tag", name: label });
     } catch {
       /* toasted */
     } finally {
@@ -49,6 +47,20 @@ export function CreateAppTagForm({
   return (
     <div className="flex flex-col gap-3">
       <div className="space-y-1.5">
+        <CreateTitleField
+          label="Tag"
+          value={label}
+          placeholder="Tag name, like VIP"
+          onChange={(e) => setLabel(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              void save();
+            }
+          }}
+        />
+      </div>
+      <div className="space-y-1.5">
         <Label htmlFor="tag-app">App</Label>
         <select
           id="tag-app"
@@ -63,24 +75,11 @@ export function CreateAppTagForm({
           ))}
         </select>
       </div>
-      <div className="space-y-1.5">
-        <Label htmlFor="tag-label">Tag</Label>
-        <Input
-          id="tag-label"
-          value={label}
-          placeholder="VIP"
-          onChange={(e) => setLabel(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              void save();
-            }
-          }}
-        />
-      </div>
-      <Button type="button" disabled={busy} onClick={() => void save()}>
-        {busy ? "Saving…" : "Add tag"}
-      </Button>
+      <CreateFooter>
+        <Button type="button" disabled={busy} onClick={() => void save()}>
+          {busy ? "Saving…" : "Create tag"}
+        </Button>
+      </CreateFooter>
     </div>
   );
 }

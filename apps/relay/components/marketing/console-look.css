@@ -1,0 +1,45 @@
+/* Maps the stageshow tokens onto Relay's tokens so the demo follows the theme. */
+.rl-look .ss-stage {
+  --ss-canvas: var(--background);
+  --ss-surface: var(--card);
+  --ss-chrome: var(--background);
+  --ss-raised: var(--popover);
+  --ss-ink-1: color-mix(in srgb, var(--foreground) 4%, transparent);
+  --ss-ink-2: color-mix(in srgb, var(--foreground) 6%, transparent);
+  --ss-ink-3: color-mix(in srgb, var(--foreground) 9%, transparent);
+  --ss-ink-4: color-mix(in srgb, var(--foreground) 12%, transparent);
+  --ss-ink-5: color-mix(in srgb, var(--foreground) 18%, transparent);
+  --ss-fill: var(--muted);
+  --ss-line: var(--border);
+  --ss-line-faint: color-mix(in srgb, var(--border) 55%, transparent);
+  --ss-text: var(--muted-foreground);
+  --ss-text-strong: var(--foreground);
+  --ss-text-faint: color-mix(in srgb, var(--muted-foreground) 70%, var(--background));
+  --ss-icon: var(--muted-foreground);
+  --ss-icon-faint: color-mix(in srgb, var(--foreground) 22%, var(--background));
+  --ss-accent: var(--primary);
+  --ss-accent-2: var(--primary);
+  --ss-accent-soft: color-mix(in srgb, var(--primary) 18%, transparent);
+  --ss-accent-text: var(--accent-foreground);
+  --ss-success: var(--tag-green);
+  --ss-success-soft: color-mix(in srgb, var(--tag-green) 16%, transparent);
+  --ss-success-text: var(--tag-green);
+  --ss-danger: var(--tag-red);
+  --ss-danger-soft: color-mix(in srgb, var(--tag-red) 16%, transparent);
+  --ss-danger-text: var(--tag-red);
+  --ss-warning: var(--tag-yellow);
+  --ss-warning-soft: color-mix(in srgb, var(--tag-yellow) 16%, transparent);
+  --ss-warning-text: var(--tag-yellow);
+  --ss-well: var(--background);
+  --ss-font: var(--font-sans);
+  --ss-mono: var(--font-mono);
+  --ss-shadow-window: 0 0 0 1px var(--border);
+  --ss-shadow-hero: 0 0 0 1px var(--border), 0 40px 80px -20px color-mix(in srgb, black 55%, transparent);
+  --ss-shadow-card: 0 0 0 1px var(--border);
+  color: var(--foreground);
+}
+
+.rl-look .ss-stage {
+  overflow: hidden;
+  background: transparent;
+}

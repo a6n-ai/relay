@@ -10,7 +10,7 @@ import { issueTenantApiKey, tenantsService } from "@/lib/services/tenants.servic
 import { parseApiKeyChannels } from "@/lib/tenants/channels";
 import { REALM_SLUGS, parseCreateTenantForm } from "@/lib/tenants/forms";
 
-export async function createTenantAction(formData: FormData): Promise<{ secret?: string; error?: string }> {
+export async function createTenantAction(formData: FormData): Promise<{ secret?: string; publicId?: string; error?: string }> {
   await requirePermission({ tenant: ["write"] });
   const parsed = parseCreateTenantForm(formData);
   if ("error" in parsed) return parsed;
@@ -19,7 +19,7 @@ export async function createTenantAction(formData: FormData): Promise<{ secret?:
     const tenant = await tenantsService.create({ name, slug, mailingCountry, physicalAddress, monthlyMessageQuota });
     const secret = await issueTenantApiKey(tenant.id, "default");
     revalidatePath("/dashboard/tenants");
-    return { secret };
+    return { secret, publicId: tenant.publicId };
   } catch {
     return { error: "Could not create tenant (slug may already exist)" };
   }

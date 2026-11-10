@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { LoadingButton } from "@/components/interior/loading-button";
 import { Input } from "@foundry/ui/input";
 import { Label } from "@foundry/ui/label";
 import { apiFetch } from "@relay/engine/ui/api-fetch";
+import { CreateFooter, useCreateDialog } from "@/components/ds/create-dialog";
 import { webhookEventLabel } from "@/components/ds/plain-labels";
 
 const EVENTS = [
@@ -17,16 +17,24 @@ const EVENTS = [
   "message.complained",
 ] as const;
 
+/** The address's host reads better in a toast than the whole URL. */
+function destinationName(url: string): string {
+  try {
+    return new URL(url).host;
+  } catch {
+    return url;
+  }
+}
+
 export function CreateWebhookForm({
   tenants,
 }: {
   tenants: { publicId: string; name: string; slug: string }[];
 }) {
-  const router = useRouter();
+  const { created } = useCreateDialog();
   const [tenantPublicId, setTenantPublicId] = useState(tenants[0]?.publicId ?? "");
   const [url, setUrl] = useState("https://yourapp.com/webhooks/relay");
   const [events, setEvents] = useState<string[]>(["message.sent", "message.failed"]);
-  const [secret, setSecret] = useState<string | null>(null);
 
   function toggle(ev: string) {
     setEvents((cur) => (cur.includes(ev) ? cur.filter((x) => x !== ev) : [...cur, ev]));
@@ -42,9 +50,7 @@ export function CreateWebhookForm({
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ tenantPublicId, url, events }),
       });
-      setSecret(res.secret);
-      toast.success("Saved — copy the secret now");
-      router.refresh();
+      created({ noun: "Destination", name: destinationName(url), secret: res.secret });
       return true;
     } catch {
       return false; // apiFetch already toasted
@@ -56,7 +62,7 @@ export function CreateWebhookForm({
   }
 
   return (
-    <div className="flex max-w-xl flex-col gap-3">
+    <div className="flex flex-col gap-3">
       <div className="space-y-1.5">
         <Label htmlFor="wh-tenant">App</Label>
         <select
@@ -66,7 +72,7 @@ export function CreateWebhookForm({
           onChange={(e) => setTenantPublicId(e.target.value)}
         >
           {tenants.map((t) => (
-            <option key={t.publicId} value={t.publicId}>{t.name} ({t.slug})</option>
+            <option key={t.publicId} value={t.publicId}>{t.name}</option>
           ))}
         </select>
       </div>
@@ -83,15 +89,12 @@ export function CreateWebhookForm({
           </label>
         ))}
       </fieldset>
-      <LoadingButton onAction={async () => { if (!(await save())) throw new Error("not saved"); }} pendingLabel="Saving…" successLabel="Saved">Save destination</LoadingButton>
-      {secret ? (
-        <p className="text-sm">
-          Signing secret (shown once): <code className="break-all">{secret}</code>
-        </p>
-      ) : null}
       <p className="text-xs text-muted-foreground">
-        We’ll include a signature so the other system can trust the update.
+        We’ll include a signature so the other system can trust the update. You’ll see the signing secret once, after you save.
       </p>
+      <CreateFooter>
+        <LoadingButton onAction={async () => { if (!(await save())) throw new Error("not saved"); }} pendingLabel="Saving…" successLabel="Saved">Create destination</LoadingButton>
+      </CreateFooter>
     </div>
   );
 }

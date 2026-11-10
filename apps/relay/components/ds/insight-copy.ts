@@ -23,7 +23,7 @@ export function insightCopy(input: { pending: number; failed: number }): {
   }
   return {
     kicker: "Relay",
-    body: "Each app (Tiffin Grab, Realm) sends its own messages. Watch delivery here.",
+    body: "Each app sends its own messages. Watch delivery here.",
     cta: "See apps",
     href: "/dashboard/tenants",
   };

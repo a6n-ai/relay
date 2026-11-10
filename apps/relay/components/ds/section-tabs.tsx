@@ -4,16 +4,17 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@foundry/ui/cn";
 import { SECTION_TABS } from "./nav";
+import type { SectionKey } from "./section-labels";
 
 /** Linear view tabs: compact pills that are links (aria-current marks the page), not a Radix tablist. */
-export function SectionTabs({ section, label }: { section: keyof typeof SECTION_TABS; label: string }) {
+export function SectionTabs({ section, label }: { section: SectionKey; label: string }) {
   const pathname = usePathname();
   const tabs = SECTION_TABS[section];
   const active = [...tabs]
     .filter((t) => pathname === t.href || pathname.startsWith(`${t.href}/`))
     .sort((a, b) => b.href.length - a.href.length)[0]?.href;
   return (
-    <nav aria-label={label} className="mb-5 flex flex-wrap gap-1">
+    <nav aria-label={label} className="flex flex-wrap gap-1">
       {tabs.map((t) => (
         <Link
           key={t.href}

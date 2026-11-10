@@ -2,23 +2,11 @@ import type { Metadata } from "next";
 import { Landing } from "@/components/marketing/landing";
 
 export const metadata: Metadata = {
-  title: "Relay — notifications that leave through one door",
+  title: "Relay - one send, every channel",
   description:
     "Send email, texts, WhatsApp, and in-app messages from one place. Sign in to watch delivery.",
 };
 
 export default function Home() {
-  return (
-    <>
-      {/*
-        THESIS: A send detonates into channels — not a SaaS hero with three cards.
-        OWN-WORLD: Lyra night field, hairline gutters, sharp rects, Geist, purple only.
-        STORY: Public product page — one POST, four channels; sign in to operate.
-        FIRST VIEWPORT: Split — promise left, dispatch burst right; Sign in in the bar.
-        FORM: Exploded-view dispatch (surface seed persuade).
-        FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, and DESIGN.md
-      */}
-      <Landing />
-    </>
-  );
+  return <Landing />;
 }

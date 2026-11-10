@@ -35,7 +35,7 @@ export function operatorEmailPrereqs(snap: EmailChannelSnapshot): EmailPrereq[] 
     {
       id: "from",
       label: "Default From address",
-      detail: "Used when an app’s From (like info@tiffingrab.ca) isn’t ready yet.",
+      detail: "Used when an app’s From (like hello@yourapp.com) isn’t ready yet.",
       status: fromReady ? "ready" : "missing",
     },
     {

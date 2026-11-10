@@ -2,7 +2,6 @@ import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { CrmShell } from "@foundry/crm";
 import { getSession } from "@/lib/auth/session";
-import { RelayBreadcrumbs } from "@/components/ds/relay-breadcrumbs";
 import { ThemeSwitcher } from "@/components/ds/theme-switcher";
 import { RelaySidebar } from "@/components/relay-sidebar";
 
@@ -22,7 +21,6 @@ export default async function DashboardLayout({ children }: { children: ReactNod
     </a>
     <CrmShell
       sidebar={<RelaySidebar email={session.user.email} />}
-      breadcrumbs={<RelayBreadcrumbs />}
       actions={<ThemeSwitcher />}
     >
       <div id="main" tabIndex={-1} className="style-lyra dashboard-canvas -m-6 min-h-[calc(100svh-3.5rem)] p-6 outline-none">

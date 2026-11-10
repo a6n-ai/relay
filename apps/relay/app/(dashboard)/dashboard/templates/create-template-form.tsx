@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@foundry/ui/button";
 import { Input } from "@foundry/ui/input";
@@ -9,13 +8,14 @@ import { Label } from "@foundry/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@foundry/ui/select";
 import { Textarea } from "@foundry/ui/textarea";
 import { apiFetch } from "@relay/engine/ui/api-fetch";
+import { CreateFooter, CreateTitleField, useCreateDialog } from "@/components/ds/create-dialog";
 
 export function CreateTemplateForm({
   tenants,
 }: {
   tenants: { publicId: string; name: string; slug: string }[];
 }) {
-  const router = useRouter();
+  const { created } = useCreateDialog();
   const [tenantPublicId, setTenantPublicId] = useState(tenants[0]?.publicId ?? "");
   const [event, setEvent] = useState("order.shipped");
   const [subject, setSubject] = useState("");
@@ -41,8 +41,7 @@ export function CreateTemplateForm({
           body: text,
         }),
       });
-      toast.success("Template saved");
-      router.refresh();
+      created({ noun: "Template", name: event });
     } catch {
       /* toasted */
     } finally {
@@ -71,7 +70,11 @@ export function CreateTemplateForm({
   }
 
   return (
-    <div className="flex max-w-xl flex-col gap-3">
+    <div className="flex flex-col gap-3">
+      <div className="space-y-1">
+        <CreateTitleField label="When this happens" placeholder="order.shipped" value={event} onChange={(e) => setEvent(e.target.value)} />
+        <p className="text-xs text-muted-foreground">Use the same name your app uses when it asks Relay to send.</p>
+      </div>
       <div className="space-y-1.5">
         <Label htmlFor="tpl-tenant">App</Label>
         <Select value={tenantPublicId} onValueChange={setTenantPublicId}>
@@ -80,15 +83,10 @@ export function CreateTemplateForm({
           </SelectTrigger>
           <SelectContent>
             {tenants.map((t) => (
-              <SelectItem key={t.publicId} value={t.publicId}>{t.name} ({t.slug})</SelectItem>
+              <SelectItem key={t.publicId} value={t.publicId}>{t.name}</SelectItem>
             ))}
           </SelectContent>
         </Select>
-      </div>
-      <div className="space-y-1.5">
-        <Label htmlFor="tpl-event">When this happens</Label>
-        <Input id="tpl-event" value={event} onChange={(e) => setEvent(e.target.value)} />
-        <p className="text-xs text-muted-foreground">Use the same name your app uses when it asks Relay to send.</p>
       </div>
       <div className="space-y-1.5">
         <Label htmlFor="tpl-subject">Subject</Label>
@@ -102,10 +100,10 @@ export function CreateTemplateForm({
         <Label htmlFor="tpl-text">Plain text</Label>
         <Textarea id="tpl-text" rows={3} value={text} onChange={(e) => setText(e.target.value)} />
       </div>
-      <div className="flex gap-2">
-        <Button type="button" onClick={() => void save()} disabled={busy}>{busy ? "Saving…" : "Save"}</Button>
+      <CreateFooter>
         <Button type="button" variant="outline" onClick={() => void sendTest()} disabled={busy}>Send test</Button>
-      </div>
+        <Button type="button" onClick={() => void save()} disabled={busy}>{busy ? "Saving…" : "Create template"}</Button>
+      </CreateFooter>
     </div>
   );
 }

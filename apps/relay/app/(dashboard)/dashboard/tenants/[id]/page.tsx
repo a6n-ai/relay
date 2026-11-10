@@ -1,7 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { eq } from "@foundry/commons";
-import { KeyIcon } from "lucide-react";
 import { Badge } from "@foundry/ui/badge";
 import { PageShell, SectionCard } from "@foundry/design-system";
 import { buildSendingDomainRecords } from "@relay/email";
@@ -51,7 +50,6 @@ export default async function TenantDetailPage({
   return (
     <PageShell>
       <ViewHeader
-        icon={KeyIcon}
         title={tenant.name}
         subtitle={`${tenant.slug} · monthly send limit for this app. From addresses work after you prove the domain.`}
       />
@@ -146,7 +144,7 @@ export default async function TenantDetailPage({
       </SectionCard>
       <SectionCard
         title="From addresses"
-        subtitle="Example: info@tiffingrab.ca. Ready only after tiffingrab.ca DNS is checked. Otherwise Relay uses the default From."
+        subtitle="Example: hello@yourapp.com. Ready only after that domain’s DNS is checked. Otherwise Relay uses the default From."
       >
         <AddSenderForm publicId={tenant.publicId} />
         <ul className="mt-4 space-y-2 text-sm">

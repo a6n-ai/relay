@@ -1,7 +1,8 @@
 import { inArray } from "drizzle-orm";
 import { KeyIcon } from "lucide-react";
-import { PageShell, SectionCard } from "@foundry/design-system";
-import { OperatorSplit } from "@/components/ds/operator-split";
+import { PageShell } from "@foundry/design-system";
+import { CreateDialog } from "@/components/ds/create-dialog";
+import { EmptyState } from "@/components/ds/empty-state";
 import { FilteredResourceList } from "@/components/ds/listing-controls";
 import type { ListingFilter, ListingRow } from "@/components/ds/listing-controls";
 import { db } from "@/db/client";
@@ -49,7 +50,7 @@ export default async function TenantsPage() {
     if (keys.some((k) => !k.revokedAt)) filterKeys.push("live");
     if (keys.some((k) => k.revokedAt)) filterKeys.push("revoked");
     const quota = t.monthlyMessageQuota === 0 ? "unlimited" : t.monthlyMessageQuota.toLocaleString("en");
-    const meta = `${t.slug} · sent ${used.toLocaleString("en")} of ${quota} this month`;
+    const meta = `Sent ${used.toLocaleString("en")} of ${quota} this month`;
     return {
       id: t.publicId,
       title: t.name,
@@ -67,30 +68,37 @@ export default async function TenantsPage() {
     };
   });
 
+  const create = (pill: boolean) => (
+    <CreateDialog
+      label="New app"
+      description="You’ll get an access key once. Copy it now. We can’t show it again."
+      pill={pill}
+    >
+      <CreateTenantForm />
+    </CreateDialog>
+  );
+
   return (
     <PageShell>
       <ViewHeader
-        icon={KeyIcon}
         title="Apps"
-        subtitle="Each app (Tiffin Grab, Realm) has its own monthly send limit and From address."
+        subtitle="Each app has its own monthly send limit and From address."
+        actions={create(false)}
       />
-      <OperatorSplit
-        createLabel="New app"
-        create={
-          <SectionCard title="Add an app" subtitle="You’ll get an access key once. Copy it now. We can’t show it again.">
-            <CreateTenantForm />
-          </SectionCard>
-        }
-        list={
-          <FilteredResourceList
-            title="Your apps"
-            glyph="key"
-            emptyMessage="No apps yet. Use Add an app to start sending."
-            searchPlaceholder="Search apps"
-            filters={APP_FILTERS}
-            items={items}
+      <FilteredResourceList
+        title="Your apps"
+        empty={
+          <EmptyState
+            icon={KeyIcon}
+            title="No apps yet"
+            lines={["An app is anything that sends through Relay.", "Add one to get its access key."]}
+            action={create(true)}
+            docsHref="/docs"
           />
         }
+        searchPlaceholder="Search apps"
+        filters={APP_FILTERS}
+        items={items}
       />
     </PageShell>
   );

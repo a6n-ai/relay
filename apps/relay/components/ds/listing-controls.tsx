@@ -1,21 +1,11 @@
 "use client";
 
 import { useMemo, useState, type ReactNode } from "react";
-import {
-  InboxIcon,
-  KeyIcon,
-  MailboxIcon,
-  MegaphoneIcon,
-  SearchIcon,
-  UsersIcon,
-  WebhookIcon,
-  XIcon,
-  ZapIcon,
-} from "lucide-react";
+import { SearchIcon, XIcon } from "lucide-react";
 import { Badge } from "@foundry/ui/badge";
 import { cn } from "@foundry/ui/cn";
-import { ResourceBoard, ResourceEmpty, ResourceRow } from "@/components/ds/resource-list";
-import { Panel } from "./panel";
+import { ResourceBoard, ResourceEmpty, ResourceGroup, ResourceRow } from "@/components/ds/resource-list";
+import type { GlyphKind } from "./status-glyph";
 
 export type ListingFilter = { id: string; label: string };
 
@@ -23,8 +13,6 @@ export type ListingBadge = {
   label: string;
   variant: "outline" | "secondary" | "destructive";
 };
-
-export type ListingGlyph = "key" | "megaphone" | "users" | "inbox" | "webhook" | "zap" | "mailbox";
 
 export type ListingRow = {
   id: string;
@@ -34,30 +22,17 @@ export type ListingRow = {
   searchText: string;
   filterKeys: string[];
   badges?: ListingBadge[];
+  /** Mono id shown before the title. */
+  shortId?: string;
+  /** Status ring shown before the id, with the words a screen reader hears. */
+  glyph?: GlyphKind;
+  glyphLabel?: string;
+  /** Rows with a group are listed under a strip with this label, groups in the order they first appear. */
+  group?: string;
+  groupGlyph?: GlyphKind;
+  /** Muted text at the right of the row (a failure reason, a date). */
+  trailingText?: string;
 };
-
-function listingGlyph(name: ListingGlyph) {
-  switch (name) {
-    case "key":
-      return KeyIcon;
-    case "megaphone":
-      return MegaphoneIcon;
-    case "users":
-      return UsersIcon;
-    case "inbox":
-      return InboxIcon;
-    case "webhook":
-      return WebhookIcon;
-    case "zap":
-      return ZapIcon;
-    case "mailbox":
-      return MailboxIcon;
-    default: {
-      const _exhaustive: never = name;
-      return _exhaustive;
-    }
-  }
-}
 
 const ALL: ListingFilter = { id: "all", label: "All" };
 
@@ -83,7 +58,7 @@ function ListingChip({
       onClick={onClick}
       aria-pressed={active}
       className={cn(
-        "inline-flex min-h-8 items-center gap-1.5 border px-2.5 text-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
+        "inline-flex min-h-8 items-center gap-1.5 rounded-full border px-3 text-sm transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
         active
           ? "border-primary bg-primary text-primary-foreground"
           : "border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground",
@@ -189,38 +164,74 @@ export function useListingState<T extends { searchText: string; filterKeys: stri
   return { query, setQuery, filter, setFilter, filters, counts, visible };
 }
 
+function groupRows(rows: ListingRow[]): { label: string; glyph?: GlyphKind; rows: ListingRow[] }[] | null {
+  if (!rows.some((r) => r.group)) return null;
+  const groups = new Map<string, { label: string; glyph?: GlyphKind; rows: ListingRow[] }>();
+  for (const row of rows) {
+    const label = row.group ?? "Other";
+    const group = groups.get(label) ?? { label, glyph: row.groupGlyph, rows: [] };
+    group.rows.push(row);
+    groups.set(label, group);
+  }
+  return [...groups.values()];
+}
+
+function ListingRowView({ item }: { item: ListingRow }) {
+  return (
+    <ResourceRow
+      href={item.href}
+      title={item.title}
+      meta={item.meta}
+      shortId={item.shortId}
+      glyph={item.glyph}
+      glyphLabel={item.glyphLabel}
+      trailingText={item.trailingText}
+      trailing={
+        item.badges?.length ? (
+          <>
+            {item.badges.map((b) => (
+              <Badge key={`${item.id}-${b.label}`} variant={b.variant}>
+                {b.label}
+              </Badge>
+            ))}
+          </>
+        ) : undefined
+      }
+    />
+  );
+}
+
+/**
+ * Search plus filter chips over a Linear list. `empty` (an EmptyState) shows while there is
+ * nothing to narrow; `framed` puts the list in a settings card instead of edge to edge.
+ */
 export function FilteredResourceList({
   title,
-  glyph,
-  emptyMessage,
+  empty,
   searchPlaceholder,
   filters: extraFilters,
   items,
+  framed,
 }: {
   title: string;
-  glyph: ListingGlyph;
-  emptyMessage: string;
+  empty: ReactNode;
   searchPlaceholder: string;
   filters: ListingFilter[];
   items: ListingRow[];
+  framed?: boolean;
 }) {
-  const icon = listingGlyph(glyph);
   const { query, setQuery, filter, setFilter, filters, counts, visible } = useListingState(
     items,
     extraFilters,
   );
 
-  if (items.length === 0) {
-    return (
-      <ResourceBoard title={title}>
-        <ResourceEmpty icon={icon} message={emptyMessage} />
-      </ResourceBoard>
-    );
-  }
+  if (items.length === 0) return <>{empty}</>;
 
+  const groups = groupRows(visible);
   return (
     <ResourceBoard
       title={title}
+      framed={framed}
       count={listingCountLabel(visible.length, items.length)}
       toolbar={
         <ListingToolbar
@@ -235,43 +246,18 @@ export function FilteredResourceList({
       }
     >
       {visible.length === 0 ? (
-        <ResourceEmpty icon={icon} message="Nothing matches. Clear search or pick All." />
-      ) : (
-        visible.map((item) => (
-          <ResourceRow
-            key={item.id}
-            href={item.href}
-            title={item.title}
-            meta={item.meta}
-            trailing={
-              item.badges?.length ? (
-                <>
-                  {item.badges.map((b) => (
-                    <Badge key={`${item.id}-${b.label}`} variant={b.variant}>
-                      {b.label}
-                    </Badge>
-                  ))}
-                </>
-              ) : undefined
-            }
-          />
+        <ResourceEmpty icon={SearchIcon} message="Nothing matches. Clear search or pick All." />
+      ) : groups ? (
+        groups.map((g) => (
+          <ResourceGroup key={g.label} label={g.label} count={g.rows.length} glyph={g.glyph}>
+            {g.rows.map((item) => (
+              <ListingRowView key={item.id} item={item} />
+            ))}
+          </ResourceGroup>
         ))
+      ) : (
+        visible.map((item) => <ListingRowView key={item.id} item={item} />)
       )}
     </ResourceBoard>
-  );
-}
-
-export function ListingTableFrame({
-  toolbar,
-  children,
-}: {
-  toolbar: ReactNode;
-  children: ReactNode;
-}) {
-  return (
-    <Panel>
-      <div className="border-b border-border px-4 py-3">{toolbar}</div>
-      <div className="overflow-x-auto">{children}</div>
-    </Panel>
   );
 }

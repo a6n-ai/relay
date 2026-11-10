@@ -1,7 +1,8 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { TagsIcon, XIcon } from "lucide-react";
+import { SearchIcon, TagsIcon, XIcon } from "lucide-react";
 import { Button } from "@foundry/ui/button";
 import { apiFetch } from "@relay/engine/ui/api-fetch";
 import {
@@ -11,14 +12,17 @@ import {
   type ListingFilter,
   type ListingRow,
 } from "@/components/ds/listing-controls";
+import { EmptyState } from "@/components/ds/empty-state";
 import { ResourceBoard, ResourceEmpty, ResourceRow } from "@/components/ds/resource-list";
 
 export function AppTagsBoard({
   items,
   filters,
+  emptyAction,
 }: {
   items: Array<ListingRow & { tenantPublicId: string; slug: string }>;
   filters: ListingFilter[];
+  emptyAction?: ReactNode;
 }) {
   const router = useRouter();
   const { query, setQuery, filter, setFilter, filters: chips, counts, visible } = useListingState(
@@ -41,18 +45,20 @@ export function AppTagsBoard({
 
   if (items.length === 0) {
     return (
-      <ResourceBoard title="Tags">
-        <ResourceEmpty
-          icon={TagsIcon}
-          message="No tags yet. Use Add tag to create one. It will mark every message for that app."
-        />
-      </ResourceBoard>
+      <EmptyState
+        icon={TagsIcon}
+        title="No tags yet"
+        lines={["A tag marks every message for one app.", "Add one to find those messages fast in Inbox."]}
+        action={emptyAction}
+        docsHref="/docs"
+      />
     );
   }
 
   return (
     <ResourceBoard
-      title="Tags"
+      framed
+      title="All tags"
       count={listingCountLabel(visible.length, items.length)}
       toolbar={
         <ListingToolbar
@@ -67,7 +73,7 @@ export function AppTagsBoard({
       }
     >
       {visible.length === 0 ? (
-        <ResourceEmpty icon={TagsIcon} message="Nothing matches. Clear search or pick All." />
+        <ResourceEmpty icon={SearchIcon} message="Nothing matches. Clear search or pick All." />
       ) : (
         visible.map((item) => (
           <ResourceRow

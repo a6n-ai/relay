@@ -1,5 +1,6 @@
 import { MailboxIcon } from "lucide-react";
 import { PageShell } from "@foundry/design-system";
+import { EmptyState } from "@/components/ds/empty-state";
 import { FilteredResourceList } from "@/components/ds/listing-controls";
 import type { ListingFilter } from "@/components/ds/listing-controls";
 import { listMailboxLetters } from "@/lib/mailbox/list";
@@ -16,7 +17,7 @@ import { ViewHeader } from "@/components/ds/view-header";
 
 export const dynamic = "force-dynamic";
 
-export const metadata = { title: "Mailbox" };
+export const metadata = { title: "Inbox" };
 
 const MAILBOX_FILTERS: ListingFilter[] = [
   { id: "out", label: "Relay sent" },
@@ -47,15 +48,21 @@ export default async function MailboxPage() {
   return (
     <PageShell>
       <ViewHeader
-        icon={MailboxIcon}
-        title="Mailbox"
+        title="Inbox"
         subtitle="Conversations Relay sent or received. A tag on an app marks all of its messages."
         actions={<MailboxCompose froms={froms} />}
       />
       <FilteredResourceList
         title="Inbox"
-        glyph="mailbox"
-        emptyMessage="Nothing in the inbox yet. Use Compose to write one, or wait for app mail and replies."
+        empty={
+          <EmptyState
+            icon={MailboxIcon}
+            title="Your inbox is empty"
+            lines={["Mail your apps send and the replies people write show up here.", "You can also write the first letter yourself."]}
+            action={<MailboxCompose froms={froms} pill />}
+            docsHref="/docs"
+          />
+        }
         searchPlaceholder="Search subject, to, or from"
         filters={[...MAILBOX_FILTERS, ...tagListingFilters(tagsByTenant)]}
         items={items}

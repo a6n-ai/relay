@@ -80,7 +80,8 @@ export const NAV_GROUPS: readonly NavGroup[] = [
   },
 ];
 
-const under = (path: string, base: string) => path === base || path.startsWith(`${base}/`);
+/** True when `path` is `base` or a page below it. */
+export const isUnder = (path: string, base: string) => path === base || path.startsWith(`${base}/`);
 
 /** The sidebar link to highlight for a path: the longest matching route wins; Home only on itself. */
 export function activeNavHref(pathname: string): string | undefined {
@@ -88,7 +89,13 @@ export function activeNavHref(pathname: string): string | undefined {
   for (const item of NAV_GROUPS.flatMap((g) => g.items)) {
     const bases = item.href === "/dashboard" ? [] : [item.href, ...(item.also ?? [])];
     if (item.href === "/dashboard" && pathname === "/dashboard") return item.href;
-    for (const b of bases) if (under(pathname, b) && (!best || b.length > best.len)) best = { href: item.href, len: b.length };
+    for (const b of bases) if (isUnder(pathname, b) && (!best || b.length > best.len)) best = { href: item.href, len: b.length };
   }
   return best?.href;
+}
+
+/** The sidebar item whose page the path belongs to (the one `activeNavHref` highlights). */
+export function activeNavItem(pathname: string): NavItem | undefined {
+  const href = activeNavHref(pathname);
+  return NAV_GROUPS.flatMap((g) => g.items).find((i) => i.href === href);
 }

@@ -1,6 +1,6 @@
-import { TagsIcon } from "lucide-react";
-import { PageShell, SectionCard } from "@foundry/design-system";
-import { OperatorSplit } from "@/components/ds/operator-split";
+import { PageShell } from "@foundry/design-system";
+import { CreateDialog } from "@/components/ds/create-dialog";
+import { SettingsPage } from "@/components/ds/settings";
 import type { ListingFilter, ListingRow } from "@/components/ds/listing-controls";
 import { appMessageTagsService } from "@/lib/services/mailbox-tags.service";
 import { tenantsService } from "@/lib/services/tenants.service";
@@ -34,22 +34,19 @@ export default async function TagsSettingsPage() {
     });
   }
 
+  const appChoices = apps.map((a) => ({ publicId: a.publicId, name: a.name }));
+  const create = (pill: boolean) => (
+    <CreateDialog label="New tag" description="Pick the app. The tag applies to all of its messages." pill={pill}>
+      <CreateAppTagForm apps={appChoices} />
+    </CreateDialog>
+  );
+
   return (
     <PageShell>
-      <ViewHeader
-        icon={TagsIcon}
-        title="Tags"
-        subtitle="A tag on an app marks every message for that app — mail now, WhatsApp later."
-      />
-      <OperatorSplit
-        createLabel="New tag"
-        create={
-          <SectionCard title="Add a tag" subtitle="Pick the app. The tag applies to all of its messages.">
-            <CreateAppTagForm apps={apps.map((a) => ({ publicId: a.publicId, name: a.name }))} />
-          </SectionCard>
-        }
-        list={<AppTagsBoard items={items} filters={filters} />}
-      />
+      <ViewHeader title="Tags" section="settings" actions={create(false)} />
+      <SettingsPage title="Tags" subtitle="A tag on an app marks every message for that app, mail now and WhatsApp later.">
+        <AppTagsBoard items={items} filters={filters} emptyAction={create(true)} />
+      </SettingsPage>
     </PageShell>
   );
 }

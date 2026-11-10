@@ -1,9 +1,11 @@
 import { desc } from "drizzle-orm";
 import { ScrollTextIcon } from "lucide-react";
-import { EmptyState, PageShell } from "@foundry/design-system";
-import { FilteredSendsTable } from "@/components/ds/filtered-tables";
-import type { SendListItem } from "@/components/ds/filtered-tables";
+import { PageShell } from "@foundry/design-system";
+import { EmptyState } from "@/components/ds/empty-state";
+import { FilteredResourceList } from "@/components/ds/listing-controls";
+import type { ListingFilter, ListingRow } from "@/components/ds/listing-controls";
 import { displayChannel, kindLabel, outboxStatusLabel } from "@/components/ds/plain-labels";
+import { outboxGlyph } from "@/components/ds/status-glyph";
 import { db } from "@/db/client";
 import { notificationTables } from "@/db/schema";
 import { ViewHeader } from "@/components/ds/view-header";
@@ -11,6 +13,17 @@ import { ViewHeader } from "@/components/ds/view-header";
 export const dynamic = "force-dynamic";
 
 export const metadata = { title: "Sends" };
+
+const SEND_FILTERS: ListingFilter[] = [
+  { id: "pending", label: "Waiting" },
+  { id: "processing", label: "Sending" },
+  { id: "sent", label: "Sent" },
+  { id: "failed", label: "Failed" },
+  { id: "email", label: "Email" },
+  { id: "sms", label: "Text" },
+  { id: "whatsapp", label: "WhatsApp" },
+  { id: "in_app", label: "In the app" },
+];
 
 export default async function LogsPage() {
   const o = notificationTables.notificationOutbox;
@@ -31,26 +44,20 @@ export default async function LogsPage() {
     .orderBy(desc(o.createdAt))
     .limit(100);
 
-  const items: SendListItem[] = rows.map((r) => {
+  const items: ListingRow[] = rows.map((r) => {
     const recipient = r.recipientEmail ?? r.recipientPhone ?? r.recipientExternalId ?? "";
     const lastError = r.lastError ?? "";
+    const status = outboxStatusLabel(r.status);
+    const meta = [displayChannel(r.channel), kindLabel(r.kind), r.event ?? ""].filter(Boolean).join(" · ");
     return {
-      publicId: r.publicId,
-      status: r.status,
-      channel: r.channel,
-      kind: r.kind,
-      event: r.event,
-      recipient,
-      attempts: r.attempts,
-      lastError,
-      searchText: [
-        outboxStatusLabel(r.status),
-        displayChannel(r.channel),
-        kindLabel(r.kind),
-        r.event ?? "",
-        recipient,
-        lastError,
-      ].join(" "),
+      id: r.publicId,
+      title: recipient || "No recipient",
+      meta,
+      shortId: r.publicId.slice(-6).toUpperCase(),
+      glyph: outboxGlyph(r.status),
+      glyphLabel: status,
+      trailingText: lastError || undefined,
+      searchText: [status, meta, recipient, lastError].join(" "),
       filterKeys: [r.status, r.channel],
     };
   });
@@ -58,15 +65,25 @@ export default async function LogsPage() {
   return (
     <PageShell>
       <ViewHeader
-        icon={ScrollTextIcon}
         title="Sends"
         subtitle="Every message Relay tried to deliver. Failed ones are retried automatically a few times."
+        section="activity"
       />
-      {items.length === 0 ? (
-        <EmptyState icon={ScrollTextIcon} message="Nothing sent yet. Sends show up here as apps deliver mail." />
-      ) : (
-        <FilteredSendsTable items={items} />
-      )}
+      <FilteredResourceList
+        title="Recent sends"
+        empty={
+          <EmptyState
+            icon={ScrollTextIcon}
+            title="Nothing sent yet"
+            lines={["Sends show up here as your apps deliver mail.", "Each one gets a status you can follow."]}
+            cta={{ label: "Add an app", href: "/dashboard/tenants" }}
+            docsHref="/docs"
+          />
+        }
+        searchPlaceholder="Search recipient, event, or error"
+        filters={SEND_FILTERS}
+        items={items}
+      />
     </PageShell>
   );
 }

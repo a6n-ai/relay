@@ -18,10 +18,10 @@ export function OverviewGreeting({ name }: { name: string }) {
       <CardContent className="flex h-full min-h-44 items-stretch gap-4 p-6">
         <div className="flex min-w-0 flex-1 flex-col justify-between gap-4">
           <div className="flex flex-col gap-1">
-            <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight">
+            <h2 className="flex items-center gap-2 text-2xl font-semibold tracking-tight">
               {label}, {name}
               <Icon className="text-muted-foreground" />
-            </h1>
+            </h2>
             <p className="max-w-md text-sm font-normal text-muted-foreground">
               Stay on top of today’s messages — waiting, sent, and anything that needs a look.
             </p>

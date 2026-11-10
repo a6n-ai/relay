@@ -34,7 +34,10 @@ export default async function ChannelPage({
       icon={ICONS[key]}
       title={meta.label}
       subtitle={meta.hint}
-      message="Settings for this way of reaching people will live here. Use Email sending to connect mail today."
+      section="channels"
+      emptyTitle="Settings are on the way"
+      lines={["Controls for this way of reaching people will live here.", "Open Settings to connect email today."]}
+      cta={{ label: "Open Settings", href: "/dashboard/settings/email" }}
     />
   );
 }

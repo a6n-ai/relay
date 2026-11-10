@@ -14,7 +14,7 @@ const emptyRow = (): ManualContactInput => ({ name: "", email: "", phone: "" });
 
 /** Build a list by typing contacts in one at a time — for the handful-of-people
  * case where exporting a spreadsheet first would be more work than the import. */
-export function ContactListManualAdd() {
+export function ContactListManualAdd({ onCreated }: { onCreated?: (result: { name: string; imported: number }) => void } = {}) {
   const router = useRouter();
   const [meta, setMeta] = useState<ListMeta>({ name: "", consentSource: "express_optin", consentNote: "" });
   const [rows, setRows] = useState<ManualContactInput[]>([emptyRow()]);
@@ -36,8 +36,11 @@ export function ContactListManualAdd() {
     setBusy(true);
     try {
       const res = await createListWithContacts(meta, contacts);
-      toast.success(`Added ${res.imported} contact${res.imported === 1 ? "" : "s"}`);
-      router.refresh();
+      if (onCreated) onCreated({ name: meta.name, imported: res.imported });
+      else {
+        toast.success(`Added ${res.imported} contact${res.imported === 1 ? "" : "s"}`);
+        router.refresh();
+      }
       setMeta({ name: "", consentSource: "express_optin", consentNote: "" });
       setRows([emptyRow()]);
     } catch {

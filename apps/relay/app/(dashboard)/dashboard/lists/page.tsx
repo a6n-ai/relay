@@ -1,13 +1,13 @@
 import { UsersIcon } from "lucide-react";
-import { PageShell, SectionCard } from "@foundry/design-system";
-import { ContactListUpload } from "@relay/engine/ui/contact-list-upload";
-import { ContactListManualAdd } from "@relay/engine/ui/contact-list-manual-add";
-import { OperatorSplit } from "@/components/ds/operator-split";
+import { PageShell } from "@foundry/design-system";
+import { CreateDialog } from "@/components/ds/create-dialog";
+import { EmptyState } from "@/components/ds/empty-state";
 import { FilteredResourceList } from "@/components/ds/listing-controls";
 import type { ListingFilter, ListingRow } from "@/components/ds/listing-controls";
 import { consentSourceLabel } from "@/components/ds/plain-labels";
 import { contactListsService } from "@/lib/services/campaigns.service";
 import { ViewHeader } from "@/components/ds/view-header";
+import { ImportPeopleForms } from "./import-people-forms";
 
 export const dynamic = "force-dynamic";
 
@@ -36,35 +36,33 @@ export default async function ListsPage() {
     };
   });
 
+  const create = (pill: boolean) => (
+    <CreateDialog label="Import people" pill={pill}>
+      <ImportPeopleForms />
+    </CreateDialog>
+  );
+
   return (
     <PageShell>
       <ViewHeader
-        icon={UsersIcon}
         title="People"
         subtitle="Who can hear from you. We need how they opted in, and when. Purchase opt-in lasts 24 months in Canada."
+        actions={create(false)}
       />
-      <OperatorSplit
-        createLabel="Import people"
-        create={
-          <div className="space-y-4">
-            <SectionCard title="Import a spreadsheet">
-              <ContactListUpload />
-            </SectionCard>
-            <SectionCard title="Add contacts by hand">
-              <ContactListManualAdd />
-            </SectionCard>
-          </div>
-        }
-        list={
-          <FilteredResourceList
-            title="Groups"
-            glyph="users"
-            emptyMessage="No people imported yet. Use Import a spreadsheet or Add contacts by hand."
-            searchPlaceholder="Search groups"
-            filters={PEOPLE_FILTERS}
-            items={items}
+      <FilteredResourceList
+        title="Groups"
+        empty={
+          <EmptyState
+            icon={UsersIcon}
+            title="No people yet"
+            lines={["Import a spreadsheet or add people by hand.", "We keep how and when each group opted in."]}
+            action={create(true)}
+            docsHref="/docs"
           />
         }
+        searchPlaceholder="Search groups"
+        filters={PEOPLE_FILTERS}
+        items={items}
       />
     </PageShell>
   );

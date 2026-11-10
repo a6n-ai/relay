@@ -1,29 +1,10 @@
 import type { ReactNode } from "react";
-import { CreateDialog } from "./create-dialog";
 
 /**
- * Collection pages (createLabel given): the list takes the full view and "New …" opens the create
- * form in a dialog, like Linear. Detail pages (no createLabel): the edit form sits beside the content.
+ * Detail pages: the content sits on the left and the edit panel beside it. (Collection pages put
+ * "New …" in the view header as a CreateDialog and show only the list.)
  */
-export function OperatorSplit({
-  create,
-  list,
-  createLabel,
-}: {
-  create: ReactNode;
-  list: ReactNode;
-  createLabel?: string;
-}) {
-  if (createLabel) {
-    return (
-      <div className="flex flex-col gap-4">
-        <div className="flex justify-end">
-          <CreateDialog label={createLabel}>{create}</CreateDialog>
-        </div>
-        <div className="min-w-0">{list}</div>
-      </div>
-    );
-  }
+export function OperatorSplit({ create, list }: { create: ReactNode; list: ReactNode }) {
   return (
     <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-12">
       <div className="min-w-0 lg:col-span-8">{list}</div>

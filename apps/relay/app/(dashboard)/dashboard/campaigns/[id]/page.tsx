@@ -1,5 +1,4 @@
 import { notFound } from "next/navigation";
-import { MegaphoneIcon } from "lucide-react";
 import { Badge } from "@foundry/ui/badge";
 import { PageShell, SectionCard } from "@foundry/design-system";
 import { CampaignSendButton } from "@relay/engine/ui/campaign-send-button";
@@ -36,9 +35,9 @@ export default async function CampaignDetailPage({
   return (
     <PageShell>
       <ViewHeader
-        icon={MegaphoneIcon}
         title={row.name}
         subtitle={tenant ? `Sends as ${tenant.name}` : "Choose an app before sending"}
+        section="campaigns"
         actions={
           canSend ? <CampaignSendButton campaignPublicId={row.publicId} count={count} /> : (
             <Badge variant="secondary">{row.status}</Badge>

@@ -43,7 +43,7 @@ export function RelaySidebar({ email }: { email: string }) {
                 {group.items.map((item) => (
                   <SidebarMenuItem key={item.href}>
                     <SidebarMenuButton asChild isActive={item.href === active}>
-                      <Link href={item.href} prefetch={false}>
+                      <Link href={item.href} prefetch={false} aria-current={item.href === active ? "page" : undefined}>
                         <item.icon style={{ color: iconColorVar(item.color) }} />
                         <span>{item.label}</span>
                       </Link>

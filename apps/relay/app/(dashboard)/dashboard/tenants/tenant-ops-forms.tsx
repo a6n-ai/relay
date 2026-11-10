@@ -4,6 +4,8 @@ import { useState } from "react";
 import { Button } from "@foundry/ui/button";
 import { Input } from "@foundry/ui/input";
 import { addTenantMailboxAction, addTenantSenderAction, issueTenantKeyAction, updateTenantQuotaAction } from "./actions";
+import { CreateFooter, useCreateDialog } from "@/components/ds/create-dialog";
+import { isCreateSuccess } from "@/components/ds/create-success";
 import { defaultKindForNewMailbox, type MailboxKind } from "@/lib/mailbox/address-kinds";
 
 export function UpdateQuotaForm({
@@ -90,8 +92,8 @@ export function AddSenderForm({ publicId }: { publicId: string }) {
       }}
     >
       <input type="hidden" name="publicId" value={publicId} />
-      <Input name="email" type="email" required placeholder="info@tiffingrab.ca" />
-      <Input name="displayName" placeholder="Tiffin Grab" />
+      <Input name="email" type="email" required placeholder="hello@yourapp.com" />
+      <Input name="displayName" placeholder="Your app" />
       <Button type="submit" size="sm">Add From address</Button>
       {error ? <p className="text-destructive text-sm">{error}</p> : null}
     </form>
@@ -114,6 +116,7 @@ export function AddMailboxForm({
   const [error, setError] = useState<string | null>(null);
   const [localPart, setLocalPart] = useState("");
   const [kind, setKind] = useState<MailboxKind>("relay_inbox");
+  const { created } = useCreateDialog();
 
   return (
     <form
@@ -121,7 +124,9 @@ export function AddMailboxForm({
       action={async (fd) => {
         setError(null);
         const result = await addTenantMailboxAction(fd);
-        if (result.error) setError(result.error);
+        if (!isCreateSuccess(result)) return setError(result.error ?? "Could not add the address");
+        setLocalPart("");
+        created({ noun: "Mailbox", name: `${String(fd.get("localPart") ?? "").trim()}@${String(fd.get("domain") ?? "").trim()}` });
       }}
     >
       <input type="hidden" name="publicId" value={publicId} />
@@ -176,10 +181,12 @@ export function AddMailboxForm({
       <p className="text-muted-foreground text-xs">
         People inbox needs a domain Relay does not send receipts from. One store per address.
       </p>
-      <Button type="submit" size="sm" disabled={kind !== "people_inbox" && domains.length === 0}>
-        Add address
-      </Button>
       {error ? <p className="text-destructive text-sm">{error}</p> : null}
+      <CreateFooter>
+        <Button type="submit" size="sm" disabled={kind !== "people_inbox" && domains.length === 0}>
+          Add address
+        </Button>
+      </CreateFooter>
     </form>
   );
 }

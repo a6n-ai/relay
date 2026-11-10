@@ -1,0 +1,93 @@
+.rl-glyph {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  border-radius: 6px;
+  background: color-mix(in srgb, currentColor 14%, transparent);
+}
+
+.rl-side {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  padding: 8px 10px 14px;
+}
+
+.rl-side__group {
+  display: grid;
+  gap: 1px;
+}
+
+.rl-side__label {
+  padding: 0 8px 4px;
+  color: var(--ss-text-faint);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.rl-nav {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  height: 26px;
+  padding: 0 8px;
+  border-radius: var(--ss-radius-sm);
+  color: var(--ss-text);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.rl-nav[data-active] {
+  background: var(--ss-ink-2);
+  color: var(--ss-text-strong);
+}
+
+.rl-badge {
+  justify-self: start;
+}
+
+.rl-mark {
+  display: grid;
+  place-items: center;
+  width: 8px;
+  height: 8px;
+}
+
+.rl-mark > * {
+  grid-area: 1 / 1;
+  transition: opacity 0.2s ease;
+}
+
+.rl-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.rl-mark[data-done] .ss-spinner,
+.rl-mark:not([data-done]) .rl-dot {
+  opacity: 0;
+}
+
+.rl-label {
+  display: grid;
+  justify-items: start;
+  transition: width 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.rl-label[data-shrink] {
+  transition-delay: 0.1s;
+}
+
+.rl-word {
+  grid-area: 1 / 1;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.14s ease;
+}
+
+.rl-word[data-on] {
+  opacity: 1;
+  transition: opacity 0.2s ease 0.12s;
+}

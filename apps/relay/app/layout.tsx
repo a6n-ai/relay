@@ -14,8 +14,10 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://relay.a6n.ai"),
   title: { default: "Relay", template: "%s · Relay" },
   description,
+  // "./" resolves to each page's own URL, so every page names itself as canonical.
+  alternates: { canonical: "./" },
   openGraph: { type: "website", siteName: "Relay", title: "Relay", description },
-  twitter: { card: "summary", title: "Relay", description },
+  twitter: { card: "summary_large_image", title: "Relay", description },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

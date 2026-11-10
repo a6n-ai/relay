@@ -1,6 +1,7 @@
-import { InboxIcon } from "lucide-react";
-import { PageShell, SectionCard } from "@foundry/design-system";
-import { OperatorSplit } from "@/components/ds/operator-split";
+import { FileTextIcon } from "lucide-react";
+import { PageShell } from "@foundry/design-system";
+import { CreateDialog } from "@/components/ds/create-dialog";
+import { EmptyState } from "@/components/ds/empty-state";
 import { FilteredResourceList } from "@/components/ds/listing-controls";
 import type { ListingFilter, ListingRow } from "@/components/ds/listing-controls";
 import { displayChannel } from "@/components/ds/plain-labels";
@@ -47,30 +48,34 @@ export default async function TemplatesPage() {
     };
   });
 
+  const create = (pill: boolean) => (
+    <CreateDialog label="New template" pill={pill}>
+      <CreateTemplateForm tenants={tenantRows} />
+    </CreateDialog>
+  );
+
   return (
     <PageShell>
       <ViewHeader
-        icon={InboxIcon}
         title="Templates"
         subtitle="Reusable email for a specific moment, like “order shipped.” The app uses the same name when it asks Relay to send."
+        section="campaigns"
+        actions={create(false)}
       />
-      <OperatorSplit
-        createLabel="New template"
-        create={
-          <SectionCard title="New email template">
-            <CreateTemplateForm tenants={tenantRows} />
-          </SectionCard>
-        }
-        list={
-          <FilteredResourceList
-            title="Saved templates"
-            glyph="inbox"
-            emptyMessage="No templates yet. Use New email template to write one."
-            searchPlaceholder="Search templates"
-            filters={TEMPLATE_FILTERS}
-            items={items}
+      <FilteredResourceList
+        title="Saved templates"
+        empty={
+          <EmptyState
+            icon={FileTextIcon}
+            title="No templates yet"
+            lines={["A template is the email an app sends for one moment, like “order shipped.”", "Write it once and reuse it."]}
+            action={create(true)}
+            docsHref="/docs"
           />
         }
+        searchPlaceholder="Search templates"
+        filters={TEMPLATE_FILTERS}
+        items={items}
       />
     </PageShell>
   );

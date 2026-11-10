@@ -1,6 +1,8 @@
-import { InboxIcon } from "lucide-react";
-import { PageShell, SectionCard } from "@foundry/design-system";
-import { OperatorSplit } from "@/components/ds/operator-split";
+import { MailboxIcon } from "lucide-react";
+import { PageShell } from "@foundry/design-system";
+import { CreateDialog } from "@/components/ds/create-dialog";
+import { EmptyState } from "@/components/ds/empty-state";
+import { SettingsPage } from "@/components/ds/settings";
 import { FilteredResourceList } from "@/components/ds/listing-controls";
 import type { ListingFilter, ListingRow } from "@/components/ds/listing-controls";
 import { mailboxKindLabel } from "@/components/ds/plain-labels";
@@ -40,34 +42,44 @@ export default async function MailboxesSettingsPage() {
     domains: domains.filter((d) => d.tenantId === a.id && d.status === "verified").map((d) => d.domain),
   }));
 
+  const create = (pill: boolean) => (
+    <CreateDialog
+      label="New mailbox"
+      description="Pick the app, then the name. The domain must already be proven under Email sending. A Relay inbox starts receiving once your domain forwards that address to Relay."
+      pill={pill}
+    >
+      <AddMailboxPicker apps={pickerApps} />
+    </CreateDialog>
+  );
+
   return (
     <PageShell>
       <ViewHeader
-        icon={InboxIcon}
+        title="Mailboxes"
+        section="settings"
+        actions={create(false)}
+      />
+      <SettingsPage
         title="Mailboxes"
         subtitle="Addresses your apps send from and receive at. Letters to a Relay inbox show up in Inbox."
-      />
-      <OperatorSplit
-        createLabel="New mailbox"
-        create={
-          <SectionCard
-            title="Add a mailbox"
-            subtitle="Pick the app, then the name. The domain must already be proven under Email sending. A Relay inbox starts receiving once your domain forwards that address to Relay."
-          >
-            <AddMailboxPicker apps={pickerApps} />
-          </SectionCard>
-        }
-        list={
-          <FilteredResourceList
-            title="All mailboxes"
-            glyph="inbox"
-            emptyMessage="No mailboxes yet. Use Add a mailbox to create one."
-            searchPlaceholder="Search addresses"
-            filters={filters}
-            items={items}
-          />
-        }
-      />
+      >
+        <FilteredResourceList
+          framed
+          title="All mailboxes"
+          empty={
+            <EmptyState
+              icon={MailboxIcon}
+              title="No mailboxes yet"
+              lines={["A mailbox is an address an app sends from or receives at.", "Add one after you prove a domain."]}
+              action={create(true)}
+              docsHref="/docs"
+            />
+          }
+          searchPlaceholder="Search addresses"
+          filters={filters}
+          items={items}
+        />
+      </SettingsPage>
     </PageShell>
   );
 }

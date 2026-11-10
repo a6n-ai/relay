@@ -1,5 +1,4 @@
 import { notFound } from "next/navigation";
-import { MailboxIcon } from "lucide-react";
 import { Badge } from "@foundry/ui/badge";
 import { PageShell, SectionCard } from "@foundry/design-system";
 import { outboxStatusLabel } from "@/components/ds/plain-labels";
@@ -42,7 +41,6 @@ export default async function MailboxLetterPage({
   return (
     <PageShell>
       <ViewHeader
-        icon={MailboxIcon}
         title={row.subject}
         subtitle={`${fromLine(row.fromEmail, row.fromName)} → ${row.toEmail}`}
         actions={

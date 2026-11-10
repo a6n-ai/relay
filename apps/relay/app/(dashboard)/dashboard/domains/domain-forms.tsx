@@ -26,7 +26,7 @@ export function AddDomainForm({ slugs, lockedSlug }: { slugs: string[]; lockedSl
           ))}
         </select>
       )}
-      <Input name="domain" required placeholder="tiffingrab.ca" />
+      <Input name="domain" required placeholder="yourapp.com" />
       <Button type="submit">Add domain</Button>
       {error ? <p className="text-destructive text-sm">{error}</p> : null}
     </form>

@@ -1,6 +1,7 @@
 import { WebhookIcon } from "lucide-react";
-import { PageShell, SectionCard } from "@foundry/design-system";
-import { OperatorSplit } from "@/components/ds/operator-split";
+import { PageShell } from "@foundry/design-system";
+import { CreateDialog } from "@/components/ds/create-dialog";
+import { EmptyState } from "@/components/ds/empty-state";
 import { FilteredResourceList } from "@/components/ds/listing-controls";
 import type { ListingFilter, ListingRow } from "@/components/ds/listing-controls";
 import { webhookEventLabel } from "@/components/ds/plain-labels";
@@ -42,30 +43,34 @@ export default async function WebhooksPage() {
     };
   });
 
+  const create = (pill: boolean) => (
+    <CreateDialog label="New destination" pill={pill}>
+      <CreateWebhookForm tenants={tenantRows} />
+    </CreateDialog>
+  );
+
   return (
     <PageShell>
       <ViewHeader
-        icon={WebhookIcon}
         title="Status updates"
         subtitle="Tell another system when a message is waiting, sent, or didn’t go out. We’ll retry a few times if that system is down."
+        section="activity"
+        actions={create(false)}
       />
-      <OperatorSplit
-        createLabel="New destination"
-        create={
-          <SectionCard title="New destination">
-            <CreateWebhookForm tenants={tenantRows} />
-          </SectionCard>
-        }
-        list={
-          <FilteredResourceList
-            title="Destinations"
-            glyph="webhook"
-            emptyMessage="No destinations yet. Use New destination to add one."
-            searchPlaceholder="Search destinations"
-            filters={DESTINATION_FILTERS}
-            items={items}
+      <FilteredResourceList
+        title="Destinations"
+        empty={
+          <EmptyState
+            icon={WebhookIcon}
+            title="No destinations yet"
+            lines={["A destination is a web address that hears when a message is sent or fails.", "Add one so your app stays in step."]}
+            action={create(true)}
+            docsHref="/docs"
           />
         }
+        searchPlaceholder="Search destinations"
+        filters={DESTINATION_FILTERS}
+        items={items}
       />
     </PageShell>
   );
