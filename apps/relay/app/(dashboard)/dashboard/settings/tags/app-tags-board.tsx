@@ -44,7 +44,7 @@ export function AppTagsBoard({
       <ResourceBoard title="Tags">
         <ResourceEmpty
           icon={TagsIcon}
-          message="No tags yet. Add one on the left. It will mark every message for that app."
+          message="No tags yet. Use Add tag to create one. It will mark every message for that app."
         />
       </ResourceBoard>
     );

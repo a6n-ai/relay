@@ -5,12 +5,14 @@ import { PageHeader, PageShell, SectionCard } from "@foundry/design-system";
 import { OperatorSplit } from "@/components/ds/operator-split";
 import { SmtpSettingsForm } from "@/app/(dashboard)/dashboard/sending/smtp-form";
 import { loadEmailChannelSnapshot } from "@/lib/email/load-snapshot";
-import { operatorEmailPrereqs } from "@/lib/email/prerequisites";
+import { operatorEmailPrereqs, prereqSummary } from "@/lib/email/prerequisites";
 import { loadOperatorSmtpRow } from "@/lib/email/from-address";
 import { EmailEventsSection } from "./email-events-section";
 import { sendingDomainsService } from "@/lib/services/sending.service";
 
 export const dynamic = "force-dynamic";
+
+export const metadata = { title: "Email sending" };
 
 export default async function EmailSettingsPage() {
   const [row, { items: domains }] = await Promise.all([
@@ -46,7 +48,7 @@ export default async function EmailSettingsPage() {
         }
         list={
           <div className="flex flex-col gap-6">
-            <SectionCard title="Before you send" subtitle="Inbox providers expect a proven domain and a working From.">
+            <SectionCard title="Before you send" subtitle={`${prereqSummary(prereqs)}. Inbox providers expect a proven domain and a working From.`}>
               <ul className="flex flex-col gap-3 text-sm">
                 {prereqs.map((p) => (
                   <li key={p.id} className="flex flex-col gap-1">
@@ -65,8 +67,8 @@ export default async function EmailSettingsPage() {
                 {snap.smtpHost ? ` · host ${snap.smtpHost}` : ""}
               </p>
             </SectionCard>
-            <SectionCard title="Domains" subtitle={`${verifiedCount} ready of ${domains.length}. Add and check DNS on each app.`}>
-              <Link className="text-sm underline underline-offset-2" href="/dashboard/tenants" prefetch={false}>
+            <SectionCard title="Domains" subtitle={domains.length === 0 ? "No domains yet. Add and check DNS on each app." : `${verifiedCount} of ${domains.length} ready. Add and check DNS on each app.`}>
+              <Link className="inline-flex min-h-11 items-center text-sm underline underline-offset-2 md:min-h-0" href="/dashboard/tenants" prefetch={false}>
                 Open apps
               </Link>
             </SectionCard>

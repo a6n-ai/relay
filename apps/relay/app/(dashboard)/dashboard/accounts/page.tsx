@@ -9,6 +9,8 @@ import { getSession } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
 
+export const metadata = { title: "Team" };
+
 export default async function AccountsPage() {
   const session = await getSession();
   const rows = await db.select().from(users).orderBy(desc(users.createdAt));

@@ -10,6 +10,8 @@ import { CreateWebhookForm } from "./create-webhook-form";
 
 export const dynamic = "force-dynamic";
 
+export const metadata = { title: "Status updates" };
+
 const DESTINATION_FILTERS: ListingFilter[] = [
   { id: "on", label: "On" },
   { id: "off", label: "Off" },
@@ -56,7 +58,7 @@ export default async function WebhooksPage() {
           <FilteredResourceList
             title="Destinations"
             glyph="webhook"
-            emptyMessage="No destinations yet. Add one on the left."
+            emptyMessage="No destinations yet. Use New destination to add one."
             searchPlaceholder="Search destinations"
             filters={DESTINATION_FILTERS}
             items={items}

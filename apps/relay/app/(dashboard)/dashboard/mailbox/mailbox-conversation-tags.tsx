@@ -61,7 +61,7 @@ export function MailboxConversationTags({
       </p>
       <div className="flex flex-wrap items-center gap-1.5">
         {tags.map((t) => (
-          <Badge key={t.slug} variant="outline" className="rounded-none gap-1 pr-1">
+          <Badge key={t.slug} variant="outline" className="gap-1 pr-1">
             {t.label}
             <button
               type="button"

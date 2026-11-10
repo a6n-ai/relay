@@ -89,21 +89,23 @@ export function CreateTenantForm() {
           <Button type="submit" disabled={form.formState.isSubmitting}>Add app</Button>
         </form>
       </Form>
-      <form
-        action={async () => {
-          setError(null);
-          const result = await provisionRealmTenantsAction();
-          if (result.error) setError(result.error);
-          setRealmKeys(result.created);
-        }}
-      >
-        <Button type="submit" variant="outline">
-          Create Tiffin Grab + Puchkaman
-        </Button>
-        <p className="text-muted-foreground mt-2 text-xs">
-          Skips apps that already exist. Copy each key now. We don’t store the full secret.
-        </p>
-      </form>
+      {process.env.NODE_ENV !== "production" ? (
+        <form
+          action={async () => {
+            setError(null);
+            const result = await provisionRealmTenantsAction();
+            if (result.error) setError(result.error);
+            setRealmKeys(result.created);
+          }}
+        >
+          <Button type="submit" variant="outline">
+            Create Tiffin Grab + Puchkaman
+          </Button>
+          <p className="text-muted-foreground mt-2 text-xs">
+            Skips apps that already exist. Copy each key now. We don’t store the full secret.
+          </p>
+        </form>
+      ) : null}
       {error ? <p className="text-destructive text-sm">{error}</p> : null}
       {secret ? (
         <p className="text-sm">

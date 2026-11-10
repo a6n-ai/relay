@@ -4,7 +4,7 @@ import { PublicShell } from "@/components/marketing/public-shell";
 import { PUBLIC_API_OPERATIONS } from "@/lib/v1/openapi";
 
 export const metadata: Metadata = {
-  title: "Relay docs",
+  title: "Docs",
   description: "HTTP APIs for send, mailbox, campaigns, people lists, automations, apps, tags, and team.",
 };
 

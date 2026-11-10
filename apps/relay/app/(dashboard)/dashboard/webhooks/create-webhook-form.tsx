@@ -24,7 +24,7 @@ export function CreateWebhookForm({
 }) {
   const router = useRouter();
   const [tenantPublicId, setTenantPublicId] = useState(tenants[0]?.publicId ?? "");
-  const [url, setUrl] = useState("https://example.com/webhooks/relay");
+  const [url, setUrl] = useState("https://yourapp.com/webhooks/relay");
   const [events, setEvents] = useState<string[]>(["message.sent", "message.failed"]);
   const [secret, setSecret] = useState<string | null>(null);
 

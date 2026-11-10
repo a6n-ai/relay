@@ -9,6 +9,8 @@ import { CreateAppTagForm } from "./create-app-tag-form";
 
 export const dynamic = "force-dynamic";
 
+export const metadata = { title: "Tags" };
+
 export default async function TagsSettingsPage() {
   const [{ items: apps }, tags] = await Promise.all([
     tenantsService.listRecent(),

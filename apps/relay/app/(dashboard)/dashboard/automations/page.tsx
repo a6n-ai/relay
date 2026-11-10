@@ -10,6 +10,8 @@ import { CreateAutomationForm } from "./create-automation-form";
 
 export const dynamic = "force-dynamic";
 
+export const metadata = { title: "Automations" };
+
 const AUTOMATION_FILTERS: ListingFilter[] = [
   { id: "on", label: "On" },
   { id: "off", label: "Off" },
@@ -48,7 +50,7 @@ export default async function AutomationsPage() {
           <FilteredResourceList
             title="Rules"
             glyph="zap"
-            emptyMessage="No automations yet. Add one on the left."
+            emptyMessage="No automations yet. Use New automation to add one."
             searchPlaceholder="Search automations"
             filters={AUTOMATION_FILTERS}
             items={items}

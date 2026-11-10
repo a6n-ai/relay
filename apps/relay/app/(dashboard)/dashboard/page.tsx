@@ -10,9 +10,12 @@ import { percentDelta } from "@/components/ds/overview-stats";
 import { RecentOutboxCard } from "@/components/ds/recent-outbox-card";
 import { ThroughputCard } from "@/components/ds/throughput-card";
 import { loadHomeMetrics } from "@/lib/dashboard/load-home-metrics";
+import { operatorFirstName } from "@/lib/dashboard/operator-name";
 import { getSession } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
+
+export const metadata = { title: "Home" };
 
 export default async function DashboardPage() {
   const [session, metrics] = await Promise.all([getSession(), loadHomeMetrics()]);
@@ -27,8 +30,7 @@ export default async function DashboardPage() {
     in_app: percentDelta(channelTotals.in_app, priorMix.in_app),
   };
 
-  const firstName =
-    session?.user.name.trim().split(/\s+/)[0] || session?.user.email.split("@")[0] || "there";
+  const firstName = operatorFirstName(session?.user);
 
   return (
     <OverviewFrame>

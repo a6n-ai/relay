@@ -58,7 +58,7 @@ export default async function TenantDetailPage({
         create={
           <div className="flex flex-col gap-6">
       <SectionCard title="Monthly send limit" subtitle="0 means no cap. Counts messages started this calendar month (UTC).">
-        <p className="mb-3 text-sm">Sent {used} of {tenant.monthlyMessageQuota === 0 ? "unlimited" : tenant.monthlyMessageQuota} · {boxes.length} of {tenant.mailboxSeatQuota === 0 ? "unlimited" : tenant.mailboxSeatQuota} addresses</p>
+        <p className="mb-3 text-sm">Sent {used.toLocaleString("en")} of {tenant.monthlyMessageQuota === 0 ? "unlimited" : tenant.monthlyMessageQuota.toLocaleString("en")} · {boxes.length} of {tenant.mailboxSeatQuota === 0 ? "unlimited" : tenant.mailboxSeatQuota.toLocaleString("en")} addresses</p>
         <UpdateQuotaForm publicId={tenant.publicId} quota={tenant.monthlyMessageQuota} seatQuota={tenant.mailboxSeatQuota} />
       </SectionCard>
       <SectionCard title="Access keys" subtitle="Each key can send email. Other channels aren’t open yet.">

@@ -12,6 +12,8 @@ import { CreateTenantForm } from "./create-tenant-form";
 
 export const dynamic = "force-dynamic";
 
+export const metadata = { title: "Apps" };
+
 const APP_FILTERS: ListingFilter[] = [
   { id: "live", label: "Live" },
   { id: "no-key", label: "No key" },
@@ -45,8 +47,8 @@ export default async function TenantsPage() {
     if (keys.length === 0) filterKeys.push("no-key");
     if (keys.some((k) => !k.revokedAt)) filterKeys.push("live");
     if (keys.some((k) => k.revokedAt)) filterKeys.push("revoked");
-    const quota = t.monthlyMessageQuota === 0 ? "unlimited" : String(t.monthlyMessageQuota);
-    const meta = `${t.slug} · sent ${used} of ${quota} this month`;
+    const quota = t.monthlyMessageQuota === 0 ? "unlimited" : t.monthlyMessageQuota.toLocaleString("en");
+    const meta = `${t.slug} · sent ${used.toLocaleString("en")} of ${quota} this month`;
     return {
       id: t.publicId,
       title: t.name,
@@ -81,7 +83,7 @@ export default async function TenantsPage() {
           <FilteredResourceList
             title="Your apps"
             glyph="key"
-            emptyMessage="No apps yet. Add one on the left to start sending."
+            emptyMessage="No apps yet. Use Add an app to start sending."
             searchPlaceholder="Search apps"
             filters={APP_FILTERS}
             items={items}

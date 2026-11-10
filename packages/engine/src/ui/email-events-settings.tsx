@@ -16,7 +16,7 @@ export interface StreamState {
   stream: EmailStream;
   routing: EmailEventRouting;
   volume: Partial<Record<EmailEventType, number>>;
-  /** Set when the stream's SES destinations could not be read; the rest of the page still renders. */
+  /** Set when the stream's destinations could not be read; the rest of the page still renders. */
   error?: string;
 }
 type SaveResult = Promise<{ error?: string }>;
@@ -36,7 +36,7 @@ export function EmailEventsSettings({ types, streams, onSaveTypes, onSaveStream 
     <div className="flex flex-col gap-6">
       {types && onSaveTypes && <TypesSection types={types} showTracked={hasTracked} onSave={onSaveTypes} />}
       {streams.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No SES streams configured</p>
+        <p className="text-sm text-muted-foreground">Delivery reports are not set up yet</p>
       ) : (
         streams.map((s) => <StreamSection key={s.stream.id} state={s} onSave={onSaveStream} />)
       )}

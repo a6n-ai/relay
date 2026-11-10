@@ -1,15 +1,15 @@
 ## Learned User Preferences
 
-- Treat Relay as its own notification product: Geist Sans and Geist Mono everywhere; never TiffinGrab orange/cream.
-- Purple is the only chromatic accent (not Meta/Facebook blue). Light theme has no navy and uses a purple sidebar.
-- Dark theme stays black/graphite (Stripe-like). Do not restyle dark when changing light.
-- Lyra visual language: sharp rectangles (no rounded corners), dotted field background, hairline gutters. Product-card KPIs are one card with hairline columns, not separate tiles.
+- Treat Relay as its own notification product: Apple-style design (owner, 2026-11-10). System font first (SF Pro on Apple devices, Geist as fallback), Geist Mono for code; never TiffinGrab orange/cream.
+- One chromatic accent: Apple web blue `#0071e3` (dark mode fills stay `#0071e3`, `#0a84ff` for rings). Light canvas `#f5f5f7`, white cards, `#1d1d1f` ink. Every text/background pair clears 4.5:1.
+- Dark theme: black canvas, `#1c1c1e` cards, blue only on actions.
+- Apple materials: soft corners (`--radius: 0.75rem`), solid content cards, translucent blurred chrome (sidebar, top bar, menus, sheets, dialogs) with a `prefers-reduced-transparency` solid fallback. No dotted fields or hairline-gutter grids (the earlier Lyra style is retired). Radix primitives via `@foundry/ui` stay; restyle through tokens and `app/globals.css`, not Foundry.
 - Shadcn Dashboard blocks (shadcndashboard.dev) are visual/layout reference only (including Dashboard Shell 03 analytics). Implement with Foundry primitives plus Relay DS; do not vendor dumped `components/ui` or ecommerce dummy blocks as the source of truth.
 - Do not push `.cursor/` MCP/AI config to GitHub.
 - Use semantic design tokens (`bg-primary`, etc.), not raw color utilities.
 - Use Foundry data-access (`UpdatableRepository`, `SessionUpdatableService`) and `@foundry/routes` for operator CRUD, not ad-hoc Drizzle on those paths.
 - Tenants are consuming apps: monthly send quota, channel-scoped API tokens, and verified tenant senders (unverified From falls back to operator). A tenant domain can mint send-as addresses or Relay inboxes; people IMAP inboxes stay a later roster. Email first; operator SMTP/domains/From live in Settings.
-- Operator chrome must stay non-technical: Home, Apps, Campaigns, People, Templates, Automations, Sends, Mailbox, Status updates, Email sending, Tags, Team. Group the sidebar by job; do not dump everything into Workspace. Never SMTP, IMAP, webhook, outbox, tenant, POST /v1, Foundry, or skip locked in the UI. Routes and schema keep those names.
+- Operator chrome must stay non-technical. The sidebar is 8 grouped links (components/ds/nav.ts): Home, Inbox; Reach people: Campaigns, People; Activity: Sends; Setup: Apps, Channels, Settings. Templates/Automations, Status updates, the four channels, and Email sending/Tags/Team are tabs (SectionTabs) inside those. Keep it at 8 or fewer. Never SMTP, IMAP, webhook, outbox, tenant, POST /v1, Foundry, or skip locked in the UI. Routes and schema keep those names.
 - Operator listings share search plus filter chips (client-side over loaded rows). Empty catalogs stay a plain empty state until there is something to narrow.
 - Collection pages use a shared create/browse split (`OperatorSplit`) and hairline resource rows, not per-page stacked cards.
 

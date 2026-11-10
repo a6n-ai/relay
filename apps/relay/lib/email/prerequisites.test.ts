@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { emailChannelReady, operatorEmailPrereqs } from "./prerequisites";
+import { emailChannelReady, operatorEmailPrereqs, prereqSummary } from "./prerequisites";
 import { domainOf } from "./sender-domain";
 
 describe("operatorEmailPrereqs", () => {
@@ -28,6 +28,21 @@ describe("operatorEmailPrereqs", () => {
       verifiedDomainCount: 0,
     });
     expect(emailChannelReady(prereqs)).toBe(false);
+  });
+});
+
+describe("prereqSummary", () => {
+  it("counts the same statuses the chips show and keeps dependants missing without a domain", () => {
+    const prereqs = operatorEmailPrereqs({
+      transport: "ses",
+      fromEmail: "a@b.co",
+      fromName: null,
+      smtpHost: null,
+      bounceWebhookPath: "/api/webhooks/ses",
+      verifiedDomainCount: 0,
+    });
+    expect(prereqs.find((p) => p.id === "alignment")?.status).toBe("missing");
+    expect(prereqSummary(prereqs)).toBe("3 of 5 ready");
   });
 });
 

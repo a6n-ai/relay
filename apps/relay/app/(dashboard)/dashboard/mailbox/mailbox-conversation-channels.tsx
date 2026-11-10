@@ -6,11 +6,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@foundry/design-system
 export function MailboxConversationChannels({ mail }: { mail: ReactNode }) {
   return (
     <Tabs defaultValue="mail" className="gap-3">
-      <TabsList variant="line" className="rounded-none">
-        <TabsTrigger value="mail" className="rounded-none">
+      <TabsList variant="line" >
+        <TabsTrigger value="mail" >
           Mail
         </TabsTrigger>
-        <TabsTrigger value="whatsapp" className="rounded-none">
+        <TabsTrigger value="whatsapp" >
           WhatsApp
         </TabsTrigger>
       </TabsList>

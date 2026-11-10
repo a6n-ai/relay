@@ -89,7 +89,7 @@ function PasswordPanel({ onUseEmailOtp }: { onUseEmailOtp: () => void }) {
               <FormItem>
                 <FormLabel>Email</FormLabel>
                 <FormControl>
-                  <Input type="email" autoComplete="email" placeholder="ops@example.com" {...field} />
+                  <Input type="email" autoComplete="email" placeholder="ops@a6n.ai" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -102,7 +102,7 @@ function PasswordPanel({ onUseEmailOtp }: { onUseEmailOtp: () => void }) {
               <FormItem>
                 <div className="flex items-center">
                   <FormLabel>Password</FormLabel>
-                  <Link href="/forgot-password" className="ml-auto text-sm underline-offset-2 hover:underline">
+                  <Link href="/forgot-password" className="ml-auto inline-flex min-h-11 items-center text-sm underline-offset-2 hover:underline md:min-h-0">
                     Forgot your password?
                   </Link>
                 </div>
@@ -192,7 +192,7 @@ function EmailOtpPanel({ onUsePassword }: { onUsePassword: () => void }) {
               <FormItem>
                 <FormLabel>Email</FormLabel>
                 <FormControl>
-                  <Input type="email" autoComplete="email" placeholder="ops@example.com" {...field} />
+                  <Input type="email" autoComplete="email" placeholder="ops@a6n.ai" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>

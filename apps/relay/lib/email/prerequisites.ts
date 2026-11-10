@@ -42,17 +42,21 @@ export function operatorEmailPrereqs(snap: EmailChannelSnapshot): EmailPrereq[] 
       id: "bounces",
       label: "Bounces and spam reports",
       detail: "Tell your email provider to send bounce and spam reports back to Relay so we stop mailing bad addresses.",
-      status: "ready",
+      status: transportReady ? "ready" : "missing",
     },
     {
       id: "alignment",
       label: "Domain matches the sender",
       detail: "The From domain should match what you proved in DNS. Important once you send a lot of mail.",
-      status: snap.smtpHost || snap.transport === "ses" ? "ready" : "missing",
+      status: snap.verifiedDomainCount > 0 && transportReady ? "ready" : "missing",
     },
   ];
 }
 
 export function emailChannelReady(prereqs: EmailPrereq[]): boolean {
   return prereqs.filter((p) => p.id === "transport" || p.id === "from").every((p) => p.status === "ready");
+}
+
+export function prereqSummary(prereqs: EmailPrereq[]): string {
+  return `${prereqs.filter((p) => p.status === "ready").length} of ${prereqs.length} ready`;
 }

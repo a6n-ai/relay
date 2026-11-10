@@ -29,7 +29,7 @@ const CHANNELS = [
 
 export function Landing() {
   return (
-    <div className="dark style-lyra bg-background text-foreground min-h-dvh">
+    <div className="dark bg-background text-foreground min-h-dvh">
       <a
         href="#content"
         className="bg-primary text-primary-foreground sr-only focus:not-sr-only focus:absolute focus:top-3 focus:left-3 focus:z-20 focus:px-3 focus:py-2"
@@ -175,7 +175,7 @@ export function Landing() {
     "event": "order.paid",
     "title": "Order paid",
     "body": "Thanks — we have your order.",
-    "to": { "email": "ops@example.com" }
+    "to": { "email": "ops@a6n.ai" }
   }'`}
               </pre>
             </div>

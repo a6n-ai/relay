@@ -10,6 +10,8 @@ import { CreateTemplateForm } from "./create-template-form";
 
 export const dynamic = "force-dynamic";
 
+export const metadata = { title: "Templates" };
+
 const TEMPLATE_FILTERS: ListingFilter[] = [
   { id: "email", label: "Email" },
   { id: "sms", label: "Text" },
@@ -61,7 +63,7 @@ export default async function TemplatesPage() {
           <FilteredResourceList
             title="Saved templates"
             glyph="inbox"
-            emptyMessage="No templates yet. Write one on the left."
+            emptyMessage="No templates yet. Use New email template to write one."
             searchPlaceholder="Search templates"
             filters={TEMPLATE_FILTERS}
             items={items}

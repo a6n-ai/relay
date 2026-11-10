@@ -10,6 +10,8 @@ import { contactListsService } from "@/lib/services/campaigns.service";
 
 export const dynamic = "force-dynamic";
 
+export const metadata = { title: "People" };
+
 const PEOPLE_FILTERS: ListingFilter[] = [
   { id: "purchase", label: "Customer purchased" },
   { id: "express_optin", label: "They asked" },
@@ -23,7 +25,7 @@ export default async function ListsPage() {
   const items: ListingRow[] = lists.map((l) => {
     const source = consentSourceLabel(l.consentSource);
     const optedIn = new Date(l.consentAt).toLocaleDateString();
-    const meta = `${l.memberCount} people · ${source} · opted in ${optedIn}`;
+    const meta = `${l.memberCount.toLocaleString("en")} people · ${source} · opted in ${optedIn}`;
     return {
       id: l.publicId,
       title: l.name,
@@ -55,7 +57,7 @@ export default async function ListsPage() {
           <FilteredResourceList
             title="Groups"
             glyph="users"
-            emptyMessage="No people imported yet. Use the form on the left."
+            emptyMessage="No people imported yet. Use Import a spreadsheet or Add contacts by hand."
             searchPlaceholder="Search groups"
             filters={PEOPLE_FILTERS}
             items={items}

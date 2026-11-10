@@ -9,6 +9,8 @@ import { notificationTables } from "@/db/schema";
 
 export const dynamic = "force-dynamic";
 
+export const metadata = { title: "Sends" };
+
 export default async function LogsPage() {
   const o = notificationTables.notificationOutbox;
   const rows = await db

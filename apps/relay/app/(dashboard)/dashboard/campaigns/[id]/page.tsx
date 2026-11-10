@@ -47,7 +47,7 @@ export default async function CampaignDetailPage({
       <OperatorSplit
         create={
           <SectionCard title="Who receives this">
-            <p className="text-sm">{count} people who can receive this, after unsubscribes.</p>
+            <p className="text-sm">{count.toLocaleString("en")} people who can receive this, after unsubscribes.</p>
             {!tenant?.physicalAddress && canSend ? (
               <p className="text-destructive mt-2 text-sm">
                 This app has no street address. Marketing mail needs one in the footer. Add it on the app.

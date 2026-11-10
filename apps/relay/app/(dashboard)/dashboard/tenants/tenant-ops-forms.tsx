@@ -142,7 +142,7 @@ export function AddMailboxForm({
       {kind === "people_inbox" ? (
         <label className="flex flex-col gap-1 text-sm">
           People domain
-          <Input name="domain" placeholder="mail.example.com" required />
+          <Input name="domain" placeholder="mail.yourapp.com" required />
         </label>
       ) : domains.length > 0 ? (
         <label className="flex flex-col gap-1 text-sm">

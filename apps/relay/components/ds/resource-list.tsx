@@ -19,12 +19,12 @@ export function ResourceBoard({
   children: ReactNode;
 }) {
   return (
-    <section className="border border-border bg-card">
+    <section className="overflow-hidden rounded-xl border border-border bg-card">
       <header className="flex flex-col gap-3 border-b border-border px-4 py-3">
         <div className="flex items-baseline justify-between gap-2">
           <h2 className="text-sm font-medium">{title}</h2>
           {count != null ? (
-            <span className="text-muted-foreground nums text-sm tabular-nums">{count}</span>
+            <span className="text-muted-foreground nums text-sm tabular-nums">{typeof count === "number" ? count.toLocaleString("en") : count}</span>
           ) : null}
         </div>
         {toolbar}
@@ -55,8 +55,8 @@ export function ResourceRow({
       )}
     >
       <div className="min-w-0 flex-1">
-        <p className="truncate font-medium">{title}</p>
-        {meta ? <p className="text-muted-foreground truncate text-sm">{meta}</p> : null}
+        <p className="line-clamp-2 font-medium">{title}</p>
+        {meta ? <p className="text-muted-foreground line-clamp-2 text-sm">{meta}</p> : null}
       </div>
       {trailing ? <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">{trailing}</div> : null}
       {href ? <ChevronRightIcon className="text-muted-foreground size-4 shrink-0" /> : null}

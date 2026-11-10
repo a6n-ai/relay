@@ -71,7 +71,7 @@ export function SmtpSettingsForm(props: {
         <FormField control={form.control} name="host" render={({ field }) => (
           <FormItem>
             <FormLabel>Mail server</FormLabel>
-            <FormControl><Input placeholder="smtp.example.com" {...field} /></FormControl>
+            <FormControl><Input placeholder="mail.yourapp.com" {...field} /></FormControl>
             <FormMessage />
           </FormItem>
         )} />

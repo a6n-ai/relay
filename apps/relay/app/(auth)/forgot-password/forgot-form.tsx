@@ -22,7 +22,7 @@ export function ForgotForm() {
               onSuccess={() => router.push("/login")}
             />
             <div className="mt-6 text-center text-sm">
-              <Link href="/login" className="underline underline-offset-4">
+              <Link href="/login" className="inline-flex min-h-11 items-center underline underline-offset-4 md:min-h-0">
                 Back to sign in
               </Link>
             </div>

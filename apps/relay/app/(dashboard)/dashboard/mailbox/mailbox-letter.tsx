@@ -5,14 +5,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@foundry/design-system
 export function MailboxLetterBody({ html, text }: { html: string; text: string }) {
   return (
     <Tabs defaultValue="preview" className="gap-3">
-      <TabsList variant="line" className="rounded-none">
-        <TabsTrigger value="preview" className="rounded-none">
+      <TabsList variant="line" >
+        <TabsTrigger value="preview" >
           Preview
         </TabsTrigger>
-        <TabsTrigger value="text" className="rounded-none">
+        <TabsTrigger value="text" >
           Plain text
         </TabsTrigger>
-        <TabsTrigger value="html" className="rounded-none">
+        <TabsTrigger value="html" >
           HTML
         </TabsTrigger>
       </TabsList>

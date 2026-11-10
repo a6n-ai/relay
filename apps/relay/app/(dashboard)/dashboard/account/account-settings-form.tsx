@@ -74,15 +74,15 @@ export function AccountSettingsForm({
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-px bg-border">
-      <Card className="gap-0 rounded-none">
+      <Card className="gap-0">
         <CardHeader className="border-b border-border">
           <CardTitle>Profile</CardTitle>
           <CardDescription>How this operator appears in Relay. Email is the sign-in identity.</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-6 pt-6">
           <div className="flex items-center gap-4">
-            <Avatar size="lg" className="rounded-none">
-              <AvatarFallback className="rounded-none">{initials(email, displayName)}</AvatarFallback>
+            <Avatar size="lg" >
+              <AvatarFallback >{initials(email, displayName)}</AvatarFallback>
             </Avatar>
             <div className="min-w-0">
               <p className="truncate font-medium">{displayName || email}</p>
@@ -103,14 +103,14 @@ export function AccountSettingsForm({
             </div>
           </div>
         </CardContent>
-        <CardFooter className="justify-end gap-2 rounded-none">
+        <CardFooter className="justify-end gap-2">
           <Button type="button" disabled={saving} onClick={() => void saveProfile()}>
             Save changes
           </Button>
         </CardFooter>
       </Card>
 
-      <Card className="gap-0 rounded-none">
+      <Card className="gap-0">
         <CardHeader className="border-b border-border">
           <CardTitle>Appearance</CardTitle>
           <CardDescription>Lyra canvas follows light, dark, or the OS preference.</CardDescription>
@@ -139,7 +139,7 @@ export function AccountSettingsForm({
         </CardContent>
       </Card>
 
-      <Card className="gap-0 rounded-none">
+      <Card className="gap-0">
         <CardHeader className="border-b border-border">
           <CardTitle>Password & security</CardTitle>
           <CardDescription>Change the password for this operator. Other sessions will be signed out.</CardDescription>
@@ -185,7 +185,7 @@ export function AccountSettingsForm({
             <Switch disabled aria-label="Two-factor authentication" />
           </div>
         </CardContent>
-        <CardFooter className="justify-end rounded-none">
+        <CardFooter className="justify-end">
           <Button type="button" disabled={saving} onClick={() => void updatePassword()}>
             Update password
           </Button>

@@ -13,6 +13,8 @@ import { CreateCampaignForm } from "./create-campaign-form";
 
 export const dynamic = "force-dynamic";
 
+export const metadata = { title: "Campaigns" };
+
 const CAMPAIGN_FILTERS: ListingFilter[] = [
   { id: "draft", label: "Draft" },
   { id: "scheduled", label: "Scheduled" },
@@ -65,7 +67,7 @@ export default async function CampaignsPage() {
           <FilteredResourceList
             title="Drafts and sent"
             glyph="megaphone"
-            emptyMessage="No campaigns yet. Start one on the left."
+            emptyMessage="No campaigns yet. Use New campaign to start one."
             searchPlaceholder="Search campaigns"
             filters={CAMPAIGN_FILTERS}
             items={items}

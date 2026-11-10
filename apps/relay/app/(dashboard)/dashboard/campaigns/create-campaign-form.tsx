@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -70,7 +71,9 @@ export function CreateCampaignForm({
     return <p className="text-sm text-muted-foreground">Add an app before you can send a campaign.</p>;
   }
   if (lists.length === 0) {
-    return <p className="text-sm text-muted-foreground">Import people first.</p>;
+    return <p className="text-sm text-muted-foreground">
+        <Link href="/dashboard/lists" className="underline underline-offset-2">Import people</Link> first.
+      </p>;
   }
 
   return (
@@ -107,7 +110,7 @@ export function CreateCampaignForm({
                 )
               }
             />
-            {l.name} ({l.memberCount})
+            {l.name} ({l.memberCount.toLocaleString("en")})
           </label>
         ))}
       </fieldset>

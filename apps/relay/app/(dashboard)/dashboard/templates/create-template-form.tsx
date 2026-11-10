@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Button } from "@foundry/ui/button";
 import { Input } from "@foundry/ui/input";
 import { Label } from "@foundry/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@foundry/ui/select";
 import { Textarea } from "@foundry/ui/textarea";
 import { apiFetch } from "@relay/engine/ui/api-fetch";
 
@@ -73,16 +74,16 @@ export function CreateTemplateForm({
     <div className="flex max-w-xl flex-col gap-3">
       <div className="space-y-1.5">
         <Label htmlFor="tpl-tenant">App</Label>
-        <select
-          id="tpl-tenant"
-          className="border-input bg-background h-9 w-full border px-3 text-sm"
-          value={tenantPublicId}
-          onChange={(e) => setTenantPublicId(e.target.value)}
-        >
-          {tenants.map((t) => (
-            <option key={t.publicId} value={t.publicId}>{t.name} ({t.slug})</option>
-          ))}
-        </select>
+        <Select value={tenantPublicId} onValueChange={setTenantPublicId}>
+          <SelectTrigger id="tpl-tenant" className="w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {tenants.map((t) => (
+              <SelectItem key={t.publicId} value={t.publicId}>{t.name} ({t.slug})</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
       <div className="space-y-1.5">
         <Label htmlFor="tpl-event">When this happens</Label>

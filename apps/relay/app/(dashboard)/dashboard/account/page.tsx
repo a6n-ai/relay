@@ -5,6 +5,8 @@ import { AccountSettingsForm } from "./account-settings-form";
 
 export const dynamic = "force-dynamic";
 
+export const metadata = { title: "Account" };
+
 export default async function AccountPage() {
   const session = await getSession();
   if (!session?.user) return null;

@@ -61,8 +61,8 @@ function listingGlyph(name: ListingGlyph) {
 const ALL: ListingFilter = { id: "all", label: "All" };
 
 export function listingCountLabel(visible: number, total: number): string {
-  if (visible === total) return String(total);
-  return `${visible} of ${total}`;
+  if (visible === total) return total.toLocaleString("en");
+  return `${visible.toLocaleString("en")} of ${total.toLocaleString("en")}`;
 }
 
 function ListingChip({
@@ -89,7 +89,7 @@ function ListingChip({
       )}
     >
       {label}
-      <span className={cn("nums text-xs tabular-nums", active ? "opacity-80" : "text-muted-foreground")}>{count}</span>
+      <span className={cn("nums text-xs tabular-nums", active ? "opacity-80" : "text-muted-foreground")}>{count.toLocaleString("en")}</span>
     </button>
   );
 }
@@ -268,7 +268,7 @@ export function ListingTableFrame({
   children: ReactNode;
 }) {
   return (
-    <div className="border border-border bg-card">
+    <div className="overflow-hidden rounded-xl border border-border bg-card">
       <div className="border-b border-border px-4 py-3">{toolbar}</div>
       <div className="overflow-x-auto">{children}</div>
     </div>

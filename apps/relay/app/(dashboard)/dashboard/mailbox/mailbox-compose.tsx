@@ -39,7 +39,7 @@ export function MailboxCompose({
         </Button>
       </DialogTrigger>
       <DialogContent
-        className="rounded-none sm:max-w-xl data-open:zoom-in-100 data-closed:zoom-out-100 top-auto right-4 bottom-4 left-auto max-h-[min(36rem,calc(100vh-2rem))] translate-x-0 translate-y-0 overflow-y-auto"
+        className="sm:max-w-xl data-open:zoom-in-100 data-closed:zoom-out-100 top-auto right-4 bottom-4 left-auto max-h-[min(36rem,calc(100vh-2rem))] translate-x-0 translate-y-0 overflow-y-auto"
       >
         <DialogHeader>
           <DialogTitle>{isReply ? "Reply" : "New letter"}</DialogTitle>

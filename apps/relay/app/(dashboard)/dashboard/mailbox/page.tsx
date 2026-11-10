@@ -15,6 +15,8 @@ import { MailboxCompose } from "./mailbox-compose";
 
 export const dynamic = "force-dynamic";
 
+export const metadata = { title: "Mailbox" };
+
 const MAILBOX_FILTERS: ListingFilter[] = [
   { id: "out", label: "Relay sent" },
   { id: "in", label: "Received" },
@@ -52,7 +54,7 @@ export default async function MailboxPage() {
       <FilteredResourceList
         title="Inbox"
         glyph="mailbox"
-        emptyMessage="Nothing in the inbox yet. Compose in the top right, or wait for app mail and replies."
+        emptyMessage="Nothing in the inbox yet. Use Compose to write one, or wait for app mail and replies."
         searchPlaceholder="Search subject, to, or from"
         filters={[...MAILBOX_FILTERS, ...tagListingFilters(tagsByTenant)]}
         items={items}

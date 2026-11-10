@@ -29,7 +29,7 @@ export function KpiActionCard({ item }: { item: KpiItem }) {
           <IconTile icon={Icon} />
         </div>
         <div className="flex items-center gap-2">
-          <h3 className="nums text-2xl font-semibold">{item.value.toLocaleString()}</h3>
+          <h3 className="nums text-2xl font-semibold">{item.value.toLocaleString("en")}</h3>
           {item.delta ? <Badge className={toneBadgeClass(item.tone)}>{item.delta}</Badge> : null}
         </div>
         <Button variant="outline" className="w-fit" asChild>
@@ -67,7 +67,7 @@ export function KpiStrip({ items }: { items: KpiItem[] }) {
                 <IconTile icon={Icon} />
               </div>
               <div className="flex items-center gap-2">
-                <h3 className="nums text-2xl font-semibold">{item.value.toLocaleString()}</h3>
+                <h3 className="nums text-2xl font-semibold">{item.value.toLocaleString("en")}</h3>
                 {item.delta ? <Badge className={toneBadgeClass(item.tone)}>{item.delta}</Badge> : null}
               </div>
               <Button variant="outline" className="w-fit" asChild>

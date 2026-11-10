@@ -35,7 +35,7 @@ export const EDITOR_PANE_HEIGHT = "h-[72vh] min-h-[560px]";
 // ssr:false keeps CodeMirror out of the server bundle: Workers bundle every reachable import().
 const CodePane = dynamic(() => import("./email-editor/code-pane").then((m) => m.CodePane), {
   ssr: false,
-  loading: () => <Skeleton className="size-full rounded-none" />,
+  loading: () => <Skeleton className="size-full" />,
 });
 
 /**

@@ -20,9 +20,9 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", var(--font-geist-sans), system-ui, sans-serif;
   --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-geist-sans);
+  --font-heading: -apple-system, BlinkMacSystemFont, "SF Pro Display", var(--font-geist-sans), system-ui, sans-serif;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -82,109 +82,108 @@
 }
 
 :root {
-  /* Light: charcoal ink. Sidebar is purple; canvas stays zinc. */
-  --brand: #635bff;
+  /* Light, Apple: #f5f5f7 canvas, white cards, #1d1d1f ink, one blue accent. */
+  --brand: #0071e3;
   --brand-foreground: #ffffff;
-  --background: #f4f4f5;
-  --foreground: #09090b;
+  --background: #f5f5f7;
+  --foreground: #1d1d1f;
   --card: #ffffff;
-  --card-foreground: #09090b;
+  --card-foreground: #1d1d1f;
   --popover: #ffffff;
-  --popover-foreground: #09090b;
-  --primary: #635bff;
+  --popover-foreground: #1d1d1f;
+  --primary: #0071e3; /* Apple web blue; white on it 4.7:1 */
   --primary-foreground: #ffffff;
-  --primary-hover: #524af0;
-  --secondary: #ececee;
-  --secondary-foreground: #09090b;
-  --muted: #ececee;
-  --muted-foreground: #61616a; /* 5:1 on --muted; #71717a was 4.1:1 */
-  --accent: #ecebff;
-  --accent-foreground: #09090b;
-  --destructive: #b8325a; /* 5:1 on its 10% tint; #cd3d64 was 4.1:1 */
-  --border: #e4e4e7;
-  --input: #e4e4e7;
-  --ring: #635bff;
-  --chart-1: #635bff;
-  --chart-2: #7a73ff;
-  --chart-3: #a1a1aa;
-  --chart-4: #524af0;
-  --chart-5: #24b47e;
-  /* Lyra: sharp rectangles everywhere (sidebar, auth cards, dialogs), not only the dashboard canvas. */
-  --radius: 0px;
-  --sidebar: #635bff;
-  --sidebar-foreground: #ffffff;
-  --sidebar-primary: #ffffff;
-  --sidebar-primary-foreground: #635bff;
-  --sidebar-accent: #524af0;
-  --sidebar-accent-foreground: #ffffff;
-  --sidebar-border: #524af0;
-  --sidebar-ring: #ffffff;
-  --ok: #24b47e;
-  --warn: #ed5f00;
-  --warn-hover: #c44f00;
-  --bad: #b8325a;
+  --primary-hover: #0062c4;
+  --secondary: #e8e8ed;
+  --secondary-foreground: #1d1d1f;
+  --muted: #e8e8ed;
+  --muted-foreground: #636366; /* 4.7:1 on --muted, 5.6:1 on --background */
+  --accent: #e8f1fc;
+  --accent-foreground: #1d1d1f;
+  --destructive: #d70015;
+  --border: #d2d2d7;
+  --input: #d2d2d7;
+  --ring: #0071e3;
+  --chart-1: #0071e3;
+  --chart-2: #5e5ce6;
+  --chart-3: #8e8e93;
+  --chart-4: #30b0c7;
+  --chart-5: #34c759;
+  --radius: 0.75rem; /* Apple: soft, continuous corners */
+  --sidebar: rgb(246 246 248 / 0.72);
+  --sidebar-foreground: #1d1d1f;
+  --sidebar-primary: #0071e3;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: rgb(0 0 0 / 0.06);
+  --sidebar-accent-foreground: #1d1d1f;
+  --sidebar-border: rgb(0 0 0 / 0.08);
+  --sidebar-ring: #0071e3;
+  --ok: #248a3d;
+  --warn: #c93400;
+  --warn-hover: #a82b00;
+  --bad: #d70015;
   --success: var(--ok);
   --success-foreground: #f4fffa;
   --warning: var(--warn);
   --warning-foreground: #3d1a00;
-  --info: #635bff;
-  --info-foreground: #ecebff;
+  --info: #0071e3;
+  --info-foreground: #e8f1fc;
   --destructive-foreground: #fff7f9;
-  --accent-badge: #635bff;
-  --accent-badge-hover: #524af0;
+  --accent-badge: #0071e3;
+  --accent-badge-hover: #0062c4;
   --accent-badge-foreground: #ffffff;
 }
 
 .dark {
-  /* Stripe night: true black canvas, graphite lifts, blurple only on actions. */
-  --brand: #7a73ff;
+  /* Dark, Apple: black canvas, #1c1c1e cards, blue only on actions. */
+  --brand: #0a84ff;
   --brand-foreground: #000000;
   --background: #000000;
-  --foreground: #fafafa;
-  --card: #111111;
-  --card-foreground: #fafafa;
-  --popover: #111111;
-  --popover-foreground: #fafafa;
+  --foreground: #f5f5f7;
+  --card: #1c1c1e;
+  --card-foreground: #f5f5f7;
+  --popover: #2c2c2e;
+  --popover-foreground: #f5f5f7;
   /* White on #7a73ff is 3.9:1; buttons fill with #635bff (4.7:1), #7a73ff stays the hover, ring and brand. */
-  --primary: #635bff;
+  --primary: #0071e3; /* fills stay #0071e3: white on #0a84ff is 3.6:1 */
   --primary-foreground: #ffffff;
-  --primary-hover: #7a73ff;
-  --secondary: #1a1a1a;
-  --secondary-foreground: #fafafa;
-  --muted: #1a1a1a;
-  --muted-foreground: #a1a1aa;
-  --accent: #1a1a1a;
-  --accent-foreground: #fafafa;
-  --destructive: #e45c7c;
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 14%);
-  --ring: #7a73ff;
-  --chart-1: #7a73ff;
-  --chart-2: #00d4ff;
-  --chart-3: #fafafa;
-  --chart-4: #a99dfe;
-  --chart-5: #24b47e;
-  --sidebar: #000000;
-  --sidebar-foreground: #fafafa;
-  --sidebar-primary: #7a73ff;
+  --primary-hover: #0062c4;
+  --secondary: #2c2c2e;
+  --secondary-foreground: #f5f5f7;
+  --muted: #2c2c2e;
+  --muted-foreground: #98989d;
+  --accent: #152437;
+  --accent-foreground: #f5f5f7;
+  --destructive: #d70015;
+  --border: #38383a;
+  --input: #38383a;
+  --ring: #0a84ff;
+  --chart-1: #0a84ff;
+  --chart-2: #5e5ce6;
+  --chart-3: #98989d;
+  --chart-4: #40c8e0;
+  --chart-5: #30d158;
+  --sidebar: rgb(28 28 30 / 0.72);
+  --sidebar-foreground: #f5f5f7;
+  --sidebar-primary: #0a84ff;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #1a1a1a;
+  --sidebar-accent: rgb(255 255 255 / 0.08);
   --sidebar-accent-foreground: #ffffff;
-  --sidebar-border: #262626;
-  --sidebar-ring: #7a73ff;
-  --ok: #2ecf93;
-  --warn: #ff8a3d;
-  --warn-hover: #ff9c5c;
-  --bad: #e45c7c;
+  --sidebar-border: rgb(255 255 255 / 0.08);
+  --sidebar-ring: #0a84ff;
+  --ok: #30d158;
+  --warn: #ff9f0a;
+  --warn-hover: #ffb340;
+  --bad: #ff453a;
   --success: var(--ok);
   --success-foreground: #042016;
   --warning: var(--warn);
   --warning-foreground: #2a1200;
-  --info: #5ae0ff;
+  --info: #0a84ff;
   --info-foreground: #04202a;
   --destructive-foreground: #2a0812;
-  --accent-badge: #7a73ff;
-  --accent-badge-hover: #8b85ff;
+  --accent-badge: #0071e3;
+  --accent-badge-hover: #0062c4;
   --accent-badge-foreground: #ffffff;
 }
 
@@ -211,49 +210,123 @@
 }
 
 /*
-  Lyra principles taken from shadcn-dashboard shells (dashboard-shell-01+):
-  sharp rectangles, 1px hairline gutters (gap-px on border), dotted field,
-  dotted bands between rows. Foundry owns Card/Button/Table; this only sets the canvas.
+  Apple-style surfaces. Content sits on solid cards with soft corners; the chrome (sidebar, top bar,
+  menus, sheets) is a translucent material with content showing through. Grids that used 1px
+  hairline gutters now separate cards with space.
 */
-.style-lyra {
-  --radius: 0px;
-}
-
 .dashboard-canvas {
   background-color: var(--background);
-  background-image: radial-gradient(circle at center, currentColor 1px, transparent 0);
-  background-size: 12px 12px;
-  background-position: 6px 6px;
-  color: color-mix(in oklch, var(--foreground) 22%, transparent);
-}
-
-.dashboard-canvas > * {
-  color: var(--foreground);
 }
 
 .dashboard-shell-grid {
-  @apply grid grid-cols-12;
+  @apply grid grid-cols-12 gap-4;
 }
 
-.style-lyra .dashboard-shell-grid {
-  @apply gap-px bg-border p-px;
+.lyra-pack {
+  @apply grid gap-3;
 }
 
-.style-lyra .dashboard-shell-grid [data-slot="card"] {
-  @apply rounded-none border-0 shadow-none ring-0;
+.lyra-pack > *,
+.dashboard-shell-grid > * {
+  border-radius: var(--radius-lg);
 }
 
-.style-lyra [data-slot="card"],
-.style-lyra [data-slot="card-header"],
-.style-lyra [data-slot="card-footer"],
-.style-lyra [data-slot="card-content"] {
-  border-radius: 0;
-  box-shadow: none;
-  --tw-ring-shadow: 0 0 #0000;
+[data-slot="card"] {
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.04), 0 0 0 1px rgb(0 0 0 / 0.04);
 }
 
-.style-lyra .lyra-pack {
-  @apply grid gap-px bg-border;
+.dark [data-slot="card"] {
+  box-shadow: 0 0 0 1px rgb(255 255 255 / 0.06);
+}
+
+/* Materials: heavier for structure (sidebar), lighter for floating layers. */
+[data-slot="sidebar-inner"],
+[data-slot="sidebar-inset"] > header {
+  -webkit-backdrop-filter: blur(30px) saturate(180%);
+  backdrop-filter: blur(30px) saturate(180%);
+}
+
+[data-slot="sidebar-inset"] > header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: color-mix(in oklch, var(--background) 72%, transparent);
+  box-shadow: 0 1px 0 rgb(0 0 0 / 0.06);
+}
+
+:is([data-slot="popover-content"], [data-slot="dropdown-menu-content"], [data-slot="select-content"], [data-slot="dialog-content"], [data-slot="sheet-content"]) {
+  background: color-mix(in oklch, var(--popover) 82%, transparent);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(24px) saturate(180%);
+  border-color: rgb(255 255 255 / 0.4);
+  box-shadow: 0 12px 40px rgb(0 0 0 / 0.12), 0 0 0 1px rgb(0 0 0 / 0.06);
+}
+
+.dark :is([data-slot="popover-content"], [data-slot="dropdown-menu-content"], [data-slot="select-content"], [data-slot="dialog-content"], [data-slot="sheet-content"]) {
+  border-color: rgb(255 255 255 / 0.08);
+  box-shadow: 0 12px 40px rgb(0 0 0 / 0.5), 0 0 0 1px rgb(255 255 255 / 0.06);
+}
+
+/* Large type tightens, small type stays open. */
+h1 { letter-spacing: -0.022em; }
+h2, h3 { letter-spacing: -0.012em; }
+
+/* Press feedback on pointer-down, like a real control. */
+[data-slot="button"]:active:not(:disabled) {
+  transform: scale(0.97);
+  transition: transform 100ms ease-out;
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  [data-slot="sidebar-inner"],
+  [data-slot="sidebar-inset"] > header,
+  :is([data-slot="popover-content"], [data-slot="dropdown-menu-content"], [data-slot="select-content"], [data-slot="dialog-content"], [data-slot="sheet-content"]) {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  [data-slot="sidebar-inner"] { background: var(--background); }
+  [data-slot="sidebar-inset"] > header { background: var(--background); }
+  :is([data-slot="popover-content"], [data-slot="dropdown-menu-content"], [data-slot="select-content"], [data-slot="dialog-content"], [data-slot="sheet-content"]) { background: var(--popover); }
+}
+
+/*
+  One Relay hover for buttons: the fill wipes in from the left (transform only), arrows nudge
+  forward. Sidebar buttons keep their own hover on the purple ground.
+*/
+:where([data-slot="button"][data-variant="default"], [data-slot="button"][data-variant="outline"]):not([data-slot="sidebar"] *) {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+:where([data-slot="button"][data-variant="default"], [data-slot="button"][data-variant="outline"]):not([data-slot="sidebar"] *)::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 220ms var(--ease-soft);
+}
+[data-slot="button"][data-variant="default"]:not([data-slot="sidebar"] *)::before {
+  background: var(--primary-hover);
+}
+[data-slot="button"][data-variant="outline"]:not([data-slot="sidebar"] *)::before {
+  background: color-mix(in oklch, var(--primary) 12%, var(--background));
+}
+[data-slot="button"][data-variant="outline"]:not([data-slot="sidebar"] *):hover {
+  border-color: var(--primary);
+}
+:where([data-slot="button"][data-variant="default"], [data-slot="button"][data-variant="outline"]):not([data-slot="sidebar"] *):is(:hover, :focus-visible)::before {
+  transform: scaleX(1);
+}
+[data-slot="button"][data-variant="default"]:not([data-slot="sidebar"] *):hover {
+  background-color: var(--primary);
+}
+[data-slot="button"] .lucide-arrow-right {
+  transition: transform 220ms var(--ease-soft);
+}
+[data-slot="button"]:is(:hover, :focus-visible) .lucide-arrow-right {
+  transform: translateX(3px);
 }
 
 ::view-transition-old(root),
