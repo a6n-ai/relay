@@ -18,7 +18,7 @@ export function MailboxLetterBody({
 }) {
   const hasHtml = html.trim() !== "";
   const hasText = text.trim() !== "";
-  const [selected, setSelected] = useState<View>(hasHtml ? "html" : "message");
+  const [selected, setSelected] = useState<View>(hasText ? "message" : "html");
 
   const views: { value: View; label: string }[] = [];
   if (hasText) views.push({ value: "message", label: "Message" });
