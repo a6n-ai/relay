@@ -1,5 +1,5 @@
 import { MailboxIcon } from "lucide-react";
-import { PageHeader, PageShell } from "@foundry/design-system";
+import { PageShell } from "@foundry/design-system";
 import { FilteredResourceList } from "@/components/ds/listing-controls";
 import type { ListingFilter } from "@/components/ds/listing-controls";
 import { listMailboxLetters } from "@/lib/mailbox/list";
@@ -12,6 +12,7 @@ import { loadComposeFroms } from "@/lib/mailbox/load-compose-froms";
 import { appMessageTagsService } from "@/lib/services/mailbox-tags.service";
 import { tenantsService } from "@/lib/services/tenants.service";
 import { MailboxCompose } from "./mailbox-compose";
+import { ViewHeader } from "@/components/ds/view-header";
 
 export const dynamic = "force-dynamic";
 
@@ -45,7 +46,7 @@ export default async function MailboxPage() {
 
   return (
     <PageShell>
-      <PageHeader
+      <ViewHeader
         icon={MailboxIcon}
         title="Mailbox"
         subtitle="Conversations Relay sent or received. A tag on an app marks all of its messages."

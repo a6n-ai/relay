@@ -58,13 +58,16 @@ Every DESIGN.md surface maps to one Relay component. Build screens from these an
 | table frame | `DataSurface` (a `Panel`) | components/ds/data-surface.tsx |
 | list with search + filters | `FilteredResourceList`, `ResourceBoard`, `ResourceRow` | components/ds/listing-controls.tsx, resource-list.tsx |
 | create / browse page | `OperatorSplit` | components/ds/operator-split.tsx |
-| status-badge | `StatusBadge` (tone: ok, bad, neutral) | components/ds/status-badge.tsx |
+| status-badge (signed deltas get an arrow) | `StatusBadge` (tone: ok, bad, neutral) | components/ds/status-badge.tsx |
 | send status | `OutboxStatusBadge` | components/outbox-status-badge.tsx |
 | icon square | `IconTile` | components/ds/icon-tile.tsx |
 | section tabs | `SectionTabs` (from `nav.ts`) | components/ds/section-tabs.tsx |
 | sidebar | `RelaySidebar` (8 links, `nav.ts`) | components/relay-sidebar.tsx |
 | async button | `LoadingButton` | components/interior/loading-button.tsx |
-| page frame, header, card, tabs | `PageShell`, `PageHeader`, `SectionCard`, `Tabs` | @foundry/design-system |
+| view header (16px icon, 18px title, one muted line, actions) | `ViewHeader` | components/ds/view-header.tsx |
+| page frame, card, tabs | `PageShell`, `SectionCard`, `Tabs` | @foundry/design-system |
 | primitives | `Button`, `Input`, `Select`, `Dialog`, `Badge`, `Skeleton`… | @foundry/ui (Radix) |
+
+Buttons are `@foundry/ui` `Button`; `app/globals.css` maps its variants to DESIGN.md: `default` = button-primary (lavender), `outline`/`secondary` = button-secondary (surface-1 + hairline), `ghost` = button-tertiary; 8px corners, 14px/500 labels, 14px side padding.
 
 Styling lives in tokens (`app/globals.css` `:root` and `.dark`) and these components, never in one-off class strings on pages.

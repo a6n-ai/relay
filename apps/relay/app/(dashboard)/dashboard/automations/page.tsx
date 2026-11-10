@@ -1,5 +1,5 @@
 import { ZapIcon } from "lucide-react";
-import { PageHeader, PageShell, SectionCard } from "@foundry/design-system";
+import { PageShell, SectionCard } from "@foundry/design-system";
 import { OperatorSplit } from "@/components/ds/operator-split";
 import { FilteredResourceList } from "@/components/ds/listing-controls";
 import type { ListingFilter, ListingRow } from "@/components/ds/listing-controls";
@@ -7,6 +7,7 @@ import { listAutomationsService } from "@/lib/services/automations.service";
 import { contactListsService } from "@/lib/services/campaigns.service";
 import { tenantsService } from "@/lib/services/tenants.service";
 import { CreateAutomationForm } from "./create-automation-form";
+import { ViewHeader } from "@/components/ds/view-header";
 
 export const dynamic = "force-dynamic";
 
@@ -35,7 +36,7 @@ export default async function AutomationsPage() {
 
   return (
     <PageShell>
-      <PageHeader
+      <ViewHeader
         icon={ZapIcon}
         title="Automations"
         subtitle="When something happens in an app, add that person to a group so you can email them later."

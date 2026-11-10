@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { MailboxIcon } from "lucide-react";
 import { Badge } from "@foundry/ui/badge";
-import { PageHeader, PageShell, SectionCard } from "@foundry/design-system";
+import { PageShell, SectionCard } from "@foundry/design-system";
 import { outboxStatusLabel } from "@/components/ds/plain-labels";
 import { listMailboxThread, readMailboxLetter } from "@/lib/mailbox/list";
 import { fromLine } from "@/lib/mailbox/listing";
@@ -11,6 +11,7 @@ import { MailboxCompose } from "../mailbox-compose";
 import { MailboxConversationChannels } from "../mailbox-conversation-channels";
 import { MailboxConversationTags } from "../mailbox-conversation-tags";
 import { MailboxLetterBody } from "../mailbox-letter";
+import { ViewHeader } from "@/components/ds/view-header";
 
 export const dynamic = "force-dynamic";
 
@@ -40,7 +41,7 @@ export default async function MailboxLetterPage({
 
   return (
     <PageShell>
-      <PageHeader
+      <ViewHeader
         icon={MailboxIcon}
         title={row.subject}
         subtitle={`${fromLine(row.fromEmail, row.fromName)} → ${row.toEmail}`}

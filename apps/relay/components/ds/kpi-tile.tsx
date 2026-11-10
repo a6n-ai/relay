@@ -24,11 +24,11 @@ export function KpiActionCard({ item }: { item: KpiItem }) {
     <Card className="h-full gap-0 py-0">
       <CardContent className="flex h-full flex-col justify-between gap-4 px-6 py-6">
         <div className="flex w-full items-start justify-between gap-3">
-          <p className="text-sm font-normal">{item.label}</p>
+          <p className="text-sm text-muted-foreground">{item.label}</p>
           <IconTile icon={Icon} />
         </div>
         <div className="flex items-center gap-2">
-          <h3 className="nums text-2xl font-semibold">{item.value.toLocaleString("en")}</h3>
+          <h3 className="nums text-3xl font-semibold tracking-tight">{item.value.toLocaleString("en")}</h3>
           {item.delta ? <StatusBadge tone={item.tone}>{item.delta}</StatusBadge> : null}
         </div>
         <Button variant="outline" className="w-fit" asChild>
@@ -62,11 +62,11 @@ export function KpiStrip({ items }: { items: KpiItem[] }) {
               )}
             >
               <div className="flex w-full items-start justify-between gap-3">
-                <p className="text-sm font-normal">{item.label}</p>
+                <p className="text-sm text-muted-foreground">{item.label}</p>
                 <IconTile icon={Icon} />
               </div>
               <div className="flex items-center gap-2">
-                <h3 className="nums text-2xl font-semibold">{item.value.toLocaleString("en")}</h3>
+                <h3 className="nums text-3xl font-semibold tracking-tight">{item.value.toLocaleString("en")}</h3>
                 {item.delta ? <StatusBadge tone={item.tone}>{item.delta}</StatusBadge> : null}
               </div>
               <Button variant="outline" className="w-fit" asChild>

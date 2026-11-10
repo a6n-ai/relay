@@ -1,11 +1,12 @@
 import { desc } from "drizzle-orm";
 import { ScrollTextIcon } from "lucide-react";
-import { EmptyState, PageHeader, PageShell } from "@foundry/design-system";
+import { EmptyState, PageShell } from "@foundry/design-system";
 import { FilteredSendsTable } from "@/components/ds/filtered-tables";
 import type { SendListItem } from "@/components/ds/filtered-tables";
 import { displayChannel, kindLabel, outboxStatusLabel } from "@/components/ds/plain-labels";
 import { db } from "@/db/client";
 import { notificationTables } from "@/db/schema";
+import { ViewHeader } from "@/components/ds/view-header";
 
 export const dynamic = "force-dynamic";
 
@@ -56,7 +57,7 @@ export default async function LogsPage() {
 
   return (
     <PageShell>
-      <PageHeader
+      <ViewHeader
         icon={ScrollTextIcon}
         title="Sends"
         subtitle="Every message Relay tried to deliver. Failed ones are retried automatically a few times."

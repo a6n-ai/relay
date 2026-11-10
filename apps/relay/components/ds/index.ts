@@ -37,3 +37,4 @@ export { StatusBadge } from "./status-badge";
 export { IconTile } from "./icon-tile";
 export { SectionTabs } from "./section-tabs";
 export { toneBadgeClass, type Tone } from "./tone";
+export { ViewHeader } from "./view-header";

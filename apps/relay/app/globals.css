@@ -272,20 +272,39 @@
 h1 { letter-spacing: -0.022em; font-weight: 600; }
 h2, h3 { letter-spacing: -0.012em; font-weight: 600; }
 
-/* Linear buttons: hover shifts the fill one step; arrows nudge forward. */
+/*
+  Linear buttons (DESIGN.md button-primary / -secondary / -tertiary): 8px corners, 14px/500 labels,
+  8px 14px padding. Primary is lavender; secondary is the surface-1 charcoal with a hairline;
+  tertiary (ghost) is plain until hovered. Hover shifts one surface step; arrows nudge forward.
+*/
+[data-slot="button"] {
+  font-weight: 500;
+}
+[data-slot="button"]:is([data-size="default"], [data-size="lg"]) {
+  padding-inline: 14px;
+}
+[data-slot="button"][data-variant="default"]:not([data-slot="sidebar"] *):hover {
+  background-color: var(--primary-hover);
+}
+[data-slot="button"]:is([data-variant="outline"], [data-variant="secondary"]):not([data-slot="sidebar"] *) {
+  background-color: var(--card);
+  border-color: var(--border);
+  color: var(--foreground);
+}
+[data-slot="button"]:is([data-variant="outline"], [data-variant="secondary"]):not([data-slot="sidebar"] *):hover {
+  background-color: var(--accent);
+  color: var(--accent-foreground);
+  border-color: color-mix(in oklch, var(--primary) 45%, transparent);
+}
+[data-slot="button"][data-variant="ghost"]:not([data-slot="sidebar"] *):hover {
+  background-color: var(--accent);
+  color: var(--accent-foreground);
+}
 [data-slot="sidebar-menu-button"][data-active="true"] svg {
   color: var(--primary);
 }
 .dark [data-slot="sidebar-menu-button"][data-active="true"] svg {
   color: #828fff;
-}
-[data-slot="button"][data-variant="default"]:not([data-slot="sidebar"] *):hover {
-  background-color: var(--primary-hover);
-}
-[data-slot="button"][data-variant="outline"]:not([data-slot="sidebar"] *):hover {
-  background-color: var(--accent);
-  color: var(--accent-foreground);
-  border-color: color-mix(in oklch, var(--primary) 45%, transparent);
 }
 [data-slot="button"] .lucide-arrow-right {
   transition: transform 220ms var(--ease-soft);

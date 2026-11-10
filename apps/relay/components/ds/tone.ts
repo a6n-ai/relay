@@ -16,3 +16,10 @@ export function toneBadgeClass(tone: Tone | undefined): string {
     }
   }
 }
+
+/** "+12%" → up "12%", "-3%" / "−3%" → down "3%"; anything else has no direction. */
+export function splitDelta(label: string): { dir: "up" | "down" | null; text: string } {
+  const m = /^([+\-−])(.+)$/.exec(label.trim());
+  if (!m) return { dir: null, text: label };
+  return { dir: m[1] === "+" ? "up" : "down", text: m[2]! };
+}

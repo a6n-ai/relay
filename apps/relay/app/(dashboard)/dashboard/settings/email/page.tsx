@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { MailIcon } from "lucide-react";
 import { Badge } from "@foundry/ui/badge";
-import { PageHeader, PageShell, SectionCard } from "@foundry/design-system";
+import { PageShell, SectionCard } from "@foundry/design-system";
 import { OperatorSplit } from "@/components/ds/operator-split";
 import { SmtpSettingsForm } from "@/app/(dashboard)/dashboard/sending/smtp-form";
 import { loadEmailChannelSnapshot } from "@/lib/email/load-snapshot";
@@ -9,6 +9,7 @@ import { operatorEmailPrereqs, prereqSummary } from "@/lib/email/prerequisites";
 import { loadOperatorSmtpRow } from "@/lib/email/from-address";
 import { EmailEventsSection } from "./email-events-section";
 import { sendingDomainsService } from "@/lib/services/sending.service";
+import { ViewHeader } from "@/components/ds/view-header";
 
 export const dynamic = "force-dynamic";
 
@@ -26,7 +27,7 @@ export default async function EmailSettingsPage() {
 
   return (
     <PageShell>
-      <PageHeader
+      <ViewHeader
         icon={MailIcon}
         title="Email sending"
         subtitle="How Relay actually delivers mail, and the From we use if an app isn’t ready yet."

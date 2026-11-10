@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { MegaphoneIcon } from "lucide-react";
-import { PageHeader, PageShell, SectionCard } from "@foundry/design-system";
+import { PageShell, SectionCard } from "@foundry/design-system";
 import { OperatorSplit } from "@/components/ds/operator-split";
 import { FilteredResourceList } from "@/components/ds/listing-controls";
 import type { ListingFilter, ListingRow } from "@/components/ds/listing-controls";
@@ -10,6 +10,7 @@ import { campaignTenant, tenants } from "@/db/schema";
 import { campaignsService, contactListsService } from "@/lib/services/campaigns.service";
 import { tenantsService } from "@/lib/services/tenants.service";
 import { CreateCampaignForm } from "./create-campaign-form";
+import { ViewHeader } from "@/components/ds/view-header";
 
 export const dynamic = "force-dynamic";
 
@@ -52,7 +53,7 @@ export default async function CampaignsPage() {
 
   return (
     <PageShell>
-      <PageHeader
+      <ViewHeader
         icon={MegaphoneIcon}
         title="Campaigns"
         subtitle="One send to a group of people. Saved as a draft until you confirm."

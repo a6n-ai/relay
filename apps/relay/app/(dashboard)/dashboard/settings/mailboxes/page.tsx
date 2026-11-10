@@ -1,5 +1,5 @@
 import { InboxIcon } from "lucide-react";
-import { PageHeader, PageShell, SectionCard } from "@foundry/design-system";
+import { PageShell, SectionCard } from "@foundry/design-system";
 import { OperatorSplit } from "@/components/ds/operator-split";
 import { FilteredResourceList } from "@/components/ds/listing-controls";
 import type { ListingFilter, ListingRow } from "@/components/ds/listing-controls";
@@ -8,6 +8,7 @@ import { sendingDomainsService } from "@/lib/services/sending.service";
 import { tenantMailboxesService } from "@/lib/services/tenant-mailboxes.service";
 import { tenantsService } from "@/lib/services/tenants.service";
 import { AddMailboxPicker } from "./add-mailbox-picker";
+import { ViewHeader } from "@/components/ds/view-header";
 
 export const dynamic = "force-dynamic";
 
@@ -41,7 +42,7 @@ export default async function MailboxesSettingsPage() {
 
   return (
     <PageShell>
-      <PageHeader
+      <ViewHeader
         icon={InboxIcon}
         title="Mailboxes"
         subtitle="Addresses your apps send from and receive at. Letters to a Relay inbox show up in Inbox."

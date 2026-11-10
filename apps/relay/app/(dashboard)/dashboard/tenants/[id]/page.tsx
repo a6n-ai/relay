@@ -3,7 +3,7 @@ import Link from "next/link";
 import { eq } from "@foundry/commons";
 import { KeyIcon } from "lucide-react";
 import { Badge } from "@foundry/ui/badge";
-import { PageHeader, PageShell, SectionCard } from "@foundry/design-system";
+import { PageShell, SectionCard } from "@foundry/design-system";
 import { buildSendingDomainRecords } from "@relay/email";
 import { AddDomainForm, VerifyDomainButton } from "@/app/(dashboard)/dashboard/domains/domain-forms";
 import { displayChannel, domainStatusLabel, fromSourceLabel, mailboxKindLabel } from "@/components/ds/plain-labels";
@@ -18,6 +18,7 @@ import { tenantMailboxesService } from "@/lib/services/tenant-mailboxes.service"
 import { appMessageTagsService } from "@/lib/services/mailbox-tags.service";
 import { countTenantSendsThisMonth } from "@/lib/tenants/usage";
 import { AddMailboxForm, AddSenderForm, IssueKeyForm, UpdateQuotaForm } from "../tenant-ops-forms";
+import { ViewHeader } from "@/components/ds/view-header";
 
 export const dynamic = "force-dynamic";
 
@@ -49,7 +50,7 @@ export default async function TenantDetailPage({
 
   return (
     <PageShell>
-      <PageHeader
+      <ViewHeader
         icon={KeyIcon}
         title={tenant.name}
         subtitle={`${tenant.slug} · monthly send limit for this app. From addresses work after you prove the domain.`}

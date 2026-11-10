@@ -1,12 +1,13 @@
 import { notFound } from "next/navigation";
 import { MegaphoneIcon } from "lucide-react";
 import { Badge } from "@foundry/ui/badge";
-import { PageHeader, PageShell, SectionCard } from "@foundry/design-system";
+import { PageShell, SectionCard } from "@foundry/design-system";
 import { CampaignSendButton } from "@relay/engine/ui/campaign-send-button";
 import { countAudience, type AudienceDef } from "@relay/engine";
 import { operatorCampaignDeps } from "@/lib/campaigns/deps";
 import { OperatorSplit } from "@/components/ds/operator-split";
 import { campaignContentService, campaignsService } from "@/lib/services/campaigns.service";
+import { ViewHeader } from "@/components/ds/view-header";
 
 export const dynamic = "force-dynamic";
 
@@ -34,7 +35,7 @@ export default async function CampaignDetailPage({
 
   return (
     <PageShell>
-      <PageHeader
+      <ViewHeader
         icon={MegaphoneIcon}
         title={row.name}
         subtitle={tenant ? `Sends as ${tenant.name}` : "Choose an app before sending"}

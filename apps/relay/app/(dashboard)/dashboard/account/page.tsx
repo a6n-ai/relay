@@ -1,7 +1,8 @@
 import { UsersIcon } from "lucide-react";
-import { PageHeader, PageShell } from "@foundry/design-system";
+import { PageShell } from "@foundry/design-system";
 import { getSession } from "@/lib/auth/session";
 import { AccountSettingsForm } from "./account-settings-form";
+import { ViewHeader } from "@/components/ds/view-header";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +13,7 @@ export default async function AccountPage() {
   if (!session?.user) return null;
   return (
     <PageShell>
-      <PageHeader
+      <ViewHeader
         icon={UsersIcon}
         title="Your account"
         subtitle="Name, appearance, and password."

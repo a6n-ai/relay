@@ -1,5 +1,5 @@
 import { InboxIcon } from "lucide-react";
-import { PageHeader, PageShell, SectionCard } from "@foundry/design-system";
+import { PageShell, SectionCard } from "@foundry/design-system";
 import { OperatorSplit } from "@/components/ds/operator-split";
 import { FilteredResourceList } from "@/components/ds/listing-controls";
 import type { ListingFilter, ListingRow } from "@/components/ds/listing-controls";
@@ -7,6 +7,7 @@ import { displayChannel } from "@/components/ds/plain-labels";
 import { templatesService } from "@/lib/services/templates.service";
 import { tenantsService } from "@/lib/services/tenants.service";
 import { CreateTemplateForm } from "./create-template-form";
+import { ViewHeader } from "@/components/ds/view-header";
 
 export const dynamic = "force-dynamic";
 
@@ -48,7 +49,7 @@ export default async function TemplatesPage() {
 
   return (
     <PageShell>
-      <PageHeader
+      <ViewHeader
         icon={InboxIcon}
         title="Templates"
         subtitle="Reusable email for a specific moment, like “order shipped.” The app uses the same name when it asks Relay to send."

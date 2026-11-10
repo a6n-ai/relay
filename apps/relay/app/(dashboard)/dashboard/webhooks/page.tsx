@@ -1,5 +1,5 @@
 import { WebhookIcon } from "lucide-react";
-import { PageHeader, PageShell, SectionCard } from "@foundry/design-system";
+import { PageShell, SectionCard } from "@foundry/design-system";
 import { OperatorSplit } from "@/components/ds/operator-split";
 import { FilteredResourceList } from "@/components/ds/listing-controls";
 import type { ListingFilter, ListingRow } from "@/components/ds/listing-controls";
@@ -7,6 +7,7 @@ import { webhookEventLabel } from "@/components/ds/plain-labels";
 import { tenantsService } from "@/lib/services/tenants.service";
 import { tenantWebhooksService } from "@/lib/services/webhooks.service";
 import { CreateWebhookForm } from "./create-webhook-form";
+import { ViewHeader } from "@/components/ds/view-header";
 
 export const dynamic = "force-dynamic";
 
@@ -43,7 +44,7 @@ export default async function WebhooksPage() {
 
   return (
     <PageShell>
-      <PageHeader
+      <ViewHeader
         icon={WebhookIcon}
         title="Status updates"
         subtitle="Tell another system when a message is waiting, sent, or didn’t go out. We’ll retry a few times if that system is down."

@@ -1,6 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
-import { EmptyState, PageHeader, PageShell } from "@foundry/design-system";
+import { EmptyState, PageShell } from "@foundry/design-system";
+import { ViewHeader } from "./view-header";
 
 export function StubPage({
   icon,
@@ -17,7 +18,7 @@ export function StubPage({
 }) {
   return (
     <PageShell>
-      <PageHeader icon={icon} title={title} subtitle={subtitle} />
+      <ViewHeader icon={icon} title={title} subtitle={subtitle} />
       <EmptyState icon={icon} message={message} action={action} />
     </PageShell>
   );

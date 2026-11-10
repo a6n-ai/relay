@@ -1,6 +1,6 @@
 import { inArray } from "drizzle-orm";
 import { KeyIcon } from "lucide-react";
-import { PageHeader, PageShell, SectionCard } from "@foundry/design-system";
+import { PageShell, SectionCard } from "@foundry/design-system";
 import { OperatorSplit } from "@/components/ds/operator-split";
 import { FilteredResourceList } from "@/components/ds/listing-controls";
 import type { ListingFilter, ListingRow } from "@/components/ds/listing-controls";
@@ -9,6 +9,7 @@ import { apiKeys } from "@/db/schema";
 import { tenantsService } from "@/lib/services/tenants.service";
 import { countTenantsSendsThisMonth } from "@/lib/tenants/usage";
 import { CreateTenantForm } from "./create-tenant-form";
+import { ViewHeader } from "@/components/ds/view-header";
 
 export const dynamic = "force-dynamic";
 
@@ -68,7 +69,7 @@ export default async function TenantsPage() {
 
   return (
     <PageShell>
-      <PageHeader
+      <ViewHeader
         icon={KeyIcon}
         title="Apps"
         subtitle="Each app (Tiffin Grab, Realm) has its own monthly send limit and From address."

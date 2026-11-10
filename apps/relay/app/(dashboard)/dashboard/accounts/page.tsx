@@ -1,11 +1,12 @@
 import { desc } from "drizzle-orm";
 import { UsersIcon } from "lucide-react";
-import { EmptyState, PageHeader, PageShell } from "@foundry/design-system";
+import { EmptyState, PageShell } from "@foundry/design-system";
 import { FilteredTeamTable } from "@/components/ds/filtered-tables";
 import type { TeamListItem } from "@/components/ds/filtered-tables";
 import { db } from "@/db/client";
 import { users } from "@/db/schema";
 import { getSession } from "@/lib/auth/session";
+import { ViewHeader } from "@/components/ds/view-header";
 
 export const dynamic = "force-dynamic";
 
@@ -32,7 +33,7 @@ export default async function AccountsPage() {
 
   return (
     <PageShell>
-      <PageHeader
+      <ViewHeader
         icon={UsersIcon}
         title="Team"
         subtitle="People who can sign in to this console. New sign-ups are off; add people here."

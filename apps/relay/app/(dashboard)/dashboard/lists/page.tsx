@@ -1,5 +1,5 @@
 import { UsersIcon } from "lucide-react";
-import { PageHeader, PageShell, SectionCard } from "@foundry/design-system";
+import { PageShell, SectionCard } from "@foundry/design-system";
 import { ContactListUpload } from "@relay/engine/ui/contact-list-upload";
 import { ContactListManualAdd } from "@relay/engine/ui/contact-list-manual-add";
 import { OperatorSplit } from "@/components/ds/operator-split";
@@ -7,6 +7,7 @@ import { FilteredResourceList } from "@/components/ds/listing-controls";
 import type { ListingFilter, ListingRow } from "@/components/ds/listing-controls";
 import { consentSourceLabel } from "@/components/ds/plain-labels";
 import { contactListsService } from "@/lib/services/campaigns.service";
+import { ViewHeader } from "@/components/ds/view-header";
 
 export const dynamic = "force-dynamic";
 
@@ -37,7 +38,7 @@ export default async function ListsPage() {
 
   return (
     <PageShell>
-      <PageHeader
+      <ViewHeader
         icon={UsersIcon}
         title="People"
         subtitle="Who can hear from you. We need how they opted in, and when. Purchase opt-in lasts 24 months in Canada."

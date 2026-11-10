@@ -1,11 +1,12 @@
 import { TagsIcon } from "lucide-react";
-import { PageHeader, PageShell, SectionCard } from "@foundry/design-system";
+import { PageShell, SectionCard } from "@foundry/design-system";
 import { OperatorSplit } from "@/components/ds/operator-split";
 import type { ListingFilter, ListingRow } from "@/components/ds/listing-controls";
 import { appMessageTagsService } from "@/lib/services/mailbox-tags.service";
 import { tenantsService } from "@/lib/services/tenants.service";
 import { AppTagsBoard } from "./app-tags-board";
 import { CreateAppTagForm } from "./create-app-tag-form";
+import { ViewHeader } from "@/components/ds/view-header";
 
 export const dynamic = "force-dynamic";
 
@@ -35,7 +36,7 @@ export default async function TagsSettingsPage() {
 
   return (
     <PageShell>
-      <PageHeader
+      <ViewHeader
         icon={TagsIcon}
         title="Tags"
         subtitle="A tag on an app marks every message for that app — mail now, WhatsApp later."
