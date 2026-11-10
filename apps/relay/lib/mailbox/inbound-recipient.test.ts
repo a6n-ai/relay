@@ -37,4 +37,9 @@ describe("tenantForInbox", () => {
   it("is null for an address no app holds as a Relay inbox", async () => {
     expect(await tenantForInbox("nobody@a6n.ai")).toBeNull();
   });
+
+  it("fails closed when two apps hold the same address", async () => {
+    rows = [{ tenantId: 7n }, { tenantId: 8n }];
+    expect(await tenantForInbox("hello@a6n.ai")).toBeNull();
+  });
 });
