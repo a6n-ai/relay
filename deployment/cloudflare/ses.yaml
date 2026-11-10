@@ -2,9 +2,8 @@ AWSTemplateFormatVersion: "2010-09-09"
 Description: >-
   Relay SES in ap-south-1 (Mumbai). Two sending identities: relay.a6n.ai (operator default
   From) and a6n.ai (first app, a6n). EasyDKIM plus custom MAIL FROM; the DKIM and MAIL FROM
-  records live in Cloudflare DNS for a6n.ai. Events go to SNS relay-ses-events; its HTTPS
-  subscription to https://relay.a6n.ai/api/webhooks/ses is added after that route is live
-  (SNS auto-confirm needs it). Stack name relay-ses.
+  records live in Cloudflare DNS for a6n.ai. Events go to SNS relay-ses-events, subscribed to
+  https://relay.a6n.ai/api/webhooks/ses (the route confirms it). Stack name relay-ses.
 
 Parameters:
   OperatorDomain:
@@ -36,6 +35,14 @@ Resources:
       Tags:
         - { Key: app, Value: relay }
         - { Key: env, Value: prod }
+
+  # Relay confirms it itself (POST /api/webhooks/ses checks the signature and this topic).
+  EventsSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref EventsTopic
+      Protocol: https
+      Endpoint: https://relay.a6n.ai/api/webhooks/ses
 
   EventsDestination:
     Type: AWS::SES::ConfigurationSetEventDestination

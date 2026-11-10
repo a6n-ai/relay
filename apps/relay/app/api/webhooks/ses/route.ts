@@ -45,18 +45,25 @@ export async function POST(req: Request): Promise<Response> {
     return Response.json({ title: "Invalid JSON", status: 400 }, { status: 400 });
   }
   const msg: SnsEnvelope = parsed;
+  // A valid SNS signature only proves AWS signed it; the topic proves it is ours.
+  const expected = process.env.SES_FEEDBACK_TOPIC_ARN;
+  if (!expected) {
+    return Response.json({ title: "SES events are not configured", status: 503 }, { status: 503 });
+  }
+  const signed = JSON.parse(raw) as Record<string, unknown>;
   try {
-    await verify(msg);
+    await verify(signed);
   } catch (err) {
     log.error({ err }, "SNS signature verification failed");
     return Response.json({ title: "Invalid signature", status: 403 }, { status: 403 });
   }
-  const expected = process.env.SES_FEEDBACK_TOPIC_ARN;
-  if (expected && msg.TopicArn !== expected) {
+  if (msg.TopicArn !== expected) {
     return Response.json({ title: "Unexpected topic", status: 403 }, { status: 403 });
   }
   if (msg.Type === "SubscriptionConfirmation") {
-    log.info({ topic: msg.TopicArn }, "SNS subscription confirmation; confirm the subscription in AWS");
+    // SubscribeURL is covered by the verified signature.
+    if (typeof signed.SubscribeURL === "string") await fetch(signed.SubscribeURL);
+    log.info({ topic: msg.TopicArn }, "SNS subscription confirmed");
     return new Response(null, { status: 200 });
   }
   if (msg.Type === "Notification") {

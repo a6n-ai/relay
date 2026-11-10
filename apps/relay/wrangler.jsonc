@@ -43,6 +43,8 @@
     "AWS_REGION": "ap-south-1",
     "EMAIL_TRANSPORT": "ses",
     "SES_CONFIGURATION_SET": "relay-prod",
+    // Only SES events from this topic are accepted (stack relay-ses).
+    "SES_FEEDBACK_TOPIC_ARN": "arn:aws:sns:ap-south-1:947042607945:relay-ses-events",
     "NOTIFY_FROM_EMAIL": "no-reply@relay.a6n.ai",
     "NOTIFY_FROM_NAME": "Relay",
     "BETTER_AUTH_URL": "https://relay.a6n.ai"
