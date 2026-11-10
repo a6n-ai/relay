@@ -4,11 +4,9 @@ import { Badge } from "@foundry/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@foundry/ui/card";
 import { RELAY_CHANNELS, channelLabel } from "./channels";
 import { CHANNEL_STROKE } from "./overview-stats";
+import { channelShares } from "./channel-flow";
 import { toneBadgeClass } from "./tone";
 
-
-const RADIUS = 72;
-const CIRC = Math.PI * RADIUS;
 
 export function ChannelDistribution({
   counts,
@@ -18,7 +16,7 @@ export function ChannelDistribution({
   deltas: Record<Channel, { label: string; tone: "ok" | "bad" | "neutral" }>;
 }) {
   const total = RELAY_CHANNELS.reduce((s, c) => s + counts[c.key], 0);
-  let cursor = 0;
+  const shares = channelShares(RELAY_CHANNELS.map((c) => counts[c.key]));
 
   return (
     <Card className="flex h-full flex-col">
@@ -29,50 +27,48 @@ export function ChannelDistribution({
         </div>
       </CardHeader>
       <CardContent className="flex flex-1 flex-col justify-between gap-4">
-        <div className="relative mx-auto w-full max-w-[220px]">
-          <svg viewBox="0 0 180 110" className="w-full" aria-hidden>
-            <g transform="translate(90 100)">
-              <path
-                d="M -72 0 A 72 72 0 0 1 72 0"
-                fill="none"
-                stroke="var(--border)"
-                strokeWidth="16"
-                strokeLinecap="butt"
-              />
-              {RELAY_CHANNELS.map((c) => {
-                const share = total === 0 ? 0 : counts[c.key] / total;
-                const len = share * CIRC;
-                const dashoffset = -cursor;
-                cursor += len;
-                return (
-                  <path
-                    key={c.key}
-                    d="M -72 0 A 72 72 0 0 1 72 0"
-                    fill="none"
-                    stroke={CHANNEL_STROKE[c.key]}
-                    strokeWidth="16"
-                    strokeDasharray={`${len} ${CIRC}`}
-                    strokeDashoffset={dashoffset}
-                    strokeLinecap="butt"
-                  />
-                );
-              })}
-            </g>
-          </svg>
-          <div className="pointer-events-none absolute inset-x-0 bottom-1 flex flex-col items-center">
-            <span className="text-[10px] tracking-wide text-muted-foreground uppercase">Total</span>
-            <span className="nums text-lg font-semibold">{total.toLocaleString()}</span>
-          </div>
-        </div>
+        <svg viewBox="0 0 240 150" className="w-full" aria-hidden>
+          <g className="text-muted-foreground">
+            <rect x="0" y="55" width="64" height="40" rx="8" fill="var(--muted)" />
+            <text x="32" y="71" textAnchor="middle" fontSize="9" fill="currentColor">Your apps</text>
+            <text x="32" y="87" textAnchor="middle" fontSize="13" fontWeight="600" fill="var(--foreground)">
+              {total.toLocaleString()}
+            </text>
+          </g>
+          {RELAY_CHANNELS.map((c, i) => {
+            const y = 15 + i * 40;
+            return (
+              <g key={c.key}>
+                <path
+                  d={`M 64 75 C 110 75 100 ${y} 146 ${y}`}
+                  fill="none"
+                  stroke={CHANNEL_STROKE[c.key]}
+                  strokeWidth={shares[i]!.width}
+                  strokeOpacity={total === 0 ? 0.5 : 1}
+                />
+                <text x="152" y={y - 2} fontSize="9" fill="currentColor" className="text-muted-foreground">
+                  {channelLabel(c.key)}
+                </text>
+                <text x="152" y={y + 10} fontSize="11" fontWeight="600" fill="var(--foreground)">
+                  {counts[c.key].toLocaleString()} · {shares[i]!.pct}%
+                </text>
+              </g>
+            );
+          })}
+        </svg>
         <ul className="flex flex-col gap-3">
-          {RELAY_CHANNELS.map((c) => (
+          {RELAY_CHANNELS.map((c, i) => (
             <li key={c.key} className="flex items-center justify-between gap-2">
               <span className="flex items-center gap-2 text-sm">
                 <span className="size-2" style={{ background: CHANNEL_STROKE[c.key] }} />
                 {channelLabel(c.key)}
               </span>
               <span className="flex items-center gap-2">
-                <span className="nums text-sm font-medium">{counts[c.key].toLocaleString()}</span>
+                <span className="nums text-sm font-medium">
+                  {counts[c.key].toLocaleString()}
+                  <span className="sr-only">, </span>
+                  <span className="text-muted-foreground ml-1 font-normal">{shares[i]!.pct}%</span>
+                </span>
                 <Badge className={toneBadgeClass(deltas[c.key].tone)}>{deltas[c.key].label}</Badge>
               </span>
             </li>

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ForgotPasswordForm } from "@foundry/auth-ui";
 import { authClient } from "@/lib/auth/client";
+import { AuthBurstPanel } from "@/components/marketing/auth-burst-panel";
 import { Card, CardContent } from "@foundry/ui/card";
 
 export function ForgotForm() {
@@ -27,10 +28,7 @@ export function ForgotForm() {
               </Link>
             </div>
           </div>
-          <div className="bg-muted text-muted-foreground relative hidden flex-col items-center justify-center gap-2 p-8 md:flex">
-            <span className="text-foreground text-2xl font-bold">Relay</span>
-            <p className="text-balance text-center text-sm">Reset your operator password with a 6-digit email code.</p>
-          </div>
+          <AuthBurstPanel />
         </CardContent>
       </Card>
     </div>

@@ -109,7 +109,7 @@
   --chart-3: #8e8e93;
   --chart-4: #30b0c7;
   --chart-5: #34c759;
-  --radius: 0.75rem; /* Apple: soft, continuous corners */
+  --radius: 0px; /* sharp rectangles (owner): Apple colours and glass, Lyra corners */
   --sidebar: rgb(246 246 248 / 0.72);
   --sidebar-foreground: #1d1d1f;
   --sidebar-primary: #0071e3;
@@ -210,12 +210,20 @@
 }
 
 /*
-  Apple-style surfaces. Content sits on solid cards with soft corners; the chrome (sidebar, top bar,
+  Apple-style surfaces on the dotted field. Content sits on solid sharp cards; the chrome (sidebar, top bar,
   menus, sheets) is a translucent material with content showing through. Grids that used 1px
   hairline gutters now separate cards with space.
 */
 .dashboard-canvas {
   background-color: var(--background);
+  background-image: radial-gradient(circle at center, currentColor 1px, transparent 0);
+  background-size: 12px 12px;
+  background-position: 6px 6px;
+  color: color-mix(in oklch, var(--foreground) 22%, transparent);
+}
+
+.dashboard-canvas > * {
+  color: var(--foreground);
 }
 
 .dashboard-shell-grid {
@@ -329,28 +337,8 @@ h2, h3 { letter-spacing: -0.012em; }
   transform: translateX(3px);
 }
 
-::view-transition-old(root),
-::view-transition-new(root) {
-  animation-duration: var(--duration-base);
-  animation-timing-function: var(--ease-soft);
-}
-
-/* Clicks during a transition reach the live page instead of the overlay. */
-::view-transition {
-  pointer-events: none;
-}
-
-::view-transition-old(*),
-::view-transition-new(*) {
-  animation-duration: 160ms;
-  animation-timing-function: var(--ease-soft);
-}
-
 @media (prefers-reduced-motion: reduce) {
-  *,
-  ::view-transition-old(*),
-  ::view-transition-new(*),
-  ::view-transition-group(*) {
+  * {
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;

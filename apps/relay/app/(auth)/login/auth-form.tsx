@@ -16,6 +16,7 @@ import {
   Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
 } from "@foundry/ui/form";
 import { Input } from "@foundry/ui/input";
+import { AuthBurstPanel } from "@/components/marketing/auth-burst-panel";
 
 type Mode = "email-otp" | "password";
 
@@ -32,12 +33,7 @@ export function AuthForm() {
               <PasswordPanel onUseEmailOtp={() => setMode("email-otp")} />
             )}
           </div>
-          <div className="bg-muted text-muted-foreground relative hidden flex-col items-center justify-center gap-2 p-8 md:flex">
-            <span className="text-foreground text-2xl font-bold">Relay</span>
-            <p className="text-balance text-center text-sm">
-              Sign in to send email, watch delivery, and manage your apps.
-            </p>
-          </div>
+          <AuthBurstPanel />
         </CardContent>
       </Card>
     </div>
