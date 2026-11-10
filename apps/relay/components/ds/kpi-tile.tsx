@@ -3,6 +3,7 @@ import type { LucideIcon } from "lucide-react";
 import { ArrowRightIcon } from "lucide-react";
 import { Button } from "@foundry/ui/button";
 import { IconTile } from "./icon-tile";
+import type { IconColor } from "./icon-color";
 import { Card, CardContent } from "@foundry/ui/card";
 import { cn } from "@foundry/ui/cn";
 import { StatusBadge } from "./status-badge";
@@ -12,6 +13,7 @@ export type KpiItem = {
   value: number;
   href: string;
   icon: LucideIcon;
+  color?: IconColor;
   delta?: string;
   tone?: "ok" | "bad" | "neutral";
 };
@@ -25,7 +27,7 @@ export function KpiActionCard({ item }: { item: KpiItem }) {
       <CardContent className="flex h-full flex-col justify-between gap-4 px-6 py-6">
         <div className="flex w-full items-start justify-between gap-3">
           <p className="text-sm text-muted-foreground">{item.label}</p>
-          <IconTile icon={Icon} />
+          <IconTile icon={Icon} color={item.color} />
         </div>
         <div className="flex items-center gap-2">
           <h3 className="nums text-3xl font-semibold tracking-tight">{item.value.toLocaleString("en")}</h3>
@@ -63,7 +65,7 @@ export function KpiStrip({ items }: { items: KpiItem[] }) {
             >
               <div className="flex w-full items-start justify-between gap-3">
                 <p className="text-sm text-muted-foreground">{item.label}</p>
-                <IconTile icon={Icon} />
+                <IconTile icon={Icon} color={item.color} />
               </div>
               <div className="flex items-center gap-2">
                 <h3 className="nums text-3xl font-semibold tracking-tight">{item.value.toLocaleString("en")}</h3>

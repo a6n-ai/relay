@@ -58,7 +58,7 @@ export default async function DashboardPage() {
             label: "Apps",
             value: tenantCount,
             href: "/dashboard/tenants",
-            icon: UsersIcon,
+            icon: UsersIcon, color: "purple",
           }}
         />
       </OverviewSlot>
@@ -68,7 +68,7 @@ export default async function DashboardPage() {
             label: "Waiting",
             value: pendingCount,
             href: "/dashboard/logs",
-            icon: InboxIcon,
+            icon: InboxIcon, color: "yellow",
             tone: pendingCount > 0 ? "neutral" : "ok",
             delta: pendingCount > 0 ? "in line" : "clear",
           }}
@@ -80,7 +80,7 @@ export default async function DashboardPage() {
             label: "Didn’t send",
             value: failedCount,
             href: "/dashboard/logs",
-            icon: XCircleIcon,
+            icon: XCircleIcon, color: "red",
             tone: failedCount > 0 ? "bad" : "ok",
             delta: failedCount > 0 ? "needs a look" : "clear",
           }}

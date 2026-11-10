@@ -132,6 +132,13 @@
   --accent-badge: #5e6ad2;
   --accent-badge-hover: #5561c9;
   --accent-badge-foreground: #ffffff;
+  /* Icon colours (Linear tag palette), darkened for 3:1 on light surfaces. */
+  --tag-purple: #5e6ad2;
+  --tag-blue: #2f7fd6;
+  --tag-green: #2e9e6a;
+  --tag-orange: #d97a1c;
+  --tag-yellow: #b88a00;
+  --tag-red: #d23f3f;
 }
 
 .dark {
@@ -185,6 +192,12 @@
   --accent-badge: #5e6ad2;
   --accent-badge-hover: #5561c9;
   --accent-badge-foreground: #ffffff;
+  --tag-purple: #828fff;
+  --tag-blue: #4ea7fc;
+  --tag-green: #4cb782;
+  --tag-orange: #f2994a;
+  --tag-yellow: #f2c94c;
+  --tag-red: #eb5757;
 }
 
 @layer base {

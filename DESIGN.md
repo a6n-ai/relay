@@ -45,7 +45,8 @@ rules:
   - "Flat canvas. No dots, gradients or drop shadows on cards; hierarchy is the surface ladder plus 1px hairlines. Glass only on floating chrome (see Materials)."
   - "Lavender carries interaction and data: primary actions, active nav (tint + lavender text/icon), hover/selection tint, focus ring, links, charts. Not decorative fills of whole sections."
   - "Dark is the default theme; light mirrors it with the light-* tokens."
-  - "Every text/background pair clears 4.5:1."
+  - "Every text/background pair clears 4.5:1; icons and graphics clear 3:1."
+  - "Icons are coloured, Linear-style, from the --tag-* tokens (purple, blue, green, orange, yellow, red): one colour per kind of thing (each sidebar link, each channel, each KPI). Colour never carries meaning alone; a label always sits beside it."
 ---
 
 ## Principles (from Linear's design writing, applied to Relay)
@@ -80,7 +81,8 @@ Every DESIGN.md surface maps to one Relay component. Build screens from these an
 | create / browse page | `OperatorSplit` | components/ds/operator-split.tsx |
 | status-badge (signed deltas get an arrow) | `StatusBadge` (tone: ok, bad, neutral) | components/ds/status-badge.tsx |
 | send status | `OutboxStatusBadge` | components/outbox-status-badge.tsx |
-| icon square | `IconTile` | components/ds/icon-tile.tsx |
+| icon square (optional colour: tinted square, coloured glyph) | `IconTile` | components/ds/icon-tile.tsx |
+| icon colours, channel colours | `IconColor`, `CHANNEL_ICON_COLOR` | components/ds/icon-color.ts |
 | section tabs | `SectionTabs` (from `nav.ts`) | components/ds/section-tabs.tsx |
 | sidebar | `RelaySidebar` (8 links, `nav.ts`) | components/relay-sidebar.tsx |
 | async button | `LoadingButton` | components/interior/loading-button.tsx |

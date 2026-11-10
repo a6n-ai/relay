@@ -18,6 +18,7 @@ import {
 import { Button } from "@foundry/ui/button";
 import { signOut } from "@/lib/auth/client";
 import { NAV_GROUPS, activeNavHref } from "@/components/ds/nav";
+import { iconColorVar } from "@/components/ds/icon-color";
 
 export function RelaySidebar({ email }: { email: string }) {
   const active = activeNavHref(usePathname());
@@ -39,7 +40,7 @@ export function RelaySidebar({ email }: { email: string }) {
                   <SidebarMenuItem key={item.href}>
                     <SidebarMenuButton asChild isActive={item.href === active}>
                       <Link href={item.href} prefetch={false}>
-                        <item.icon />
+                        <item.icon style={{ color: iconColorVar(item.color) }} />
                         <span>{item.label}</span>
                       </Link>
                     </SidebarMenuButton>

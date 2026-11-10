@@ -1,6 +1,7 @@
 "use client";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@foundry/design-system";
+import { Panel } from "@/components/ds/panel";
 
 export function MailboxLetterBody({ html, text }: { html: string; text: string }) {
   return (
@@ -26,14 +27,14 @@ export function MailboxLetterBody({ html, text }: { html: string; text: string }
         />
       </TabsContent>
       <TabsContent value="text">
-        <pre className="max-h-[32rem] overflow-auto border border-border bg-card p-4 font-mono text-sm whitespace-pre-wrap">
+        <Panel as="pre" className="max-h-[32rem] overflow-auto p-4 font-mono text-sm whitespace-pre-wrap">
           {text || "No plain text version."}
-        </pre>
+        </Panel>
       </TabsContent>
       <TabsContent value="html">
-        <pre className="max-h-[32rem] overflow-auto border border-border bg-card p-4 font-mono text-sm whitespace-pre-wrap">
+        <Panel as="pre" className="max-h-[32rem] overflow-auto p-4 font-mono text-sm whitespace-pre-wrap">
           {html}
-        </pre>
+        </Panel>
       </TabsContent>
     </Tabs>
   );

@@ -236,7 +236,7 @@ export function TemplateEditorSkeleton() {
 /** Mirrors renderInApp: interpolated title + plaintext body, no markdown/email chrome. */
 function InAppPreview({ title, body }: { title: string; body: string }) {
   return (
-    <div className="rounded-lg border bg-card p-4 shadow-sm">
+    <div className="rounded-xl border bg-card p-4">
       <div className="flex gap-3">
         <BellIcon className="mt-0.5 size-5 shrink-0 text-muted-foreground" />
         <div className="min-w-0 space-y-1">

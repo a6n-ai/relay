@@ -10,11 +10,14 @@ import {
   UsersIcon,
 } from "lucide-react";
 import { RELAY_CHANNELS } from "./channels";
+import type { IconColor } from "./icon-color";
 
 export type NavItem = {
   href: string;
   label: string;
   icon: LucideIcon;
+  /** Icon colour, Linear-style. */
+  color: IconColor;
   /** Other routes that belong to this link (its tab pages). */
   also?: readonly string[];
 };
@@ -46,32 +49,33 @@ const tabHrefs = (tabs: readonly { href: string }[]) => tabs.map((t) => t.href);
 export const NAV_GROUPS: readonly NavGroup[] = [
   {
     items: [
-      { href: "/dashboard", label: "Home", icon: HouseIcon },
-      { href: "/dashboard/mailbox", label: "Inbox", icon: InboxIcon },
+      { href: "/dashboard", label: "Home", icon: HouseIcon, color: "purple" },
+      { href: "/dashboard/mailbox", label: "Inbox", icon: InboxIcon, color: "blue" },
     ],
   },
   {
     label: "Reach people",
     items: [
-      { href: "/dashboard/campaigns", label: "Campaigns", icon: MegaphoneIcon, also: tabHrefs(SECTION_TABS.campaigns) },
-      { href: "/dashboard/lists", label: "People", icon: UsersIcon },
+      { href: "/dashboard/campaigns", label: "Campaigns", icon: MegaphoneIcon, color: "orange", also: tabHrefs(SECTION_TABS.campaigns) },
+      { href: "/dashboard/lists", label: "People", icon: UsersIcon, color: "green" },
     ],
   },
   {
     label: "Activity",
-    items: [{ href: "/dashboard/logs", label: "Sends", icon: ScrollTextIcon, also: tabHrefs(SECTION_TABS.activity) }],
+    items: [{ href: "/dashboard/logs", label: "Sends", icon: ScrollTextIcon, color: "yellow", also: tabHrefs(SECTION_TABS.activity) }],
   },
   {
     label: "Setup",
     items: [
-      { href: "/dashboard/tenants", label: "Apps", icon: KeyIcon },
+      { href: "/dashboard/tenants", label: "Apps", icon: KeyIcon, color: "purple" },
       {
         href: SECTION_TABS.channels[0]!.href,
         label: "Channels",
         icon: RadioTowerIcon,
+        color: "blue",
         also: ["/dashboard/channels"],
       },
-      { href: "/dashboard/settings/email", label: "Settings", icon: SettingsIcon, also: tabHrefs(SECTION_TABS.settings) },
+      { href: "/dashboard/settings/email", label: "Settings", icon: SettingsIcon, color: "red", also: tabHrefs(SECTION_TABS.settings) },
     ],
   },
 ];
