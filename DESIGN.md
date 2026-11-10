@@ -42,11 +42,31 @@ rounded:
   base: "--radius: 0.5rem"     # buttons/inputs 8px (rounded-lg), cards ~12px (rounded-xl), pills rounded-full
 
 rules:
-  - "Flat canvas. No dots, gradients, glass or drop shadows on cards; hierarchy is the surface ladder plus 1px hairlines."
+  - "Flat canvas. No dots, gradients or drop shadows on cards; hierarchy is the surface ladder plus 1px hairlines. Glass only on floating chrome (see Materials)."
   - "Lavender carries interaction and data: primary actions, active nav (tint + lavender text/icon), hover/selection tint, focus ring, links, charts. Not decorative fills of whole sections."
   - "Dark is the default theme; light mirrors it with the light-* tokens."
   - "Every text/background pair clears 4.5:1."
 ---
+
+## Principles (from Linear's design writing, applied to Relay)
+
+Sources: [A design reset](https://linear.app/now/a-design-reset), [How we redesigned the Linear UI](https://linear.app/now/how-we-redesigned-the-linear-ui), [A Linear spin on Liquid Glass](https://linear.app/now/linear-liquid-glass), [Design for the AI age](https://linear.app/now/design-for-the-ai-age). The rules below are Relay's reading of them, not quotes.
+
+1. **Relay is a workbench.** Form follows function: every screen gives a message flow structure (who, which channel, what state) so operators act with little thought. Chat-style or free-form surfaces are not a substitute for a real view. AI features sit on the workbench as tools; their output lands in normal views (Inbox, Sends, Campaigns) where a person reviews and approves it.
+2. **Quiet chrome, loud content.** The sidebar and app header (the inverted-L) frame the work and stay neutral: accent colour is kept out of chrome surfaces and used on state (active item, focus, primary action). Content text and icons carry the contrast: darker in light mode, lighter in dark mode.
+3. **Alignment you feel.** Labels, icons and buttons in the sidebar, tabs and headers share one vertical and horizontal grid. A misaligned 1px is a bug. Density goes up through hierarchy (clear groups, compact rows), not through smaller text.
+4. **Theme from three inputs.** Base colour, accent and contrast generate every token (perceptually even, LCH-style), instead of hand-tuning dozens of variables. Contrast is a real setting, so a high-contrast theme falls out of the same system. Elevation (canvas, panels, popovers, dialogs) is a lightness step, not a shadow.
+5. **Materials: ProKit, not Aqua.** Translucency is for floating chrome over scrolling content (menus, sheets, a future mobile tab bar): a precise blur, a mask and a faint top-edge light. No refraction and no glass over dense lists or tables; clarity beats effect in a professional tool. Respect `prefers-reduced-transparency` with solid fallbacks.
+6. **Pay design debt on purpose.** Shipping weekly unbalances the system; rebalance it every 2 to 3 years, and do a reset quickly so new features are not built on the old look. Prove a direction in Relay's main views (Home, Inbox, Campaigns, People, Sends, Apps, Channels, Settings) before rolling it out, behind a flag when risky.
+
+## Component behaviour
+
+- **Sidebar** (`RelaySidebar`, `nav.ts`): at most 8 links in quiet groups; 28px rows, 13px labels, 14px icons; the active link is a lavender tint with lavender icon; collapses to an icon rail; never holds settings or tabs that belong inside a section.
+- **Tabs** (`SectionTabs`): one row under the app header for a section's pages; the active tab is underlined, others muted; tabs are routes, so back/forward and links work.
+- **App header** (CrmShell header): breadcrumbs left, theme switch right, a hairline under it; sticky, same surface as the view panel, no accent colour.
+- **View header** (`ViewHeader`): one compact row (icon, title, actions) plus at most one muted line of description; never a hero.
+- **Lists** (`FilteredResourceList`, `ResourceRow`): compact rows on hairlines, search and filter chips above, an empty state that names the next action.
+- **Feedback**: `loading.tsx` skeletons for waits, `LoadingButton` for in-place saving/saved/try-again, toasts only for results that leave the screen.
 
 ## Components (reuse, never restyle ad hoc)
 
