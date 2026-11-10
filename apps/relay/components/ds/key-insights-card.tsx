@@ -4,21 +4,8 @@ import { Badge } from "@foundry/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@foundry/ui/card";
 import { RELAY_CHANNELS } from "./channels";
 import { CHANNEL_TONE } from "./overview-stats";
+import { toneBadgeClass } from "./tone";
 
-function toneClass(tone: "ok" | "bad" | "neutral"): string {
-  switch (tone) {
-    case "ok":
-      return "bg-chart-2/10 text-chart-2";
-    case "bad":
-      return "bg-destructive/10 text-destructive";
-    case "neutral":
-      return "bg-muted text-muted-foreground";
-    default: {
-      const _exhaustive: never = tone;
-      return _exhaustive;
-    }
-  }
-}
 
 export function KeyInsightsCard({
   total,
@@ -43,7 +30,7 @@ export function KeyInsightsCard({
           <p className="text-sm text-muted-foreground">Last 7 days</p>
           <div className="flex flex-wrap items-center gap-2">
             <p className="nums text-3xl font-semibold tracking-tight">{total.toLocaleString()}</p>
-            <Badge className={toneClass(delta.tone)}>
+            <Badge className={toneBadgeClass(delta.tone)}>
               {delta.label} vs prior week
             </Badge>
           </div>

@@ -4,21 +4,8 @@ import { Badge } from "@foundry/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@foundry/ui/card";
 import { RELAY_CHANNELS, channelLabel } from "./channels";
 import { CHANNEL_STROKE } from "./overview-stats";
+import { toneBadgeClass } from "./tone";
 
-function toneClass(tone: "ok" | "bad" | "neutral"): string {
-  switch (tone) {
-    case "ok":
-      return "bg-chart-2/10 text-chart-2";
-    case "bad":
-      return "bg-destructive/10 text-destructive";
-    case "neutral":
-      return "bg-muted text-muted-foreground";
-    default: {
-      const _exhaustive: never = tone;
-      return _exhaustive;
-    }
-  }
-}
 
 const RADIUS = 72;
 const CIRC = Math.PI * RADIUS;
@@ -86,7 +73,7 @@ export function ChannelDistribution({
               </span>
               <span className="flex items-center gap-2">
                 <span className="nums text-sm font-medium">{counts[c.key].toLocaleString()}</span>
-                <Badge className={toneClass(deltas[c.key].tone)}>{deltas[c.key].label}</Badge>
+                <Badge className={toneBadgeClass(deltas[c.key].tone)}>{deltas[c.key].label}</Badge>
               </span>
             </li>
           ))}

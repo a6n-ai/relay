@@ -5,26 +5,13 @@ import { Badge } from "@foundry/ui/badge";
 import { Button } from "@foundry/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@foundry/ui/card";
 import { RELAY_CHANNELS, channelLabel } from "./channels";
+import { toneBadgeClass } from "./tone";
 
 function statusFor(count: number): { label: string; tone: "ok" | "bad" | "neutral" } {
   if (count > 0) return { label: "Active", tone: "ok" };
   return { label: "Idle", tone: "neutral" };
 }
 
-function badgeClass(tone: "ok" | "bad" | "neutral"): string {
-  switch (tone) {
-    case "ok":
-      return "bg-chart-2/10 text-chart-2";
-    case "bad":
-      return "bg-destructive/10 text-destructive";
-    case "neutral":
-      return "bg-muted text-muted-foreground";
-    default: {
-      const _exhaustive: never = tone;
-      return _exhaustive;
-    }
-  }
-}
 
 export function ChannelPerformance({ counts }: { counts: Record<Channel, number> }) {
   return (
@@ -50,7 +37,7 @@ export function ChannelPerformance({ counts }: { counts: Record<Channel, number>
                 <span className="text-sm font-medium">{channelLabel(c.key)}</span>
                 <span className="nums text-xs text-muted-foreground">{n.toLocaleString()} sends</span>
               </div>
-              <Badge className={badgeClass(st.tone)}>{st.label}</Badge>
+              <Badge className={toneBadgeClass(st.tone)}>{st.label}</Badge>
             </Link>
           );
         })}

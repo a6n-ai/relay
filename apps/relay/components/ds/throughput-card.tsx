@@ -5,21 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@foundry/ui/card";
 import { RELAY_CHANNELS } from "./channels";
 import { CHANNEL_TONE } from "./overview-stats";
 import { StackedSparkBars } from "./spark-bars";
+import { toneBadgeClass } from "./tone";
 
-function toneClass(tone: "ok" | "bad" | "neutral"): string {
-  switch (tone) {
-    case "ok":
-      return "bg-chart-2/10 text-chart-2";
-    case "bad":
-      return "bg-destructive/10 text-destructive";
-    case "neutral":
-      return "bg-muted text-muted-foreground";
-    default: {
-      const _exhaustive: never = tone;
-      return _exhaustive;
-    }
-  }
-}
 
 export function ThroughputCard({
   total,
@@ -45,7 +32,7 @@ export function ThroughputCard({
             <span className="nums text-2xl font-semibold leading-8 tracking-tight">
               {total.toLocaleString()}
             </span>
-            <Badge className={toneClass(delta.tone)}>{delta.label}</Badge>
+            <Badge className={toneBadgeClass(delta.tone)}>{delta.label}</Badge>
             <span className="text-sm font-normal text-muted-foreground">vs prior week</span>
           </div>
         </div>

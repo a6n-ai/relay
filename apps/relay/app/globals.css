@@ -100,7 +100,7 @@
   --muted-foreground: #61616a; /* 5:1 on --muted; #71717a was 4.1:1 */
   --accent: #ecebff;
   --accent-foreground: #09090b;
-  --destructive: #cd3d64;
+  --destructive: #b8325a; /* 5:1 on its 10% tint; #cd3d64 was 4.1:1 */
   --border: #e4e4e7;
   --input: #e4e4e7;
   --ring: #635bff;
@@ -122,7 +122,7 @@
   --ok: #24b47e;
   --warn: #ed5f00;
   --warn-hover: #c44f00;
-  --bad: #cd3d64;
+  --bad: #b8325a;
   --success: var(--ok);
   --success-foreground: #f4fffa;
   --warning: var(--warn);

@@ -6,6 +6,7 @@ import { Button } from "@foundry/ui/button";
 import { IconTile } from "./icon-tile";
 import { Card, CardContent } from "@foundry/ui/card";
 import { cn } from "@foundry/ui/cn";
+import { toneBadgeClass } from "./tone";
 
 export type KpiItem = {
   label: string;
@@ -16,21 +17,6 @@ export type KpiItem = {
   tone?: "ok" | "bad" | "neutral";
 };
 
-function badgeClass(tone: KpiItem["tone"]): string {
-  switch (tone) {
-    case "ok":
-      return "bg-chart-2/10 text-chart-2";
-    case "bad":
-      return "bg-destructive/10 text-destructive";
-    case "neutral":
-    case undefined:
-      return "bg-muted text-muted-foreground";
-    default: {
-      const _exhaustive: never = tone;
-      return _exhaustive;
-    }
-  }
-}
 
 /** Shell 03 action card — own rectangle, icon, figure, statistics link. */
 export function KpiActionCard({ item }: { item: KpiItem }) {
@@ -44,7 +30,7 @@ export function KpiActionCard({ item }: { item: KpiItem }) {
         </div>
         <div className="flex items-center gap-2">
           <h3 className="nums text-2xl font-semibold">{item.value.toLocaleString()}</h3>
-          {item.delta ? <Badge className={badgeClass(item.tone)}>{item.delta}</Badge> : null}
+          {item.delta ? <Badge className={toneBadgeClass(item.tone)}>{item.delta}</Badge> : null}
         </div>
         <Button variant="outline" className="w-fit" asChild>
           <Link href={item.href} prefetch={false}>
@@ -82,7 +68,7 @@ export function KpiStrip({ items }: { items: KpiItem[] }) {
               </div>
               <div className="flex items-center gap-2">
                 <h3 className="nums text-2xl font-semibold">{item.value.toLocaleString()}</h3>
-                {item.delta ? <Badge className={badgeClass(item.tone)}>{item.delta}</Badge> : null}
+                {item.delta ? <Badge className={toneBadgeClass(item.tone)}>{item.delta}</Badge> : null}
               </div>
               <Button variant="outline" className="w-fit" asChild>
                 <Link href={item.href} prefetch={false}>
