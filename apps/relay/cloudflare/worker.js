@@ -1,7 +1,8 @@
-// Custom Worker entry: OpenNext's fetch handler plus the outbox Queue consumer and the RelayWake
-// Workflow (no cron). wrangler.jsonc `main` points here.
+// Custom Worker entry: OpenNext's fetch handler plus the outbox Queue consumer, the RelayWake
+// Workflow (no cron) and the Email Routing mailbox handler. wrangler.jsonc `main` points here.
 import openNext from "../.open-next/worker.js";
 import { bootOnce } from "./bootstrap.js";
+import { receive } from "./email.js";
 import { consume } from "./queue-consumer.js";
 
 export * from "../.open-next/worker.js";
@@ -30,5 +31,8 @@ export default {
   },
   async queue(batch, env) {
     await consume(batch, () => tick(env));
+  },
+  email(message, env) {
+    return receive(message, env);
   },
 };
