@@ -34,3 +34,13 @@ jobs:
           restore-keys: turbo-${{ runner.os }}-
       - run: pnpm install --frozen-lockfile
       - run: pnpm run check
+      # Schema drift: a schema change with no migration makes generate write a new file.
+      - name: Check migrations match the schema
+        env:
+          # generate only diffs the schema against the snapshots; it never connects.
+          DATABASE_URL: postgres://ci:ci@127.0.0.1:1/ci
+        run: |
+          pnpm --dir apps/relay exec drizzle-kit generate
+          if [ -n "$(git status --porcelain apps/relay/db/migrations)" ]; then
+            echo "Schema changed without a migration: run pnpm --filter relay db:generate"; exit 1
+          fi
