@@ -14,7 +14,7 @@ cp apps/relay/.env.example apps/relay/.env.local
 # Set BETTER_AUTH_SECRET to a long random string
 pnpm install
 pnpm --filter relay db:migrate
-SEED_ADMIN_PASSWORD=dev pnpm --filter relay db:seed
+SEED_ADMIN_PASSWORD=dev SEED_DEMO_APPS=1 pnpm --filter relay db:seed
 pnpm dev
 ```
 

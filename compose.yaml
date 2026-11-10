@@ -1,7 +1,7 @@
 # Local Postgres for operator app + automated/manual checks.
 #   docker compose up -d
 #   cp apps/relay/.env.example apps/relay/.env.local
-#   pnpm --filter relay db:migrate && SEED_ADMIN_PASSWORD=dev pnpm --filter relay db:seed
+#   pnpm --filter relay db:migrate && SEED_ADMIN_PASSWORD=dev SEED_DEMO_APPS=1 pnpm --filter relay db:seed
 #   pnpm dev
 services:
   postgres:

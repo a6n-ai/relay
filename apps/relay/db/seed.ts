@@ -43,6 +43,11 @@ async function main() {
     console.log(`operator already exists: ${email}`);
   }
 
+  // Demo apps with live API keys are for local dev only; a production seed creates just the operator.
+  if (process.env.SEED_DEMO_APPS === "1") await seedDemoApps();
+}
+
+async function seedDemoApps() {
   const [tenant] = await db.select().from(tenants).where(eq(tenants.slug, "realm-dev")).limit(1);
   if (!tenant) {
     const [created] = await db.insert(tenants).values({

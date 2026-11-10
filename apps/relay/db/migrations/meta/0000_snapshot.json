@@ -1,5 +1,5 @@
 {
-  "id": "59a5fa3e-f591-4d94-a99c-599c03dd4991",
+  "id": "7dbf01bd-3db2-4fc1-b26a-b2130c44be44",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -4018,6 +4018,60 @@
         "express_optin",
         "event_signup",
         "import_other"
+      ]
+    },
+    "public.mailbox_direction": {
+      "name": "mailbox_direction",
+      "schema": "public",
+      "values": [
+        "out",
+        "in"
+      ]
+    },
+    "public.mailbox_origin": {
+      "name": "mailbox_origin",
+      "schema": "public",
+      "values": [
+        "automatic",
+        "campaign",
+        "test",
+        "manual"
+      ]
+    },
+    "public.message_kind": {
+      "name": "message_kind",
+      "schema": "public",
+      "values": [
+        "transactional",
+        "marketing"
+      ]
+    },
+    "public.notification_channel": {
+      "name": "notification_channel",
+      "schema": "public",
+      "values": [
+        "email",
+        "in_app",
+        "sms",
+        "whatsapp"
+      ]
+    },
+    "public.notification_outbox_status": {
+      "name": "notification_outbox_status",
+      "schema": "public",
+      "values": [
+        "pending",
+        "processing",
+        "sent",
+        "failed"
+      ]
+    },
+    "public.suppression_scope": {
+      "name": "suppression_scope",
+      "schema": "public",
+      "values": [
+        "all",
+        "marketing"
       ]
     }
   },
