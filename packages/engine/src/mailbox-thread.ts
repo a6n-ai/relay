@@ -38,6 +38,16 @@ export function parseMessageIdList(raw: string | null | undefined): string[] {
   return ids;
 }
 
+/** Local parts of `<id@region.amazonses.com>` ids: SES's MessageId, as stored in notification_outbox. */
+export function sesLocalParts(ids: string[]): string[] {
+  const out: string[] = [];
+  for (const id of ids) {
+    const m = /^<([^@<>\s]+)@(?:[a-z0-9-]+\.)*amazonses\.com>$/i.exec(id.trim());
+    if (m) out.push(m[1]);
+  }
+  return out;
+}
+
 export function threadIdForOutbound(input: { rfcMessageId: string }): string {
   return normalizeMessageId(input.rfcMessageId) ?? input.rfcMessageId.trim();
 }

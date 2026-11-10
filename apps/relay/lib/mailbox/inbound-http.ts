@@ -49,7 +49,7 @@ export async function handleMailboxInboundPost(input: {
     }
   }
   try {
-    const parsed = parseMailboxInbound(payload);
+    const parsed = await parseMailboxInbound(payload);
     const letter = input.envelope ? { ...parsed, toEmail: input.envelope.to.trim().toLowerCase() } : parsed;
     const result = await input.ingest(letter);
     return { status: 200, body: { ok: true, duplicate: result === "duplicate" } };

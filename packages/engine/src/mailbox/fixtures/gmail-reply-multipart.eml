@@ -1,0 +1,23 @@
+From: "Vishwas Saini" <sender@example.com>
+To: hi@a6n.ai
+Subject: Re: hi
+Message-ID: <CAB123@mail.gmail.com>
+In-Reply-To: <0109019a1b2c3d4e-11111111-2222-3333-4444-555555555555-000000@ap-south-1.amazonses.com>
+References: <0109019a1b2c3d4e-11111111-2222-3333-4444-555555555555-000000@ap-south-1.amazonses.com>
+MIME-Version: 1.0
+Content-Type: multipart/alternative; boundary="b1"
+
+--b1
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+
+hello =F0=9F=93=B1 this is a long line that is wrapped with a soft break so =
+it keeps going
+
+--b1
+Content-Type: text/html; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+
+<div dir=3D"ltr">hello</div>
+
+--b1--

@@ -4,6 +4,7 @@ import {
   normalizeMessageId,
   parseMessageIdList,
   replyThreading,
+  sesLocalParts,
   threadIdForInbound,
   threadIdForOutbound,
 } from "./mailbox-thread";
@@ -108,5 +109,18 @@ describe("replyThreading", () => {
       rfcReferences: "<root@relay.test> <child@relay.test>",
       threadId: "<root@relay.test>",
     });
+  });
+});
+
+describe("sesLocalParts", () => {
+  it("keeps only amazonses.com ids and returns the local part", () => {
+    expect(
+      sesLocalParts([
+        "<abc@ap-south-1.amazonses.com>",
+        "<def@email.amazonses.com>",
+        "<x@mail.gmail.com>",
+        "<x@amazonses.com.evil.io>",
+      ]),
+    ).toEqual(["abc", "def"]);
   });
 });

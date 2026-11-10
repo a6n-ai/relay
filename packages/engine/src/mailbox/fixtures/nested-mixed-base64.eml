@@ -1,0 +1,32 @@
+From: Sender <sender@example.com>
+To: hi@a6n.ai
+Subject: Nested
+Message-ID: <nested1@mail.example.com>
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="outer"
+
+--outer
+Content-Type: multipart/alternative; boundary="inner"
+
+--inner
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: base64
+
+aGVsbG8gbmVzdGVkIPCfk7E=
+
+--inner
+Content-Type: text/html; charset="UTF-8"
+Content-Transfer-Encoding: base64
+
+PHA+aGVsbG8gbmVzdGVkPC9wPg==
+
+--inner--
+
+--outer
+Content-Type: application/octet-stream; name="a.bin"
+Content-Disposition: attachment; filename="a.bin"
+Content-Transfer-Encoding: base64
+
+YXR0YWNobWVudC1ieXRlcw==
+
+--outer--

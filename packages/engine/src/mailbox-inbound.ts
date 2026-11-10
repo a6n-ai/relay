@@ -1,7 +1,8 @@
-import { inArray } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
+import PostalMime from "postal-mime";
 import { mailboxInsertValues } from "./mailbox";
-import { normalizeMessageId, parseMessageIdList, threadIdForInbound } from "./mailbox-thread";
+import { normalizeMessageId, parseMessageIdList, sesLocalParts, threadIdForInbound } from "./mailbox-thread";
 import type { TenantNotificationTables } from "./tenant-schema";
 
 /** Raw inbound payload cap (UTF-8 bytes). Over this → 413. */
@@ -72,22 +73,6 @@ function decodeRfc2047(value: string): string {
   });
 }
 
-function unfoldHeaders(raw: string): string {
-  return raw.replace(/\r\n[ \t]/g, " ").replace(/\n[ \t]/g, " ");
-}
-
-function headerMap(block: string): Map<string, string> {
-  const map = new Map<string, string>();
-  for (const line of unfoldHeaders(block).split(/\r?\n/)) {
-    const idx = line.indexOf(":");
-    if (idx < 1) continue;
-    const key = line.slice(0, idx).trim().toLowerCase();
-    const val = line.slice(idx + 1).trim();
-    map.set(key, val);
-  }
-  return map;
-}
-
 function requireAddress(raw: string | undefined, field: string): { email: string; name: string | null } {
   const parsed = raw ? parseMailboxAddress(raw) : null;
   if (!parsed) throw new MailboxInboundError("invalid", `Missing ${field}`);
@@ -134,37 +119,35 @@ export function parseMailboxInboundJson(raw: string): ParsedInboundLetter {
   };
 }
 
-export function parseMailboxEml(raw: string): ParsedInboundLetter {
-  const match = raw.match(/^([\s\S]*?)\r?\n\r?\n([\s\S]*)$/);
-  const headerBlock = match ? match[1] : raw;
-  const body = match ? match[2] : "";
-  const headers = headerMap(headerBlock);
-  const from = requireAddress(headers.get("from"), "From");
-  const to = requireAddress(headers.get("to"), "To");
-  const subject = decodeRfc2047(headers.get("subject") ?? "");
-  const rfcRaw = headers.get("message-id") ?? "";
+export async function parseMailboxEml(raw: string): Promise<ParsedInboundLetter> {
+  let mail: Awaited<ReturnType<typeof PostalMime.parse>>;
+  try {
+    mail = await PostalMime.parse(raw);
+  } catch {
+    throw new MailboxInboundError("invalid", "Unreadable letter");
+  }
+  const fromRaw = mail.from?.address;
+  const toRaw = mail.to?.find((a) => a.address)?.address;
+  const from = requireAddress(fromRaw, "From");
+  const to = requireAddress(toRaw, "To");
+  const rfcRaw = mail.messageId ?? "";
   if (!rfcRaw.trim()) throw new MailboxInboundError("invalid", "Missing Message-ID");
-  const ct = (headers.get("content-type") ?? "text/plain").toLowerCase();
-  let html = "";
-  let text = "";
-  if (ct.includes("text/html")) html = body;
-  else text = body;
-  const { html: h, text: t } = bodiesOrThrow(html, text);
+  const { html, text } = bodiesOrThrow(mail.html ?? "", mail.text ?? "");
   return {
     fromEmail: from.email,
-    fromName: from.name,
+    fromName: mail.from?.name?.trim() || null,
     toEmail: to.email,
-    subject,
-    html: h,
-    text: t,
+    subject: mail.subject ?? "",
+    html,
+    text,
     rfcMessageId: rfcRaw,
-    inReplyTo: headers.get("in-reply-to") ?? null,
-    rfcReferences: headers.get("references") ?? null,
+    inReplyTo: mail.inReplyTo ?? null,
+    rfcReferences: mail.references ?? null,
   };
 }
 
 /** JSON object or RFC 822. Does not execute HTML. */
-export function parseMailboxInbound(raw: string): ParsedInboundLetter {
+export async function parseMailboxInbound(raw: string): Promise<ParsedInboundLetter> {
   assertInboundSize(raw);
   const trimmed = raw.trim();
   if (!trimmed) throw new MailboxInboundError("invalid", "Empty body");
@@ -197,6 +180,25 @@ export function inboundSnsDecision(raw: string): InboundSnsDecision {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Db = PostgresJsDatabase<any>;
 
+async function findParent(db: Db, tables: TenantNotificationTables, parentIds: string[]) {
+  const [byRfc] = await db
+    .select({ tenantId: tables.emailMailbox.tenantId, threadId: tables.emailMailbox.threadId })
+    .from(tables.emailMailbox)
+    .where(inArray(tables.emailMailbox.rfcMessageId, parentIds))
+    .limit(1);
+  if (byRfc) return byRfc;
+  // SES rewrites the Message-ID of mail we send, so replies cite the SES id.
+  const sesIds = sesLocalParts(parentIds);
+  if (sesIds.length === 0) return undefined;
+  const [bySes] = await db
+    .select({ tenantId: tables.emailMailbox.tenantId, threadId: tables.emailMailbox.threadId })
+    .from(tables.emailMailbox)
+    .innerJoin(tables.notificationOutbox, eq(tables.emailMailbox.outboxId, tables.notificationOutbox.id))
+    .where(inArray(tables.notificationOutbox.providerMessageId, sesIds))
+    .limit(1);
+  return bySes;
+}
+
 export async function ingestInboundLetter(
   db: Db,
   tables: TenantNotificationTables,
@@ -215,14 +217,7 @@ export async function ingestInboundLetter(
   let tenantId: bigint | null = null;
   let threadId = rfcMessageId;
   if (parentIds.length > 0) {
-    const [parent] = await db
-      .select({
-        tenantId: tables.emailMailbox.tenantId,
-        threadId: tables.emailMailbox.threadId,
-      })
-      .from(tables.emailMailbox)
-      .where(inArray(tables.emailMailbox.rfcMessageId, parentIds))
-      .limit(1);
+    const parent = await findParent(db, tables, parentIds);
     const parentTenantId = (parent?.tenantId as bigint | null | undefined) ?? null;
     // A forged References header must not drop a letter into another app's conversation.
     if (parent && (opts === undefined || parentTenantId === opts.recipientTenantId)) {

@@ -44,6 +44,7 @@
     "entities": "^9.0.0",
     "htmlparser2": "^12.0.0",
     "lucide-react": "^1.70.0",
+    "postal-mime": "^4.2.0",
     "prettier": "^3.9.10",
     "react-email": "^6.11.8",
     "recharts": "^3.10.1",
