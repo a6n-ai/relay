@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { MailboxDirection, MailboxOrigin } from "@relay/engine";
-import { toMailboxListingRow, groupMailboxConversations, tagListingFilters } from "./listing";
+import { contactInitial, toMailboxListingRow, groupMailboxConversations, tagListingFilters } from "./listing";
 import { templateTestMailboxLetter } from "./template-test";
 
 const origins: MailboxOrigin[] = ["automatic", "campaign", "test", "manual"];
@@ -160,5 +160,17 @@ describe("templateTestMailboxLetter", () => {
       origin: "test",
       direction: "out",
     });
+  });
+});
+
+describe("contactInitial", () => {
+  it("takes the first letter or digit, upper-cased", () => {
+    expect(contactInitial("vishwas@a6n.ai")).toBe("V");
+    expect(contactInitial("\"Ana\" <a@b.c>")).toBe("A");
+    expect(contactInitial("9lives@x.io")).toBe("9");
+  });
+  it("falls back when there is nothing to show", () => {
+    expect(contactInitial("")).toBe("?");
+    expect(contactInitial("<>")).toBe("?");
   });
 });

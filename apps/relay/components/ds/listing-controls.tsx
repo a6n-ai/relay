@@ -32,6 +32,8 @@ export type ListingRow = {
   groupGlyph?: GlyphKind;
   /** Muted text at the right of the row (a failure reason, a date). */
   trailingText?: string;
+  /** Initial for a round avatar before the title. */
+  avatar?: string;
 };
 
 const ALL: ListingFilter = { id: "all", label: "All" };
@@ -185,6 +187,7 @@ function ListingRowView({ item }: { item: ListingRow }) {
       shortId={item.shortId}
       glyph={item.glyph}
       glyphLabel={item.glyphLabel}
+      avatar={item.avatar}
       trailingText={item.trailingText}
       trailing={
         item.badges?.length ? (

@@ -33,6 +33,11 @@ export function fromLine(fromEmail: string, fromName: string | null): string {
   return fromName ? `${fromName} <${fromEmail}>` : fromEmail;
 }
 
+/** First letter or digit of a name or address, upper-cased; "?" when none. */
+export function contactInitial(contact: string): string {
+  return contact.match(/[\p{L}\p{N}]/u)?.[0]?.toUpperCase() ?? "?";
+}
+
 export function conversationKey(r: { threadId?: string | null; publicId: string }): string {
   const thread = r.threadId?.trim();
   return thread || r.publicId;
@@ -59,9 +64,11 @@ export function toMailboxListingRow(r: MailboxListRecord): ListingRow {
   const tags = r.tags ?? [];
   const tagLabels = tags.map((t) => t.label);
   const meta = `To ${r.toEmail} · From ${from} · ${app}`;
+  const contact = r.direction === "in" ? r.fromName?.trim() || r.fromEmail : r.toEmail;
   return {
     id: r.publicId,
     title: r.subject,
+    avatar: contactInitial(contact),
     meta,
     href: `/dashboard/mailbox/${r.publicId}`,
     searchText: `${r.subject} ${r.toEmail} ${from} ${app} ${badge} ${tagLabels.join(" ")}`,

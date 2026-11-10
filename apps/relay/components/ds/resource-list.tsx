@@ -92,6 +92,7 @@ export function ResourceRow({
   glyph,
   glyphLabel,
   href,
+  avatar,
 }: {
   title: string;
   meta?: string;
@@ -101,6 +102,8 @@ export function ResourceRow({
   glyph?: GlyphKind;
   glyphLabel?: string;
   href?: string;
+  /** Initial shown in a round avatar before the title. */
+  avatar?: string;
 }) {
   const framed = useContext(FramedContext);
   const className = cn(
@@ -113,6 +116,11 @@ export function ResourceRow({
       {glyph ? <StatusGlyph kind={glyph} label={glyphLabel} /> : null}
       {shortId ? (
         <span className="hidden w-14 shrink-0 truncate font-mono text-xs text-muted-foreground sm:block">{shortId}</span>
+      ) : null}
+      {avatar ? (
+        <span aria-hidden className="grid size-6 shrink-0 place-items-center rounded-full bg-muted text-xs font-medium text-muted-foreground">
+          {avatar}
+        </span>
       ) : null}
       <span className="min-w-0 flex-1 truncate font-medium">{title}</span>
       {meta ? <span className="hidden max-w-[40%] shrink-0 truncate text-[13px] text-muted-foreground md:block">{meta}</span> : null}
