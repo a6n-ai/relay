@@ -12,10 +12,13 @@ function isDynamicServerError(e: unknown): boolean {
   );
 }
 
-export const getSession = cache(async () => {
+async function loadSession(fresh: boolean) {
   let s: Awaited<ReturnType<typeof auth.api.getSession>> | null;
   try {
-    s = await auth.api.getSession({ headers: await headers() });
+    s = await auth.api.getSession({
+      headers: await headers(),
+      ...(fresh ? { query: { disableCookieCache: true } } : {}),
+    });
   } catch (e) {
     if (isDynamicServerError(e)) throw e;
     return null;
@@ -37,4 +40,11 @@ export const getSession = cache(async () => {
       name: u.name ?? "",
     },
   };
-});
+}
+
+/** For page views: may use the 5 minute cookie cache. */
+export const getSession = cache(() => loadSession(false));
+
+/** For guards in front of changes: reads the database, so a revoked session or role change applies at once. */
+export const getFreshSession = cache(() => loadSession(true));
+

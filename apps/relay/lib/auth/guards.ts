@@ -1,10 +1,10 @@
 import { Role } from "@foundry/commons";
 import { createPermissionGuards, createRoleGuards } from "@foundry/auth";
-import { getSession } from "./session";
+import { getFreshSession } from "./session";
 import { roles } from "./permissions";
 
-const { requireRole } = createRoleGuards(getSession);
-const { requirePermission } = createPermissionGuards(getSession, roles);
+const { requireRole } = createRoleGuards(getFreshSession);
+const { requirePermission } = createPermissionGuards(getFreshSession, roles);
 
 export { requireRole, requirePermission };
 
