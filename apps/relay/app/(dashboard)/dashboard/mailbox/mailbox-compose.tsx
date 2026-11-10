@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { PenLineIcon } from "lucide-react";
 import { Button } from "@foundry/ui/button";
 import {
@@ -18,15 +18,22 @@ export function MailboxCompose({
   froms,
   defaultTo,
   defaultSubject,
+  defaultText,
   replyToId,
   label = "Compose",
   pill = false,
+  icon = <PenLineIcon />,
+  quiet = false,
 }: {
   froms: ComposeFromOption[];
   defaultTo?: string;
   defaultSubject?: string;
+  defaultText?: string;
   replyToId?: string;
   label?: string;
+  icon?: ReactNode;
+  /** Ghost, full-width trigger for action lists. */
+  quiet?: boolean;
   /** Larger default size when used as an empty-state call to action. */
   pill?: boolean;
 }) {
@@ -36,8 +43,13 @@ export function MailboxCompose({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button type="button" size={pill ? "default" : "sm"}>
-          <PenLineIcon />
+        <Button
+          type="button"
+          size={pill ? "default" : "sm"}
+          variant={quiet ? "ghost" : "default"}
+          className={quiet ? "w-full justify-start" : undefined}
+        >
+          {icon}
           {label}
         </Button>
       </DialogTrigger>
@@ -54,6 +66,7 @@ export function MailboxCompose({
           froms={froms}
           defaultTo={defaultTo}
           defaultSubject={defaultSubject}
+          defaultText={defaultText}
           replyToId={replyToId}
           onSent={() => setOpen(false)}
         />

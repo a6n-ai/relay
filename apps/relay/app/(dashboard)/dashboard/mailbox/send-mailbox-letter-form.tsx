@@ -14,12 +14,14 @@ export function SendMailboxLetterForm({
   froms,
   defaultTo = "",
   defaultSubject = "",
+  defaultText = "",
   replyToId,
   onSent,
 }: {
   froms: ComposeFromOption[];
   defaultTo?: string;
   defaultSubject?: string;
+  defaultText?: string;
   replyToId?: string;
   onSent?: () => void;
 }) {
@@ -27,7 +29,7 @@ export function SendMailboxLetterForm({
   const [fromId, setFromId] = useState(froms[0]?.id ?? "");
   const [to, setTo] = useState(defaultTo);
   const [subject, setSubject] = useState(defaultSubject);
-  const [text, setText] = useState("");
+  const [text, setText] = useState(defaultText);
   const [busy, setBusy] = useState(false);
 
   async function send() {
