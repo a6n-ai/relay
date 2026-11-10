@@ -116,3 +116,30 @@ describe("claim lease", () => {
     expect(claimLease(1000)).toEqual({ status: "processing", nextAttemptAt: 1000 + 5 * 60_000 });
   });
 });
+
+describe("claim retry cap and fencing", () => {
+  it("fails a reclaimed row that already used all its attempts instead of sending it again", async () => {
+    const { splitExhausted } = await import("./drain");
+    const rows = [
+      { id: 1n, status: "pending", attempts: 4 },
+      { id: 2n, status: "processing", attempts: 5 },
+      { id: 3n, status: "processing", attempts: 2 },
+    ];
+    const { deliver, exhausted } = splitExhausted(rows, 5);
+    expect(deliver.map((r) => r.id)).toEqual([1n, 3n]);
+    expect(exhausted.map((r) => r.id)).toEqual([2n]);
+  });
+
+  it("writes a send's outcome only while this tick still holds the row's lease", async () => {
+    const { PgDialect, bigint, pgTable } = await import("drizzle-orm/pg-core");
+    const { leaseHeld } = await import("./drain");
+    const { makeTenantNotificationTables } = await import("./tenant-schema");
+    const tenants = pgTable("tenants", { id: bigint("id", { mode: "bigint" }).primaryKey() });
+    const o = makeTenantNotificationTables({ tenants }).notificationOutbox;
+    const { sql, params } = new PgDialect().sqlToQuery(leaseHeld(o, 7n, 301_000)!);
+    expect(sql).toContain('"id" =');
+    expect(sql).toContain('"status" =');
+    expect(sql).toContain('"next_attempt_at" =');
+    expect(params).toEqual(expect.arrayContaining([7n, "processing", 301_000]));
+  });
+});

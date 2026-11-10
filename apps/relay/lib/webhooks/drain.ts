@@ -1,5 +1,5 @@
-import { asc, inArray } from "drizzle-orm";
-import { MAX_ATTEMPTS, claimLease, claimableWhere, nextBackoffMs } from "@relay/engine";
+import { asc, inArray, sql } from "drizzle-orm";
+import { INTERRUPTED_ERROR, MAX_ATTEMPTS, claimLease, claimableWhere, nextBackoffMs, splitExhausted } from "@relay/engine";
 import { db } from "@/db/client";
 import { tenantWebhookDelivery } from "@/db/schema";
 import { tenantWebhooksService, webhookDeliveryService } from "@/lib/services/webhooks.service";
@@ -17,12 +17,20 @@ export async function drainWebhookDeliveries(limit = 25): Promise<number> {
       .orderBy(asc(tenantWebhookDelivery.nextAttemptAt))
       .limit(limit)
       .for("update", { skipLocked: true });
-    if (due.length === 0) return [];
+    const { deliver, exhausted } = splitExhausted(due, MAX_ATTEMPTS);
+    if (exhausted.length > 0) {
+      await tx
+        .update(tenantWebhookDelivery)
+        .set({ status: "failed", lastError: INTERRUPTED_ERROR })
+        .where(inArray(tenantWebhookDelivery.id, exhausted.map((r) => r.id)));
+    }
+    if (deliver.length === 0) return [];
+    // shortcut: outcome writes go through the service without a lease fence; webhooks are at-least-once anyway.
     await tx
       .update(tenantWebhookDelivery)
-      .set(claimLease(now))
-      .where(inArray(tenantWebhookDelivery.id, due.map((r) => r.id)));
-    return due;
+      .set({ ...claimLease(now), attempts: sql`${tenantWebhookDelivery.attempts} + 1` })
+      .where(inArray(tenantWebhookDelivery.id, deliver.map((r) => r.id)));
+    return deliver;
   });
 
   for (const row of rows) {

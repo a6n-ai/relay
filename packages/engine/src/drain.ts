@@ -92,13 +92,34 @@ export function claimLease(now: number): { status: "processing"; nextAttemptAt: 
   return { status: "processing", nextAttemptAt: now + CLAIM_LEASE_MS };
 }
 
+/**
+ * Attempts count at claim time, so a row whose send kills the isolate still uses them up.
+ * A reclaimed row with none left is failed instead of being sent again.
+ */
+export function splitExhausted<R extends { status: string; attempts: number }>(
+  rows: R[],
+  maxAttempts: number,
+): { deliver: R[]; exhausted: R[] } {
+  const exhausted = rows.filter((r) => r.status === "processing" && r.attempts >= maxAttempts);
+  return { deliver: rows.filter((r) => !exhausted.includes(r)), exhausted };
+}
+
+/** Match a row only while this claim's lease still holds it, so a stale tick cannot overwrite a newer outcome. */
+export function leaseHeld(cols: { id: AnyPgColumn; status: AnyPgColumn; nextAttemptAt: AnyPgColumn }, id: bigint, lease: number) {
+  return and(eq(cols.id, id), eq(cols.status, "processing"), eq(cols.nextAttemptAt, lease));
+}
+
+export const INTERRUPTED_ERROR = "Stopped after repeated interrupted sends";
+
 async function claim(
   db: Db,
   tables: NotificationTables,
   limit: number,
   now: number,
-): Promise<OutboxRow[]> {
+  maxAttempts: number,
+): Promise<{ deliver: OutboxRow[]; exhausted: OutboxRow[]; lease: number }> {
   const o = tables.notificationOutbox;
+  const leased = claimLease(now);
   return db.transaction(async (tx) => {
     const rows = await tx
       .select()
@@ -107,12 +128,20 @@ async function claim(
       .orderBy(sql`${o.kind} = 'transactional' desc`, asc(o.nextAttemptAt))
       .limit(limit)
       .for("update", { skipLocked: true });
-    if (rows.length === 0) return [];
-    await tx
-      .update(o)
-      .set(claimLease(now))
-      .where(inArray(o.id, rows.map((r) => r.id)));
-    return rows;
+    const { deliver, exhausted } = splitExhausted(rows as OutboxRow[], maxAttempts);
+    if (exhausted.length > 0) {
+      await tx
+        .update(o)
+        .set({ status: "failed", lastError: INTERRUPTED_ERROR })
+        .where(inArray(o.id, exhausted.map((r) => r.id)));
+    }
+    if (deliver.length > 0) {
+      await tx
+        .update(o)
+        .set({ ...leased, attempts: sql`${o.attempts} + 1` })
+        .where(inArray(o.id, deliver.map((r) => r.id)));
+    }
+    return { deliver, exhausted, lease: leased.nextAttemptAt };
   });
 }
 
@@ -122,22 +151,27 @@ async function process(
   row: OutboxRow,
   handler: ChannelHandler | undefined,
   maxAttempts: number,
+  lease: number,
   onProcessed?: DrainDeps["onProcessed"],
 ): Promise<void> {
   const o = tables.notificationOutbox;
+  const held = leaseHeld(o, row.id as bigint, lease);
   const attempts = row.attempts + 1;
   try {
     if (!handler) throw new Error(`No handler for channel ${row.channel}`);
     const result = await handler(row);
     // null = skipped (no DB template for this event/channel). Terminal, no retry.
-    await db
+    const written = await db
       .update(o)
       .set(
         result
           ? { status: "sent", attempts, providerMessageId: result.providerMessageId, lastError: null }
           : { status: "sent", attempts, providerMessageId: null, lastError: "skipped: no template" },
       )
-      .where(eq(o.id, row.id));
+      .where(held)
+      .returning({ id: o.id });
+    // Another tick reclaimed the row after our lease ran out; its outcome stands.
+    if (written.length === 0) return;
     await onProcessed?.(row, {
       status: "sent",
       skipped: !result,
@@ -146,7 +180,7 @@ async function process(
   } catch (err) {
     const lastError = err instanceof Error ? err.message : String(err);
     const dead = attempts >= maxAttempts;
-    await db
+    const failed = await db
       .update(o)
       .set({
         status: dead ? "failed" : "pending",
@@ -154,15 +188,18 @@ async function process(
         lastError,
         nextAttemptAt: Date.now() + nextBackoffMs(attempts),
       })
-      .where(eq(o.id, row.id));
-    if (dead) await onProcessed?.(row, { status: "failed", lastError });
+      .where(held)
+      .returning({ id: o.id });
+    if (dead && failed.length > 0) await onProcessed?.(row, { status: "failed", lastError });
   }
 }
 
 /** Claim + deliver one batch. Returns how many rows were processed. */
 export async function drainOnce(deps: DrainDeps, limit = 25): Promise<number> {
-  const rows = await claim(deps.db, deps.tables, limit, Date.now());
-  for (const row of rows) {
+  const maxAttempts = deps.maxAttempts ?? MAX_ATTEMPTS;
+  const { deliver, exhausted, lease } = await claim(deps.db, deps.tables, limit, Date.now(), maxAttempts);
+  for (const row of exhausted) await deps.onProcessed?.(row, { status: "failed", lastError: INTERRUPTED_ERROR });
+  for (const row of deliver) {
     // Serialized on purpose: the rate limiter exists to hold a send ceiling,
     // which Promise.all over the batch would blow straight through.
     if (deps.rateLimiter && row.channel !== "in_app") await deps.rateLimiter.take();
@@ -171,11 +208,12 @@ export async function drainOnce(deps: DrainDeps, limit = 25): Promise<number> {
       deps.tables,
       row,
       deps.handlers[row.channel as Channel],
-      deps.maxAttempts ?? MAX_ATTEMPTS,
+      maxAttempts,
+      lease,
       deps.onProcessed,
     );
   }
-  return rows.length;
+  return deliver.length + exhausted.length;
 }
 
 /** Drain until the queue is empty or `maxBatches` is hit. */
