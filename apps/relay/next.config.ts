@@ -36,7 +36,6 @@ const nextConfig: NextConfig = {
     "@foundry/auth",
     "@foundry/commons",
     "@foundry/database",
-    "@foundry/email",
     "@foundry/routes",
     "@foundry/themes",
     "@foundry/ui",

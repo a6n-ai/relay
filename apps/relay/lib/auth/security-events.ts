@@ -7,7 +7,8 @@ import {
   sendOtpEmail,
   sendPasswordChanged,
 } from "@foundry/auth";
-import type { EmailProvider } from "@foundry/email";
+import type { EmailProvider } from "@foundry/commons";
+import { renderEmailTemplate } from "@relay/email";
 import { db } from "@/db/client";
 import { session as sessionTable } from "@/db/schema";
 import { getEmailProvider } from "@/lib/email/provider";
@@ -16,7 +17,12 @@ const log = createLogger("auth-security");
 const APP_NAME = "Relay";
 
 function ctx(): SecurityEmailContext {
-  return { provider: getEmailProvider() as EmailProvider, appName: APP_NAME, log };
+  return {
+    provider: getEmailProvider() as EmailProvider,
+    renderEmail: renderEmailTemplate,
+    appName: APP_NAME,
+    log,
+  };
 }
 
 export function sendAuthOtp(email: string, otp: string, type: OtpType): Promise<void> {

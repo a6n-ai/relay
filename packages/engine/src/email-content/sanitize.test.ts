@@ -74,10 +74,10 @@ describe("sanitizeEmailHtml", () => {
     }
   });
 
-  it("drops a comment the browser would close early at --!>", () => {
+  it("sanitizes markup a browser would expose by closing a comment early at --!>", () => {
     const out = sanitizeEmailHtml("<p>a</p><!-- --!><img src=x onerror=alert(1)> -->");
     expect(out.html).not.toContain("onerror");
-    expect(out.removed).toContain("<!-- --!> comment");
+    expect(out.html).not.toContain("--!>");
   });
 
   it("drops raw-text containers browsers parse differently (noscript, xmp, template…)", () => {

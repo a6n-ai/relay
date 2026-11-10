@@ -10,8 +10,8 @@
     "check": "turbo run typecheck test"
   },
   "devDependencies": {
-    "turbo": "^2.9.18",
-    "typescript": "^5",
-    "vitest": "^4.1.9"
+    "turbo": "^2.11.10",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.0"
   }
 }
