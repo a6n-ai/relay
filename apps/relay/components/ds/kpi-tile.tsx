@@ -3,6 +3,7 @@ import type { LucideIcon } from "lucide-react";
 import { ArrowRightIcon } from "lucide-react";
 import { Badge } from "@foundry/ui/badge";
 import { Button } from "@foundry/ui/button";
+import { IconTile } from "./icon-tile";
 import { Card, CardContent } from "@foundry/ui/card";
 import { cn } from "@foundry/ui/cn";
 
@@ -39,9 +40,7 @@ export function KpiActionCard({ item }: { item: KpiItem }) {
       <CardContent className="flex h-full flex-col justify-between gap-4 px-6 py-6">
         <div className="flex w-full items-start justify-between gap-3">
           <p className="text-sm font-normal">{item.label}</p>
-          <Button variant="outline" size="icon" className="pointer-events-none size-8">
-            <Icon />
-          </Button>
+          <IconTile icon={Icon} />
         </div>
         <div className="flex items-center gap-2">
           <h3 className="nums text-2xl font-semibold">{item.value.toLocaleString()}</h3>
@@ -79,9 +78,7 @@ export function KpiStrip({ items }: { items: KpiItem[] }) {
             >
               <div className="flex w-full items-start justify-between gap-3">
                 <p className="text-sm font-normal">{item.label}</p>
-                <Button variant="outline" size="icon" className="pointer-events-none size-8">
-                  <Icon />
-                </Button>
+                <IconTile icon={Icon} />
               </div>
               <div className="flex items-center gap-2">
                 <h3 className="nums text-2xl font-semibold">{item.value.toLocaleString()}</h3>

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Button } from "@foundry/ui/button";
+import { LoadingButton } from "@/components/interior/loading-button";
 import { Input } from "@foundry/ui/input";
 import { Label } from "@foundry/ui/label";
 import { apiFetch } from "@relay/engine/ui/api-fetch";
@@ -27,16 +27,15 @@ export function CreateWebhookForm({
   const [url, setUrl] = useState("https://example.com/webhooks/relay");
   const [events, setEvents] = useState<string[]>(["message.sent", "message.failed"]);
   const [secret, setSecret] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
 
   function toggle(ev: string) {
     setEvents((cur) => (cur.includes(ev) ? cur.filter((x) => x !== ev) : [...cur, ev]));
   }
 
-  async function save() {
-    if (!tenantPublicId) return toast.error("Pick an app");
-    if (events.length === 0) return toast.error("Pick at least one update");
-    setBusy(true);
+  // Returns false when nothing was saved, so the button can show it failed.
+  async function save(): Promise<boolean> {
+    if (!tenantPublicId) { toast.error("Pick an app"); return false; }
+    if (events.length === 0) { toast.error("Pick at least one update"); return false; }
     try {
       const res = await apiFetch<{ secret: string }>("/api/notifications/webhooks", {
         method: "POST",
@@ -46,10 +45,9 @@ export function CreateWebhookForm({
       setSecret(res.secret);
       toast.success("Saved — copy the secret now");
       router.refresh();
+      return true;
     } catch {
-      /* toasted */
-    } finally {
-      setBusy(false);
+      return false; // apiFetch already toasted
     }
   }
 
@@ -85,7 +83,7 @@ export function CreateWebhookForm({
           </label>
         ))}
       </fieldset>
-      <Button type="button" onClick={() => void save()} disabled={busy}>Save destination</Button>
+      <LoadingButton onAction={async () => { if (!(await save())) throw new Error("not saved"); }} pendingLabel="Saving…" successLabel="Saved">Save destination</LoadingButton>
       {secret ? (
         <p className="text-sm">
           Signing secret (shown once): <code className="break-all">{secret}</code>

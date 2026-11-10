@@ -28,7 +28,13 @@ export const auth = betterAuth({
     database: { generateId: false },
     ipAddress: { ipAddressHeaders: ["x-real-ip"] },
   },
-  session: { expiresIn: SESSION_MAX_AGE_S, freshAge: 60 * 60 },
+  // cookieCache skips the session query on most page views (the DB is a region away from
+  // visitors); a revoked session stays valid for at most those 5 minutes. Same as xplorers.
+  session: {
+    expiresIn: SESSION_MAX_AGE_S,
+    freshAge: 60 * 60,
+    cookieCache: { enabled: true, strategy: "compact", maxAge: 5 * 60 },
+  },
   emailAndPassword: {
     enabled: true,
     password: betterAuthPassword,

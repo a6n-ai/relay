@@ -97,7 +97,7 @@
   --secondary: #ececee;
   --secondary-foreground: #09090b;
   --muted: #ececee;
-  --muted-foreground: #71717a;
+  --muted-foreground: #61616a; /* 5:1 on --muted; #71717a was 4.1:1 */
   --accent: #ecebff;
   --accent-foreground: #09090b;
   --destructive: #cd3d64;
@@ -109,7 +109,8 @@
   --chart-3: #a1a1aa;
   --chart-4: #524af0;
   --chart-5: #24b47e;
-  --radius: 0.5rem;
+  /* Lyra: sharp rectangles everywhere (sidebar, auth cards, dialogs), not only the dashboard canvas. */
+  --radius: 0px;
   --sidebar: #635bff;
   --sidebar-foreground: #ffffff;
   --sidebar-primary: #ffffff;
@@ -144,9 +145,10 @@
   --card-foreground: #fafafa;
   --popover: #111111;
   --popover-foreground: #fafafa;
-  --primary: #7a73ff;
+  /* White on #7a73ff is 3.9:1; buttons fill with #635bff (4.7:1), #7a73ff stays the hover, ring and brand. */
+  --primary: #635bff;
   --primary-foreground: #ffffff;
-  --primary-hover: #8b85ff;
+  --primary-hover: #7a73ff;
   --secondary: #1a1a1a;
   --secondary-foreground: #fafafa;
   --muted: #1a1a1a;
@@ -260,10 +262,22 @@
   animation-timing-function: var(--ease-soft);
 }
 
+/* Clicks during a transition reach the live page instead of the overlay. */
+::view-transition {
+  pointer-events: none;
+}
+
+::view-transition-old(*),
+::view-transition-new(*) {
+  animation-duration: 160ms;
+  animation-timing-function: var(--ease-soft);
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
-  ::view-transition-old(root),
-  ::view-transition-new(root) {
+  ::view-transition-old(*),
+  ::view-transition-new(*),
+  ::view-transition-group(*) {
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;

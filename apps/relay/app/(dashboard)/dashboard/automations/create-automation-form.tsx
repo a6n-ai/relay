@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Button } from "@foundry/ui/button";
+import { LoadingButton } from "@/components/interior/loading-button";
 import { Input } from "@foundry/ui/input";
 import { Label } from "@foundry/ui/label";
 import { apiFetch } from "@relay/engine/ui/api-fetch";
@@ -20,11 +20,10 @@ export function CreateAutomationForm({
   const [listPublicId, setListPublicId] = useState(lists[0]?.publicId ?? "");
   const [name, setName] = useState("Add signups to list");
   const [triggerEvent, setTriggerEvent] = useState("user.signup");
-  const [busy, setBusy] = useState(false);
 
-  async function save() {
-    if (!tenantPublicId || !listPublicId) return toast.error("Pick an app and a group of people");
-    setBusy(true);
+  // Returns false when nothing was saved, so the button can show it failed.
+  async function save(): Promise<boolean> {
+    if (!tenantPublicId || !listPublicId) { toast.error("Pick an app and a group of people"); return false; }
     try {
       await apiFetch("/api/notifications/automations", {
         method: "POST",
@@ -33,10 +32,9 @@ export function CreateAutomationForm({
       });
       toast.success("Automation saved");
       router.refresh();
+      return true;
     } catch {
-      /* toasted */
-    } finally {
-      setBusy(false);
+      return false; // apiFetch already toasted
     }
   }
 
@@ -80,7 +78,7 @@ export function CreateAutomationForm({
           ))}
         </select>
       </div>
-      <Button type="button" onClick={() => void save()} disabled={busy}>Save automation</Button>
+      <LoadingButton onAction={async () => { if (!(await save())) throw new Error("not saved"); }} pendingLabel="Saving…" successLabel="Saved">Save automation</LoadingButton>
     </div>
   );
 }

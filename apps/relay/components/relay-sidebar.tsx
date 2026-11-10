@@ -93,7 +93,7 @@ function NavGroup({
 }) {
   return (
     <SidebarGroup>
-      <SidebarGroupLabel>{label}</SidebarGroupLabel>
+      <SidebarGroupLabel className="text-sidebar-foreground">{label}</SidebarGroupLabel>
       <SidebarGroupContent>
         <SidebarMenu>
           {items.map((item) => (
@@ -118,14 +118,14 @@ export function RelaySidebar({ email }: { email: string }) {
     <Sidebar>
       <SidebarHeader className="gap-1 px-4 py-4">
         <p className="text-sm font-semibold tracking-tight">Relay</p>
-        <p className="text-xs text-sidebar-foreground/60">Messages for your apps</p>
+        <p className="text-xs text-sidebar-foreground">Messages for your apps</p>
       </SidebarHeader>
       <SidebarContent>
         <NavGroup label="Overview" items={OVERVIEW} pathname={pathname} />
         <NavGroup label="Outreach" items={OUTREACH} pathname={pathname} />
         <NavGroup label="Activity" items={ACTIVITY} pathname={pathname} />
         <SidebarGroup>
-          <SidebarGroupLabel>How you reach people</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-sidebar-foreground">How you reach people</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {RELAY_CHANNELS.map((ch) => {
@@ -153,13 +153,14 @@ export function RelaySidebar({ email }: { email: string }) {
         <Link
           href="/dashboard/account"
           prefetch={false}
-          className="truncate font-mono text-xs text-sidebar-foreground/70 hover:text-sidebar-accent-foreground"
+          className="truncate font-mono text-xs text-sidebar-foreground underline-offset-4 hover:underline"
         >
           {email}
         </Link>
         <Button
           variant="outline"
           size="sm"
+          className="border-sidebar-foreground/40 bg-transparent text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
           onClick={() =>
             signOut({ fetchOptions: { onSuccess: () => { window.location.href = "/login"; } } })
           }
