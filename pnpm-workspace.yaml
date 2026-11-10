@@ -5,6 +5,7 @@ packages:
 allowBuilds:
   esbuild: true
   unrs-resolver: true
+  workerd: true
 
 # Git tarballs declare workspace:* internals. Overrides turn those into
 # github: path deps, which pnpm 11 treats as exotic subdeps unless this is off.
@@ -43,5 +44,3 @@ overrides:
   "@foundry/storage": "github:a6n-ai/foundry#path:packages/storage"
   "@foundry/themes": "github:a6n-ai/foundry#path:packages/themes"
   "@foundry/ui": "github:a6n-ai/foundry#path:packages/ui"
-
-minimumReleaseAgeExclude:
