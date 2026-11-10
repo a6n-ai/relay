@@ -8,6 +8,7 @@ import { cn } from "@foundry/ui/cn";
 import { Textarea } from "@foundry/ui/textarea";
 import { apiFetch } from "@relay/engine/ui/api-fetch";
 import type { ComposeFromOption } from "@/lib/mailbox/compose-from";
+import type { ReaderLetter } from "@relay/engine";
 import { MailboxLetterBody } from "./mailbox-letter";
 
 export type ChatLetter = {
@@ -18,7 +19,9 @@ export type ChatLetter = {
   time: string;
   subject: string | null;
   html: string;
+  htmlSafe: string;
   text: string;
+  reader: ReaderLetter;
 };
 
 export function MailboxChat({
@@ -93,7 +96,12 @@ export function MailboxChat({
                   {letter.from} · {letter.time}
                 </p>
                 {letter.subject ? <p className="text-sm font-medium">{letter.subject}</p> : null}
-                <MailboxLetterBody html={letter.html} text={letter.text} inbound={letter.inbound} />
+                <MailboxLetterBody
+                  html={letter.html}
+                  htmlSafe={letter.htmlSafe}
+                  reader={letter.reader}
+                  inbound={letter.inbound}
+                />
               </div>
             </article>
           ))}

@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { Badge } from "@foundry/ui/badge";
 import { Button } from "@foundry/ui/button";
 import { PageShell, SectionCard } from "@foundry/design-system";
+import { emailHtmlToReader, emailTextToReader, sanitizeEmailHtml } from "@relay/engine";
 import { outboxStatusLabel } from "@/components/ds/plain-labels";
 import { listMailboxThread, readMailboxLetter } from "@/lib/mailbox/list";
 import { fromLine } from "@/lib/mailbox/listing";
@@ -73,7 +74,9 @@ export default async function MailboxLetterPage({
     time: new Date(letter.createdAt).toLocaleString(),
     subject: normalizeSubject(letter.subject) !== titleKey ? letter.subject : null,
     html: letter.html,
+    htmlSafe: letter.html.trim() ? sanitizeEmailHtml(letter.html).html : "",
     text: letter.text,
+    reader: letter.html.trim() ? emailHtmlToReader(letter.html) : emailTextToReader(letter.text),
   }));
 
   return (
