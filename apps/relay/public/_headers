@@ -1,0 +1,4 @@
+# Workers static assets (wrangler `assets`) read this; next.config headers() never reach these files.
+# /_next/static names are content-hashed, so they never change in place.
+/_next/static/*
+  Cache-Control: public, max-age=31536000, immutable
