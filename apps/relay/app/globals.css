@@ -288,6 +288,41 @@
   padding-block: 0.25rem;
 }
 
+/* Lavender text in dark mode is the lighter step: #5e6ad2 on the page is 4.05:1, #828fff is 6.5:1. Fills keep --primary. */
+.dark .text-primary {
+  color: #828fff;
+}
+
+/* Linear forms: 32px fields on the surface below their container, 13px muted labels, lavender focus. */
+:is([data-slot="input"], [data-slot="textarea"], [data-slot="select-trigger"]) {
+  background-color: var(--card);
+  border-color: var(--input);
+  font-size: 14px;
+}
+:is([data-slot="input"], [data-slot="select-trigger"]) {
+  min-height: 2rem;
+}
+[data-slot="label"] {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted-foreground);
+}
+
+/* Linear dialogs: one level-3 surface; a form card placed inside drops its own frame. */
+[data-slot="dialog-content"] {
+  border-radius: var(--radius-xl);
+  padding: 1.25rem;
+}
+[data-slot="dialog-content"] [data-slot="card"] {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+}
+[data-slot="dialog-content"] :is([data-slot="card-header"], [data-slot="card-content"], [data-slot="card-footer"]) {
+  padding-inline: 0;
+}
+
 /* Linear display tracking: tight on large type, near zero on body. */
 h1 { letter-spacing: -0.022em; font-weight: 600; }
 h2, h3 { letter-spacing: -0.012em; font-weight: 600; }

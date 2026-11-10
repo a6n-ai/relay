@@ -75,6 +75,7 @@ export default async function TenantsPage() {
         subtitle="Each app (Tiffin Grab, Realm) has its own monthly send limit and From address."
       />
       <OperatorSplit
+        createLabel="New app"
         create={
           <SectionCard title="Add an app" subtitle="You’ll get an access key once. Copy it now. We can’t show it again.">
             <CreateTenantForm />

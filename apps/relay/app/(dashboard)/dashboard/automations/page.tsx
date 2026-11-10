@@ -42,6 +42,7 @@ export default async function AutomationsPage() {
         subtitle="When something happens in an app, add that person to a group so you can email them later."
       />
       <OperatorSplit
+        createLabel="New automation"
         create={
           <SectionCard title="New automation">
             <CreateAutomationForm tenants={tenantRows} lists={lists} />

@@ -59,6 +59,7 @@ export default async function CampaignsPage() {
         subtitle="One send to a group of people. Saved as a draft until you confirm."
       />
       <OperatorSplit
+        createLabel="New campaign"
         create={
           <SectionCard title="New campaign" subtitle="The app you pick supplies the From address and the legal footer.">
             <CreateCampaignForm tenants={tenantRows} lists={lists} />

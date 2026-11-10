@@ -55,6 +55,7 @@ export default async function TemplatesPage() {
         subtitle="Reusable email for a specific moment, like “order shipped.” The app uses the same name when it asks Relay to send."
       />
       <OperatorSplit
+        createLabel="New template"
         create={
           <SectionCard title="New email template">
             <CreateTemplateForm tenants={tenantRows} />

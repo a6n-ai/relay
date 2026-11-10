@@ -48,6 +48,7 @@ export default async function MailboxesSettingsPage() {
         subtitle="Addresses your apps send from and receive at. Letters to a Relay inbox show up in Inbox."
       />
       <OperatorSplit
+        createLabel="New mailbox"
         create={
           <SectionCard
             title="Add a mailbox"

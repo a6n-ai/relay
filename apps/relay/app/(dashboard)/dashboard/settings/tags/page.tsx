@@ -42,6 +42,7 @@ export default async function TagsSettingsPage() {
         subtitle="A tag on an app marks every message for that app — mail now, WhatsApp later."
       />
       <OperatorSplit
+        createLabel="New tag"
         create={
           <SectionCard title="Add a tag" subtitle="Pick the app. The tag applies to all of its messages.">
             <CreateAppTagForm apps={apps.map((a) => ({ publicId: a.publicId, name: a.name }))} />

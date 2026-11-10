@@ -4,7 +4,7 @@ export type Tone = "ok" | "bad" | "neutral";
 export function toneBadgeClass(tone: Tone | undefined): string {
   switch (tone) {
     case "ok":
-      return "bg-primary/10 text-primary-hover";
+      return "bg-primary/10 text-accent-foreground";
     case "bad":
       return "bg-destructive/10 text-destructive";
     case "neutral":

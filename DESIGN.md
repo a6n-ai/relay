@@ -66,7 +66,8 @@ Sources: [A design reset](https://linear.app/now/a-design-reset), [How we redesi
 ## Component behaviour
 
 - **Sidebar** (`RelaySidebar`, `nav.ts`): at most 8 links in quiet groups; 28px rows, 13px labels, 14px icons; the active link is a lavender tint with lavender icon; collapses to an icon rail; never holds settings or tabs that belong inside a section.
-- **Tabs** (`SectionTabs`): one row under the app header for a section's pages; the active tab is underlined, others muted; tabs are routes, so back/forward and links work.
+- **Tabs** (`SectionTabs`): compact 28px pills at the top of a section's pages; the active one is a lavender tint (`aria-current="page"`); they are links in a `nav`, not a Radix tablist, so back/forward work and no dangling `aria-controls`.
+- **Dialogs and forms**: creating something happens in a level-3 dialog over the list (`CreateDialog`), never in a side column. Fields are 32px on the surface below their container, labels 13px muted, focus ring lavender.
 - **App header**: none on desktop; pages run full height (Linear). The sidebar carries the collapse toggle (header) and the theme switch (footer) and collapses to an icon rail. On phones the CrmShell header stays, because it opens the sidebar.
 - **View header** (`ViewHeader`): one compact row (icon, title, actions) plus at most one muted line of description; never a hero.
 - **Lists** (`FilteredResourceList`, `ResourceRow`): compact rows on hairlines, search and filter chips above, an empty state that names the next action.
@@ -81,7 +82,7 @@ Every DESIGN.md surface maps to one Relay component. Build screens from these an
 | surface-1 panel | `Panel` | components/ds/panel.tsx |
 | table frame | `DataSurface` (a `Panel`) | components/ds/data-surface.tsx |
 | list with search + filters | `FilteredResourceList`, `ResourceBoard`, `ResourceRow` | components/ds/listing-controls.tsx, resource-list.tsx |
-| create / browse page | `OperatorSplit` | components/ds/operator-split.tsx |
+| collection page: full-width list, "New …" opens a dialog (`createLabel`); detail page: content left, edit panel right | `OperatorSplit`, `CreateDialog` | components/ds/operator-split.tsx, create-dialog.tsx |
 | status-badge (signed deltas get an arrow) | `StatusBadge` (tone: ok, bad, neutral) | components/ds/status-badge.tsx |
 | send status | `OutboxStatusBadge` | components/outbox-status-badge.tsx |
 | icon square (optional colour: tinted square, coloured glyph) | `IconTile` | components/ds/icon-tile.tsx |

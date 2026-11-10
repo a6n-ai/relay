@@ -44,6 +44,7 @@ export default async function ListsPage() {
         subtitle="Who can hear from you. We need how they opted in, and when. Purchase opt-in lasts 24 months in Canada."
       />
       <OperatorSplit
+        createLabel="Import people"
         create={
           <div className="space-y-4">
             <SectionCard title="Import a spreadsheet">

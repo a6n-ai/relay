@@ -50,6 +50,7 @@ export default async function WebhooksPage() {
         subtitle="Tell another system when a message is waiting, sent, or didn’t go out. We’ll retry a few times if that system is down."
       />
       <OperatorSplit
+        createLabel="New destination"
         create={
           <SectionCard title="New destination">
             <CreateWebhookForm tenants={tenantRows} />
