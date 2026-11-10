@@ -1,8 +1,7 @@
 import type { ReactNode } from "react";
+import { Panel } from "./panel";
 
-/** One hairline surface for tables so Sends and Team share the same frame. */
+/** Tables (Sends, Team) scroll sideways inside one Panel. */
 export function DataSurface({ children }: { children: ReactNode }) {
-  return (
-    <div className="overflow-x-auto border border-border bg-card">{children}</div>
-  );
+  return <Panel className="overflow-x-auto">{children}</Panel>;
 }

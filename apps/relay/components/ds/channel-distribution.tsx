@@ -1,11 +1,10 @@
 import type { Channel } from "@relay/engine";
 import { PieChartIcon } from "lucide-react";
-import { Badge } from "@foundry/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@foundry/ui/card";
 import { RELAY_CHANNELS, channelLabel } from "./channels";
 import { CHANNEL_STROKE } from "./overview-stats";
 import { channelShares } from "./channel-flow";
-import { toneBadgeClass } from "./tone";
+import { StatusBadge } from "./status-badge";
 
 
 export function ChannelDistribution({
@@ -66,10 +65,10 @@ export function ChannelDistribution({
               <span className="flex items-center gap-2">
                 <span className="nums text-sm font-medium">
                   {counts[c.key].toLocaleString()}
-                  <span className="sr-only">, </span>
-                  <span className="text-muted-foreground ml-1 font-normal">{shares[i]!.pct}%</span>
+                  {/* The diagram shows the share; screen readers get it here. */}
+                  <span className="sr-only">, {shares[i]!.pct}%</span>
                 </span>
-                <Badge className={toneBadgeClass(deltas[c.key].tone)}>{deltas[c.key].label}</Badge>
+                <StatusBadge tone={deltas[c.key].tone}>{deltas[c.key].label}</StatusBadge>
               </span>
             </li>
           ))}

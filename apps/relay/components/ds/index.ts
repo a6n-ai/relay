@@ -32,3 +32,8 @@ export { SparkBars } from "./spark-bars";
 export { StubPage } from "./stub-page";
 export { ThemeSwitcher } from "./theme-switcher";
 export { ThroughputCard } from "./throughput-card";
+export { Panel } from "./panel";
+export { StatusBadge } from "./status-badge";
+export { IconTile } from "./icon-tile";
+export { SectionTabs } from "./section-tabs";
+export { toneBadgeClass, type Tone } from "./tone";

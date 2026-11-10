@@ -1,11 +1,10 @@
 import { TrendingUpIcon } from "lucide-react";
 import type { Channel } from "@relay/engine";
-import { Badge } from "@foundry/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@foundry/ui/card";
 import { RELAY_CHANNELS } from "./channels";
 import { CHANNEL_TONE } from "./overview-stats";
 import { StackedSparkBars } from "./spark-bars";
-import { toneBadgeClass } from "./tone";
+import { StatusBadge } from "./status-badge";
 
 
 export function ThroughputCard({
@@ -32,7 +31,7 @@ export function ThroughputCard({
             <span className="nums text-2xl font-semibold leading-8 tracking-tight">
               {total.toLocaleString()}
             </span>
-            <Badge className={toneBadgeClass(delta.tone)}>{delta.label}</Badge>
+            <StatusBadge tone={delta.tone}>{delta.label}</StatusBadge>
             <span className="text-sm font-normal text-muted-foreground">vs prior week</span>
           </div>
         </div>

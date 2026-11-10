@@ -1,12 +1,11 @@
 import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
 import { ArrowRightIcon } from "lucide-react";
-import { Badge } from "@foundry/ui/badge";
 import { Button } from "@foundry/ui/button";
 import { IconTile } from "./icon-tile";
 import { Card, CardContent } from "@foundry/ui/card";
 import { cn } from "@foundry/ui/cn";
-import { toneBadgeClass } from "./tone";
+import { StatusBadge } from "./status-badge";
 
 export type KpiItem = {
   label: string;
@@ -30,7 +29,7 @@ export function KpiActionCard({ item }: { item: KpiItem }) {
         </div>
         <div className="flex items-center gap-2">
           <h3 className="nums text-2xl font-semibold">{item.value.toLocaleString("en")}</h3>
-          {item.delta ? <Badge className={toneBadgeClass(item.tone)}>{item.delta}</Badge> : null}
+          {item.delta ? <StatusBadge tone={item.tone}>{item.delta}</StatusBadge> : null}
         </div>
         <Button variant="outline" className="w-fit" asChild>
           <Link href={item.href} prefetch={false}>
@@ -68,7 +67,7 @@ export function KpiStrip({ items }: { items: KpiItem[] }) {
               </div>
               <div className="flex items-center gap-2">
                 <h3 className="nums text-2xl font-semibold">{item.value.toLocaleString("en")}</h3>
-                {item.delta ? <Badge className={toneBadgeClass(item.tone)}>{item.delta}</Badge> : null}
+                {item.delta ? <StatusBadge tone={item.tone}>{item.delta}</StatusBadge> : null}
               </div>
               <Button variant="outline" className="w-fit" asChild>
                 <Link href={item.href} prefetch={false}>

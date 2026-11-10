@@ -6,6 +6,7 @@ import type { LucideIcon } from "lucide-react";
 import { ChevronRightIcon } from "lucide-react";
 import { EmptyState } from "@foundry/design-system";
 import { cn } from "@foundry/ui/cn";
+import { Panel } from "./panel";
 
 export function ResourceBoard({
   title,
@@ -19,7 +20,7 @@ export function ResourceBoard({
   children: ReactNode;
 }) {
   return (
-    <section className="overflow-hidden rounded-xl border border-border bg-card">
+    <Panel as="section">
       <header className="flex flex-col gap-3 border-b border-border px-4 py-3">
         <div className="flex items-baseline justify-between gap-2">
           <h2 className="text-sm font-medium">{title}</h2>
@@ -30,7 +31,7 @@ export function ResourceBoard({
         {toolbar}
       </header>
       <div className="divide-y divide-border">{children}</div>
-    </section>
+    </Panel>
   );
 }
 

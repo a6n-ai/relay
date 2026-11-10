@@ -1,9 +1,8 @@
 ## Learned User Preferences
 
-- Treat Relay as its own notification product: Apple-style design (owner, 2026-11-10). System font first (SF Pro on Apple devices, Geist as fallback), Geist Mono for code; never TiffinGrab orange/cream.
-- One chromatic accent: Apple web blue `#0071e3` (dark mode fills stay `#0071e3`, `#0a84ff` for rings). Light canvas `#f5f5f7`, white cards, `#1d1d1f` ink. Every text/background pair clears 4.5:1.
-- Dark theme: black canvas, `#1c1c1e` cards, blue only on actions.
-- Apple colours and materials on Lyra shapes (owner, 2026-11-10): sharp rectangles (`--radius: 0px`), the dotted field on the dashboard canvas and dotted bands between rows, solid content cards, translucent blurred chrome (sidebar, top bar, menus, sheets, dialogs) with a `prefers-reduced-transparency` solid fallback. No page cross-fade: routes swap at once and `loading.tsx` skeletons carry the wait. Radix primitives via `@foundry/ui` stay; restyle through tokens and `app/globals.css`, not Foundry.
+- Relay follows `DESIGN.md` at the repo root (Linear design language, owner 2026-11-10). Read it before any UI change; it beats every older note here. Never TiffinGrab orange/cream.
+- Lavender `#5e6ad2` is the one hue, used generously on interaction and data (actions, active nav, hover/selection tints, focus, charts). Dark is the default theme; light mirrors it.
+- Always reuse: build screens from `components/ds` (Panel, StatusBadge, IconTile, SectionTabs, FilteredResourceList, OperatorSplit…), `@foundry/design-system` and `@foundry/ui`, styled only through tokens. A pattern used twice becomes a component; no one-off class strings on pages.
 - Shadcn Dashboard blocks (shadcndashboard.dev) are visual/layout reference only (including Dashboard Shell 03 analytics). Implement with Foundry primitives plus Relay DS; do not vendor dumped `components/ui` or ecommerce dummy blocks as the source of truth.
 - Do not push `.cursor/` MCP/AI config to GitHub.
 - Use semantic design tokens (`bg-primary`, etc.), not raw color utilities.

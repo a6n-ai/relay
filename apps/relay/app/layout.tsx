@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import { GeistMono } from "geist/font/mono";
 import { GeistSans } from "geist/font/sans";
-import { ThemeProvider, themeInitScript } from "@foundry/themes";
+import { ThemeProvider, makeThemeInitScript } from "@foundry/themes";
+
+// Dark is Relay's default look (Linear); people can switch to light.
+const themeInitScript = makeThemeInitScript("dark");
 import { Toaster } from "@foundry/ui/sonner";
 import "./globals.css";
 
@@ -26,7 +29,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
       <body className="min-h-full flex flex-col font-sans">
-        <ThemeProvider>
+        <ThemeProvider defaultTheme="dark">
           {children}
           <Toaster />
         </ThemeProvider>

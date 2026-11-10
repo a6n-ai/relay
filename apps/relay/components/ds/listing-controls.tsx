@@ -15,6 +15,7 @@ import {
 import { Badge } from "@foundry/ui/badge";
 import { cn } from "@foundry/ui/cn";
 import { ResourceBoard, ResourceEmpty, ResourceRow } from "@/components/ds/resource-list";
+import { Panel } from "./panel";
 
 export type ListingFilter = { id: string; label: string };
 
@@ -268,9 +269,9 @@ export function ListingTableFrame({
   children: ReactNode;
 }) {
   return (
-    <div className="overflow-hidden rounded-xl border border-border bg-card">
+    <Panel>
       <div className="border-b border-border px-4 py-3">{toolbar}</div>
       <div className="overflow-x-auto">{children}</div>
-    </div>
+    </Panel>
   );
 }

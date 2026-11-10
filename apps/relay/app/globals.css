@@ -20,9 +20,9 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", var(--font-geist-sans), system-ui, sans-serif;
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Text", var(--font-geist-sans), system-ui, sans-serif;
   --font-mono: var(--font-geist-mono);
-  --font-heading: -apple-system, BlinkMacSystemFont, "SF Pro Display", var(--font-geist-sans), system-ui, sans-serif;
+  --font-heading: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Display", var(--font-geist-sans), system-ui, sans-serif;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -82,108 +82,108 @@
 }
 
 :root {
-  /* Light, Apple: #f5f5f7 canvas, white cards, #1d1d1f ink, one blue accent. */
-  --brand: #0071e3;
+  /* Light: Linear's light app — near-white canvas, white surfaces, one lavender accent. */
+  --brand: #5e6ad2;
   --brand-foreground: #ffffff;
-  --background: #f5f5f7;
-  --foreground: #1d1d1f;
+  --background: #fbfbfc;
+  --foreground: #0f1011;
   --card: #ffffff;
-  --card-foreground: #1d1d1f;
+  --card-foreground: #0f1011;
   --popover: #ffffff;
-  --popover-foreground: #1d1d1f;
-  --primary: #0071e3; /* Apple web blue; white on it 4.7:1 */
+  --popover-foreground: #0f1011;
+  --primary: #5e6ad2; /* Linear lavender; white on it 4.7:1 */
   --primary-foreground: #ffffff;
-  --primary-hover: #0062c4;
-  --secondary: #e8e8ed;
-  --secondary-foreground: #1d1d1f;
-  --muted: #e8e8ed;
-  --muted-foreground: #636366; /* 4.7:1 on --muted, 5.6:1 on --background */
-  --accent: #e8f1fc;
-  --accent-foreground: #1d1d1f;
-  --destructive: #d70015;
-  --border: #d2d2d7;
-  --input: #d2d2d7;
-  --ring: #0071e3;
-  --chart-1: #0071e3;
-  --chart-2: #5e5ce6;
-  --chart-3: #8e8e93;
-  --chart-4: #30b0c7;
-  --chart-5: #34c759;
-  --radius: 0px; /* sharp rectangles (owner): Apple colours and glass, Lyra corners */
-  --sidebar: rgb(246 246 248 / 0.72);
-  --sidebar-foreground: #1d1d1f;
-  --sidebar-primary: #0071e3;
+  --primary-hover: #5561c9; /* #828fff fails white text (3.1:1) */
+  --secondary: #f2f2f4;
+  --secondary-foreground: #0f1011;
+  --muted: #f2f2f4;
+  --muted-foreground: #63676e; /* 5:1 on --muted */
+  --accent: #eeeffa; /* lavender tint for hover, selection */
+  --accent-foreground: #2f3793;
+  --destructive: #ce2c31;
+  --border: #e6e6ea;
+  --input: #dcdce0;
+  --ring: #5e69d1;
+  --chart-1: #5e6ad2;
+  --chart-2: #828fff;
+  --chart-3: #3e47a8;
+  --chart-4: #b4baf5;
+  --chart-5: #27a644;
+  --radius: 0.5rem; /* Linear: 8px buttons and inputs, ~12px cards (radius-xl) */
+  --sidebar: #f7f7f8;
+  --sidebar-foreground: #0f1011;
+  --sidebar-primary: #5e6ad2;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: rgb(0 0 0 / 0.06);
-  --sidebar-accent-foreground: #1d1d1f;
-  --sidebar-border: rgb(0 0 0 / 0.08);
-  --sidebar-ring: #0071e3;
-  --ok: #248a3d;
-  --warn: #c93400;
-  --warn-hover: #a82b00;
-  --bad: #d70015;
+  --sidebar-accent: #e6e8fa;
+  --sidebar-accent-foreground: #2f3793; /* 8:1 on the tint */
+  --sidebar-border: #e6e6ea;
+  --sidebar-ring: #5e69d1;
+  --ok: #1f8a3a;
+  --warn: #b25e00;
+  --warn-hover: #934e00;
+  --bad: #ce2c31;
   --success: var(--ok);
   --success-foreground: #f4fffa;
   --warning: var(--warn);
   --warning-foreground: #3d1a00;
-  --info: #0071e3;
-  --info-foreground: #e8f1fc;
+  --info: #5e6ad2;
+  --info-foreground: #eeeffa;
   --destructive-foreground: #fff7f9;
-  --accent-badge: #0071e3;
-  --accent-badge-hover: #0062c4;
+  --accent-badge: #5e6ad2;
+  --accent-badge-hover: #5561c9;
   --accent-badge-foreground: #ffffff;
 }
 
 .dark {
-  /* Dark, Apple: black canvas, #1c1c1e cards, blue only on actions. */
-  --brand: #0a84ff;
-  --brand-foreground: #000000;
-  --background: #000000;
-  --foreground: #f5f5f7;
-  --card: #1c1c1e;
-  --card-foreground: #f5f5f7;
-  --popover: #2c2c2e;
-  --popover-foreground: #f5f5f7;
+  /* Dark (default): Linear — #010102 canvas, charcoal surface ladder, hairlines, lavender only on actions. */
+  --brand: #5e6ad2;
+  --brand-foreground: #ffffff;
+  --background: #010102; /* Linear canvas */
+  --foreground: #f7f8f8;
+  --card: #0f1011;
+  --card-foreground: #f7f8f8;
+  --popover: #141516;
+  --popover-foreground: #f7f8f8;
   /* White on #7a73ff is 3.9:1; buttons fill with #635bff (4.7:1), #7a73ff stays the hover, ring and brand. */
-  --primary: #0071e3; /* fills stay #0071e3: white on #0a84ff is 3.6:1 */
+  --primary: #5e6ad2;
   --primary-foreground: #ffffff;
-  --primary-hover: #0062c4;
-  --secondary: #2c2c2e;
-  --secondary-foreground: #f5f5f7;
-  --muted: #2c2c2e;
-  --muted-foreground: #98989d;
-  --accent: #152437;
-  --accent-foreground: #f5f5f7;
-  --destructive: #d70015;
-  --border: #38383a;
-  --input: #38383a;
-  --ring: #0a84ff;
-  --chart-1: #0a84ff;
-  --chart-2: #5e5ce6;
-  --chart-3: #98989d;
-  --chart-4: #40c8e0;
-  --chart-5: #30d158;
-  --sidebar: rgb(28 28 30 / 0.72);
-  --sidebar-foreground: #f5f5f7;
-  --sidebar-primary: #0a84ff;
+  --primary-hover: #5561c9;
+  --secondary: #18191a;
+  --secondary-foreground: #f7f8f8;
+  --muted: #18191a;
+  --muted-foreground: #8a8f98; /* 5.8:1 on #0f1011 */
+  --accent: #1b1d33; /* lavender-tinted surface */
+  --accent-foreground: #c9cdff;
+  --destructive: #ff6369;
+  --border: #23252a;
+  --input: #34343a;
+  --ring: #5e69d1;
+  --chart-1: #5e6ad2;
+  --chart-2: #828fff;
+  --chart-3: #a5adff;
+  --chart-4: #3e47a8;
+  --chart-5: #4cb782;
+  --sidebar: #0f1011;
+  --sidebar-foreground: #f7f8f8;
+  --sidebar-primary: #5e6ad2;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: rgb(255 255 255 / 0.08);
-  --sidebar-accent-foreground: #ffffff;
-  --sidebar-border: rgb(255 255 255 / 0.08);
-  --sidebar-ring: #0a84ff;
-  --ok: #30d158;
-  --warn: #ff9f0a;
-  --warn-hover: #ffb340;
-  --bad: #ff453a;
+  --sidebar-accent: #1b1d33;
+  --sidebar-accent-foreground: #c9cdff; /* 11:1 on the tint */
+  --sidebar-border: #23252a;
+  --sidebar-ring: #5e69d1;
+  --ok: #4cb782;
+  --warn: #f2994a;
+  --warn-hover: #f5ad6b;
+  --bad: #ff6369;
   --success: var(--ok);
   --success-foreground: #042016;
   --warning: var(--warn);
   --warning-foreground: #2a1200;
-  --info: #0a84ff;
-  --info-foreground: #04202a;
+  --info: #828fff;
+  --info-foreground: #010102;
   --destructive-foreground: #2a0812;
-  --accent-badge: #0071e3;
-  --accent-badge-hover: #0062c4;
+  --accent-badge: #5e6ad2;
+  --accent-badge-hover: #5561c9;
   --accent-badge-foreground: #ffffff;
 }
 
@@ -210,24 +210,15 @@
 }
 
 /*
-  Apple-style surfaces on the dotted field. Content sits on solid sharp cards; the chrome (sidebar, top bar,
-  menus, sheets) is a translucent material with content showing through. Grids that used 1px
-  hairline gutters now separate cards with space.
+  Linear surfaces (DESIGN.md): a flat canvas, cards lifted one step on the surface ladder with a
+  1px hairline, no drop shadows, no glass, no patterns.
 */
 .dashboard-canvas {
   background-color: var(--background);
-  background-image: radial-gradient(circle at center, currentColor 1px, transparent 0);
-  background-size: 12px 12px;
-  background-position: 6px 6px;
-  color: color-mix(in oklch, var(--foreground) 22%, transparent);
-}
-
-.dashboard-canvas > * {
-  color: var(--foreground);
 }
 
 .dashboard-shell-grid {
-  @apply grid grid-cols-12 gap-4;
+  @apply grid grid-cols-12 gap-3;
 }
 
 .lyra-pack {
@@ -236,99 +227,46 @@
 
 .lyra-pack > *,
 .dashboard-shell-grid > * {
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-xl);
 }
 
 [data-slot="card"] {
-  box-shadow: 0 1px 2px rgb(0 0 0 / 0.04), 0 0 0 1px rgb(0 0 0 / 0.04);
+  box-shadow: none;
+  border: 1px solid var(--border);
 }
 
-.dark [data-slot="card"] {
-  box-shadow: 0 0 0 1px rgb(255 255 255 / 0.06);
-}
-
-/* Materials: heavier for structure (sidebar), lighter for floating layers. */
-[data-slot="sidebar-inner"],
-[data-slot="sidebar-inset"] > header {
-  -webkit-backdrop-filter: blur(30px) saturate(180%);
-  backdrop-filter: blur(30px) saturate(180%);
+:is([data-slot="popover-content"], [data-slot="dropdown-menu-content"], [data-slot="select-content"], [data-slot="dialog-content"], [data-slot="sheet-content"]) {
+  background: var(--popover);
+  border: 1px solid var(--border);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.16);
 }
 
 [data-slot="sidebar-inset"] > header {
   position: sticky;
   top: 0;
   z-index: 20;
-  background: color-mix(in oklch, var(--background) 72%, transparent);
-  box-shadow: 0 1px 0 rgb(0 0 0 / 0.06);
+  background: var(--background);
+  border-bottom: 1px solid var(--border);
 }
 
-:is([data-slot="popover-content"], [data-slot="dropdown-menu-content"], [data-slot="select-content"], [data-slot="dialog-content"], [data-slot="sheet-content"]) {
-  background: color-mix(in oklch, var(--popover) 82%, transparent);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
-  backdrop-filter: blur(24px) saturate(180%);
-  border-color: rgb(255 255 255 / 0.4);
-  box-shadow: 0 12px 40px rgb(0 0 0 / 0.12), 0 0 0 1px rgb(0 0 0 / 0.06);
-}
+/* Linear display tracking: tight on large type, near zero on body. */
+h1 { letter-spacing: -0.022em; font-weight: 600; }
+h2, h3 { letter-spacing: -0.012em; font-weight: 600; }
 
-.dark :is([data-slot="popover-content"], [data-slot="dropdown-menu-content"], [data-slot="select-content"], [data-slot="dialog-content"], [data-slot="sheet-content"]) {
-  border-color: rgb(255 255 255 / 0.08);
-  box-shadow: 0 12px 40px rgb(0 0 0 / 0.5), 0 0 0 1px rgb(255 255 255 / 0.06);
+/* Linear buttons: hover shifts the fill one step; arrows nudge forward. */
+[data-slot="sidebar-menu-button"][data-active="true"] svg {
+  color: var(--primary);
 }
-
-/* Large type tightens, small type stays open. */
-h1 { letter-spacing: -0.022em; }
-h2, h3 { letter-spacing: -0.012em; }
-
-/* Press feedback on pointer-down, like a real control. */
-[data-slot="button"]:active:not(:disabled) {
-  transform: scale(0.97);
-  transition: transform 100ms ease-out;
-}
-
-@media (prefers-reduced-transparency: reduce) {
-  [data-slot="sidebar-inner"],
-  [data-slot="sidebar-inset"] > header,
-  :is([data-slot="popover-content"], [data-slot="dropdown-menu-content"], [data-slot="select-content"], [data-slot="dialog-content"], [data-slot="sheet-content"]) {
-    -webkit-backdrop-filter: none;
-    backdrop-filter: none;
-  }
-  [data-slot="sidebar-inner"] { background: var(--background); }
-  [data-slot="sidebar-inset"] > header { background: var(--background); }
-  :is([data-slot="popover-content"], [data-slot="dropdown-menu-content"], [data-slot="select-content"], [data-slot="dialog-content"], [data-slot="sheet-content"]) { background: var(--popover); }
-}
-
-/*
-  One Relay hover for buttons: the fill wipes in from the left (transform only), arrows nudge
-  forward. Sidebar buttons keep their own hover on the purple ground.
-*/
-:where([data-slot="button"][data-variant="default"], [data-slot="button"][data-variant="outline"]):not([data-slot="sidebar"] *) {
-  position: relative;
-  isolation: isolate;
-  overflow: hidden;
-}
-:where([data-slot="button"][data-variant="default"], [data-slot="button"][data-variant="outline"]):not([data-slot="sidebar"] *)::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  transform: scaleX(0);
-  transform-origin: left center;
-  transition: transform 220ms var(--ease-soft);
-}
-[data-slot="button"][data-variant="default"]:not([data-slot="sidebar"] *)::before {
-  background: var(--primary-hover);
-}
-[data-slot="button"][data-variant="outline"]:not([data-slot="sidebar"] *)::before {
-  background: color-mix(in oklch, var(--primary) 12%, var(--background));
-}
-[data-slot="button"][data-variant="outline"]:not([data-slot="sidebar"] *):hover {
-  border-color: var(--primary);
-}
-:where([data-slot="button"][data-variant="default"], [data-slot="button"][data-variant="outline"]):not([data-slot="sidebar"] *):is(:hover, :focus-visible)::before {
-  transform: scaleX(1);
+.dark [data-slot="sidebar-menu-button"][data-active="true"] svg {
+  color: #828fff;
 }
 [data-slot="button"][data-variant="default"]:not([data-slot="sidebar"] *):hover {
-  background-color: var(--primary);
+  background-color: var(--primary-hover);
+}
+[data-slot="button"][data-variant="outline"]:not([data-slot="sidebar"] *):hover {
+  background-color: var(--accent);
+  color: var(--accent-foreground);
+  border-color: color-mix(in oklch, var(--primary) 45%, transparent);
 }
 [data-slot="button"] .lucide-arrow-right {
   transition: transform 220ms var(--ease-soft);

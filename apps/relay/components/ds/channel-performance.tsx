@@ -1,11 +1,10 @@
 import Link from "next/link";
 import { ArrowRightIcon, MegaphoneIcon } from "lucide-react";
 import type { Channel } from "@relay/engine";
-import { Badge } from "@foundry/ui/badge";
 import { Button } from "@foundry/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@foundry/ui/card";
 import { RELAY_CHANNELS, channelLabel } from "./channels";
-import { toneBadgeClass } from "./tone";
+import { StatusBadge } from "./status-badge";
 
 function statusFor(count: number): { label: string; tone: "ok" | "bad" | "neutral" } {
   if (count > 0) return { label: "Active", tone: "ok" };
@@ -37,7 +36,7 @@ export function ChannelPerformance({ counts }: { counts: Record<Channel, number>
                 <span className="text-sm font-medium">{channelLabel(c.key)}</span>
                 <span className="nums text-xs text-muted-foreground">{n.toLocaleString()} sends</span>
               </div>
-              <Badge className={toneBadgeClass(st.tone)}>{st.label}</Badge>
+              <StatusBadge tone={st.tone}>{st.label}</StatusBadge>
             </Link>
           );
         })}

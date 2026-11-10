@@ -1,10 +1,9 @@
 import type { Channel } from "@relay/engine";
 import { LightbulbIcon } from "lucide-react";
-import { Badge } from "@foundry/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@foundry/ui/card";
 import { RELAY_CHANNELS } from "./channels";
 import { CHANNEL_TONE } from "./overview-stats";
-import { toneBadgeClass } from "./tone";
+import { StatusBadge } from "./status-badge";
 
 
 export function KeyInsightsCard({
@@ -30,9 +29,9 @@ export function KeyInsightsCard({
           <p className="text-sm text-muted-foreground">Last 7 days</p>
           <div className="flex flex-wrap items-center gap-2">
             <p className="nums text-3xl font-semibold tracking-tight">{total.toLocaleString()}</p>
-            <Badge className={toneBadgeClass(delta.tone)}>
+            <StatusBadge tone={delta.tone}>
               {delta.label} vs prior week
-            </Badge>
+            </StatusBadge>
           </div>
         </div>
         <div className="flex items-end gap-1" aria-label="Channel mix">

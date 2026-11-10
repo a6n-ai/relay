@@ -9,9 +9,12 @@ const DispatchBurst = dynamic(
 
 export function AuthBurstPanel() {
   return (
-    <div className="dark bg-background text-muted-foreground relative hidden min-h-80 flex-col justify-end md:flex">
-      <DispatchBurst />
-      <p className="pointer-events-none relative p-6 text-center text-sm text-balance">
+    <div className="dark bg-background text-muted-foreground hidden min-h-80 flex-col md:flex">
+      {/* The burst fills its own box, so the caption sits under it, never over the channel labels. */}
+      <div className="relative min-h-64 flex-1">
+        <DispatchBurst />
+      </div>
+      <p className="pointer-events-none px-6 pb-6 text-center text-sm text-balance">
         One send. Every channel it needs.
       </p>
     </div>
