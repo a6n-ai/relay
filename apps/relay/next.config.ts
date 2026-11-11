@@ -22,7 +22,7 @@ const nextConfig: NextConfig = {
   compiler: {
     removeConsole: { exclude: ["error", "warn"] },
   },
-  serverExternalPackages: ["postgres", "drizzle-orm"],
+  serverExternalPackages: ["postgres", "drizzle-orm", "postal-mime"],
   experimental: {
     optimizePackageImports: [
       "lucide-react",
