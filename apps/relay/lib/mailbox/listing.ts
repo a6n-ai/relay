@@ -4,7 +4,7 @@ import {
   type MailboxOrigin,
   type MailboxOutboxStatus,
 } from "@relay/engine";
-import type { ListingBadge, ListingFilter, ListingRow } from "@/components/ds/listing-controls";
+import type { ListingBadge, ListingFilter, ListingRow } from "@/components/ds/listing-table";
 import { outboxStatusLabel } from "@/components/ds/plain-labels";
 import { tagFilterKey } from "./conversation-tag";
 

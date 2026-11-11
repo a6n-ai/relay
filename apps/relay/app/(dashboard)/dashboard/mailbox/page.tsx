@@ -1,17 +1,16 @@
 import { MailboxIcon } from "lucide-react";
 import { PageShell } from "@foundry/design-system";
 import { EmptyState } from "@/components/ds/empty-state";
-import { FilteredResourceList } from "@/components/ds/listing-controls";
-import type { ListingFilter } from "@/components/ds/listing-controls";
+import { ListingTable, type ListingFilter } from "@/components/ds/listing-table";
 import { listMailboxLetters } from "@/lib/mailbox/list";
 import {
   groupMailboxConversations,
   indexTagsByTenantPublicId,
   tagListingFilters,
 } from "@/lib/mailbox/listing";
+import { resolveActiveApp } from "@/lib/apps/active-app";
 import { loadComposeFroms } from "@/lib/mailbox/load-compose-froms";
 import { appMessageTagsService } from "@/lib/services/mailbox-tags.service";
-import { tenantsService } from "@/lib/services/tenants.service";
 import { MailboxCompose } from "./mailbox-compose";
 import { ViewHeader } from "@/components/ds/view-header";
 
@@ -29,19 +28,20 @@ const MAILBOX_FILTERS: ListingFilter[] = [
 ];
 
 export default async function MailboxPage() {
-  const [rows, froms, tagRows, { items: apps }] = await Promise.all([
-    listMailboxLetters(),
+  const activeApp = await resolveActiveApp();
+  const [rows, froms, tagRows] = await Promise.all([
+    listMailboxLetters(100, activeApp?.id),
     loadComposeFroms(),
-    appMessageTagsService.listRecentAll(),
-    tenantsService.listRecent(),
+    activeApp ? appMessageTagsService.forTenant(activeApp.id) : Promise.resolve([]),
   ]);
-  const appById = new Map(apps.map((a) => [a.id, a]));
   const tagsByTenant = indexTagsByTenantPublicId(
-    tagRows.flatMap((t) => {
-      const app = appById.get(t.tenantId);
-      if (!app) return [];
-      return [{ tenantPublicId: app.publicId, slug: t.slug, label: t.label }];
-    }),
+    activeApp
+      ? tagRows.map((t) => ({
+          tenantPublicId: activeApp.publicId,
+          slug: t.slug,
+          label: t.label,
+        }))
+      : [],
   );
   const items = groupMailboxConversations(rows, tagsByTenant);
 
@@ -49,17 +49,31 @@ export default async function MailboxPage() {
     <PageShell>
       <ViewHeader
         title="Inbox"
-        subtitle="Conversations Relay sent or received. A tag on an app marks all of its messages."
-        actions={<MailboxCompose froms={froms} />}
+        subtitle={
+          activeApp
+            ? `Conversations for ${activeApp.name}. Switch apps in the sidebar to change focus.`
+            : "Create an app to start receiving and sending from this workspace."
+        }
+        actions={activeApp ? <MailboxCompose froms={froms} /> : undefined}
       />
-      <FilteredResourceList
+      <ListingTable
         title="Inbox"
         empty={
           <EmptyState
             icon={MailboxIcon}
-            title="Your inbox is empty"
-            lines={["Mail your apps send and the replies people write show up here.", "You can also write the first letter yourself."]}
-            action={<MailboxCompose froms={froms} pill />}
+            title={activeApp ? "Your inbox is empty" : "Start by creating an app"}
+            lines={
+              activeApp
+                ? [
+                    "Mail this app sends and the replies people write show up here.",
+                    "You can also write the first letter yourself.",
+                  ]
+                : [
+                    "Inbox follows the app you pick in the sidebar.",
+                    "Add an app, then come back to send and receive.",
+                  ]
+            }
+            action={activeApp ? <MailboxCompose froms={froms} pill /> : undefined}
             docsHref="/docs"
           />
         }

@@ -2,8 +2,7 @@ import { UsersIcon } from "lucide-react";
 import { PageShell } from "@foundry/design-system";
 import { CreateDialog } from "@/components/ds/create-dialog";
 import { EmptyState } from "@/components/ds/empty-state";
-import { FilteredResourceList } from "@/components/ds/listing-controls";
-import type { ListingFilter, ListingRow } from "@/components/ds/listing-controls";
+import { ListingTable, type ListingFilter, type ListingRow } from "@/components/ds/listing-table";
 import { consentSourceLabel } from "@/components/ds/plain-labels";
 import { contactListsService } from "@/lib/services/campaigns.service";
 import { ViewHeader } from "@/components/ds/view-header";
@@ -49,7 +48,7 @@ export default async function ListsPage() {
         subtitle="Who can hear from you. We need how they opted in, and when. Purchase opt-in lasts 24 months in Canada."
         actions={create(false)}
       />
-      <FilteredResourceList
+      <ListingTable
         title="Groups"
         empty={
           <EmptyState

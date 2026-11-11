@@ -1,11 +1,18 @@
 "use client";
 
 import { useMemo, useState, type ReactNode } from "react";
-import { SearchIcon, XIcon } from "lucide-react";
+import Link from "next/link";
+import { SearchIcon } from "lucide-react";
+import {
+  DataTable,
+  FilterChips,
+  FilterPill,
+  SearchInput,
+  type Column,
+} from "@foundry/design-system";
 import { Badge } from "@foundry/ui/badge";
-import { cn } from "@foundry/ui/cn";
-import { ResourceBoard, ResourceEmpty, ResourceGroup, ResourceRow } from "@/components/ds/resource-list";
-import type { GlyphKind } from "./status-glyph";
+import { TableCell } from "@foundry/ui/table";
+import { StatusGlyph, type GlyphKind } from "./status-glyph";
 
 export type ListingFilter = { id: string; label: string };
 
@@ -14,6 +21,12 @@ export type ListingBadge = {
   variant: "outline" | "secondary" | "destructive";
 };
 
+/**
+ * Soft collection row mapped onto Foundry/Realm `DataTable`.
+ * Prefer `DataTable` directly for sortable columns, URL facets, or server paging
+ * (Beautiful UI Records Table). Keep this helper for chip-filtered operator lists
+ * (Beautiful UI Filter Table).
+ */
 export type ListingRow = {
   id: string;
   title: string;
@@ -22,107 +35,30 @@ export type ListingRow = {
   searchText: string;
   filterKeys: string[];
   badges?: ListingBadge[];
-  /** Mono id shown before the title. */
   shortId?: string;
-  /** Status ring shown before the id, with the words a screen reader hears. */
   glyph?: GlyphKind;
   glyphLabel?: string;
-  /** Rows with a group are listed under a strip with this label, groups in the order they first appear. */
+  /** Kept for callers; status chips replace group strips on DataTable. */
   group?: string;
   groupGlyph?: GlyphKind;
-  /** Muted text at the right of the row (a failure reason, a date). */
   trailingText?: string;
-  /** Initial for a round avatar before the title. */
   avatar?: string;
+  trailing?: ReactNode;
 };
 
 const ALL: ListingFilter = { id: "all", label: "All" };
 
+type ListingColumn = "title" | "meta" | "trailing";
+
+const COLUMNS: readonly Column<ListingColumn>[] = [
+  { key: "title", label: "Name" },
+  { key: "meta", label: "Detail" },
+  { key: "trailing", label: "", width: "w-44" },
+];
+
 export function listingCountLabel(visible: number, total: number): string {
   if (visible === total) return total.toLocaleString("en");
   return `${visible.toLocaleString("en")} of ${total.toLocaleString("en")}`;
-}
-
-function ListingChip({
-  label,
-  count,
-  active,
-  onClick,
-}: {
-  label: string;
-  count: number;
-  active: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      className={cn(
-        "inline-flex min-h-8 items-center gap-1.5 rounded-full border px-3 text-sm transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
-        active
-          ? "border-primary bg-primary text-primary-foreground"
-          : "border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground",
-      )}
-    >
-      {label}
-      <span className={cn("nums text-xs tabular-nums", active ? "opacity-80" : "text-muted-foreground")}>{count.toLocaleString("en")}</span>
-    </button>
-  );
-}
-
-export function ListingToolbar({
-  query,
-  onQuery,
-  searchPlaceholder,
-  filter,
-  onFilter,
-  filters,
-  counts,
-}: {
-  query: string;
-  onQuery: (value: string) => void;
-  searchPlaceholder: string;
-  filter: string;
-  onFilter: (id: string) => void;
-  filters: ListingFilter[];
-  counts: Record<string, number>;
-}) {
-  return (
-    <div className="flex flex-wrap items-center gap-3">
-      <div className="relative min-w-56 flex-1">
-        <SearchIcon className="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
-        <input
-          value={query}
-          onChange={(e) => onQuery(e.target.value)}
-          placeholder={searchPlaceholder}
-          className="h-9 w-full border border-input bg-background py-1 pr-8 pl-8 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-        />
-        {query ? (
-          <button
-            type="button"
-            onClick={() => onQuery("")}
-            className="text-muted-foreground hover:text-foreground absolute top-1/2 right-1.5 grid size-6 -translate-y-1/2 place-items-center hover:bg-muted"
-            aria-label="Clear search"
-          >
-            <XIcon className="size-3.5" />
-          </button>
-        ) : null}
-      </div>
-      <div className="flex flex-wrap items-center gap-2">
-        {filters.map((f) => (
-          <ListingChip
-            key={f.id}
-            label={f.label}
-            count={counts[f.id] ?? 0}
-            active={filter === f.id}
-            onClick={() => onFilter(f.id)}
-          />
-        ))}
-      </div>
-    </div>
-  );
 }
 
 export function useListingState<T extends { searchText: string; filterKeys: string[] }>(
@@ -166,49 +102,109 @@ export function useListingState<T extends { searchText: string; filterKeys: stri
   return { query, setQuery, filter, setFilter, filters, counts, visible };
 }
 
-function groupRows(rows: ListingRow[]): { label: string; glyph?: GlyphKind; rows: ListingRow[] }[] | null {
-  if (!rows.some((r) => r.group)) return null;
-  const groups = new Map<string, { label: string; glyph?: GlyphKind; rows: ListingRow[] }>();
-  for (const row of rows) {
-    const label = row.group ?? "Other";
-    const group = groups.get(label) ?? { label, glyph: row.groupGlyph, rows: [] };
-    group.rows.push(row);
-    groups.set(label, group);
-  }
-  return [...groups.values()];
+/** Chip + search toolbar on Foundry FilterBar primitives (for custom boards). */
+export function ListingToolbar({
+  query,
+  onQuery,
+  searchPlaceholder,
+  filter,
+  onFilter,
+  filters,
+  counts,
+}: {
+  query: string;
+  onQuery: (value: string) => void;
+  searchPlaceholder: string;
+  filter: string;
+  onFilter: (id: string) => void;
+  filters: ListingFilter[];
+  counts: Record<string, number>;
+}) {
+  const showChips = filters.length > 1;
+  return (
+    <div className="flex flex-wrap items-center gap-3">
+      <div className="min-w-56 flex-1">
+        <SearchInput
+          value={query}
+          onChange={onQuery}
+          placeholder={searchPlaceholder}
+          shortPlaceholder="Search…"
+        />
+      </div>
+      {showChips ? (
+        <FilterChips>
+          {filters.map((f) => (
+            <FilterPill
+              key={f.id}
+              label={f.label}
+              count={counts[f.id] ?? 0}
+              active={filter === f.id}
+              onClick={() => onFilter(f.id)}
+            />
+          ))}
+        </FilterChips>
+      ) : null}
+    </div>
+  );
 }
 
-function ListingRowView({ item }: { item: ListingRow }) {
-  return (
-    <ResourceRow
+function TitleCell({ item }: { item: ListingRow }) {
+  const title = item.href ? (
+    <Link
       href={item.href}
-      title={item.title}
-      meta={item.meta}
-      shortId={item.shortId}
-      glyph={item.glyph}
-      glyphLabel={item.glyphLabel}
-      avatar={item.avatar}
-      trailingText={item.trailingText}
-      trailing={
-        item.badges?.length ? (
-          <>
-            {item.badges.map((b) => (
-              <Badge key={`${item.id}-${b.label}`} variant={b.variant}>
-                {b.label}
-              </Badge>
-            ))}
-          </>
-        ) : undefined
-      }
-    />
+      prefetch={false}
+      className="min-w-0 truncate font-medium outline-none hover:underline focus-visible:underline"
+    >
+      {item.title}
+    </Link>
+  ) : (
+    <span className="min-w-0 truncate font-medium">{item.title}</span>
+  );
+
+  return (
+    <div className="flex min-w-0 items-center gap-3">
+      {item.glyph ? <StatusGlyph kind={item.glyph} label={item.glyphLabel} /> : null}
+      {item.shortId ? (
+        <span className="text-muted-foreground hidden w-14 shrink-0 truncate font-mono text-xs sm:block">
+          {item.shortId}
+        </span>
+      ) : null}
+      {item.avatar ? (
+        <span
+          aria-hidden
+          className="bg-muted text-muted-foreground grid size-6 shrink-0 place-items-center rounded-full text-xs font-medium"
+        >
+          {item.avatar}
+        </span>
+      ) : null}
+      {title}
+    </div>
+  );
+}
+
+function TrailingCell({ item }: { item: ListingRow }) {
+  return (
+    <span className="flex items-center justify-end gap-2">
+      {item.trailingText ? (
+        <span className="text-muted-foreground hidden max-w-[10rem] truncate text-[13px] lg:inline">
+          {item.trailingText}
+        </span>
+      ) : null}
+      {item.badges?.map((b) => (
+        <Badge key={`${item.id}-${b.label}`} variant={b.variant}>
+          {b.label}
+        </Badge>
+      ))}
+      {item.trailing}
+    </span>
   );
 }
 
 /**
- * Search plus filter chips over a Linear list. `empty` (an EmptyState) shows while there is
- * nothing to narrow; `framed` puts the list in a settings card instead of edge to edge.
+ * Operator collection list on Foundry/Realm `DataTable` (not a separate table).
+ * Status chips filter in-memory rows; search uses DataTable’s URL `?q=` box.
  */
-export function FilteredResourceList({
+export function ListingTable({
   title,
   empty,
   searchPlaceholder,
@@ -221,46 +217,92 @@ export function FilteredResourceList({
   searchPlaceholder: string;
   filters: ListingFilter[];
   items: ListingRow[];
+  /** Optional section title chrome (settings-style). */
   framed?: boolean;
 }) {
-  const { query, setQuery, filter, setFilter, filters, counts, visible } = useListingState(
-    items,
-    extraFilters,
+  const [filter, setFilter] = useState("all");
+
+  const filters = useMemo(() => {
+    const used = new Set(items.flatMap((item) => item.filterKeys));
+    return [ALL, ...extraFilters.filter((f) => used.has(f.id))];
+  }, [items, extraFilters]);
+
+  const counts = useMemo(() => {
+    const next: Record<string, number> = { all: items.length };
+    for (const f of filters) {
+      if (f.id === "all") continue;
+      next[f.id] = items.filter((item) => item.filterKeys.includes(f.id)).length;
+    }
+    return next;
+  }, [items, filters]);
+
+  const rows = useMemo(
+    () => items.filter((item) => filter === "all" || item.filterKeys.includes(filter)),
+    [items, filter],
   );
 
   if (items.length === 0) return <>{empty}</>;
 
-  const groups = groupRows(visible);
-  return (
-    <ResourceBoard
-      title={title}
-      framed={framed}
-      count={listingCountLabel(visible.length, items.length)}
-      toolbar={
-        <ListingToolbar
-          query={query}
-          onQuery={setQuery}
-          searchPlaceholder={searchPlaceholder}
-          filter={filter}
-          onFilter={setFilter}
-          filters={filters}
-          counts={counts}
-        />
-      }
-    >
-      {visible.length === 0 ? (
-        <ResourceEmpty icon={SearchIcon} message="Nothing matches. Clear search or pick All." />
-      ) : groups ? (
-        groups.map((g) => (
-          <ResourceGroup key={g.label} label={g.label} count={g.rows.length} glyph={g.glyph}>
-            {g.rows.map((item) => (
-              <ListingRowView key={item.id} item={item} />
+  const showChips = filters.length > 1;
+  const table = (
+    <DataTable
+      serial={false}
+      columns={COLUMNS}
+      rows={rows}
+      rowKey={(r) => r.id}
+      search={{
+        placeholder: searchPlaceholder,
+        shortPlaceholder: "Search…",
+        keys: ["searchText", "title", "meta"],
+      }}
+      filters={
+        showChips ? (
+          <FilterChips>
+            {filters.map((f) => (
+              <FilterPill
+                key={f.id}
+                label={f.label}
+                count={counts[f.id] ?? 0}
+                active={filter === f.id}
+                onClick={() => setFilter(f.id)}
+              />
             ))}
-          </ResourceGroup>
-        ))
-      ) : (
-        visible.map((item) => <ListingRowView key={item.id} item={item} />)
+          </FilterChips>
+        ) : undefined
+      }
+      emptyIcon={SearchIcon}
+      emptyMessage={`No ${title.toLowerCase()} yet.`}
+      emptySearchMessage="Nothing matches. Clear search or pick All."
+      renderRow={(r) => (
+        <>
+          <TableCell>
+            <TitleCell item={r} />
+          </TableCell>
+          <TableCell className="text-muted-foreground text-[13px]">{r.meta ?? null}</TableCell>
+          <TableCell className="text-right">
+            <TrailingCell item={r} />
+          </TableCell>
+        </>
       )}
-    </ResourceBoard>
+    />
+  );
+
+  if (framed) {
+    return (
+      <section className="flex flex-col gap-3">
+        <h3 className="text-sm font-semibold">{title}</h3>
+        {table}
+      </section>
+    );
+  }
+
+  return (
+    <section className="flex flex-col gap-3">
+      <h2 className="sr-only">{title}</h2>
+      {table}
+    </section>
   );
 }
+
+/** @deprecated Prefer `ListingTable`. */
+export const FilteredResourceList = ListingTable;

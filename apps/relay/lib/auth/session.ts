@@ -30,15 +30,20 @@ async function loadSession(fresh: boolean) {
     role?: RoleValue;
     email?: string;
     name?: string | null;
+    platformRole?: string | null;
   };
   if (!u.publicId) return null;
+  const activeOrganizationId =
+    (s.session as { activeOrganizationId?: string | null } | undefined)?.activeOrganizationId ?? null;
   return {
     user: {
       id: u.publicId,
       role: u.role ?? Role.ADMIN,
       email: u.email ?? "",
       name: u.name ?? "",
+      platformRole: u.platformRole ?? null,
     },
+    session: { activeOrganizationId },
   };
 }
 
@@ -47,4 +52,3 @@ export const getSession = cache(() => loadSession(false));
 
 /** For guards in front of changes: reads the database, so a revoked session or role change applies at once. */
 export const getFreshSession = cache(() => loadSession(true));
-

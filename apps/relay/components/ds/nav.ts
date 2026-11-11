@@ -40,6 +40,11 @@ export const SECTION_TABS = {
     { href: "/dashboard/settings/email", label: "Email sending" },
     { href: "/dashboard/settings/mailboxes", label: "Mailboxes" },
     { href: "/dashboard/settings/tags", label: "Tags" },
+    { href: "/dashboard/account", label: "Your account" },
+  ],
+  /** Organization sidebar section (Clients + Team). Clients tab is platform-only in the shell. */
+  organization: [
+    { href: "/dashboard/platform", label: "Clients" },
     { href: "/dashboard/accounts", label: "Team" },
   ],
 } as const;
@@ -48,6 +53,7 @@ const tabHrefs = (tabs: readonly { href: string }[]) => tabs.map((t) => t.href);
 
 export const NAV_GROUPS: readonly NavGroup[] = [
   {
+    label: "Overview",
     items: [
       { href: "/dashboard", label: "Home", icon: HouseIcon, color: "purple" },
       { href: "/dashboard/mailbox", label: "Inbox", icon: InboxIcon, color: "blue" },

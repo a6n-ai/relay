@@ -70,7 +70,7 @@ Sources: [A design reset](https://linear.app/now/a-design-reset), [How we redesi
 - **Dialogs and forms**: creating something happens in a level-3 dialog over the list (`CreateDialog`), never in a side column. Fields are 32px on the surface below their container, labels 13px muted, focus ring lavender.
 - **App header**: none on desktop; pages run full height (Linear). The sidebar carries the collapse toggle (header) and the theme switch (footer) and collapses to an icon rail. On phones the CrmShell header stays, because it opens the sidebar.
 - **View header** (`ViewHeader`): one compact row (icon, title, actions) plus at most one muted line of description; never a hero.
-- **Lists** (`FilteredResourceList`, `ResourceRow`): compact rows on hairlines, search and filter chips above, an empty state that names the next action.
+- **Lists** (`ListingTable` → Foundry `DataTable`, `ResourceRow`): search + filter chips above compact rows; empty state names the next action. Motion stays CSS-only on this surface (no row stagger on filter/search).
 - **Feedback**: `loading.tsx` skeletons for waits, `LoadingButton` for in-place saving/saved/try-again, toasts only for results that leave the screen.
 
 ## Observed in Linear (workspace tour, 2026-11-10)
@@ -97,7 +97,8 @@ Every DESIGN.md surface maps to one Relay component. Build screens from these an
 |---|---|---|
 | surface-1 panel | `Panel` | components/ds/panel.tsx |
 | table frame | `DataSurface` (a `Panel`) | components/ds/data-surface.tsx |
-| list with search + filters | `FilteredResourceList`, `ResourceBoard`, `ResourceRow` | components/ds/listing-controls.tsx, resource-list.tsx |
+| list with search + filters | `ListingTable` (thin Relay adapter) → Foundry/Realm `DataTable` + `FilterPill` chips | components/ds/listing-controls.tsx → `@foundry/design-system` `DataTable` |
+| columnar / sortable CRM grid | Foundry `DataTable` directly (Beautiful UI Records Table ref) | `@foundry/design-system` |
 | collection page: full-width list, "New …" opens a dialog (`createLabel`); detail page: content left, edit panel right | `OperatorSplit`, `CreateDialog` | components/ds/operator-split.tsx, create-dialog.tsx |
 | status-badge (signed deltas get an arrow) | `StatusBadge` (tone: ok, bad, neutral) | components/ds/status-badge.tsx |
 | send status | `OutboxStatusBadge` | components/outbox-status-badge.tsx |

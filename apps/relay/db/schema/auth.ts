@@ -18,6 +18,11 @@ export const users = pgTable(
     role: userRole("role").notNull().default("admin"),
     status: userStatus("status").notNull().default("active"),
     passwordSet: boolean("password_set").notNull().default(true),
+    /**
+     * Person-level bypass (e.g. `super_admin`) for a6n staff — separate from
+     * per-workspace `member.role`. See `@foundry/auth` `resolveVisibleOrgIds`.
+     */
+    platformRole: text("platform_role"),
     banned: boolean("banned").default(false),
     banReason: text("ban_reason"),
     banExpires: timestamp("ban_expires"),
@@ -39,10 +44,15 @@ export const session = pgTable("session", {
   ipAddress: text("ip_address"),
   userAgent: text("user_agent"),
   impersonatedBy: text("impersonated_by"),
+  /** Better Auth organization plugin — scopes the Relay console to one workspace. */
+  activeOrganizationId: text("active_organization_id"),
   userId: bigint("user_id", { mode: "bigint" }).notNull().references(() => users.id, { onDelete: "cascade" }),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow().$onUpdate(() => new Date()),
-}, (t) => [index("session_user_id_idx").on(t.userId)]);
+}, (t) => [
+  index("session_user_id_idx").on(t.userId),
+  index("session_active_organization_id_idx").on(t.activeOrganizationId),
+]);
 
 export const account = pgTable("account", {
   id: text("id").primaryKey().default(nextIdText),

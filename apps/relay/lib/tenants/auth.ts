@@ -6,6 +6,7 @@ import { bearerToken, hashApiKey } from "@/lib/api-keys";
 
 export type TenantAuth = {
   tenantId: bigint;
+  organizationId: string | null;
   slug: string;
   name: string;
   monthlyMessageQuota: number;
@@ -19,6 +20,7 @@ export async function authenticateTenant(req: Request): Promise<TenantAuth | nul
   const [row] = await db
     .select({
       tenantId: apiKeys.tenantId,
+      organizationId: tenants.organizationId,
       slug: tenants.slug,
       name: tenants.name,
       monthlyMessageQuota: tenants.monthlyMessageQuota,
@@ -32,6 +34,7 @@ export async function authenticateTenant(req: Request): Promise<TenantAuth | nul
   if (!row) return null;
   return {
     tenantId: row.tenantId,
+    organizationId: row.organizationId,
     slug: row.slug,
     name: row.name,
     monthlyMessageQuota: row.monthlyMessageQuota,

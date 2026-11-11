@@ -3,8 +3,7 @@ import { KeyIcon } from "lucide-react";
 import { PageShell } from "@foundry/design-system";
 import { CreateDialog } from "@/components/ds/create-dialog";
 import { EmptyState } from "@/components/ds/empty-state";
-import { FilteredResourceList } from "@/components/ds/listing-controls";
-import type { ListingFilter, ListingRow } from "@/components/ds/listing-controls";
+import { ListingTable, type ListingFilter, type ListingRow } from "@/components/ds/listing-table";
 import { db } from "@/db/client";
 import { apiKeys } from "@/db/schema";
 import { tenantsService } from "@/lib/services/tenants.service";
@@ -85,13 +84,16 @@ export default async function TenantsPage() {
         subtitle="Each app has its own monthly send limit and From address."
         actions={create(false)}
       />
-      <FilteredResourceList
+      <ListingTable
         title="Your apps"
         empty={
           <EmptyState
             icon={KeyIcon}
-            title="No apps yet"
-            lines={["An app is anything that sends through Relay.", "Add one to get its access key."]}
+            title="Start by creating an app"
+            lines={[
+              "A new workspace starts empty.",
+              "Create an app to get a send limit, From address, and access key.",
+            ]}
             action={create(true)}
             docsHref="/docs"
           />

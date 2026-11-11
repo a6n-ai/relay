@@ -2,18 +2,11 @@
 
 import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { SearchIcon, TagsIcon, XIcon } from "lucide-react";
+import { TagsIcon, XIcon } from "lucide-react";
 import { Button } from "@foundry/ui/button";
 import { apiFetch } from "@relay/engine/ui/api-fetch";
-import {
-  listingCountLabel,
-  ListingToolbar,
-  useListingState,
-  type ListingFilter,
-  type ListingRow,
-} from "@/components/ds/listing-controls";
 import { EmptyState } from "@/components/ds/empty-state";
-import { ResourceBoard, ResourceEmpty, ResourceRow } from "@/components/ds/resource-list";
+import { ListingTable, type ListingFilter, type ListingRow } from "@/components/ds/listing-table";
 
 export function AppTagsBoard({
   items,
@@ -25,10 +18,6 @@ export function AppTagsBoard({
   emptyAction?: ReactNode;
 }) {
   const router = useRouter();
-  const { query, setQuery, filter, setFilter, filters: chips, counts, visible } = useListingState(
-    items,
-    filters,
-  );
 
   async function remove(tenantPublicId: string, slug: string) {
     try {
@@ -43,57 +32,42 @@ export function AppTagsBoard({
     }
   }
 
-  if (items.length === 0) {
-    return (
-      <EmptyState
-        icon={TagsIcon}
-        title="No tags yet"
-        lines={["A tag marks every message for one app.", "Add one to find those messages fast in Inbox."]}
-        action={emptyAction}
-        docsHref="/docs"
-      />
-    );
-  }
+  const rows: ListingRow[] = items.map((item) => ({
+    id: item.id,
+    title: item.title,
+    meta: item.meta,
+    searchText: item.searchText,
+    filterKeys: item.filterKeys,
+    badges: item.badges,
+    trailing: (
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        aria-label={`Remove ${item.title}`}
+        onClick={() => void remove(item.tenantPublicId, item.slug)}
+      >
+        <XIcon />
+      </Button>
+    ),
+  }));
 
   return (
-    <ResourceBoard
-      framed
+    <ListingTable
       title="All tags"
-      count={listingCountLabel(visible.length, items.length)}
-      toolbar={
-        <ListingToolbar
-          query={query}
-          onQuery={setQuery}
-          searchPlaceholder="Search tags"
-          filter={filter}
-          onFilter={setFilter}
-          filters={chips}
-          counts={counts}
+      framed
+      searchPlaceholder="Search tags"
+      filters={filters}
+      items={rows}
+      empty={
+        <EmptyState
+          icon={TagsIcon}
+          title="No tags yet"
+          lines={["A tag marks every message for one app.", "Add one to find those messages fast in Inbox."]}
+          action={emptyAction}
+          docsHref="/docs"
         />
       }
-    >
-      {visible.length === 0 ? (
-        <ResourceEmpty icon={SearchIcon} message="Nothing matches. Clear search or pick All." />
-      ) : (
-        visible.map((item) => (
-          <ResourceRow
-            key={item.id}
-            title={item.title}
-            meta={item.meta}
-            trailing={
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                aria-label={`Remove ${item.title}`}
-                onClick={() => void remove(item.tenantPublicId, item.slug)}
-              >
-                <XIcon />
-              </Button>
-            }
-          />
-        ))
-      )}
-    </ResourceBoard>
+    />
   );
 }

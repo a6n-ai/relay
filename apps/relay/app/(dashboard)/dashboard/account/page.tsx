@@ -14,7 +14,8 @@ export default async function AccountPage() {
     <PageShell>
       <ViewHeader
         title="Your account"
-        subtitle="Name, appearance, and password."
+        subtitle="Name, appearance, and password. Team and Clients live under Organization."
+        section="settings"
       />
       <AccountSettingsForm
         email={session.user.email}

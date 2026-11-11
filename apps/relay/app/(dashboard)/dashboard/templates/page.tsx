@@ -2,8 +2,7 @@ import { FileTextIcon } from "lucide-react";
 import { PageShell } from "@foundry/design-system";
 import { CreateDialog } from "@/components/ds/create-dialog";
 import { EmptyState } from "@/components/ds/empty-state";
-import { FilteredResourceList } from "@/components/ds/listing-controls";
-import type { ListingFilter, ListingRow } from "@/components/ds/listing-controls";
+import { ListingTable, type ListingFilter, type ListingRow } from "@/components/ds/listing-table";
 import { displayChannel } from "@/components/ds/plain-labels";
 import { templatesService } from "@/lib/services/templates.service";
 import { tenantsService } from "@/lib/services/tenants.service";
@@ -62,7 +61,7 @@ export default async function TemplatesPage() {
         section="campaigns"
         actions={create(false)}
       />
-      <FilteredResourceList
+      <ListingTable
         title="Saved templates"
         empty={
           <EmptyState

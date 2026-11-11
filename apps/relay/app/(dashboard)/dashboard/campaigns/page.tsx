@@ -3,8 +3,7 @@ import { MegaphoneIcon } from "lucide-react";
 import { PageShell } from "@foundry/design-system";
 import { CreateDialog } from "@/components/ds/create-dialog";
 import { EmptyState } from "@/components/ds/empty-state";
-import { FilteredResourceList } from "@/components/ds/listing-controls";
-import type { ListingFilter, ListingRow } from "@/components/ds/listing-controls";
+import { ListingTable, type ListingFilter, type ListingRow } from "@/components/ds/listing-table";
 import { campaignStatusLabel } from "@/components/ds/plain-labels";
 import { campaignGlyph } from "@/components/ds/status-glyph";
 import { db } from "@/db/client";
@@ -83,7 +82,7 @@ export default async function CampaignsPage() {
         section="campaigns"
         actions={create(false)}
       />
-      <FilteredResourceList
+      <ListingTable
         title="Campaigns by status"
         empty={
           <EmptyState

@@ -1,11 +1,12 @@
+import { eq } from "drizzle-orm";
 import { enqueueTenant } from "@relay/engine";
 import { db } from "@/db/client";
-import { notificationTables } from "@/db/schema";
+import { notificationTables, organization } from "@/db/schema";
 import { applyListAutomations } from "@/lib/automations/apply-list";
 import { authenticateTenant, requestedChannels } from "@/lib/tenants/auth";
 import { deniedChannels } from "@/lib/tenants/channels";
 import { quotaExceeded } from "@/lib/tenants/quota";
-import { countTenantSendsThisMonth } from "@/lib/tenants/usage";
+import { countOrganizationSendsThisMonth, countTenantSendsThisMonth } from "@/lib/tenants/usage";
 import { parseMessageJson } from "@/lib/v1/message-body";
 import { signalOutbox } from "@/lib/runtime/outbox-signal";
 import { enqueueTenantWebhooks } from "@/lib/webhooks/enqueue";
@@ -43,6 +44,27 @@ export async function POST(req: Request) {
       { title: "Monthly message quota exceeded", status: 429, used, quota: tenant.monthlyMessageQuota },
       { status: 429 },
     );
+  }
+  if (tenant.organizationId) {
+    const [org] = await db
+      .select({ monthlyMessageQuota: organization.monthlyMessageQuota })
+      .from(organization)
+      .where(eq(organization.id, tenant.organizationId))
+      .limit(1);
+    if (org) {
+      const orgUsed = await countOrganizationSendsThisMonth(tenant.organizationId);
+      if (quotaExceeded(orgUsed, org.monthlyMessageQuota)) {
+        return Response.json(
+          {
+            title: "Workspace monthly message quota exceeded",
+            status: 429,
+            used: orgUsed,
+            quota: org.monthlyMessageQuota,
+          },
+          { status: 429 },
+        );
+      }
+    }
   }
   await enqueueTenant(db, notificationTables, {
     tenantId: tenant.tenantId,

@@ -8,6 +8,11 @@ export const tenants = pgTable("tenants", {
   ...updatableColumns("tnt"),
   name: text("name").notNull(),
   slug: text("slug").notNull(),
+  /**
+   * Better Auth organization id that owns this app. Console lists only apps for
+   * the session's activeOrganizationId. Nullable until seed/migration backfill.
+   */
+  organizationId: text("organization_id"),
   /** ISO 3166-1 alpha-2 (or EU) for marketing compliance. */
   mailingCountry: text("mailing_country").notNull().default("CA"),
   /** CAN-SPAM / CASL postal address printed in marketing footers. */
@@ -18,6 +23,7 @@ export const tenants = pgTable("tenants", {
   mailboxSeatQuota: integer("mailbox_seat_quota").notNull().default(5),
 }, (t) => [
   uniqueIndex("tenants_slug_unique").on(t.slug),
+  index("tenants_organization_id_idx").on(t.organizationId),
 ]);
 
 export const apiKeys = pgTable("api_keys", {

@@ -21,14 +21,19 @@ const listColumns = {
   rfcReferences: emailMailbox.rfcReferences,
 };
 
-export async function listMailboxLetters(limit = 100) {
-  return db
+export async function listMailboxLetters(limit = 100, tenantId?: bigint) {
+  const base = db
     .select(listColumns)
     .from(emailMailbox)
     .leftJoin(notificationOutbox, eq(emailMailbox.outboxId, notificationOutbox.id))
-    .leftJoin(tenants, eq(emailMailbox.tenantId, tenants.id))
-    .orderBy(desc(emailMailbox.createdAt))
-    .limit(limit);
+    .leftJoin(tenants, eq(emailMailbox.tenantId, tenants.id));
+  if (tenantId != null) {
+    return base
+      .where(eq(emailMailbox.tenantId, tenantId))
+      .orderBy(desc(emailMailbox.createdAt))
+      .limit(limit);
+  }
+  return base.orderBy(desc(emailMailbox.createdAt)).limit(limit);
 }
 
 export async function listMailboxThread(threadId: string) {

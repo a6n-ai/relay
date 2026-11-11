@@ -2,8 +2,7 @@ import { desc } from "drizzle-orm";
 import { ScrollTextIcon } from "lucide-react";
 import { PageShell } from "@foundry/design-system";
 import { EmptyState } from "@/components/ds/empty-state";
-import { FilteredResourceList } from "@/components/ds/listing-controls";
-import type { ListingFilter, ListingRow } from "@/components/ds/listing-controls";
+import { ListingTable, type ListingFilter, type ListingRow } from "@/components/ds/listing-table";
 import { displayChannel, kindLabel, outboxStatusLabel } from "@/components/ds/plain-labels";
 import { outboxGlyph } from "@/components/ds/status-glyph";
 import { db } from "@/db/client";
@@ -69,7 +68,7 @@ export default async function LogsPage() {
         subtitle="Every message Relay tried to deliver. Failed ones are retried automatically a few times."
         section="activity"
       />
-      <FilteredResourceList
+      <ListingTable
         title="Recent sends"
         empty={
           <EmptyState

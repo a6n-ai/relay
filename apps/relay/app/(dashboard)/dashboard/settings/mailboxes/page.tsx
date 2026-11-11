@@ -3,9 +3,9 @@ import { PageShell } from "@foundry/design-system";
 import { CreateDialog } from "@/components/ds/create-dialog";
 import { EmptyState } from "@/components/ds/empty-state";
 import { SettingsPage } from "@/components/ds/settings";
-import { FilteredResourceList } from "@/components/ds/listing-controls";
-import type { ListingFilter, ListingRow } from "@/components/ds/listing-controls";
+import { ListingTable, type ListingFilter, type ListingRow } from "@/components/ds/listing-table";
 import { mailboxKindLabel } from "@/components/ds/plain-labels";
+import { resolveActiveApp } from "@/lib/apps/active-app";
 import { sendingDomainsService } from "@/lib/services/sending.service";
 import { tenantMailboxesService } from "@/lib/services/tenant-mailboxes.service";
 import { tenantsService } from "@/lib/services/tenants.service";
@@ -17,11 +17,13 @@ export const dynamic = "force-dynamic";
 export const metadata = { title: "Mailboxes" };
 
 export default async function MailboxesSettingsPage() {
-  const [{ items: apps }, { items: boxes }, { items: domains }] = await Promise.all([
+  const [activeApp, { items: allApps }, { items: boxes }, { items: domains }] = await Promise.all([
+    resolveActiveApp(),
     tenantsService.listRecent(),
     tenantMailboxesService.listRecent(undefined, 500),
     sendingDomainsService.listRecent(undefined, 500),
   ]);
+  const apps = activeApp ? allApps.filter((a) => a.id === activeApp.id) : allApps;
   const appById = new Map(apps.map((a) => [a.id, a]));
   const items: ListingRow[] = [];
   for (const b of boxes) {
@@ -57,13 +59,17 @@ export default async function MailboxesSettingsPage() {
       <ViewHeader
         title="Mailboxes"
         section="settings"
-        actions={create(false)}
+        actions={apps.length > 0 ? create(false) : undefined}
       />
       <SettingsPage
         title="Mailboxes"
-        subtitle="Addresses your apps send from and receive at. Letters to a Relay inbox show up in Inbox."
+        subtitle={
+          activeApp
+            ? `Addresses for ${activeApp.name}. Switch apps in the sidebar to manage another.`
+            : "Addresses your apps send from and receive at. Letters to a Relay inbox show up in Inbox."
+        }
       >
-        <FilteredResourceList
+        <ListingTable
           framed
           title="All mailboxes"
           empty={

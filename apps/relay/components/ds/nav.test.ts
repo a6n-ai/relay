@@ -8,6 +8,11 @@ describe("sidebar", () => {
     expect(items.length).toBeLessThanOrEqual(8);
   });
 
+  it("labels Home and Inbox under Overview", () => {
+    expect(NAV_GROUPS[0]?.label).toBe("Overview");
+    expect(NAV_GROUPS[0]?.items.map((i) => i.label)).toEqual(["Home", "Inbox"]);
+  });
+
   it.each([
     ["/dashboard", "/dashboard"],
     ["/dashboard/mailbox/abc", "/dashboard/mailbox"],
@@ -18,7 +23,7 @@ describe("sidebar", () => {
     ["/dashboard/channels/sms", "/dashboard/channels/email"],
     ["/dashboard/settings/tags", "/dashboard/settings/email"],
     ["/dashboard/settings/mailboxes", "/dashboard/settings/email"],
-    ["/dashboard/accounts", "/dashboard/settings/email"],
+    ["/dashboard/account", "/dashboard/settings/email"],
     ["/dashboard/tenants/tnt_1", "/dashboard/tenants"],
   ])("%s highlights %s", (path, href) => {
     expect(activeNavHref(path)).toBe(href);
@@ -38,11 +43,12 @@ describe("sidebar", () => {
       const lit = items.filter((i) => i.href === activeNavHref(path));
       expect(lit.length, path).toBeLessThanOrEqual(1);
     }
-    expect(activeNavHref("/dashboard/account")).toBeUndefined();
+    expect(activeNavHref("/dashboard/account")).toBe("/dashboard/settings/email");
   });
 
-  it("every tab page belongs to exactly one sidebar link", () => {
-    for (const tabs of Object.values(SECTION_TABS)) {
+  it("product tab pages belong to exactly one sidebar link; Organization stays outside the 8", () => {
+    for (const [key, tabs] of Object.entries(SECTION_TABS)) {
+      if (key === "organization") continue;
       for (const t of tabs) expect(items.filter((i) => activeNavHref(t.href) === i.href)).toHaveLength(1);
     }
   });

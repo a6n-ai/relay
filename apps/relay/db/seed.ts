@@ -1,7 +1,7 @@
-import { eq, sql } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { hashPassword } from "@foundry/auth";
 import { db } from "./client";
-import { account, apiKeys, app, tenants, users } from "./schema";
+import { account, apiKeys, app, member, organization, tenants, users } from "./schema";
 import { generateApiKey } from "../lib/api-keys";
 
 async function main() {
@@ -20,6 +20,7 @@ async function main() {
   `);
 
   const [existing] = await db.select({ id: users.id }).from(users).where(eq(users.email, email)).limit(1);
+  let operatorId = existing?.id;
   if (!existing) {
     const hash = await hashPassword(password);
     await db.transaction(async (tx) => {
@@ -30,6 +31,7 @@ async function main() {
         role: "admin",
         status: "active",
         passwordSet: true,
+        platformRole: "super_admin",
       }).returning();
       await tx.insert(account).values({
         accountId: user.id.toString(),
@@ -37,23 +39,71 @@ async function main() {
         userId: user.id,
         password: hash,
       });
+      operatorId = user.id;
     });
     console.log(`operator created: ${email}`);
   } else {
     console.log(`operator already exists: ${email}`);
   }
 
+  // Seed ops are a6n platform staff (Foundry resolveVisibleOrgIds / Clients page).
+  await db.update(users).set({ platformRole: "super_admin" }).where(eq(users.email, email));
+  console.log(`operator platformRole=super_admin: ${email}`);
+
+  const orgId = await ensureDefaultWorkspace(operatorId!);
+
   // Demo apps with live API keys are for local dev only; a production seed creates just the operator.
-  if (process.env.SEED_DEMO_APPS === "1") await seedDemoApps();
+  if (process.env.SEED_DEMO_APPS === "1") await seedDemoApps(orgId);
 }
 
-async function seedDemoApps() {
+/** Default a6n workspace + owner membership; attach orphan apps. */
+async function ensureDefaultWorkspace(userId: bigint): Promise<string> {
+  const slug = "a6n";
+  let [org] = await db.select().from(organization).where(eq(organization.slug, slug)).limit(1);
+  if (!org) {
+    [org] = await db
+      .insert(organization)
+      .values({ name: "a6n", slug })
+      .returning();
+    console.log(`workspace created: ${slug}`);
+  } else {
+    console.log(`workspace already exists: ${slug}`);
+  }
+
+  const [membership] = await db
+    .select({ id: member.id })
+    .from(member)
+    .where(and(eq(member.organizationId, org.id), eq(member.userId, userId)))
+    .limit(1);
+  if (!membership) {
+    await db.insert(member).values({
+      organizationId: org.id,
+      userId,
+      role: "owner",
+    });
+    console.log(`operator joined workspace ${slug} as owner`);
+  }
+
+  const orphaned = await db
+    .update(tenants)
+    .set({ organizationId: org.id })
+    .where(isNull(tenants.organizationId))
+    .returning({ id: tenants.id });
+  if (orphaned.length > 0) {
+    console.log(`attached ${orphaned.length} app(s) to workspace ${slug}`);
+  }
+
+  return org.id;
+}
+
+async function seedDemoApps(organizationId: string) {
   const [tenant] = await db.select().from(tenants).where(eq(tenants.slug, "realm-dev")).limit(1);
   if (!tenant) {
     const [created] = await db.insert(tenants).values({
       name: "Realm",
       slug: "realm-dev",
       mailingCountry: "CA",
+      organizationId,
     }).returning();
     const key = generateApiKey();
     await db.insert(apiKeys).values({
@@ -84,6 +134,7 @@ async function seedDemoApps() {
       name: spec.name,
       slug: spec.slug,
       mailingCountry: "CA",
+      organizationId,
     }).returning();
     const key = generateApiKey();
     await db.insert(apiKeys).values({

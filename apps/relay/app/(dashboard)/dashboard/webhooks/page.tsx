@@ -2,8 +2,7 @@ import { WebhookIcon } from "lucide-react";
 import { PageShell } from "@foundry/design-system";
 import { CreateDialog } from "@/components/ds/create-dialog";
 import { EmptyState } from "@/components/ds/empty-state";
-import { FilteredResourceList } from "@/components/ds/listing-controls";
-import type { ListingFilter, ListingRow } from "@/components/ds/listing-controls";
+import { ListingTable, type ListingFilter, type ListingRow } from "@/components/ds/listing-table";
 import { webhookEventLabel } from "@/components/ds/plain-labels";
 import { tenantsService } from "@/lib/services/tenants.service";
 import { tenantWebhooksService } from "@/lib/services/webhooks.service";
@@ -57,7 +56,7 @@ export default async function WebhooksPage() {
         section="activity"
         actions={create(false)}
       />
-      <FilteredResourceList
+      <ListingTable
         title="Destinations"
         empty={
           <EmptyState

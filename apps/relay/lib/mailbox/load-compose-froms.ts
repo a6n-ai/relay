@@ -1,18 +1,21 @@
+import { resolveActiveApp } from "@/lib/apps/active-app";
 import { operatorDefaultFrom } from "@/lib/email/from-address";
 import { emailSendersService } from "@/lib/services/email-senders.service";
 import { tenantsService } from "@/lib/services/tenants.service";
 import { composeFromOptions, type ComposeFromOption } from "./compose-from";
 
 export async function loadComposeFroms(): Promise<ComposeFromOption[]> {
-  const [operator, tenants, senders] = await Promise.all([
+  const [operator, tenants, senders, activeApp] = await Promise.all([
     operatorDefaultFrom(),
     tenantsService.listRecent(),
     emailSendersService.listRecent(),
+    resolveActiveApp(),
   ]);
   const tenantById = new Map(tenants.items.map((t) => [t.id.toString(), t]));
   return composeFromOptions({
     operator,
     senders: senders.items.flatMap((s) => {
+      if (activeApp && s.tenantId !== activeApp.id) return [];
       const tenant = tenantById.get(s.tenantId.toString());
       if (!tenant) return [];
       return [

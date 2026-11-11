@@ -8,6 +8,27 @@
       "when": 1794312858674,
       "tag": "0000_init",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1794333089029,
+      "tag": "0001_youthful_expediter",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1794335000000,
+      "tag": "0002_platform_role",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1794336000000,
+      "tag": "0003_client_limits",
+      "breakpoints": true
     }
   ]
 }

@@ -1,14 +1,22 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { nextCookies } from "better-auth/next-js";
-import { admin as adminPlugin, emailOTP } from "better-auth/plugins";
+import { admin as adminPlugin, emailOTP, organization } from "better-auth/plugins";
 import { APIError, createAuthMiddleware } from "better-auth/api";
 import { eq } from "drizzle-orm";
 import { authAuditAction } from "@foundry/auth";
 import { Role } from "@foundry/commons";
 import { createLogger } from "@foundry/commons/logger";
 import { db } from "@/db/client";
-import { account, session, users, verification } from "@/db/schema";
+import {
+  account,
+  invitation,
+  member,
+  organization as organizationTable,
+  session,
+  users,
+  verification,
+} from "@/db/schema";
 import { recordAudit } from "@/lib/services/session-service";
 import { betterAuthPassword } from "./password";
 import { ac, roles } from "./permissions";
@@ -22,7 +30,15 @@ export const auth = betterAuth({
   secret: process.env.BETTER_AUTH_SECRET,
   database: drizzleAdapter(db, {
     provider: "pg",
-    schema: { user: users, account, session, verification },
+    schema: {
+      user: users,
+      account,
+      session,
+      verification,
+      organization: organizationTable,
+      member,
+      invitation,
+    },
   }),
   advanced: {
     database: { generateId: false },
@@ -56,6 +72,9 @@ export const auth = betterAuth({
     additionalFields: {
       role: { type: "string", required: false, defaultValue: Role.ADMIN, input: false },
       publicId: { type: "string", required: false, input: false },
+      // Platform-wide override (e.g. "super_admin"), separate from member.role.
+      // See @foundry/auth resolveVisibleOrgIds — not settable via client input.
+      platformRole: { type: "string", required: false, defaultValue: null, input: false },
     },
   },
   plugins: [
@@ -68,6 +87,11 @@ export const auth = betterAuth({
       sendVerificationOTP: async ({ email, otp, type }) => {
         await sendAuthOtp(email, otp, type);
       },
+    }),
+    organization({
+      // Clients (and a6n) create workspaces; public sign-up stays disabled above.
+      // Flat workspaces — Relay does not use Foundry brand→franchise hierarchy.
+      allowUserToCreateOrganization: true,
     }),
     adminPlugin({ ac, roles, defaultRole: Role.ADMIN, adminRoles: [Role.ADMIN] }),
     nextCookies(),

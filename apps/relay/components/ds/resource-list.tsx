@@ -109,7 +109,11 @@ export function ResourceRow({
   const className = cn(
     "flex h-10 items-center gap-3 text-sm outline-none [content-visibility:auto] [contain-intrinsic-size:auto_40px]",
     framed ? "px-4" : "px-6",
-    href && "transition-colors duration-150 hover:bg-accent focus-visible:bg-accent active:bg-accent",
+    "transition-[background-color] duration-150 ease-[cubic-bezier(0.23,1,0.32,1)]",
+    "focus-visible:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
+    "motion-reduce:transition-none",
+    href && "hover:bg-accent active:bg-accent",
+    !href && trailing && "hover:bg-accent/60",
   );
   const body = (
     <>
