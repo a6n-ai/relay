@@ -29,6 +29,13 @@
       "when": 1794336000000,
       "tag": "0003_client_limits",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1794379838439,
+      "tag": "0004_mature_klaw",
+      "breakpoints": true
     }
   ]
 }
