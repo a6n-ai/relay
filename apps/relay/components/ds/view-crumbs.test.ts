@@ -29,7 +29,10 @@ describe("viewCrumbs", () => {
     ]);
   });
 
-  it("falls back to the title for pages outside the sidebar", () => {
-    expect(viewCrumbs("/dashboard/account", "Your account")).toEqual([{ label: "Your account" }]);
+  it("puts Settings first on Your account", () => {
+    expect(viewCrumbs("/dashboard/account", "Your account")).toEqual([
+      { label: "Settings", href: "/dashboard/settings/email" },
+      { label: "Your account" },
+    ]);
   });
 });
