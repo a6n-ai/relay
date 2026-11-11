@@ -41,6 +41,18 @@ export async function requirePlatformAdmin(): Promise<void> {
   if (scope.mode !== "all") redirect("/dashboard");
 }
 
+/** Workspaces the signed-in user belongs to. super_admin manages others but cannot open them. */
+export async function myOrganizationIds(): Promise<Set<string>> {
+  const session = await getSession();
+  if (!session?.user) return new Set();
+  const rows = await db
+    .select({ organizationId: member.organizationId })
+    .from(member)
+    .innerJoin(users, eq(users.id, member.userId))
+    .where(eq(users.publicId, session.user.id));
+  return new Set(rows.map((r) => r.organizationId));
+}
+
 /** True when the signed-in user is a6n platform staff (`super_admin`). */
 export async function isPlatformAdmin(): Promise<boolean> {
   const session = await getSession();

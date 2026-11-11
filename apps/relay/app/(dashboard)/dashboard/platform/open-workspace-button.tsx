@@ -18,7 +18,8 @@ export function OpenWorkspaceButton({ organizationId }: { organizationId: string
       disabled={pending}
       onClick={() => {
         startTransition(async () => {
-          await authClient.organization.setActive({ organizationId });
+          const { error } = await authClient.organization.setActive({ organizationId });
+          if (error) return;
           writeActiveAppCookie(null);
           window.dispatchEvent(new Event("relay:workspace-changed"));
           router.push("/dashboard");

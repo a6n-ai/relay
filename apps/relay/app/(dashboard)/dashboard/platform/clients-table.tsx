@@ -16,6 +16,7 @@ export type ClientListItem = {
   slug: string;
   meta: string;
   isCurrent: boolean;
+  isMember: boolean;
 };
 
 export function ClientsTable({
@@ -39,7 +40,7 @@ export function ClientsTable({
             Manage
           </Link>
         </Button>
-        <OpenWorkspaceButton organizationId={c.id} />
+        {c.isMember && !c.isCurrent ? <OpenWorkspaceButton organizationId={c.id} /> : null}
       </>
     ),
   }));

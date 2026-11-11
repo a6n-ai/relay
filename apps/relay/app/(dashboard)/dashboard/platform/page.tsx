@@ -7,7 +7,7 @@ import { ViewHeader } from "@/components/ds/view-header";
 import { db } from "@/db/client";
 import { member, organization, tenants } from "@/db/schema";
 import { getActiveOrganizationId } from "@/lib/auth/active-org";
-import { requirePlatformAdmin } from "@/lib/auth/org-scope";
+import { myOrganizationIds, requirePlatformAdmin } from "@/lib/auth/org-scope";
 import { countOrganizationSendsThisMonth } from "@/lib/tenants/usage";
 import { ClientsTable } from "./clients-table";
 import { CreateClientForm } from "./create-client-form";
@@ -22,7 +22,7 @@ function formatQuota(n: number) {
 
 export default async function PlatformClientsPage() {
   await requirePlatformAdmin();
-  const activeId = await getActiveOrganizationId();
+  const [activeId, mine] = await Promise.all([getActiveOrganizationId(), myOrganizationIds()]);
   const orgs = await db
     .select({
       id: organization.id,
@@ -82,6 +82,7 @@ export default async function PlatformClientsPage() {
       name: o.name,
       slug: o.slug,
       isCurrent: o.id === activeId,
+      isMember: mine.has(o.id),
       meta: `${o.slug} · ${used.toLocaleString("en")} / ${formatQuota(o.monthlyMessageQuota)} sends · ${apps}/${formatQuota(o.maxApps)} apps · ${people} people`,
     };
   });
