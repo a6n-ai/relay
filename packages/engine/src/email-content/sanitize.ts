@@ -7,7 +7,7 @@ import { decodeHTML } from "entities";
 // what can execute or exfiltrate; keep everything email layouts depend on:
 // <style>, MSO conditional comments, entities, doctype, inline styles.
 const DROP_TAGS = new Set([
-  "script", "iframe", "object", "embed", "form", "base", "frame", "frameset", "applet",
+  "script", "iframe", "object", "embed", "form", "base", "meta", "frame", "frameset", "applet",
   // Raw-text containers htmlparser2 and browsers disagree on — classic mXSS vectors.
   "noscript", "xmp", "noembed", "noframes", "plaintext", "template",
 ]);

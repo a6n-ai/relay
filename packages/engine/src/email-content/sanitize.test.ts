@@ -3,7 +3,7 @@ import { sanitizeEmailHtml } from "./sanitize";
 
 const LEGIT = `<!DOCTYPE html>
 <html lang="en" xmlns:v="urn:schemas-microsoft-com:vml">
-<head><meta charset="UTF-8"><style>@media (max-width:600px){.x{padding:0 !important}}</style>
+<head><style>@media (max-width:600px){.x{padding:0 !important}}</style>
 <!--[if mso]><style>td{font-family:Arial !important}</style><![endif]--></head>
 <body style="margin:0"><div style='display:none;font-family:"Poppins"'>Save &#847;&zwnj;&nbsp;</div>
 <table role="presentation"><tr><td><a href="https://app.tiffingrab.ca/subscribe?a=1&amp;b=2">Go</a>
@@ -35,6 +35,18 @@ describe("sanitizeEmailHtml", () => {
     );
     expect(out.html).toBe("<p>a</p>");
     expect(out.removed).toEqual(["<script>", "<iframe>", "<object>", "<embed>", "<form>", "<base>"]);
+  });
+
+  it.each(["block", "allow"] as const)("removes meta refresh in %s mode", (remoteImages) => {
+    const out = sanitizeEmailHtml(`<p>a</p><meta http-equiv="refresh" content="0;url=https://e.com/a">`, { remoteImages });
+    expect(out.html).toBe("<p>a</p>");
+    expect(out.removed).toEqual(["<meta>"]);
+  });
+
+  it("removes a Content-Security-Policy meta from email", () => {
+    const out = sanitizeEmailHtml(`<meta http-equiv="Content-Security-Policy" content="default-src *"><p>a</p>`);
+    expect(out.html).toBe("<p>a</p>");
+    expect(out.removed).toEqual(["<meta>"]);
   });
 
   it("removes event handler and srcdoc attributes", () => {
