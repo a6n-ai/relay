@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { organization, users } from "@/db/schema";
 
 const h = vi.hoisted(() => ({
-  existingUsers: [] as { id: bigint }[],
+  existingUsers: [] as { id: bigint; banned: boolean | null }[],
   updates: [] as { table: unknown; values: unknown }[],
   createUser: vi.fn(),
   createOrganization: vi.fn(),
@@ -54,7 +54,7 @@ describe("createClientAction", () => {
   });
 
   it("creates the workspace session-less, so the owner is its member and the admin is not", async () => {
-    h.existingUsers = [{ id: 7n }];
+    h.existingUsers = [{ id: 7n, banned: false }];
 
     const result = await createClientAction(form());
 
@@ -70,11 +70,22 @@ describe("createClientAction", () => {
   });
 
   it("reuses an existing user with that email", async () => {
-    h.existingUsers = [{ id: 7n }];
+    h.existingUsers = [{ id: 7n, banned: false }];
 
     await createClientAction(form());
 
     expect(h.createUser).not.toHaveBeenCalled();
+  });
+
+  it("refuses a banned existing owner and creates nothing", async () => {
+    h.existingUsers = [{ id: 7n, banned: true }];
+
+    const result = await createClientAction(form());
+
+    expect(result).toEqual({ error: "That user is banned and can't own a workspace." });
+    expect(h.createUser).not.toHaveBeenCalled();
+    expect(h.createOrganization).not.toHaveBeenCalled();
+    expect(h.updates).toEqual([]);
   });
 
   it("creates the owner with the admin's headers when no user has that email", async () => {

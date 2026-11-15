@@ -15,6 +15,7 @@ const state = {
   inserts: [] as { table: unknown; values: Record<string, unknown> }[],
   deletes: [] as unknown[],
   committed: [] as { id: bigint }[],
+  conflicts: [] as { target: unknown; set: Record<string, unknown> }[],
 };
 const fakeDb = {
   select: () => ({
@@ -25,7 +26,11 @@ const fakeDb = {
   insert: (table: unknown) => ({
     values: (values: Record<string, unknown>) => {
       state.inserts.push({ table, values });
-      return { onConflictDoNothing: async () => undefined };
+      return {
+        onConflictDoUpdate: async (conflict: { target: unknown; set: Record<string, unknown> }) => {
+          state.conflicts.push(conflict);
+        },
+      };
     },
   }),
   delete: (table: unknown) => ({
@@ -93,6 +98,7 @@ describe("processQueuedInbound", () => {
     state.inserts.length = 0;
     state.deletes.length = 0;
     state.committed.length = 0;
+    state.conflicts.length = 0;
   });
 
   it("writes attachment keys from rawId and passes the rows into the letter transaction", async () => {
@@ -180,6 +186,24 @@ describe("processQueuedInbound", () => {
     expect(await processQueuedInbound(msg)).toEqual({ outcome: "failed" });
 
     expect(state.inserts[0].values).toMatchObject({ error: "No such mailbox", tenantId: null, organizationId: null });
+    expect(tenantForInbox).toHaveBeenCalledTimes(1);
+  });
+
+  it("resolves the recipient once on the failure path and reuses it for the row", async () => {
+    await storeRaw(eml.replace("Message-ID: <m1@example.com>\r\n", ""));
+
+    await processQueuedInbound(msg);
+
+    expect(tenantForInbox).toHaveBeenCalledTimes(1);
+    expect(state.inserts[0].values).toMatchObject({ tenantId: 7n, organizationId: "org_1" });
+  });
+
+  it("updates the open failure row on a repeat instead of ignoring it", async () => {
+    await recordInboundFailure(msg, { error: null, attempts: 2, tenantId: 7n });
+
+    expect(state.conflicts).toHaveLength(1);
+    expect(state.conflicts[0].target).toBe(mailboxInboundFailure.rawKey);
+    expect(Object.keys(state.conflicts[0].set).sort()).toEqual(["attempts", "error"]);
   });
 
   it("deletes the failure row after a successful letter", async () => {
@@ -220,7 +244,7 @@ describe("processQueuedInbound", () => {
   it("writes no failure row when the letter was already committed (late DLQ event)", async () => {
     state.committed.push({ id: 1n });
 
-    await recordInboundFailure(msg, { error: "late", attempts: 3 });
+    await recordInboundFailure(msg, { error: "late", attempts: 3, tenantId: 7n });
 
     expect(state.inserts).toHaveLength(0);
   });

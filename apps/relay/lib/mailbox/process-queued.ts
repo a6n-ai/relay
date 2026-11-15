@@ -1,6 +1,6 @@
 import { makePublicId } from "@foundry/database";
 import { MailboxInboundError, ingestInboundLetter, parseMailboxEml, type ParsedInboundLetter, type StoredAttachment } from "@relay/engine";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db/client";
 import { emailMailbox, mailboxInboundFailure, notificationTables, tenants } from "@/db/schema";
@@ -33,16 +33,16 @@ async function readRaw(bucket: MailBucket, key: string): Promise<ArrayBuffer | n
 
 export async function processQueuedInbound(msg: QueuedInbound): Promise<{ outcome: Outcome }> {
   const bucket = mailBucket();
-  const bytes = await readRaw(bucket, msg.rawKey);
-  if (bytes == null) return failed(msg, "Letter too large");
   const recipientTenantId = await tenantForInbox(msg.envelopeTo);
-  if (recipientTenantId == null) return failed(msg, "No such mailbox");
+  const bytes = await readRaw(bucket, msg.rawKey);
+  if (bytes == null) return failed(msg, "Letter too large", recipientTenantId);
+  if (recipientTenantId == null) return failed(msg, "No such mailbox", null);
 
   let parsed: ParsedInboundLetter;
   try {
     parsed = await parseMailboxEml(bytes);
   } catch (err) {
-    if (err instanceof MailboxInboundError) return failed(msg, err.message);
+    if (err instanceof MailboxInboundError) return failed(msg, err.message, recipientTenantId);
     throw err;
   }
 
@@ -80,14 +80,14 @@ export async function processQueuedInbound(msg: QueuedInbound): Promise<{ outcom
   return { outcome: result.status };
 }
 
-async function failed(msg: QueuedInbound, error: string): Promise<{ outcome: "failed" }> {
-  await recordInboundFailure(msg, { error, attempts: 1 });
+async function failed(msg: QueuedInbound, error: string, tenantId: bigint | null): Promise<{ outcome: "failed" }> {
+  await recordInboundFailure(msg, { error, attempts: 1, tenantId });
   return { outcome: "failed" };
 }
 
 export async function recordInboundFailure(
   msg: QueuedInbound,
-  opts: { error: string | null; attempts: number },
+  opts: { error: string | null; attempts: number; tenantId: bigint | null },
 ): Promise<void> {
   const [committed] = await db
     .select({ id: emailMailbox.id })
@@ -95,11 +95,10 @@ export async function recordInboundFailure(
     .where(eq(emailMailbox.rawKey, msg.rawKey))
     .limit(1);
   if (committed) return;
-  const tenantId = await tenantForInbox(msg.envelopeTo);
   const [tenant] =
-    tenantId == null
+    opts.tenantId == null
       ? []
-      : await db.select({ organizationId: tenants.organizationId }).from(tenants).where(eq(tenants.id, tenantId)).limit(1);
+      : await db.select({ organizationId: tenants.organizationId }).from(tenants).where(eq(tenants.id, opts.tenantId)).limit(1);
   await db
     .insert(mailboxInboundFailure)
     .values({
@@ -110,8 +109,14 @@ export async function recordInboundFailure(
       receivedAt: msg.receivedAt,
       error: opts.error,
       attempts: opts.attempts,
-      tenantId,
+      tenantId: opts.tenantId,
       organizationId: tenant?.organizationId ?? null,
     })
-    .onConflictDoNothing({ target: mailboxInboundFailure.rawKey });
+    .onConflictDoUpdate({
+      target: mailboxInboundFailure.rawKey,
+      set: {
+        attempts: sql`greatest(${mailboxInboundFailure.attempts} + 1, ${opts.attempts})`,
+        error: sql`coalesce(excluded.error, ${mailboxInboundFailure.error})`,
+      },
+    });
 }

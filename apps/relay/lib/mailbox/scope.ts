@@ -40,10 +40,13 @@ export const platformWorkspaceId = cache(async (): Promise<string | null> => {
   return row?.id ?? null;
 });
 
+// Shared by the mailbox scope and the compose From list so both see the same apps.
+export const MAILBOX_TENANT_LIMIT = 1000;
+
 export async function mailboxScope(): Promise<MailboxScope> {
   const workspace = await workspaceSlug();
   if (!workspace) throw new NotFoundError("No active workspace");
-  const page = await tenantsService.listRecent(undefined, 1000);
+  const page = await tenantsService.listRecent(undefined, MAILBOX_TENANT_LIMIT);
   return {
     organizationId: workspace.id,
     tenantIds: page.items.map((t) => t.id),

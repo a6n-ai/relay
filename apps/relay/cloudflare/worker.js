@@ -4,7 +4,7 @@ import openNext from "../.open-next/worker.js";
 import { bootOnce } from "./bootstrap.js";
 import { receive } from "./email.js";
 import { consumeInbound, consumeInboundDlq, postInternal } from "./inbound-consumer.js";
-import { consume } from "./queue-consumer.js";
+import { consume, consumeOutboxDlq } from "./queue-consumer.js";
 
 export * from "../.open-next/worker.js";
 export { RelayWake } from "./workflows.js";
@@ -34,6 +34,7 @@ export default {
     const post = (path, body) => postInternal(env, path, body);
     if (batch.queue === "relay-inbound") await consumeInbound(batch, post);
     else if (batch.queue === "relay-inbound-dlq") await consumeInboundDlq(batch, post);
+    else if (batch.queue === "relay-outbox-dlq") consumeOutboxDlq(batch);
     else await consume(batch, () => tick(env));
   },
   email(message, env) {

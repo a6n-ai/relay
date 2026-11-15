@@ -40,12 +40,12 @@ export async function createClientAction(
   if (!EMAIL_RE.test(ownerEmail)) return { error: "Enter a valid owner email." };
 
   try {
-    // No headers: a session-less call makes the owner, not the platform admin, the org owner.
     const [existing] = await db
-      .select({ id: users.id })
+      .select({ id: users.id, banned: users.banned })
       .from(users)
       .where(eq(users.email, ownerEmail))
       .limit(1);
+    if (existing?.banned) return { error: "That user is banned and can't own a workspace." };
     let ownerId = existing ? String(existing.id) : null;
     if (!ownerId) {
       const { user } = await auth.api.createUser({
@@ -56,6 +56,7 @@ export async function createClientAction(
       await db.update(users).set({ passwordSet: false }).where(eq(users.id, BigInt(ownerId)));
     }
 
+    // No headers: a session-less call makes the owner, not the platform admin, the org owner.
     const created = await auth.api.createOrganization({
       body: { name, slug, userId: ownerId },
     });

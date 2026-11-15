@@ -25,3 +25,11 @@ export async function consume(batch, runTick) {
     else msg.ack();
   }
 }
+
+// Wake-ups only: the outbox rows stay pending in Postgres, so a dead-lettered wake loses no mail.
+export function consumeOutboxDlq(batch) {
+  for (const msg of batch.messages) {
+    console.warn("outbox_wake_dead_lettered", { messageId: msg.id, attempts: msg.attempts });
+    msg.ack();
+  }
+}

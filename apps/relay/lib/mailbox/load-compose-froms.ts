@@ -3,13 +3,13 @@ import { operatorDefaultFrom } from "@/lib/email/from-address";
 import { emailSendersService } from "@/lib/services/email-senders.service";
 import { tenantsService } from "@/lib/services/tenants.service";
 import { composeFromOptions, type ComposeFromOption } from "./compose-from";
-import { mailboxScope } from "./scope";
+import { MAILBOX_TENANT_LIMIT, mailboxScope } from "./scope";
 
 export async function loadComposeFroms(): Promise<ComposeFromOption[]> {
   const [scope, operator, tenants, senders, activeApp] = await Promise.all([
     mailboxScope(),
     operatorDefaultFrom(),
-    tenantsService.listRecent(),
+    tenantsService.listRecent(undefined, MAILBOX_TENANT_LIMIT),
     emailSendersService.listRecent(),
     resolveActiveApp(),
   ]);

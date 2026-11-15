@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { signWebhookBody } from "@/lib/webhooks/sign";
 
-const { insert, onConflictDoNothing } = vi.hoisted(() => ({
+const { insert, onConflictDoUpdate } = vi.hoisted(() => ({
   insert: vi.fn(),
-  onConflictDoNothing: vi.fn(),
+  onConflictDoUpdate: vi.fn(),
 }));
 
 vi.mock("@/db/client", () => ({
@@ -13,7 +13,7 @@ vi.mock("@/db/client", () => ({
     }),
     insert: (table: unknown) => {
       insert(table);
-      return { values: () => ({ onConflictDoNothing }) };
+      return { values: () => ({ onConflictDoUpdate }) };
     },
   },
 }));
@@ -49,14 +49,14 @@ describe("POST /api/internal/mailbox/inbound/failed", () => {
   beforeEach(() => {
     process.env.MAILBOX_INBOUND_SECRET = secret;
     insert.mockClear();
-    onConflictDoNothing.mockClear();
+    onConflictDoUpdate.mockClear();
   });
 
   afterEach(() => {
     delete process.env.MAILBOX_INBOUND_SECRET;
   });
 
-  it("inserts the failure on the raw key and ignores a repeat for the same raw key", async () => {
+  it("inserts the failure on the raw key and updates the same row on a repeat", async () => {
     const raw = JSON.stringify(body);
 
     expect((await call(raw)).status).toBe(200);
@@ -64,7 +64,7 @@ describe("POST /api/internal/mailbox/inbound/failed", () => {
 
     expect(insert).toHaveBeenCalledTimes(2);
     expect(insert).toHaveBeenCalledWith(mailboxInboundFailure);
-    expect(onConflictDoNothing).toHaveBeenCalledTimes(2);
-    expect(onConflictDoNothing).toHaveBeenCalledWith({ target: mailboxInboundFailure.rawKey });
+    expect(onConflictDoUpdate).toHaveBeenCalledTimes(2);
+    expect(onConflictDoUpdate).toHaveBeenCalledWith({ target: mailboxInboundFailure.rawKey, set: expect.any(Object) });
   });
 });

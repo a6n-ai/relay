@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { tenantForInbox } from "@/lib/mailbox/inbound-recipient";
 import { queuedInboundSchema, recordInboundFailure } from "@/lib/mailbox/process-queued";
 import { signedInternalRoute } from "@/lib/mailbox/signed-internal-route";
 
@@ -11,6 +12,10 @@ const failedSchema = z.object({
 });
 
 export const POST = signedInternalRoute(failedSchema, async ({ message, attempts, error }) => {
-  await recordInboundFailure(message, { attempts, error: error ?? null });
+  await recordInboundFailure(message, {
+    attempts,
+    error: error ?? null,
+    tenantId: await tenantForInbox(message.envelopeTo),
+  });
   return Response.json({ ok: true });
 });

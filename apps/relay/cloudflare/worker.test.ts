@@ -5,6 +5,7 @@ const h = vi.hoisted(() => ({
   consumeInboundDlq: vi.fn(),
   postInternal: vi.fn(),
   consume: vi.fn(),
+  consumeOutboxDlq: vi.fn(),
 }));
 
 vi.mock("../.open-next/worker.js", () => ({ default: { fetch: vi.fn() } }));
@@ -16,7 +17,7 @@ vi.mock("./inbound-consumer.js", () => ({
   consumeInboundDlq: h.consumeInboundDlq,
   postInternal: h.postInternal,
 }));
-vi.mock("./queue-consumer.js", () => ({ consume: h.consume }));
+vi.mock("./queue-consumer.js", () => ({ consume: h.consume, consumeOutboxDlq: h.consumeOutboxDlq }));
 
 const { default: worker } = await import("./worker.js");
 
@@ -44,6 +45,13 @@ describe("queue", () => {
     await worker.queue(b, env);
     expect(h.consumeInboundDlq).toHaveBeenCalledWith(b, expect.any(Function));
     expect(h.consumeInbound).not.toHaveBeenCalled();
+    expect(h.consume).not.toHaveBeenCalled();
+  });
+
+  it("routes relay-outbox-dlq to consumeOutboxDlq and never drains the tick", async () => {
+    const b = batch("relay-outbox-dlq");
+    await worker.queue(b, env);
+    expect(h.consumeOutboxDlq).toHaveBeenCalledWith(b);
     expect(h.consume).not.toHaveBeenCalled();
   });
 
