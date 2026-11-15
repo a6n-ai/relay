@@ -3,7 +3,7 @@ import { hashPassword } from "@foundry/auth";
 import { db } from "./client";
 import { account, apiKeys, app, member, organization, tenants, users } from "./schema";
 import { generateApiKey } from "../lib/api-keys";
-import { PLATFORM_WORKSPACE_SLUG } from "../lib/mailbox/scope";
+import { PLATFORM_WORKSPACE_SLUG } from "../lib/mailbox/platform-workspace";
 
 async function main() {
   const email = process.env.SEED_ADMIN_EMAIL ?? "ops@relay.local";

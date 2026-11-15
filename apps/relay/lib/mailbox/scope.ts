@@ -5,8 +5,9 @@ import { db } from "@/db/client";
 import { organization } from "@/db/schema";
 import { getActiveOrganizationId } from "@/lib/auth/active-org";
 import { tenantsService } from "@/lib/services/tenants.service";
+import { PLATFORM_WORKSPACE_SLUG } from "./platform-workspace";
 
-export const PLATFORM_WORKSPACE_SLUG = "a6n";
+export { PLATFORM_WORKSPACE_SLUG } from "./platform-workspace";
 
 export type MailboxScope = {
   organizationId: string;
