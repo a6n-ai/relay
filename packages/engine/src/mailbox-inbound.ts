@@ -22,6 +22,13 @@ export class MailboxInboundError extends Error {
   }
 }
 
+export type ParsedAttachment = {
+  filename: string | null;
+  mimeType: string;
+  contentId: string | null;
+  content: ArrayBuffer;
+};
+
 export type ParsedInboundLetter = {
   fromEmail: string;
   fromName: string | null;
@@ -32,7 +39,31 @@ export type ParsedInboundLetter = {
   rfcMessageId: string;
   inReplyTo: string | null;
   rfcReferences: string | null;
+  sentAt?: number | null;
+  attachments?: ParsedAttachment[];
 };
+
+export type StoredAttachment = {
+  publicId: string;
+  position: number;
+  filename: string;
+  contentType: string;
+  sizeBytes: number;
+  contentId: string | null;
+  storageKey: string;
+};
+
+export type IngestInboundOpts = {
+  recipientTenantId: bigint | null;
+  rawKey?: string;
+  authResults?: string | null;
+  receivedAt?: number;
+  attachments?: StoredAttachment[];
+};
+
+export type IngestInboundResult =
+  | { status: "inserted"; id: bigint; publicId: string }
+  | { status: "duplicate"; existingRawKey: string | null };
 
 const EMAIL_IN = /<?([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})>?/;
 
@@ -119,7 +150,7 @@ export function parseMailboxInboundJson(raw: string): ParsedInboundLetter {
   };
 }
 
-export async function parseMailboxEml(raw: string): Promise<ParsedInboundLetter> {
+export async function parseMailboxEml(raw: string | ArrayBuffer | Uint8Array): Promise<ParsedInboundLetter> {
   let mail: Awaited<ReturnType<typeof PostalMime.parse>>;
   try {
     mail = await PostalMime.parse(raw);
@@ -133,6 +164,7 @@ export async function parseMailboxEml(raw: string): Promise<ParsedInboundLetter>
   const rfcRaw = mail.messageId ?? "";
   if (!rfcRaw.trim()) throw new MailboxInboundError("invalid", "Missing Message-ID");
   const { html, text } = bodiesOrThrow(mail.html ?? "", mail.text ?? "");
+  const sentMs = mail.date ? Date.parse(mail.date) : Number.NaN;
   return {
     fromEmail: from.email,
     fromName: mail.from?.name?.trim() || null,
@@ -143,6 +175,13 @@ export async function parseMailboxEml(raw: string): Promise<ParsedInboundLetter>
     rfcMessageId: rfcRaw,
     inReplyTo: mail.inReplyTo ?? null,
     rfcReferences: mail.references ?? null,
+    sentAt: Number.isFinite(sentMs) ? sentMs : null,
+    attachments: mail.attachments.map((a) => ({
+      filename: a.filename,
+      mimeType: a.mimeType,
+      contentId: a.contentId ?? null,
+      content: a.content as ArrayBuffer,
+    })),
   };
 }
 
@@ -199,13 +238,15 @@ async function findParent(db: Db, tables: TenantNotificationTables, parentIds: s
   return bySes;
 }
 
+type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
+
 export async function ingestInboundLetter(
   db: Db,
   tables: TenantNotificationTables,
   parsed: ParsedInboundLetter,
   /** When given, the letter belongs to this app, and a parent thread only counts if it is the same app's. */
-  opts?: { recipientTenantId: bigint | null },
-): Promise<"inserted" | "duplicate"> {
+  opts?: IngestInboundOpts,
+): Promise<IngestInboundResult> {
   const rfcMessageId = normalizeMessageId(parsed.rfcMessageId) ?? parsed.rfcMessageId.trim();
   const inReplyTo = normalizeMessageId(parsed.inReplyTo);
   const parentIds = [
@@ -249,11 +290,34 @@ export async function ingestInboundLetter(
     inReplyTo,
     rfcReferences: parsed.rfcReferences,
     threadId,
+    rawKey: opts?.rawKey,
+    authResults: opts?.authResults,
+    sentAt: parsed.sentAt,
+    createdAt: opts?.receivedAt,
   });
-  const inserted = await db
-    .insert(tables.emailMailbox)
-    .values(values)
-    .onConflictDoNothing({ target: tables.emailMailbox.rfcMessageId })
-    .returning({ publicId: tables.emailMailbox.publicId });
-  return inserted.length > 0 ? "inserted" : "duplicate";
+  const attachments = opts?.attachments ?? [];
+
+  const insertLetter = async (d: Db | Tx): Promise<IngestInboundResult> => {
+    const [row] = await d
+      .insert(tables.emailMailbox)
+      .values(values)
+      .onConflictDoNothing({ target: tables.emailMailbox.rfcMessageId })
+      .returning({ id: tables.emailMailbox.id, publicId: tables.emailMailbox.publicId });
+    if (row) {
+      if (attachments.length > 0) {
+        await d
+          .insert(tables.emailAttachment)
+          .values(attachments.map((a) => ({ ...a, mailboxId: row.id })));
+      }
+      return { status: "inserted", id: row.id, publicId: row.publicId };
+    }
+    const [existing] = await d
+      .select({ rawKey: tables.emailMailbox.rawKey })
+      .from(tables.emailMailbox)
+      .where(eq(tables.emailMailbox.rfcMessageId, rfcMessageId))
+      .limit(1);
+    return { status: "duplicate", existingRawKey: existing?.rawKey ?? null };
+  };
+
+  return attachments.length > 0 ? db.transaction((tx) => insertLetter(tx)) : insertLetter(db);
 }

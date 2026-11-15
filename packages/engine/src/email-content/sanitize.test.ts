@@ -92,4 +92,47 @@ describe("sanitizeEmailHtml", () => {
     expect(out.html).not.toMatch(/onerror|<style|<title|foreignObject/i);
     expect(out.html).toContain("<rect");
   });
+
+  it("default mode keeps https images (today's behaviour)", () => {
+    const out = sanitizeEmailHtml(`<img src="https://x.ca/a.png"><p style="background:url(https://x.ca/b.png)">b</p>`);
+    expect(out.html).toContain('src="https://x.ca/a.png"');
+    expect(out.blockedRemote).toBe(0);
+  });
+
+  it("block mode removes remote loads and counts them", () => {
+    const out = sanitizeEmailHtml(
+      `<img src="https://x.ca/a.png"><img src="//x.ca/b.png"><img srcset="https://x.ca/c.png 2x"><td background="https://x.ca/d.png">` +
+        `<p style="background-image:url('https://x.ca/e.png')">e</p><a href="https://x.ca">link</a>`,
+      { remoteImages: "block" },
+    );
+    expect(out.html).not.toMatch(/x\.ca\/(a|b|c|d|e)\.png/);
+    expect(out.html).toContain('href="https://x.ca"');
+    expect(out.blockedRemote).toBe(5);
+  });
+
+  it("block mode scrubs remote url() in <style> blocks and drops the fonts link", () => {
+    const out = sanitizeEmailHtml(
+      `<head><style>.a{background:url(https://x.ca/f.png)}.b{background:url(data:image/png;base64,AA)}</style>` +
+        `<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins"></head>`,
+      { remoteImages: "block" },
+    );
+    expect(out.html).not.toContain("x.ca/f.png");
+    expect(out.html).toContain("data:image/png;base64,AA");
+    expect(out.html).not.toContain("fonts.googleapis.com");
+    expect(out.blockedRemote).toBe(2);
+  });
+
+  it("keeps data:image/ in block mode", () => {
+    const out = sanitizeEmailHtml(`<img src="data:image/gif;base64,R0lGOD">`, { remoteImages: "block" });
+    expect(out.html).toBe(`<img src="data:image/gif;base64,R0lGOD">`);
+    expect(out.blockedRemote).toBe(0);
+  });
+
+  it("drops cid: sources in both modes", () => {
+    for (const remoteImages of ["allow", "block"] as const) {
+      const out = sanitizeEmailHtml(`<img src="cid:logo@x"><p>x</p>`, { remoteImages });
+      expect(out.html).toBe("<img><p>x</p>");
+      expect(out.removed).toEqual(["unsafe src on <img>"]);
+    }
+  });
 });

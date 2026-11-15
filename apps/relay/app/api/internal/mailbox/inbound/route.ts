@@ -20,7 +20,8 @@ export async function POST(req: Request): Promise<Response> {
       const recipientTenantId = await tenantForInbox(letter.toEmail);
       // Routed mail must land in a real Relay inbox; other providers keep the thread-based match.
       if (envelope && recipientTenantId == null) throw new MailboxInboundError("unknown_mailbox", "No such mailbox");
-      return ingestInboundLetter(db, notificationTables, letter, envelope ? { recipientTenantId } : undefined);
+      const result = await ingestInboundLetter(db, notificationTables, letter, envelope ? { recipientTenantId } : undefined);
+      return result.status;
     },
   });
   return Response.json(result.body ?? { ok: true }, { status: result.status });

@@ -27,6 +27,10 @@ export type MailboxLetterInput = {
   inReplyTo?: string | null;
   rfcReferences?: string | null;
   threadId?: string | null;
+  rawKey?: string | null;
+  authResults?: string | null;
+  sentAt?: number | null;
+  createdAt?: number;
 };
 
 /** Campaign queue rows are operator-confirmed blasts; everything else is Automatic. */
@@ -92,6 +96,10 @@ export function mailboxInsertValues(letter: MailboxLetterInput) {
     inReplyTo: letter.inReplyTo ?? null,
     rfcReferences: letter.rfcReferences ?? null,
     threadId: letter.threadId ?? null,
+    rawKey: letter.rawKey ?? null,
+    authResults: letter.authResults ?? null,
+    sentAt: letter.sentAt ?? null,
+    createdAt: letter.createdAt,
   };
 }
 

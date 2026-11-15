@@ -2,12 +2,13 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { bigint, pgTable } from "drizzle-orm/pg-core";
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import {
   MAX_MAILBOX_INBOUND_BYTES,
   MailboxInboundError,
   inboundSnsDecision,
   ingestInboundLetter,
+  parseMailboxEml,
   parseMailboxInbound,
 } from "./mailbox-inbound";
 import { makeTenantNotificationTables } from "./tenant-schema";
@@ -139,7 +140,7 @@ describe("ingestInboundLetter", () => {
     };
     const parsed = await parseMailboxInbound(readFixture("reply-simple.json"));
     const result = await ingestInboundLetter(db as never, tables, parsed);
-    expect(result).toBe("inserted");
+    expect(result).toMatchObject({ status: "inserted", publicId: "mbx_in" });
     expect(inserted[0]).toMatchObject({
       direction: "in",
       threadId: "<abc@relay.test>",
@@ -217,7 +218,10 @@ describe("ingestInboundLetter", () => {
       }),
     };
     const parsed = await parseMailboxInbound(readFixture("reply-simple.json"));
-    expect(await ingestInboundLetter(db as never, tables, parsed)).toBe("duplicate");
+    expect(await ingestInboundLetter(db as never, tables, parsed)).toMatchObject({
+      status: "duplicate",
+      existingRawKey: null,
+    });
   });
 });
 
@@ -254,5 +258,121 @@ describe("ingestInboundLetter with a known recipient app", () => {
       recipientTenantId: 5n,
     });
     expect(inserted[0]).toMatchObject({ threadId: "<reply-1@example.com>", tenantId: 5n });
+  });
+});
+
+describe("parseMailboxEml", () => {
+  it("accepts raw bytes", async () => {
+    const bytes = new TextEncoder().encode(readFixture("gmail-reply-multipart.eml"));
+    const letter = await parseMailboxEml(bytes);
+    expect(letter.fromEmail).toBe("sender@example.com");
+    expect(letter.text).toContain("hello");
+  });
+
+  it("returns attachments with their filename and bytes", async () => {
+    const letter = await parseMailboxEml(readFixture("nested-mixed-base64.eml"));
+    expect(letter.attachments?.map((a) => a.filename)).toEqual(["a.bin"]);
+    expect(letter.attachments?.[0].content.byteLength).toBeGreaterThan(0);
+  });
+
+  it("reads sentAt from the Date header, null when missing", async () => {
+    const raw =
+      "From: A <a@b.com>\r\nTo: c@d.com\r\nMessage-ID: <x@b.com>\r\nDate: Tue, 01 Jul 2025 10:00:00 +0000\r\n" +
+      "Subject: hi\r\nContent-Type: text/plain\r\n\r\nhello\r\n";
+    expect((await parseMailboxEml(raw)).sentAt).toBe(Date.parse("Tue, 01 Jul 2025 10:00:00 +0000"));
+    expect((await parseMailboxEml(raw.replace(/Date: .*\r\n/, ""))).sentAt).toBeNull();
+  });
+
+  it("leaves sentAt and attachments off the JSON path", async () => {
+    const letter = await parseMailboxInbound(readFixture("reply-simple.json"));
+    expect(letter.sentAt).toBeUndefined();
+    expect(letter.attachments).toBeUndefined();
+  });
+});
+
+describe("ingestInboundLetter storage", () => {
+  let plain: Awaited<ReturnType<typeof parseMailboxInbound>>;
+  beforeAll(async () => {
+    plain = { ...(await parseMailboxInbound(readFixture("reply-simple.json"))), inReplyTo: null, rfcReferences: null };
+  });
+  const attachment = {
+    publicId: "att_1",
+    position: 0,
+    filename: "a.bin",
+    contentType: "application/octet-stream",
+    sizeBytes: 3,
+    contentId: null,
+    storageKey: "mailbox/7/att_1",
+  };
+
+  function storeDb(opts: { conflict?: boolean; existingRawKey?: string | null } = {}) {
+    const writes: { table: unknown; values: unknown }[] = [];
+    let transactions = 0;
+    const insert = (table: unknown) => ({
+      values: (v: unknown) => {
+        writes.push({ table, values: v });
+        const attachmentWrite = Promise.resolve([]);
+        return Object.assign(attachmentWrite, {
+          onConflictDoNothing: () => ({
+            returning: async () => (opts.conflict ? [] : [{ id: 7n, publicId: "mbx_1" }]),
+          }),
+        });
+      },
+    });
+    const select = () => ({
+      from: () => ({
+        where: () => ({
+          limit: async () => (opts.conflict ? [{ rawKey: opts.existingRawKey ?? null }] : []),
+        }),
+      }),
+    });
+    const tx = { insert, select };
+    const db = {
+      ...tx,
+      transaction: async (fn: (t: typeof tx) => Promise<unknown>) => {
+        transactions++;
+        return fn(tx);
+      },
+    };
+    return { db, writes, transactions: () => transactions };
+  }
+
+  it("writes the letter and its attachments in one transaction", async () => {
+    const { db, writes, transactions } = storeDb();
+    const result = await ingestInboundLetter(db as never, tables, plain, {
+      recipientTenantId: 9n,
+      rawKey: "raw/1.eml",
+      authResults: "spf=pass",
+      receivedAt: 1000,
+      attachments: [attachment],
+    });
+    expect(result).toEqual({ status: "inserted", id: 7n, publicId: "mbx_1" });
+    expect(transactions()).toBe(1);
+    expect(writes[0].table).toBe(tables.emailMailbox);
+    expect(writes[0].values).toMatchObject({ rawKey: "raw/1.eml", authResults: "spf=pass", createdAt: 1000 });
+    expect(writes[1].table).toBe(tables.emailAttachment);
+    expect(writes[1].values).toEqual([{ ...attachment, mailboxId: 7n }]);
+  });
+
+  it("does not open a transaction without attachments", async () => {
+    const { db, transactions } = storeDb();
+    await ingestInboundLetter(db as never, tables, plain, { recipientTenantId: null });
+    expect(transactions()).toBe(0);
+  });
+
+  it("returns the existing raw key on a duplicate and writes no attachments", async () => {
+    const { db, writes } = storeDb({ conflict: true, existingRawKey: "raw/old.eml" });
+    const result = await ingestInboundLetter(db as never, tables, plain, {
+      recipientTenantId: null,
+      attachments: [attachment],
+    });
+    expect(result).toEqual({ status: "duplicate", existingRawKey: "raw/old.eml" });
+    expect(writes.map((w) => w.table)).toEqual([tables.emailMailbox]);
+  });
+
+  it("stores sentAt from the parsed letter", async () => {
+    const { db, writes } = storeDb();
+    await ingestInboundLetter(db as never, tables, { ...plain, sentAt: 555 }, { recipientTenantId: null });
+    expect(writes[0].values).toMatchObject({ sentAt: 555 });
   });
 });
