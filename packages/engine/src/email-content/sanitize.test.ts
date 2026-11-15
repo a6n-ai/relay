@@ -122,6 +122,50 @@ describe("sanitizeEmailHtml", () => {
     expect(out.blockedRemote).toBe(2);
   });
 
+  it("block mode removes remote url() written with entities in a style attribute", () => {
+    const out = sanitizeEmailHtml(
+      `<p style="background:url(&quot;https://x.ca/p.gif&quot;)">a</p><p style="background:url(&#104;ttps://x.ca/q.gif)">b</p>`,
+      { remoteImages: "block" },
+    );
+    expect(out.html).not.toContain("x.ca");
+    expect(out.blockedRemote).toBe(2);
+  });
+
+  it("block mode removes remote url() written with CSS escapes", () => {
+    const out = sanitizeEmailHtml(
+      `<p style="background:url(\\68ttps://x.ca/r.gif)">a</p><p style="background:ur\\l(https://x.ca/s.gif)">b</p>`,
+      { remoteImages: "block" },
+    );
+    expect(out.html).not.toContain("x.ca");
+    expect(out.blockedRemote).toBe(2);
+  });
+
+  it("block mode removes remote @import in string and url() forms, and escaped @import", () => {
+    const out = sanitizeEmailHtml(
+      `<style>@import "https://x.ca/a.css";@import url(https://x.ca/b.css);@\\69mport 'https://x.ca/c.css';.a{color:red}</style>`,
+      { remoteImages: "block" },
+    );
+    expect(out.html).not.toContain("x.ca");
+    expect(out.html).toContain(".a{color:red}");
+    expect(out.blockedRemote).toBe(3);
+  });
+
+  it("block mode removes remote SVG image, use and xlink:href loads", () => {
+    const out = sanitizeEmailHtml(
+      `<svg><image href="https://x.ca/i.png"/><use href="https://x.ca/u.svg#a"/><use xlink:href="https://x.ca/x.svg#b"/><use href="#local"/></svg>`,
+      { remoteImages: "block" },
+    );
+    expect(out.html).not.toContain("x.ca");
+    expect(out.html).toContain('href="#local"');
+    expect(out.blockedRemote).toBe(3);
+  });
+
+  it("show mode still loads a normal remote img", () => {
+    const out = sanitizeEmailHtml(`<img src="https://x.ca/a.png">`, { remoteImages: "allow" });
+    expect(out.html).toBe(`<img src="https://x.ca/a.png">`);
+    expect(out.blockedRemote).toBe(0);
+  });
+
   it("keeps data:image/ in block mode", () => {
     const out = sanitizeEmailHtml(`<img src="data:image/gif;base64,R0lGOD">`, { remoteImages: "block" });
     expect(out.html).toBe(`<img src="data:image/gif;base64,R0lGOD">`);

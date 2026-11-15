@@ -17,7 +17,11 @@ const URL_ATTRS = new Set(["href", "src", "action", "formaction", "background", 
 const SAFE_FONT_CSS = /^https:\/\/fonts\.googleapis\.com\//i;
 // Remote loads a letter can trigger when opened: the ones "block" mode strips.
 const REMOTE_LOAD_ATTRS = new Set(["src", "srcset", "background", "poster"]);
-const REMOTE_CSS_URL = /url\(\s*['"]?(?:https?:|\/\/)[^)]*\)/gi;
+const SVG_LOAD_TAGS = new Set(["image", "use", "feimage"]);
+// Loose on purpose: a browser decodes CSS escapes and entities before it reads a function or at-rule name.
+const CSS_NAME = /(?:\\[0-9a-f]{1,6}\s?|\\[^\n\r\f0-9a-f]|&#?[0-9a-z]+;?|[a-z0-9_-]|[^\x00-\x7f])+/.source;
+const CSS_CALL = new RegExp(`(${CSS_NAME})\\(([^)]*)\\)?`, "gi");
+const CSS_IMPORT = new RegExp(`@(${CSS_NAME})[^;{}]*;?`, "gi");
 
 // Entities and whitespace/control chars are how `javascript:` gets disguised.
 // decodeHTML covers named (&colon; &Tab;), numeric and legacy no-semicolon forms, as a browser does.
@@ -37,6 +41,22 @@ function isRemoteUrl(value: string): boolean {
   return v.startsWith("https:") || v.startsWith("http:") || v.startsWith("//");
 }
 
+function cssUnescape(s: string): string {
+  return s.replace(/\\([0-9a-f]{1,6})\s?|\\([^\n\r\f0-9a-f])/gi, (_, hex?: string, ch?: string) => {
+    if (ch) return ch;
+    const n = parseInt(hex ?? "", 16);
+    return n === 0 || n > 0x10ffff ? "�" : String.fromCodePoint(n);
+  });
+}
+
+function cssIdent(raw: string): string {
+  return cssUnescape(decodeHTML(raw)).trim().toLowerCase();
+}
+
+function cssUrlTarget(raw: string): string {
+  return cssUnescape(decodeHTML(raw)).trim().replace(/^(['"])(.*)\1$/, "$2").trim();
+}
+
 export type SanitizeOptions = { remoteImages?: "allow" | "block" };
 
 export function sanitizeEmailHtml(
@@ -46,11 +66,25 @@ export function sanitizeEmailHtml(
   const block = opts.remoteImages === "block";
   const removed: string[] = [];
   let blockedRemote = 0;
-  const scrubCss = (css: string) =>
-    css.replace(REMOTE_CSS_URL, () => {
-      blockedRemote++;
-      return "none";
-    });
+  // Judged on decoded names and targets, edited in the raw text. Only inline data:image url()s survive.
+  const scrubCss = (css: string) => {
+    let prev: string;
+    do {
+      prev = css;
+      css = css
+        .replace(CSS_IMPORT, (m, name: string) => {
+          if (cssIdent(name) !== "import") return m;
+          blockedRemote++;
+          return "";
+        })
+        .replace(CSS_CALL, (m, name: string, arg: string) => {
+          if (cssIdent(name) !== "url" || /^data:image\//i.test(cssUrlTarget(arg))) return m;
+          blockedRemote++;
+          return "none";
+        });
+    } while (css !== prev);
+    return css;
+  };
   const doc = parseDocument(html, { decodeEntities: false, lowerCaseAttributeNames: false, recognizeSelfClosing: true });
 
   const drop = (node: AnyNode) => {
@@ -87,20 +121,24 @@ export function sanitizeEmailHtml(
       for (const name of Object.keys(el.attribs)) {
         const lower = name.toLowerCase();
         const value = el.attribs[name] ?? "";
+        const svgLoad = lower === "xlink:href" || (lower === "href" && SVG_LOAD_TAGS.has(tag));
         if (lower.startsWith("on") || lower === "srcdoc") {
           removed.push(`${name} on <${tag}>`);
           delete el.attribs[name];
         } else if (URL_ATTRS.has(lower) && unsafeUrl(lower, tag, value)) {
           removed.push(`unsafe ${lower} on <${tag}>`);
           delete el.attribs[name];
-        } else if (block && ((REMOTE_LOAD_ATTRS.has(lower) && isRemoteUrl(value)) || (lower === "srcset" && /https?:|\/\//i.test(value)))) {
+        } else if (block && (((REMOTE_LOAD_ATTRS.has(lower) || svgLoad) && isRemoteUrl(value)) || (lower === "srcset" && /https?:|\/\//i.test(value)))) {
           blockedRemote++;
           delete el.attribs[name];
         } else if (lower === "style" && /expression\s*\(|javascript:/i.test(normalizeUrl(value))) {
           removed.push(`unsafe style on <${tag}>`);
           delete el.attribs[name];
         } else if (block && lower === "style") {
-          el.attribs[name] = scrubCss(value);
+          // Attribute text is entity-encoded; the browser decodes it before reading CSS.
+          const css = decodeHTML(value);
+          const scrubbed = scrubCss(css);
+          if (scrubbed !== css) el.attribs[name] = scrubbed.replace(/&/g, "&amp;");
         }
       }
       if (block && tag === "style" && !inForeign) {
