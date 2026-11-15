@@ -49,7 +49,7 @@ describe("consumeInbound", () => {
     const post = vi.fn(async () => status(500));
     await consumeInbound({ messages: [m] }, post);
     expect(m.ack).not.toHaveBeenCalled();
-    expect(m.retry).toHaveBeenCalledWith();
+    expect(m.retry).toHaveBeenCalledWith({ delaySeconds: 300 });
   });
 
   it("treats a thrown post as a failed attempt", async () => {
@@ -71,11 +71,38 @@ describe("consumeInboundDlq", () => {
     expect(m.ack).toHaveBeenCalled();
   });
 
-  it("retries when recording the failure fails", async () => {
-    const m = msg(6);
+  it("retries with exponential backoff when recording the failure fails", async () => {
+    const delays = [];
+    for (const attempts of [1, 2, 6, 9]) {
+      const m = msg(attempts);
+      await consumeInboundDlq({ messages: [m] }, vi.fn(async () => status(500)));
+      expect(m.ack).not.toHaveBeenCalled();
+      delays.push(m.retry.mock.calls[0][0].delaySeconds);
+    }
+    expect(delays).toEqual([60, 120, 1920, 15360]);
+  });
+
+  it("caps the DLQ backoff at 12 hours", async () => {
+    const m = msg(20);
     await consumeInboundDlq({ messages: [m] }, vi.fn(async () => status(500)));
-    expect(m.ack).not.toHaveBeenCalled();
-    expect(m.retry).toHaveBeenCalled();
+    expect(m.retry).toHaveBeenCalledWith({ delaySeconds: 43200 });
+  });
+
+  it("logs the rawId and rawKey on the last DLQ attempt when the app is still unreachable", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const last = msg(11);
+    await consumeInboundDlq({ messages: [last] }, vi.fn(async () => status(500)));
+    expect(error).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(error.mock.calls[0][0] as string)).toEqual({
+      event: "inbound_mail_given_up",
+      rawId: "r1",
+      rawKey: "mail/in/2026/11/r1.eml",
+      error: "failed 500",
+    });
+    error.mockClear();
+    await consumeInboundDlq({ messages: [msg(10)] }, vi.fn(async () => status(500)));
+    expect(error).not.toHaveBeenCalled();
+    error.mockRestore();
   });
 });
 

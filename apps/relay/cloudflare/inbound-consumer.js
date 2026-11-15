@@ -3,6 +3,8 @@ import { sign } from "./email.js";
 import { retryDelaySeconds } from "./queue-consumer.js";
 
 export const INBOUND_MAX_ATTEMPTS = 5;
+// Matches max_retries on relay-inbound-dlq in wrangler.jsonc: the last delivery is attempt INBOUND_DLQ_MAX_RETRIES + 1.
+export const INBOUND_DLQ_MAX_RETRIES = 10;
 
 // Signs the JSON body the way the app's signedInternalRoute verifies it.
 export async function postInternal(env, path, payload) {
@@ -35,14 +37,23 @@ export async function consumeInbound(batch, post) {
       msg.ack();
     } else {
       // Left unacked on purpose: the message goes to the DLQ, which records the failure.
-      msg.retry();
+      msg.retry({ delaySeconds: retryDelaySeconds(300_000) });
     }
   }
 }
 
 export async function consumeInboundDlq(batch, post) {
   for (const msg of batch.messages) {
-    if (!(await send(post, "failed", { message: msg.body, attempts: msg.attempts }))) msg.ack();
-    else msg.retry();
+    const error = await send(post, "failed", { message: msg.body, attempts: msg.attempts });
+    if (!error) {
+      msg.ack();
+      continue;
+    }
+    if (msg.attempts > INBOUND_DLQ_MAX_RETRIES) {
+      console.error(
+        JSON.stringify({ event: "inbound_mail_given_up", rawId: msg.body.rawId, rawKey: msg.body.rawKey, error }),
+      );
+    }
+    msg.retry({ delaySeconds: retryDelaySeconds(60_000 * 2 ** (msg.attempts - 1)) });
   }
 }

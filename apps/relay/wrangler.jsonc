@@ -42,7 +42,8 @@
       { "queue": "relay-outbox", "max_batch_size": 10, "max_retries": 5, "dead_letter_queue": "relay-outbox-dlq" },
       // max_retries 6 > INBOUND_MAX_ATTEMPTS (5): the sixth delivery only happens when recording the failure itself failed.
       { "queue": "relay-inbound", "max_batch_size": 1, "max_retries": 6, "dead_letter_queue": "relay-inbound-dlq" },
-      { "queue": "relay-inbound-dlq", "max_batch_size": 1, "max_retries": 3 }
+      // Backoff up to 12 h per retry (inbound-consumer.js); 10 retries span about 17 h. Queue retention: deployment/cloudflare/README.md.
+      { "queue": "relay-inbound-dlq", "max_batch_size": 1, "max_retries": 10 }
     ]
   },
   "workflows": [{ "name": "relay-wake", "binding": "RELAY_WAKE", "class_name": "RelayWake" }],

@@ -46,6 +46,15 @@ wrangler queues create relay-inbound
 wrangler queues create relay-inbound-dlq
 ```
 
+Set the message retention on both inbound queues so a long app outage does not drop accepted mail (the DLQ retries for about 17 h; the wrangler config has no field for this):
+
+```bash
+wrangler queues update relay-inbound --message-retention-period-secs 1209600
+wrangler queues update relay-inbound-dlq --message-retention-period-secs 1209600
+```
+
+Give-up events are logged as `inbound_mail_given_up` with `rawId` and `rawKey`; the `.eml` can be recovered from the `relay-mail` bucket with that key.
+
 ## Migrate and seed
 
 ```bash
