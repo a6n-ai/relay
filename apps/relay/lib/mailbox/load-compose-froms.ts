@@ -3,9 +3,11 @@ import { operatorDefaultFrom } from "@/lib/email/from-address";
 import { emailSendersService } from "@/lib/services/email-senders.service";
 import { tenantsService } from "@/lib/services/tenants.service";
 import { composeFromOptions, type ComposeFromOption } from "./compose-from";
+import { mailboxScope } from "./scope";
 
 export async function loadComposeFroms(): Promise<ComposeFromOption[]> {
-  const [operator, tenants, senders, activeApp] = await Promise.all([
+  const [scope, operator, tenants, senders, activeApp] = await Promise.all([
+    mailboxScope(),
     operatorDefaultFrom(),
     tenantsService.listRecent(),
     emailSendersService.listRecent(),
@@ -13,7 +15,7 @@ export async function loadComposeFroms(): Promise<ComposeFromOption[]> {
   ]);
   const tenantById = new Map(tenants.items.map((t) => [t.id.toString(), t]));
   return composeFromOptions({
-    operator,
+    operator: scope.includeOperatorMail ? operator : null,
     senders: senders.items.flatMap((s) => {
       if (activeApp && s.tenantId !== activeApp.id) return [];
       const tenant = tenantById.get(s.tenantId.toString());

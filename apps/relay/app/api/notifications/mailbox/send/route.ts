@@ -1,4 +1,4 @@
-import { ValidationError } from "@foundry/commons";
+import { NotFoundError, ValidationError } from "@foundry/commons";
 import { handler, json } from "@foundry/routes";
 import { archiveMailboxLetter, generateRelayMessageId, replyThreading } from "@relay/engine";
 import { z } from "zod";
@@ -32,13 +32,18 @@ export const POST = handler(async (req: Request) => {
   const parsed = schema.safeParse(body);
   if (!parsed.success) throw new ValidationError(parsed.error.message);
 
+  const scope = await mailboxScope();
   let tenantId: bigint | null = null;
   let from: { email: string; name?: string } | null = null;
   if (parsed.data.fromId === "operator") {
+    if (!scope.includeOperatorMail) throw new NotFoundError("Unknown From");
     from = await operatorDefaultFrom();
   } else {
     const sender = await emailSendersService.read(parsed.data.fromId).catch(() => null);
     if (!sender || sender.verifiedAt == null) throw new ValidationError("Unknown From");
+    if (sender.tenantId == null || !scope.tenantIds.includes(sender.tenantId)) {
+      throw new NotFoundError("Unknown From");
+    }
     tenantId = sender.tenantId;
     from = { email: sender.email, name: sender.displayName ?? undefined };
   }
@@ -46,8 +51,8 @@ export const POST = handler(async (req: Request) => {
 
   let reply: { inReplyTo: string; rfcReferences: string; threadId: string } | null = null;
   if (parsed.data.replyToId) {
-    const parent = await readMailboxLetter(await mailboxScope(), parsed.data.replyToId);
-    if (!parent) throw new ValidationError("Unknown letter");
+    const parent = await readMailboxLetter(scope, parsed.data.replyToId);
+    if (!parent) throw new NotFoundError("Unknown letter");
     if (parent.tenantId != null) tenantId = parent.tenantId;
     reply = replyThreading({
       rfcMessageId: parent.rfcMessageId,
