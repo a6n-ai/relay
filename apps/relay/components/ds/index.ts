@@ -28,6 +28,7 @@ export { ChannelGrid } from "./channel-grid";
 export { ChannelPerformance } from "./channel-performance";
 export { DotRule } from "./dot-rule";
 export { InsightBanner } from "./insight-banner";
+export { NoticeBar } from "./notice-bar";
 export { insightCopy } from "./insight-copy";
 export { KeyInsightsCard } from "./key-insights-card";
 export { KpiActionCard, KpiStrip, type KpiItem } from "./kpi-tile";

@@ -7,6 +7,7 @@ import { Button } from "@foundry/ui/button";
 import { PageShell, SectionCard } from "@foundry/design-system";
 import { emailHtmlToReader, emailTextToReader, sanitizeEmailHtml } from "@relay/engine";
 import { outboxStatusLabel } from "@/components/ds/plain-labels";
+import { listAttachments } from "@/lib/mailbox/attachments";
 import { listMailboxThread, readMailboxLetter } from "@/lib/mailbox/list";
 import { fromLine } from "@/lib/mailbox/listing";
 import { loadComposeFroms } from "@/lib/mailbox/load-compose-froms";
@@ -15,6 +16,7 @@ import { appMessageTagsService } from "@/lib/services/mailbox-tags.service";
 import { MailboxConversationChannels } from "../mailbox-conversation-channels";
 import { MailboxConversationTags } from "../mailbox-conversation-tags";
 import { MailboxChat, type ChatLetter } from "../mailbox-chat";
+import type { ChatAttachment } from "../mailbox-attachments";
 import { MailboxQuickActions } from "../mailbox-actions";
 import { ViewHeader } from "@/components/ds/view-header";
 
@@ -42,10 +44,13 @@ function DetailRow({ label, mono, children }: { label: string; mono?: boolean; c
 
 export default async function MailboxLetterPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ images?: string }>;
 }) {
   const { id } = await params;
+  const { images } = await searchParams;
   const scope = await mailboxScope();
   const row = await readMailboxLetter(scope, id);
   if (!row) notFound();
@@ -68,18 +73,37 @@ export default async function MailboxLetterPage({
   const tags = appTags.map((t) => ({ slug: t.slug, label: t.label }));
 
   const titleKey = normalizeSubject(row.subject);
-  const chatLetters: ChatLetter[] = letters.map((letter) => ({
-    publicId: letter.publicId,
-    inbound: letter.direction === "in",
-    from: fromLine(letter.fromEmail, letter.fromName),
-    initial: (letter.fromName?.trim() || letter.fromEmail).charAt(0).toUpperCase(),
-    time: new Date(letter.createdAt).toLocaleString(),
-    subject: normalizeSubject(letter.subject) !== titleKey ? letter.subject : null,
-    html: letter.html,
-    htmlSafe: letter.html.trim() ? sanitizeEmailHtml(letter.html).html : "",
-    text: letter.text,
-    reader: letter.html.trim() ? emailHtmlToReader(letter.html) : emailTextToReader(letter.text),
-  }));
+  const attachmentRows = await listAttachments(letters.map((letter) => letter.id));
+  const attachmentsByMailbox = new Map<bigint, ChatAttachment[]>();
+  for (const a of attachmentRows) {
+    const list = attachmentsByMailbox.get(a.mailboxId) ?? [];
+    list.push({ publicId: a.publicId, filename: a.filename, sizeBytes: a.sizeBytes, contentType: a.contentType });
+    attachmentsByMailbox.set(a.mailboxId, list);
+  }
+
+  const chatLetters: ChatLetter[] = letters.map((letter) => {
+    const remoteImages = letter.publicId === images ? "allow" : "block";
+    const safe = letter.html.trim() ? sanitizeEmailHtml(letter.html, { remoteImages }) : null;
+    const sentMs = letter.sentAt;
+    return {
+      publicId: letter.publicId,
+      inbound: letter.direction === "in",
+      from: fromLine(letter.fromEmail, letter.fromName),
+      initial: (letter.fromName?.trim() || letter.fromEmail).charAt(0).toUpperCase(),
+      time: new Date(letter.createdAt).toLocaleString(),
+      sentAt:
+        sentMs != null && Math.abs(sentMs - new Date(letter.createdAt).getTime()) > 60_000
+          ? new Date(sentMs).toLocaleString()
+          : null,
+      subject: normalizeSubject(letter.subject) !== titleKey ? letter.subject : null,
+      html: letter.html,
+      htmlSafe: safe?.html ?? "",
+      remoteBlocked: remoteImages === "block" && (safe?.blockedRemote ?? 0) > 0,
+      text: letter.text,
+      reader: letter.html.trim() ? emailHtmlToReader(letter.html) : emailTextToReader(letter.text),
+      attachments: attachmentsByMailbox.get(letter.id) ?? [],
+    };
+  });
 
   return (
     <PageShell>

@@ -4,7 +4,9 @@ import { emailMailbox, notificationOutbox, tenants } from "@/db/schema";
 import type { MailboxScope } from "./scope";
 
 const listColumns = {
+  id: emailMailbox.id,
   publicId: emailMailbox.publicId,
+  sentAt: emailMailbox.sentAt,
   subject: emailMailbox.subject,
   fromEmail: emailMailbox.fromEmail,
   fromName: emailMailbox.fromName,

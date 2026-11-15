@@ -10,6 +10,7 @@ import { apiFetch } from "@relay/engine/ui/api-fetch";
 import type { ComposeFromOption } from "@/lib/mailbox/compose-from";
 import type { ReaderLetter } from "@relay/engine";
 import { MailboxLetterBody } from "./mailbox-letter";
+import type { ChatAttachment } from "./mailbox-attachments";
 
 export type ChatLetter = {
   publicId: string;
@@ -17,11 +18,14 @@ export type ChatLetter = {
   from: string;
   initial: string;
   time: string;
+  sentAt: string | null;
   subject: string | null;
   html: string;
   htmlSafe: string;
+  remoteBlocked: boolean;
   text: string;
   reader: ReaderLetter;
+  attachments: ChatAttachment[];
 };
 
 export function MailboxChat({
@@ -94,13 +98,17 @@ export function MailboxChat({
               >
                 <p className="text-xs text-muted-foreground">
                   {letter.from} · {letter.time}
+                  {letter.sentAt ? ` · Sent ${letter.sentAt}` : null}
                 </p>
                 {letter.subject ? <p className="text-sm font-medium">{letter.subject}</p> : null}
                 <MailboxLetterBody
+                  publicId={letter.publicId}
                   html={letter.html}
                   htmlSafe={letter.htmlSafe}
                   reader={letter.reader}
                   inbound={letter.inbound}
+                  remoteBlocked={letter.remoteBlocked}
+                  attachments={letter.attachments}
                 />
               </div>
             </article>

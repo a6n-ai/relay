@@ -1,10 +1,14 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
+import Link from "next/link";
 import type { ReaderLetter } from "@relay/engine";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@foundry/design-system";
+import { Button } from "@foundry/ui/button";
 import { Panel } from "@/components/ds/panel";
+import { NoticeBar } from "@/components/ds/notice-bar";
 import { cn } from "@foundry/ui/cn";
+import { MailboxAttachmentList, type ChatAttachment } from "./mailbox-attachments";
 
 type View = "message" | "html" | "source";
 
@@ -75,15 +79,21 @@ function OriginalFrame({ htmlSafe }: { htmlSafe: string }) {
 }
 
 export function MailboxLetterBody({
+  publicId,
   html,
   htmlSafe,
   reader,
   inbound,
+  remoteBlocked,
+  attachments,
 }: {
+  publicId: string;
   html: string;
   htmlSafe: string;
   reader: ReaderLetter;
   inbound: boolean;
+  remoteBlocked: boolean;
+  attachments: ChatAttachment[];
 }) {
   const hasHtml = html.trim() !== "";
   const hasMessage = reader.body.trim() !== "";
@@ -95,12 +105,6 @@ export function MailboxLetterBody({
     views.push({ value: "html", label: "Original" }, { value: "source", label: "Source" });
   }
 
-  if (views.length === 0) {
-    return <p className="text-muted-foreground text-sm">No content.</p>;
-  }
-
-  const active = views.some((v) => v.value === selected) ? selected : views[0].value;
-
   const content: Record<View, ReactNode> = {
     message: <ReaderMessage reader={reader} />,
     html: <OriginalFrame htmlSafe={htmlSafe} />,
@@ -111,6 +115,7 @@ export function MailboxLetterBody({
     ),
   };
 
+  const active = views.some((v) => v.value === selected) ? selected : views[0]?.value;
   const wide = active !== "message";
   const bubble = cn(
     "rounded-2xl px-4 py-3 text-foreground",
@@ -118,26 +123,54 @@ export function MailboxLetterBody({
     inbound ? "bg-muted rounded-tl-sm" : "bg-primary/10 rounded-tr-sm",
   );
 
-  if (views.length === 1) {
-    return <div className={bubble}>{content[active]}</div>;
+  let letterBody: ReactNode;
+  if (views.length === 0) {
+    letterBody = <p className="text-muted-foreground text-sm">No content.</p>;
+  } else if (views.length === 1) {
+    letterBody = <div className={bubble}>{content[views[0].value]}</div>;
+  } else {
+    letterBody = (
+      <div className={bubble}>
+        <Tabs value={active} onValueChange={(v) => setSelected(v as View)} className="gap-2">
+          <TabsList variant="line">
+            {views.map((view) => (
+              <TabsTrigger key={view.value} value={view.value} className="text-xs">
+                {view.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+          {views.map((view) => (
+            <TabsContent key={view.value} value={view.value}>
+              {content[view.value]}
+            </TabsContent>
+          ))}
+        </Tabs>
+      </div>
+    );
   }
 
   return (
-    <div className={bubble}>
-      <Tabs value={active} onValueChange={(v) => setSelected(v as View)} className="gap-2">
-        <TabsList variant="line">
-          {views.map((view) => (
-            <TabsTrigger key={view.value} value={view.value} className="text-xs">
-              {view.label}
-            </TabsTrigger>
-          ))}
-        </TabsList>
-        {views.map((view) => (
-          <TabsContent key={view.value} value={view.value}>
-            {content[view.value]}
-          </TabsContent>
-        ))}
-      </Tabs>
+    <div className={cn("flex w-full flex-col gap-2", inbound ? "items-start" : "items-end")}>
+      {remoteBlocked ? (
+        <div className="w-full max-w-[80%]">
+          <NoticeBar
+            message="Images hidden to protect your privacy"
+            actions={
+              <Button asChild variant="outline" size="sm">
+                <Link href={`?images=${publicId}`} scroll={false}>
+                  Show images
+                </Link>
+              </Button>
+            }
+          />
+        </div>
+      ) : null}
+      {letterBody}
+      {attachments.length > 0 ? (
+        <div className="w-full max-w-[80%]">
+          <MailboxAttachmentList attachments={attachments} />
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -2,6 +2,8 @@ import { MailboxIcon } from "lucide-react";
 import { PageShell } from "@foundry/design-system";
 import { EmptyState } from "@/components/ds/empty-state";
 import { ListingTable, type ListingFilter } from "@/components/ds/listing-table";
+import { NoticeBar } from "@/components/ds/notice-bar";
+import { listInboundFailures } from "@/lib/mailbox/failures";
 import { listMailboxLetters } from "@/lib/mailbox/list";
 import { mailboxScope } from "@/lib/mailbox/scope";
 import {
@@ -14,6 +16,7 @@ import { loadComposeFroms } from "@/lib/mailbox/load-compose-froms";
 import { appMessageTagsService } from "@/lib/services/mailbox-tags.service";
 import { MailboxCompose } from "./mailbox-compose";
 import { ViewHeader } from "@/components/ds/view-header";
+import { MailboxFailureActions } from "./mailbox-failure-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -31,10 +34,11 @@ const MAILBOX_FILTERS: ListingFilter[] = [
 export default async function MailboxPage() {
   const scope = await mailboxScope();
   const activeApp = await resolveActiveApp();
-  const [rows, froms, tagRows] = await Promise.all([
+  const [rows, froms, tagRows, failures] = await Promise.all([
     listMailboxLetters(scope, { tenantId: activeApp?.id }),
     loadComposeFroms(),
     activeApp ? appMessageTagsService.forTenant(activeApp.id) : Promise.resolve([]),
+    listInboundFailures(scope),
   ]);
   const tagsByTenant = indexTagsByTenantPublicId(
     activeApp
@@ -58,6 +62,20 @@ export default async function MailboxPage() {
         }
         actions={activeApp ? <MailboxCompose froms={froms} /> : undefined}
       />
+      {failures.length > 0 ? (
+        <div className="flex flex-col gap-2">
+          <NoticeBar
+            message={`${failures.length} ${failures.length === 1 ? "email" : "emails"} could not be read`}
+          />
+          {failures.map((failure) => (
+            <NoticeBar
+              key={failure.publicId}
+              message={`From ${failure.envelopeFrom} · ${new Date(failure.receivedAt).toLocaleString()}`}
+              actions={<MailboxFailureActions publicId={failure.publicId} />}
+            />
+          ))}
+        </div>
+      ) : null}
       <ListingTable
         title="Inbox"
         empty={
