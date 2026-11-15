@@ -1,4 +1,4 @@
-import { and, eq } from "@foundry/commons";
+import { and, eq, NotFoundError } from "@foundry/commons";
 import { UpdatableRepository } from "@foundry/database";
 import { count, eq as drizzleEq } from "drizzle-orm";
 import { db } from "@/db/client";
@@ -10,8 +10,18 @@ import { SessionUpdatableService } from "./session-service";
 
 class TenantsService extends SessionUpdatableService<typeof tenants> {
   async findBySlug(slug: string) {
-    const page = await this.list(eq("slug", slug), { page: 0, size: 1 });
+    const organizationId = await requireActiveOrganizationId();
+    const page = await this.list(and(eq("organizationId", organizationId), eq("slug", slug)), { page: 0, size: 1 });
     return page.items[0] ?? null;
+  }
+
+  /** Another workspace's app reads as not found, the same as a missing one. */
+  async read(publicId: string) {
+    const tenant = await super.read(publicId);
+    if (tenant.organizationId !== (await requireActiveOrganizationId())) {
+      throw new NotFoundError(`Not found: ${publicId}`);
+    }
+    return tenant;
   }
 
   /** Apps for the session's active workspace only. */

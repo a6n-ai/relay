@@ -13,19 +13,20 @@ vi.mock("@/lib/auth/active-org", () => ({
   getActiveOrganizationId: async () => state.activeOrgId,
 }));
 
+vi.mock("@/lib/auth/session", () => ({
+  getSession: async () => ({ user: { id: "ses_user" } }),
+}));
+
 vi.mock("@/lib/services/tenants.service", () => ({
   tenantsService: { listRecent: (...args: unknown[]) => state.listRecent(...args) },
 }));
 
 vi.mock("@/db/client", () => {
-  const select = () => ({
-    from: () => ({
-      where: () => ({
-        limit: async () => state.orgRows,
-      }),
-    }),
+  const chain = (): unknown => ({
+    innerJoin: () => chain(),
+    where: () => ({ limit: async () => state.orgRows }),
   });
-  return { db: { select } };
+  return { db: { select: () => ({ from: () => chain() }) } };
 });
 
 import { inScope, mailboxScope, PLATFORM_WORKSPACE_SLUG, platformWorkspaceId, workspaceSlug } from "./scope";
@@ -45,6 +46,13 @@ describe("mailboxScope", () => {
   it("throws NotFoundError when the active workspace row is missing", async () => {
     state.activeOrgId = "org_gone";
     await expect(mailboxScope()).rejects.toBeInstanceOf(NotFoundError);
+  });
+
+  it("throws NotFoundError when the session user has no member row in the active workspace", async () => {
+    state.activeOrgId = "org_removed";
+    state.orgRows = [];
+    await expect(mailboxScope()).rejects.toBeInstanceOf(NotFoundError);
+    expect(state.listRecent).not.toHaveBeenCalled();
   });
 
   it("scopes to the client workspace's tenants without operator mail", async () => {
@@ -115,5 +123,9 @@ describe("inScope", () => {
 
   it("admits operator mail inside the platform workspace", () => {
     expect(inScope({ tenantId: null }, platformScope)).toBe(true);
+  });
+
+  it("rejects another workspace's tenant inside the platform workspace", () => {
+    expect(inScope({ tenantId: 8n }, platformScope)).toBe(false);
   });
 });

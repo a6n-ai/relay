@@ -40,10 +40,10 @@ export const POST = handler(async (req: Request) => {
     from = await operatorDefaultFrom();
   } else {
     const sender = await emailSendersService.read(parsed.data.fromId).catch(() => null);
-    if (!sender || sender.verifiedAt == null) throw new ValidationError("Unknown From");
-    if (sender.tenantId == null || !scope.tenantIds.includes(sender.tenantId)) {
+    if (!sender || sender.tenantId == null || !scope.tenantIds.includes(sender.tenantId)) {
       throw new NotFoundError("Unknown From");
     }
+    if (sender.verifiedAt == null) throw new ValidationError("Unknown From");
     tenantId = sender.tenantId;
     from = { email: sender.email, name: sender.displayName ?? undefined };
   }

@@ -1,4 +1,4 @@
-import { ValidationError } from "@foundry/commons";
+import { NotFoundError, ValidationError } from "@foundry/commons";
 import { handler, json } from "@foundry/routes";
 import { archiveMailboxLetter, generateRelayMessageId, interpolate } from "@relay/engine";
 import { z } from "zod";
@@ -9,6 +9,7 @@ import { operatorGuard } from "@/lib/campaigns/http";
 import { operatorDefaultFrom } from "@/lib/email/from-address";
 import { getEmailProvider, hydrateSmtpFromDb } from "@/lib/email/provider";
 import { templateTestMailboxLetter } from "@/lib/mailbox/template-test";
+import { mailboxScope } from "@/lib/mailbox/scope";
 
 const schema = z.object({
   subject: z.string().trim().min(1),
@@ -20,6 +21,7 @@ const schema = z.object({
 
 export const POST = handler(async (req: Request) => {
   await operatorGuard();
+  if (!(await mailboxScope()).includeOperatorMail) throw new NotFoundError("Unknown From");
   let body: unknown;
   try {
     body = await req.json();

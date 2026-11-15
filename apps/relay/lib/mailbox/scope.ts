@@ -1,9 +1,10 @@
 import { cache } from "react";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { NotFoundError } from "@foundry/commons";
 import { db } from "@/db/client";
-import { organization } from "@/db/schema";
+import { member, organization, users } from "@/db/schema";
 import { getActiveOrganizationId } from "@/lib/auth/active-org";
+import { getSession } from "@/lib/auth/session";
 import { tenantsService } from "@/lib/services/tenants.service";
 import { PLATFORM_WORKSPACE_SLUG } from "./platform-workspace";
 
@@ -18,10 +19,14 @@ export type MailboxScope = {
 export const workspaceSlug = cache(async (): Promise<{ id: string; slug: string } | null> => {
   const id = await getActiveOrganizationId();
   if (!id) return null;
+  const session = await getSession();
+  if (!session?.user) return null;
   const [row] = await db
     .select({ id: organization.id, slug: organization.slug })
     .from(organization)
-    .where(eq(organization.id, id))
+    .innerJoin(member, eq(member.organizationId, organization.id))
+    .innerJoin(users, eq(users.id, member.userId))
+    .where(and(eq(organization.id, id), eq(users.publicId, session.user.id)))
     .limit(1);
   return row ?? null;
 });

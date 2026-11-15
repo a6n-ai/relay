@@ -19,9 +19,15 @@ vi.mock("@/lib/services/tenants.service", () => ({
   tenantsService: { listRecent: (...args: unknown[]) => state.listRecent(...args) },
 }));
 
-vi.mock("@/db/client", () => ({
-  db: { select: () => ({ from: () => ({ where: () => ({ limit: async () => state.orgRows }) }) }) },
-}));
+vi.mock("@/lib/auth/session", () => ({ getSession: async () => ({ user: { id: "ses_user" } }) }));
+
+vi.mock("@/db/client", () => {
+  const chain = (): unknown => ({
+    innerJoin: () => chain(),
+    where: () => ({ limit: async () => state.orgRows }),
+  });
+  return { db: { select: () => ({ from: () => chain() }) } };
+});
 
 vi.mock("@/lib/campaigns/http", () => ({ operatorGuard: async () => {} }));
 

@@ -29,9 +29,15 @@ vi.mock("@/lib/services/tenants.service", () => ({
   tenantsService: { listRecent: (...args: unknown[]) => state.listRecent(...args) },
 }));
 
-vi.mock("@/db/client", () => ({
-  db: { select: () => ({ from: () => ({ where: () => ({ limit: async () => state.orgRows }) }) }) },
-}));
+vi.mock("@/lib/auth/session", () => ({ getSession: async () => ({ user: { id: "ses_user" } }) }));
+
+vi.mock("@/db/client", () => {
+  const chain = (): unknown => ({
+    innerJoin: () => chain(),
+    where: () => ({ limit: async () => state.orgRows }),
+  });
+  return { db: { select: () => ({ from: () => chain() }) } };
+});
 
 vi.mock("@/lib/campaigns/http", () => ({ operatorGuard: async () => {} }));
 
@@ -113,6 +119,13 @@ describe("POST /api/notifications/mailbox/send", () => {
   it("answers 404 for a sender whose app is outside the workspace", async () => {
     signInTo("org_a", "acme", [CLIENT_A]);
     const res = await send({ fromId: "ues_b" });
+    expect(res.status).toBe(404);
+    expect(state.sent).toHaveLength(0);
+  });
+
+  it("answers 404 for an unknown sender, the same as one outside the workspace", async () => {
+    signInTo("org_a", "acme", [CLIENT_A]);
+    const res = await send({ fromId: "ues_missing" });
     expect(res.status).toBe(404);
     expect(state.sent).toHaveLength(0);
   });
