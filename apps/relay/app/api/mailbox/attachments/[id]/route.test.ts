@@ -78,6 +78,7 @@ describe("GET /api/mailbox/attachments/[id]", () => {
     expect(res.headers.get("Content-Disposition")).toBe('attachment; filename="logo.svg"');
     expect(res.headers.get("Content-Security-Policy")).toBe("sandbox");
     expect(res.headers.get("X-Content-Type-Options")).toBe("nosniff");
+    expect(res.headers.get("Cache-Control")).toBe("private, no-store");
     expect(res.headers.get("Content-Length")).toBe(String(BYTES.byteLength));
     expect(new Uint8Array(await res.arrayBuffer())).toEqual(BYTES);
   });

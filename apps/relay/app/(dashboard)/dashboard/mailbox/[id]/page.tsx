@@ -98,6 +98,7 @@ export default async function MailboxLetterPage({
       subject: normalizeSubject(letter.subject) !== titleKey ? letter.subject : null,
       html: letter.html,
       htmlSafe: safe?.html ?? "",
+      blockRemote: remoteImages === "block",
       remoteBlocked: remoteImages === "block" && (safe?.blockedRemote ?? 0) > 0,
       text: letter.text,
       reader: letter.html.trim() ? emailHtmlToReader(letter.html) : emailTextToReader(letter.text),

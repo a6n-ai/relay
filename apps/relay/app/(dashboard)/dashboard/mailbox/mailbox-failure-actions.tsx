@@ -40,7 +40,7 @@ export function MailboxFailureActions({ publicId }: { publicId: string }) {
       </Button>
       <Button asChild variant="ghost" size="sm">
         <a href={`/api/mailbox/failures/${publicId}/raw`} download>
-          Download
+          Download raw .eml
         </a>
       </Button>
     </>

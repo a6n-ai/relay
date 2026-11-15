@@ -57,6 +57,7 @@ export function downloadResponse(
       "Content-Type": "application/octet-stream",
       "Content-Disposition": disposition,
       "Content-Length": String(opts.size),
+      "Cache-Control": "private, no-store",
       "Content-Security-Policy": "sandbox",
       "X-Content-Type-Options": "nosniff",
     },

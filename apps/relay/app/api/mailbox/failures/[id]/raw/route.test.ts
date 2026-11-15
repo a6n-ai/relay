@@ -81,6 +81,7 @@ describe("GET /api/mailbox/failures/[id]/raw", () => {
     expect(res.headers.get("Content-Disposition")).toBe(`attachment; filename="email-${RECEIVED}.eml"`);
     expect(res.headers.get("Content-Security-Policy")).toBe("sandbox");
     expect(res.headers.get("X-Content-Type-Options")).toBe("nosniff");
+    expect(res.headers.get("Cache-Control")).toBe("private, no-store");
     expect(new Uint8Array(await res.arrayBuffer())).toEqual(RAW);
   });
 

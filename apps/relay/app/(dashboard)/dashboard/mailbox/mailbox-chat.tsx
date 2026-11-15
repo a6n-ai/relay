@@ -22,6 +22,7 @@ export type ChatLetter = {
   subject: string | null;
   html: string;
   htmlSafe: string;
+  blockRemote: boolean;
   remoteBlocked: boolean;
   text: string;
   reader: ReaderLetter;
@@ -107,6 +108,7 @@ export function MailboxChat({
                   htmlSafe={letter.htmlSafe}
                   reader={letter.reader}
                   inbound={letter.inbound}
+                  blockRemote={letter.blockRemote}
                   remoteBlocked={letter.remoteBlocked}
                   attachments={letter.attachments}
                 />

@@ -48,11 +48,10 @@ describe("POST /api/internal/mailbox/inbound/queued", () => {
     expect(processQueuedInbound).not.toHaveBeenCalled();
   });
 
-  it("does not apply the 256 KB inbound cap to a signed queue message", async () => {
-    const raw = JSON.stringify({ ...message, padding: "x".repeat(300 * 1024) });
+  it("rejects an oversized signed queue message with 413 before processing", async () => {
+    const raw = JSON.stringify({ ...message, padding: "x".repeat(70 * 1024) });
     const res = await call(raw, signWebhookBody(secret, raw));
-    expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ outcome: "inserted" });
-    expect(processQueuedInbound).toHaveBeenCalledWith(expect.objectContaining({ rawId: "raw1" }));
+    expect(res.status).toBe(413);
+    expect(processQueuedInbound).not.toHaveBeenCalled();
   });
 });

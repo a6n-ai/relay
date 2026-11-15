@@ -9,14 +9,12 @@ import { Panel } from "@/components/ds/panel";
 import { NoticeBar } from "@/components/ds/notice-bar";
 import { cn } from "@foundry/ui/cn";
 import { MailboxAttachmentList, type ChatAttachment } from "./mailbox-attachments";
+import { letterSrcDoc } from "./letter-frame";
 
 type View = "message" | "html" | "source";
 
 const READER_STYLES =
   "text-sm leading-relaxed text-foreground break-words [&_a]:text-primary [&_a]:underline [&_a]:underline-offset-2 [&_blockquote]:border-l-2 [&_blockquote]:border-border [&_blockquote]:pl-3 [&_blockquote]:text-muted-foreground [&_p]:my-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_table]:my-2 [&_td]:pr-3 [&_td]:align-top [&_pre]:whitespace-pre-wrap [&_pre]:font-mono [&_pre]:text-xs [&_h1]:text-base [&_h1]:font-semibold [&_h2]:font-semibold [&_h3]:font-semibold";
-
-const FRAME_HEAD =
-  '<base target="_blank"><meta name="referrer" content="no-referrer"><style>html,body{margin:0}body{padding:16px}</style>';
 
 function Reader({ html, className }: { html: string; className?: string }) {
   // html comes from emailHtmlToReader (strict allowlist, server side).
@@ -64,14 +62,14 @@ function ReaderMessage({ reader }: { reader: ReaderLetter }) {
 
 // No allow-same-origin: the letter gets an opaque origin, so its relative URLs can't
 // reach Relay with the operator's cookies. The cost is no auto-height; the box resizes by hand.
-function OriginalFrame({ htmlSafe }: { htmlSafe: string }) {
+function OriginalFrame({ htmlSafe, blockRemote }: { htmlSafe: string; blockRemote: boolean }) {
   return (
     <div className="h-[32rem] resize-y overflow-hidden rounded-lg border border-border bg-white">
       <iframe
         title="Letter preview"
         sandbox="allow-popups allow-popups-to-escape-sandbox"
         referrerPolicy="no-referrer"
-        srcDoc={FRAME_HEAD + htmlSafe}
+        srcDoc={letterSrcDoc(htmlSafe, blockRemote)}
         className="block size-full border-0"
       />
     </div>
@@ -84,6 +82,7 @@ export function MailboxLetterBody({
   htmlSafe,
   reader,
   inbound,
+  blockRemote,
   remoteBlocked,
   attachments,
 }: {
@@ -92,6 +91,7 @@ export function MailboxLetterBody({
   htmlSafe: string;
   reader: ReaderLetter;
   inbound: boolean;
+  blockRemote: boolean;
   remoteBlocked: boolean;
   attachments: ChatAttachment[];
 }) {
@@ -107,7 +107,7 @@ export function MailboxLetterBody({
 
   const content: Record<View, ReactNode> = {
     message: <ReaderMessage reader={reader} />,
-    html: <OriginalFrame htmlSafe={htmlSafe} />,
+    html: <OriginalFrame htmlSafe={htmlSafe} blockRemote={blockRemote} />,
     source: (
       <Panel as="pre" className="max-h-[32rem] overflow-auto p-4 font-mono text-sm whitespace-pre-wrap">
         {html}
