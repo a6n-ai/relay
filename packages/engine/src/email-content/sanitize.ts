@@ -13,6 +13,8 @@ const DROP_TAGS = new Set([
 ]);
 // Inside svg/math browsers parse these as markup, not raw text, so their "text" can break out.
 const DROP_IN_FOREIGN = new Set(["style", "title", "foreignobject"]);
+// SMIL can set an element's href at render time (`<set attributeName="href">`), with no script.
+const SVG_ANIMATION_TAGS = new Set(["set", "animate", "animatemotion", "animatetransform", "animatecolor", "discard", "mpath"]);
 const URL_ATTRS = new Set(["href", "src", "action", "formaction", "background", "poster", "xlink:href"]);
 const SAFE_FONT_CSS = /^https:\/\/fonts\.googleapis\.com\//i;
 // Remote loads a letter can trigger when opened: the ones "block" mode strips.
@@ -76,7 +78,7 @@ function nextStop(css: string, from: number, stops: string): number {
     const c = css[i];
     if (c === "\\") i++;
     else if (quote) {
-      if (c === quote) quote = "";
+      if (c === quote || c === "\n" || c === "\r" || c === "\f") quote = "";
     } else if (c === '"' || c === "'") quote = c;
     else if (c === "/" && css[i + 1] === "*") {
       const end = css.indexOf("*/", i + 2);
@@ -137,7 +139,7 @@ function keepSheet(css: string): Scrubbed {
     const rule = css.slice(pos, close + 1);
     const body = css.slice(stop + 1, close);
     pos = close + 1;
-    if (CSS_IMPORT.test(judgeCss(rule))) {
+    if (CSS_IMPORT.test(judgeCss(rule)) || CSS_REMOTE.test(judgeCss(head))) {
       dropped++;
       continue;
     }
@@ -184,6 +186,7 @@ export function sanitizeEmailHtml(
       if (
         DROP_TAGS.has(tag) ||
         (inForeign && DROP_IN_FOREIGN.has(tag)) ||
+        SVG_ANIMATION_TAGS.has(tag) ||
         (tag === "link" && !fontLink)
       ) {
         removed.push(`<${tag}>`);

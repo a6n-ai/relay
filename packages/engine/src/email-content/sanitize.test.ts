@@ -255,4 +255,29 @@ describe("sanitizeEmailHtml", () => {
       expect(out.blockedRemote).toBeGreaterThan(0);
     }
   });
+
+  it("block mode drops a style rule whose selector holds a remote URL", () => {
+    const out = sanitizeEmailHtml(`<style>a[data-x="https://e.com/a"]{color:red}.b{color:blue}</style>`, { remoteImages: "block" });
+    expect(out.html).toBe("<style>.b{color:blue}</style>");
+    expect(out.blockedRemote).toBe(1);
+  });
+
+  it("block mode does not let an unescaped newline in a CSS string hide a remote url()", () => {
+    const out = sanitizeEmailHtml(`<style>a[x="\n]{} b{background:url(//e.com/a)} c[y="]{}</style>`, { remoteImages: "block" });
+    expect(out.html).not.toContain("e.com");
+    expect(out.blockedRemote).toBeGreaterThan(0);
+  });
+
+  it.each(["allow", "block"] as const)("drops SVG animation elements that set href at render time (%s)", (remoteImages) => {
+    for (const input of [
+      `<svg><image width=10 height=10><set attributeName="href" to="https://e.com/a.png"/></image></svg>`,
+      `<svg><image><animate attributeName="xlink:href" values="//e.com/a.png"/></image></svg>`,
+      `<svg><a><animateMotion attributeName="href" values="javascript:alert(1)"/><rect/></a></svg>`,
+      `<svg><image><animateTransform attributeName="href" values="https://e.com/a.png"/></image></svg>`,
+    ]) {
+      const out = sanitizeEmailHtml(input, { remoteImages });
+      expect(out.html).not.toMatch(/e\.com|javascript|<(set|animate)/i);
+      expect(out.html).toContain("<svg");
+    }
+  });
 });
