@@ -18,10 +18,9 @@ const SAFE_FONT_CSS = /^https:\/\/fonts\.googleapis\.com\//i;
 // Remote loads a letter can trigger when opened: the ones "block" mode strips.
 const REMOTE_LOAD_ATTRS = new Set(["src", "srcset", "background", "poster"]);
 const SVG_LOAD_TAGS = new Set(["image", "use", "feimage"]);
-// Loose on purpose: a browser decodes CSS escapes and entities before it reads a function or at-rule name.
-const CSS_NAME = /(?:\\[0-9a-f]{1,6}\s?|\\[^\n\r\f0-9a-f]|&#?[0-9a-z]+;?|[a-z0-9_-]|[^\x00-\x7f])+/.source;
-const CSS_CALL = new RegExp(`(${CSS_NAME})\\(([^)]*)\\)?`, "gi");
-const CSS_IMPORT = new RegExp(`@(${CSS_NAME})[^;{}]*;?`, "gi");
+// Judged on decoded text. `\` counts as `/` in a url, so `/\host` reaches the same remote host as `//host`.
+const CSS_REMOTE = /https?:|[\\/]{2}/i;
+const CSS_IMPORT = /@import\b/i;
 
 // Entities and whitespace/control chars are how `javascript:` gets disguised.
 // decodeHTML covers named (&colon; &Tab;), numeric and legacy no-semicolon forms, as a browser does.
@@ -49,21 +48,91 @@ function cssUnescape(s: string): string {
   });
 }
 
-function cssIdent(raw: string): string {
-  return cssUnescape(decodeHTML(raw)).trim().toLowerCase();
+function judgeCss(raw: string): string {
+  return cssUnescape(decodeHTML(raw));
 }
 
-function cssUrlTarget(raw: string): string {
-  return cssUnescape(decodeHTML(raw)).trim().replace(/^(['"])(.*)\1$/, "$2").trim();
+type Scrubbed = { out: string; dropped: number };
+
+// Index of the next `stops` char at top level, skipping quotes, comments, escapes and brackets.
+// -1 at a clean end; throws when quotes or brackets never close.
+function nextStop(css: string, from: number, stops: string): number {
+  let depth = 0;
+  let quote = "";
+  for (let i = from; i < css.length; i++) {
+    const c = css[i];
+    if (c === "\\") i++;
+    else if (quote) {
+      if (c === quote) quote = "";
+    } else if (c === '"' || c === "'") quote = c;
+    else if (c === "/" && css[i + 1] === "*") {
+      const end = css.indexOf("*/", i + 2);
+      if (end < 0) throw new Error("unclosed comment");
+      i = end + 1;
+    } else if (depth === 0 && stops.includes(c)) return i;
+    else if (c === "(" || c === "{") depth++;
+    else if (c === ")" || c === "}") {
+      if (--depth < 0) throw new Error("unbalanced bracket");
+    }
+  }
+  if (quote || depth) throw new Error("unclosed quote or bracket");
+  return -1;
 }
 
-// image-set() takes bare strings as well as url(); a quoted string or url() target can be remote.
-const IMAGE_SET = new Set(["image-set", "-webkit-image-set"]);
-function imageSetHasRemote(arg: string): boolean {
-  const decoded = cssUnescape(decodeHTML(arg));
-  return [...decoded.matchAll(/["']([^"']*)["']|url\(([^)]*)/gi)].some(([, quoted, bare]) =>
-    isRemoteUrl(cssUrlTarget(quoted ?? bare ?? "")),
-  );
+// Unparseable CSS is dropped whole rather than guessed at.
+function failClosed(scrub: () => Scrubbed): Scrubbed {
+  try {
+    return scrub();
+  } catch {
+    return { out: "", dropped: 1 };
+  }
+}
+
+function keepDeclarations(css: string): Scrubbed {
+  let out = "";
+  let dropped = 0;
+  for (let pos = 0; pos < css.length; ) {
+    const stop = nextStop(css, pos, ";");
+    const end = stop < 0 ? css.length : stop + 1;
+    const declaration = css.slice(pos, end);
+    if (CSS_REMOTE.test(judgeCss(declaration))) dropped++;
+    else out += declaration;
+    pos = end;
+  }
+  return { out, dropped };
+}
+
+// Kept text is the raw text, so a sheet with nothing remote comes back byte-for-byte.
+function keepSheet(css: string): Scrubbed {
+  let out = "";
+  let dropped = 0;
+  let pos = 0;
+  while (pos < css.length) {
+    const stop = nextStop(css, pos, ";{");
+    if (stop < 0 || css[stop] === ";") {
+      const end = stop < 0 ? css.length : stop + 1;
+      const statement = css.slice(pos, end);
+      const judged = judgeCss(statement);
+      if (CSS_IMPORT.test(judged) || CSS_REMOTE.test(judged)) dropped++;
+      else out += statement;
+      pos = end;
+      continue;
+    }
+    const close = nextStop(css, stop + 1, "}");
+    if (close < 0) throw new Error("unclosed rule");
+    const head = css.slice(pos, stop + 1);
+    const rule = css.slice(pos, close + 1);
+    const body = css.slice(stop + 1, close);
+    pos = close + 1;
+    if (CSS_IMPORT.test(judgeCss(rule))) {
+      dropped++;
+      continue;
+    }
+    const inner = nextStop(body, 0, "{") < 0 ? keepDeclarations(body) : keepSheet(body);
+    out += head + inner.out + "}";
+    dropped += inner.dropped;
+  }
+  return { out, dropped };
 }
 
 export type SanitizeOptions = { remoteImages?: "allow" | "block" };
@@ -75,28 +144,6 @@ export function sanitizeEmailHtml(
   const block = opts.remoteImages === "block";
   const removed: string[] = [];
   let blockedRemote = 0;
-  // Judged on decoded names and targets, edited in the raw text. Only inline data:image url()s survive.
-  const scrubCss = (css: string) => {
-    let prev: string;
-    do {
-      prev = css;
-      css = css
-        .replace(CSS_IMPORT, (m, name: string) => {
-          if (cssIdent(name) !== "import") return m;
-          blockedRemote++;
-          return "";
-        })
-        .replace(CSS_CALL, (m, name: string, arg: string) => {
-          const fn = cssIdent(name);
-          const remoteUrl = fn === "url" && !/^data:image\//i.test(cssUrlTarget(arg));
-          const remoteSet = IMAGE_SET.has(fn) && imageSetHasRemote(arg);
-          if (!remoteUrl && !remoteSet) return m;
-          blockedRemote++;
-          return "none";
-        });
-    } while (css !== prev);
-    return css;
-  };
   const doc = parseDocument(html, { decodeEntities: false, lowerCaseAttributeNames: false, recognizeSelfClosing: true });
 
   const drop = (node: AnyNode) => {
@@ -148,13 +195,20 @@ export function sanitizeEmailHtml(
           delete el.attribs[name];
         } else if (block && lower === "style") {
           // Attribute text is entity-encoded; the browser decodes it before reading CSS.
-          const css = decodeHTML(value);
-          const scrubbed = scrubCss(css);
-          if (scrubbed !== css) el.attribs[name] = scrubbed.replace(/&/g, "&amp;");
+          const { out, dropped } = failClosed(() => keepDeclarations(decodeHTML(value)));
+          if (dropped) {
+            blockedRemote += dropped;
+            el.attribs[name] = out.replace(/&/g, "&amp;");
+          }
         }
       }
       if (block && tag === "style" && !inForeign) {
-        for (const child of el.children) if (isText(child)) child.data = scrubCss(child.data);
+        for (const child of el.children) {
+          if (!isText(child)) continue;
+          const { out, dropped } = failClosed(() => keepSheet(child.data));
+          blockedRemote += dropped;
+          child.data = out;
+        }
       }
       walk(el.children, inForeign || tag === "svg" || tag === "math");
     }

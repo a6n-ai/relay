@@ -172,6 +172,41 @@ describe("sanitizeEmailHtml", () => {
     expect(out.blockedRemote).toBe(3);
   });
 
+  it("block mode drops a remote url() nested in another function, in style attributes and <style>", () => {
+    const declarations = [
+      "background:var(--x, url(https://e.com/a))",
+      "background:cross-fade(url(https://e.com/a), red)",
+      'background:image-set(url(data:image/png;base64,AA) 1x, "https://e.com/b" 2x)',
+      "background:url(/\\\\e.com/a)",
+    ];
+    for (const decl of declarations) {
+      const attr = sanitizeEmailHtml(`<p style='${decl}'>x</p>`, { remoteImages: "block" });
+      expect(attr.html).not.toContain("e.com");
+      expect(attr.blockedRemote).toBe(1);
+      const sheet = sanitizeEmailHtml(`<style>.a{${decl}}</style>`, { remoteImages: "block" });
+      expect(sheet.html).not.toContain("e.com");
+      expect(sheet.blockedRemote).toBe(1);
+    }
+  });
+
+  it("block mode keeps the declarations before a remote one", () => {
+    const out = sanitizeEmailHtml(`<p style="color:red; background:url(https://x.ca/a.png)">x</p>`, { remoteImages: "block" });
+    expect(out.html).toBe(`<p style="color:red;">x</p>`);
+    expect(out.blockedRemote).toBe(1);
+  });
+
+  it("block mode drops every @import, local or remote", () => {
+    const out = sanitizeEmailHtml(`<style>@import "fonts.css";.a{color:red}</style>`, { remoteImages: "block" });
+    expect(out.html).toBe(`<style>.a{color:red}</style>`);
+    expect(out.blockedRemote).toBe(1);
+  });
+
+  it("block mode drops a <style> it cannot parse", () => {
+    const out = sanitizeEmailHtml(`<style>.a{color:red}.b{content:"x}</style>`, { remoteImages: "block" });
+    expect(out.html).toBe("<style></style>");
+    expect(out.blockedRemote).toBe(1);
+  });
+
   it("show mode still loads a normal remote img", () => {
     const out = sanitizeEmailHtml(`<img src="https://x.ca/a.png">`, { remoteImages: "allow" });
     expect(out.html).toBe(`<img src="https://x.ca/a.png">`);
