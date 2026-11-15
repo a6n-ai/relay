@@ -110,6 +110,17 @@ describe("sanitizeEmailHtml", () => {
     expect(out.blockedRemote).toBe(5);
   });
 
+  it.each([
+    `<img srcset="a.png 1x, /\\65.com/p 2x">`,
+    `<img src="/\\65.com/p">`,
+    `<img srcset="a.png 1x, \\\\e.com/p 2x">`,
+    `<img srcset="a.png 1x&#44;/\\65.com/p">`,
+  ])("block mode judges HTML attribute URLs without CSS unescaping: %s", (html) => {
+    const out = sanitizeEmailHtml(html, { remoteImages: "block" });
+    expect(out.html).not.toMatch(/65\.com|e\.com/);
+    expect(out.blockedRemote).toBeGreaterThan(0);
+  });
+
   it("block mode scrubs remote url() in <style> blocks and drops the fonts link", () => {
     const out = sanitizeEmailHtml(
       `<head><style>.a{background:url(https://x.ca/f.png)}.b{background:url(data:image/png;base64,AA)}</style>` +

@@ -16,7 +16,7 @@ const DROP_IN_FOREIGN = new Set(["style", "title", "foreignobject"]);
 const URL_ATTRS = new Set(["href", "src", "action", "formaction", "background", "poster", "xlink:href"]);
 const SAFE_FONT_CSS = /^https:\/\/fonts\.googleapis\.com\//i;
 // Remote loads a letter can trigger when opened: the ones "block" mode strips.
-const REMOTE_LOAD_ATTRS = new Set(["src", "srcset", "background", "poster"]);
+const REMOTE_LOAD_ATTRS = new Set(["src", "background", "poster"]);
 const SVG_LOAD_TAGS = new Set(["image", "use", "feimage"]);
 // Judged on decoded text. `\` counts as `/` in a url, so `/\host` reaches the same remote host as `//host`.
 const CSS_REMOTE = /https?:|[\\/]{2}/i;
@@ -35,9 +35,19 @@ function unsafeUrl(attr: string, tag: string, value: string): boolean {
   return false;
 }
 
+// HTML attribute URLs have no CSS escapes; browsers read `\` as `/` in them, so `/\host` is `//host`.
+function judgeAttrUrl(v: string): string {
+  return decodeHTML(v).replace(URL_NOISE, "").replace(/\\/g, "/").toLowerCase();
+}
+
 function isRemoteUrl(value: string): boolean {
-  const v = normalizeUrl(value);
+  const v = judgeAttrUrl(value);
   return v.startsWith("https:") || v.startsWith("http:") || v.startsWith("//");
+}
+
+// Decoded before splitting, as the browser does, so `&#44;` cannot hide a candidate boundary.
+function isRemoteSrcset(value: string): boolean {
+  return decodeHTML(value).split(",").some(isRemoteUrl);
 }
 
 function cssUnescape(s: string): string {
@@ -190,7 +200,7 @@ export function sanitizeEmailHtml(
         } else if (URL_ATTRS.has(lower) && unsafeUrl(lower, tag, value)) {
           removed.push(`unsafe ${lower} on <${tag}>`);
           delete el.attribs[name];
-        } else if (block && (((REMOTE_LOAD_ATTRS.has(lower) || svgLoad) && isRemoteUrl(value)) || (lower === "srcset" && CSS_REMOTE.test(judgeCss(value))))) {
+        } else if (block && (((REMOTE_LOAD_ATTRS.has(lower) || svgLoad) && isRemoteUrl(value)) || (lower === "srcset" && isRemoteSrcset(value)))) {
           blockedRemote++;
           delete el.attribs[name];
         } else if (lower === "style" && /expression\s*\(|javascript:/i.test(normalizeUrl(value))) {
