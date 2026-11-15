@@ -226,4 +226,22 @@ describe("sanitizeEmailHtml", () => {
       expect(out.removed).toEqual(["unsafe src on <img>"]);
     }
   });
+
+  it("block mode judges remote URLs with the tab, LF, CR and line continuations browsers strip", () => {
+    const inputs = [
+      '<style>a{background:url("h\\\nttps:e.com/a")}</style>',
+      '<style>a{background:url("/\t/e.com/a")}</style>',
+      '<style>a{background:url("ht\ttp:e.com/a")}</style>',
+      '<style>a{background:url("/\\9 /e.com/a")}</style>',
+      `<div style="background:url('/&#10;/e.com/a')">x</div>`,
+      `<div style="background:url('/&#9;/e.com/a')">x</div>`,
+      `<div style="background:url('ht&#10;tp:e.com/a')">x</div>`,
+      `<img srcset="h&#116;tps:e.com/a 1x">`,
+    ];
+    for (const input of inputs) {
+      const out = sanitizeEmailHtml(input, { remoteImages: "block" });
+      expect(out.html).not.toContain("e.com");
+      expect(out.blockedRemote).toBeGreaterThan(0);
+    }
+  });
 });

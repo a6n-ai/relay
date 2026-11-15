@@ -48,8 +48,11 @@ function cssUnescape(s: string): string {
   });
 }
 
+// Browsers drop these from a URL before fetching it, so the remote test must too.
+const URL_NOISE = /[\u0000- \u007f]/g;
+
 function judgeCss(raw: string): string {
-  return cssUnescape(decodeHTML(raw));
+  return cssUnescape(decodeHTML(raw).replace(/\\(\r\n|[\n\r\f])/g, "")).replace(URL_NOISE, "");
 }
 
 type Scrubbed = { out: string; dropped: number };
@@ -187,7 +190,7 @@ export function sanitizeEmailHtml(
         } else if (URL_ATTRS.has(lower) && unsafeUrl(lower, tag, value)) {
           removed.push(`unsafe ${lower} on <${tag}>`);
           delete el.attribs[name];
-        } else if (block && (((REMOTE_LOAD_ATTRS.has(lower) || svgLoad) && isRemoteUrl(value)) || (lower === "srcset" && /https?:|\/\//i.test(value)))) {
+        } else if (block && (((REMOTE_LOAD_ATTRS.has(lower) || svgLoad) && isRemoteUrl(value)) || (lower === "srcset" && CSS_REMOTE.test(judgeCss(value))))) {
           blockedRemote++;
           delete el.attribs[name];
         } else if (lower === "style" && /expression\s*\(|javascript:/i.test(normalizeUrl(value))) {
