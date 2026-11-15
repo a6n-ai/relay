@@ -5,7 +5,7 @@
 // WHATSAPP_VERIFY_TOKEN. No DATABASE_URL: Hyperdrive. Runbook: deployment/cloudflare/README.md.
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  // OpenNext's worker wrapped with the outbox Queue consumer, RelayWake and the Email Routing handler.
+  // OpenNext's worker wrapped with the outbox and inbound Queue consumers, RelayWake and the Email Routing handler.
   "main": "cloudflare/worker.js",
   "name": "relay",
   "compatibility_date": "2026-09-01",
@@ -31,9 +31,19 @@
     }
   ],
   "kv_namespaces": [{ "binding": "CACHE", "id": "be4ce70d6b8a4bac8c958a1a213b7a5f" }], // relay-cache
+  // Private bucket for received and sent mail (mail/in, mail/att, mail/out keys).
+  "r2_buckets": [{ "binding": "MAIL", "bucket_name": "relay-mail" }],
   "queues": {
-    "producers": [{ "binding": "OUTBOX", "queue": "relay-outbox" }],
-    "consumers": [{ "queue": "relay-outbox", "max_batch_size": 10, "max_retries": 5, "dead_letter_queue": "relay-outbox-dlq" }]
+    "producers": [
+      { "binding": "OUTBOX", "queue": "relay-outbox" },
+      { "binding": "INBOUND", "queue": "relay-inbound" }
+    ],
+    "consumers": [
+      { "queue": "relay-outbox", "max_batch_size": 10, "max_retries": 5, "dead_letter_queue": "relay-outbox-dlq" },
+      // max_retries 6 > INBOUND_MAX_ATTEMPTS (5): the sixth delivery only happens when recording the failure itself failed.
+      { "queue": "relay-inbound", "max_batch_size": 1, "max_retries": 6, "dead_letter_queue": "relay-inbound-dlq" },
+      { "queue": "relay-inbound-dlq", "max_batch_size": 1, "max_retries": 3 }
+    ]
   },
   "workflows": [{ "name": "relay-wake", "binding": "RELAY_WAKE", "class_name": "RelayWake" }],
   "vars": {

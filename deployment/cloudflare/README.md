@@ -9,6 +9,8 @@ Worker `relay` (OpenNext) at `https://relay.a6n.ai`, Cloudflare account `04244ae
 | Neon (org a6n) | project `relay`, `aws-ap-southeast-1`, role `relay_app`, DB `relay` | `flat-mud-70723399` |
 | Cloudflare | Hyperdrive `relay-prod` (caching disabled) → Neon direct endpoint | `d3aaf35d88c14dfc9578f0dbb94a9154` |
 | Cloudflare | Queues `relay-outbox`, `relay-outbox-dlq` | |
+| Cloudflare | Queues `relay-inbound`, `relay-inbound-dlq` (received mail) | |
+| Cloudflare | R2 bucket `relay-mail` (private; binding `MAIL`) | |
 | Cloudflare | KV `relay-cache` (bootstrap marker) | `be4ce70d6b8a4bac8c958a1a213b7a5f` |
 | Cloudflare | Workflow `relay-wake` (created by deploy) | |
 | AWS ap-south-1 | stack `relay-ses` (`ses.yaml`): identities `relay.a6n.ai`, `a6n.ai`, config set `relay-prod`, SNS `relay-ses-events` | |
@@ -35,6 +37,14 @@ SES in `ap-south-1` starts in the sandbox (200/day, verified recipients only) un
 CNAMEs are DNS only (grey cloud). `_dmarc.a6n.ai` already exists (`p=none`). The apex MX stays on Cloudflare Email Routing; it receives Relay mailbox mail.
 
 Check: `aws sesv2 get-email-identity --region ap-south-1 --email-identity relay.a6n.ai --query '[VerificationStatus,DkimAttributes.Status,MailFromAttributes.MailFromDomainStatus]'`.
+
+## Create the mail resources (before deploy)
+
+```bash
+wrangler r2 bucket create relay-mail
+wrangler queues create relay-inbound
+wrangler queues create relay-inbound-dlq
+```
 
 ## Migrate and seed
 
