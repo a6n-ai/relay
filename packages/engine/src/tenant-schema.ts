@@ -142,6 +142,9 @@ export function makeTenantNotificationTables(deps: {
     inReplyTo: text("in_reply_to"),
     rfcReferences: text("references"),
     threadId: text("thread_id"),
+    rawKey: text("raw_key"),
+    authResults: text("auth_results"),
+    sentAt: bigint("sent_at", { mode: "number" }),
   }, (t) => [
     uniqueIndex("email_mailbox_outbox_uidx").on(t.outboxId),
     uniqueIndex("email_mailbox_rfc_message_id_uidx").on(t.rfcMessageId),
@@ -150,11 +153,27 @@ export function makeTenantNotificationTables(deps: {
     index("email_mailbox_thread_idx").on(t.threadId),
   ]);
 
+  const emailAttachment = pgTable("email_attachment", {
+    ...baseColumns("att"),
+    mailboxId: bigint("mailbox_id", { mode: "bigint" })
+      .notNull()
+      .references(() => emailMailbox.id, { onDelete: "cascade" }),
+    position: integer("position").notNull(),
+    filename: text("filename").notNull(),
+    contentType: text("content_type").notNull(),
+    sizeBytes: integer("size_bytes").notNull(),
+    contentId: text("content_id"),
+    storageKey: text("storage_key").notNull(),
+  }, (t) => [
+    index("email_attachment_mailbox_idx").on(t.mailboxId),
+    uniqueIndex("email_attachment_storage_key_uidx").on(t.storageKey),
+  ]);
+
   return {
     notificationChannel, outboxStatus, messageKind, suppressionScope,
     mailboxDirection, mailboxOrigin,
     notifications, notificationOutbox, notificationPrefs,
-    notificationTemplate, messageSuppression, emailMailbox,
+    notificationTemplate, messageSuppression, emailMailbox, emailAttachment,
   };
 }
 

@@ -23,4 +23,5 @@ export const {
   notificationTemplate,
   messageSuppression,
   emailMailbox,
+  emailAttachment,
 } = notificationTables;
