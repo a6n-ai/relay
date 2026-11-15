@@ -6,7 +6,7 @@ import { eq } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { requirePlatformAdmin } from "@/lib/auth/org-scope";
 import { db } from "@/db/client";
-import { organization } from "@/db/schema";
+import { organization, users } from "@/db/schema";
 
 function parseNonNegInt(raw: FormDataEntryValue | null, fallback: number): number {
   const n = Number(raw ?? "");
@@ -23,25 +23,41 @@ function slugify(name: string) {
     .slice(0, 48);
 }
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export async function createClientAction(
   formData: FormData,
-): Promise<{ id?: string; error?: string }> {
+): Promise<{ id?: string; ownerEmail?: string; error?: string }> {
   await requirePlatformAdmin();
   const name = String(formData.get("name") ?? "").trim();
   const slugRaw = String(formData.get("slug") ?? "").trim();
   const slug = slugRaw || slugify(name);
+  const ownerEmail = String(formData.get("ownerEmail") ?? "").trim().toLowerCase();
   const monthlyMessageQuota = parseNonNegInt(formData.get("monthlyMessageQuota"), 0);
   const maxApps = parseNonNegInt(formData.get("maxApps"), 0);
   if (!name || !slug) return { error: "Name is required." };
+  if (!ownerEmail) return { error: "Owner email is required." };
+  if (!EMAIL_RE.test(ownerEmail)) return { error: "Enter a valid owner email." };
 
   try {
+    // No headers: a session-less call makes the owner, not the platform admin, the org owner.
+    const [existing] = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.email, ownerEmail))
+      .limit(1);
+    let ownerId = existing ? String(existing.id) : null;
+    if (!ownerId) {
+      const { user } = await auth.api.createUser({
+        headers: await headers(),
+        body: { email: ownerEmail, name: ownerEmail.split("@")[0] },
+      });
+      ownerId = user.id;
+      await db.update(users).set({ passwordSet: false }).where(eq(users.id, BigInt(ownerId)));
+    }
+
     const created = await auth.api.createOrganization({
-      headers: await headers(),
-      body: {
-        name,
-        slug,
-        keepCurrentActiveOrganization: true,
-      },
+      body: { name, slug, userId: ownerId },
     });
     const id = created?.id;
     if (!id) return { error: "Could not create client." };
@@ -50,7 +66,7 @@ export async function createClientAction(
       .set({ monthlyMessageQuota, maxApps })
       .where(eq(organization.id, id));
     revalidatePath("/dashboard/platform");
-    return { id };
+    return { id, ownerEmail };
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Could not create client." };
   }

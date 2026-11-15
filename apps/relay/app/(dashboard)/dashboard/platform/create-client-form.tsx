@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { toast } from "sonner";
 import {
   Form,
   FormControl,
@@ -21,6 +22,7 @@ import { createClientAction } from "./actions";
 const schema = z.object({
   name: z.string().trim().min(1, "Name is required"),
   slug: z.string().trim().min(1, "Short name is required"),
+  ownerEmail: z.string().trim().min(1, "Owner email is required.").email("Enter a valid owner email."),
   monthlyMessageQuota: z.number().int().min(0),
   maxApps: z.number().int().min(0),
 });
@@ -31,7 +33,7 @@ export function CreateClientForm() {
   const form = useForm<z.infer<typeof schema>>({
     resolver: zodResolver(schema),
     // TODO(you): pick starter defaults — 0 = unlimited; set e.g. 50_000 / 5 for a capped plan.
-    defaultValues: { name: "", slug: "", monthlyMessageQuota: 0, maxApps: 0 },
+    defaultValues: { name: "", slug: "", ownerEmail: "", monthlyMessageQuota: 0, maxApps: 0 },
   });
 
   async function onSubmit(values: z.infer<typeof schema>) {
@@ -39,6 +41,7 @@ export function CreateClientForm() {
     const fd = new FormData();
     fd.set("name", values.name);
     fd.set("slug", values.slug);
+    fd.set("ownerEmail", values.ownerEmail);
     fd.set("monthlyMessageQuota", String(values.monthlyMessageQuota));
     fd.set("maxApps", String(values.maxApps));
     const result = await createClientAction(fd);
@@ -51,6 +54,7 @@ export function CreateClientForm() {
       name: values.name,
       href: `/dashboard/platform/${result.id}`,
     });
+    toast(`Tell ${result.ownerEmail} to sign in at relay.a6n.ai with a one-time code.`);
   }
 
   return (
@@ -76,6 +80,19 @@ export function CreateClientForm() {
               <FormLabel>Short name</FormLabel>
               <FormControl>
                 <Input placeholder="acme" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="ownerEmail"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Owner email</FormLabel>
+              <FormControl>
+                <Input type="email" placeholder="owner@acme.com" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
