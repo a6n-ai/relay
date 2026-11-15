@@ -10,6 +10,7 @@ import { getEmailProvider, hydrateSmtpFromDb } from "@/lib/email/provider";
 import { readMailboxLetter } from "@/lib/mailbox/list";
 import { conversationKey } from "@/lib/mailbox/listing";
 import { manualMailboxLetter } from "@/lib/mailbox/manual-send";
+import { mailboxScope } from "@/lib/mailbox/scope";
 import { emailSendersService } from "@/lib/services/email-senders.service";
 
 const schema = z.object({
@@ -45,7 +46,7 @@ export const POST = handler(async (req: Request) => {
 
   let reply: { inReplyTo: string; rfcReferences: string; threadId: string } | null = null;
   if (parsed.data.replyToId) {
-    const parent = await readMailboxLetter(parsed.data.replyToId);
+    const parent = await readMailboxLetter(await mailboxScope(), parsed.data.replyToId);
     if (!parent) throw new ValidationError("Unknown letter");
     if (parent.tenantId != null) tenantId = parent.tenantId;
     reply = replyThreading({

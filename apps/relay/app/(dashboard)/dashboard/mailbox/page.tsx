@@ -3,6 +3,7 @@ import { PageShell } from "@foundry/design-system";
 import { EmptyState } from "@/components/ds/empty-state";
 import { ListingTable, type ListingFilter } from "@/components/ds/listing-table";
 import { listMailboxLetters } from "@/lib/mailbox/list";
+import { mailboxScope } from "@/lib/mailbox/scope";
 import {
   groupMailboxConversations,
   indexTagsByTenantPublicId,
@@ -28,9 +29,10 @@ const MAILBOX_FILTERS: ListingFilter[] = [
 ];
 
 export default async function MailboxPage() {
+  const scope = await mailboxScope();
   const activeApp = await resolveActiveApp();
   const [rows, froms, tagRows] = await Promise.all([
-    listMailboxLetters(100, activeApp?.id),
+    listMailboxLetters(scope, { tenantId: activeApp?.id }),
     loadComposeFroms(),
     activeApp ? appMessageTagsService.forTenant(activeApp.id) : Promise.resolve([]),
   ]);

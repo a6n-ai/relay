@@ -10,6 +10,7 @@ import { outboxStatusLabel } from "@/components/ds/plain-labels";
 import { listMailboxThread, readMailboxLetter } from "@/lib/mailbox/list";
 import { fromLine } from "@/lib/mailbox/listing";
 import { loadComposeFroms } from "@/lib/mailbox/load-compose-froms";
+import { mailboxScope } from "@/lib/mailbox/scope";
 import { appMessageTagsService } from "@/lib/services/mailbox-tags.service";
 import { MailboxConversationChannels } from "../mailbox-conversation-channels";
 import { MailboxConversationTags } from "../mailbox-conversation-tags";
@@ -45,14 +46,15 @@ export default async function MailboxLetterPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const row = await readMailboxLetter(id);
+  const scope = await mailboxScope();
+  const row = await readMailboxLetter(scope, id);
   if (!row) notFound();
   const inbound = row.direction === "in";
   const status = row.status ?? "sent";
   const threadKey = row.threadId?.trim() ? row.threadId : null;
   const [froms, thread, appTags] = await Promise.all([
     loadComposeFroms(),
-    threadKey ? listMailboxThread(threadKey) : Promise.resolve([row]),
+    threadKey ? listMailboxThread(scope, threadKey) : Promise.resolve([row]),
     row.tenantId != null ? appMessageTagsService.forTenant(row.tenantId) : Promise.resolve([]),
   ]);
   const letters = thread.length > 0 ? thread : [row];
