@@ -3,7 +3,7 @@ import { MailboxInboundError, ingestInboundLetter, parseMailboxEml, type ParsedI
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db/client";
-import { mailboxInboundFailure, notificationTables, tenants } from "@/db/schema";
+import { emailMailbox, mailboxInboundFailure, notificationTables, tenants } from "@/db/schema";
 import { tenantForInbox } from "@/lib/mailbox/inbound-recipient";
 import { inboundAttachmentKey, mailBucket, safeFilename, type MailBucket } from "@/lib/mailbox/mail-bucket";
 
@@ -20,15 +20,21 @@ export type QueuedInbound = z.infer<typeof queuedInboundSchema>;
 
 type Outcome = "inserted" | "duplicate" | "failed";
 
-async function readRaw(bucket: MailBucket, key: string): Promise<ArrayBuffer> {
+export const MAX_ROUTED_LETTER_BYTES = 26_214_400;
+
+// Null when the letter is over the cap; checks the R2 size before reading the body and the bytes after.
+async function readRaw(bucket: MailBucket, key: string): Promise<ArrayBuffer | null> {
   const object = await bucket.get(key);
   if (!object) throw new Error(`Raw mail missing: ${key}`);
-  return new Response(object.body).arrayBuffer();
+  if (object.size > MAX_ROUTED_LETTER_BYTES) return null;
+  const bytes = await new Response(object.body).arrayBuffer();
+  return bytes.byteLength > MAX_ROUTED_LETTER_BYTES ? null : bytes;
 }
 
 export async function processQueuedInbound(msg: QueuedInbound): Promise<{ outcome: Outcome }> {
   const bucket = mailBucket();
   const bytes = await readRaw(bucket, msg.rawKey);
+  if (bytes == null) return failed(msg, "Letter too large");
   const recipientTenantId = await tenantForInbox(msg.envelopeTo);
   if (recipientTenantId == null) return failed(msg, "No such mailbox");
 
@@ -83,6 +89,12 @@ export async function recordInboundFailure(
   msg: QueuedInbound,
   opts: { error: string | null; attempts: number },
 ): Promise<void> {
+  const [committed] = await db
+    .select({ id: emailMailbox.id })
+    .from(emailMailbox)
+    .where(eq(emailMailbox.rawKey, msg.rawKey))
+    .limit(1);
+  if (committed) return;
   const tenantId = await tenantForInbox(msg.envelopeTo);
   const [tenant] =
     tenantId == null

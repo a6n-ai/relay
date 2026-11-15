@@ -160,6 +160,18 @@ describe("sanitizeEmailHtml", () => {
     expect(out.blockedRemote).toBe(3);
   });
 
+  it("block mode removes remote image-set() sources given as plain strings", () => {
+    const out = sanitizeEmailHtml(
+      `<p style="background:image-set(&quot;https://x.ca/g.png&quot; 1x)">a</p>` +
+        `<style>.b{background:-webkit-image-set("https://x.ca/h.png" 1x)}.c{background:image-set("data:image/png;base64,AA" 1x)}</style>` +
+        `<style>.d{background:image-set(url(https://x.ca/j.png) 1x)}</style>`,
+      { remoteImages: "block" },
+    );
+    expect(out.html).not.toContain("x.ca");
+    expect(out.html).toContain("data:image/png;base64,AA");
+    expect(out.blockedRemote).toBe(3);
+  });
+
   it("show mode still loads a normal remote img", () => {
     const out = sanitizeEmailHtml(`<img src="https://x.ca/a.png">`, { remoteImages: "allow" });
     expect(out.html).toBe(`<img src="https://x.ca/a.png">`);

@@ -57,6 +57,15 @@ function cssUrlTarget(raw: string): string {
   return cssUnescape(decodeHTML(raw)).trim().replace(/^(['"])(.*)\1$/, "$2").trim();
 }
 
+// image-set() takes bare strings as well as url(); a quoted string or url() target can be remote.
+const IMAGE_SET = new Set(["image-set", "-webkit-image-set"]);
+function imageSetHasRemote(arg: string): boolean {
+  const decoded = cssUnescape(decodeHTML(arg));
+  return [...decoded.matchAll(/["']([^"']*)["']|url\(([^)]*)/gi)].some(([, quoted, bare]) =>
+    isRemoteUrl(cssUrlTarget(quoted ?? bare ?? "")),
+  );
+}
+
 export type SanitizeOptions = { remoteImages?: "allow" | "block" };
 
 export function sanitizeEmailHtml(
@@ -78,7 +87,10 @@ export function sanitizeEmailHtml(
           return "";
         })
         .replace(CSS_CALL, (m, name: string, arg: string) => {
-          if (cssIdent(name) !== "url" || /^data:image\//i.test(cssUrlTarget(arg))) return m;
+          const fn = cssIdent(name);
+          const remoteUrl = fn === "url" && !/^data:image\//i.test(cssUrlTarget(arg));
+          const remoteSet = IMAGE_SET.has(fn) && imageSetHasRemote(arg);
+          if (!remoteUrl && !remoteSet) return m;
           blockedRemote++;
           return "none";
         });

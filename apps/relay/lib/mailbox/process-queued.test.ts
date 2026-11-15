@@ -11,9 +11,17 @@ vi.mock("@relay/engine", async (importOriginal) => ({
 }));
 vi.mock("@/lib/mailbox/inbound-recipient", () => ({ tenantForInbox }));
 
-const state = { inserts: [] as { table: unknown; values: Record<string, unknown> }[], deletes: [] as unknown[] };
+const state = {
+  inserts: [] as { table: unknown; values: Record<string, unknown> }[],
+  deletes: [] as unknown[],
+  committed: [] as { id: bigint }[],
+};
 const fakeDb = {
-  select: () => ({ from: () => ({ where: () => ({ limit: async () => [{ organizationId: "org_1" }] }) }) }),
+  select: () => ({
+    from: (table: unknown) => ({
+      where: () => ({ limit: async () => (table === emailMailbox ? state.committed : [{ organizationId: "org_1" }]) }),
+    }),
+  }),
   insert: (table: unknown) => ({
     values: (values: Record<string, unknown>) => {
       state.inserts.push({ table, values });
@@ -29,9 +37,9 @@ const fakeDb = {
 };
 vi.mock("@/db/client", () => ({ db: fakeDb }));
 
-const { processQueuedInbound } = await import("./process-queued");
+const { MAX_ROUTED_LETTER_BYTES, processQueuedInbound, recordInboundFailure } = await import("./process-queued");
 const { mailBucket } = await import("./mail-bucket");
-const { mailboxInboundFailure } = await import("@/db/schema");
+const { emailMailbox, mailboxInboundFailure } = await import("@/db/schema");
 
 const RECEIVED = Date.UTC(2026, 10, 10, 9);
 const rawKey = "mail/in/2026/11/raw1.eml";
@@ -84,6 +92,7 @@ describe("processQueuedInbound", () => {
     tenantForInbox.mockReset().mockResolvedValue(7n);
     state.inserts.length = 0;
     state.deletes.length = 0;
+    state.committed.length = 0;
   });
 
   it("writes attachment keys from rawId and passes the rows into the letter transaction", async () => {
@@ -180,6 +189,39 @@ describe("processQueuedInbound", () => {
     await processQueuedInbound(msg);
 
     expect(state.deletes).toEqual([mailboxInboundFailure]);
+    expect(state.inserts).toHaveLength(0);
+  });
+
+  it("records 'Letter too large' and keeps the eml when the R2 object is over the cap", async () => {
+    await mailBucket().put(rawKey, new Uint8Array(MAX_ROUTED_LETTER_BYTES + 1));
+
+    expect(await processQueuedInbound(msg)).toEqual({ outcome: "failed" });
+
+    expect(ingestInboundLetter).not.toHaveBeenCalled();
+    expect(state.inserts[0].values).toMatchObject({ error: "Letter too large", attempts: 1 });
+    expect(await keys("mail/in/")).toEqual([rawKey]);
+  });
+
+  it("checks the body length too when the R2 size is understated", async () => {
+    const bucket = mailBucket();
+    const real = bucket.get.bind(bucket);
+    vi.spyOn(bucket, "get").mockImplementationOnce(async (key) => {
+      const object = await real(key);
+      return object && { body: object.body, size: 10 };
+    });
+    await bucket.put(rawKey, new Uint8Array(MAX_ROUTED_LETTER_BYTES + 1));
+
+    expect(await processQueuedInbound(msg)).toEqual({ outcome: "failed" });
+
+    expect(state.inserts[0].values).toMatchObject({ error: "Letter too large" });
+    expect(await keys("mail/in/")).toEqual([rawKey]);
+  });
+
+  it("writes no failure row when the letter was already committed (late DLQ event)", async () => {
+    state.committed.push({ id: 1n });
+
+    await recordInboundFailure(msg, { error: "late", attempts: 3 });
+
     expect(state.inserts).toHaveLength(0);
   });
 
