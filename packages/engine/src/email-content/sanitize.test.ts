@@ -183,6 +183,35 @@ describe("sanitizeEmailHtml", () => {
     expect(out.blockedRemote).toBe(3);
   });
 
+  it("block mode removes remote href and xlink:href on SVG gradients, patterns and filters", () => {
+    const out = sanitizeEmailHtml(
+      `<svg><linearGradient href="https://x.ca/g.svg#a"/><radialGradient xlink:href="//x.ca/r.svg#b"/><pattern href="https://x.ca/p.svg#c"/><filter href="https://x.ca/f.svg#d"/></svg>`,
+      { remoteImages: "block" },
+    );
+    expect(out.html).not.toContain("x.ca");
+    expect(out.blockedRemote).toBe(4);
+  });
+
+  it("block mode removes remote url() in SVG presentation attributes and counts each", () => {
+    const out = sanitizeEmailHtml(
+      `<svg><rect fill="url(https://x.ca/p.svg#g)" stroke="url(//x.ca/s)" filter="url(https://x.ca/f.svg#f)" mask="url(#local)"/>` +
+        `<path marker-end="url(https://x.ca/m)" clip-path="url(&quot;https://x.ca/c&quot;)"/></svg>`,
+      { remoteImages: "block" },
+    );
+    expect(out.html).not.toContain("x.ca");
+    expect(out.html).toContain('mask="url(#local)"');
+    expect(out.blockedRemote).toBe(5);
+  });
+
+  it("block mode removes remote legacy lowsrc and dynsrc image attributes", () => {
+    const out = sanitizeEmailHtml(
+      `<img lowsrc="https://x.ca/lo.png" dynsrc="//x.ca/d.avi" src="data:image/gif;base64,R0lGOD">`,
+      { remoteImages: "block" },
+    );
+    expect(out.html).toBe(`<img src="data:image/gif;base64,R0lGOD">`);
+    expect(out.blockedRemote).toBe(2);
+  });
+
   it("block mode removes remote image-set() sources given as plain strings", () => {
     const out = sanitizeEmailHtml(
       `<p style="background:image-set(&quot;https://x.ca/g.png&quot; 1x)">a</p>` +

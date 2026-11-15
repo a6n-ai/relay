@@ -18,8 +18,12 @@ const SVG_ANIMATION_TAGS = new Set(["set", "animate", "animatemotion", "animatet
 const URL_ATTRS = new Set(["href", "src", "action", "formaction", "background", "poster", "xlink:href"]);
 const SAFE_FONT_CSS = /^https:\/\/fonts\.googleapis\.com\//i;
 // Remote loads a letter can trigger when opened: the ones "block" mode strips.
-const REMOTE_LOAD_ATTRS = new Set(["src", "background", "poster"]);
+const REMOTE_LOAD_ATTRS = new Set(["src", "background", "poster", "lowsrc", "dynsrc"]);
 const SVG_LOAD_TAGS = new Set(["image", "use", "feimage"]);
+// Paint, clip, mask, filter and marker references; a `url(...)` value there can fetch a remote document.
+const SVG_URL_PRESENTATION_ATTRS = new Set(["fill", "stroke", "filter", "mask", "clip-path", "marker-start", "marker-mid", "marker-end"]);
+// These take their definition from another document through href.
+const SVG_DEF_TAGS = new Set(["lineargradient", "radialgradient", "pattern", "filter"]);
 // Judged on decoded text. `\` counts as `/` in a url, so `/\host` reaches the same remote host as `//host`.
 const CSS_REMOTE = /https?:|[\\/]{2}/i;
 const CSS_IMPORT = /@import\b/i;
@@ -196,7 +200,7 @@ export function sanitizeEmailHtml(
       for (const name of Object.keys(el.attribs)) {
         const lower = name.toLowerCase();
         const value = el.attribs[name] ?? "";
-        const svgLoad = lower === "xlink:href" || (lower === "href" && SVG_LOAD_TAGS.has(tag));
+        const svgLoad = lower === "xlink:href" || (lower === "href" && (SVG_LOAD_TAGS.has(tag) || SVG_DEF_TAGS.has(tag)));
         if (lower.startsWith("on") || lower === "srcdoc") {
           removed.push(`${name} on <${tag}>`);
           delete el.attribs[name];
@@ -204,6 +208,9 @@ export function sanitizeEmailHtml(
           removed.push(`unsafe ${lower} on <${tag}>`);
           delete el.attribs[name];
         } else if (block && (((REMOTE_LOAD_ATTRS.has(lower) || svgLoad) && isRemoteUrl(value)) || (lower === "srcset" && isRemoteSrcset(value)))) {
+          blockedRemote++;
+          delete el.attribs[name];
+        } else if (block && SVG_URL_PRESENTATION_ATTRS.has(lower) && CSS_REMOTE.test(judgeCss(value))) {
           blockedRemote++;
           delete el.attribs[name];
         } else if (lower === "style" && /expression\s*\(|javascript:/i.test(normalizeUrl(value))) {
