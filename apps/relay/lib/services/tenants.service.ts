@@ -24,6 +24,16 @@ class TenantsService extends SessionUpdatableService<typeof tenants> {
     return tenant;
   }
 
+  async update(publicId: string, patch: Record<string, unknown>): Promise<(typeof tenants)["$inferSelect"]> {
+    await this.read(publicId);
+    return super.update(publicId, patch);
+  }
+
+  async delete(publicId: string): Promise<number> {
+    await this.read(publicId);
+    return super.delete(publicId);
+  }
+
   /** Apps for the session's active workspace only. */
   async listRecent(condition?: Parameters<TenantsService["list"]>[0], size = 200) {
     const organizationId = await requireActiveOrganizationId();
