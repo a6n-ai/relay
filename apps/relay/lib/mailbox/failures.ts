@@ -1,4 +1,4 @@
-import { desc, eq, isNull, or } from "drizzle-orm";
+import { count, desc, eq, isNull, or } from "drizzle-orm";
 import { db } from "@/db/client";
 import { mailboxInboundFailure } from "@/db/schema";
 import { processQueuedInbound, type QueuedInbound } from "./process-queued";
@@ -8,8 +8,17 @@ function visible(row: { organizationId: string | null }, scope: MailboxScope): b
   return row.organizationId === null ? scope.includeOperatorMail : row.organizationId === scope.organizationId;
 }
 
-export async function listInboundFailures(scope: MailboxScope) {
+function scopeCondition(scope: MailboxScope) {
   const org = eq(mailboxInboundFailure.organizationId, scope.organizationId);
+  return scope.includeOperatorMail ? or(org, isNull(mailboxInboundFailure.organizationId)) : org;
+}
+
+export async function countInboundFailures(scope: MailboxScope): Promise<number> {
+  const [row] = await db.select({ n: count() }).from(mailboxInboundFailure).where(scopeCondition(scope));
+  return row?.n ?? 0;
+}
+
+export async function listInboundFailures(scope: MailboxScope) {
   return db
     .select({
       publicId: mailboxInboundFailure.publicId,
@@ -20,7 +29,7 @@ export async function listInboundFailures(scope: MailboxScope) {
       attempts: mailboxInboundFailure.attempts,
     })
     .from(mailboxInboundFailure)
-    .where(scope.includeOperatorMail ? or(org, isNull(mailboxInboundFailure.organizationId)) : org)
+    .where(scopeCondition(scope))
     .orderBy(desc(mailboxInboundFailure.createdAt))
     .limit(100);
 }
@@ -40,8 +49,10 @@ export async function retryInboundFailure(
 ): Promise<{ outcome: "inserted" | "duplicate" | "failed" } | null> {
   const row = await readInboundFailure(scope, publicId);
   if (!row) return null;
+  const rawId = row.rawKey.split("/").pop()?.replace(/\.eml$/, "");
+  if (!rawId) throw new Error(`Inbound failure ${publicId} has no raw key basename`);
   const msg: QueuedInbound = {
-    rawId: row.rawKey.split("/").pop()?.replace(/\.eml$/, "") ?? "",
+    rawId,
     rawKey: row.rawKey,
     envelopeFrom: row.envelopeFrom,
     envelopeTo: row.envelopeTo,

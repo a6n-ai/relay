@@ -17,6 +17,7 @@ export function MailboxAttachmentList({ attachments }: { attachments: ChatAttach
         <li key={file.publicId}>
           <a
             href={`/api/mailbox/attachments/${file.publicId}`}
+            aria-label={`Download ${file.filename}, ${formatSize(file.sizeBytes)}`}
             className="flex h-12 items-center gap-3 px-3 text-sm outline-none transition-[background-color] duration-150 hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset motion-reduce:transition-none"
           >
             <IconTile icon={attachmentIcon(file.contentType, file.filename)} />

@@ -27,9 +27,10 @@ export function attachmentIcon(contentType: string, filename: string): LucideIco
   return FileIcon;
 }
 
-/** Sizes use 1 KB = 1_000 bytes, matching the rest of Relay's UI text. */
+/** Sizes use 1 KB = 1_000 bytes. Each unit steps up before its rounded figure reaches 1000 of the unit below. */
 export function formatSize(bytes: number): string {
   if (bytes < 1_000) return `${bytes} B`;
-  if (bytes < 1_000_000) return `${Math.round(bytes / 1_000)} KB`;
-  return `${(bytes / 1_000_000).toFixed(1)} MB`;
+  if (bytes < 999_500) return `${Math.round(bytes / 1_000)} KB`;
+  if (bytes < 999_950_000) return `${(bytes / 1_000_000).toFixed(1)} MB`;
+  return `${(bytes / 1_000_000_000).toFixed(1)} GB`;
 }

@@ -90,6 +90,22 @@ describe("GET /api/mailbox/attachments/[id]", () => {
     expect(res.headers.get("Content-Disposition")).toBe('attachment; filename="abc.pdf"');
   });
 
+  it("strips backslashes from the download filename", async () => {
+    state.attachments = [attachment({ filename: "a\\b.pdf", contentType: "application/pdf" })];
+    signInTo("org_a", [TENANT_A]);
+    const res = await download("att_a");
+    expect(res.headers.get("Content-Disposition")).toBe('attachment; filename="ab.pdf"');
+  });
+
+  it("percent-encodes ' ( ) * in filename*", async () => {
+    state.attachments = [attachment({ filename: "報(1)'*.pdf", contentType: "application/pdf" })];
+    signInTo("org_a", [TENANT_A]);
+    const res = await download("att_a");
+    expect(res.headers.get("Content-Disposition")).toBe(
+      `attachment; filename="_(1)'*.pdf"; filename*=UTF-8''${encodeURIComponent("報")}%281%29%27%2A.pdf`,
+    );
+  });
+
   it("keeps a non-ASCII filename downloadable via filename*", async () => {
     state.attachments = [attachment({ filename: "報告.pdf", contentType: "application/pdf" })];
     signInTo("org_a", [TENANT_A]);

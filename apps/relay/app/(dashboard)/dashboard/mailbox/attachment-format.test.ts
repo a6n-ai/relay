@@ -20,4 +20,11 @@ describe("formatSize", () => {
     expect(formatSize(240_000)).toBe("240 KB");
     expect(formatSize(10_000_000)).toBe("10.0 MB");
   });
+
+  it("steps up a unit before the rounded figure reaches 1000", () => {
+    expect(formatSize(999_499)).toBe("999 KB");
+    expect(formatSize(999_500)).toBe("1.0 MB");
+    expect(formatSize(999_949_999)).toBe("999.9 MB");
+    expect(formatSize(999_950_000)).toBe("1.0 GB");
+  });
 });

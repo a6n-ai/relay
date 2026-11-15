@@ -12,5 +12,5 @@ export const GET = handler(async (_req: Request, ctx: { params: Promise<{ id: st
   if (!found) throw new NotFoundError("Not found");
   const obj = await mailBucket().get(found.attachment.storageKey);
   if (!obj) throw new NotFoundError("Not found");
-  return downloadResponse(obj, { filename: found.attachment.filename, size: obj.size });
+  return downloadResponse(obj, { filename: found.attachment.filename });
 });

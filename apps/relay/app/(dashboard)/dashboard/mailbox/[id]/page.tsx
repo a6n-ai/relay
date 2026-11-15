@@ -19,6 +19,7 @@ import { MailboxChat, type ChatLetter } from "../mailbox-chat";
 import type { ChatAttachment } from "../mailbox-attachments";
 import { MailboxQuickActions } from "../mailbox-actions";
 import { ViewHeader } from "@/components/ds/view-header";
+import { remoteBlockedFlag, remoteImagesMode, sentAtLabel } from "./letter-flags";
 
 export const dynamic = "force-dynamic";
 
@@ -82,24 +83,20 @@ export default async function MailboxLetterPage({
   }
 
   const chatLetters: ChatLetter[] = letters.map((letter) => {
-    const remoteImages = letter.publicId === images ? "allow" : "block";
+    const remoteImages = remoteImagesMode(letter.publicId, images);
     const safe = letter.html.trim() ? sanitizeEmailHtml(letter.html, { remoteImages }) : null;
-    const sentMs = letter.sentAt;
     return {
       publicId: letter.publicId,
       inbound: letter.direction === "in",
       from: fromLine(letter.fromEmail, letter.fromName),
       initial: (letter.fromName?.trim() || letter.fromEmail).charAt(0).toUpperCase(),
       time: new Date(letter.createdAt).toLocaleString(),
-      sentAt:
-        sentMs != null && Math.abs(sentMs - new Date(letter.createdAt).getTime()) > 60_000
-          ? new Date(sentMs).toLocaleString()
-          : null,
+      sentAt: sentAtLabel(letter.sentAt, letter.createdAt),
       subject: normalizeSubject(letter.subject) !== titleKey ? letter.subject : null,
       html: letter.html,
       htmlSafe: safe?.html ?? "",
       blockRemote: remoteImages === "block",
-      remoteBlocked: remoteImages === "block" && (safe?.blockedRemote ?? 0) > 0,
+      remoteBlocked: remoteBlockedFlag(remoteImages, safe?.blockedRemote ?? 0),
       text: letter.text,
       reader: letter.html.trim() ? emailHtmlToReader(letter.html) : emailTextToReader(letter.text),
       attachments: attachmentsByMailbox.get(letter.id) ?? [],

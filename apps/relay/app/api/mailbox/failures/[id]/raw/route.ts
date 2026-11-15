@@ -13,5 +13,5 @@ export const GET = handler(async (_req: Request, ctx: { params: Promise<{ id: st
   if (!row) throw new NotFoundError("Not found");
   const obj = await mailBucket().get(row.rawKey);
   if (!obj) throw new NotFoundError("Not found");
-  return downloadResponse(obj, { filename: `email-${row.receivedAt}.eml`, size: obj.size });
+  return downloadResponse(obj, { filename: `email-${row.receivedAt}.eml` });
 });

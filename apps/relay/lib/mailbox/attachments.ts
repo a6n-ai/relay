@@ -42,21 +42,20 @@ export async function readAttachment(scope: MailboxScope, publicId: string) {
 
 // Filename is the display name only; CR/LF and quotes are dropped so it cannot break out of the header.
 // Non-ASCII names go in filename* because Headers rejects characters above 255.
-export function downloadResponse(
-  obj: { body: ReadableStream; size: number },
-  opts: { filename: string; size: number },
-): Response {
-  const name = opts.filename.replace(/[\r\n"]/g, "");
+export function downloadResponse(obj: { body: ReadableStream; size: number }, opts: { filename: string }): Response {
+  const name = opts.filename.replace(/[\r\n"\\]/g, "");
   const ascii = name.replace(/[^\x20-\x7e]/g, "_");
+  // encodeURIComponent leaves these, and RFC 5987 attr-char does not allow them.
+  const encoded = encodeURIComponent(name).replace(/['()*]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`);
   const disposition =
     ascii === name
       ? `attachment; filename="${name}"`
-      : `attachment; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(name)}`;
+      : `attachment; filename="${ascii}"; filename*=UTF-8''${encoded}`;
   return new Response(obj.body, {
     headers: {
       "Content-Type": "application/octet-stream",
       "Content-Disposition": disposition,
-      "Content-Length": String(opts.size),
+      "Content-Length": String(obj.size),
       "Cache-Control": "private, no-store",
       "Content-Security-Policy": "sandbox",
       "X-Content-Type-Options": "nosniff",

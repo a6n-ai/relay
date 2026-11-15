@@ -151,7 +151,7 @@ export function MailboxLetterBody({
 
   return (
     <div className={cn("flex w-full flex-col gap-2", inbound ? "items-start" : "items-end")}>
-      {remoteBlocked ? (
+      {remoteBlocked && active === "html" ? (
         <div className="w-full max-w-[80%]">
           <NoticeBar
             message="Images hidden to protect your privacy"
