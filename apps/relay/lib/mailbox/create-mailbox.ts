@@ -44,7 +44,7 @@ export type PlanNewMailboxOk = {
   domain: string;
   kind: MailboxKind;
   store: MailboxStore;
-  createSender: boolean;
+  canSend: boolean;
 };
 
 export function planNewMailbox(input: PlanNewMailboxInput): PlanNewMailboxOk | { error: string } {
@@ -71,11 +71,11 @@ export function planNewMailbox(input: PlanNewMailboxInput): PlanNewMailboxOk | {
         if (err instanceof PeopleMailError) return { error: err.message };
         throw err;
       }
-      return { email, localPart, domain, kind, store, createSender: false };
+      return { email, localPart, domain, kind, store, canSend: false };
     case "send_as":
     case "relay_inbox":
       if (!onSending) return { error: "Prove the sending domain first" };
-      return { email, localPart, domain, kind, store, createSender: true };
+      return { email, localPart, domain, kind, store, canSend: true };
     default: {
       const _exhaustive: never = kind;
       return _exhaustive;

@@ -1,6 +1,6 @@
 import { cache } from "react";
 import { smtpSettingsService } from "@/lib/services/sending.service";
-import { emailSendersService } from "@/lib/services/email-senders.service";
+import { tenantMailboxesService } from "@/lib/services/tenant-mailboxes.service";
 
 export type ResolvedFrom = { email: string; name?: string; source: "tenant" | "operator" };
 
@@ -18,7 +18,7 @@ export async function operatorDefaultFrom(): Promise<{ email: string; name?: str
 }
 
 export async function resolveTenantEmailFrom(tenantId: bigint): Promise<ResolvedFrom | null> {
-  const verified = await emailSendersService.verifiedForTenant(tenantId);
+  const verified = await tenantMailboxesService.verifiedSendersForTenant(tenantId);
   const first = verified[0];
   if (first) {
     return {

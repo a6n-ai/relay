@@ -3,7 +3,6 @@
 import { revalidatePath } from "next/cache";
 import { and, eq } from "@foundry/commons";
 import { requirePermission } from "@/lib/auth/guards";
-import { emailSendersService } from "@/lib/services/email-senders.service";
 import { tenantMailboxesService } from "@/lib/services/tenant-mailboxes.service";
 import { sendingDomainsService } from "@/lib/services/sending.service";
 import { issueTenantApiKey, tenantsService } from "@/lib/services/tenants.service";
@@ -78,24 +77,6 @@ export async function issueTenantKeyAction(formData: FormData): Promise<{ secret
   revalidatePath("/dashboard/tenants");
   revalidatePath(`/dashboard/tenants/${publicId}`);
   return { secret };
-}
-
-export async function addTenantSenderAction(formData: FormData): Promise<{ error?: string }> {
-  await requirePermission({ tenant: ["write"] });
-  const publicId = String(formData.get("publicId") ?? "");
-  const email = String(formData.get("email") ?? "").trim().toLowerCase();
-  const displayName = String(formData.get("displayName") ?? "").trim() || null;
-  if (!publicId) return { error: "Missing tenant" };
-  if (!email.includes("@")) return { error: "Valid sender email is required" };
-  const tenant = await tenantsService.read(publicId).catch(() => null);
-  if (!tenant) return { error: "Unknown tenant" };
-  try {
-    await emailSendersService.createForTenant({ tenantId: tenant.id, email, displayName });
-  } catch {
-    return { error: "Could not add sender (it may already exist)" };
-  }
-  revalidatePath(`/dashboard/tenants/${publicId}`);
-  return {};
 }
 
 export async function addTenantMailboxAction(formData: FormData): Promise<{ error?: string }> {

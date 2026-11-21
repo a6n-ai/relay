@@ -16,7 +16,7 @@ describe("planNewMailbox", () => {
       email: "receipts@shop.test",
       kind: "send_as",
       store: "none",
-      createSender: true,
+      canSend: true,
     });
   });
 
@@ -31,7 +31,7 @@ describe("planNewMailbox", () => {
     expect(plan).toMatchObject({
       kind: "relay_inbox",
       store: "postgres",
-      createSender: true,
+      canSend: true,
     });
   });
 
@@ -59,7 +59,7 @@ describe("planNewMailbox", () => {
     expect(plan).toMatchObject({
       kind: "people_inbox",
       store: "people_host",
-      createSender: false,
+      canSend: false,
     });
   });
 
@@ -96,6 +96,6 @@ describe("planNewMailbox", () => {
         seatQuota: 5,
         verifiedSendingDomains: sending,
       }),
-    ).toMatchObject({ kind: "send_as", createSender: true });
+    ).toMatchObject({ kind: "send_as", canSend: true });
   });
 });

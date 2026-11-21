@@ -11,7 +11,7 @@ import { readMailboxLetter } from "@/lib/mailbox/list";
 import { conversationKey } from "@/lib/mailbox/listing";
 import { manualMailboxLetter } from "@/lib/mailbox/manual-send";
 import { mailboxScope } from "@/lib/mailbox/scope";
-import { emailSendersService } from "@/lib/services/email-senders.service";
+import { tenantMailboxesService } from "@/lib/services/tenant-mailboxes.service";
 
 const schema = z.object({
   to: z.string().email(),
@@ -39,8 +39,12 @@ export const POST = handler(async (req: Request) => {
     if (!scope.includeOperatorMail) throw new NotFoundError("Unknown From");
     from = await operatorDefaultFrom();
   } else {
-    const sender = await emailSendersService.read(parsed.data.fromId).catch(() => null);
-    if (!sender || sender.tenantId == null || !scope.tenantIds.includes(sender.tenantId)) {
+    const sender = await tenantMailboxesService.read(parsed.data.fromId).catch(() => null);
+    if (
+      !sender?.canSend ||
+      sender.tenantId == null ||
+      !scope.tenantIds.includes(sender.tenantId)
+    ) {
       throw new NotFoundError("Unknown From");
     }
     if (sender.verifiedAt == null) throw new ValidationError("Unknown From");

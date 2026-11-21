@@ -1,3 +1,4 @@
+import { NotFoundError } from "@foundry/commons";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 type Letter = {
@@ -7,7 +8,7 @@ type Letter = {
   threadId: string;
   rfcReferences: string | null;
 };
-type Sender = { publicId: string; tenantId: bigint; email: string; displayName: string | null; verifiedAt: number | null };
+type Sender = { publicId: string; tenantId: bigint; email: string; displayName: string | null; verifiedAt: number | null; canSend: boolean };
 
 const state = vi.hoisted(() => ({
   activeOrgId: null as string | null,
@@ -50,9 +51,13 @@ vi.mock("@/lib/email/provider", () => ({
   getEmailProvider: () => ({ send: async (msg: unknown) => void state.sent.push(msg) }),
 }));
 
-vi.mock("@/lib/services/email-senders.service", () => ({
-  emailSendersService: {
-    read: async (publicId: string) => state.senders.find((s) => s.publicId === publicId) ?? null,
+vi.mock("@/lib/services/tenant-mailboxes.service", () => ({
+  tenantMailboxesService: {
+    read: async (publicId: string) => {
+      const row = state.senders.find((s) => s.publicId === publicId);
+      if (!row) throw new NotFoundError(`Not found: ${publicId}`);
+      return row;
+    },
   },
 }));
 
@@ -104,8 +109,8 @@ describe("POST /api/notifications/mailbox/send", () => {
       { publicId: "eml_b", tenantId: CLIENT_B, rfcMessageId: "<b@x>", threadId: "<b@x>", rfcReferences: null },
     ];
     state.senders = [
-      { publicId: "ues_a", tenantId: CLIENT_A, email: "hi@acme.test", displayName: "Acme", verifiedAt: 1 },
-      { publicId: "ues_b", tenantId: CLIENT_B, email: "hi@bravo.test", displayName: "Bravo", verifiedAt: 1 },
+      { publicId: "ues_a", tenantId: CLIENT_A, email: "hi@acme.test", displayName: "Acme", verifiedAt: 1, canSend: true },
+      { publicId: "ues_b", tenantId: CLIENT_B, email: "hi@bravo.test", displayName: "Bravo", verifiedAt: 1, canSend: true },
     ];
   });
 
@@ -126,6 +131,22 @@ describe("POST /api/notifications/mailbox/send", () => {
   it("answers 404 for an unknown sender, the same as one outside the workspace", async () => {
     signInTo("org_a", "acme", [CLIENT_A]);
     const res = await send({ fromId: "ues_missing" });
+    expect(res.status).toBe(404);
+    expect(state.sent).toHaveLength(0);
+  });
+
+  it("returns 404 for an old sender id", async () => {
+    signInTo("org_a", "acme", [CLIENT_A]);
+    state.senders = state.senders.filter((s) => s.publicId !== "ues_a");
+    const res = await send({ fromId: "ues_a" });
+    expect(res.status).toBe(404);
+    expect(state.sent).toHaveLength(0);
+  });
+
+  it("rejects a mailbox with canSend false", async () => {
+    signInTo("org_a", "acme", [CLIENT_A]);
+    state.senders = state.senders.map((s) => (s.publicId === "ues_a" ? { ...s, canSend: false } : s));
+    const res = await send({ fromId: "ues_a" });
     expect(res.status).toBe(404);
     expect(state.sent).toHaveLength(0);
   });

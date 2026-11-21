@@ -1,6 +1,6 @@
 import { resolveActiveApp } from "@/lib/apps/active-app";
 import { operatorDefaultFrom } from "@/lib/email/from-address";
-import { emailSendersService } from "@/lib/services/email-senders.service";
+import { tenantMailboxesService } from "@/lib/services/tenant-mailboxes.service";
 import { tenantsService } from "@/lib/services/tenants.service";
 import { composeFromOptions, type ComposeFromOption } from "./compose-from";
 import { MAILBOX_TENANT_LIMIT, mailboxScope } from "./scope";
@@ -10,7 +10,7 @@ export async function loadComposeFroms(): Promise<ComposeFromOption[]> {
     mailboxScope(),
     operatorDefaultFrom(),
     tenantsService.listRecent(undefined, MAILBOX_TENANT_LIMIT),
-    emailSendersService.listRecent(),
+    tenantMailboxesService.listSenders(),
     resolveActiveApp(),
   ]);
   const tenantById = new Map(tenants.items.map((t) => [t.id.toString(), t]));

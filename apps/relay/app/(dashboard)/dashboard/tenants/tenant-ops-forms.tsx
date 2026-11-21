@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Button } from "@foundry/ui/button";
 import { Input } from "@foundry/ui/input";
-import { addTenantMailboxAction, addTenantSenderAction, issueTenantKeyAction, updateTenantQuotaAction } from "./actions";
+import { addTenantMailboxAction, issueTenantKeyAction, updateTenantQuotaAction } from "./actions";
 import { CreateFooter, useCreateDialog } from "@/components/ds/create-dialog";
 import { isCreateSuccess } from "@/components/ds/create-success";
 import { defaultKindForNewMailbox, type MailboxKind } from "@/lib/mailbox/address-kinds";
@@ -76,26 +76,6 @@ export function IssueKeyForm({ publicId }: { publicId: string }) {
           Copy now; we don’t store the full secret: <code className="break-all">{secret}</code>
         </p>
       ) : null}
-    </form>
-  );
-}
-
-export function AddSenderForm({ publicId }: { publicId: string }) {
-  const [error, setError] = useState<string | null>(null);
-  return (
-    <form
-      className="flex max-w-xl flex-col gap-2 sm:flex-row"
-      action={async (fd) => {
-        setError(null);
-        const result = await addTenantSenderAction(fd);
-        if (result.error) setError(result.error);
-      }}
-    >
-      <input type="hidden" name="publicId" value={publicId} />
-      <Input name="email" type="email" required placeholder="hello@yourapp.com" />
-      <Input name="displayName" placeholder="Your app" />
-      <Button type="submit" size="sm">Add From address</Button>
-      {error ? <p className="text-destructive text-sm">{error}</p> : null}
     </form>
   );
 }

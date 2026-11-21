@@ -1,10 +1,21 @@
-import { eq } from "@foundry/commons";
+import { and, eq } from "@foundry/commons";
 import { UpdatableRepository } from "@foundry/database";
 import { db } from "@/db/client";
 import { tenantMailboxes } from "@/db/schema";
+import { domainOf } from "@/lib/email/sender-domain";
 import { planNewMailbox } from "@/lib/mailbox/create-mailbox";
-import { emailSendersService } from "./email-senders.service";
+import { sendingDomainsService } from "./sending.service";
 import { SessionUpdatableService } from "./session-service";
+
+export type Mailbox = typeof tenantMailboxes.$inferSelect;
+
+async function domainVerifiedForTenant(tenantId: bigint, domain: string): Promise<boolean> {
+  const page = await sendingDomainsService.list(
+    and(eq("tenantId", tenantId), eq("domain", domain), eq("status", "verified")),
+    { page: 0, size: 1 },
+  );
+  return page.items.length > 0;
+}
 
 class TenantMailboxesService extends SessionUpdatableService<typeof tenantMailboxes> {
   async forTenant(tenantId: bigint) {
@@ -14,6 +25,54 @@ class TenantMailboxesService extends SessionUpdatableService<typeof tenantMailbo
       sort: { field: "createdAt", dir: "desc" },
     });
     return page.items;
+  }
+
+  async sendersForTenant(tenantId: bigint): Promise<Mailbox[]> {
+    const page = await this.list(and(eq("tenantId", tenantId), eq("canSend", true)), {
+      page: 0,
+      size: 50,
+      sort: { field: "createdAt", dir: "desc" },
+    });
+    return page.items;
+  }
+
+  async verifiedSendersForTenant(tenantId: bigint): Promise<Mailbox[]> {
+    const rows = await this.sendersForTenant(tenantId);
+    return rows.filter((r) => r.verifiedAt != null);
+  }
+
+  async listSenders() {
+    return this.listRecent(eq("canSend", true));
+  }
+
+  async updateSending(
+    publicId: string,
+    input: { canSend: boolean; displayName: string | null },
+  ): Promise<Mailbox | { error: string }> {
+    const row = await this.read(publicId);
+    if (input.canSend && row.kind === "people_inbox") {
+      return { error: "People inboxes send from their own mail host" };
+    }
+    if (!input.canSend) return this.update(publicId, { canSend: false, displayName: input.displayName });
+    const domain = domainOf(row.email);
+    const verified = domain ? await domainVerifiedForTenant(row.tenantId, domain) : false;
+    return this.update(publicId, {
+      canSend: true,
+      displayName: input.displayName,
+      verifiedAt: verified ? Date.now() : null,
+    });
+  }
+
+  async refreshVerification(tenantId: bigint): Promise<void> {
+    const rows = await this.sendersForTenant(tenantId);
+    for (const row of rows) {
+      const domain = domainOf(row.email);
+      const ok = domain ? await domainVerifiedForTenant(tenantId, domain) : false;
+      const next = ok ? (row.verifiedAt ?? Date.now()) : null;
+      if (next !== row.verifiedAt) {
+        await this.update(row.publicId, { verifiedAt: next });
+      }
+    }
   }
 
   async createForTenant(input: {
@@ -42,20 +101,11 @@ class TenantMailboxesService extends SessionUpdatableService<typeof tenantMailbo
         domain: planned.domain,
         email: planned.email,
         kind: planned.kind,
+        canSend: planned.canSend,
+        verifiedAt: input.verifiedSendingDomains.includes(planned.domain) ? Date.now() : null,
       });
     } catch {
       return { error: "That address is already in use" };
-    }
-    if (planned.createSender) {
-      try {
-        await emailSendersService.createForTenant({
-          tenantId: input.tenantId,
-          email: planned.email,
-          displayName: null,
-        });
-      } catch {
-        /* already a From */
-      }
     }
     return { row };
   }

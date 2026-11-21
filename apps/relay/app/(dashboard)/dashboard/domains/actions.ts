@@ -11,8 +11,8 @@ import { requirePermission } from "@/lib/auth/guards";
 import { db } from "@/db/client";
 import { emailSmtpSettings } from "@/db/schema";
 import { parseAddSendingDomainForm } from "@/lib/email/domain-form";
-import { emailSendersService } from "@/lib/services/email-senders.service";
 import { sendingDomainsService } from "@/lib/services/sending.service";
+import { tenantMailboxesService } from "@/lib/services/tenant-mailboxes.service";
 import { tenantsService } from "@/lib/services/tenants.service";
 
 export async function addSendingDomainAction(formData: FormData): Promise<{ error?: string }> {
@@ -58,7 +58,7 @@ export async function verifySendingDomainAction(formData: FormData): Promise<{ e
     lastCheckedAt: Date.now(),
     lastError: ok ? null : "Ownership TXT not found yet",
   });
-  if (ok) await emailSendersService.refreshVerification(row.tenantId);
+  if (ok) await tenantMailboxesService.refreshVerification(row.tenantId);
   revalidatePath("/dashboard/domains");
   revalidatePath("/dashboard/settings/email");
   revalidatePath("/dashboard/tenants");

@@ -9,8 +9,8 @@ vi.mock("@/lib/apps/active-app", () => ({ resolveActiveApp: async () => null }))
 vi.mock("@/lib/email/from-address", () => ({
   operatorDefaultFrom: async () => ({ email: "ops@a6n.test", name: "a6n" }),
 }));
-vi.mock("@/lib/services/email-senders.service", () => ({
-  emailSendersService: { listRecent: async () => ({ items: [] }) },
+vi.mock("@/lib/services/tenant-mailboxes.service", () => ({
+  tenantMailboxesService: { listSenders: async () => ({ items: [] }) },
 }));
 vi.mock("@/lib/services/tenants.service", () => ({
   tenantsService: { listRecent: (...args: unknown[]) => state.listRecent(...args) },

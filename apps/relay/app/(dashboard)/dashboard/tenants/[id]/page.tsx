@@ -10,13 +10,12 @@ import { OperatorSplit } from "@/components/ds/operator-split";
 import { loadEmailChannelSnapshot } from "@/lib/email/load-snapshot";
 import { loadOperatorSmtpRow, resolveTenantEmailFrom } from "@/lib/email/from-address";
 import { emailChannelReady, operatorEmailPrereqs } from "@/lib/email/prerequisites";
-import { emailSendersService } from "@/lib/services/email-senders.service";
 import { sendingDomainsService } from "@/lib/services/sending.service";
 import { apiKeysService, tenantsService } from "@/lib/services/tenants.service";
 import { tenantMailboxesService } from "@/lib/services/tenant-mailboxes.service";
 import { appMessageTagsService } from "@/lib/services/mailbox-tags.service";
 import { countTenantSendsThisMonth } from "@/lib/tenants/usage";
-import { AddMailboxForm, AddSenderForm, IssueKeyForm, UpdateQuotaForm } from "../tenant-ops-forms";
+import { AddMailboxForm, IssueKeyForm, UpdateQuotaForm } from "../tenant-ops-forms";
 import { ViewHeader } from "@/components/ds/view-header";
 
 export const dynamic = "force-dynamic";
@@ -30,10 +29,9 @@ export default async function TenantDetailPage({
   const tenant = await tenantsService.read(id).catch(() => null);
   if (!tenant) notFound();
 
-  const [{ items: keys }, senders, { items: domains }, used, from, boxes, tags, smtpRow] =
+  const [{ items: keys }, { items: domains }, used, from, boxes, tags, smtpRow] =
     await Promise.all([
       apiKeysService.list(eq("tenantId", tenant.id), { page: 0, size: 50 }),
-      emailSendersService.forTenant(tenant.id),
       sendingDomainsService.list(eq("tenantId", tenant.id), { page: 0, size: 50 }),
       countTenantSendsThisMonth(tenant.id),
       resolveTenantEmailFrom(tenant.id),
@@ -95,6 +93,9 @@ export default async function TenantDetailPage({
           Who mail is from: {from ? `${from.email} (${fromSourceLabel(from.source)})` : "none. Set a default From or prove a sender"}
           {emailReady ? "" : " · Email isn’t fully ready"}
         </p>
+        <Link className="mt-3 inline-block text-sm underline" href="/dashboard/settings/mailboxes">
+          Manage mailboxes
+        </Link>
       </SectionCard>
       <SectionCard title="Your domain" subtitle="Add the records at your domain host, then tap Check DNS.">
         <AddDomainForm slugs={[tenant.slug]} lockedSlug={tenant.slug} />
@@ -140,24 +141,6 @@ export default async function TenantDetailPage({
               </li>
             );
           })}
-        </ul>
-      </SectionCard>
-      <SectionCard
-        title="From addresses"
-        subtitle="Example: hello@yourapp.com. Ready only after that domain’s DNS is checked. Otherwise Relay uses the default From."
-      >
-        <AddSenderForm publicId={tenant.publicId} />
-        <ul className="mt-4 space-y-2 text-sm">
-          {senders.map((s) => (
-            <li key={s.publicId} className="flex flex-wrap items-center gap-2">
-              <span>{s.displayName ? `${s.displayName} <${s.email}>` : s.email}</span>
-              {s.verifiedAt ? (
-                <Badge variant="secondary">Verified</Badge>
-              ) : (
-                <Badge variant="destructive">Not ready · using default From</Badge>
-              )}
-            </li>
-          ))}
         </ul>
       </SectionCard>
       <SectionCard
