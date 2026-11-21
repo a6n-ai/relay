@@ -20,7 +20,10 @@ export function LandingScroll({ children }: { children: ReactNode }) {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
     const ctx = gsap.context(() => {
-      const blocks = gsap.utils.toArray<HTMLElement>("[data-reveal]", el);
+      // stageshow's Collapse also uses data-reveal; tweening it hides stage rows
+      const blocks = gsap.utils
+        .toArray<HTMLElement>("[data-reveal]", el)
+        .filter((b) => !b.closest(".ss-stage"));
       for (const block of blocks) {
         const staggerKids = block.hasAttribute("data-reveal-stagger");
         const targets = staggerKids
