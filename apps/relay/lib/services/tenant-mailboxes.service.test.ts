@@ -80,4 +80,17 @@ describe("tenantMailboxesService sending", () => {
       verifiedAt: expect.any(Number),
     });
   });
+
+  it("updateSending keeps existing verifiedAt", async () => {
+    vi.spyOn(tenantMailboxesService, "read").mockResolvedValue(mailbox({ verifiedAt: 500 }) as never);
+    const update = vi.spyOn(tenantMailboxesService, "update").mockResolvedValue({} as never);
+
+    await tenantMailboxesService.updateSending("tmb_a", { canSend: true, displayName: "Help" });
+
+    expect(update).toHaveBeenCalledWith("tmb_a", {
+      canSend: true,
+      displayName: "Help",
+      verifiedAt: 500,
+    });
+  });
 });

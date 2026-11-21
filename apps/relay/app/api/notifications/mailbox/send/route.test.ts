@@ -8,14 +8,14 @@ type Letter = {
   threadId: string;
   rfcReferences: string | null;
 };
-type Sender = { publicId: string; tenantId: bigint; email: string; displayName: string | null; verifiedAt: number | null; canSend: boolean };
+type Mailbox = { publicId: string; tenantId: bigint; email: string; displayName: string | null; verifiedAt: number | null; canSend: boolean };
 
 const state = vi.hoisted(() => ({
   activeOrgId: null as string | null,
   orgRows: [] as { id: string; slug: string }[],
   listRecent: vi.fn(),
   letters: [] as Letter[],
-  senders: [] as Sender[],
+  mailboxes: [] as Mailbox[],
   archived: [] as { tenantId: bigint | null; fromEmail: string }[],
   sent: [] as unknown[],
 }));
@@ -54,7 +54,7 @@ vi.mock("@/lib/email/provider", () => ({
 vi.mock("@/lib/services/tenant-mailboxes.service", () => ({
   tenantMailboxesService: {
     read: async (publicId: string) => {
-      const row = state.senders.find((s) => s.publicId === publicId);
+      const row = state.mailboxes.find((s) => s.publicId === publicId);
       if (!row) throw new NotFoundError(`Not found: ${publicId}`);
       return row;
     },
@@ -108,9 +108,9 @@ describe("POST /api/notifications/mailbox/send", () => {
       { publicId: "eml_a", tenantId: CLIENT_A, rfcMessageId: "<a@x>", threadId: "<a@x>", rfcReferences: null },
       { publicId: "eml_b", tenantId: CLIENT_B, rfcMessageId: "<b@x>", threadId: "<b@x>", rfcReferences: null },
     ];
-    state.senders = [
-      { publicId: "ues_a", tenantId: CLIENT_A, email: "hi@acme.test", displayName: "Acme", verifiedAt: 1, canSend: true },
-      { publicId: "ues_b", tenantId: CLIENT_B, email: "hi@bravo.test", displayName: "Bravo", verifiedAt: 1, canSend: true },
+    state.mailboxes = [
+      { publicId: "tmb_a", tenantId: CLIENT_A, email: "hi@acme.test", displayName: "Acme", verifiedAt: 1, canSend: true },
+      { publicId: "tmb_b", tenantId: CLIENT_B, email: "hi@bravo.test", displayName: "Bravo", verifiedAt: 1, canSend: true },
     ];
   });
 
@@ -121,46 +121,46 @@ describe("POST /api/notifications/mailbox/send", () => {
     expect(state.sent).toHaveLength(0);
   });
 
-  it("answers 404 for a sender whose app is outside the workspace", async () => {
+  it("answers 404 for a mailbox whose app is outside the workspace", async () => {
     signInTo("org_a", "acme", [CLIENT_A]);
-    const res = await send({ fromId: "ues_b" });
+    const res = await send({ fromId: "tmb_b" });
     expect(res.status).toBe(404);
     expect(state.sent).toHaveLength(0);
   });
 
-  it("answers 404 for an unknown sender, the same as one outside the workspace", async () => {
+  it("answers 404 for an unknown mailbox, the same as one outside the workspace", async () => {
     signInTo("org_a", "acme", [CLIENT_A]);
-    const res = await send({ fromId: "ues_missing" });
+    const res = await send({ fromId: "tmb_missing" });
     expect(res.status).toBe(404);
     expect(state.sent).toHaveLength(0);
   });
 
-  it("returns 404 for an old sender id", async () => {
+  it("returns 404 for an old mailbox id", async () => {
     signInTo("org_a", "acme", [CLIENT_A]);
-    state.senders = state.senders.filter((s) => s.publicId !== "ues_a");
-    const res = await send({ fromId: "ues_a" });
+    state.mailboxes = state.mailboxes.filter((s) => s.publicId !== "tmb_a");
+    const res = await send({ fromId: "tmb_a" });
     expect(res.status).toBe(404);
     expect(state.sent).toHaveLength(0);
   });
 
   it("rejects a mailbox with canSend false", async () => {
     signInTo("org_a", "acme", [CLIENT_A]);
-    state.senders = state.senders.map((s) => (s.publicId === "ues_a" ? { ...s, canSend: false } : s));
-    const res = await send({ fromId: "ues_a" });
+    state.mailboxes = state.mailboxes.map((s) => (s.publicId === "tmb_a" ? { ...s, canSend: false } : s));
+    const res = await send({ fromId: "tmb_a" });
     expect(res.status).toBe(404);
     expect(state.sent).toHaveLength(0);
   });
 
   it("answers 404 for a reply parent outside the workspace", async () => {
     signInTo("org_a", "acme", [CLIENT_A]);
-    const res = await send({ fromId: "ues_a", replyToId: "eml_b" });
+    const res = await send({ fromId: "tmb_a", replyToId: "eml_b" });
     expect(res.status).toBe(404);
     expect(state.sent).toHaveLength(0);
   });
 
   it("stores a reply with the parent thread's tenant", async () => {
     signInTo("org_a6n", PLATFORM_WORKSPACE_SLUG, [CLIENT_A, CLIENT_B]);
-    const res = await send({ fromId: "ues_a", replyToId: "eml_b" });
+    const res = await send({ fromId: "tmb_a", replyToId: "eml_b" });
     expect(res.status).toBe(200);
     expect(state.archived).toEqual([{ tenantId: CLIENT_B, fromEmail: "hi@acme.test" }]);
   });

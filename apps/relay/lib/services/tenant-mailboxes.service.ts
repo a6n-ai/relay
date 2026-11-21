@@ -60,7 +60,7 @@ class TenantMailboxesService extends SessionUpdatableService<typeof tenantMailbo
     return this.update(publicId, {
       canSend: true,
       displayName: input.displayName,
-      verifiedAt: verified ? Date.now() : null,
+      verifiedAt: verified ? (row.verifiedAt ?? Date.now()) : null,
     });
   }
 

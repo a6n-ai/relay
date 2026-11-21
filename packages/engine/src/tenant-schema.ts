@@ -147,6 +147,7 @@ export function makeTenantNotificationTables(deps: {
     rawKey: text("raw_key"),
     authResults: text("auth_results"),
     sentAt: bigint("sent_at", { mode: "number" }),
+    // Catalog address (tenant_mailboxes). Not email_attachment.mailbox_id, which points at email_mailbox.
     mailboxId: bigint("mailbox_id", { mode: "bigint" }).references(() => deps.mailboxes.id, { onDelete: "set null" }),
   }, (t) => [
     uniqueIndex("email_mailbox_outbox_uidx").on(t.outboxId),

@@ -8,7 +8,7 @@ describe("composeFromOptions", () => {
         operator: { email: "ops@relay.local", name: "Relay" },
         senders: [
           {
-            publicId: "tes_1",
+            publicId: "tmb_1",
             email: "receipts@shop.test",
             displayName: "Receipts",
             verifiedAt: 1,
@@ -16,7 +16,7 @@ describe("composeFromOptions", () => {
             tenantName: "Shop",
           },
           {
-            publicId: "tes_2",
+            publicId: "tmb_2",
             email: "draft@shop.test",
             displayName: null,
             verifiedAt: null,
@@ -25,6 +25,6 @@ describe("composeFromOptions", () => {
           },
         ],
       }).map((o) => o.id),
-    ).toEqual(["operator", "tes_1"]);
+    ).toEqual(["operator", "tmb_1"]);
   });
 });

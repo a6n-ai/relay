@@ -3,8 +3,8 @@
 INSERT INTO tenant_mailboxes (public_id, created_at, updated_at, tenant_id, local_part, domain, email, kind, display_name, verified_at, can_send)
 SELECT
   'tmb_' || (SELECT string_agg(substr('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_-', 1 + floor(random() * 64)::int, 1), '') FROM generate_series(1, 12) WHERE s.id IS NOT NULL),
-  (extract(epoch from now()) * 1000)::bigint,
-  (extract(epoch from now()) * 1000)::bigint,
+  s.created_at,
+  s.updated_at,
   s.tenant_id,
   split_part(lower(trim(s.email)), '@', 1),
   split_part(lower(trim(s.email)), '@', 2),

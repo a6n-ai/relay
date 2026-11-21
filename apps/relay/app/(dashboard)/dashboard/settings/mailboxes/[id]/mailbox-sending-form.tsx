@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@foundry/ui/button";
 import { Input } from "@foundry/ui/input";
 import { Switch } from "@foundry/ui/switch";
@@ -20,7 +21,11 @@ export function MailboxSendingForm({
 }) {
   const [checked, setChecked] = useState(canSend);
   const [state, action, pending] = useActionState(
-    (_prev: { error?: string }, fd: FormData) => updateMailboxSendingAction(fd),
+    async (_prev: { error?: string }, fd: FormData) => {
+      const result = await updateMailboxSendingAction(fd);
+      if (!result.error) toast.success("Saved");
+      return result;
+    },
     {},
   );
 
@@ -36,7 +41,7 @@ export function MailboxSendingForm({
           aria-label="Can send"
           checked={checked}
           onCheckedChange={setChecked}
-          disabled={isPeopleInbox}
+          disabled={isPeopleInbox && !canSend}
         />
       </SettingsRow>
       <SettingsRow label="Display name">
