@@ -101,7 +101,8 @@ export const auth = betterAuth({
       allowUserToCreateOrganization: true,
       ac: orgAc,
       roles: orgRoles,
-      teams: { enabled: true },
+      // Relay teams are explicit: no implicit default team per workspace, and a workspace may delete its last team.
+      teams: { enabled: true, defaultTeam: { enabled: false }, allowRemovingAllTeams: true },
       invitationExpiresIn: INVITE_LIFETIME_S,
       // Re-invite replaces the pending invite, so new roles take effect (resend keeps old roles).
       cancelPendingInvitationsOnReInvite: true,

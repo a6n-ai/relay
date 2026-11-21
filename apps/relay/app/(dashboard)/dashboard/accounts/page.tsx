@@ -10,14 +10,12 @@ import { invitation, member, organization, users } from "@/db/schema";
 import { requireActiveOrganizationId } from "@/lib/auth/active-org";
 import { activeMember, can, requirePagePermission } from "@/lib/auth/guards";
 import { parseRoles } from "@/lib/auth/member-rules";
-import { isPlatformAdmin } from "@/lib/auth/org-scope";
 import { ROLE_LABELS, orgRoles } from "@/lib/auth/permissions";
-import { SectionTabs } from "@/components/ds/section-tabs";
-import { SECTION_LABELS } from "@/components/ds/section-labels";
 import { InvitationRowActions } from "./invitation-row-actions";
 import { InviteTeammate } from "./invite-teammate";
 import { MemberRowActions } from "./member-row-actions";
 import type { RoleOption } from "./member-roles-form";
+import { TeamTabs } from "./team-tabs";
 
 export const dynamic = "force-dynamic";
 
@@ -38,10 +36,6 @@ export default async function AccountsPage() {
   await requirePagePermission({ staff: ["read"] });
   const actor = await activeMember();
   const organizationId = await requireActiveOrganizationId();
-  const showClients = await isPlatformAdmin();
-  const orgTabs = showClients
-    ? (["/dashboard/platform", "/dashboard/accounts"] as const)
-    : (["/dashboard/accounts"] as const);
   const [org] = await db
     .select({ name: organization.name, slug: organization.slug })
     .from(organization)
@@ -94,13 +88,7 @@ export default async function AccountsPage() {
     <PageShell>
       <ViewHeader
         title="Team"
-        tabs={
-          <SectionTabs
-            section="organization"
-            label={SECTION_LABELS.organization}
-            include={orgTabs}
-          />
-        }
+        tabs={<TeamTabs />}
       />
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 pt-2">
         <div className="flex flex-wrap items-center justify-between gap-3">
