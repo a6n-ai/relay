@@ -1,5 +1,5 @@
 import { baseColumns, updatableColumns } from "@foundry/database";
-import { bigint, index, integer, pgTable, text, uniqueIndex } from "drizzle-orm/pg-core";
+import { bigint, boolean, index, integer, pgTable, text, uniqueIndex } from "drizzle-orm/pg-core";
 import { organization } from "./organization";
 import { tenants } from "./tenants";
 
@@ -11,6 +11,9 @@ export const tenantMailboxes = pgTable("tenant_mailboxes", {
   domain: text("domain").notNull(),
   email: text("email").notNull(),
   kind: text("kind").notNull(),
+  displayName: text("display_name"),
+  verifiedAt: bigint("verified_at", { mode: "number" }),
+  canSend: boolean("can_send").notNull().default(false),
 }, (t) => [
   uniqueIndex("tenant_mailboxes_tenant_email_unique").on(t.tenantId, t.email),
 ]);

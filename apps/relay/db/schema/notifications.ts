@@ -9,10 +9,12 @@ export {
   suppressionScope,
 } from "@relay/engine/schema";
 import { campaign } from "./campaigns";
+import { tenantMailboxes } from "./mailboxes";
 import { tenants } from "./tenants";
 
 export const notificationTables = makeTenantNotificationTables({
   tenants,
+  mailboxes: tenantMailboxes,
   campaign,
 });
 

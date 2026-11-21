@@ -103,7 +103,8 @@ describe("claim lease", () => {
     const { bigint, pgTable } = await import("drizzle-orm/pg-core");
     const { makeTenantNotificationTables } = await import("./tenant-schema");
     const tenants = pgTable("tenants", { id: bigint("id", { mode: "bigint" }).primaryKey() });
-    const o = makeTenantNotificationTables({ tenants }).notificationOutbox;
+    const mailboxes = pgTable("tenant_mailboxes", { id: bigint("id", { mode: "bigint" }).primaryKey() });
+    const o = makeTenantNotificationTables({ tenants, mailboxes }).notificationOutbox;
     const { sql, params } = new PgDialect().sqlToQuery(claimableWhere(o, 1000)!);
     expect(sql).toMatch(/"status" in \(\$\d+, \$\d+\)/);
     expect(params).toEqual(expect.arrayContaining(["pending", "processing", 1000]));
@@ -135,7 +136,8 @@ describe("claim retry cap and fencing", () => {
     const { leaseHeld } = await import("./drain");
     const { makeTenantNotificationTables } = await import("./tenant-schema");
     const tenants = pgTable("tenants", { id: bigint("id", { mode: "bigint" }).primaryKey() });
-    const o = makeTenantNotificationTables({ tenants }).notificationOutbox;
+    const mailboxes = pgTable("tenant_mailboxes", { id: bigint("id", { mode: "bigint" }).primaryKey() });
+    const o = makeTenantNotificationTables({ tenants, mailboxes }).notificationOutbox;
     const { sql, params } = new PgDialect().sqlToQuery(leaseHeld(o, 7n, 301_000)!);
     expect(sql).toContain('"id" =');
     expect(sql).toContain('"status" =');

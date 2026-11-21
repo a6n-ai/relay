@@ -15,7 +15,8 @@ import { makeTenantNotificationTables } from "./tenant-schema";
 
 const fixtures = join(dirname(fileURLToPath(import.meta.url)), "mailbox/fixtures");
 const tenants = pgTable("tenants", { id: bigint("id", { mode: "bigint" }).primaryKey() });
-const tables = makeTenantNotificationTables({ tenants });
+const mailboxes = pgTable("tenant_mailboxes", { id: bigint("id", { mode: "bigint" }).primaryKey() });
+const tables = makeTenantNotificationTables({ tenants, mailboxes });
 
 function readFixture(name: string): string {
   return readFileSync(join(fixtures, name), "utf8");

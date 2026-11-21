@@ -30,6 +30,8 @@ export function makeTenantNotificationTables(deps: {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   tenants: AnyPgTable & { id: any };
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  mailboxes: AnyPgTable & { id: any };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   campaign?: any;
 }) {
   const tenantId = () => deps.tenants.id;
@@ -145,12 +147,14 @@ export function makeTenantNotificationTables(deps: {
     rawKey: text("raw_key"),
     authResults: text("auth_results"),
     sentAt: bigint("sent_at", { mode: "number" }),
+    mailboxId: bigint("mailbox_id", { mode: "bigint" }).references(() => deps.mailboxes.id, { onDelete: "set null" }),
   }, (t) => [
     uniqueIndex("email_mailbox_outbox_uidx").on(t.outboxId),
     uniqueIndex("email_mailbox_rfc_message_id_uidx").on(t.rfcMessageId),
     index("email_mailbox_created_idx").on(t.createdAt),
     index("email_mailbox_tenant_idx").on(t.tenantId),
     index("email_mailbox_thread_idx").on(t.threadId),
+    index("email_mailbox_mailbox_idx").on(t.mailboxId),
   ]);
 
   const emailAttachment = pgTable("email_attachment", {
@@ -171,7 +175,7 @@ export function makeTenantNotificationTables(deps: {
 
   return {
     notificationChannel, outboxStatus, messageKind, suppressionScope,
-    mailboxDirection, mailboxOrigin,
+    mailboxDirection, mailboxOrigin, mailboxes: deps.mailboxes,
     notifications, notificationOutbox, notificationPrefs,
     notificationTemplate, messageSuppression, emailMailbox, emailAttachment,
   };

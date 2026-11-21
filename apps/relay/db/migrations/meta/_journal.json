@@ -43,6 +43,20 @@
       "when": 1794747696636,
       "tag": "0005_tranquil_spyke",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1795292974681,
+      "tag": "0006_curly_firestar",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1795292980277,
+      "tag": "0007_mailbox_catalog_backfill",
+      "breakpoints": true
     }
   ]
 }

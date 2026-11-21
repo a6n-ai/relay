@@ -4,7 +4,8 @@ import { buildTenantHandlers } from "./tenant-handlers";
 import { makeTenantNotificationTables } from "./tenant-schema";
 
 const tenants = pgTable("tenants", { id: bigint("id", { mode: "bigint" }).primaryKey() });
-const tables = makeTenantNotificationTables({ tenants });
+const mailboxes = pgTable("tenant_mailboxes", { id: bigint("id", { mode: "bigint" }).primaryKey() });
+const tables = makeTenantNotificationTables({ tenants, mailboxes });
 
 function mailboxDb() {
   const inserts: unknown[] = [];
