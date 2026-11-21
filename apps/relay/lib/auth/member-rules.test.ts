@@ -80,4 +80,22 @@ describe("checkSuspendOrRemove", () => {
   it("allows removing a plain member", () => {
     expect(checkSuspendOrRemove({ ...base, action: "remove" })).toBeNull();
   });
+
+  it("admin cannot reactivate an owner", () => {
+    const suspendedOwner = { ...target, roles: ["owner"], status: "suspended" };
+    expect(checkSuspendOrRemove({ ...base, actor: admin, target: suspendedOwner, action: "reactivate" })).toBe(
+      "Only an owner can suspend or remove an owner",
+    );
+  });
+
+  it("owner can reactivate an owner", () => {
+    const suspendedOwner = { ...target, roles: ["owner"], status: "suspended" };
+    expect(checkSuspendOrRemove({ ...base, target: suspendedOwner, action: "reactivate" })).toBeNull();
+  });
+
+  it("refuses reactivating yourself", () => {
+    expect(
+      checkSuspendOrRemove({ ...base, target: { ...target, memberId: owner.memberId, status: "suspended" }, action: "reactivate" }),
+    ).toBe("You can’t reactivate yourself");
+  });
 });

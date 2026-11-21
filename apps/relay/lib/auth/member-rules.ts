@@ -33,17 +33,18 @@ export function checkSuspendOrRemove(input: {
   actor: Actor;
   target: Target;
   activeOwnerCount: number;
-  action: "suspend" | "remove";
+  action: "suspend" | "remove" | "reactivate";
 }): string | null {
   const { actor, target, activeOwnerCount, action } = input;
   if (actor.memberId === target.memberId) {
+    if (action === "reactivate") return "You can’t reactivate yourself";
     return action === "suspend" ? "You can’t suspend yourself" : "You can’t remove yourself";
   }
   const targetIsOwner = target.roles.includes("owner");
   if (targetIsOwner && !actor.roles.includes("owner")) {
     return "Only an owner can suspend or remove an owner";
   }
-  if (targetIsOwner && target.status === "active" && activeOwnerCount <= 1) {
+  if (action !== "reactivate" && targetIsOwner && target.status === "active" && activeOwnerCount <= 1) {
     return "A workspace needs at least one owner";
   }
   return null;

@@ -59,6 +59,9 @@ const toTarget = (t: { memberId: string; role: string; status: string }) => ({
 export async function setMemberRolesAction(memberPublicId: string, roles: string[]): Promise<Result> {
   const denied = await guard({ member: ["update"] });
   if (denied) return { error: denied };
+  if (!Array.isArray(roles) || roles.length < 1 || roles.length > 10 || !roles.every((r) => typeof r === "string")) {
+    return { error: "Pick at least one role" };
+  }
   const actor = await activeMember();
   if (!actor) return { error: DENIED };
   const target = await findTarget(actor.organizationId, memberPublicId);
@@ -100,15 +103,13 @@ export async function setMemberStatusAction(memberPublicId: string, status: "act
   const target = await findTarget(actor.organizationId, memberPublicId);
   if (!target) return { error: "Unknown member" };
 
-  if (status === "suspended") {
-    const error = checkSuspendOrRemove({
-      actor: toActor(actor),
-      target: toTarget(target),
-      activeOwnerCount: await activeOwnerCount(actor.organizationId),
-      action: "suspend",
-    });
-    if (error) return { error };
-  }
+  const error = checkSuspendOrRemove({
+    actor: toActor(actor),
+    target: toTarget(target),
+    activeOwnerCount: await activeOwnerCount(actor.organizationId),
+    action: status === "suspended" ? "suspend" : "reactivate",
+  });
+  if (error) return { error };
 
   await db.update(member).set({ status }).where(eq(member.id, target.memberId));
   if (status === "suspended") {

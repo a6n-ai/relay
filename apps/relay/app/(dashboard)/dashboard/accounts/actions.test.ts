@@ -94,6 +94,29 @@ describe("accounts actions", () => {
     expect(params).toContain("org_x");
   });
 
+  it("setMemberRolesAction rejects a non-array roles value", async () => {
+    h.selects = [[target], [{ role: "owner" }]];
+    await expect(setMemberRolesAction("mbr_target", "member" as unknown as string[])).resolves.toEqual({ error: "Pick at least one role" });
+    expect(h.updateMemberRole).not.toHaveBeenCalled();
+  });
+
+  it("setMemberStatusAction refuses an admin reactivating an owner", async () => {
+    h.actor = { ...ownerActor, role: "admin" };
+    h.selects = [[{ ...target, role: "owner", status: "suspended" }], [{ role: "owner" }]];
+    await expect(setMemberStatusAction("mbr_target", "active")).resolves.toEqual({
+      error: "Only an owner can suspend or remove an owner",
+    });
+    expect(h.updates).toEqual([]);
+  });
+
+  it("setMemberStatusAction refuses suspending the last owner", async () => {
+    h.selects = [[{ ...target, role: "owner" }], [{ role: "owner" }]];
+    await expect(setMemberStatusAction("mbr_target", "suspended")).resolves.toEqual({
+      error: "A workspace needs at least one owner",
+    });
+    expect(h.updates).toEqual([]);
+  });
+
   it("removeMemberAction refuses the last owner", async () => {
     h.selects = [[{ ...target, role: "owner" }], [{ role: "owner" }]];
     await expect(removeMemberAction("mbr_target")).resolves.toEqual({ error: "A workspace needs at least one owner" });

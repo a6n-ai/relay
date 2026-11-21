@@ -117,6 +117,7 @@ export default async function AccountsPage() {
                 {rows.map((r) => {
                   const isSelf = r.memberId === actor?.id;
                   const roles = parseRoles(r.role);
+                  const lockedOwner = roles.includes("owner") && !actorIsOwner;
                   return (
                     <TableRow key={r.memberPublicId}>
                       <TableCell>
@@ -140,7 +141,7 @@ export default async function AccountsPage() {
                         {new Date(r.createdAt).toLocaleDateString()}
                       </TableCell>
                       <TableCell className="text-right">
-                        {!isSelf && (canUpdate || canDelete) ? (
+                        {!isSelf && !lockedOwner && (canUpdate || canDelete) ? (
                           <MemberRowActions
                             memberPublicId={r.memberPublicId}
                             name={r.name || r.email}
