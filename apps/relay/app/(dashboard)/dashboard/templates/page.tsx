@@ -8,6 +8,7 @@ import { templatesService } from "@/lib/services/templates.service";
 import { tenantsService } from "@/lib/services/tenants.service";
 import { CreateTemplateForm } from "./create-template-form";
 import { ViewHeader } from "@/components/ds/view-header";
+import { requirePagePermission } from "@/lib/auth/guards";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +23,7 @@ const TEMPLATE_FILTERS: ListingFilter[] = [
 ];
 
 export default async function TemplatesPage() {
+  await requirePagePermission({ template: ["read"] });
   const [{ items: tenantRows }, { items: rows }] = await Promise.all([
     tenantsService.listRecent(),
     templatesService.listRecent(),

@@ -7,6 +7,7 @@ import { operatorCampaignDeps } from "@/lib/campaigns/deps";
 import { OperatorSplit } from "@/components/ds/operator-split";
 import { campaignContentService, campaignsService } from "@/lib/services/campaigns.service";
 import { ViewHeader } from "@/components/ds/view-header";
+import { requirePagePermission } from "@/lib/auth/guards";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +16,7 @@ export default async function CampaignDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  await requirePagePermission({ campaign: ["read"] });
   const { id } = await params;
   let row;
   try {

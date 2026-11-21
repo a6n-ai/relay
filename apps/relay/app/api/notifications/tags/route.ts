@@ -16,7 +16,7 @@ const removeSchema = z.object({
 });
 
 export const GET = handler(async () => {
-  await operatorGuard();
+  await operatorGuard({ mailbox: ["read"] });
   const [tags, { items: apps }] = await Promise.all([
     appMessageTagsService.listRecentAll(),
     tenantsService.listRecent(),
@@ -40,7 +40,7 @@ export const GET = handler(async () => {
 });
 
 export const POST = handler(async (req: Request) => {
-  await operatorGuard();
+  await operatorGuard({ settings: ["write"] });
   let body: unknown;
   try {
     body = await req.json();
@@ -57,7 +57,7 @@ export const POST = handler(async (req: Request) => {
 });
 
 export const DELETE = handler(async (req: Request) => {
-  await operatorGuard();
+  await operatorGuard({ settings: ["write"] });
   let body: unknown;
   try {
     body = await req.json();

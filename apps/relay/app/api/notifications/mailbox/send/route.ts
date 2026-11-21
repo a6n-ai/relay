@@ -22,7 +22,7 @@ const schema = z.object({
 });
 
 export const POST = handler(async (req: Request) => {
-  await operatorGuard();
+  await operatorGuard({ mailbox: ["send"] });
   let body: unknown;
   try {
     body = await req.json();

@@ -18,13 +18,13 @@ const saveSchema = z.object({
 });
 
 export const GET = handler(async () => {
-  await operatorGuard();
+  await operatorGuard({ template: ["read"] });
   const page = await templatesService.listRecent();
   return json(page.items);
 });
 
 export const POST = handler(async (req: Request) => {
-  await operatorGuard();
+  await operatorGuard({ template: ["write"] });
   let body: unknown;
   try {
     body = await req.json();

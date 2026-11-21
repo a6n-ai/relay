@@ -11,12 +11,14 @@ import { tenantMailboxesService } from "@/lib/services/tenant-mailboxes.service"
 import { tenantsService } from "@/lib/services/tenants.service";
 import { AddMailboxPicker } from "./add-mailbox-picker";
 import { ViewHeader } from "@/components/ds/view-header";
+import { requirePagePermission } from "@/lib/auth/guards";
 
 export const dynamic = "force-dynamic";
 
 export const metadata = { title: "Mailboxes" };
 
 export default async function MailboxesSettingsPage() {
+  await requirePagePermission({ settings: ["read"] });
   const [activeApp, { items: allApps }, { items: boxes }, { items: domains }] = await Promise.all([
     resolveActiveApp(),
     tenantsService.listRecent(),

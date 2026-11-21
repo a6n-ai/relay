@@ -9,7 +9,7 @@ export async function saveStreamRouting(
   streamId: string,
   routing: { webhook: EmailEventType[]; counts?: EmailEventType[] },
 ): Promise<{ error?: string }> {
-  await requirePermission({ sending: ["write"] });
+  await requirePermission({ settings: ["write"] });
   const valid = parseRoutingInput(routing);
   if (!valid) return { error: "Invalid routing" };
   const stream = parseEmailStreams().find((s) => s.id === streamId);

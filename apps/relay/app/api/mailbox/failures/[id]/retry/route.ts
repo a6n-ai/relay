@@ -5,7 +5,7 @@ import { retryInboundFailure } from "@/lib/mailbox/failures";
 import { mailboxScope } from "@/lib/mailbox/scope";
 
 export const POST = handler(async (_req: Request, ctx: { params: Promise<{ id: string }> }) => {
-  await operatorGuard();
+  await operatorGuard({ mailbox: ["manage"] });
   const { id } = await ctx.params;
   const result = await retryInboundFailure(await mailboxScope(), id);
   if (!result) throw new NotFoundError("Not found");

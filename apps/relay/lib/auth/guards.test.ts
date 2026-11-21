@@ -10,7 +10,7 @@ const { operatorGuard } = await import("@/lib/campaigns/http");
 describe("mutation guards", () => {
   it.each([
     ["requireAdmin", () => requireAdmin()],
-    ["operatorGuard", () => operatorGuard()],
+    ["operatorGuard", () => operatorGuard({ campaign: ["read"] })],
   ])("%s checks the live session, never the cookie cache", async (_n, guard) => {
     fresh.mockClear();
     cached.mockClear();

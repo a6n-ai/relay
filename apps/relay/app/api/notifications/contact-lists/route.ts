@@ -5,7 +5,7 @@ import { operatorGuard } from "@/lib/campaigns/http";
 import { contactListsService } from "@/lib/services/campaigns.service";
 
 export const GET = handler(async () => {
-  await operatorGuard();
+  await operatorGuard({ list: ["read"] });
   const page = await contactListsService.listRecent();
   return json(
     page.items.map((r) => ({
@@ -22,7 +22,7 @@ export const GET = handler(async () => {
 });
 
 export const POST = handler(async (req: Request) => {
-  await operatorGuard();
+  await operatorGuard({ list: ["write"] });
   let body: unknown;
   try {
     body = await req.json();

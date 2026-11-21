@@ -8,6 +8,7 @@ import { contactListsService } from "@/lib/services/campaigns.service";
 import { tenantsService } from "@/lib/services/tenants.service";
 import { CreateAutomationForm } from "./create-automation-form";
 import { ViewHeader } from "@/components/ds/view-header";
+import { requirePagePermission } from "@/lib/auth/guards";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +20,7 @@ const AUTOMATION_FILTERS: ListingFilter[] = [
 ];
 
 export default async function AutomationsPage() {
+  await requirePagePermission({ list: ["read"] });
   const [{ items: tenantRows }, { items: lists }, { items: rules }] = await Promise.all([
     tenantsService.listRecent(),
     contactListsService.listRecent(),

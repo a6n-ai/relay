@@ -12,6 +12,7 @@ import { campaignsService, contactListsService } from "@/lib/services/campaigns.
 import { tenantsService } from "@/lib/services/tenants.service";
 import { CreateCampaignForm } from "./create-campaign-form";
 import { ViewHeader } from "@/components/ds/view-header";
+import { requirePagePermission } from "@/lib/auth/guards";
 
 export const dynamic = "force-dynamic";
 
@@ -36,6 +37,7 @@ const statusRank = (status: string) => {
 const CREATE_NOTE = "The app you pick supplies the From address and the legal footer.";
 
 export default async function CampaignsPage() {
+  await requirePagePermission({ campaign: ["read"] });
   const [{ items: campaigns }, { items: tenantRows }, { items: lists }, bindings] = await Promise.all([
     campaignsService.listRecent(),
     tenantsService.listRecent(),

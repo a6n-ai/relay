@@ -8,6 +8,7 @@ import { outboxGlyph } from "@/components/ds/status-glyph";
 import { db } from "@/db/client";
 import { notificationTables } from "@/db/schema";
 import { ViewHeader } from "@/components/ds/view-header";
+import { requirePagePermission } from "@/lib/auth/guards";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +26,7 @@ const SEND_FILTERS: ListingFilter[] = [
 ];
 
 export default async function LogsPage() {
+  await requirePagePermission({ log: ["read"] });
   const o = notificationTables.notificationOutbox;
   const rows = await db
     .select({

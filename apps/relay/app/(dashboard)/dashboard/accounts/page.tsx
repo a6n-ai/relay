@@ -12,6 +12,7 @@ import { isPlatformAdmin } from "@/lib/auth/org-scope";
 import { getSession } from "@/lib/auth/session";
 import { SectionTabs } from "@/components/ds/section-tabs";
 import { SECTION_LABELS } from "@/components/ds/section-labels";
+import { requirePagePermission } from "@/lib/auth/guards";
 
 export const dynamic = "force-dynamic";
 
@@ -37,6 +38,7 @@ function statusBadge(status: UserStatus) {
 }
 
 export default async function AccountsPage() {
+  await requirePagePermission({ staff: ["read"] });
   const session = await getSession();
   const organizationId = await requireActiveOrganizationId();
   const showClients = await isPlatformAdmin();

@@ -33,13 +33,13 @@ function appJson(row: {
 }
 
 export const GET = handler(async () => {
-  await operatorGuard();
+  await operatorGuard({ tenant: ["read"] });
   const { items } = await tenantsService.listRecent();
   return json(items.map(appJson));
 });
 
 export const POST = handler(async (req: Request) => {
-  await operatorGuard();
+  await operatorGuard({ tenant: ["write"] });
   let body: unknown;
   try {
     body = await req.json();

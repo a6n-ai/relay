@@ -8,12 +8,14 @@ import { tenantsService } from "@/lib/services/tenants.service";
 import { AppTagsBoard } from "./app-tags-board";
 import { CreateAppTagForm } from "./create-app-tag-form";
 import { ViewHeader } from "@/components/ds/view-header";
+import { requirePagePermission } from "@/lib/auth/guards";
 
 export const dynamic = "force-dynamic";
 
 export const metadata = { title: "Tags" };
 
 export default async function TagsSettingsPage() {
+  await requirePagePermission({ settings: ["read"] });
   const [activeApp, { items: allApps }] = await Promise.all([
     resolveActiveApp(),
     tenantsService.listRecent(),

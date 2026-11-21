@@ -20,7 +20,7 @@ const schema = z.object({
 });
 
 export const POST = handler(async (req: Request) => {
-  await operatorGuard();
+  await operatorGuard({ template: ["write"] });
   if (!(await mailboxScope()).includeOperatorMail) throw new NotFoundError("Unknown From");
   let body: unknown;
   try {

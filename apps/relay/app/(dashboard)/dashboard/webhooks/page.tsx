@@ -8,6 +8,7 @@ import { tenantsService } from "@/lib/services/tenants.service";
 import { tenantWebhooksService } from "@/lib/services/webhooks.service";
 import { CreateWebhookForm } from "./create-webhook-form";
 import { ViewHeader } from "@/components/ds/view-header";
+import { requirePagePermission } from "@/lib/auth/guards";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +20,7 @@ const DESTINATION_FILTERS: ListingFilter[] = [
 ];
 
 export default async function WebhooksPage() {
+  await requirePagePermission({ webhook: ["read"] });
   const [{ items: tenantRows }, { items: rows }] = await Promise.all([
     tenantsService.listRecent(),
     tenantWebhooksService.listRecent(),

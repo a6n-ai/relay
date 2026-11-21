@@ -14,7 +14,7 @@ const createSchema = z.object({
 });
 
 export const GET = handler(async () => {
-  await operatorGuard();
+  await operatorGuard({ list: ["read"] });
   const page = await listAutomationsService.listRecent();
   const tenants = await tenantsService.listRecent();
   const lists = await contactListsService.listRecent();
@@ -31,7 +31,7 @@ export const GET = handler(async () => {
 });
 
 export const POST = handler(async (req: Request) => {
-  await operatorGuard();
+  await operatorGuard({ list: ["write"] });
   let body: unknown;
   try {
     body = await req.json();

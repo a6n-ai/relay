@@ -9,5 +9,5 @@ const bodySchema = z.object({ contacts: z.array(manualContactSchema).min(1) });
 export const POST = createValidatedIdRoute(
   bodySchema,
   (id, body) => addContactListMembers(operatorCampaignDeps(), id, body.contacts),
-  { guard: operatorGuard },
+  { guard: () => operatorGuard({ list: ["write"] }) },
 );

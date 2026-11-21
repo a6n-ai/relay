@@ -12,7 +12,7 @@ const createSchema = z.object({
 });
 
 export const GET = handler(async () => {
-  await operatorGuard();
+  await operatorGuard({ webhook: ["read"] });
   const page = await tenantWebhooksService.listRecent();
   const tenants = await tenantsService.listRecent();
   return json(
@@ -27,7 +27,7 @@ export const GET = handler(async () => {
 });
 
 export const POST = handler(async (req: Request) => {
-  await operatorGuard();
+  await operatorGuard({ webhook: ["write"] });
   let body: unknown;
   try {
     body = await req.json();

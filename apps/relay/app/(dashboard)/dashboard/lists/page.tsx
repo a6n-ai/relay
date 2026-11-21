@@ -7,6 +7,7 @@ import { consentSourceLabel } from "@/components/ds/plain-labels";
 import { contactListsService } from "@/lib/services/campaigns.service";
 import { ViewHeader } from "@/components/ds/view-header";
 import { ImportPeopleForms } from "./import-people-forms";
+import { requirePagePermission } from "@/lib/auth/guards";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +21,7 @@ const PEOPLE_FILTERS: ListingFilter[] = [
 ];
 
 export default async function ListsPage() {
+  await requirePagePermission({ list: ["read"] });
   const { items: lists } = await contactListsService.listRecent();
 
   const items: ListingRow[] = lists.map((l) => {

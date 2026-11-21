@@ -19,7 +19,7 @@ import {
 import { Building2Icon, UsersIcon } from "lucide-react";
 import { Button } from "@foundry/ui/button";
 import { signOut } from "@/lib/auth/client";
-import { NAV_GROUPS, activeNavHref, isUnder } from "@/components/ds/nav";
+import { NAV_GROUPS, TEAM_PERM, activeNavHref, isUnder, permKey, type Perm } from "@/components/ds/nav";
 import { iconColorVar } from "@/components/ds/icon-color";
 import { ThemeSwitcher } from "@/components/ds/theme-switcher";
 import { AppSwitcher } from "@/components/app-switcher";
@@ -28,13 +28,22 @@ import { WorkspaceSwitcher } from "@/components/workspace-switcher";
 export function RelaySidebar({
   email,
   showClients = false,
+  allowed,
 }: {
   email: string;
   /** a6n platform staff (`super_admin`) — Clients sits in Organization with Team. */
   showClients?: boolean;
+  /** `permKey`s the caller holds, resolved on the server (`navAccess`). */
+  allowed: readonly string[];
 }) {
   const pathname = usePathname();
   const active = activeNavHref(pathname);
+  const granted = new Set(allowed);
+  const shows = (perm?: Perm) => !perm || granted.has(permKey(perm));
+  const navGroups = NAV_GROUPS.map((g) => ({ ...g, items: g.items.filter((i) => shows(i.perm)) })).filter(
+    (g) => g.items.length > 0,
+  );
+  const showTeam = shows(TEAM_PERM);
   const clientsActive = isUnder(pathname, "/dashboard/platform");
   const teamActive = isUnder(pathname, "/dashboard/accounts");
   // Inset: the sidebar sits on the canvas and the page is a lifted panel (Linear's inverted-L chrome).
@@ -52,7 +61,7 @@ export function RelaySidebar({
         </div>
       </SidebarHeader>
       <SidebarContent>
-        {NAV_GROUPS.map((group, i) => (
+        {navGroups.map((group, i) => (
           <SidebarGroup key={group.label ?? i}>
             {group.label ? (
               <SidebarGroupLabel className="text-xs font-semibold text-muted-foreground">{group.label}</SidebarGroupLabel>
@@ -73,6 +82,7 @@ export function RelaySidebar({
             </SidebarGroupContent>
           </SidebarGroup>
         ))}
+        {showClients || showTeam ? (
         <SidebarGroup>
           <SidebarGroupLabel className="text-xs font-semibold text-muted-foreground">
             Organization
@@ -93,21 +103,24 @@ export function RelaySidebar({
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ) : null}
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={teamActive}>
-                  <Link
-                    href="/dashboard/accounts"
-                    prefetch={false}
-                    aria-current={teamActive ? "page" : undefined}
-                  >
-                    <UsersIcon style={{ color: iconColorVar("blue") }} />
-                    <span>Team</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
+              {showTeam ? (
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={teamActive}>
+                    <Link
+                      href="/dashboard/accounts"
+                      prefetch={false}
+                      aria-current={teamActive ? "page" : undefined}
+                    >
+                      <UsersIcon style={{ color: iconColorVar("blue") }} />
+                      <span>Team</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ) : null}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+        ) : null}
       </SidebarContent>
       <SidebarSeparator />
       <SidebarFooter className="gap-3 p-3 group-data-[collapsible=icon]:hidden">

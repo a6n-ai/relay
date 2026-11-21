@@ -17,6 +17,7 @@ import { appMessageTagsService } from "@/lib/services/mailbox-tags.service";
 import { countTenantSendsThisMonth } from "@/lib/tenants/usage";
 import { AddMailboxForm, IssueKeyForm, UpdateQuotaForm } from "../tenant-ops-forms";
 import { ViewHeader } from "@/components/ds/view-header";
+import { requirePagePermission } from "@/lib/auth/guards";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +26,7 @@ export default async function TenantDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  await requirePagePermission({ tenant: ["read"] });
   const { id } = await params;
   const tenant = await tenantsService.read(id).catch(() => null);
   if (!tenant) notFound();

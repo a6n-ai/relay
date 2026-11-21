@@ -5,7 +5,7 @@ import { readMailboxLetter } from "@/lib/mailbox/list";
 import { mailboxScope } from "@/lib/mailbox/scope";
 
 export const GET = handler(async (_req: Request, ctx: { params: Promise<{ id: string }> }) => {
-  await operatorGuard();
+  await operatorGuard({ mailbox: ["read"] });
   const { id } = await ctx.params;
   const row = await readMailboxLetter(await mailboxScope(), id);
   if (!row) return json({ title: "Not found", status: 404 }, 404);

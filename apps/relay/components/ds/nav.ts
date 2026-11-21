@@ -12,6 +12,14 @@ import {
 import { RELAY_CHANNELS } from "./channels";
 import type { IconColor } from "./icon-color";
 
+export type Perm = Record<string, string[]>;
+
+/** Stable key for a permission, so the server resolves each distinct one once. */
+export const permKey = (perm: Perm) => JSON.stringify(perm);
+
+/** Organization > Team link: visible with staff:read. */
+export const TEAM_PERM: Perm = { staff: ["read"] };
+
 export type NavItem = {
   href: string;
   label: string;
@@ -20,6 +28,8 @@ export type NavItem = {
   color: IconColor;
   /** Other routes that belong to this link (its tab pages). */
   also?: readonly string[];
+  /** Read permission to show the link; absent = every member. */
+  perm?: Perm;
 };
 
 export type NavGroup = { label?: string; items: readonly NavItem[] };
@@ -56,24 +66,24 @@ export const NAV_GROUPS: readonly NavGroup[] = [
     label: "Overview",
     items: [
       { href: "/dashboard", label: "Home", icon: HouseIcon, color: "purple" },
-      { href: "/dashboard/mailbox", label: "Inbox", icon: InboxIcon, color: "blue" },
+      { href: "/dashboard/mailbox", label: "Inbox", icon: InboxIcon, color: "blue", perm: { mailbox: ["read"] } },
     ],
   },
   {
     label: "Reach people",
     items: [
-      { href: "/dashboard/campaigns", label: "Campaigns", icon: MegaphoneIcon, color: "orange", also: tabHrefs(SECTION_TABS.campaigns) },
-      { href: "/dashboard/lists", label: "People", icon: UsersIcon, color: "green" },
+      { href: "/dashboard/campaigns", label: "Campaigns", icon: MegaphoneIcon, color: "orange", also: tabHrefs(SECTION_TABS.campaigns), perm: { campaign: ["read"] } },
+      { href: "/dashboard/lists", label: "People", icon: UsersIcon, color: "green", perm: { list: ["read"] } },
     ],
   },
   {
     label: "Activity",
-    items: [{ href: "/dashboard/logs", label: "Sends", icon: ScrollTextIcon, color: "yellow", also: tabHrefs(SECTION_TABS.activity) }],
+    items: [{ href: "/dashboard/logs", label: "Sends", icon: ScrollTextIcon, color: "yellow", also: tabHrefs(SECTION_TABS.activity), perm: { log: ["read"] } }],
   },
   {
     label: "Setup",
     items: [
-      { href: "/dashboard/tenants", label: "Apps", icon: KeyIcon, color: "purple" },
+      { href: "/dashboard/tenants", label: "Apps", icon: KeyIcon, color: "purple", perm: { tenant: ["read"] } },
       {
         href: SECTION_TABS.channels[0]!.href,
         label: "Channels",
@@ -81,7 +91,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         color: "blue",
         also: ["/dashboard/channels"],
       },
-      { href: "/dashboard/settings/email", label: "Settings", icon: SettingsIcon, color: "red", also: tabHrefs(SECTION_TABS.settings) },
+      { href: "/dashboard/settings/email", label: "Settings", icon: SettingsIcon, color: "red", also: tabHrefs(SECTION_TABS.settings), perm: { settings: ["read"] } },
     ],
   },
 ];

@@ -20,6 +20,7 @@ import type { ChatAttachment } from "../mailbox-attachments";
 import { MailboxQuickActions } from "../mailbox-actions";
 import { ViewHeader } from "@/components/ds/view-header";
 import { remoteBlockedFlag, remoteImagesMode, sentAtLabel } from "./letter-flags";
+import { requirePagePermission } from "@/lib/auth/guards";
 
 export const dynamic = "force-dynamic";
 
@@ -50,6 +51,7 @@ export default async function MailboxLetterPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ images?: string }>;
 }) {
+  await requirePagePermission({ mailbox: ["read"] });
   const { id } = await params;
   const { images } = await searchParams;
   const scope = await mailboxScope();

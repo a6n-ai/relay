@@ -9,12 +9,14 @@ import { loadOperatorSmtpRow } from "@/lib/email/from-address";
 import { EmailEventsSection } from "./email-events-section";
 import { sendingDomainsService } from "@/lib/services/sending.service";
 import { ViewHeader } from "@/components/ds/view-header";
+import { requirePagePermission } from "@/lib/auth/guards";
 
 export const dynamic = "force-dynamic";
 
 export const metadata = { title: "Email sending" };
 
 export default async function EmailSettingsPage() {
+  await requirePagePermission({ settings: ["read"] });
   const [row, { items: domains }] = await Promise.all([
     loadOperatorSmtpRow(),
     sendingDomainsService.list(undefined, { page: 0, size: 200 }),

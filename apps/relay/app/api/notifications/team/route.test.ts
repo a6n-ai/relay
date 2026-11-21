@@ -1,14 +1,16 @@
 import { PgDialect } from "drizzle-orm/pg-core";
 import type { SQL } from "drizzle-orm";
+import { ForbiddenError } from "@foundry/commons";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const state = vi.hoisted(() => ({
   workspace: { id: "org_a", slug: "a" } as { id: string; slug: string } | null,
   where: null as SQL | null,
   rows: [] as Record<string, unknown>[],
+  guard: vi.fn(async (_perms: Record<string, string[]>) => {}),
 }));
 
-vi.mock("@/lib/campaigns/http", () => ({ operatorGuard: async () => {} }));
+vi.mock("@/lib/campaigns/http", () => ({ operatorGuard: state.guard }));
 vi.mock("@/lib/mailbox/scope", () => ({ workspaceSlug: async () => state.workspace }));
 vi.mock("@/db/client", () => {
   const chain = {
@@ -43,6 +45,14 @@ describe("GET /api/notifications/team", () => {
     const q = new PgDialect().sqlToQuery(state.where!);
     expect(q.sql).toContain('"organization_id"');
     expect(q.params).toEqual(["org_a"]);
+  });
+
+  it("rejects without staff:read", async () => {
+    state.guard.mockRejectedValueOnce(new ForbiddenError());
+    const res = await GET();
+    expect(state.guard).toHaveBeenCalledWith({ staff: ["read"] });
+    expect(res.status).toBe(403);
+    expect(state.where).toBeNull();
   });
 
   it("returns 404 without an active workspace membership", async () => {

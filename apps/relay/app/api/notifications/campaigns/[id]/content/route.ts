@@ -5,7 +5,7 @@ import { operatorGuard } from "@/lib/campaigns/http";
 import { campaignContentService } from "@/lib/services/campaigns.service";
 
 export const POST = handler(async (req: Request, ctx: { params: Promise<{ id: string }> }) => {
-  await operatorGuard();
+  await operatorGuard({ campaign: ["write"] });
   const { id } = await ctx.params;
   let body: unknown;
   try {

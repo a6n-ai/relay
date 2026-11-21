@@ -5,7 +5,7 @@ import { operatorCampaignDeps } from "@/lib/campaigns/deps";
 import { operatorGuard } from "@/lib/campaigns/http";
 
 export const POST = handler(async (req: Request, ctx: { params: Promise<{ id: string }> }) => {
-  await operatorGuard();
+  await operatorGuard({ list: ["import"] });
   const { id } = await ctx.params;
   const form = await req.formData();
   const file = form.get("file");

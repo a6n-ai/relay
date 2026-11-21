@@ -17,6 +17,7 @@ import { appMessageTagsService } from "@/lib/services/mailbox-tags.service";
 import { MailboxCompose } from "./mailbox-compose";
 import { ViewHeader } from "@/components/ds/view-header";
 import { MailboxFailureActions } from "./mailbox-failure-actions";
+import { requirePagePermission } from "@/lib/auth/guards";
 
 export const dynamic = "force-dynamic";
 
@@ -32,6 +33,7 @@ const MAILBOX_FILTERS: ListingFilter[] = [
 ];
 
 export default async function MailboxPage() {
+  await requirePagePermission({ mailbox: ["read"] });
   const scope = await mailboxScope();
   const activeApp = await resolveActiveApp();
   const [rows, froms, tagRows, failures, failureCount] = await Promise.all([

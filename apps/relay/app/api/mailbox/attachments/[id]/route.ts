@@ -6,7 +6,7 @@ import { mailBucket } from "@/lib/mailbox/mail-bucket";
 import { mailboxScope } from "@/lib/mailbox/scope";
 
 export const GET = handler(async (_req: Request, ctx: { params: Promise<{ id: string }> }) => {
-  await operatorGuard();
+  await operatorGuard({ mailbox: ["read"] });
   const { id } = await ctx.params;
   const found = await readAttachment(await mailboxScope(), id);
   if (!found) throw new NotFoundError("Not found");

@@ -7,7 +7,7 @@ import { mailBucket } from "@/lib/mailbox/mail-bucket";
 import { mailboxScope } from "@/lib/mailbox/scope";
 
 export const GET = handler(async (_req: Request, ctx: { params: Promise<{ id: string }> }) => {
-  await operatorGuard();
+  await operatorGuard({ mailbox: ["read"] });
   const { id } = await ctx.params;
   const row = await readInboundFailure(await mailboxScope(), id);
   if (!row) throw new NotFoundError("Not found");

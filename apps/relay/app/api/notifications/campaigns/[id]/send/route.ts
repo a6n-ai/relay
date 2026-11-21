@@ -9,7 +9,7 @@ const bodySchema = z.object({
 });
 
 export const POST = handler(async (req: Request, ctx: { params: Promise<{ id: string }> }) => {
-  await operatorGuard();
+  await operatorGuard({ campaign: ["send"] });
   const { id } = await ctx.params;
   let body: unknown;
   try {

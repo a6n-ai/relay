@@ -7,12 +7,14 @@ import { mailboxScope } from "@/lib/mailbox/scope";
 import { tenantMailboxesService } from "@/lib/services/tenant-mailboxes.service";
 import { tenantsService } from "@/lib/services/tenants.service";
 import { MailboxSendingForm } from "./mailbox-sending-form";
+import { requirePagePermission } from "@/lib/auth/guards";
 
 export const dynamic = "force-dynamic";
 
 export const metadata = { title: "Mailbox" };
 
 export default async function MailboxSettingsPage({ params }: { params: Promise<{ id: string }> }) {
+  await requirePagePermission({ settings: ["read"] });
   const { id } = await params;
   const scope = await mailboxScope();
   const row = await tenantMailboxesService.read(id).catch(() => null);

@@ -11,13 +11,13 @@ const createBody = createCampaignSchema(CHANNELS).extend({
 });
 
 export const GET = handler(async () => {
-  await operatorGuard();
+  await operatorGuard({ campaign: ["read"] });
   const page = await campaignsService.listRecent();
   return json(page.items);
 });
 
 export const POST = handler(async (req: Request) => {
-  await operatorGuard();
+  await operatorGuard({ campaign: ["write"] });
   let body: unknown;
   try {
     body = await req.json();

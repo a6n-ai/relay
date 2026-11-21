@@ -8,7 +8,7 @@ import { workspaceSlug } from "@/lib/mailbox/scope";
 
 /** Members of the caller's active workspace only; never other workspaces' people. */
 export const GET = handler(async () => {
-  await operatorGuard();
+  await operatorGuard({ staff: ["read"] });
   const workspace = await workspaceSlug();
   if (!workspace) throw new NotFoundError("No active workspace");
   const rows = await db

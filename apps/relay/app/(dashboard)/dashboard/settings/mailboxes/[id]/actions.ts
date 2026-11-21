@@ -6,7 +6,7 @@ import { mailboxScope } from "@/lib/mailbox/scope";
 import { tenantMailboxesService } from "@/lib/services/tenant-mailboxes.service";
 
 export async function updateMailboxSendingAction(formData: FormData): Promise<{ error?: string }> {
-  await requirePermission({ tenant: ["write"] });
+  await requirePermission({ mailbox: ["manage"] });
   const publicId = String(formData.get("publicId") ?? "");
   const scope = await mailboxScope();
   const row = await tenantMailboxesService.read(publicId).catch(() => null);

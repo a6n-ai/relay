@@ -80,7 +80,7 @@ export async function issueTenantKeyAction(formData: FormData): Promise<{ secret
 }
 
 export async function addTenantMailboxAction(formData: FormData): Promise<{ error?: string }> {
-  await requirePermission({ tenant: ["write"] });
+  await requirePermission({ mailbox: ["manage"] });
   const publicId = String(formData.get("publicId") ?? "");
   const localPart = String(formData.get("localPart") ?? "");
   const domain = String(formData.get("domain") ?? "");

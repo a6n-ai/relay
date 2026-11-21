@@ -10,6 +10,7 @@ import { tenantsService } from "@/lib/services/tenants.service";
 import { countTenantsSendsThisMonth } from "@/lib/tenants/usage";
 import { CreateTenantForm } from "./create-tenant-form";
 import { ViewHeader } from "@/components/ds/view-header";
+import { requirePagePermission } from "@/lib/auth/guards";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +23,7 @@ const APP_FILTERS: ListingFilter[] = [
 ];
 
 export default async function TenantsPage() {
+  await requirePagePermission({ tenant: ["read"] });
   const { items: list } = await tenantsService.listRecent();
   const ids = list.map((t) => t.id);
   const [usedByTenant, keyRows] = await Promise.all([

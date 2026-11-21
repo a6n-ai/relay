@@ -1,4 +1,4 @@
-import { NotFoundError } from "@foundry/commons";
+import { ForbiddenError, NotFoundError } from "@foundry/commons";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 type Letter = {
@@ -14,6 +14,7 @@ const state = vi.hoisted(() => ({
   activeOrgId: null as string | null,
   orgRows: [] as { id: string; slug: string }[],
   listRecent: vi.fn(),
+  guard: vi.fn(async (_perms: Record<string, string[]>) => {}),
   letters: [] as Letter[],
   mailboxes: [] as Mailbox[],
   archived: [] as { tenantId: bigint | null; fromEmail: string }[],
@@ -40,7 +41,7 @@ vi.mock("@/db/client", () => {
   return { db: { select: () => ({ from: () => chain() }) } };
 });
 
-vi.mock("@/lib/campaigns/http", () => ({ operatorGuard: async () => {} }));
+vi.mock("@/lib/campaigns/http", () => ({ operatorGuard: state.guard }));
 
 vi.mock("@/lib/email/from-address", () => ({
   operatorDefaultFrom: async () => ({ email: "ops@a6n.test", name: "a6n" }),
@@ -140,6 +141,15 @@ describe("POST /api/notifications/mailbox/send", () => {
     state.mailboxes = state.mailboxes.filter((s) => s.publicId !== "tmb_a");
     const res = await send({ fromId: "tmb_a" });
     expect(res.status).toBe(404);
+    expect(state.sent).toHaveLength(0);
+  });
+
+  it("suspended member cannot send mail", async () => {
+    signInTo("org_a", "acme", [CLIENT_A]);
+    state.guard.mockRejectedValueOnce(new ForbiddenError());
+    const res = await send({ fromId: "tmb_a" });
+    expect(state.guard).toHaveBeenCalledWith({ mailbox: ["send"] });
+    expect(res.status).toBe(403);
     expect(state.sent).toHaveLength(0);
   });
 

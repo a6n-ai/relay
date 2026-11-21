@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { CrmShell } from "@foundry/crm";
 import { ensureActiveOrganization } from "@/lib/auth/ensure-active-org";
+import { navAccess } from "@/lib/auth/nav-access";
 import { getSession } from "@/lib/auth/session";
 import { ThemeSwitcher } from "@/components/ds/theme-switcher";
 import { RelaySidebar } from "@/components/relay-sidebar";
@@ -13,6 +14,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
   if (!session?.user) redirect("/login");
   // Pick a workspace before any org-scoped page loads apps.
   await ensureActiveOrganization();
+  const allowed = [...(await navAccess())];
   return (
     <>
     {/* First focus stop: jumps past the sidebar's links straight to the page. */}
@@ -27,6 +29,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
         <RelaySidebar
           email={session.user.email}
           showClients={session.user.platformRole === "super_admin"}
+          allowed={allowed}
         />
       }
       actions={<ThemeSwitcher />}
