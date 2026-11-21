@@ -5,10 +5,14 @@ import { revalidatePath } from "next/cache";
 import { and, eq } from "drizzle-orm";
 import { ForbiddenError } from "@foundry/commons";
 import { db } from "@/db/client";
-import { member, session, users } from "@/db/schema";
+import { invitation, member, organization, session, users } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { activeMember, requirePermission } from "@/lib/auth/guards";
-import { checkRoleChange, checkSuspendOrRemove, parseRoles } from "@/lib/auth/member-rules";
+import { inviteUrl } from "@/lib/auth/invites";
+import { checkInviteRoles, checkRoleChange, checkSuspendOrRemove, parseRoles } from "@/lib/auth/member-rules";
+import type { orgRoles } from "@/lib/auth/permissions";
+import { sendInviteEmail } from "@/lib/auth/security-events";
+import { getSession } from "@/lib/auth/session";
 import { currentUserId, recordAudit } from "@/lib/services/session-service";
 
 const DENIED = "You don’t have access to do that";
@@ -176,6 +180,108 @@ export async function removeMemberAction(memberPublicId: string): Promise<Result
     changes: null,
     createdBy: await currentUserId(),
   });
+  revalidatePath("/dashboard/accounts");
+  return {};
+}
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// Callers validate `roles` with checkInviteRoles, which guarantees every entry is an orgRoles key.
+async function sendInvite(organizationId: string, email: string, roles: string[]): Promise<Result> {
+  let invite;
+  try {
+    invite = await auth.api.createInvitation({
+      headers: await headers(),
+      body: { email, role: roles as (keyof typeof orgRoles)[], organizationId, resend: true },
+    });
+  } catch {
+    return { error: "Could not send the invite" };
+  }
+  const [org] = await db
+    .select({ name: organization.name })
+    .from(organization)
+    .where(eq(organization.id, organizationId))
+    .limit(1);
+  const me = await getSession();
+  try {
+    await sendInviteEmail({
+      email,
+      workspaceName: org?.name ?? "this workspace",
+      inviterName: me?.user.name || me?.user.email || "A teammate",
+      url: inviteUrl(invite.id),
+    });
+  } catch {
+    return { error: "Invite saved, but the email could not be sent. Resend it from this list." };
+  }
+  revalidatePath("/dashboard/accounts");
+  return {};
+}
+
+export async function inviteTeammateAction(input: { email: string; roles: string[] }): Promise<Result> {
+  const denied = await guard({ invitation: ["create"] });
+  if (denied) return { error: denied };
+  const actor = await activeMember();
+  if (!actor) return { error: DENIED };
+  const email = String(input.email ?? "").trim().toLowerCase();
+  if (!EMAIL_RE.test(email)) return { error: "Enter a valid email" };
+  const roles = Array.isArray(input.roles) && input.roles.every((r) => typeof r === "string") ? input.roles : [];
+  const roleError = checkInviteRoles(parseRoles(actor.role), roles);
+  if (roleError) return { error: roleError };
+
+  const [existing] = await db
+    .select({ memberId: member.id })
+    .from(member)
+    .innerJoin(users, eq(users.id, member.userId))
+    .where(and(eq(member.organizationId, actor.organizationId), eq(users.email, email)))
+    .limit(1);
+  if (existing) return { error: "Already on this workspace" };
+
+  const [user] = await db.select({ id: users.id }).from(users).where(eq(users.email, email)).limit(1);
+  if (!user) {
+    try {
+      const created = await auth.api.createUser({
+        headers: await headers(),
+        body: { email, name: email.split("@")[0] },
+      });
+      await db.update(users).set({ passwordSet: false }).where(eq(users.id, BigInt(created.user.id)));
+    } catch {
+      return { error: "Could not send the invite" };
+    }
+  }
+  return sendInvite(actor.organizationId, email, roles);
+}
+
+export async function resendInvitationAction(invitationId: string): Promise<Result> {
+  const denied = await guard({ invitation: ["create"] });
+  if (denied) return { error: denied };
+  const actor = await activeMember();
+  if (!actor) return { error: DENIED };
+  const [pending] = await db
+    .select({ email: invitation.email, role: invitation.role })
+    .from(invitation)
+    .where(
+      and(
+        eq(invitation.id, invitationId),
+        eq(invitation.organizationId, actor.organizationId),
+        eq(invitation.status, "pending"),
+      ),
+    )
+    .limit(1);
+  if (!pending) return { error: "This invite has expired or was already used" };
+  const roles = parseRoles(pending.role);
+  const roleError = checkInviteRoles(parseRoles(actor.role), roles);
+  if (roleError) return { error: roleError };
+  return sendInvite(actor.organizationId, pending.email, roles);
+}
+
+export async function cancelInvitationAction(invitationId: string): Promise<Result> {
+  const denied = await guard({ invitation: ["cancel"] });
+  if (denied) return { error: denied };
+  try {
+    await auth.api.cancelInvitation({ headers: await headers(), body: { invitationId } });
+  } catch {
+    return { error: "Could not cancel the invite" };
+  }
   revalidatePath("/dashboard/accounts");
   return {};
 }

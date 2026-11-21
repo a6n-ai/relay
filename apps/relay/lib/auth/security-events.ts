@@ -29,6 +29,32 @@ export function sendAuthOtp(email: string, otp: string, type: OtpType): Promise<
   return sendOtpEmail(ctx(), email, otp, type);
 }
 
+// The body is markdown rendered to HTML, so user-supplied names must be escaped before they reach it.
+function escapeHtml(text: string): string {
+  return text.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+}
+
+export async function sendInviteEmail(params: {
+  email: string;
+  workspaceName: string;
+  inviterName: string;
+  url: string;
+}): Promise<void> {
+  const { provider, renderEmail } = ctx();
+  const rendered = await renderEmail({
+    subject: `You’re invited to ${params.workspaceName} on Relay`,
+    body: `${escapeHtml(params.inviterName)} invited you to join ${escapeHtml(params.workspaceName)}. Open this link to accept: ${escapeHtml(params.url)}. The invite lasts 7 days.`,
+    vars: {},
+    appName: APP_NAME,
+  });
+  await provider.send({
+    to: { email: params.email },
+    subject: rendered.subject,
+    html: rendered.html,
+    text: rendered.text,
+  });
+}
+
 export function notifyPasswordChanged(email: string | null | undefined): Promise<void> {
   return email ? sendPasswordChanged(ctx(), email) : Promise.resolve();
 }

@@ -15,6 +15,7 @@ describe("isPublicRelayPath", () => {
     expect(isPublicRelayPath("/api/internal/mailbox/inbound")).toBe(true);
     expect(isPublicRelayPath("/api/internal/tick")).toBe(true);
     expect(isPublicRelayPath("/unsubscribe")).toBe(true);
+    expect(isPublicRelayPath("/accept-invitation/abc")).toBe(true);
     expect(isPublicRelayPath("/dashboard")).toBe(false);
     expect(isPublicRelayPath("/api/internal")).toBe(false);
   });

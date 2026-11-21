@@ -22,6 +22,7 @@ import {
 import { recordAudit } from "@/lib/services/session-service";
 import { betterAuthPassword } from "./password";
 import { ORG_DISABLED_PATHS } from "./disabled-paths";
+import { INVITE_LIFETIME_S } from "./invites";
 import { ac, orgAc, orgRoles, roles } from "./permissions";
 import { notifyNewLoginIfNewDevice, notifyPasswordChanged, sendAuthOtp } from "./security-events";
 
@@ -101,6 +102,7 @@ export const auth = betterAuth({
       ac: orgAc,
       roles: orgRoles,
       teams: { enabled: true },
+      invitationExpiresIn: INVITE_LIFETIME_S,
     }),
     adminPlugin({ ac, roles, defaultRole: Role.ADMIN, adminRoles: [Role.ADMIN] }),
     nextCookies(),

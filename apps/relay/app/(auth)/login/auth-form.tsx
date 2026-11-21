@@ -141,14 +141,22 @@ function PasswordPanel({ onUseEmailOtp }: { onUseEmailOtp: () => void }) {
 const otpEmailSchema = z.object({ email: emailSchema });
 const otpCodeSchema = z.object({ code: z.string().regex(/^\d{6}$/, "Enter the 6-digit code") });
 
-function EmailOtpPanel({ onUsePassword }: { onUsePassword: () => void }) {
+export function EmailOtpPanel({
+  onUsePassword,
+  fixedEmail,
+  onSignedIn,
+}: {
+  onUsePassword?: () => void;
+  fixedEmail?: string;
+  onSignedIn?: () => void;
+}) {
   const router = useRouter();
   const [step, setStep] = useState<"email" | "code">("email");
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
   const emailForm = useForm<z.infer<typeof otpEmailSchema>>({
     resolver: zodResolver(otpEmailSchema),
-    defaultValues: { email: "" },
+    defaultValues: { email: fixedEmail ?? "" },
   });
   const codeForm = useForm<z.infer<typeof otpCodeSchema>>({
     resolver: zodResolver(otpCodeSchema),
@@ -169,7 +177,8 @@ function EmailOtpPanel({ onUsePassword }: { onUsePassword: () => void }) {
       setError("Invalid or expired code.");
       return;
     }
-    router.push("/dashboard");
+    if (onSignedIn) onSignedIn();
+    else router.push("/dashboard");
     router.refresh();
   }
 
@@ -188,7 +197,7 @@ function EmailOtpPanel({ onUsePassword }: { onUsePassword: () => void }) {
               <FormItem>
                 <FormLabel>Email</FormLabel>
                 <FormControl>
-                  <Input type="email" autoComplete="email" placeholder="ops@a6n.ai" {...field} />
+                  <Input type="email" autoComplete="email" placeholder="ops@a6n.ai" readOnly={!!fixedEmail} {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -222,15 +231,19 @@ function EmailOtpPanel({ onUsePassword }: { onUsePassword: () => void }) {
             />
             {error ? <p className="text-destructive text-sm">{error}</p> : null}
             <Button type="submit" className="w-full" disabled={codeForm.formState.isSubmitting}>Sign in</Button>
-            <Button type="button" variant="ghost" className="w-full" onClick={() => { setStep("email"); setError(null); }}>
-              Use a different email
-            </Button>
+            {fixedEmail ? null : (
+              <Button type="button" variant="ghost" className="w-full" onClick={() => { setStep("email"); setError(null); }}>
+                Use a different email
+              </Button>
+            )}
           </form>
         </Form>
       )}
-      <Button type="button" variant="ghost" className="w-full" onClick={onUsePassword}>
-        Sign in with a password instead
-      </Button>
+      {onUsePassword ? (
+        <Button type="button" variant="ghost" className="w-full" onClick={onUsePassword}>
+          Sign in with a password instead
+        </Button>
+      ) : null}
     </div>
   );
 }

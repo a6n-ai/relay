@@ -29,6 +29,16 @@ export function checkRoleChange(input: {
   return null;
 }
 
+export function checkInviteRoles(actorRoles: string[], roles: string[]): string | null {
+  if (roles.length === 0) return "Pick at least one role";
+  const known = Object.keys(orgRoles);
+  if (roles.some((r) => !known.includes(r))) return "Unknown role";
+  if (roles.includes("owner") && !actorRoles.includes("owner")) {
+    return "Only an owner can add or remove the owner role";
+  }
+  return null;
+}
+
 export function checkSuspendOrRemove(input: {
   actor: Actor;
   target: Target;

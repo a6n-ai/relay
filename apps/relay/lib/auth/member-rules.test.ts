@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { checkRoleChange, checkSuspendOrRemove, parseRoles } from "./member-rules";
+import { checkInviteRoles, checkRoleChange, checkSuspendOrRemove, parseRoles } from "./member-rules";
 
 const owner = { memberId: "mbr_owner", roles: ["owner"] };
 const admin = { memberId: "mbr_admin", roles: ["admin"] };
@@ -97,5 +97,27 @@ describe("checkSuspendOrRemove", () => {
     expect(
       checkSuspendOrRemove({ ...base, target: { ...target, memberId: owner.memberId, status: "suspended" }, action: "reactivate" }),
     ).toBe("You can’t reactivate yourself");
+  });
+});
+
+describe("checkInviteRoles", () => {
+  it("refuses an empty role list", () => {
+    expect(checkInviteRoles(["owner"], [])).toBe("Pick at least one role");
+  });
+
+  it("refuses a role that is not in orgRoles", () => {
+    expect(checkInviteRoles(["owner"], ["wizard"])).toBe("Unknown role");
+  });
+
+  it("refuses an admin inviting an owner", () => {
+    expect(checkInviteRoles(["admin"], ["owner"])).toBe("Only an owner can add or remove the owner role");
+  });
+
+  it("lets an owner invite an owner", () => {
+    expect(checkInviteRoles(["owner"], ["owner", "member"])).toBeNull();
+  });
+
+  it("lets an admin invite a member with billing", () => {
+    expect(checkInviteRoles(["admin"], ["member", "billing"])).toBeNull();
   });
 });

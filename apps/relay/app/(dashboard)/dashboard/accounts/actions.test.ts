@@ -11,6 +11,10 @@ const h = vi.hoisted(() => ({
   updateMemberRole: vi.fn(),
   removeMember: vi.fn(),
   recordAudit: vi.fn(),
+  createInvitation: vi.fn(),
+  cancelInvitation: vi.fn(),
+  createUser: vi.fn(),
+  sendInviteEmail: vi.fn(),
 }));
 
 vi.mock("next/headers", () => ({ headers: async () => new Headers() }));
@@ -22,7 +26,21 @@ vi.mock("@/lib/auth/guards", () => ({
   activeMember: async () => h.actor,
 }));
 vi.mock("@/lib/auth", () => ({
-  auth: { api: { updateMemberRole: (...a: unknown[]) => h.updateMemberRole(...a), removeMember: (...a: unknown[]) => h.removeMember(...a) } },
+  auth: {
+    api: {
+      updateMemberRole: (...a: unknown[]) => h.updateMemberRole(...a),
+      removeMember: (...a: unknown[]) => h.removeMember(...a),
+      createInvitation: (...a: unknown[]) => h.createInvitation(...a),
+      cancelInvitation: (...a: unknown[]) => h.cancelInvitation(...a),
+      createUser: (...a: unknown[]) => h.createUser(...a),
+    },
+  },
+}));
+vi.mock("@/lib/auth/security-events", () => ({
+  sendInviteEmail: (...a: unknown[]) => h.sendInviteEmail(...a),
+}));
+vi.mock("@/lib/auth/session", () => ({
+  getSession: async () => ({ user: { id: "usr_actor", email: "owner@example.test", name: "Olive Owner" }, session: { activeOrganizationId: "org_x" } }),
 }));
 vi.mock("@/lib/services/session-service", () => ({
   recordAudit: (...a: unknown[]) => h.recordAudit(...a),
@@ -50,7 +68,14 @@ vi.mock("@/db/client", () => {
   };
 });
 
-const { removeMemberAction, setMemberRolesAction, setMemberStatusAction } = await import("./actions");
+const {
+  cancelInvitationAction,
+  inviteTeammateAction,
+  removeMemberAction,
+  resendInvitationAction,
+  setMemberRolesAction,
+  setMemberStatusAction,
+} = await import("./actions");
 
 const ownerActor = { id: "mbr_actor", organizationId: "org_x", role: "owner", status: "active" };
 const target = { memberId: "mbr_target", userId: 2n, role: "member", status: "active", email: "t@example.test" };
@@ -64,6 +89,63 @@ describe("accounts actions", () => {
     h.updateMemberRole.mockReset().mockResolvedValue({});
     h.removeMember.mockReset().mockResolvedValue({});
     h.recordAudit.mockReset();
+    h.createInvitation.mockReset().mockResolvedValue({ id: "inv_1" });
+    h.cancelInvitation.mockReset().mockResolvedValue({});
+    h.createUser.mockReset().mockResolvedValue({ user: { id: "7" } });
+    h.sendInviteEmail.mockReset().mockResolvedValue(undefined);
+  });
+
+  it("invite refuses an existing member", async () => {
+    h.selects = [[target]];
+    await expect(inviteTeammateAction({ email: "t@example.test", roles: ["member"] })).resolves.toEqual({
+      error: "Already on this workspace",
+    });
+    expect(h.createInvitation).not.toHaveBeenCalled();
+  });
+
+  it("invite lowercases the email and sends the link with the invitation id", async () => {
+    h.selects = [[], [{ id: 2n }], [{ name: "Acme" }]];
+    await expect(inviteTeammateAction({ email: "  Ana@Example.TEST ", roles: ["member"] })).resolves.toEqual({});
+    expect(h.createInvitation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        body: { email: "ana@example.test", role: ["member"], organizationId: "org_x", resend: true },
+      }),
+    );
+    expect(h.sendInviteEmail).toHaveBeenCalledWith({
+      email: "ana@example.test",
+      workspaceName: "Acme",
+      inviterName: "Olive Owner",
+      url: expect.stringMatching(/\/accept-invitation\/inv_1$/),
+    });
+  });
+
+  it("invite creates a passwordless user for an unknown email", async () => {
+    h.selects = [[], [], [{ name: "Acme" }]];
+    await expect(inviteTeammateAction({ email: "new@example.test", roles: ["member"] })).resolves.toEqual({});
+    expect(h.createUser).toHaveBeenCalledWith(expect.objectContaining({ body: { email: "new@example.test", name: "new" } }));
+    expect(h.updates).toContainEqual(expect.objectContaining({ values: { passwordSet: false } }));
+  });
+
+  it("admin cannot invite an owner", async () => {
+    h.actor = { ...ownerActor, role: "admin" };
+    await expect(inviteTeammateAction({ email: "t@example.test", roles: ["owner"] })).resolves.toEqual({
+      error: "Only an owner can add or remove the owner role",
+    });
+    expect(h.createInvitation).not.toHaveBeenCalled();
+  });
+
+  it("resend re-sends the same invitation with its email and role", async () => {
+    h.selects = [[{ id: "inv_1", email: "ana@example.test", role: "member" }], [{ name: "Acme" }]];
+    await expect(resendInvitationAction("inv_1")).resolves.toEqual({});
+    expect(h.createInvitation).toHaveBeenCalledWith(
+      expect.objectContaining({ body: { email: "ana@example.test", role: ["member"], organizationId: "org_x", resend: true } }),
+    );
+    expect(h.sendInviteEmail).toHaveBeenCalledWith(expect.objectContaining({ email: "ana@example.test" }));
+  });
+
+  it("cancelInvitationAction cancels through Better Auth", async () => {
+    await expect(cancelInvitationAction("inv_1")).resolves.toEqual({});
+    expect(h.cancelInvitation).toHaveBeenCalledWith(expect.objectContaining({ body: { invitationId: "inv_1" } }));
   });
 
   it("setMemberRolesAction refuses a member of another workspace", async () => {

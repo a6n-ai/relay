@@ -1,4 +1,4 @@
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq, gt } from "drizzle-orm";
 import { UsersIcon } from "lucide-react";
 import { PageShell } from "@foundry/design-system";
 import { Badge } from "@foundry/ui/badge";
@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { EmptyState } from "@/components/ds/empty-state";
 import { ViewHeader } from "@/components/ds/view-header";
 import { db } from "@/db/client";
-import { member, organization, users } from "@/db/schema";
+import { invitation, member, organization, users } from "@/db/schema";
 import { requireActiveOrganizationId } from "@/lib/auth/active-org";
 import { activeMember, can, requirePagePermission } from "@/lib/auth/guards";
 import { parseRoles } from "@/lib/auth/member-rules";
@@ -14,6 +14,8 @@ import { isPlatformAdmin } from "@/lib/auth/org-scope";
 import { ROLE_LABELS, orgRoles } from "@/lib/auth/permissions";
 import { SectionTabs } from "@/components/ds/section-tabs";
 import { SECTION_LABELS } from "@/components/ds/section-labels";
+import { InvitationRowActions } from "./invitation-row-actions";
+import { InviteTeammate } from "./invite-teammate";
 import { MemberRowActions } from "./member-row-actions";
 import type { RoleOption } from "./member-roles-form";
 
@@ -61,10 +63,23 @@ export default async function AccountsPage() {
     .where(eq(member.organizationId, organizationId))
     .orderBy(asc(users.email));
 
-  const [canUpdate, canDelete] = await Promise.all([
+  const [canUpdate, canDelete, canInvite, canCancelInvite] = await Promise.all([
     can({ member: ["update"] }),
     can({ member: ["delete"] }),
+    can({ invitation: ["create"] }),
+    can({ invitation: ["cancel"] }),
   ]);
+  const pendingInvites = await db
+    .select({ id: invitation.id, email: invitation.email, role: invitation.role, expiresAt: invitation.expiresAt })
+    .from(invitation)
+    .where(
+      and(
+        eq(invitation.organizationId, organizationId),
+        eq(invitation.status, "pending"),
+        gt(invitation.expiresAt, new Date()),
+      ),
+    )
+    .orderBy(asc(invitation.email));
   const actorIsOwner = parseRoles(actor?.role ?? "").includes("owner");
   const roleOptions: RoleOption[] = (Object.keys(orgRoles) as (keyof typeof orgRoles)[]).map((key) => ({
     value: key,
@@ -88,7 +103,10 @@ export default async function AccountsPage() {
         }
       />
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 pt-2">
-        <p className="text-sm text-muted-foreground text-pretty">People in {workspaceLabel}.</p>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm text-muted-foreground text-pretty">People in {workspaceLabel}.</p>
+          {canInvite ? <InviteTeammate roleOptions={roleOptions} /> : null}
+        </div>
         {rows.length === 0 ? (
           <EmptyState
             icon={UsersIcon}
@@ -160,6 +178,47 @@ export default async function AccountsPage() {
             </Table>
           </div>
         )}
+        {pendingInvites.length > 0 ? (
+          <div className="overflow-hidden rounded-xl border border-border bg-card">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Invited</TableHead>
+                  <TableHead>Roles</TableHead>
+                  <TableHead>Expires</TableHead>
+                  <TableHead>
+                    <span className="sr-only">Actions</span>
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {pendingInvites.map((i) => (
+                  <TableRow key={i.id}>
+                    <TableCell>{i.email}</TableCell>
+                    <TableCell>
+                      <span className="flex flex-wrap gap-1">
+                        {parseRoles(i.role).map((role) => (
+                          <Badge key={role} variant="outline">
+                            {ROLE_LABELS[role as keyof typeof orgRoles]?.label ?? role}
+                          </Badge>
+                        ))}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground">{i.expiresAt.toLocaleDateString()}</TableCell>
+                    <TableCell className="text-right">
+                      <InvitationRowActions
+                        invitationId={i.id}
+                        email={i.email}
+                        canCreate={canInvite}
+                        canCancel={canCancelInvite}
+                      />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        ) : null}
       </div>
     </PageShell>
   );
