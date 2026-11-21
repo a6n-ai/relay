@@ -64,6 +64,13 @@
       "when": 1795295940168,
       "tag": "0008_shallow_stellaris",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1795297406632,
+      "tag": "0009_member_keep_owner",
+      "breakpoints": true
     }
   ]
 }

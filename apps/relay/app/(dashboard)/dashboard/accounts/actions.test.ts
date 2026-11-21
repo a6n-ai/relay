@@ -123,6 +123,14 @@ describe("accounts actions", () => {
     expect(h.removeMember).not.toHaveBeenCalled();
   });
 
+  it("maps the database owner guard to the owner error", async () => {
+    h.selects = [[target], [{ role: "owner" }, { role: "owner" }]];
+    h.updateMemberRole.mockRejectedValue(new Error("x", { cause: new Error("A workspace needs at least one owner") }));
+    await expect(setMemberRolesAction("mbr_target", ["member", "billing"])).resolves.toEqual({
+      error: "A workspace needs at least one owner",
+    });
+  });
+
   it("returns a plain refusal when the permission check fails", async () => {
     h.permitted = false;
     await expect(removeMemberAction("mbr_target")).resolves.toEqual({ error: "You don’t have access to do that" });

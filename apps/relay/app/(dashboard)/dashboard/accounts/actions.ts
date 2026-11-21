@@ -15,6 +15,16 @@ const DENIED = "You don’t have access to do that";
 
 type Result = { error?: string };
 
+const OWNER_GUARD = "A workspace needs at least one owner";
+
+// The database trigger raises this; Better Auth and Drizzle wrap it, so walk the cause chain.
+function ownerGuardError(err: unknown): Result | null {
+  for (let e: unknown = err; e instanceof Error; e = e.cause) {
+    if (e.message.includes(OWNER_GUARD)) return { error: OWNER_GUARD };
+  }
+  return null;
+}
+
 async function guard(perms: Record<string, string[]>): Promise<string | null> {
   try {
     await requirePermission(perms);
@@ -80,8 +90,8 @@ export async function setMemberRolesAction(memberPublicId: string, roles: string
       headers: await headers(),
       body: { memberId: target.memberId, role: roles, organizationId: actor.organizationId },
     });
-  } catch {
-    return { error: "Could not change roles" };
+  } catch (err) {
+    return ownerGuardError(err) ?? { error: "Could not change roles" };
   }
   await recordAudit({
     entity: "member",
@@ -111,7 +121,13 @@ export async function setMemberStatusAction(memberPublicId: string, status: "act
   });
   if (error) return { error };
 
-  await db.update(member).set({ status }).where(eq(member.id, target.memberId));
+  try {
+    await db.update(member).set({ status }).where(eq(member.id, target.memberId));
+  } catch (err) {
+    const guarded = ownerGuardError(err);
+    if (!guarded) throw err;
+    return guarded;
+  }
   if (status === "suspended") {
     await db
       .update(session)
@@ -150,8 +166,8 @@ export async function removeMemberAction(memberPublicId: string): Promise<Result
       headers: await headers(),
       body: { memberIdOrEmail: target.memberId, organizationId: actor.organizationId },
     });
-  } catch {
-    return { error: "Could not remove member" };
+  } catch (err) {
+    return ownerGuardError(err) ?? { error: "Could not remove member" };
   }
   await recordAudit({
     entity: "member",
