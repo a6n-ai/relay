@@ -406,7 +406,7 @@ export function relayOpenApiDocument() {
         }),
       },
       "/api/notifications/team": {
-        get: op("listTeam", "List people who can sign in to the console", {
+        get: op("listTeam", "List members of the active workspace", {
           tags: ["Team"],
           security: session,
           responses: { "200": { description: "Team", ...json({ type: "array" }) } },
