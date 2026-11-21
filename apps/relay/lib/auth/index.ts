@@ -14,12 +14,15 @@ import {
   member,
   organization as organizationTable,
   session,
+  team,
+  teamMember,
   users,
   verification,
 } from "@/db/schema";
 import { recordAudit } from "@/lib/services/session-service";
 import { betterAuthPassword } from "./password";
-import { ac, roles } from "./permissions";
+import { ORG_DISABLED_PATHS } from "./disabled-paths";
+import { ac, orgAc, orgRoles, roles } from "./permissions";
 import { notifyNewLoginIfNewDevice, notifyPasswordChanged, sendAuthOtp } from "./security-events";
 
 const log = createLogger("auth");
@@ -38,8 +41,11 @@ export const auth = betterAuth({
       organization: organizationTable,
       member,
       invitation,
+      team,
+      teamMember,
     },
   }),
+  disabledPaths: [...ORG_DISABLED_PATHS],
   advanced: {
     database: { generateId: false },
     ipAddress: { ipAddressHeaders: ["x-real-ip"] },
@@ -92,6 +98,9 @@ export const auth = betterAuth({
       // Clients (and a6n) create workspaces; public sign-up stays disabled above.
       // Flat workspaces — Relay does not use Foundry brand→franchise hierarchy.
       allowUserToCreateOrganization: true,
+      ac: orgAc,
+      roles: orgRoles,
+      teams: { enabled: true },
     }),
     adminPlugin({ ac, roles, defaultRole: Role.ADMIN, adminRoles: [Role.ADMIN] }),
     nextCookies(),

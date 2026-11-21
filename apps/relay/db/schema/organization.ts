@@ -49,6 +49,8 @@ export const member = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     role: text("role").notNull().default("member"),
+    /** `suspended` keeps the membership but blocks every permission check. */
+    status: text("status").notNull().default("active"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
@@ -70,6 +72,7 @@ export const invitation = pgTable(
     email: text("email").notNull(),
     role: text("role").notNull().default("member"),
     status: text("status").notNull().default("pending"),
+    teamId: text("team_id"),
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     inviterId: bigint("inviter_id", { mode: "bigint" })
@@ -79,5 +82,48 @@ export const invitation = pgTable(
   (t) => [
     index("invitation_organization_id_idx").on(t.organizationId),
     index("invitation_email_idx").on(t.email),
+  ],
+);
+
+export const team = pgTable(
+  "team",
+  {
+    id: text("id").primaryKey().default(nextIdText),
+    publicId: text("public_id").notNull().unique().$defaultFn(makePublicId("tem")),
+    appId: bigint("app_id", { mode: "bigint" }).notNull().default(sql`current_app_id()`),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    /** Kept by Better Auth on add/remove; it reads this column on every team insert. */
+    memberCount: integer("member_count").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (t) => [index("team_organization_id_idx").on(t.organizationId)],
+);
+
+export const teamMember = pgTable(
+  "team_member",
+  {
+    id: text("id").primaryKey().default(nextIdText),
+    publicId: text("public_id").notNull().unique().$defaultFn(makePublicId("tmm")),
+    appId: bigint("app_id", { mode: "bigint" }).notNull().default(sql`current_app_id()`),
+    teamId: text("team_id")
+      .notNull()
+      .references(() => team.id, { onDelete: "cascade" }),
+    userId: bigint("user_id", { mode: "bigint" })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    /** Better Auth's team-membership key (set by its adapter); unique so a duplicate add fails. */
+    membershipKey: text("membership_key").unique(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("team_member_team_user_unique").on(t.teamId, t.userId),
+    index("team_member_user_id_idx").on(t.userId),
   ],
 );

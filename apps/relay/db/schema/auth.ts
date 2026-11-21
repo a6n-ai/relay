@@ -46,6 +46,7 @@ export const session = pgTable("session", {
   impersonatedBy: text("impersonated_by"),
   /** Better Auth organization plugin — scopes the Relay console to one workspace. */
   activeOrganizationId: text("active_organization_id"),
+  activeTeamId: text("active_team_id"),
   userId: bigint("user_id", { mode: "bigint" }).notNull().references(() => users.id, { onDelete: "cascade" }),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow().$onUpdate(() => new Date()),

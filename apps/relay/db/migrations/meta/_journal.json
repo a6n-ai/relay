@@ -57,6 +57,13 @@
       "when": 1795292980277,
       "tag": "0007_mailbox_catalog_backfill",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1795295940168,
+      "tag": "0008_shallow_stellaris",
+      "breakpoints": true
     }
   ]
 }
