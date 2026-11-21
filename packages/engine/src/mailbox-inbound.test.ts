@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { bigint, pgTable } from "drizzle-orm/pg-core";
+import { bigint, pgTable, text } from "drizzle-orm/pg-core";
 import { beforeAll, describe, expect, it } from "vitest";
 import {
   MAX_MAILBOX_INBOUND_BYTES,
@@ -15,7 +15,7 @@ import { makeTenantNotificationTables } from "./tenant-schema";
 
 const fixtures = join(dirname(fileURLToPath(import.meta.url)), "mailbox/fixtures");
 const tenants = pgTable("tenants", { id: bigint("id", { mode: "bigint" }).primaryKey() });
-const mailboxes = pgTable("tenant_mailboxes", { id: bigint("id", { mode: "bigint" }).primaryKey() });
+const mailboxes = pgTable("tenant_mailboxes", { id: bigint("id", { mode: "bigint" }).primaryKey(), tenantId: bigint("tenant_id", { mode: "bigint" }), email: text("email") });
 const tables = makeTenantNotificationTables({ tenants, mailboxes });
 
 function readFixture(name: string): string {

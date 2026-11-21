@@ -2,6 +2,7 @@ import { eq, inArray } from "drizzle-orm";
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import PostalMime from "postal-mime";
 import { mailboxInsertValues } from "./mailbox";
+import { mailboxIdFor } from "./mailbox-ref";
 import { normalizeMessageId, parseMessageIdList, sesLocalParts, threadIdForInbound } from "./mailbox-thread";
 import type { TenantNotificationTables } from "./tenant-schema";
 
@@ -296,11 +297,12 @@ export async function ingestInboundLetter(
     createdAt: opts?.receivedAt,
   });
   const attachments = opts?.attachments ?? [];
+  const mailboxId = mailboxIdFor(tables, tenantId, parsed.toEmail);
 
   const insertLetter = async (d: Db | Tx): Promise<IngestInboundResult> => {
     const [row] = await d
       .insert(tables.emailMailbox)
-      .values(values)
+      .values({ ...values, mailboxId })
       .onConflictDoNothing({ target: tables.emailMailbox.rfcMessageId })
       .returning({ id: tables.emailMailbox.id, publicId: tables.emailMailbox.publicId });
     if (row) {

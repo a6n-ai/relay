@@ -1,9 +1,9 @@
-import { getTableConfig, pgTable, bigint } from "drizzle-orm/pg-core";
+import { getTableConfig, pgTable, bigint, text } from "drizzle-orm/pg-core";
 import { describe, expect, it } from "vitest";
 import { makeTenantNotificationTables } from "./tenant-schema";
 
 const tenants = pgTable("tenants", { id: bigint("id", { mode: "bigint" }).primaryKey() });
-const mailboxes = pgTable("tenant_mailboxes", { id: bigint("id", { mode: "bigint" }).primaryKey() });
+const mailboxes = pgTable("tenant_mailboxes", { id: bigint("id", { mode: "bigint" }).primaryKey(), tenantId: bigint("tenant_id", { mode: "bigint" }), email: text("email") });
 const t = makeTenantNotificationTables({ tenants, mailboxes });
 
 describe("makeTenantNotificationTables", () => {

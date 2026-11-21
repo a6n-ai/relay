@@ -2,6 +2,7 @@ import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import { eq } from "drizzle-orm";
 import type { TenantNotificationTables } from "./tenant-schema";
 import { mailboxThreadingFromProviderId } from "./mailbox-thread";
+import { mailboxIdFor } from "./mailbox-ref";
 
 export * from "./mailbox-thread";
 
@@ -128,13 +129,18 @@ export async function archiveMailboxLetter(
   letter: MailboxLetterInput,
 ): Promise<void> {
   const values = mailboxInsertValues(letter);
+  const mailboxId = mailboxIdFor(
+    tables,
+    letter.tenantId,
+    letter.direction === "in" ? letter.toEmail : letter.fromEmail,
+  );
   if (letter.outboxId == null) {
-    await db.insert(tables.emailMailbox).values(values);
+    await db.insert(tables.emailMailbox).values({ ...values, mailboxId });
     return;
   }
   await db
     .insert(tables.emailMailbox)
-    .values(values)
+    .values({ ...values, mailboxId })
     .onConflictDoUpdate({
       target: tables.emailMailbox.outboxId,
       set: mailboxRetryBodySet(letter, values),

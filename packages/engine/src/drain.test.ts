@@ -100,10 +100,10 @@ describe("claim lease", () => {
   it("claims pending rows and rows whose processing lease ran out, once due", async () => {
     const { PgDialect } = await import("drizzle-orm/pg-core");
     const { claimableWhere } = await import("./drain");
-    const { bigint, pgTable } = await import("drizzle-orm/pg-core");
+    const { bigint, pgTable, text } = await import("drizzle-orm/pg-core");
     const { makeTenantNotificationTables } = await import("./tenant-schema");
     const tenants = pgTable("tenants", { id: bigint("id", { mode: "bigint" }).primaryKey() });
-    const mailboxes = pgTable("tenant_mailboxes", { id: bigint("id", { mode: "bigint" }).primaryKey() });
+    const mailboxes = pgTable("tenant_mailboxes", { id: bigint("id", { mode: "bigint" }).primaryKey(), tenantId: bigint("tenant_id", { mode: "bigint" }), email: text("email") });
     const o = makeTenantNotificationTables({ tenants, mailboxes }).notificationOutbox;
     const { sql, params } = new PgDialect().sqlToQuery(claimableWhere(o, 1000)!);
     expect(sql).toMatch(/"status" in \(\$\d+, \$\d+\)/);
@@ -132,11 +132,11 @@ describe("claim retry cap and fencing", () => {
   });
 
   it("writes a send's outcome only while this tick still holds the row's lease", async () => {
-    const { PgDialect, bigint, pgTable } = await import("drizzle-orm/pg-core");
+    const { PgDialect, bigint, pgTable, text } = await import("drizzle-orm/pg-core");
     const { leaseHeld } = await import("./drain");
     const { makeTenantNotificationTables } = await import("./tenant-schema");
     const tenants = pgTable("tenants", { id: bigint("id", { mode: "bigint" }).primaryKey() });
-    const mailboxes = pgTable("tenant_mailboxes", { id: bigint("id", { mode: "bigint" }).primaryKey() });
+    const mailboxes = pgTable("tenant_mailboxes", { id: bigint("id", { mode: "bigint" }).primaryKey(), tenantId: bigint("tenant_id", { mode: "bigint" }), email: text("email") });
     const o = makeTenantNotificationTables({ tenants, mailboxes }).notificationOutbox;
     const { sql, params } = new PgDialect().sqlToQuery(leaseHeld(o, 7n, 301_000)!);
     expect(sql).toContain('"id" =');

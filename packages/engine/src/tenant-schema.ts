@@ -9,6 +9,7 @@ import {
   pgTable,
   text,
   uniqueIndex,
+  type AnyPgColumn,
   type AnyPgTable,
 } from "drizzle-orm/pg-core";
 import {
@@ -29,8 +30,7 @@ import {
 export function makeTenantNotificationTables(deps: {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   tenants: AnyPgTable & { id: any };
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  mailboxes: AnyPgTable & { id: any };
+  mailboxes: AnyPgTable & { id: AnyPgColumn; tenantId: AnyPgColumn; email: AnyPgColumn };
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   campaign?: any;
 }) {

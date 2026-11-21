@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
-import { pgTable, bigint } from "drizzle-orm/pg-core";
+import { pgTable, bigint, text } from "drizzle-orm/pg-core";
 import { buildTenantHandlers } from "./tenant-handlers";
 import { makeTenantNotificationTables } from "./tenant-schema";
 
 const tenants = pgTable("tenants", { id: bigint("id", { mode: "bigint" }).primaryKey() });
-const mailboxes = pgTable("tenant_mailboxes", { id: bigint("id", { mode: "bigint" }).primaryKey() });
+const mailboxes = pgTable("tenant_mailboxes", { id: bigint("id", { mode: "bigint" }).primaryKey(), tenantId: bigint("tenant_id", { mode: "bigint" }), email: text("email") });
 const tables = makeTenantNotificationTables({ tenants, mailboxes });
 
 function mailboxDb() {
