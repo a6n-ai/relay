@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { InboxIcon, MailIcon, MessageCircleIcon, SmartphoneIcon, type LucideIcon } from "lucide-react";
 import { StubPage } from "@/components/ds/stub-page";
 import { RELAY_CHANNELS } from "@/components/ds/channels";
+import { requirePagePermission } from "@/lib/auth/guards";
 import type { Channel } from "@relay/engine";
 
 const SLUG_TO_CHANNEL: Record<string, Channel> = {
@@ -23,6 +24,7 @@ export default async function ChannelPage({
 }: {
   params: Promise<{ channel: string }>;
 }) {
+  await requirePagePermission({ settings: ["read"] });
   const { channel: slug } = await params;
   const key = SLUG_TO_CHANNEL[slug];
   if (!key) notFound();

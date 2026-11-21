@@ -1,4 +1,4 @@
-import { count, desc, gte, inArray, sql } from "drizzle-orm";
+import { and, count, desc, gte, inArray, sql } from "drizzle-orm";
 import type { Channel } from "@relay/engine";
 import { DAY_MS, foldFortnightCells, type FortnightCell } from "@/components/ds/overview-stats";
 import { db } from "@/db/client";
@@ -10,20 +10,23 @@ function asChannel(value: string): Channel | null {
   return CHANNELS.includes(value as Channel) ? (value as Channel) : null;
 }
 
-export async function loadHomeMetrics(now = Date.now()) {
+export async function loadHomeMetrics(tenantIds: bigint[], now = Date.now()) {
+  if (tenantIds.length === 0) {
+    return { tenantCount: 0, pendingCount: 0, failedCount: 0, recent: [], ...foldFortnightCells([]) };
+  }
   const weekStart = now - 6 * DAY_MS;
   const priorStart = now - 13 * DAY_MS;
   const o = notificationTables.notificationOutbox;
 
   const [[{ tenantCount }], statusRows, recent, mixRows] = await Promise.all([
-    db.select({ tenantCount: count() }).from(tenants),
+    db.select({ tenantCount: count() }).from(tenants).where(inArray(tenants.id, tenantIds)),
     db
       .select({
         status: o.status,
         n: sql<number>`cast(count(*) as int)`,
       })
       .from(o)
-      .where(inArray(o.status, ["pending", "failed"]))
+      .where(and(inArray(o.status, ["pending", "failed"]), inArray(o.tenantId, tenantIds)))
       .groupBy(o.status),
     db
       .select({
@@ -37,6 +40,7 @@ export async function loadHomeMetrics(now = Date.now()) {
         recipientExternalId: o.recipientExternalId,
       })
       .from(o)
+      .where(inArray(o.tenantId, tenantIds))
       .orderBy(desc(o.createdAt))
       .limit(8),
     db
@@ -49,7 +53,7 @@ export async function loadHomeMetrics(now = Date.now()) {
         n: sql<number>`cast(count(*) as int)`,
       })
       .from(o)
-      .where(gte(o.createdAt, priorStart))
+      .where(and(gte(o.createdAt, priorStart), inArray(o.tenantId, tenantIds)))
       .groupBy(sql`1`, sql`2`, o.channel),
   ]);
 

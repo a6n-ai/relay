@@ -13,14 +13,19 @@ import { ThroughputCard } from "@/components/ds/throughput-card";
 import { ViewHeader } from "@/components/ds/view-header";
 import { loadHomeMetrics } from "@/lib/dashboard/load-home-metrics";
 import { operatorFirstName } from "@/lib/dashboard/operator-name";
+import { requirePagePermission } from "@/lib/auth/guards";
 import { getSession } from "@/lib/auth/session";
+import { MAILBOX_TENANT_LIMIT } from "@/lib/mailbox/scope";
+import { tenantsService } from "@/lib/services/tenants.service";
 
 export const dynamic = "force-dynamic";
 
 export const metadata = { title: "Home" };
 
 export default async function DashboardPage() {
-  const [session, metrics] = await Promise.all([getSession(), loadHomeMetrics()]);
+  await requirePagePermission({ tenant: ["read"] });
+  const { items: apps } = await tenantsService.listRecent(undefined, MAILBOX_TENANT_LIMIT);
+  const [session, metrics] = await Promise.all([getSession(), loadHomeMetrics(apps.map((t) => t.id))]);
   const { tenantCount, pendingCount, failedCount, recent, totals, byChannel, channelTotals, priorMix } =
     metrics;
   const weekTotal = totals.reduce((a, b) => a + b, 0);

@@ -90,6 +90,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         icon: RadioTowerIcon,
         color: "blue",
         also: ["/dashboard/channels"],
+        perm: { settings: ["read"] },
       },
       { href: "/dashboard/settings/email", label: "Settings", icon: SettingsIcon, color: "red", also: tabHrefs(SECTION_TABS.settings), perm: { settings: ["read"] } },
     ],
