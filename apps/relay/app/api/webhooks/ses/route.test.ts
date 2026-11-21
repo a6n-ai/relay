@@ -10,12 +10,28 @@ vi.mock("sns-validator", () => ({
     }
   },
 }));
-vi.mock("@/db/client", () => ({ db: { select: () => ({ from: async () => [] }) } }));
-vi.mock("@/db/schema", () => ({ tenants: {} }));
+let senders: { tenantId: bigint }[] = [];
+const lookedUp: unknown[] = [];
+vi.mock("drizzle-orm", () => ({ eq: (_col: unknown, value: unknown) => value }));
+vi.mock("@/db/client", () => ({
+  db: {
+    select: () => ({
+      from: () => ({
+        where: (id: unknown) => {
+          lookedUp.push(id);
+          return { limit: async () => senders };
+        },
+      }),
+    }),
+  },
+}));
+vi.mock("@/db/schema", () => ({ notificationOutbox: { tenantId: {}, providerMessageId: {} } }));
 vi.mock("@/lib/notifications/suppression", () => ({ suppressEmailRecipient: vi.fn() }));
 vi.mock("@/lib/webhooks/enqueue", () => ({ enqueueTenantWebhooks: vi.fn() }));
 
-const { POST } = await import("./route");
+const { POST, processSesEvent } = await import("./route");
+const { suppressEmailRecipient } = await import("@/lib/notifications/suppression");
+const { enqueueTenantWebhooks } = await import("@/lib/webhooks/enqueue");
 
 const TOPIC = "arn:aws:sns:ap-south-1:947042607945:relay-ses-events";
 const confirmation = {
@@ -72,5 +88,33 @@ describe("POST /api/webhooks/ses", () => {
     validatorError = new Error("bad");
     expect((await post(confirmation)).status).toBe(403);
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("processSesEvent", () => {
+  const bounce = JSON.stringify({
+    eventType: "Bounce",
+    mail: { messageId: "ses-1" },
+    bounce: { bounceType: "Permanent", bouncedRecipients: [{ emailAddress: "jane@example.com" }] },
+  });
+  beforeEach(() => {
+    senders = [];
+    lookedUp.length = 0;
+    vi.mocked(suppressEmailRecipient).mockClear();
+    vi.mocked(enqueueTenantWebhooks).mockClear();
+  });
+
+  it("tells only the app that sent the message", async () => {
+    senders = [{ tenantId: 7n }];
+    await processSesEvent(bounce);
+    expect(lookedUp).toEqual(["ses-1"]);
+    expect(enqueueTenantWebhooks).toHaveBeenCalledTimes(1);
+    expect(enqueueTenantWebhooks).toHaveBeenCalledWith(7n, "message.bounced", { email: "jane@example.com", reason: "SES hard bounce" });
+  });
+
+  it("still suppresses but sends no webhook when the send is unknown", async () => {
+    await processSesEvent(bounce);
+    expect(suppressEmailRecipient).toHaveBeenCalledWith("jane@example.com", "SES hard bounce");
+    expect(enqueueTenantWebhooks).not.toHaveBeenCalled();
   });
 });

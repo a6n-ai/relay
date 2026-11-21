@@ -29,6 +29,8 @@ export interface OutboundMessage {
   attachments?: { filename: string; content: string; contentType: string }[];
   /** email only: provider message tags (SES EmailTags), e.g. { campaign: "42" }. */
   tags?: Record<string, string>;
+  /** email only: "marketing" leaves on the marketing SES configuration set. */
+  stream?: "transactional" | "marketing";
 }
 
 export interface ChannelProvider {

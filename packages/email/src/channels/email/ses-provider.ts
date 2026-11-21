@@ -14,6 +14,8 @@ export interface SesProviderConfig extends EmailProviderConfig, AwsConfig {
    * SNS feedback topic. Required for the suppression webhook to work.
    */
   configurationSetName?: string;
+  /** Used instead of configurationSetName for `stream: "marketing"`; falls back to it when unset. */
+  marketingConfigurationSetName?: string;
 }
 
 interface SendEmailResponse { MessageId?: string }
@@ -45,11 +47,13 @@ export class SesEmailProvider extends AbstractEmailProvider {
   readonly name = "ses";
   private readonly aws: ReturnType<typeof createAwsClient>;
   private readonly configurationSetName?: string;
+  private readonly marketingConfigurationSetName?: string;
 
   constructor(config: SesProviderConfig) {
     super(config);
     this.aws = sesClient(config);
     this.configurationSetName = config.configurationSetName;
+    this.marketingConfigurationSetName = config.marketingConfigurationSetName;
   }
 
   protected async deliver(message: PreparedEmail): Promise<SendResult> {
@@ -62,7 +66,10 @@ export class SesEmailProvider extends AbstractEmailProvider {
         BccAddresses: message.bcc?.map(formatAddress),
       },
       ReplyToAddresses: message.replyTo ? [formatAddress(message.replyTo)] : undefined,
-      ConfigurationSetName: this.configurationSetName,
+      ConfigurationSetName:
+        message.stream === "marketing"
+          ? (this.marketingConfigurationSetName ?? this.configurationSetName)
+          : this.configurationSetName,
       EmailTags: message.tags ? Object.entries(message.tags).map(([Name, Value]) => ({ Name, Value })) : undefined,
       // SESv2's Simple content has no attachment field at all, so any message
       // carrying one must go through Raw (a hand-assembled MIME document)

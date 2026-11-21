@@ -4,7 +4,8 @@ import { parseSnsEnvelope, sesSuppressionsFromEvent } from "@/lib/notifications/
 import { suppressEmailRecipient } from "@/lib/notifications/suppression";
 import { enqueueTenantWebhooks } from "@/lib/webhooks/enqueue";
 import { db } from "@/db/client";
-import { tenants } from "@/db/schema";
+import { eq } from "drizzle-orm";
+import { notificationOutbox } from "@/db/schema";
 
 export const runtime = "nodejs";
 
@@ -24,17 +25,27 @@ function verify(msg: unknown): Promise<void> {
 }
 
 export async function processSesEvent(messageJson: string): Promise<void> {
-  const event = JSON.parse(messageJson) as Parameters<typeof sesSuppressionsFromEvent>[0];
+  const event = JSON.parse(messageJson) as Parameters<typeof sesSuppressionsFromEvent>[0] & {
+    mail?: { messageId?: string };
+  };
   const rows = sesSuppressionsFromEvent(event);
   if (rows.length === 0) return;
   const type = event.eventType ?? event.notificationType;
   const webhookEvent = type === "Complaint" ? "message.complained" : "message.bounced";
-  const all = await db.select({ id: tenants.id }).from(tenants);
+  // Only the app that sent the message hears about it; other apps never see its recipients.
+  const messageId = event.mail?.messageId;
+  const [sender] = messageId
+    ? await db
+        .select({ tenantId: notificationOutbox.tenantId })
+        .from(notificationOutbox)
+        .where(eq(notificationOutbox.providerMessageId, messageId))
+        .limit(1)
+    : [];
+  if (!sender) log.warn({ messageId, type }, "SES event has no matching send; no webhook sent");
   for (const row of rows) {
+    // Suppression stays global: Relay is one sender to SES, so its reputation is shared.
     await suppressEmailRecipient(row.email, row.reason);
-    for (const t of all) {
-      await enqueueTenantWebhooks(t.id, webhookEvent, { email: row.email, reason: row.reason });
-    }
+    if (sender) await enqueueTenantWebhooks(sender.tenantId, webhookEvent, { email: row.email, reason: row.reason });
   }
 }
 

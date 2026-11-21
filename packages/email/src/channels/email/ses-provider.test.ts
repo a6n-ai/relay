@@ -61,6 +61,16 @@ describe("SesEmailProvider", () => {
     expect(sent[1].json.EmailTags).toBeUndefined();
   });
 
+  it("sends marketing mail on the marketing configuration set, the rest on the default", async () => {
+    const { fetchFn, sent } = fakeFetch();
+    const p = make(fetchFn, { configurationSetName: "relay-prod", marketingConfigurationSetName: "relay-marketing" });
+    await p.send({ to: { email: "a@b.com" }, subject: "x", text: "y", stream: "marketing" });
+    await p.send({ to: { email: "a@b.com" }, subject: "x", text: "y" });
+    expect(sent.map((s) => s.json.ConfigurationSetName)).toEqual(["relay-marketing", "relay-prod"]);
+    await make(fetchFn, { configurationSetName: "relay-prod" }).send({ to: { email: "a@b.com" }, subject: "x", text: "y", stream: "marketing" });
+    expect(sent[2].json.ConfigurationSetName).toBe("relay-prod");
+  });
+
   it("passes extra headers (List-Unsubscribe) on Simple", async () => {
     const { fetchFn, sent } = fakeFetch();
     await make(fetchFn).send({

@@ -43,6 +43,8 @@ export const emailMessageSchema = z
     headers: z.record(z.string(), z.string()).optional(),
     /** SES message tags (name -> value, [A-Za-z0-9_-]); event destinations can key metrics on them. SMTP ignores them. */
     tags: z.record(z.string(), z.string().regex(/^[A-Za-z0-9_-]+$/)).optional(),
+    /** Marketing mail leaves on its own SES configuration set so its reputation and events stay apart. SMTP ignores it. */
+    stream: z.enum(["transactional", "marketing"]).optional(),
   })
   .refine((m) => m.html || m.text, {
     message: "Email must have an html or text body",

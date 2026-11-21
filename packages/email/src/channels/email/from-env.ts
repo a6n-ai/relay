@@ -35,5 +35,6 @@ export function createEmailProviderFromEnv(
     defaultFrom: opts?.defaultFrom ?? defaultFromAddress(env),
     region: env.AWS_REGION,
     configurationSetName: env.SES_CONFIGURATION_SET,
+    marketingConfigurationSetName: env.SES_MARKETING_CONFIGURATION_SET,
   });
 }
