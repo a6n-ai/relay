@@ -72,6 +72,12 @@ describe("teams actions", () => {
     expect(h.createTeam).not.toHaveBeenCalled();
   });
 
+  it("createTeam refuses a duplicate name in another case", async () => {
+    h.selects = [[{ id: "team_sales" }]];
+    await expect(createTeamAction("SALES")).resolves.toEqual({ error: "A team with that name already exists" });
+    expect(h.createTeam).not.toHaveBeenCalled();
+  });
+
   it("createTeam trims the name and creates it through Better Auth in the active workspace", async () => {
     h.selects = [[]];
     await expect(createTeamAction("  Sales  ")).resolves.toEqual({});

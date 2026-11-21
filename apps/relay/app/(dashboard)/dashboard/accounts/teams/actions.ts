@@ -2,7 +2,7 @@
 
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
-import { and, eq, ne } from "drizzle-orm";
+import { and, eq, ne, sql } from "drizzle-orm";
 import { ForbiddenError } from "@foundry/commons";
 import { db } from "@/db/client";
 import { member, team } from "@/db/schema";
@@ -50,7 +50,7 @@ async function nameTaken(organizationId: string, name: string, exceptTeamId?: st
     .where(
       and(
         eq(team.organizationId, organizationId),
-        eq(team.name, name),
+        sql`lower(${team.name}) = lower(${name})`,
         exceptTeamId ? ne(team.id, exceptTeamId) : undefined,
       ),
     )
@@ -154,7 +154,7 @@ export async function deleteTeamAction(teamId: string): Promise<Result> {
 }
 
 export async function addTeamMemberAction(teamId: string, memberPublicId: string): Promise<Result> {
-  const denied = await guard({ team: ["update"] });
+  const denied = await guard({ team: ["update"], member: ["update"] });
   if (denied) return { error: denied };
   const actor = await activeMember();
   if (!actor) return { error: DENIED };
@@ -183,7 +183,7 @@ export async function addTeamMemberAction(teamId: string, memberPublicId: string
 }
 
 export async function removeTeamMemberAction(teamId: string, memberPublicId: string): Promise<Result> {
-  const denied = await guard({ team: ["update"] });
+  const denied = await guard({ team: ["update"], member: ["delete"] });
   if (denied) return { error: denied };
   const actor = await activeMember();
   if (!actor) return { error: DENIED };

@@ -55,7 +55,7 @@ export const SECTION_TABS = {
   /** Organization sidebar section (Clients + Team). Clients tab is platform-only in the shell. */
   organization: [
     { href: "/dashboard/platform", label: "Clients" },
-    { href: "/dashboard/accounts", label: "People" },
+    { href: "/dashboard/accounts", label: "Members" },
     { href: "/dashboard/accounts/teams", label: "Teams" },
     { href: "/dashboard/accounts/roles", label: "Roles" },
   ],
