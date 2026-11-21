@@ -6,11 +6,11 @@ import { composeFromOptions, type ComposeFromOption } from "./compose-from";
 import { MAILBOX_TENANT_LIMIT, mailboxScope } from "./scope";
 
 export async function loadComposeFroms(): Promise<ComposeFromOption[]> {
-  const [scope, operator, tenants, senders, activeApp] = await Promise.all([
-    mailboxScope(),
+  const scope = await mailboxScope();
+  const [operator, tenants, senders, activeApp] = await Promise.all([
     operatorDefaultFrom(),
     tenantsService.listRecent(undefined, MAILBOX_TENANT_LIMIT),
-    tenantMailboxesService.listSenders(),
+    tenantMailboxesService.listSenders(scope.tenantIds),
     resolveActiveApp(),
   ]);
   const tenantById = new Map(tenants.items.map((t) => [t.id.toString(), t]));

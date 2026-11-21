@@ -32,7 +32,8 @@ export default async function MailboxesSettingsPage() {
     items.push({
       id: b.publicId,
       title: b.email,
-      meta: `${app.name} · ${mailboxKindLabel(b.kind)}`,
+      href: `/dashboard/settings/mailboxes/${b.publicId}`,
+      meta: `${app.name} · ${mailboxKindLabel(b.kind)}${b.canSend && b.verifiedAt ? " · Sends as" : ""}`,
       searchText: `${b.email} ${app.name}`,
       filterKeys: [app.publicId],
     });

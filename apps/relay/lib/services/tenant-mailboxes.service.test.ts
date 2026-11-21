@@ -49,6 +49,13 @@ describe("tenantMailboxesService sending", () => {
     expect(senders.map((s) => s.publicId)).toEqual(["tmb_verified"]);
   });
 
+  it("listSenders returns empty without tenants", async () => {
+    const listRecent = vi.spyOn(tenantMailboxesService, "listRecent");
+
+    await expect(tenantMailboxesService.listSenders([])).resolves.toEqual({ items: [] });
+    expect(listRecent).not.toHaveBeenCalled();
+  });
+
   it("updateSending rejects people_inbox", async () => {
     vi.spyOn(tenantMailboxesService, "read").mockResolvedValue(
       mailbox({ kind: "people_inbox", email: "hello@mail.shop.test", domain: "mail.shop.test" }) as never,

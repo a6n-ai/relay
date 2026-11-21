@@ -1,4 +1,4 @@
-import { and, eq } from "@foundry/commons";
+import { and, eq, inList } from "@foundry/commons";
 import { UpdatableRepository } from "@foundry/database";
 import { db } from "@/db/client";
 import { tenantMailboxes } from "@/db/schema";
@@ -41,8 +41,9 @@ class TenantMailboxesService extends SessionUpdatableService<typeof tenantMailbo
     return rows.filter((r) => r.verifiedAt != null);
   }
 
-  async listSenders() {
-    return this.listRecent(eq("canSend", true));
+  async listSenders(tenantIds: bigint[]) {
+    if (tenantIds.length === 0) return { items: [] };
+    return this.listRecent(and(eq("canSend", true), inList("tenantId", tenantIds)));
   }
 
   async updateSending(
