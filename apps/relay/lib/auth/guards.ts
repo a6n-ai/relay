@@ -32,7 +32,10 @@ export const activeMember = cache(async () => {
 async function allowed(perms: Record<string, string[]>): Promise<boolean> {
   const m = await activeMember();
   if (!m || m.status !== "active") return false;
-  const res = await auth.api.hasPermission({ headers: await headers(), body: { permissions: perms } });
+  const res = await auth.api.hasPermission({
+    headers: await headers(),
+    body: { permissions: perms, organizationId: m.organizationId },
+  });
   return res.success === true;
 }
 

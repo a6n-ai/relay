@@ -57,11 +57,14 @@ describe("org permission check", () => {
   it("rejects when hasPermission refuses", async () => {
     h.hasPermission.mockResolvedValue({ success: false });
     await expect(requirePermission({ tenant: ["write"] })).rejects.toBeInstanceOf(ForbiddenError);
-    expect(h.hasPermission).toHaveBeenCalledWith(expect.objectContaining({ body: { permissions: { tenant: ["write"] } } }));
+    expect(h.hasPermission).toHaveBeenCalledWith(
+      expect.objectContaining({ body: { permissions: { tenant: ["write"] }, organizationId: "org1" } }),
+    );
   });
 
   it("passes when hasPermission succeeds", async () => {
     await expect(requirePermission({ tenant: ["write"] })).resolves.toBeUndefined();
+    expect(h.hasPermission.mock.calls[0][0].body.organizationId).toBe(activeMember.organizationId);
   });
 
   it("can returns false without a member row or active workspace", async () => {
