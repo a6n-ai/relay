@@ -38,7 +38,7 @@ async function loadSession(fresh: boolean) {
   return {
     user: {
       id: u.publicId,
-      role: u.role ?? Role.ADMIN,
+      role: u.role ?? Role.USER,
       email: u.email ?? "",
       name: u.name ?? "",
       platformRole: u.platformRole ?? null,

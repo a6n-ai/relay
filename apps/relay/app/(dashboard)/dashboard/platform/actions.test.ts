@@ -88,12 +88,13 @@ describe("createClientAction", () => {
     expect(h.updates).toEqual([]);
   });
 
-  it("creates the owner with the admin's headers when no user has that email", async () => {
+  it("creates the owner as a plain user, session-less, when no user has that email", async () => {
     const result = await createClientAction(form());
 
     expect(result).toEqual({ id: "org_1", ownerEmail: "owner@acme.com" });
     expect(h.createUser).toHaveBeenCalledTimes(1);
-    expect(h.createUser.mock.calls[0][0].body).toEqual({ email: "owner@acme.com", name: "owner" });
+    expect(h.createUser.mock.calls[0][0]).not.toHaveProperty("headers");
+    expect(h.createUser.mock.calls[0][0].body).toEqual({ email: "owner@acme.com", name: "owner", role: "user" });
     expect(h.createOrganization.mock.calls[0][0].body).toMatchObject({ userId: "9" });
     expect(h.updates).toContainEqual({ table: users, values: { passwordSet: false } });
   });

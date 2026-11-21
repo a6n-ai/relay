@@ -2,7 +2,7 @@ import { cache } from "react";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { and, eq } from "drizzle-orm";
-import { ForbiddenError, Role } from "@foundry/commons";
+import { ForbiddenError } from "@foundry/commons";
 import { createRoleGuards } from "@foundry/auth";
 import { db } from "@/db/client";
 import { member } from "@/db/schema";
@@ -53,7 +53,3 @@ export async function requirePagePermission(perms: Record<string, string[]>): Pr
 }
 
 export { requireRole };
-
-export function requireAdmin(): Promise<void> {
-  return requireRole(Role.ADMIN);
-}

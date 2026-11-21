@@ -1,5 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { ORG_DISABLED_PATHS } from "./disabled-paths";
+import { ADMIN_DISABLED_PATHS, ORG_DISABLED_PATHS } from "./disabled-paths";
+
+describe("ADMIN_DISABLED_PATHS", () => {
+  it("admin endpoints are not reachable over HTTP", () => {
+    for (const p of [
+      "/admin/impersonate-user",
+      "/admin/set-user-password",
+      "/admin/list-users",
+      "/admin/create-user",
+    ]) {
+      expect(ADMIN_DISABLED_PATHS).toContain(p);
+    }
+  });
+});
 
 describe("ORG_DISABLED_PATHS", () => {
   it("org mutations are not reachable over HTTP", () => {

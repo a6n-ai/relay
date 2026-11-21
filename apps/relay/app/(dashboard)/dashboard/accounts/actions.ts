@@ -8,7 +8,7 @@ import { db } from "@/db/client";
 import { invitation, member, organization, session, users } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { activeMember, requirePermission } from "@/lib/auth/guards";
-import { inviteUrl } from "@/lib/auth/invites";
+import { inviteUrl, invitesConfigured } from "@/lib/auth/invites";
 import { checkInviteRoles, checkRoleChange, checkSuspendOrRemove, parseRoles } from "@/lib/auth/member-rules";
 import type { orgRoles } from "@/lib/auth/permissions";
 import { sendInviteEmail } from "@/lib/auth/security-events";
@@ -187,12 +187,18 @@ export async function removeMemberAction(memberPublicId: string): Promise<Result
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // Callers validate `roles` with checkInviteRoles, which guarantees every entry is an orgRoles key.
-async function sendInvite(organizationId: string, email: string, roles: string[]): Promise<Result> {
+// resend keeps the pending invite's roles; a fresh invite (re-invite) replaces it with the new roles.
+async function sendInvite(organizationId: string, email: string, roles: string[], resend: boolean): Promise<Result> {
   let invite;
   try {
     invite = await auth.api.createInvitation({
       headers: await headers(),
-      body: { email, role: roles as (keyof typeof orgRoles)[], organizationId, resend: true },
+      body: {
+        email,
+        role: roles as (keyof typeof orgRoles)[],
+        organizationId,
+        ...(resend ? { resend: true } : {}),
+      },
     });
   } catch {
     return { error: "Could not send the invite" };
@@ -235,20 +241,21 @@ export async function inviteTeammateAction(input: { email: string; roles: string
     .where(and(eq(member.organizationId, actor.organizationId), eq(users.email, email)))
     .limit(1);
   if (existing) return { error: "Already on this workspace" };
+  if (!invitesConfigured()) return { error: "Invites are not set up" };
 
   const [user] = await db.select({ id: users.id }).from(users).where(eq(users.email, email)).limit(1);
   if (!user) {
     try {
+      // Session-less server call: no headers, so no admin-plugin permission check. The guard above authorizes.
       const created = await auth.api.createUser({
-        headers: await headers(),
-        body: { email, name: email.split("@")[0] },
+        body: { email, name: email.split("@")[0], role: "user" },
       });
       await db.update(users).set({ passwordSet: false }).where(eq(users.id, BigInt(created.user.id)));
     } catch {
       return { error: "Could not send the invite" };
     }
   }
-  return sendInvite(actor.organizationId, email, roles);
+  return sendInvite(actor.organizationId, email, roles, false);
 }
 
 export async function resendInvitationAction(invitationId: string): Promise<Result> {
@@ -271,12 +278,27 @@ export async function resendInvitationAction(invitationId: string): Promise<Resu
   const roles = parseRoles(pending.role);
   const roleError = checkInviteRoles(parseRoles(actor.role), roles);
   if (roleError) return { error: roleError };
-  return sendInvite(actor.organizationId, pending.email, roles);
+  if (!invitesConfigured()) return { error: "Invites are not set up" };
+  return sendInvite(actor.organizationId, pending.email, roles, true);
 }
 
 export async function cancelInvitationAction(invitationId: string): Promise<Result> {
   const denied = await guard({ invitation: ["cancel"] });
   if (denied) return { error: denied };
+  const actor = await activeMember();
+  if (!actor) return { error: DENIED };
+  const [pending] = await db
+    .select({ id: invitation.id })
+    .from(invitation)
+    .where(
+      and(
+        eq(invitation.id, invitationId),
+        eq(invitation.organizationId, actor.organizationId),
+        eq(invitation.status, "pending"),
+      ),
+    )
+    .limit(1);
+  if (!pending) return { error: "Unknown invite" };
   try {
     await auth.api.cancelInvitation({ headers: await headers(), body: { invitationId } });
   } catch {

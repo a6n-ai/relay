@@ -63,7 +63,8 @@ export const member = pgTable(
 export const invitation = pgTable(
   "invitation",
   {
-    id: text("id").primaryKey().default(nextIdText),
+    // Invite ids are the accept-link key; sequential ids let anyone with one link enumerate others.
+    id: text("id").primaryKey().default(sql`(gen_random_uuid())::text`),
     publicId: text("public_id").notNull().unique().$defaultFn(makePublicId("inv")),
     appId: bigint("app_id", { mode: "bigint" }).notNull().default(sql`current_app_id()`),
     organizationId: text("organization_id")

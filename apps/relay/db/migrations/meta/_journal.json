@@ -71,6 +71,20 @@
       "when": 1795297406632,
       "tag": "0009_member_keep_owner",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1795298494102,
+      "tag": "0010_user_role_user",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1795298507362,
+      "tag": "0011_invitation_id_uuid",
+      "breakpoints": true
     }
   ]
 }

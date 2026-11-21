@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { headers } from "next/headers";
 import { eq } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { requirePlatformAdmin } from "@/lib/auth/org-scope";
@@ -48,9 +47,9 @@ export async function createClientAction(
     if (existing?.banned) return { error: "That user is banned and can't own a workspace." };
     let ownerId = existing ? String(existing.id) : null;
     if (!ownerId) {
+      // Session-less server call: no headers, so no admin-plugin permission check. The guard above authorizes.
       const { user } = await auth.api.createUser({
-        headers: await headers(),
-        body: { email: ownerEmail, name: ownerEmail.split("@")[0] },
+        body: { email: ownerEmail, name: ownerEmail.split("@")[0], role: "user" },
       });
       ownerId = user.id;
       await db.update(users).set({ passwordSet: false }).where(eq(users.id, BigInt(ownerId)));

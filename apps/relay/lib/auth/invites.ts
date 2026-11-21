@@ -4,6 +4,10 @@ import { invitation, organization } from "@/db/schema";
 
 export const INVITE_LIFETIME_S = 7 * 24 * 60 * 60;
 
+export function invitesConfigured(): boolean {
+  return Boolean(process.env.BETTER_AUTH_URL);
+}
+
 export function inviteUrl(invitationId: string): string {
   return `${process.env.BETTER_AUTH_URL}/accept-invitation/${invitationId}`;
 }

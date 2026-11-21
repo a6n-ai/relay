@@ -82,6 +82,7 @@ const target = { memberId: "mbr_target", userId: 2n, role: "member", status: "ac
 
 describe("accounts actions", () => {
   beforeEach(() => {
+    process.env.BETTER_AUTH_URL = "https://relay.test";
     h.actor = ownerActor;
     h.permitted = true;
     h.selects = [];
@@ -108,7 +109,7 @@ describe("accounts actions", () => {
     await expect(inviteTeammateAction({ email: "  Ana@Example.TEST ", roles: ["member"] })).resolves.toEqual({});
     expect(h.createInvitation).toHaveBeenCalledWith(
       expect.objectContaining({
-        body: { email: "ana@example.test", role: ["member"], organizationId: "org_x", resend: true },
+        body: { email: "ana@example.test", role: ["member"], organizationId: "org_x" },
       }),
     );
     expect(h.sendInviteEmail).toHaveBeenCalledWith({
@@ -122,8 +123,37 @@ describe("accounts actions", () => {
   it("invite creates a passwordless user for an unknown email", async () => {
     h.selects = [[], [], [{ name: "Acme" }]];
     await expect(inviteTeammateAction({ email: "new@example.test", roles: ["member"] })).resolves.toEqual({});
-    expect(h.createUser).toHaveBeenCalledWith(expect.objectContaining({ body: { email: "new@example.test", name: "new" } }));
+    expect(h.createUser).toHaveBeenCalledWith(
+      expect.objectContaining({ body: { email: "new@example.test", name: "new", role: "user" } }),
+    );
+    expect(h.createUser.mock.calls[0][0]).not.toHaveProperty("headers");
     expect(h.updates).toContainEqual(expect.objectContaining({ values: { passwordSet: false } }));
+  });
+
+  it("re-invite uses the new roles", async () => {
+    h.selects = [[], [{ id: 2n }], [{ name: "Acme" }]];
+    await expect(inviteTeammateAction({ email: "ana@example.test", roles: ["admin"] })).resolves.toEqual({});
+    const body = h.createInvitation.mock.calls[0][0].body;
+    expect(body.role).toEqual(["admin"]);
+    expect(body.resend).toBeUndefined();
+  });
+
+  it("invite and resend refuse when BETTER_AUTH_URL is unset", async () => {
+    const saved = process.env.BETTER_AUTH_URL;
+    delete process.env.BETTER_AUTH_URL;
+    try {
+      h.selects = [[], [{ id: 2n }]];
+      await expect(inviteTeammateAction({ email: "ana@example.test", roles: ["member"] })).resolves.toEqual({
+        error: "Invites are not set up",
+      });
+      h.selects = [[{ id: "inv_1", email: "ana@example.test", role: "member" }]];
+      await expect(resendInvitationAction("inv_1")).resolves.toEqual({ error: "Invites are not set up" });
+      expect(h.createInvitation).not.toHaveBeenCalled();
+      expect(h.createUser).not.toHaveBeenCalled();
+    } finally {
+      if (saved === undefined) delete process.env.BETTER_AUTH_URL;
+      else process.env.BETTER_AUTH_URL = saved;
+    }
   });
 
   it("admin cannot invite an owner", async () => {
@@ -144,8 +174,15 @@ describe("accounts actions", () => {
   });
 
   it("cancelInvitationAction cancels through Better Auth", async () => {
+    h.selects = [[{ id: "inv_1" }]];
     await expect(cancelInvitationAction("inv_1")).resolves.toEqual({});
     expect(h.cancelInvitation).toHaveBeenCalledWith(expect.objectContaining({ body: { invitationId: "inv_1" } }));
+  });
+
+  it("cancel refuses an invite from another workspace", async () => {
+    h.selects = [[]];
+    await expect(cancelInvitationAction("inv_other")).resolves.toEqual({ error: "Unknown invite" });
+    expect(h.cancelInvitation).not.toHaveBeenCalled();
   });
 
   it("setMemberRolesAction refuses a member of another workspace", async () => {

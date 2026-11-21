@@ -34,6 +34,13 @@ function escapeHtml(text: string): string {
   return text.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 }
 
+// < and > stay out of this set: a backslash before escapeHtml's &#60; would print literally.
+function escapeMarkdown(text: string): string {
+  return text.replace(/[\\`*_{}[\]()#+\-.!|]/g, "\\$&");
+}
+
+const plain = (text: string) => escapeHtml(escapeMarkdown(text));
+
 export async function sendInviteEmail(params: {
   email: string;
   workspaceName: string;
@@ -43,7 +50,7 @@ export async function sendInviteEmail(params: {
   const { provider, renderEmail } = ctx();
   const rendered = await renderEmail({
     subject: `You’re invited to ${params.workspaceName} on Relay`,
-    body: `${escapeHtml(params.inviterName)} invited you to join ${escapeHtml(params.workspaceName)}. Open this link to accept: ${escapeHtml(params.url)}. The invite lasts 7 days.`,
+    body: `${plain(params.inviterName)} invited you to join ${plain(params.workspaceName)}. Open this link to accept: ${escapeHtml(params.url)}. The invite lasts 7 days.`,
     vars: {},
     appName: APP_NAME,
   });

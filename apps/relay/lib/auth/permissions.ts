@@ -25,6 +25,7 @@ export const roles = {
     message: ["read", "write"],
     sending: ["read", "write"],
   }),
+  user: ac.newRole({}),
 };
 
 export const appStatement = {

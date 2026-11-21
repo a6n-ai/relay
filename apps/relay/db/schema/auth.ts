@@ -4,7 +4,7 @@ import { bigint, boolean, index, pgEnum, pgTable, text, timestamp, uniqueIndex }
 
 const nextIdText = sql`(next_id())::text`;
 
-export const userRole = pgEnum("user_role", ["admin"]);
+export const userRole = pgEnum("user_role", ["admin", "user"]);
 export const userStatus = pgEnum("user_status", ["active", "inactive", "suspended", "deleted"]);
 
 export const users = pgTable(

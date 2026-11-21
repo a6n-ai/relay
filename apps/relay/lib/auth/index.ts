@@ -21,7 +21,7 @@ import {
 } from "@/db/schema";
 import { recordAudit } from "@/lib/services/session-service";
 import { betterAuthPassword } from "./password";
-import { ORG_DISABLED_PATHS } from "./disabled-paths";
+import { ADMIN_DISABLED_PATHS, ORG_DISABLED_PATHS } from "./disabled-paths";
 import { INVITE_LIFETIME_S } from "./invites";
 import { ac, orgAc, orgRoles, roles } from "./permissions";
 import { notifyNewLoginIfNewDevice, notifyPasswordChanged, sendAuthOtp } from "./security-events";
@@ -46,7 +46,7 @@ export const auth = betterAuth({
       teamMember,
     },
   }),
-  disabledPaths: [...ORG_DISABLED_PATHS],
+  disabledPaths: [...ORG_DISABLED_PATHS, ...ADMIN_DISABLED_PATHS],
   advanced: {
     database: { generateId: false },
     ipAddress: { ipAddressHeaders: ["x-real-ip"] },
@@ -77,7 +77,7 @@ export const auth = betterAuth({
   user: {
     fields: { createdAt: "bauthCreatedAt", updatedAt: "bauthUpdatedAt" },
     additionalFields: {
-      role: { type: "string", required: false, defaultValue: Role.ADMIN, input: false },
+      role: { type: "string", required: false, defaultValue: Role.USER, input: false },
       publicId: { type: "string", required: false, input: false },
       // Platform-wide override (e.g. "super_admin"), separate from member.role.
       // See @foundry/auth resolveVisibleOrgIds — not settable via client input.
@@ -103,8 +103,10 @@ export const auth = betterAuth({
       roles: orgRoles,
       teams: { enabled: true },
       invitationExpiresIn: INVITE_LIFETIME_S,
+      // Re-invite replaces the pending invite, so new roles take effect (resend keeps old roles).
+      cancelPendingInvitationsOnReInvite: true,
     }),
-    adminPlugin({ ac, roles, defaultRole: Role.ADMIN, adminRoles: [Role.ADMIN] }),
+    adminPlugin({ ac, roles, defaultRole: Role.USER, adminRoles: [Role.ADMIN] }),
     nextCookies(),
   ],
   databaseHooks: {
