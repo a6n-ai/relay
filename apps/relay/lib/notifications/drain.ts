@@ -7,6 +7,7 @@ import { materializeTenantCampaign } from "@/lib/campaigns/materialize-tenant";
 import { getEmailProvider, hydrateSmtpFromDb } from "@/lib/email/provider";
 import { PROVE_DOMAIN_FIRST, resolveTenantEmailFrom, tenantIsSelfServe } from "@/lib/email/from-address";
 import { smsProviderFromEnv, whatsappProviderFromEnv } from "@/lib/notifications/phone-providers";
+import { checkSendLimits, type SendLimitCache } from "@/lib/notifications/send-limits";
 import { enqueueTenantWebhooks } from "@/lib/webhooks/enqueue";
 import { drainWebhookDeliveries } from "@/lib/webhooks/drain";
 
@@ -39,10 +40,12 @@ export async function drainPending(limit = 25, maxBatches = 20): Promise<number>
   const unsubscribe = unsubscribeConfig();
   const sms = smsProviderFromEnv();
   const whatsapp = whatsappProviderFromEnv();
+  const sendLimits: SendLimitCache = { apps: new Map(), workspaces: new Map() };
   return drain(
     {
       db,
       tables: notificationTables as never,
+      beforeSend: (row) => checkSendLimits((row.tenantId ?? null) as bigint | null, sendLimits),
       handlers: buildTenantHandlers({
         db,
         tables: notificationTables,

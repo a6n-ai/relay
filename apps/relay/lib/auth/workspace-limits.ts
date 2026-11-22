@@ -10,6 +10,13 @@ export function canCreateSelfServeWorkspace(platformRole: string | null, ownedSe
   return ownedSelfServeCount < SELF_SERVE_WORKSPACE_CAP;
 }
 
+const INVITES_PER_DAY = 20;
+
+/** Counts every invitation the workspace created in the last 24h, whatever its status. */
+export function inviteCapReached(countLast24h: number): boolean {
+  return countLast24h >= INVITES_PER_DAY;
+}
+
 // New rows default to limited (1 app, 100 sends, selfServe). Only a6n staff get unlimited, and only if this update lands.
 export async function applyStaffWorkspaceLimits(orgId: string, platformRole: string | null): Promise<void> {
   if (platformRole !== "super_admin") return;

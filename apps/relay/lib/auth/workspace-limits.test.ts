@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { applyStaffWorkspaceLimits, canCreateSelfServeWorkspace } from "./workspace-limits";
+import { applyStaffWorkspaceLimits, canCreateSelfServeWorkspace, inviteCapReached } from "./workspace-limits";
 
 const { set, where, update } = vi.hoisted(() => {
   const where = vi.fn(async () => undefined);
@@ -20,6 +20,16 @@ describe("canCreateSelfServeWorkspace", () => {
 
   it("super admin has no cap", () => {
     expect(canCreateSelfServeWorkspace("super_admin", 50)).toBe(true);
+  });
+});
+
+describe("inviteCapReached", () => {
+  it("allows the 20th invite", () => {
+    expect(inviteCapReached(19)).toBe(false);
+  });
+
+  it("refuses the 21st invite", () => {
+    expect(inviteCapReached(20)).toBe(true);
   });
 });
 

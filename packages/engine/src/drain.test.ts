@@ -145,3 +145,48 @@ describe("claim retry cap and fencing", () => {
     expect(params).toEqual(expect.arrayContaining([7n, "processing", 301_000]));
   });
 });
+
+describe("beforeSend", () => {
+  async function drainOneRow(beforeSend: () => Promise<string | null>) {
+    const { bigint, pgTable, text } = await import("drizzle-orm/pg-core");
+    const { drainOnce } = await import("./drain");
+    const { makeTenantNotificationTables } = await import("./tenant-schema");
+    const tenants = pgTable("tenants", { id: bigint("id", { mode: "bigint" }).primaryKey() });
+    const mailboxes = pgTable("tenant_mailboxes", { id: bigint("id", { mode: "bigint" }).primaryKey(), tenantId: bigint("tenant_id", { mode: "bigint" }), email: text("email") });
+    const tables = makeTenantNotificationTables({ tenants, mailboxes });
+    const row = { id: 1n, tenantId: 1n, channel: "email", kind: "transactional", status: "pending", attempts: 0, nextAttemptAt: 0 };
+    const writes: Record<string, unknown>[] = [];
+    const rowsOf = (value: unknown[]) => {
+      const c: Record<string, unknown> = { then: (ok: (v: unknown) => unknown, bad?: (e: unknown) => unknown) => Promise.resolve(value).then(ok, bad) };
+      for (const m of ["from", "where", "orderBy", "limit", "for"]) c[m] = () => c;
+      return c;
+    };
+    const write = (values: Record<string, unknown>) => {
+      writes.push(values);
+      return { where: () => Object.assign(Promise.resolve([]), { returning: async () => [{ id: 1n }] }) };
+    };
+    const db = {
+      transaction: async (fn: (tx: unknown) => unknown) => fn({ select: () => rowsOf([row]), update: () => ({ set: write }) }),
+      update: () => ({ set: write }),
+    };
+    const handler = vi.fn(async () => ({ providerMessageId: "p1" }));
+    const onProcessed = vi.fn(async () => {});
+    await drainOnce({ db, tables, handlers: { email: handler }, beforeSend, onProcessed } as never, 25);
+    return { handler, onProcessed, writes };
+  }
+
+  it("beforeSend refusal fails the row without sending", async () => {
+    const reason = "Monthly message quota exceeded";
+    const { handler, onProcessed, writes } = await drainOneRow(async () => reason);
+    expect(handler).not.toHaveBeenCalled();
+    expect(writes).toContainEqual(expect.objectContaining({ status: "failed", lastError: reason }));
+    expect(onProcessed).toHaveBeenCalledWith(expect.objectContaining({ id: 1n }), { status: "failed", lastError: reason });
+  });
+
+  it("a null beforeSend lets the row send as before", async () => {
+    const { handler, onProcessed, writes } = await drainOneRow(async () => null);
+    expect(handler).toHaveBeenCalledOnce();
+    expect(writes).toContainEqual(expect.objectContaining({ status: "sent", providerMessageId: "p1" }));
+    expect(onProcessed).toHaveBeenCalledWith(expect.objectContaining({ id: 1n }), expect.objectContaining({ status: "sent" }));
+  });
+});

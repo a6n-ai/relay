@@ -2,7 +2,7 @@ import { headers } from "next/headers";
 import { and, eq } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { db } from "@/db/client";
-import { member, users } from "@/db/schema";
+import { member } from "@/db/schema";
 
 /**
  * If the signed-in user has active org memberships but no active workspace, activate
@@ -18,8 +18,7 @@ export async function ensureActiveOrganization(): Promise<void> {
   const activeRows = await db
     .select({ organizationId: member.organizationId })
     .from(member)
-    .innerJoin(users, eq(users.id, member.userId))
-    .where(and(eq(users.publicId, session.user.id), eq(member.status, "active")));
+    .where(and(eq(member.userId, BigInt(session.user.id)), eq(member.status, "active")));
   const activeIds = new Set(activeRows.map((r) => r.organizationId));
   const first = Array.isArray(orgs) ? orgs.find((o) => activeIds.has(o.id)) : null;
   if (!first?.id) return;

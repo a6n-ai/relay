@@ -70,6 +70,8 @@ export interface DrainDeps {
   maxAttempts?: number;
   /** Host hook after a row reaches a terminal or retry-pending state. */
   onProcessed?: (row: OutboxRow, outcome: DrainTerminal) => Promise<void>;
+  /** Host check run just before a row sends. A returned reason fails the row for good, with no retry. */
+  beforeSend?: (row: OutboxRow) => Promise<string | null>;
 }
 
 /**
@@ -153,11 +155,22 @@ async function process(
   maxAttempts: number,
   lease: number,
   onProcessed?: DrainDeps["onProcessed"],
+  beforeSend?: DrainDeps["beforeSend"],
 ): Promise<void> {
   const o = tables.notificationOutbox;
   const held = leaseHeld(o, row.id as bigint, lease);
   const attempts = row.attempts + 1;
   try {
+    const refusal = await beforeSend?.(row);
+    if (refusal) {
+      const failed = await db
+        .update(o)
+        .set({ status: "failed", attempts, lastError: refusal })
+        .where(held)
+        .returning({ id: o.id });
+      if (failed.length > 0) await onProcessed?.(row, { status: "failed", lastError: refusal });
+      return;
+    }
     if (!handler) throw new Error(`No handler for channel ${row.channel}`);
     const result = await handler(row);
     // null = skipped (no DB template for this event/channel). Terminal, no retry.
@@ -211,6 +224,7 @@ export async function drainOnce(deps: DrainDeps, limit = 25): Promise<number> {
       maxAttempts,
       lease,
       deps.onProcessed,
+      deps.beforeSend,
     );
   }
   return deliver.length + exhausted.length;

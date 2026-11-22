@@ -105,7 +105,7 @@ describe("accounts actions", () => {
   });
 
   it("invite lowercases the email and sends the link with the invitation id", async () => {
-    h.selects = [[], [{ id: 2n }], [{ name: "Acme" }]];
+    h.selects = [[], [{ n: 0 }], [{ id: 2n }], [{ name: "Acme" }]];
     await expect(inviteTeammateAction({ email: "  Ana@Example.TEST ", roles: ["member"] })).resolves.toEqual({});
     expect(h.createInvitation).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -121,7 +121,7 @@ describe("accounts actions", () => {
   });
 
   it("invite creates a passwordless user for an unknown email", async () => {
-    h.selects = [[], [], [{ name: "Acme" }]];
+    h.selects = [[], [{ n: 0 }], [], [{ name: "Acme" }]];
     await expect(inviteTeammateAction({ email: "new@example.test", roles: ["member"] })).resolves.toEqual({});
     expect(h.createUser).toHaveBeenCalledWith(
       expect.objectContaining({ body: { email: "new@example.test", name: "new", role: "user" } }),
@@ -131,7 +131,7 @@ describe("accounts actions", () => {
   });
 
   it("re-invite uses the new roles", async () => {
-    h.selects = [[], [{ id: 2n }], [{ name: "Acme" }]];
+    h.selects = [[], [{ n: 0 }], [{ id: 2n }], [{ name: "Acme" }]];
     await expect(inviteTeammateAction({ email: "ana@example.test", roles: ["admin"] })).resolves.toEqual({});
     const body = h.createInvitation.mock.calls[0][0].body;
     expect(body.role).toEqual(["admin"]);
@@ -165,12 +165,36 @@ describe("accounts actions", () => {
   });
 
   it("resend re-sends the same invitation with its email and role", async () => {
-    h.selects = [[{ id: "inv_1", email: "ana@example.test", role: "member" }], [{ name: "Acme" }]];
+    h.selects = [[{ id: "inv_1", email: "ana@example.test", role: "member" }], [{ n: 0 }], [{ name: "Acme" }]];
     await expect(resendInvitationAction("inv_1")).resolves.toEqual({});
     expect(h.createInvitation).toHaveBeenCalledWith(
       expect.objectContaining({ body: { email: "ana@example.test", role: ["member"], organizationId: "org_x", resend: true } }),
     );
     expect(h.sendInviteEmail).toHaveBeenCalledWith(expect.objectContaining({ email: "ana@example.test" }));
+  });
+
+  it("resend counts toward the cap", async () => {
+    h.selects = [[{ id: "inv_1", email: "ana@example.test", role: "member" }], [{ n: 20 }]];
+    await expect(resendInvitationAction("inv_1")).resolves.toEqual({
+      error: "This workspace has sent 20 invites today. Try again tomorrow.",
+    });
+    expect(h.createInvitation).not.toHaveBeenCalled();
+    expect(h.sendInviteEmail).not.toHaveBeenCalled();
+  });
+
+  it("refuses the 21st invite", async () => {
+    h.selects = [[], [{ n: 20 }]];
+    await expect(inviteTeammateAction({ email: "ana@example.test", roles: ["member"] })).resolves.toEqual({
+      error: "This workspace has sent 20 invites today. Try again tomorrow.",
+    });
+    expect(h.createUser).not.toHaveBeenCalled();
+    expect(h.createInvitation).not.toHaveBeenCalled();
+  });
+
+  it("allows the 20th invite", async () => {
+    h.selects = [[], [{ n: 19 }], [{ id: 2n }], [{ name: "Acme" }]];
+    await expect(inviteTeammateAction({ email: "ana@example.test", roles: ["member"] })).resolves.toEqual({});
+    expect(h.createInvitation).toHaveBeenCalledOnce();
   });
 
   it("cancelInvitationAction cancels through Better Auth", async () => {

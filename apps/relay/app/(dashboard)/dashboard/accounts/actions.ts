@@ -2,7 +2,7 @@
 
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
-import { and, eq } from "drizzle-orm";
+import { and, eq, gte, sql } from "drizzle-orm";
 import { ForbiddenError } from "@foundry/commons";
 import { db } from "@/db/client";
 import { invitation, member, organization, session, users } from "@/db/schema";
@@ -13,6 +13,7 @@ import { checkInviteRoles, checkRoleChange, checkSuspendOrRemove, parseRoles } f
 import type { orgRoles } from "@/lib/auth/permissions";
 import { sendInviteEmail } from "@/lib/auth/security-events";
 import { getSession } from "@/lib/auth/session";
+import { inviteCapReached } from "@/lib/auth/workspace-limits";
 import { currentUserId, recordAudit } from "@/lib/services/session-service";
 
 const DENIED = "You don’t have access to do that";
@@ -186,6 +187,17 @@ export async function removeMemberAction(memberPublicId: string): Promise<Result
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+const INVITE_CAP_ERROR = "This workspace has sent 20 invites today. Try again tomorrow.";
+
+async function invitesLast24h(organizationId: string): Promise<number> {
+  const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const [row] = await db
+    .select({ n: sql<number>`cast(count(*) as int)` })
+    .from(invitation)
+    .where(and(eq(invitation.organizationId, organizationId), gte(invitation.createdAt, since)));
+  return Number(row?.n ?? 0);
+}
+
 // Callers validate `roles` with checkInviteRoles, which guarantees every entry is an orgRoles key.
 // resend keeps the pending invite's roles; a fresh invite (re-invite) replaces it with the new roles.
 async function sendInvite(organizationId: string, email: string, roles: string[], resend: boolean): Promise<Result> {
@@ -242,6 +254,7 @@ export async function inviteTeammateAction(input: { email: string; roles: string
     .limit(1);
   if (existing) return { error: "Already on this workspace" };
   if (!invitesConfigured()) return { error: "Invites are not set up" };
+  if (inviteCapReached(await invitesLast24h(actor.organizationId))) return { error: INVITE_CAP_ERROR };
 
   const [user] = await db.select({ id: users.id }).from(users).where(eq(users.email, email)).limit(1);
   if (!user) {
@@ -279,6 +292,7 @@ export async function resendInvitationAction(invitationId: string): Promise<Resu
   const roleError = checkInviteRoles(parseRoles(actor.role), roles);
   if (roleError) return { error: roleError };
   if (!invitesConfigured()) return { error: "Invites are not set up" };
+  if (inviteCapReached(await invitesLast24h(actor.organizationId))) return { error: INVITE_CAP_ERROR };
   return sendInvite(actor.organizationId, pending.email, roles, true);
 }
 
