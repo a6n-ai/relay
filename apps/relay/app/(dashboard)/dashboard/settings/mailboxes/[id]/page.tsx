@@ -37,7 +37,7 @@ export default async function MailboxSettingsPage({ params }: { params: Promise<
 
   return (
     <PageShell>
-      <ViewHeader title={row.email} section="settings" />
+      <ViewHeader title={row.email} />
       <SettingsPage title={row.email} subtitle={`${app.name} · ${mailboxKindLabel(row.kind)}`}>
         <SettingsSection title="Sending" description={status}>
           <MailboxSendingForm

@@ -9,7 +9,6 @@ import { db } from "@/db/client";
 import { member, team, teamMember, users } from "@/db/schema";
 import { requireActiveOrganizationId } from "@/lib/auth/active-org";
 import { can, requirePagePermission } from "@/lib/auth/guards";
-import { TeamTabs } from "../team-tabs";
 import {
   AddTeamMemberForm,
   CreateTeamForm,
@@ -63,7 +62,6 @@ export default async function TeamsPage() {
     <PageShell>
       <ViewHeader
         title="Teams"
-        tabs={<TeamTabs />}
         actions={
           canCreate ? (
             <CreateDialog label="New team" description="Group people in this workspace.">

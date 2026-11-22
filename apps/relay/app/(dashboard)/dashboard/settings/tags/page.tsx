@@ -58,7 +58,7 @@ export default async function TagsSettingsPage() {
 
   return (
     <PageShell>
-      <ViewHeader title="Tags" section="settings" actions={apps.length > 0 ? create(false) : undefined} />
+      <ViewHeader title="Tags" actions={apps.length > 0 ? create(false) : undefined} />
       <SettingsPage
         title="Tags"
         subtitle={

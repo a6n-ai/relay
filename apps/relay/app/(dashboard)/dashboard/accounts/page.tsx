@@ -15,7 +15,6 @@ import { InvitationRowActions } from "./invitation-row-actions";
 import { InviteTeammate } from "./invite-teammate";
 import { MemberRowActions } from "./member-row-actions";
 import type { RoleOption } from "./member-roles-form";
-import { TeamTabs } from "./team-tabs";
 
 export const dynamic = "force-dynamic";
 
@@ -86,10 +85,7 @@ export default async function AccountsPage() {
 
   return (
     <PageShell>
-      <ViewHeader
-        title="Team"
-        tabs={<TeamTabs />}
-      />
+      <ViewHeader title="Team" />
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 pt-2">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-sm text-muted-foreground text-pretty">People in {workspaceLabel}.</p>

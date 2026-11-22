@@ -64,7 +64,6 @@ export default async function MailboxesSettingsPage() {
     <PageShell>
       <ViewHeader
         title="Mailboxes"
-        section="settings"
         actions={apps.length > 0 ? create(false) : undefined}
       />
       <SettingsPage

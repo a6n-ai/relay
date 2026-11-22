@@ -32,7 +32,7 @@ export default async function EmailSettingsPage() {
 
   return (
     <PageShell>
-      <ViewHeader title="Email sending" section="settings" />
+      <ViewHeader title="Email sending" />
       <SettingsPage
         title="Email sending"
         subtitle="How Relay delivers mail, and the From we use if an app isn’t ready yet."

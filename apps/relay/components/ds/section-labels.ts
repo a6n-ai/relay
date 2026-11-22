@@ -7,6 +7,5 @@ export const SECTION_LABELS: Record<SectionKey, string> = {
   campaigns: "Campaigns",
   activity: "Activity",
   channels: "Channels",
-  settings: "Settings",
   organization: "Organization",
 };

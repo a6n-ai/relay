@@ -8,7 +8,7 @@ const state = vi.hoisted(() => ({
 vi.mock("./guards", () => ({ can: state.can }));
 
 const { navAccess } = await import("./nav-access");
-const { permKey, TEAM_PERM } = await import("@/components/ds/nav");
+const { permKey } = await import("@/components/ds/nav");
 
 describe("navAccess", () => {
   beforeEach(() => {
@@ -19,9 +19,15 @@ describe("navAccess", () => {
 
   it("resolves each distinct nav permission once and returns the granted keys", async () => {
     const allowed = await navAccess();
-    expect(state.can).toHaveBeenCalledTimes(7);
+    expect(state.can).toHaveBeenCalledTimes(8);
     expect(allowed.has(permKey({ mailbox: ["read"] }))).toBe(true);
     expect(allowed.has(permKey({ campaign: ["read"] }))).toBe(false);
-    expect(allowed.has(permKey(TEAM_PERM))).toBe(false);
+    expect(allowed.has(permKey({ staff: ["read"] }))).toBe(false);
+  });
+
+  it("resolves settings permissions", async () => {
+    state.granted = [permKey({ mailbox: ["manage"] })];
+    const allowed = await navAccess();
+    expect(allowed.has(permKey({ mailbox: ["manage"] }))).toBe(true);
   });
 });

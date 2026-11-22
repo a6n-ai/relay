@@ -21,9 +21,10 @@ describe("sidebar", () => {
     ["/dashboard/campaigns/cmp_1", "/dashboard/campaigns"],
     ["/dashboard/webhooks", "/dashboard/logs"],
     ["/dashboard/channels/sms", "/dashboard/channels/email"],
-    ["/dashboard/settings/tags", "/dashboard/settings/email"],
-    ["/dashboard/settings/mailboxes", "/dashboard/settings/email"],
-    ["/dashboard/account", "/dashboard/settings/email"],
+    ["/dashboard/settings/tags", "/dashboard/settings/general"],
+    ["/dashboard/settings/mailboxes", "/dashboard/settings/general"],
+    ["/dashboard/settings/mailbox-access", "/dashboard/settings/general"],
+    ["/dashboard/settings/account", "/dashboard/settings/general"],
     ["/dashboard/tenants/tnt_1", "/dashboard/tenants"],
   ])("%s highlights %s", (path, href) => {
     expect(activeNavHref(path)).toBe(href);
@@ -37,13 +38,13 @@ describe("sidebar", () => {
       "/dashboard/mailbox/abc",
       "/dashboard/settings/tags",
       "/dashboard/channels/sms",
-      "/dashboard/account",
+      "/dashboard/settings/account",
     ];
     for (const path of paths) {
       const lit = items.filter((i) => i.href === activeNavHref(path));
       expect(lit.length, path).toBeLessThanOrEqual(1);
     }
-    expect(activeNavHref("/dashboard/account")).toBe("/dashboard/settings/email");
+    expect(activeNavHref("/dashboard/settings/account")).toBe("/dashboard/settings/general");
   });
 
   it("product tab pages belong to exactly one sidebar link; Organization stays outside the 8", () => {

@@ -17,9 +17,6 @@ export type Perm = Record<string, string[]>;
 /** Stable key for a permission, so the server resolves each distinct one once. */
 export const permKey = (perm: Perm) => JSON.stringify(perm);
 
-/** Organization > Team link: visible with staff:read. */
-export const TEAM_PERM: Perm = { staff: ["read"] };
-
 export type NavItem = {
   href: string;
   label: string;
@@ -46,19 +43,8 @@ export const SECTION_TABS = {
     { href: "/dashboard/webhooks", label: "Status updates" },
   ],
   channels: RELAY_CHANNELS.map((c) => ({ href: c.href, label: c.label })),
-  settings: [
-    { href: "/dashboard/settings/email", label: "Email sending" },
-    { href: "/dashboard/settings/mailboxes", label: "Mailboxes" },
-    { href: "/dashboard/settings/tags", label: "Tags" },
-    { href: "/dashboard/account", label: "Your account" },
-  ],
-  /** Organization sidebar section (Clients + Team). Clients tab is platform-only in the shell. */
-  organization: [
-    { href: "/dashboard/platform", label: "Clients" },
-    { href: "/dashboard/accounts", label: "Members" },
-    { href: "/dashboard/accounts/teams", label: "Teams" },
-    { href: "/dashboard/accounts/roles", label: "Roles" },
-  ],
+  /** Organization sidebar section. Clients is platform-only in the shell. */
+  organization: [{ href: "/dashboard/platform", label: "Clients" }],
 } as const;
 
 const tabHrefs = (tabs: readonly { href: string }[]) => tabs.map((t) => t.href);
@@ -94,7 +80,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         also: ["/dashboard/channels"],
         perm: { settings: ["read"] },
       },
-      { href: "/dashboard/settings/email", label: "Settings", icon: SettingsIcon, color: "red", also: tabHrefs(SECTION_TABS.settings), perm: { settings: ["read"] } },
+      { href: "/dashboard/settings/general", label: "Settings", icon: SettingsIcon, color: "red", also: ["/dashboard/settings"], perm: { settings: ["read"] } },
     ],
   },
 ];

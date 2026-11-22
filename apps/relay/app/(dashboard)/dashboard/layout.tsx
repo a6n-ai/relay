@@ -4,6 +4,9 @@ import { CrmShell } from "@foundry/crm";
 import { ensureActiveOrganization } from "@/lib/auth/ensure-active-org";
 import { navAccess } from "@/lib/auth/nav-access";
 import { getSession } from "@/lib/auth/session";
+import { tenantsService } from "@/lib/services/tenants.service";
+import { permKey } from "@/components/ds/nav";
+import { APPS_PERM } from "@/components/ds/settings-nav";
 import { ThemeSwitcher } from "@/components/ds/theme-switcher";
 import { RelaySidebar } from "@/components/relay-sidebar";
 
@@ -15,6 +18,9 @@ export default async function DashboardLayout({ children }: { children: ReactNod
   // Pick a workspace before any org-scoped page loads apps.
   await ensureActiveOrganization();
   const allowed = [...(await navAccess())];
+  const apps = allowed.includes(permKey(APPS_PERM))
+    ? (await tenantsService.listRecent()).items.map((a) => ({ publicId: a.publicId, name: a.name }))
+    : [];
   return (
     <>
     {/* First focus stop: jumps past the sidebar's links straight to the page. */}
@@ -30,6 +36,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
           email={session.user.email}
           showClients={session.user.platformRole === "super_admin"}
           allowed={allowed}
+          apps={apps}
         />
       }
       actions={<ThemeSwitcher />}
