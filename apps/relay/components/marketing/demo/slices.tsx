@@ -1,6 +1,7 @@
 "use client";
 
 import { Avatar, Badge, Meter, Row, Stage, Text, Window } from "../stageshow";
+import { ChevronsUpDownIcon } from "lucide-react";
 import { ChannelGlyph } from "./console-parts";
 import "../console-look.css";
 import "./slices.css";
@@ -112,7 +113,7 @@ export function TeamSlice() {
   return (
     <Stage width={560} height={380} fidelity="realistic" theme="dark" className="rl-look rl-slice">
       {() => (
-        <Window className="rl-slice__win" lead={<Text className="rl-slice__title">Team</Text>} toolbar={<Text className="rl-slice__host">Northwind</Text>} body={{ className: "rl-slice__body" }}>
+        <Window className="rl-slice__win" lead={<Text className="rl-slice__title">Team</Text>} toolbar={<span className="rl-slice__switch"><Text className="rl-slice__host">Northwind</Text><ChevronsUpDownIcon aria-hidden /></span>} body={{ className: "rl-slice__body" }}>
           {TEAM.map((m) => (
             <Row
               key={m.email}

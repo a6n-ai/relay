@@ -17,6 +17,21 @@
   font-size: 12px;
 }
 
+.rl-slice__switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border: 1px solid var(--ss-line-faint);
+  border-radius: 9999px;
+}
+
+.rl-slice__switch svg {
+  width: 12px;
+  height: 12px;
+  color: var(--ss-text-faint);
+}
+
 .rl-slice__body {
   padding: 8px 12px 0;
 }

@@ -32,7 +32,7 @@ const POINTS = [
 const SAFE = [
   {
     title: "Your domain",
-    body: "Send from your own domain with DKIM and SPF set up, and a custom MAIL FROM.",
+    body: "Mail leaves from your own verified domain, signed with DKIM.",
   },
   {
     title: "Safe incoming mail",
@@ -132,7 +132,7 @@ export function Landing() {
           <div id="delivery" data-reveal className="scroll-mt-20">
             <FeatureSection
               title="Every delivery, on record"
-              body="Each message's status is recorded from queued to delivered, and failed sends retry automatically. Bounces and spam reports stop future sends to that address, and your app hears about each one."
+              body="Each message's status is recorded from queued to delivered, and failed sends retry automatically. Hard bounces and spam reports stop future sends, and your app hears about each one."
               href="/docs"
               linkLabel="Read the docs"
             >
