@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { PaperclipIcon, XIcon } from "lucide-react";
 import { toast } from "sonner";
-import { Button } from "@foundry/ui/button";
+import { Button, buttonVariants } from "@foundry/ui/button";
 import { FileUpload, FileUploadDropzone, FileUploadTrigger } from "@foundry/ui/file-upload";
 import { apiFetch } from "./api-fetch";
 
@@ -90,10 +90,8 @@ export function CampaignAttachments({
             <PaperclipIcon className="size-4" />
             <span>{busy ? "Uploading…" : "Drop files to attach"}</span>
           </div>
-          <FileUploadTrigger asChild>
-            <Button type="button" variant="outline" size="sm" disabled={busy}>
-              Add attachment
-            </Button>
+          <FileUploadTrigger className={buttonVariants({ variant: "outline", size: "sm" })}>
+            Add attachment
           </FileUploadTrigger>
         </FileUploadDropzone>
       </FileUpload>

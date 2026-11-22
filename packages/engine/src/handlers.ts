@@ -263,6 +263,7 @@ export function buildHandlers(deps: HandlerDeps): Record<Channel, ChannelHandler
           headers,
           // Campaign Delivery/Open/Click are counted by SES into CloudWatch on this tag, not by webhook.
           tags: row.campaignId ? { campaign: String(row.campaignId) } : undefined,
+          stream: marketing ? "marketing" : undefined,
           attachments: attachmentRefs.length > 0 ? await fetchAttachments(attachmentRefs) : undefined,
         });
       }

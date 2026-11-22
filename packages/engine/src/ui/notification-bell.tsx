@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { BellIcon } from "lucide-react";
-import { Button } from "@foundry/ui/button";
+import { buttonVariants } from "@foundry/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@foundry/ui/popover";
 import { ScrollArea } from "@foundry/ui/scroll-area";
 import { Separator } from "@foundry/ui/separator";
@@ -24,15 +24,13 @@ export function NotificationBell(props: UseNotificationsOptions = {}) {
 
   return (
     <Popover onOpenChange={(open) => open && markAllRead()}>
-      <PopoverTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative" aria-label="Notifications">
+      <PopoverTrigger className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "relative")} aria-label="Notifications">
           <BellIcon data-icon="inline-start" />
           {unread > 0 && (
             <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-medium leading-none text-primary-foreground">
               {unread > 9 ? "9+" : unread}
             </span>
           )}
-        </Button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-80 p-0">
         <div className="px-3 py-2 text-sm font-medium">Notifications</div>
