@@ -37,10 +37,10 @@ export function InboxSlice() {
 }
 
 const CAMPAIGNS = [
-  { name: "Spring offer", channels: ["email", "sms"], value: 0.72, label: "Sending" },
-  { name: "Back in stock", channels: ["email", "whatsapp"], value: 1, label: "Sent" },
+  { name: "Spring offer", channels: ["email", "in_app"], value: 0.72, label: "Sending" },
+  { name: "Back in stock", channels: ["email"], value: 1, label: "Sent" },
   { name: "Product update", channels: ["email", "in_app"], value: 1, label: "Sent" },
-  { name: "Holiday hours", channels: ["sms"], value: 0, label: "Scheduled" },
+  { name: "Holiday hours", channels: ["email"], value: 0, label: "Scheduled" },
 ] as const;
 
 /** A still slice of Campaigns: one message to many people. */

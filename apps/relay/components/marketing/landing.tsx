@@ -99,7 +99,7 @@ export function Landing() {
             <FeatureSection
               flip
               title="Campaigns for everyone at once"
-              body="Write one message and pick who receives it. A review checklist runs before you schedule it, every email has a one-click unsubscribe, and each person is sent it only once."
+              body="Write one message and pick who receives it. A review checklist runs before you schedule it, each campaign email carries a one-click unsubscribe, and each person is sent it only once."
               href="/docs"
               linkLabel="Read the docs"
             >
