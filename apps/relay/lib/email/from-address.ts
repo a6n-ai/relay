@@ -1,8 +1,23 @@
 import { cache } from "react";
+import { eq } from "drizzle-orm";
+import { db } from "@/db/client";
+import { organization, tenants } from "@/db/schema";
 import { smtpSettingsService } from "@/lib/services/sending.service";
 import { tenantMailboxesService } from "@/lib/services/tenant-mailboxes.service";
 
 export type ResolvedFrom = { email: string; name?: string; source: "tenant" | "operator" };
+
+export const PROVE_DOMAIN_FIRST = "Prove a domain first";
+
+export async function tenantIsSelfServe(tenantId: bigint): Promise<boolean> {
+  const [row] = await db
+    .select({ selfServe: organization.selfServe })
+    .from(tenants)
+    .innerJoin(organization, eq(organization.id, tenants.organizationId))
+    .where(eq(tenants.id, tenantId))
+    .limit(1);
+  return row?.selfServe ?? false;
+}
 
 export const loadOperatorSmtpRow = cache(async () => {
   const page = await smtpSettingsService.list(undefined, { page: 0, size: 1 });
@@ -27,6 +42,7 @@ export async function resolveTenantEmailFrom(tenantId: bigint): Promise<Resolved
       source: "tenant",
     };
   }
+  if (await tenantIsSelfServe(tenantId)) return null;
   const op = await operatorDefaultFrom();
   if (!op) return null;
   return { ...op, source: "operator" };

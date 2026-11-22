@@ -1,6 +1,6 @@
 import { makePublicId } from "@foundry/database";
 import { sql } from "drizzle-orm";
-import { bigint, index, integer, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import { bigint, boolean, index, integer, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 import { users } from "./auth";
 
 const nextIdText = sql`(next_id())::text`;
@@ -24,6 +24,8 @@ export const organization = pgTable(
     monthlyMessageQuota: integer("monthly_message_quota").notNull().default(0),
     /** Max apps (tenants) this workspace may create. 0 = unlimited. */
     maxApps: integer("max_apps").notNull().default(0),
+    /** Made by a non-super-admin: sends only from its own proven domain, no operator From. */
+    selfServe: boolean("self_serve").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()

@@ -5,7 +5,7 @@ import { db } from "@/db/client";
 import { campaignTables, notificationTables, tenants } from "@/db/schema";
 import { materializeTenantCampaign } from "@/lib/campaigns/materialize-tenant";
 import { getEmailProvider, hydrateSmtpFromDb } from "@/lib/email/provider";
-import { resolveTenantEmailFrom } from "@/lib/email/from-address";
+import { PROVE_DOMAIN_FIRST, resolveTenantEmailFrom, tenantIsSelfServe } from "@/lib/email/from-address";
 import { smsProviderFromEnv, whatsappProviderFromEnv } from "@/lib/notifications/phone-providers";
 import { enqueueTenantWebhooks } from "@/lib/webhooks/enqueue";
 import { drainWebhookDeliveries } from "@/lib/webhooks/drain";
@@ -53,8 +53,10 @@ export async function drainPending(limit = 25, maxBatches = 20): Promise<number>
         },
         loadFromAddress: async (tenantId) => {
           const resolved = await resolveTenantEmailFrom(tenantId);
-          if (!resolved) return null;
-          return { email: resolved.email, name: resolved.name };
+          if (resolved) return { email: resolved.email, name: resolved.name };
+          // Thrown, not null: null sends from the provider default, which self-made workspaces must never use.
+          if (await tenantIsSelfServe(tenantId)) throw new Error(PROVE_DOMAIN_FIRST);
+          return null;
         },
         campaigns: {
           tables: campaignTables,

@@ -3,7 +3,7 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { nextCookies } from "better-auth/next-js";
 import { admin as adminPlugin, emailOTP, organization } from "better-auth/plugins";
 import { APIError, createAuthMiddleware } from "better-auth/api";
-import { eq } from "drizzle-orm";
+import { and, count, eq, like } from "drizzle-orm";
 import { authAuditAction } from "@foundry/auth";
 import { Role } from "@foundry/commons";
 import { createLogger } from "@foundry/commons/logger";
@@ -23,7 +23,7 @@ import { recordAudit } from "@/lib/services/session-service";
 import { betterAuthPassword } from "./password";
 import { ADMIN_DISABLED_PATHS, ORG_DISABLED_PATHS } from "./disabled-paths";
 import { INVITE_LIFETIME_S } from "./invites";
-import { selfServeLimits } from "./workspace-limits";
+import { canCreateSelfServeWorkspace, selfServeLimits } from "./workspace-limits";
 import { ac, orgAc, orgRoles, roles } from "./permissions";
 import { notifyNewLoginIfNewDevice, notifyPasswordChanged, sendAuthOtp } from "./security-events";
 
@@ -100,10 +100,35 @@ export const auth = betterAuth({
       // Any signed-in user may create a workspace; self-made ones start limited (see selfServeLimits).
       // Public sign-up stays disabled above. Flat workspaces, no Foundry brand→franchise hierarchy.
       allowUserToCreateOrganization: true,
+      schema: {
+        // Not input:false: BA's create drops a hook's value for input:false fields (or throws if truthy).
+        organization: {
+          additionalFields: {
+            maxApps: { type: "number", required: false },
+            monthlyMessageQuota: { type: "number", required: false },
+            selfServe: { type: "boolean", required: false },
+          },
+        },
+      },
       organizationHooks: {
         beforeCreateOrganization: async ({ user }) => {
-          const limits = selfServeLimits(user.platformRole ?? null);
-          return limits ? { data: limits } : undefined;
+          const platformRole = user.platformRole ?? null;
+          if (platformRole === "super_admin") return { data: { selfServe: false } };
+          const [owned] = await db
+            .select({ n: count() })
+            .from(member)
+            .innerJoin(organizationTable, eq(organizationTable.id, member.organizationId))
+            .where(
+              and(
+                eq(member.userId, BigInt(user.id)),
+                like(member.role, "%owner%"),
+                eq(organizationTable.selfServe, true),
+              ),
+            );
+          if (!canCreateSelfServeWorkspace(platformRole, Number(owned?.n ?? 0))) {
+            throw new APIError("FORBIDDEN", { message: "You can create up to 3 workspaces" });
+          }
+          return { data: { ...selfServeLimits(platformRole), selfServe: true } };
         },
       },
       ac: orgAc,
