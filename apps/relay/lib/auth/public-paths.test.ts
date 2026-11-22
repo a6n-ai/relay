@@ -43,6 +43,10 @@ describe("gateRelayPath", () => {
     expect(gateRelayPath("/api/internal/mailbox/inbound", [])).toBe("allow");
   });
 
+  it("lets the public contact form through without a session", () => {
+    expect(gateRelayPath("/api/contact", [])).toBe("allow");
+  });
+
   it("does not session-gate /v1 (tenant API key is checked in the route)", () => {
     expect(gateRelayPath("/v1/messages", [])).toBe("allow");
   });
