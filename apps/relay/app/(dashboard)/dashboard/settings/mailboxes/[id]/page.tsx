@@ -19,7 +19,7 @@ export const metadata = { title: "Mailbox" };
 export default async function MailboxSettingsPage({ params }: { params: Promise<{ id: string }> }) {
   await requirePagePermission({ settings: ["read"] });
   const { id } = await params;
-  const scope = await mailboxScope();
+  const scope = await mailboxScope({ onMissing: "redirect" });
   const row = await tenantMailboxesService.read(id).catch(() => null);
   if (!row || !scope.tenantIds.includes(row.tenantId) || !canSeeMailbox(scope.mailboxIds, row.id)) notFound();
   const app = await tenantsService.findById(row.tenantId);

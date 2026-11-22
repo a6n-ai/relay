@@ -34,7 +34,7 @@ const MAILBOX_FILTERS: ListingFilter[] = [
 
 export default async function MailboxPage() {
   await requirePagePermission({ mailbox: ["read"] });
-  const scope = await mailboxScope();
+  const scope = await mailboxScope({ onMissing: "redirect" });
   const activeApp = await resolveActiveApp();
   const [rows, froms, tagRows, failures, failureCount] = await Promise.all([
     listMailboxLetters(scope, { tenantId: activeApp?.id }),

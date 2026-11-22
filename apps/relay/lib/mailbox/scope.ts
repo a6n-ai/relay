@@ -3,7 +3,8 @@ import { and, eq } from "drizzle-orm";
 import { NotFoundError } from "@foundry/commons";
 import { db } from "@/db/client";
 import { member, organization, users } from "@/db/schema";
-import { getActiveOrganizationId } from "@/lib/auth/active-org";
+import { getActiveOrganizationId, requireActiveOrganizationId } from "@/lib/auth/active-org";
+import { activeMember } from "@/lib/auth/guards";
 import { getSession } from "@/lib/auth/session";
 import { tenantsService } from "@/lib/services/tenants.service";
 import { PLATFORM_WORKSPACE_SLUG } from "./platform-workspace";
@@ -45,15 +46,23 @@ export const platformWorkspaceId = cache(async (): Promise<string | null> => {
 // Shared by the mailbox scope and the compose From list so both see the same apps.
 export const MAILBOX_TENANT_LIMIT = 1000;
 
-export async function mailboxScope(): Promise<MailboxScope> {
+export async function mailboxScope(opts: { onMissing?: "redirect" | "throw" } = {}): Promise<MailboxScope> {
   const workspace = await workspaceSlug();
-  if (!workspace) throw new NotFoundError("No active workspace");
-  const page = await tenantsService.listRecent(undefined, MAILBOX_TENANT_LIMIT);
+  if (!workspace) {
+    if (opts.onMissing === "redirect") await requireActiveOrganizationId();
+    throw new NotFoundError("No active workspace");
+  }
+  const [page, member, access] = await Promise.all([
+    tenantsService.listRecent(undefined, MAILBOX_TENANT_LIMIT),
+    activeMember(),
+    mailboxAccess(),
+  ]);
+  // Workspace is cookie-cached but grants are read fresh; never apply one workspace's grants to another.
   return {
     organizationId: workspace.id,
     tenantIds: page.items.map((t) => t.id),
     includeOperatorMail: workspace.slug === PLATFORM_WORKSPACE_SLUG,
-    mailboxIds: await mailboxAccess(),
+    mailboxIds: member?.organizationId === workspace.id ? access : [],
   };
 }
 

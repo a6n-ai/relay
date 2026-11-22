@@ -6,6 +6,10 @@ const state = vi.hoisted(() => ({
   orgRows: [] as { id: string; slug: string }[],
   listRecent: vi.fn(),
   access: "all" as "all" | bigint[],
+  member: null as { organizationId: string } | null,
+  requireOrg: vi.fn(async () => {
+    throw new Error("NEXT_REDIRECT /dashboard/workspaces");
+  }),
 }));
 
 vi.mock("react", () => ({ cache: <T>(fn: T) => fn }));
@@ -18,6 +22,12 @@ vi.mock("./access", () => ({
 
 vi.mock("@/lib/auth/active-org", () => ({
   getActiveOrganizationId: async () => state.activeOrgId,
+  requireActiveOrganizationId: (...args: unknown[]) => state.requireOrg(...(args as [])),
+}));
+
+vi.mock("@/lib/auth/guards", () => ({
+  activeMember: async () =>
+    state.member ?? (state.activeOrgId ? { organizationId: state.activeOrgId } : null),
 }));
 
 vi.mock("@/lib/auth/session", () => ({
@@ -43,7 +53,25 @@ describe("mailboxScope", () => {
     state.activeOrgId = null;
     state.orgRows = [];
     state.listRecent.mockReset();
+    state.requireOrg.mockClear();
     state.access = "all";
+    state.member = null;
+  });
+
+  it("mismatched workspace gets no mailbox access", async () => {
+    state.activeOrgId = "org_client";
+    state.orgRows = [{ id: "org_client", slug: "acme" }];
+    state.listRecent.mockResolvedValue({ items: [{ id: 7n }] });
+    state.member = { organizationId: "org_other" };
+
+    await expect(mailboxScope()).resolves.toMatchObject({ organizationId: "org_client", mailboxIds: [] });
+  });
+
+  it("pages redirect to the workspace picker when no workspace is active", async () => {
+    await expect(mailboxScope({ onMissing: "redirect" })).rejects.toThrow("/dashboard/workspaces");
+    expect(state.requireOrg).toHaveBeenCalledTimes(1);
+    await expect(mailboxScope()).rejects.toBeInstanceOf(NotFoundError);
+    expect(state.requireOrg).toHaveBeenCalledTimes(1);
   });
 
   it("reads the caller's mailbox grants on every call", async () => {

@@ -1,14 +1,13 @@
-import { desc } from "drizzle-orm";
 import { ScrollTextIcon } from "lucide-react";
 import { PageShell } from "@foundry/design-system";
 import { EmptyState } from "@/components/ds/empty-state";
 import { ListingTable, type ListingFilter, type ListingRow } from "@/components/ds/listing-table";
 import { displayChannel, kindLabel, outboxStatusLabel } from "@/components/ds/plain-labels";
 import { outboxGlyph } from "@/components/ds/status-glyph";
-import { db } from "@/db/client";
-import { notificationTables } from "@/db/schema";
 import { ViewHeader } from "@/components/ds/view-header";
 import { requirePagePermission } from "@/lib/auth/guards";
+import { mailboxScope } from "@/lib/mailbox/scope";
+import { listSends } from "@/lib/notifications/list-sends";
 
 export const dynamic = "force-dynamic";
 
@@ -27,23 +26,7 @@ const SEND_FILTERS: ListingFilter[] = [
 
 export default async function LogsPage() {
   await requirePagePermission({ log: ["read"] });
-  const o = notificationTables.notificationOutbox;
-  const rows = await db
-    .select({
-      publicId: o.publicId,
-      status: o.status,
-      channel: o.channel,
-      kind: o.kind,
-      event: o.event,
-      recipientEmail: o.recipientEmail,
-      recipientPhone: o.recipientPhone,
-      recipientExternalId: o.recipientExternalId,
-      attempts: o.attempts,
-      lastError: o.lastError,
-    })
-    .from(o)
-    .orderBy(desc(o.createdAt))
-    .limit(100);
+  const rows = await listSends(await mailboxScope({ onMissing: "redirect" }));
 
   const items: ListingRow[] = rows.map((r) => {
     const recipient = r.recipientEmail ?? r.recipientPhone ?? r.recipientExternalId ?? "";

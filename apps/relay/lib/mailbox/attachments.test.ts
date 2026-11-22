@@ -8,6 +8,7 @@ const state = vi.hoisted(() => ({
 vi.mock("react", () => ({ cache: <T>(fn: T) => fn }));
 vi.mock("@/lib/auth/active-org", () => ({ getActiveOrganizationId: async () => null }));
 vi.mock("@/lib/auth/session", () => ({ getSession: async () => null }));
+vi.mock("@/lib/auth/guards", () => ({ activeMember: async () => null }));
 vi.mock("@/lib/services/tenants.service", () => ({ tenantsService: { listRecent: async () => ({ items: [] }) } }));
 vi.mock("./access", () => ({
   mailboxAccess: async () => "all",

@@ -54,7 +54,7 @@ export default async function MailboxLetterPage({
   await requirePagePermission({ mailbox: ["read"] });
   const { id } = await params;
   const { images } = await searchParams;
-  const scope = await mailboxScope();
+  const scope = await mailboxScope({ onMissing: "redirect" });
   const row = await readMailboxLetter(scope, id);
   if (!row) notFound();
   const inbound = row.direction === "in";
