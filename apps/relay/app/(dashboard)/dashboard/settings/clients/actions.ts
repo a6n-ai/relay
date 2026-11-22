@@ -66,7 +66,7 @@ export async function createClientAction(
       .update(organization)
       .set({ monthlyMessageQuota, maxApps, selfServe: false })
       .where(eq(organization.id, id));
-    revalidatePath("/dashboard/platform");
+    revalidatePath("/dashboard/settings/clients");
     return { id, ownerEmail };
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Could not create client." };
@@ -94,7 +94,7 @@ export async function updateClientLimitsAction(
     .update(organization)
     .set({ name, monthlyMessageQuota, maxApps })
     .where(eq(organization.id, id));
-  revalidatePath("/dashboard/platform");
-  revalidatePath(`/dashboard/platform/${id}`);
+  revalidatePath("/dashboard/settings/clients");
+  revalidatePath(`/dashboard/settings/clients/${id}`);
   return {};
 }

@@ -29,14 +29,17 @@ export function SettingsSidebar({
   email,
   allowed,
   apps,
+  platformStaff = false,
 }: {
   email: string;
   /** `permKey`s the caller holds, resolved on the server (`navAccess`). */
   allowed: readonly string[];
   apps: readonly { publicId: string; name: string }[];
+  /** a6n platform staff (`super_admin`) also see Organization → Clients. */
+  platformStaff?: boolean;
 }) {
   const pathname = usePathname();
-  const groups = visibleSettingsNav(new Set(allowed), apps, pathname);
+  const groups = visibleSettingsNav(new Set(allowed), apps, pathname, platformStaff);
   return (
     <Sidebar variant="inset" collapsible="icon">
       <SidebarHeader className="gap-2 px-2 pt-3 pb-2">
@@ -64,6 +67,7 @@ export function SettingsSidebar({
                       className={PRESS}
                       render={<Link href={item.href} prefetch={false} aria-current={item.active ? "page" : undefined} />}
                     >
+                      <item.icon aria-hidden />
                       <span>{item.label}</span>
                     </SidebarMenuButton>
                     {item.children ? (
@@ -85,6 +89,7 @@ export function SettingsSidebar({
                                   className={PRESS}
                                   render={<Link href={child.href} prefetch={false} aria-current={child.active ? "page" : undefined} />}
                                 >
+                                  <child.icon aria-hidden />
                                   <span>{child.label}</span>
                                 </SidebarMenuSubButton>
                               </SidebarMenuSubItem>

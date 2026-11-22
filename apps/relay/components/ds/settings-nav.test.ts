@@ -15,6 +15,14 @@ const activeLabels = (nav: ReturnType<typeof visibleSettingsNav>) =>
   nav.flatMap((g) => [...g.items, ...g.items.flatMap((i) => i.children ?? [])]).filter((i) => i.active).map((i) => i.label);
 
 describe("visibleSettingsNav", () => {
+  it("shows Organization → Clients only to platform staff, below Apps", () => {
+    const path = "/dashboard/settings/clients/org_1";
+    expect(visibleSettingsNav(granted(APPS_PERM), APPS, path).map((g) => g.label)).not.toContain("Organization");
+    const nav = visibleSettingsNav(granted(APPS_PERM), APPS, path, true);
+    expect(nav.map((g) => g.label).slice(-2)).toEqual(["Apps", "Organization"]);
+    expect(activeLabels(nav)).toEqual(["Clients"]);
+  });
+
   it("member sees workspace links they can read", () => {
     const nav = visibleSettingsNav(granted(SETTINGS_READ, STAFF_READ), [], "/dashboard/settings/general");
     expect(labels(nav)).toEqual(

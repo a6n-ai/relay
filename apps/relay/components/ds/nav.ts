@@ -43,8 +43,6 @@ export const SECTION_TABS = {
     { href: "/dashboard/webhooks", label: "Status updates" },
   ],
   channels: RELAY_CHANNELS.map((c) => ({ href: c.href, label: c.label })),
-  /** Organization sidebar section. Clients is platform-only in the shell. */
-  organization: [{ href: "/dashboard/platform", label: "Clients" }],
 } as const;
 
 const tabHrefs = (tabs: readonly { href: string }[]) => tabs.map((t) => t.href);

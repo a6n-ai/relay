@@ -15,7 +15,6 @@ import {
   SidebarSeparator,
   SidebarTrigger,
 } from "@foundry/ui/sidebar";
-import { Building2Icon } from "lucide-react";
 import { NAV_GROUPS, activeNavHref, isUnder, permKey, type Perm } from "@/components/ds/nav";
 import { iconColorVar } from "@/components/ds/icon-color";
 import { AppSwitcher } from "@/components/app-switcher";
@@ -30,7 +29,7 @@ export function RelaySidebar({
   apps,
 }: {
   email: string;
-  /** a6n platform staff (`super_admin`) — Clients sits in Organization. */
+  /** a6n platform staff (`super_admin`): Settings shows Organization → Clients. */
   showClients?: boolean;
   /** `permKey`s the caller holds, resolved on the server (`navAccess`). */
   allowed: readonly string[];
@@ -39,7 +38,7 @@ export function RelaySidebar({
 }) {
   const pathname = usePathname();
   if (isUnder(pathname, "/dashboard/settings")) {
-    return <SettingsSidebar email={email} allowed={allowed} apps={apps} />;
+    return <SettingsSidebar email={email} allowed={allowed} apps={apps} platformStaff={showClients} />;
   }
   const active = activeNavHref(pathname);
   const granted = new Set(allowed);
@@ -47,7 +46,6 @@ export function RelaySidebar({
   const navGroups = NAV_GROUPS.map((g) => ({ ...g, items: g.items.filter((i) => shows(i.perm)) })).filter(
     (g) => g.items.length > 0,
   );
-  const clientsActive = isUnder(pathname, "/dashboard/platform");
   // Inset: the sidebar sits on the canvas and the page is a lifted panel (Linear's inverted-L chrome).
   return (
     <Sidebar variant="inset" collapsible="icon">
@@ -91,32 +89,6 @@ export function RelaySidebar({
             </SidebarGroupContent>
           </SidebarGroup>
         ))}
-        {showClients ? (
-        <SidebarGroup>
-          <SidebarGroupLabel className="text-xs font-semibold text-muted-foreground">
-            Organization
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  isActive={clientsActive}
-                  render={
-                    <Link
-                      href="/dashboard/platform"
-                      prefetch={false}
-                      aria-current={clientsActive ? "page" : undefined}
-                    />
-                  }
-                >
-                  <Building2Icon style={{ color: iconColorVar("purple") }} />
-                  <span>Clients</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-        ) : null}
       </SidebarContent>
       <SidebarSeparator />
       <RelaySidebarFooter email={email} />

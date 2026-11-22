@@ -52,7 +52,7 @@ export function CreateClientForm() {
     created({
       noun: "Client",
       name: values.name,
-      href: `/dashboard/platform/${result.id}`,
+      href: `/dashboard/settings/clients/${result.id}`,
     });
     toast(`Tell ${result.ownerEmail} to sign in at relay.a6n.ai with a one-time code.`);
   }
