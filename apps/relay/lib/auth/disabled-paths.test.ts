@@ -26,6 +26,21 @@ describe("ORG_DISABLED_PATHS", () => {
     }
   });
 
+  it("org member reads are not reachable over HTTP", () => {
+    for (const p of [
+      "/organization/get-full-organization",
+      "/organization/list-members",
+      "/organization/list-teams",
+      "/organization/list-team-members",
+      "/organization/list-user-teams",
+      "/organization/get-active-member",
+      "/organization/get-active-member-role",
+      "/organization/list-invitations",
+    ]) {
+      expect(ORG_DISABLED_PATHS).toContain(p);
+    }
+  });
+
   it("set-active and invitation accept/reject stay open", () => {
     for (const p of ["/organization/set-active", "/organization/accept-invitation", "/organization/reject-invitation"]) {
       expect(ORG_DISABLED_PATHS).not.toContain(p);

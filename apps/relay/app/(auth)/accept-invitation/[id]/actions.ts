@@ -14,10 +14,15 @@ function acceptError(err: unknown): string {
 }
 
 export async function acceptInvitationAction(invitationId: string): Promise<Result> {
+  const h = await headers();
+  let organizationId: string;
   try {
-    await auth.api.acceptInvitation({ headers: await headers(), body: { invitationId } });
+    const accepted = await auth.api.acceptInvitation({ headers: h, body: { invitationId } });
+    organizationId = accepted.invitation.organizationId;
   } catch (err) {
     return { error: acceptError(err) };
   }
+  // Without this the first /dashboard render has no active workspace and bounces to the picker.
+  await auth.api.setActiveOrganization({ headers: h, body: { organizationId } });
   return {};
 }

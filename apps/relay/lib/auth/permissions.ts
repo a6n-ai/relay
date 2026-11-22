@@ -88,7 +88,7 @@ export const PERMISSION_LABELS: { resource: string; label: string; actions: { ac
   { resource: "webhook", label: "Webhooks", actions: [{ action: "read", label: "View" }, { action: "write", label: "Create and edit" }] },
   { resource: "log", label: "Send history", actions: [{ action: "read", label: "View" }] },
   { resource: "settings", label: "Settings", actions: [{ action: "read", label: "View" }, { action: "write", label: "Change" }] },
-  { resource: "workspace", label: "Workspace", actions: [{ action: "usage", label: "See usage" }, { action: "limits", label: "Change limits" }] },
+  { resource: "workspace", label: "Workspace", actions: [{ action: "usage", label: "See usage" }, { action: "limits", label: "See limits" }] },
   { resource: "staff", label: "Staff", actions: [{ action: "read", label: "View" }] },
   { resource: "invitation", label: "Invitations", actions: [{ action: "create", label: "Invite" }, { action: "cancel", label: "Cancel" }] },
   { resource: "member", label: "Members", actions: [{ action: "create", label: "Add" }, { action: "update", label: "Change role" }, { action: "delete", label: "Remove" }] },

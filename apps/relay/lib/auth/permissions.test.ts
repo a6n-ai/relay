@@ -29,6 +29,11 @@ describe("workspace roles", () => {
     expect(orgRoles.admin.authorize({ invitation: ["create"] }).success).toBe(true);
   });
 
+  it("labels workspace limits as view-only, since only the platform changes them", () => {
+    const workspace = PERMISSION_LABELS.find((p) => p.resource === "workspace");
+    expect(workspace?.actions.find((a) => a.action === "limits")?.label).toBe("See limits");
+  });
+
   it("gives every role a label and every app resource a label", () => {
     expect(Object.keys(ROLE_LABELS).sort()).toEqual(Object.keys(orgRoles).sort());
     const resources = PERMISSION_LABELS.map((p) => p.resource);

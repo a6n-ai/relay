@@ -11,6 +11,7 @@ import { requirePermission } from "@/lib/auth/guards";
 import { db } from "@/db/client";
 import { emailSmtpSettings } from "@/db/schema";
 import { parseAddSendingDomainForm } from "@/lib/email/domain-form";
+import { mailboxScope } from "@/lib/mailbox/scope";
 import { sendingDomainsService } from "@/lib/services/sending.service";
 import { tenantMailboxesService } from "@/lib/services/tenant-mailboxes.service";
 import { tenantsService } from "@/lib/services/tenants.service";
@@ -49,7 +50,7 @@ export async function verifySendingDomainAction(formData: FormData): Promise<{ e
   await requirePermission({ sending: ["write"] });
   const publicId = String(formData.get("publicId") ?? "");
   const row = await sendingDomainsService.read(publicId).catch(() => null);
-  if (!row) return { error: "Unknown domain" };
+  if (!row || !(await mailboxScope()).tenantIds.includes(row.tenantId)) return { error: "Unknown domain" };
 
   const ok = await verifySendingDomainOwnership(row.domain, row.verifyToken, (h) => dns.resolveTxt(h));
   await sendingDomainsService.update(publicId, {

@@ -23,6 +23,7 @@ import { recordAudit } from "@/lib/services/session-service";
 import { betterAuthPassword } from "./password";
 import { ADMIN_DISABLED_PATHS, ORG_DISABLED_PATHS } from "./disabled-paths";
 import { INVITE_LIFETIME_S } from "./invites";
+import { selfServeLimits } from "./workspace-limits";
 import { ac, orgAc, orgRoles, roles } from "./permissions";
 import { notifyNewLoginIfNewDevice, notifyPasswordChanged, sendAuthOtp } from "./security-events";
 
@@ -96,9 +97,15 @@ export const auth = betterAuth({
       },
     }),
     organization({
-      // Clients (and a6n) create workspaces; public sign-up stays disabled above.
-      // Flat workspaces — Relay does not use Foundry brand→franchise hierarchy.
+      // Any signed-in user may create a workspace; self-made ones start limited (see selfServeLimits).
+      // Public sign-up stays disabled above. Flat workspaces, no Foundry brand→franchise hierarchy.
       allowUserToCreateOrganization: true,
+      organizationHooks: {
+        beforeCreateOrganization: async ({ user }) => {
+          const limits = selfServeLimits(user.platformRole ?? null);
+          return limits ? { data: limits } : undefined;
+        },
+      },
       ac: orgAc,
       roles: orgRoles,
       // Relay teams are explicit: no implicit default team per workspace, and a workspace may delete its last team.

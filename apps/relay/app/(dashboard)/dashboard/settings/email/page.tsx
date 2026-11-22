@@ -10,6 +10,7 @@ import { EmailEventsSection } from "./email-events-section";
 import { sendingDomainsService } from "@/lib/services/sending.service";
 import { ViewHeader } from "@/components/ds/view-header";
 import { requirePagePermission } from "@/lib/auth/guards";
+import { isPlatformAdmin } from "@/lib/auth/org-scope";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +18,7 @@ export const metadata = { title: "Email sending" };
 
 export default async function EmailSettingsPage() {
   await requirePagePermission({ settings: ["read"] });
+  const platform = await isPlatformAdmin();
   const [row, { items: domains }] = await Promise.all([
     loadOperatorSmtpRow(),
     sendingDomainsService.list(undefined, { page: 0, size: 200 }),
@@ -46,25 +48,27 @@ export default async function EmailSettingsPage() {
               </Badge>
             </SettingsRow>
           ))}
-          <SettingsRow label="Sending method" description={snap.smtpHost ? `Host ${snap.smtpHost}` : "How mail leaves Relay."}>
+          <SettingsRow label="Sending method" description={platform && snap.smtpHost ? `Host ${snap.smtpHost}` : "How mail leaves Relay."}>
             <span className="text-sm text-muted-foreground">{sendingMethod}</span>
           </SettingsRow>
         </SettingsSection>
-        <SettingsSection
-          title="Mail server and default From"
-          description="Used when an app’s From isn’t ready. This is not an app access key."
-        >
-          <SmtpSettingsForm
-            host={row?.host ?? process.env.SMTP_HOST ?? ""}
-            port={row?.port ?? Number(process.env.SMTP_PORT ?? 587)}
-            secure={row?.secure ?? process.env.SMTP_SECURE === "true"}
-            username={row?.username ?? process.env.SMTP_USER ?? ""}
-            spfInclude={row?.spfInclude ?? ""}
-            fromEmail={row?.fromEmail ?? process.env.NOTIFY_FROM_EMAIL ?? ""}
-            fromName={row?.fromName ?? process.env.NOTIFY_FROM_NAME ?? ""}
-            hasPassword={Boolean(row?.password ?? process.env.SMTP_PASS)}
-          />
-        </SettingsSection>
+        {platform ? (
+          <SettingsSection
+            title="Mail server and default From"
+            description="Used when an app’s From isn’t ready. This is not an app access key."
+          >
+            <SmtpSettingsForm
+              host={row?.host ?? process.env.SMTP_HOST ?? ""}
+              port={row?.port ?? Number(process.env.SMTP_PORT ?? 587)}
+              secure={row?.secure ?? process.env.SMTP_SECURE === "true"}
+              username={row?.username ?? process.env.SMTP_USER ?? ""}
+              spfInclude={row?.spfInclude ?? ""}
+              fromEmail={row?.fromEmail ?? process.env.NOTIFY_FROM_EMAIL ?? ""}
+              fromName={row?.fromName ?? process.env.NOTIFY_FROM_NAME ?? ""}
+              hasPassword={Boolean(row?.password ?? process.env.SMTP_PASS)}
+            />
+          </SettingsSection>
+        ) : null}
         <SettingsSection
           title="Domains"
           description={domains.length === 0 ? "No domains yet. Add and check DNS on each app." : `${verifiedCount} of ${domains.length} ready. Add and check DNS on each app.`}
@@ -75,11 +79,13 @@ export default async function EmailSettingsPage() {
             </Link>
           </SettingsRow>
         </SettingsSection>
-        <SettingsSection title="Email events" description="Which delivery events each sending stream reports, and where they go.">
-          <SettingsBody>
-            <EmailEventsSection />
-          </SettingsBody>
-        </SettingsSection>
+        {platform ? (
+          <SettingsSection title="Email events" description="Which delivery events each sending stream reports, and where they go.">
+            <SettingsBody>
+              <EmailEventsSection />
+            </SettingsBody>
+          </SettingsSection>
+        ) : null}
       </SettingsPage>
     </PageShell>
   );

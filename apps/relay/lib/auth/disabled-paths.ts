@@ -12,6 +12,14 @@ export const ORG_DISABLED_PATHS = [
   "/organization/remove-team-member",
   "/organization/update",
   "/organization/delete",
+  "/organization/get-full-organization",
+  "/organization/list-members",
+  "/organization/list-teams",
+  "/organization/list-team-members",
+  "/organization/list-user-teams",
+  "/organization/get-active-member",
+  "/organization/get-active-member-role",
+  "/organization/list-invitations",
 ] as const;
 
 // Admin-plugin endpoints are server-side only; direct auth.api calls skip disabledPaths.

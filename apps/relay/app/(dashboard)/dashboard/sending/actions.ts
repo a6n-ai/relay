@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requirePermission } from "@/lib/auth/guards";
+import { requirePlatformAdmin } from "@/lib/auth/org-scope";
 import { db } from "@/db/client";
 import { emailSmtpSettings } from "@/db/schema";
 import { resetEmailProvider } from "@/lib/email/provider";
@@ -10,7 +10,11 @@ import { parseSmtpSettingsForm } from "@/lib/email/smtp-form";
 import { smtpSettingsService } from "@/lib/services/sending.service";
 
 export async function saveSmtpSettingsAction(formData: FormData): Promise<{ error?: string }> {
-  await requirePermission({ sending: ["write"] });
+  try {
+    await requirePlatformAdmin();
+  } catch {
+    return { error: "Only Relay platform admins can change the mail server." };
+  }
   const [existing] = await db.select().from(emailSmtpSettings).limit(1);
   const parsed = parseSmtpSettingsForm(formData, existing?.password);
   if ("error" in parsed) return parsed;

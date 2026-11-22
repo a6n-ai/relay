@@ -1,8 +1,11 @@
 import { headers } from "next/headers";
+import { and, eq } from "drizzle-orm";
 import { auth } from "@/lib/auth";
+import { db } from "@/db/client";
+import { member, users } from "@/db/schema";
 
 /**
- * If the signed-in user has org memberships but no active workspace, activate
+ * If the signed-in user has active org memberships but no active workspace, activate
  * the first one so app lists are scoped. No-op when already set or none exist.
  */
 export async function ensureActiveOrganization(): Promise<void> {
@@ -12,7 +15,13 @@ export async function ensureActiveOrganization(): Promise<void> {
   if (session.session.activeOrganizationId) return;
 
   const orgs = await auth.api.listOrganizations({ headers: h });
-  const first = Array.isArray(orgs) ? orgs[0] : null;
+  const activeRows = await db
+    .select({ organizationId: member.organizationId })
+    .from(member)
+    .innerJoin(users, eq(users.id, member.userId))
+    .where(and(eq(users.publicId, session.user.id), eq(member.status, "active")));
+  const activeIds = new Set(activeRows.map((r) => r.organizationId));
+  const first = Array.isArray(orgs) ? orgs.find((o) => activeIds.has(o.id)) : null;
   if (!first?.id) return;
 
   await auth.api.setActiveOrganization({
