@@ -32,14 +32,3 @@ export const emailSmtpSettings = pgTable("email_smtp_settings", {
   fromEmail: text("from_email"),
   fromName: text("from_name"),
 });
-
-/** Tenant From identities (e.g. info@tiffingrab.ca). Verified only if the domain DNS check passed. */
-export const tenantEmailSenders = pgTable("tenant_email_senders", {
-  ...updatableColumns("tes"),
-  tenantId: bigint("tenant_id", { mode: "bigint" }).notNull().references(() => tenants.id),
-  email: text("email").notNull(),
-  displayName: text("display_name"),
-  verifiedAt: bigint("verified_at", { mode: "number" }),
-}, (t) => [
-  uniqueIndex("tenant_email_senders_tenant_email_unique").on(t.tenantId, t.email),
-]);
