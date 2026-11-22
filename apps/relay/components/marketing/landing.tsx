@@ -1,6 +1,10 @@
+import Link from "next/link";
+import { ChevronRightIcon } from "lucide-react";
+import { ChannelStrip } from "./channel-strip";
+import { CodeSample } from "./code-sample";
 import { ContactSection } from "./contact-section";
 import { SendDemo } from "./demo/send-demo";
-import { CampaignsSlice, InboxSlice } from "./demo/slices";
+import { CampaignsSlice, DeliverySlice, InboxSlice, TeamSlice } from "./demo/slices";
 import { FeatureSection } from "./feature-section";
 import { HairlineFigure } from "./hairline-figure";
 import { LandingScroll } from "./landing-scroll";
@@ -22,6 +26,25 @@ const POINTS = [
     figure: "gauge" as const,
     title: "Delivery you can see",
     body: "Follow every message from queued to delivered, and retry the ones that fail.",
+  },
+] as const;
+
+const SAFE = [
+  {
+    title: "Your domain",
+    body: "Send from your own domain with DKIM and SPF set up, and a custom MAIL FROM.",
+  },
+  {
+    title: "Safe incoming mail",
+    body: "Remote images and scripts in incoming mail are blocked before anyone opens it.",
+  },
+  {
+    title: "Every client kept apart",
+    body: "Each client is a workspace of its own, with its own apps, messages and limits.",
+  },
+  {
+    title: "Unsubscribe handled",
+    body: "Campaign emails carry a one-click unsubscribe, and a suppression list keeps opted-out people off future sends.",
   },
 ] as const;
 
@@ -106,7 +129,60 @@ export function Landing() {
               <CampaignsSlice />
             </FeatureSection>
           </div>
+          <div id="delivery" data-reveal className="scroll-mt-20">
+            <FeatureSection
+              title="Every delivery, on record"
+              body="Each message's status is recorded from queued to delivered, and failed sends retry automatically. Bounces and spam reports stop future sends to that address, and your app hears about each one."
+              href="/docs"
+              linkLabel="Read the docs"
+            >
+              <DeliverySlice />
+            </FeatureSection>
+          </div>
+          <div id="team" data-reveal className="scroll-mt-20">
+            <FeatureSection
+              flip
+              title="A workspace for every client"
+              body="Give each client a workspace of its own, bring your team into one place, and set limits per client."
+              href="/docs"
+              linkLabel="Read the docs"
+            >
+              <TeamSlice />
+            </FeatureSection>
+          </div>
+          <div id="developers" data-reveal className="scroll-mt-20">
+            <section className="border-t border-border">
+              <div className="mx-auto grid max-w-6xl items-center gap-10 px-5 py-16 md:grid-cols-2 md:gap-16 md:px-8 md:py-24">
+                <div className="flex flex-col items-start gap-5">
+                  <h2 className="text-3xl font-semibold tracking-[-0.022em] text-balance md:text-4xl">An API for your apps</h2>
+                  <p className="max-w-md text-base leading-7 text-muted-foreground">
+                    Create a key for each app and set a monthly quota for it. The OpenAPI docs let you try a request in the browser before you write any code.
+                  </p>
+                  <Link href="/docs/api" className="inline-flex min-h-11 items-center gap-1 text-sm font-medium text-primary hover:underline md:min-h-0">
+                    API reference
+                    <ChevronRightIcon className="size-4" aria-hidden />
+                  </Link>
+                </div>
+                <CodeSample />
+              </div>
+            </section>
+          </div>
 
+          <section data-reveal className="scroll-mt-20 border-t border-border">
+            <div className="mx-auto max-w-6xl px-5 py-16 md:px-8 md:py-24">
+              <h2 className="text-3xl font-semibold tracking-[-0.022em] text-balance md:text-4xl">Safe by default</h2>
+              <div className="mt-10 grid md:grid-cols-4 md:divide-x md:divide-border">
+                {SAFE.map((s) => (
+                  <div key={s.title} className="flex flex-col gap-3 border-t border-border py-8 first:border-t-0 md:border-t-0 md:px-6 md:first:pl-0 md:last:pr-0">
+                    <h3 className="text-lg font-semibold tracking-tight">{s.title}</h3>
+                    <p className="text-sm leading-6 text-muted-foreground">{s.body}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          <ChannelStrip />
           <ContactSection />
         </main>
       </LandingScroll>
