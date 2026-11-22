@@ -41,10 +41,12 @@ export default async function AppMailboxesPage({ params }: { params: Promise<{ i
           title="Addresses"
           subtitle="Local name plus a proven domain. Extra seats if they pay for more. Each address is Send as, a Relay inbox, or a people inbox — never two stores."
         >
-          <AddMailboxForm
-            publicId={tenant.publicId}
-            domains={domains.filter((d) => d.status === "verified").map((d) => d.domain)}
-          />
+          {canManage ? (
+            <AddMailboxForm
+              publicId={tenant.publicId}
+              domains={domains.filter((d) => d.status === "verified").map((d) => d.domain)}
+            />
+          ) : null}
           <ul className="mt-4 space-y-2 text-sm">
             {boxes.map((b) => (
               <li key={b.publicId} className="flex flex-wrap items-center gap-2">

@@ -8,7 +8,7 @@ import { SettingsPage } from "@/components/ds/settings";
 import { ViewHeader } from "@/components/ds/view-header";
 import { domainStatusLabel, fromSourceLabel } from "@/components/ds/plain-labels";
 import { AddDomainForm, VerifyDomainButton } from "@/app/(dashboard)/dashboard/domains/domain-forms";
-import { requirePagePermission } from "@/lib/auth/guards";
+import { can, requirePagePermission } from "@/lib/auth/guards";
 import { loadEmailChannelSnapshot } from "@/lib/email/load-snapshot";
 import { loadOperatorSmtpRow, resolveTenantEmailFrom } from "@/lib/email/from-address";
 import { emailChannelReady, operatorEmailPrereqs } from "@/lib/email/prerequisites";
@@ -23,10 +23,11 @@ export default async function AppDomainPage({ params }: { params: Promise<{ id: 
   if (!app) notFound();
   const { tenant } = app;
 
-  const [{ items: domains }, from, smtpRow] = await Promise.all([
+  const [{ items: domains }, from, smtpRow, canSend] = await Promise.all([
     sendingDomainsService.list(eq("tenantId", tenant.id), { page: 0, size: 50 }),
     resolveTenantEmailFrom(tenant.id),
     loadOperatorSmtpRow(),
+    can({ sending: ["write"] }),
   ]);
   const verifiedCount = domains.filter((d) => d.status === "verified").length;
   const prereqs = operatorEmailPrereqs(
@@ -59,7 +60,7 @@ export default async function AppDomainPage({ params }: { params: Promise<{ id: 
           </Link>
         </SectionCard>
         <SectionCard title="Your domain" subtitle="Add the records at your domain host, then tap Check DNS.">
-          <AddDomainForm slugs={[tenant.slug]} lockedSlug={tenant.slug} />
+          {canSend ? <AddDomainForm slugs={[tenant.slug]} lockedSlug={tenant.slug} /> : null}
           <ul className="mt-4 space-y-4">
             {domains.map((d) => {
               const records = buildSendingDomainRecords({
@@ -79,7 +80,7 @@ export default async function AppDomainPage({ params }: { params: Promise<{ id: 
                         {d.lastError ? ` · ${d.lastError}` : ""}
                       </div>
                     </div>
-                    <VerifyDomainButton publicId={d.publicId} />
+                    {canSend ? <VerifyDomainButton publicId={d.publicId} /> : null}
                   </div>
                   <table className="mt-3 w-full text-left text-xs">
                     <thead>

@@ -12,7 +12,7 @@ import { tenantMailboxesService } from "@/lib/services/tenant-mailboxes.service"
 import { tenantsService } from "@/lib/services/tenants.service";
 import { AddMailboxPicker } from "./add-mailbox-picker";
 import { ViewHeader } from "@/components/ds/view-header";
-import { requirePagePermission } from "@/lib/auth/guards";
+import { can, requirePagePermission } from "@/lib/auth/guards";
 
 export const dynamic = "force-dynamic";
 
@@ -20,10 +20,11 @@ export const metadata = { title: "Mailboxes" };
 
 export default async function MailboxesSettingsPage() {
   await requirePagePermission({ settings: ["read"] });
-  const [{ items: apps }, { items: domains }, access] = await Promise.all([
+  const [{ items: apps }, { items: domains }, access, canManage] = await Promise.all([
     tenantsService.listRecent(),
     sendingDomainsService.listRecent(undefined, 500),
     mailboxAccess(),
+    can({ mailbox: ["manage"] }),
   ]);
   // Mailboxes are not scoped to a workspace on their own, so take only this workspace's apps.
   const { items: allBoxes } =
@@ -64,9 +65,12 @@ export default async function MailboxesSettingsPage() {
     <PageShell>
       <ViewHeader
         title="Mailboxes"
-        actions={apps.length > 0 ? create(false) : undefined}
+        actions={canManage && apps.length > 0 ? create(false) : undefined}
       />
-      <SettingsPage title="Mailboxes" subtitle="Every address in this workspace.">
+      <SettingsPage
+        title="Mailboxes"
+        subtitle={canManage ? "Every address in this workspace." : "Mailboxes you can see in this workspace."}
+      >
         <ListingTable
           framed
           title="All mailboxes"
@@ -75,7 +79,7 @@ export default async function MailboxesSettingsPage() {
               icon={MailboxIcon}
               title="No mailboxes yet"
               lines={["A mailbox is an address an app sends from or receives at.", "Add one after you prove a domain."]}
-              action={create(true)}
+              action={canManage ? create(true) : undefined}
               docsHref="/docs"
             />
           }

@@ -5,7 +5,7 @@ import { Badge } from "@foundry/ui/badge";
 import { SettingsPage } from "@/components/ds/settings";
 import { ViewHeader } from "@/components/ds/view-header";
 import { UpdateQuotaForm } from "@/app/(dashboard)/dashboard/tenants/tenant-ops-forms";
-import { requirePagePermission } from "@/lib/auth/guards";
+import { can, requirePagePermission } from "@/lib/auth/guards";
 import { appMessageTagsService } from "@/lib/services/mailbox-tags.service";
 import { tenantMailboxesService } from "@/lib/services/tenant-mailboxes.service";
 import { loadAppSettings } from "@/lib/tenants/load-app-settings";
@@ -19,10 +19,11 @@ export default async function AppGeneralPage({ params }: { params: Promise<{ id:
   if (!app) notFound();
   const { tenant } = app;
 
-  const [used, allBoxes, tags] = await Promise.all([
+  const [used, allBoxes, tags, canWrite] = await Promise.all([
     countTenantSendsThisMonth(tenant.id),
     tenantMailboxesService.forTenant(tenant.id),
     appMessageTagsService.forTenant(tenant.id),
+    can({ tenant: ["write"] }),
   ]);
 
   return (
@@ -31,7 +32,9 @@ export default async function AppGeneralPage({ params }: { params: Promise<{ id:
       <SettingsPage title={tenant.name} subtitle="General">
         <SectionCard title="Monthly send limit" subtitle="0 means no cap. Counts messages started this calendar month (UTC).">
           <p className="mb-3 text-sm">Sent {used.toLocaleString("en")} of {tenant.monthlyMessageQuota === 0 ? "unlimited" : tenant.monthlyMessageQuota.toLocaleString("en")} · {allBoxes.length} of {tenant.mailboxSeatQuota === 0 ? "unlimited" : tenant.mailboxSeatQuota.toLocaleString("en")} addresses</p>
-          <UpdateQuotaForm publicId={tenant.publicId} quota={tenant.monthlyMessageQuota} seatQuota={tenant.mailboxSeatQuota} />
+          {canWrite ? (
+            <UpdateQuotaForm publicId={tenant.publicId} quota={tenant.monthlyMessageQuota} seatQuota={tenant.mailboxSeatQuota} />
+          ) : null}
         </SectionCard>
         <SectionCard
           title="Tags"

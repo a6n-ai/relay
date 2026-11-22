@@ -21,7 +21,7 @@ export default async function MailboxAccessPage() {
       <SettingsPage title="Mailbox access" subtitle="Owners and admins always see every mailbox.">
         {grid.mailboxes.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            No mailboxes yet. Add them under <Link href="/dashboard/settings/apps" className="underline">Apps</Link>.
+            No mailboxes yet. Add them under <Link href="/dashboard/settings/mailboxes" className="underline">Mailboxes</Link>.
           </p>
         ) : grid.columns.length === 0 ? (
           <p className="text-sm text-muted-foreground">

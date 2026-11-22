@@ -83,6 +83,7 @@
 
 :root {
   /* Light: Linear's light app — near-white canvas, white surfaces, one lavender accent. */
+  color-scheme: light;
   --brand: #5e6ad2;
   --brand-foreground: #ffffff;
   --background: #fbfbfc;
@@ -143,6 +144,7 @@
 
 .dark {
   /* Dark (default): Linear's stacked ladder, darkest at the bottom: sidebar #08090a, page #0f1011, cards #161718, popovers #1c1d1f. */
+  color-scheme: dark;
   --brand: #5e6ad2;
   --brand-foreground: #ffffff;
   --background: #0f1011; /* level 1: the page panel */

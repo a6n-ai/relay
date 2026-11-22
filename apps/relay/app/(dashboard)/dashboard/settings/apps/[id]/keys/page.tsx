@@ -6,7 +6,7 @@ import { SettingsPage } from "@/components/ds/settings";
 import { ViewHeader } from "@/components/ds/view-header";
 import { displayChannel } from "@/components/ds/plain-labels";
 import { IssueKeyForm } from "@/app/(dashboard)/dashboard/tenants/tenant-ops-forms";
-import { requirePagePermission } from "@/lib/auth/guards";
+import { can, requirePagePermission } from "@/lib/auth/guards";
 import { apiKeysService } from "@/lib/services/tenants.service";
 import { loadAppSettings } from "@/lib/tenants/load-app-settings";
 
@@ -18,7 +18,10 @@ export default async function AppKeysPage({ params }: { params: Promise<{ id: st
   if (!app) notFound();
   const { tenant } = app;
 
-  const { items: keys } = await apiKeysService.list(eq("tenantId", tenant.id), { page: 0, size: 50 });
+  const [{ items: keys }, canWrite] = await Promise.all([
+    apiKeysService.list(eq("tenantId", tenant.id), { page: 0, size: 50 }),
+    can({ tenant: ["write"] }),
+  ]);
 
   return (
     <PageShell>
@@ -35,9 +38,11 @@ export default async function AppKeysPage({ params }: { params: Promise<{ id: st
               {k.revokedAt ? <Badge variant="destructive">Revoked</Badge> : <Badge variant="secondary">Live</Badge>}
             </div>
           ))}
-          <div className="mt-4">
-            <IssueKeyForm publicId={tenant.publicId} />
-          </div>
+          {canWrite ? (
+            <div className="mt-4">
+              <IssueKeyForm publicId={tenant.publicId} />
+            </div>
+          ) : null}
         </SectionCard>
       </SettingsPage>
     </PageShell>

@@ -2,18 +2,20 @@ import { describe, expect, it, vi } from "vitest";
 import type { ReactElement, ReactNode } from "react";
 import { ListingTable, type ListingRow } from "@/components/ds/listing-table";
 import { SettingsPage } from "@/components/ds/settings";
+import { ViewHeader } from "@/components/ds/view-header";
 
 const h = vi.hoisted(() => ({
   apps: [] as { id: bigint; publicId: string; name: string }[],
   boxes: [] as Record<string, unknown>[],
   access: "all" as "all" | bigint[],
   listBoxes: vi.fn(),
+  canManage: true,
 }));
 
 vi.mock("@/db/client", () => ({ db: {} }));
 vi.mock("@/lib/auth/guards", () => ({
   requirePagePermission: async () => undefined,
-  can: async () => true,
+  can: async () => h.canManage,
   activeMember: async () => null,
 }));
 vi.mock("@/lib/auth/active-org", () => ({ requireActiveOrganizationId: async () => "org_x" }));
@@ -59,7 +61,8 @@ async function render() {
   const tree = await MailboxesSettingsPage();
   const [table] = findAll(tree, ListingTable) as ReactElement<{ items: ListingRow[] }>[];
   const [page] = findAll(tree, SettingsPage) as ReactElement<{ subtitle: string }>[];
-  return { items: table.props.items, subtitle: page.props.subtitle };
+  const [header] = findAll(tree, ViewHeader) as ReactElement<{ actions?: ReactNode }>[];
+  return { items: table.props.items, subtitle: page.props.subtitle, actions: header.props.actions };
 }
 
 describe("workspace mailboxes page", () => {
@@ -68,11 +71,28 @@ describe("workspace mailboxes page", () => {
     h.boxes = [box(10n, "hello@alpha.test", 1n), box(11n, "news@beta.test", 2n)];
     h.access = "all";
     h.listBoxes.mockImplementation(async () => ({ items: h.boxes }));
-    const { items, subtitle } = await render();
+    const { items, subtitle, actions } = await render();
     expect(items.map((i) => i.title)).toEqual(["hello@alpha.test", "news@beta.test"]);
     expect(items[0].meta).toContain("Alpha");
     expect(items[1].meta).toContain("Beta");
     expect(subtitle).toBe("Every address in this workspace.");
+    expect(actions).toBeDefined();
+  });
+
+  it("hides New mailbox and uses the read-only subtitle without mailbox:manage", async () => {
+    h.apps = [alpha];
+    h.boxes = [box(10n, "hello@alpha.test", 1n)];
+    h.access = "all";
+    h.canManage = false;
+    h.listBoxes.mockImplementation(async () => ({ items: h.boxes }));
+    try {
+      const { items, subtitle, actions } = await render();
+      expect(items.map((i) => i.title)).toEqual(["hello@alpha.test"]);
+      expect(subtitle).toBe("Mailboxes you can see in this workspace.");
+      expect(actions).toBeUndefined();
+    } finally {
+      h.canManage = true;
+    }
   });
 
   it("drops mailboxes of apps outside the workspace", async () => {

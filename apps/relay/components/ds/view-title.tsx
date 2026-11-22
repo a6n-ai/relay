@@ -17,14 +17,16 @@ export function ViewTitle({ title }: { title: string }) {
           {i > 0 ? <ChevronRightIcon aria-hidden className="size-3.5 shrink-0 text-muted-foreground max-sm:hidden" /> : null}
           {i === last ? (
             <h1 className="truncate text-[13px] font-medium tracking-normal">{c.label}</h1>
-          ) : (
+          ) : c.href ? (
             <Link
-              href={c.href ?? "#"}
+              href={c.href}
               prefetch={false}
               className="shrink-0 text-muted-foreground transition-colors hover:text-foreground max-sm:hidden"
             >
               {c.label}
             </Link>
+          ) : (
+            <span className="shrink-0 text-muted-foreground max-sm:hidden">{c.label}</span>
           )}
         </Fragment>
       ))}
