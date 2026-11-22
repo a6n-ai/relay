@@ -7,7 +7,7 @@ import { Input } from "@foundry/ui/input";
 import { Label } from "@foundry/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@foundry/ui/select";
 import { Textarea } from "@foundry/ui/textarea";
-import { VOLUMES } from "@/lib/contact/contact";
+import { VOLUMES } from "@/lib/contact/volumes";
 import { TURNSTILE_SITE_KEY } from "@/lib/contact/site-key";
 
 declare global {
@@ -24,10 +24,15 @@ export function ContactSection() {
   const [error, setError] = useState<string | null>(null);
   const [sentTo, setSentTo] = useState("");
   const successRef = useRef<HTMLDivElement>(null);
+  const errorRef = useRef<HTMLParagraphElement>(null);
 
   useEffect(() => {
     if (status === "sent") successRef.current?.focus();
   }, [status]);
+
+  useEffect(() => {
+    if (error) errorRef.current?.focus();
+  }, [error]);
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -124,7 +129,7 @@ export function ContactSection() {
             <Script src="https://challenges.cloudflare.com/turnstile/v0/api.js" strategy="afterInteractive" />
             <div className="cf-turnstile" data-sitekey={TURNSTILE_SITE_KEY} />
             {error ? (
-              <p role="alert" className="text-sm text-destructive">
+              <p ref={errorRef} tabIndex={-1} role="alert" className="text-sm text-destructive outline-none">
                 {error}
               </p>
             ) : null}
