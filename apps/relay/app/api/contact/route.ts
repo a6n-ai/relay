@@ -10,11 +10,12 @@ export const runtime = "nodejs";
 
 const log = createLogger("contact-route");
 
+const payloadTooLarge = () => Response.json({ title: "Payload too large", status: 413 }, { status: 413 });
+
 export async function POST(req: Request): Promise<Response> {
+  if (Number(req.headers.get("content-length")) > CONTACT_MAX_BYTES) return payloadTooLarge();
   const raw = await req.text();
-  if (new TextEncoder().encode(raw).byteLength > CONTACT_MAX_BYTES) {
-    return Response.json({ title: "Payload too large", status: 413 }, { status: 413 });
-  }
+  if (new TextEncoder().encode(raw).byteLength > CONTACT_MAX_BYTES) return payloadTooLarge();
   let body: unknown;
   try {
     body = JSON.parse(raw);

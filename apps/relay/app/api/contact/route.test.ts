@@ -86,6 +86,12 @@ describe("POST /api/contact", () => {
     expect(ingestInboundLetter).not.toHaveBeenCalled();
   });
 
+  it("rejects a declared content-length over 16 KB with 413 before reading", async () => {
+    const res = await POST(request(valid, { "content-length": "20000" }));
+    expect(res.status).toBe(413);
+    expect(ingestInboundLetter).not.toHaveBeenCalled();
+  });
+
   it("rejects a failed Turnstile check with 400", async () => {
     vi.mocked(verifyTurnstile).mockResolvedValue(false);
     const res = await POST(request(valid));
