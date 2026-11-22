@@ -1,6 +1,7 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Description: >-
-  Relay SES in ap-south-1 (Mumbai). Two sending identities: relay.a6n.ai (operator default
+  Relay SES in ap-south-1 (Mumbai). Three configuration sets: relay-prod (transactional),
+  relay-prod-tracked (transactional with opens/clicks) and relay-marketing. Two sending identities: relay.a6n.ai (operator default
   From) and a6n.ai (first app, a6n). EasyDKIM plus custom MAIL FROM; the DKIM and MAIL FROM
   records live in Cloudflare DNS for a6n.ai. Events go to SNS relay-ses-events, subscribed to
   https://relay.a6n.ai/api/webhooks/ses (the route confirms it). Stack name relay-ses.
@@ -52,6 +53,48 @@ Resources:
         Name: sns-relay-events
         Enabled: true
         MatchingEventTypes: [send, delivery, bounce, complaint, reject, deliveryDelay, renderingFailure]
+        SnsDestination:
+          TopicARN: !Ref EventsTopic
+
+  # Campaigns and other marketing mail: own reputation metrics, opens and clicks tracked.
+  MarketingConfigurationSet:
+    Type: AWS::SES::ConfigurationSet
+    Properties:
+      Name: relay-marketing
+      ReputationOptions: { ReputationMetricsEnabled: true }
+      Tags:
+        - { Key: app, Value: relay }
+        - { Key: env, Value: prod }
+
+  MarketingEventsDestination:
+    Type: AWS::SES::ConfigurationSetEventDestination
+    Properties:
+      ConfigurationSetName: !Ref MarketingConfigurationSet
+      EventDestination:
+        Name: sns-relay-events
+        Enabled: true
+        MatchingEventTypes: [send, delivery, bounce, complaint, reject, deliveryDelay, renderingFailure, open, click]
+        SnsDestination:
+          TopicARN: !Ref EventsTopic
+
+  # Transactional mail for apps that turn on open/click tracking (a plan feature, not used yet).
+  TrackedConfigurationSet:
+    Type: AWS::SES::ConfigurationSet
+    Properties:
+      Name: relay-prod-tracked
+      ReputationOptions: { ReputationMetricsEnabled: true }
+      Tags:
+        - { Key: app, Value: relay }
+        - { Key: env, Value: prod }
+
+  TrackedEventsDestination:
+    Type: AWS::SES::ConfigurationSetEventDestination
+    Properties:
+      ConfigurationSetName: !Ref TrackedConfigurationSet
+      EventDestination:
+        Name: sns-relay-events
+        Enabled: true
+        MatchingEventTypes: [send, delivery, bounce, complaint, reject, deliveryDelay, renderingFailure, open, click]
         SnsDestination:
           TopicARN: !Ref EventsTopic
 
