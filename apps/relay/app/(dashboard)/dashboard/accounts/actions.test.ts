@@ -1,13 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PgDialect } from "drizzle-orm/pg-core";
 import { ForbiddenError } from "@foundry/commons";
-import { member, session } from "@/db/schema";
+import { member, session, teamMember } from "@/db/schema";
 
 const h = vi.hoisted(() => ({
   actor: null as null | { id: string; organizationId: string; role: string; status: string },
   permitted: true,
   selects: [] as unknown[][],
   updates: [] as { table: unknown; values: Record<string, unknown>; cond: unknown }[],
+  deletes: [] as unknown[],
   updateMemberRole: vi.fn(),
   removeMember: vi.fn(),
   recordAudit: vi.fn(),
@@ -64,6 +65,12 @@ vi.mock("@/db/client", () => {
           },
         }),
       }),
+      delete: (table: unknown) => ({
+        where: () => {
+          h.deletes.push(table);
+          return resolved(undefined);
+        },
+      }),
     },
   };
 });
@@ -87,6 +94,7 @@ describe("accounts actions", () => {
     h.permitted = true;
     h.selects = [];
     h.updates = [];
+    h.deletes = [];
     h.updateMemberRole.mockReset().mockResolvedValue({});
     h.removeMember.mockReset().mockResolvedValue({});
     h.recordAudit.mockReset();
@@ -94,6 +102,14 @@ describe("accounts actions", () => {
     h.cancelInvitation.mockReset().mockResolvedValue({});
     h.createUser.mockReset().mockResolvedValue({ user: { id: "7" } });
     h.sendInviteEmail.mockReset().mockResolvedValue(undefined);
+  });
+
+  it("removing a member clears their team memberships in this workspace", async () => {
+    h.selects = [[target], [{ role: "owner" }, { role: "owner" }]];
+
+    await expect(removeMemberAction("mbr_target")).resolves.toEqual({});
+    expect(h.removeMember).toHaveBeenCalledWith(expect.objectContaining({ body: { memberIdOrEmail: "mbr_target", organizationId: "org_x" } }));
+    expect(h.deletes).toContain(teamMember);
   });
 
   it("invite refuses an existing member", async () => {

@@ -4,11 +4,13 @@ import { mailboxKindLabel } from "@/components/ds/plain-labels";
 import { SettingsPage, SettingsSection } from "@/components/ds/settings";
 import { ViewHeader } from "@/components/ds/view-header";
 import { canSeeMailbox } from "@/lib/mailbox/access";
+import { listGrantTargets, listMailboxGrants } from "@/lib/mailbox/grants";
 import { mailboxScope } from "@/lib/mailbox/scope";
 import { tenantMailboxesService } from "@/lib/services/tenant-mailboxes.service";
 import { tenantsService } from "@/lib/services/tenants.service";
+import { MailboxGrantsForm } from "./grants-form";
 import { MailboxSendingForm } from "./mailbox-sending-form";
-import { requirePagePermission } from "@/lib/auth/guards";
+import { can, requirePagePermission } from "@/lib/auth/guards";
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +31,10 @@ export default async function MailboxSettingsPage({ params }: { params: Promise<
       ? "Ready to send"
       : "Domain not proven yet: Relay uses the default From";
 
+  const canManage = await can({ mailbox: ["manage"] });
+  const grants = canManage ? await listMailboxGrants(row.id) : [];
+  const targets = canManage ? await listGrantTargets(scope.organizationId) : null;
+
   return (
     <PageShell>
       <ViewHeader title={row.email} section="settings" />
@@ -41,6 +47,16 @@ export default async function MailboxSettingsPage({ params }: { params: Promise<
             isPeopleInbox={row.kind === "people_inbox"}
           />
         </SettingsSection>
+        {targets ? (
+          <SettingsSection title="Who can see this mailbox" description="Owners and admins always see every mailbox.">
+            <MailboxGrantsForm
+              mailboxPublicId={row.publicId}
+              grants={grants}
+              teams={targets.teams}
+              members={targets.members}
+            />
+          </SettingsSection>
+        ) : null}
       </SettingsPage>
     </PageShell>
   );

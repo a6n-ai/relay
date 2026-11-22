@@ -2,10 +2,10 @@
 
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
-import { and, eq, gte, sql } from "drizzle-orm";
+import { and, eq, gte, inArray, sql } from "drizzle-orm";
 import { ForbiddenError } from "@foundry/commons";
 import { db } from "@/db/client";
-import { invitation, member, organization, session, users } from "@/db/schema";
+import { invitation, member, organization, session, team, teamMember, users } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { activeMember, requirePermission } from "@/lib/auth/guards";
 import { inviteUrl, invitesConfigured } from "@/lib/auth/invites";
@@ -174,6 +174,15 @@ export async function removeMemberAction(memberPublicId: string): Promise<Result
   } catch (err) {
     return ownerGuardError(err) ?? { error: "Could not remove member" };
   }
+  // Better Auth already drops these rows; this sweep covers this workspace's teams only, never the user's other workspaces.
+  await db
+    .delete(teamMember)
+    .where(
+      and(
+        eq(teamMember.userId, target.userId),
+        inArray(teamMember.teamId, db.select({ id: team.id }).from(team).where(eq(team.organizationId, actor.organizationId))),
+      ),
+    );
   await recordAudit({
     entity: "member",
     entityPublicId: memberPublicId,
