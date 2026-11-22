@@ -7,6 +7,7 @@ import { getActiveOrganizationId } from "@/lib/auth/active-org";
 import { getSession } from "@/lib/auth/session";
 import { tenantsService } from "@/lib/services/tenants.service";
 import { PLATFORM_WORKSPACE_SLUG } from "./platform-workspace";
+import { canSeeMailbox, mailboxAccess, type MailboxAccess } from "./access";
 
 export { PLATFORM_WORKSPACE_SLUG } from "./platform-workspace";
 
@@ -14,6 +15,7 @@ export type MailboxScope = {
   organizationId: string;
   tenantIds: bigint[];
   includeOperatorMail: boolean;
+  mailboxIds: MailboxAccess;
 };
 
 export const workspaceSlug = cache(async (): Promise<{ id: string; slug: string } | null> => {
@@ -51,10 +53,12 @@ export async function mailboxScope(): Promise<MailboxScope> {
     organizationId: workspace.id,
     tenantIds: page.items.map((t) => t.id),
     includeOperatorMail: workspace.slug === PLATFORM_WORKSPACE_SLUG,
+    mailboxIds: await mailboxAccess(),
   };
 }
 
-export function inScope(row: { tenantId: bigint | null }, scope: MailboxScope): boolean {
+export function inScope(row: { tenantId: bigint | null; mailboxId: bigint | null }, scope: MailboxScope): boolean {
+  if (!canSeeMailbox(scope.mailboxIds, row.mailboxId)) return false;
   if (row.tenantId === null) return scope.includeOperatorMail;
   return scope.tenantIds.includes(row.tenantId);
 }

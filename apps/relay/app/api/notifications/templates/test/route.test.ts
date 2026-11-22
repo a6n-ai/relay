@@ -9,7 +9,7 @@ vi.mock("@/db/client", () => ({ db: {} }));
 vi.mock("@/lib/campaigns/http", () => ({ operatorGuard: async () => {} }));
 vi.mock("@/lib/auth/session", () => ({ getSession: async () => ({ user: { email: "ops@a6n.test" } }) }));
 vi.mock("@/lib/mailbox/scope", () => ({
-  mailboxScope: async () => ({ organizationId: "org_x", tenantIds: [], includeOperatorMail: state.includeOperatorMail }),
+  mailboxScope: async () => ({ organizationId: "org_x", tenantIds: [], includeOperatorMail: state.includeOperatorMail, mailboxIds: "all" }),
 }));
 vi.mock("@/lib/email/from-address", () => ({
   operatorDefaultFrom: async () => ({ email: "ops@a6n.test", name: "a6n" }),

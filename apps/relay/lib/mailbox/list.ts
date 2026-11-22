@@ -25,13 +25,18 @@ const listColumns = {
 };
 
 function scopeFilter(scope: MailboxScope, tenantId?: bigint): SQL | null {
+  if (scope.mailboxIds !== "all" && scope.mailboxIds.length === 0) return null;
+  let tenantWhere: SQL | null;
   if (tenantId != null) {
-    return scope.tenantIds.includes(tenantId) ? eq(emailMailbox.tenantId, tenantId) : null;
+    tenantWhere = scope.tenantIds.includes(tenantId) ? eq(emailMailbox.tenantId, tenantId) : null;
+  } else {
+    const clauses: SQL[] = [];
+    if (scope.tenantIds.length > 0) clauses.push(inArray(emailMailbox.tenantId, scope.tenantIds));
+    if (scope.includeOperatorMail && scope.mailboxIds === "all") clauses.push(isNull(emailMailbox.tenantId));
+    tenantWhere = clauses.length > 0 ? (or(...clauses) ?? null) : null;
   }
-  const clauses: SQL[] = [];
-  if (scope.tenantIds.length > 0) clauses.push(inArray(emailMailbox.tenantId, scope.tenantIds));
-  if (scope.includeOperatorMail) clauses.push(isNull(emailMailbox.tenantId));
-  return clauses.length > 0 ? (or(...clauses) ?? null) : null;
+  if (!tenantWhere || scope.mailboxIds === "all") return tenantWhere;
+  return and(tenantWhere, inArray(emailMailbox.mailboxId, scope.mailboxIds)) ?? null;
 }
 
 export async function listMailboxLetters(

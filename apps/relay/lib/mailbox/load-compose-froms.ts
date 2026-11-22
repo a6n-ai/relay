@@ -3,6 +3,7 @@ import { operatorDefaultFrom } from "@/lib/email/from-address";
 import { tenantMailboxesService } from "@/lib/services/tenant-mailboxes.service";
 import { tenantsService } from "@/lib/services/tenants.service";
 import { composeFromOptions, type ComposeFromOption } from "./compose-from";
+import { canSeeMailbox } from "./access";
 import { MAILBOX_TENANT_LIMIT, mailboxScope } from "./scope";
 
 export async function loadComposeFroms(): Promise<ComposeFromOption[]> {
@@ -15,8 +16,9 @@ export async function loadComposeFroms(): Promise<ComposeFromOption[]> {
   ]);
   const tenantById = new Map(tenants.items.map((t) => [t.id.toString(), t]));
   return composeFromOptions({
-    operator: scope.includeOperatorMail ? operator : null,
+    operator: scope.includeOperatorMail && canSeeMailbox(scope.mailboxIds, null) ? operator : null,
     senders: senders.items.flatMap((s) => {
+      if (!canSeeMailbox(scope.mailboxIds, s.id)) return [];
       if (activeApp && s.tenantId !== activeApp.id) return [];
       const tenant = tenantById.get(s.tenantId.toString());
       if (!tenant) return [];

@@ -30,13 +30,14 @@ export async function readAttachment(scope: MailboxScope, publicId: string) {
       storageKey: emailAttachment.storageKey,
       letterPublicId: emailMailbox.publicId,
       tenantId: emailMailbox.tenantId,
+      mailboxId: emailMailbox.mailboxId,
     })
     .from(emailAttachment)
     .innerJoin(emailMailbox, eq(emailAttachment.mailboxId, emailMailbox.id))
     .where(eq(emailAttachment.publicId, publicId))
     .limit(1);
   if (!row || !inScope(row, scope)) return null;
-  const { letterPublicId, tenantId, ...attachment } = row;
+  const { letterPublicId, tenantId, mailboxId, ...attachment } = row;
   return { attachment, letter: { publicId: letterPublicId, tenantId } };
 }
 

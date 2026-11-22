@@ -3,8 +3,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const state = vi.hoisted(() => ({
   includeOperatorMail: false,
   tenantIds: [] as bigint[],
-  listSenders: async (..._args: unknown[]) => ({ items: [] }),
-  listRecent: async (..._args: unknown[]) => ({ items: [] }),
+  mailboxIds: "all" as "all" | bigint[],
+  listSenders: async (..._args: unknown[]) => ({ items: [] as unknown[] }),
+  listRecent: async (..._args: unknown[]) => ({ items: [] as unknown[] }),
 }));
 
 vi.mock("@/lib/apps/active-app", () => ({ resolveActiveApp: async () => null }));
@@ -19,7 +20,16 @@ vi.mock("@/lib/services/tenants.service", () => ({
 }));
 vi.mock("@/lib/mailbox/scope", () => ({
   MAILBOX_TENANT_LIMIT: 1000,
-  mailboxScope: async () => ({ organizationId: "org_x", tenantIds: state.tenantIds, includeOperatorMail: state.includeOperatorMail }),
+  mailboxScope: async () => ({
+    organizationId: "org_x",
+    tenantIds: state.tenantIds,
+    includeOperatorMail: state.includeOperatorMail,
+    mailboxIds: state.mailboxIds,
+  }),
+}));
+vi.mock("@/lib/mailbox/access", () => ({
+  canSeeMailbox: (access: "all" | bigint[], mailboxId: bigint | null) =>
+    access === "all" || (mailboxId !== null && access.includes(mailboxId)),
 }));
 
 const { loadComposeFroms } = await import("./load-compose-froms");
@@ -47,6 +57,23 @@ describe("loadComposeFroms", () => {
     await loadComposeFroms();
 
     expect(listRecent).toHaveBeenCalledWith(undefined, 1000);
+  });
+
+  it("offers a member only the Froms of mailboxes granted to them", async () => {
+    state.tenantIds = [5n];
+    state.mailboxIds = [11n];
+    state.listRecent = async () => ({ items: [{ id: 5n, publicId: "app_a", name: "Acme" }] });
+    state.listSenders = async () => ({
+      items: [
+        { id: 11n, publicId: "tmb_a", email: "hi@acme.test", displayName: null, verifiedAt: 1, tenantId: 5n },
+        { id: 12n, publicId: "tmb_b", email: "sales@acme.test", displayName: null, verifiedAt: 1, tenantId: 5n },
+      ],
+    });
+
+    const froms = await loadComposeFroms();
+
+    expect(froms.map((f) => f.email)).toEqual(["hi@acme.test"]);
+    state.mailboxIds = "all";
   });
 
   it("omits the operator From outside the platform workspace", async () => {

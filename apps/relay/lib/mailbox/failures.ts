@@ -4,6 +4,7 @@ import { mailboxInboundFailure } from "@/db/schema";
 import { processQueuedInbound, type QueuedInbound } from "./process-queued";
 import type { MailboxScope } from "./scope";
 
+// Inbound failures are not tied to a mailbox, so only owners and admins (mailboxIds "all") see them.
 function visible(row: { organizationId: string | null }, scope: MailboxScope): boolean {
   return row.organizationId === null ? scope.includeOperatorMail : row.organizationId === scope.organizationId;
 }
@@ -14,11 +15,13 @@ function scopeCondition(scope: MailboxScope) {
 }
 
 export async function countInboundFailures(scope: MailboxScope): Promise<number> {
+  if (scope.mailboxIds !== "all") return 0;
   const [row] = await db.select({ n: count() }).from(mailboxInboundFailure).where(scopeCondition(scope));
   return row?.n ?? 0;
 }
 
 export async function listInboundFailures(scope: MailboxScope) {
+  if (scope.mailboxIds !== "all") return [];
   return db
     .select({
       publicId: mailboxInboundFailure.publicId,
@@ -35,6 +38,7 @@ export async function listInboundFailures(scope: MailboxScope) {
 }
 
 export async function readInboundFailure(scope: MailboxScope, publicId: string) {
+  if (scope.mailboxIds !== "all") return null;
   const [row] = await db
     .select()
     .from(mailboxInboundFailure)

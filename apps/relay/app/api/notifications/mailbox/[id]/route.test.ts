@@ -1,15 +1,22 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-type Letter = { publicId: string; tenantId: bigint | null };
+type Letter = { publicId: string; tenantId: bigint | null; mailboxId: bigint | null };
 
 const state = vi.hoisted(() => ({
   activeOrgId: null as string | null,
   orgRows: [] as { id: string; slug: string }[],
   listRecent: vi.fn(),
   letters: [] as Letter[],
+  access: "all" as "all" | bigint[],
 }));
 
 vi.mock("react", () => ({ cache: <T>(fn: T) => fn }));
+
+vi.mock("@/lib/mailbox/access", () => ({
+  mailboxAccess: async () => state.access,
+  canSeeMailbox: (access: "all" | bigint[], mailboxId: bigint | null) =>
+    access === "all" || (mailboxId !== null && access.includes(mailboxId)),
+}));
 
 vi.mock("@/lib/auth/active-org", () => ({
   getActiveOrganizationId: async () => state.activeOrgId,
@@ -61,11 +68,19 @@ describe("GET /api/notifications/mailbox/[id]", () => {
     state.activeOrgId = null;
     state.orgRows = [];
     state.listRecent.mockReset();
+    state.access = "all";
     state.letters = [
-      { publicId: "eml_a", tenantId: CLIENT_A },
-      { publicId: "eml_b", tenantId: CLIENT_B },
-      { publicId: "eml_operator", tenantId: null },
+      { publicId: "eml_a", tenantId: CLIENT_A, mailboxId: 11n },
+      { publicId: "eml_b", tenantId: CLIENT_B, mailboxId: 12n },
+      { publicId: "eml_operator", tenantId: null, mailboxId: null },
     ];
+  });
+
+  it("member without a grant gets 404 for a letter", async () => {
+    signInTo("org_a", "acme", [CLIENT_A, CLIENT_B]);
+    state.access = [12n];
+    expect((await read("eml_a")).status).toBe(404);
+    expect((await read("eml_b")).status).toBe(200);
   });
 
   it("answers 404, not a redirect, with no active workspace", async () => {

@@ -5,9 +5,16 @@ const state = vi.hoisted(() => ({
   activeOrgId: null as string | null,
   orgRows: [] as { id: string; slug: string }[],
   listRecent: vi.fn(),
+  access: "all" as "all" | bigint[],
 }));
 
 vi.mock("react", () => ({ cache: <T>(fn: T) => fn }));
+
+vi.mock("./access", () => ({
+  mailboxAccess: async () => state.access,
+  canSeeMailbox: (access: "all" | bigint[], mailboxId: bigint | null) =>
+    access === "all" || (mailboxId !== null && access.includes(mailboxId)),
+}));
 
 vi.mock("@/lib/auth/active-org", () => ({
   getActiveOrganizationId: async () => state.activeOrgId,
@@ -36,6 +43,18 @@ describe("mailboxScope", () => {
     state.activeOrgId = null;
     state.orgRows = [];
     state.listRecent.mockReset();
+    state.access = "all";
+  });
+
+  it("reads the caller's mailbox grants on every call", async () => {
+    state.activeOrgId = "org_client";
+    state.orgRows = [{ id: "org_client", slug: "acme" }];
+    state.listRecent.mockResolvedValue({ items: [{ id: 7n }] });
+
+    state.access = [11n];
+    await expect(mailboxScope()).resolves.toMatchObject({ mailboxIds: [11n] });
+    state.access = "all";
+    await expect(mailboxScope()).resolves.toMatchObject({ mailboxIds: "all" });
   });
 
   it("throws NotFoundError when no workspace is active", async () => {
@@ -64,6 +83,7 @@ describe("mailboxScope", () => {
       organizationId: "org_client",
       tenantIds: [7n, 9n],
       includeOperatorMail: false,
+      mailboxIds: "all",
     });
     expect(state.listRecent).toHaveBeenCalledWith(undefined, 1000);
   });
@@ -77,6 +97,7 @@ describe("mailboxScope", () => {
       organizationId: "org_a6n",
       tenantIds: [],
       includeOperatorMail: true,
+      mailboxIds: "all",
     });
   });
 });
@@ -106,26 +127,33 @@ describe("workspaceSlug and platformWorkspaceId", () => {
 });
 
 describe("inScope", () => {
-  const tenantScope = { organizationId: "org_client", tenantIds: [7n], includeOperatorMail: false };
-  const platformScope = { organizationId: "org_a6n", tenantIds: [7n], includeOperatorMail: true };
+  const tenantScope = { organizationId: "org_client", tenantIds: [7n], includeOperatorMail: false, mailboxIds: "all" as const };
+  const platformScope = { organizationId: "org_a6n", tenantIds: [7n], includeOperatorMail: true, mailboxIds: "all" as const };
+  const memberScope = { ...tenantScope, mailboxIds: [11n] };
 
   it("admits rows whose tenant is in the scope", () => {
-    expect(inScope({ tenantId: 7n }, tenantScope)).toBe(true);
+    expect(inScope({ tenantId: 7n, mailboxId: null }, tenantScope)).toBe(true);
   });
 
   it("rejects rows from another tenant", () => {
-    expect(inScope({ tenantId: 8n }, tenantScope)).toBe(false);
+    expect(inScope({ tenantId: 8n, mailboxId: null }, tenantScope)).toBe(false);
   });
 
   it("rejects operator mail outside the platform workspace", () => {
-    expect(inScope({ tenantId: null }, tenantScope)).toBe(false);
+    expect(inScope({ tenantId: null, mailboxId: null }, tenantScope)).toBe(false);
   });
 
   it("admits operator mail inside the platform workspace", () => {
-    expect(inScope({ tenantId: null }, platformScope)).toBe(true);
+    expect(inScope({ tenantId: null, mailboxId: null }, platformScope)).toBe(true);
   });
 
   it("rejects another workspace's tenant inside the platform workspace", () => {
-    expect(inScope({ tenantId: 8n }, platformScope)).toBe(false);
+    expect(inScope({ tenantId: 8n, mailboxId: null }, platformScope)).toBe(false);
+  });
+
+  it("admits a member only the letters of a granted mailbox", () => {
+    expect(inScope({ tenantId: 7n, mailboxId: 11n }, memberScope)).toBe(true);
+    expect(inScope({ tenantId: 7n, mailboxId: 12n }, memberScope)).toBe(false);
+    expect(inScope({ tenantId: 7n, mailboxId: null }, memberScope)).toBe(false);
   });
 });

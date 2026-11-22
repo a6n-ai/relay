@@ -7,6 +7,7 @@ import { notificationTables } from "@/db/schema";
 import { operatorGuard } from "@/lib/campaigns/http";
 import { operatorDefaultFrom } from "@/lib/email/from-address";
 import { getEmailProvider, hydrateSmtpFromDb } from "@/lib/email/provider";
+import { canSeeMailbox } from "@/lib/mailbox/access";
 import { readMailboxLetter } from "@/lib/mailbox/list";
 import { conversationKey } from "@/lib/mailbox/listing";
 import { manualMailboxLetter } from "@/lib/mailbox/manual-send";
@@ -37,14 +38,15 @@ export const POST = handler(async (req: Request) => {
   let tenantId: bigint | null = null;
   let from: { email: string; name?: string } | null = null;
   if (parsed.data.fromId === "operator") {
-    if (!scope.includeOperatorMail) throw new NotFoundError("Unknown From");
+    if (!scope.includeOperatorMail || !canSeeMailbox(scope.mailboxIds, null)) throw new NotFoundError("Unknown From");
     from = await operatorDefaultFrom();
   } else {
     const sender = await tenantMailboxesService.read(parsed.data.fromId).catch(() => null);
     if (
       !sender?.canSend ||
       sender.tenantId == null ||
-      !scope.tenantIds.includes(sender.tenantId)
+      !scope.tenantIds.includes(sender.tenantId) ||
+      !canSeeMailbox(scope.mailboxIds, sender.id)
     ) {
       throw new NotFoundError("Unknown From");
     }

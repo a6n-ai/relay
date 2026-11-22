@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requirePermission } from "@/lib/auth/guards";
+import { canSeeMailbox } from "@/lib/mailbox/access";
 import { mailboxScope } from "@/lib/mailbox/scope";
 import { tenantMailboxesService } from "@/lib/services/tenant-mailboxes.service";
 
@@ -10,7 +11,9 @@ export async function updateMailboxSendingAction(formData: FormData): Promise<{ 
   const publicId = String(formData.get("publicId") ?? "");
   const scope = await mailboxScope();
   const row = await tenantMailboxesService.read(publicId).catch(() => null);
-  if (!row || !scope.tenantIds.includes(row.tenantId)) return { error: "Unknown mailbox" };
+  if (!row || !scope.tenantIds.includes(row.tenantId) || !canSeeMailbox(scope.mailboxIds, row.id)) {
+    return { error: "Unknown mailbox" };
+  }
   const displayName = String(formData.get("displayName") ?? "").trim();
   const result = await tenantMailboxesService.updateSending(publicId, {
     canSend: formData.get("canSend") === "on",

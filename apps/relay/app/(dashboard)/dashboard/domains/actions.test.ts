@@ -12,7 +12,7 @@ vi.mock("node:dns", () => ({ promises: { resolveTxt: vi.fn() } }));
 vi.mock("@/lib/auth/guards", () => ({ requirePermission: vi.fn() }));
 vi.mock("@/db/client", () => ({ db: {} }));
 vi.mock("@/lib/mailbox/scope", () => ({
-  mailboxScope: async () => ({ organizationId: "org_x", tenantIds: h.tenantIds, includeOperatorMail: false }),
+  mailboxScope: async () => ({ organizationId: "org_x", tenantIds: h.tenantIds, includeOperatorMail: false, mailboxIds: "all" }),
 }));
 vi.mock("@relay/email", () => ({
   generateDkimKeyPair: vi.fn(),

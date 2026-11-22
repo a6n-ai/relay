@@ -3,6 +3,7 @@ import { PageShell } from "@foundry/design-system";
 import { mailboxKindLabel } from "@/components/ds/plain-labels";
 import { SettingsPage, SettingsSection } from "@/components/ds/settings";
 import { ViewHeader } from "@/components/ds/view-header";
+import { canSeeMailbox } from "@/lib/mailbox/access";
 import { mailboxScope } from "@/lib/mailbox/scope";
 import { tenantMailboxesService } from "@/lib/services/tenant-mailboxes.service";
 import { tenantsService } from "@/lib/services/tenants.service";
@@ -18,7 +19,7 @@ export default async function MailboxSettingsPage({ params }: { params: Promise<
   const { id } = await params;
   const scope = await mailboxScope();
   const row = await tenantMailboxesService.read(id).catch(() => null);
-  if (!row || !scope.tenantIds.includes(row.tenantId)) notFound();
+  if (!row || !scope.tenantIds.includes(row.tenantId) || !canSeeMailbox(scope.mailboxIds, row.id)) notFound();
   const app = await tenantsService.findById(row.tenantId);
   if (!app) notFound();
 

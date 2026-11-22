@@ -4,11 +4,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 type Letter = {
   publicId: string;
   tenantId: bigint | null;
+  mailboxId: bigint | null;
   rfcMessageId: string;
   threadId: string;
   rfcReferences: string | null;
 };
-type Mailbox = { publicId: string; tenantId: bigint; email: string; displayName: string | null; verifiedAt: number | null; canSend: boolean };
+type Mailbox = { id: bigint; publicId: string; tenantId: bigint; email: string; displayName: string | null; verifiedAt: number | null; canSend: boolean };
 
 const state = vi.hoisted(() => ({
   activeOrgId: null as string | null,
@@ -20,9 +21,16 @@ const state = vi.hoisted(() => ({
   archived: [] as { tenantId: bigint | null; fromEmail: string }[],
   sent: [] as unknown[],
   sendLimit: null as string | null,
+  access: "all" as "all" | bigint[],
 }));
 
 vi.mock("react", () => ({ cache: <T>(fn: T) => fn }));
+
+vi.mock("@/lib/mailbox/access", () => ({
+  mailboxAccess: async () => state.access,
+  canSeeMailbox: (access: "all" | bigint[], mailboxId: bigint | null) =>
+    access === "all" || (mailboxId !== null && access.includes(mailboxId)),
+}));
 
 vi.mock("@/lib/auth/active-org", () => ({
   getActiveOrganizationId: async () => state.activeOrgId,
@@ -111,14 +119,39 @@ describe("POST /api/notifications/mailbox/send", () => {
     state.archived = [];
     state.sent = [];
     state.sendLimit = null;
+    state.access = "all";
     state.letters = [
-      { publicId: "eml_a", tenantId: CLIENT_A, rfcMessageId: "<a@x>", threadId: "<a@x>", rfcReferences: null },
-      { publicId: "eml_b", tenantId: CLIENT_B, rfcMessageId: "<b@x>", threadId: "<b@x>", rfcReferences: null },
+      { publicId: "eml_a", tenantId: CLIENT_A, mailboxId: 1n, rfcMessageId: "<a@x>", threadId: "<a@x>", rfcReferences: null },
+      { publicId: "eml_b", tenantId: CLIENT_B, mailboxId: 2n, rfcMessageId: "<b@x>", threadId: "<b@x>", rfcReferences: null },
     ];
     state.mailboxes = [
-      { publicId: "tmb_a", tenantId: CLIENT_A, email: "hi@acme.test", displayName: "Acme", verifiedAt: 1, canSend: true },
-      { publicId: "tmb_b", tenantId: CLIENT_B, email: "hi@bravo.test", displayName: "Bravo", verifiedAt: 1, canSend: true },
+      { id: 1n, publicId: "tmb_a", tenantId: CLIENT_A, email: "hi@acme.test", displayName: "Acme", verifiedAt: 1, canSend: true },
+      { id: 2n, publicId: "tmb_b", tenantId: CLIENT_B, email: "hi@bravo.test", displayName: "Bravo", verifiedAt: 1, canSend: true },
     ];
+  });
+
+  it("member cannot send from an ungranted mailbox", async () => {
+    signInTo("org_a", "acme", [CLIENT_A]);
+    state.access = [2n];
+    const res = await send({ fromId: "tmb_a" });
+    expect(res.status).toBe(404);
+    expect(state.sent).toHaveLength(0);
+  });
+
+  it("member cannot send from the operator From without the all grant", async () => {
+    signInTo("org_a6n", PLATFORM_WORKSPACE_SLUG, [CLIENT_A]);
+    state.access = [1n];
+    const res = await send({ fromId: "operator" });
+    expect(res.status).toBe(404);
+    expect(state.sent).toHaveLength(0);
+  });
+
+  it("member cannot reply to a letter in an ungranted mailbox", async () => {
+    signInTo("org_a", "acme", [CLIENT_A, CLIENT_B]);
+    state.access = [1n];
+    const res = await send({ fromId: "tmb_a", replyToId: "eml_b" });
+    expect(res.status).toBe(404);
+    expect(state.sent).toHaveLength(0);
   });
 
   it("answers 404 for the operator From outside the platform workspace", async () => {

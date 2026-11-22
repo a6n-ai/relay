@@ -28,9 +28,11 @@ vi.mock("@/db/client", () => {
 
 const { listMailboxLetters, listMailboxThread, readMailboxLetter } = await import("./list");
 
-const client: MailboxScope = { organizationId: "org_client", tenantIds: [7n, 9n], includeOperatorMail: false };
-const platform: MailboxScope = { organizationId: "org_a6n", tenantIds: [7n], includeOperatorMail: true };
-const empty: MailboxScope = { organizationId: "org_empty", tenantIds: [], includeOperatorMail: false };
+const client: MailboxScope = { organizationId: "org_client", tenantIds: [7n, 9n], includeOperatorMail: false, mailboxIds: "all" };
+const platform: MailboxScope = { organizationId: "org_a6n", tenantIds: [7n], includeOperatorMail: true, mailboxIds: "all" };
+const empty: MailboxScope = { organizationId: "org_empty", tenantIds: [], includeOperatorMail: false, mailboxIds: "all" };
+const member: MailboxScope = { organizationId: "org_client", tenantIds: [7n, 9n], includeOperatorMail: false, mailboxIds: [11n] };
+const noGrants: MailboxScope = { ...member, mailboxIds: [] };
 
 function params(where: SQL | undefined) {
   return new PgDialect().sqlToQuery(where!).params;
@@ -47,6 +49,19 @@ describe("mailbox scope in the query layer", () => {
     await expect(listMailboxThread(empty, "t")).resolves.toEqual([]);
     await expect(readMailboxLetter(empty, "eml_1")).resolves.toBeNull();
     expect(state.where).toBeUndefined();
+  });
+
+  it("returns no rows and runs no query when the member holds no mailbox grants", async () => {
+    await expect(listMailboxLetters(noGrants)).resolves.toEqual([]);
+    await expect(listMailboxThread(noGrants, "t")).resolves.toEqual([]);
+    await expect(readMailboxLetter(noGrants, "eml_1")).resolves.toBeNull();
+    expect(state.where).toBeUndefined();
+  });
+
+  it("list filter adds the mailbox condition for members", async () => {
+    await listMailboxLetters(member);
+    expect(params(state.where)).toEqual([7n, 9n, 11n]);
+    expect(new PgDialect().sqlToQuery(state.where!).sql).not.toContain("is null");
   });
 
   it("limits a client workspace to its own tenants, never operator mail", async () => {

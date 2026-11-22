@@ -2,14 +2,19 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const h = vi.hoisted(() => ({
   tenantIds: [] as bigint[],
-  row: null as null | { publicId: string; tenantId: bigint },
+  access: "all" as "all" | bigint[],
+  row: null as null | { id: bigint; publicId: string; tenantId: bigint },
   updateSending: vi.fn(),
 }));
 
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/lib/auth/guards", () => ({ requirePermission: vi.fn() }));
+vi.mock("@/lib/mailbox/access", () => ({
+  canSeeMailbox: (access: "all" | bigint[], mailboxId: bigint | null) =>
+    access === "all" || (mailboxId !== null && access.includes(mailboxId)),
+}));
 vi.mock("@/lib/mailbox/scope", () => ({
-  mailboxScope: async () => ({ organizationId: "org_x", tenantIds: h.tenantIds, includeOperatorMail: false }),
+  mailboxScope: async () => ({ organizationId: "org_x", tenantIds: h.tenantIds, includeOperatorMail: false, mailboxIds: h.access }),
 }));
 vi.mock("@/lib/services/tenant-mailboxes.service", () => ({
   tenantMailboxesService: {
@@ -33,13 +38,21 @@ function form(over: Record<string, string> = {}) {
 describe("updateMailboxSendingAction", () => {
   beforeEach(() => {
     h.tenantIds = [1n];
-    h.row = { publicId: "tmb_x", tenantId: 1n };
+    h.access = "all";
+    h.row = { id: 5n, publicId: "tmb_x", tenantId: 1n };
     h.updateSending.mockReset();
     h.updateSending.mockResolvedValue({ publicId: "tmb_x" });
   });
 
   it("rejects a mailbox outside the workspace", async () => {
-    h.row = { publicId: "tmb_x", tenantId: 2n };
+    h.row = { id: 5n, publicId: "tmb_x", tenantId: 2n };
+
+    await expect(updateMailboxSendingAction(form())).resolves.toEqual({ error: "Unknown mailbox" });
+    expect(h.updateSending).not.toHaveBeenCalled();
+  });
+
+  it("member cannot change a mailbox they were not granted", async () => {
+    h.access = [6n];
 
     await expect(updateMailboxSendingAction(form())).resolves.toEqual({ error: "Unknown mailbox" });
     expect(h.updateSending).not.toHaveBeenCalled();
