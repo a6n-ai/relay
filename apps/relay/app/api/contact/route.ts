@@ -3,7 +3,7 @@ import { createLogger } from "@foundry/commons/logger";
 import { db } from "@/db/client";
 import { notificationTables } from "@/db/schema";
 import { tenantForInbox } from "@/lib/mailbox/inbound-recipient";
-import { allowContact, verifyTurnstile } from "@/lib/contact/guards";
+import { allowContact, readCapped, verifyTurnstile } from "@/lib/contact/guards";
 import { CONTACT_MAX_BYTES, buildContactLetter, contactSchema } from "@/lib/contact/contact";
 
 export const runtime = "nodejs";
@@ -14,8 +14,8 @@ const payloadTooLarge = () => Response.json({ title: "Payload too large", status
 
 export async function POST(req: Request): Promise<Response> {
   if (Number(req.headers.get("content-length")) > CONTACT_MAX_BYTES) return payloadTooLarge();
-  const raw = await req.text();
-  if (new TextEncoder().encode(raw).byteLength > CONTACT_MAX_BYTES) return payloadTooLarge();
+  const raw = await readCapped(req, CONTACT_MAX_BYTES);
+  if (raw === null) return payloadTooLarge();
   let body: unknown;
   try {
     body = JSON.parse(raw);

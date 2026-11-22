@@ -7,7 +7,8 @@ vi.mock("@relay/engine", async (importOriginal) => ({
 vi.mock("@/db/client", () => ({ db: {} }));
 vi.mock("@/db/schema", () => ({ notificationTables: {} }));
 vi.mock("@/lib/mailbox/inbound-recipient", () => ({ tenantForInbox: vi.fn(async () => 7n) }));
-vi.mock("@/lib/contact/guards", () => ({
+vi.mock("@/lib/contact/guards", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/contact/guards")>()),
   verifyTurnstile: vi.fn(async () => true),
   allowContact: vi.fn(async () => true),
 }));

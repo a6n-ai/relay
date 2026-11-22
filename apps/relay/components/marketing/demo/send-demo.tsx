@@ -90,7 +90,7 @@ function Scene({ s, compact }: { s: S; compact: boolean }) {
                   <ChannelGlyph channel={c.key} />
                   {c.label}
                 </span>
-                {SOON.has(c.key) ? <Badge>Soon</Badge> : <FlipBadge done={s.done > i} from="Queued" to="Delivered" />}
+                {SOON.has(c.key) ? <Badge className="rl-badge">Soon</Badge> : <FlipBadge done={s.done > i} from="Queued" to="Delivered" />}
               </div>
             ))}
           </div>
