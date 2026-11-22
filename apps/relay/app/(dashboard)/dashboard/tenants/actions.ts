@@ -62,7 +62,7 @@ export async function updateTenantQuotaAction(formData: FormData): Promise<{ err
   if (mailboxSeatQuota < 0) return { error: "Address limit must be 0 or a positive integer" };
   await tenantsService.update(publicId, { monthlyMessageQuota, mailboxSeatQuota });
   revalidatePath("/dashboard/tenants");
-  revalidatePath(`/dashboard/tenants/${publicId}`);
+  revalidatePath("/dashboard/settings/apps/[id]", "layout");
   return {};
 }
 
@@ -75,7 +75,7 @@ export async function issueTenantKeyAction(formData: FormData): Promise<{ secret
   if (!tenant) return { error: "Unknown tenant" };
   const secret = await issueTenantApiKey(tenant.id, name, parseApiKeyChannels(formData));
   revalidatePath("/dashboard/tenants");
-  revalidatePath(`/dashboard/tenants/${publicId}`);
+  revalidatePath("/dashboard/settings/apps/[id]", "layout");
   return { secret };
 }
 
@@ -101,7 +101,7 @@ export async function addTenantMailboxAction(formData: FormData): Promise<{ erro
     verifiedSendingDomains: verified.map((d) => d.domain),
   });
   if ("error" in result) return { error: result.error };
-  revalidatePath(`/dashboard/tenants/${publicId}`);
+  revalidatePath("/dashboard/settings/apps/[id]", "layout");
   revalidatePath("/dashboard/settings/mailboxes");
   return {};
 }

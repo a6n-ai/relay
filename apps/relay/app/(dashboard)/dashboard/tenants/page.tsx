@@ -56,7 +56,7 @@ export default async function TenantsPage() {
       id: t.publicId,
       title: t.name,
       meta,
-      href: `/dashboard/tenants/${t.publicId}`,
+      href: `/dashboard/settings/apps/${t.publicId}`,
       searchText: `${t.name} ${t.slug} ${meta}`,
       filterKeys,
       badges:

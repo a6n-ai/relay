@@ -43,7 +43,7 @@ export function CreateTenantForm() {
     created({
       noun: "App",
       name: values.name,
-      href: result.publicId ? `/dashboard/tenants/${result.publicId}` : undefined,
+      href: result.publicId ? `/dashboard/settings/apps/${result.publicId}` : undefined,
       secret: result.secret,
     });
   }

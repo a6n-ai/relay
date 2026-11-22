@@ -163,7 +163,7 @@ export default async function MailboxLetterPage({
                   <DetailRow label="App">
                     {row.tenantPublicId ? (
                       <Link
-                        href={`/dashboard/tenants/${row.tenantPublicId}`}
+                        href={`/dashboard/settings/apps/${row.tenantPublicId}`}
                         className="underline underline-offset-4"
                       >
                         {row.tenantName ?? row.tenantPublicId}

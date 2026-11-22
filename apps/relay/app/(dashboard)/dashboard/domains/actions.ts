@@ -43,6 +43,7 @@ export async function addSendingDomainAction(formData: FormData): Promise<{ erro
   revalidatePath("/dashboard/domains");
   revalidatePath("/dashboard/settings/email");
   revalidatePath("/dashboard/tenants");
+  revalidatePath("/dashboard/settings/apps/[id]", "layout");
   return {};
 }
 
@@ -63,5 +64,6 @@ export async function verifySendingDomainAction(formData: FormData): Promise<{ e
   revalidatePath("/dashboard/domains");
   revalidatePath("/dashboard/settings/email");
   revalidatePath("/dashboard/tenants");
+  revalidatePath("/dashboard/settings/apps/[id]", "layout");
   return ok ? { ok: true } : { error: "TXT record not found yet. DNS can take a few minutes." };
 }
