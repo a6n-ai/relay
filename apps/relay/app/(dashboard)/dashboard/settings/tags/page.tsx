@@ -63,7 +63,7 @@ export default async function TagsSettingsPage() {
         title="Tags"
         subtitle={
           activeApp
-            ? `Tags for ${activeApp.name}. Switch apps in the sidebar to manage another.`
+            ? `Tags for ${activeApp.name}. Pick another app with the app switcher on the main sidebar.`
             : "A tag on an app marks every message for that app, mail now and WhatsApp later."
         }
       >

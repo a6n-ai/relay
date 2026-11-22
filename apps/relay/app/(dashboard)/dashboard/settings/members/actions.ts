@@ -105,7 +105,7 @@ export async function setMemberRolesAction(memberPublicId: string, roles: string
     changes: { role: { from: target.role, to: roles.join(",") } },
     createdBy: await currentUserId(),
   });
-  revalidatePath("/dashboard/accounts");
+  revalidatePath("/dashboard/settings/members");
   return {};
 }
 
@@ -146,7 +146,7 @@ export async function setMemberStatusAction(memberPublicId: string, status: "act
     changes: { status: { from: target.status, to: status } },
     createdBy: await currentUserId(),
   });
-  revalidatePath("/dashboard/accounts");
+  revalidatePath("/dashboard/settings/members");
   return {};
 }
 
@@ -190,7 +190,7 @@ export async function removeMemberAction(memberPublicId: string): Promise<Result
     changes: null,
     createdBy: await currentUserId(),
   });
-  revalidatePath("/dashboard/accounts");
+  revalidatePath("/dashboard/settings/members");
   return {};
 }
 
@@ -240,7 +240,7 @@ async function sendInvite(organizationId: string, email: string, roles: string[]
   } catch {
     return { error: "Invite saved, but the email could not be sent. Resend it from this list." };
   }
-  revalidatePath("/dashboard/accounts");
+  revalidatePath("/dashboard/settings/members");
   return {};
 }
 
@@ -327,6 +327,6 @@ export async function cancelInvitationAction(invitationId: string): Promise<Resu
   } catch {
     return { error: "Could not cancel the invite" };
   }
-  revalidatePath("/dashboard/accounts");
+  revalidatePath("/dashboard/settings/members");
   return {};
 }

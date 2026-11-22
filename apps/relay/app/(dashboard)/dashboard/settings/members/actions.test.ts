@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { revalidatePath } from "next/cache";
 import { PgDialect } from "drizzle-orm/pg-core";
 import { ForbiddenError } from "@foundry/commons";
 import { member, session, teamMember } from "@/db/schema";
@@ -217,6 +218,7 @@ describe("accounts actions", () => {
     h.selects = [[{ id: "inv_1" }]];
     await expect(cancelInvitationAction("inv_1")).resolves.toEqual({});
     expect(h.cancelInvitation).toHaveBeenCalledWith(expect.objectContaining({ body: { invitationId: "inv_1" } }));
+    expect(revalidatePath).toHaveBeenCalledWith("/dashboard/settings/members");
   });
 
   it("cancel refuses an invite from another workspace", async () => {

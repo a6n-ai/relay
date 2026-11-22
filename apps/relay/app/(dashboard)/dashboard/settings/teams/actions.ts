@@ -11,7 +11,7 @@ import { activeMember, requirePermission } from "@/lib/auth/guards";
 import { currentUserId, recordAudit } from "@/lib/services/session-service";
 
 const DENIED = "You don’t have access to do that";
-const PAGE = "/dashboard/accounts/teams";
+const PAGE = "/dashboard/settings/teams";
 
 type Result = { error?: string };
 

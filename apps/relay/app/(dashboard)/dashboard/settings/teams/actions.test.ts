@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { revalidatePath } from "next/cache";
 import { ForbiddenError } from "@foundry/commons";
 
 const h = vi.hoisted(() => ({
@@ -110,6 +111,7 @@ describe("teams actions", () => {
     expect(h.removeTeam).toHaveBeenCalledWith(
       expect.objectContaining({ body: { teamId: "team_sales", organizationId: "org_x" } }),
     );
+    expect(revalidatePath).toHaveBeenCalledWith("/dashboard/settings/teams");
   });
 
   it("addTeamMember refuses a member from another workspace", async () => {

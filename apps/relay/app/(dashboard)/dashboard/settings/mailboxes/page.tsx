@@ -5,7 +5,7 @@ import { EmptyState } from "@/components/ds/empty-state";
 import { SettingsPage } from "@/components/ds/settings";
 import { ListingTable, type ListingFilter, type ListingRow } from "@/components/ds/listing-table";
 import { mailboxKindLabel } from "@/components/ds/plain-labels";
-import { resolveActiveApp } from "@/lib/apps/active-app";
+import { inList } from "@foundry/commons";
 import { mailboxAccess, visibleMailboxes } from "@/lib/mailbox/access";
 import { sendingDomainsService } from "@/lib/services/sending.service";
 import { tenantMailboxesService } from "@/lib/services/tenant-mailboxes.service";
@@ -20,15 +20,15 @@ export const metadata = { title: "Mailboxes" };
 
 export default async function MailboxesSettingsPage() {
   await requirePagePermission({ settings: ["read"] });
-  const [activeApp, { items: allApps }, { items: allBoxes }, { items: domains }, access] = await Promise.all([
-    resolveActiveApp(),
+  const [{ items: apps }, { items: domains }, access] = await Promise.all([
     tenantsService.listRecent(),
-    tenantMailboxesService.listRecent(undefined, 500),
     sendingDomainsService.listRecent(undefined, 500),
     mailboxAccess(),
   ]);
+  // Mailboxes are not scoped to a workspace on their own, so take only this workspace's apps.
+  const { items: allBoxes } =
+    apps.length === 0 ? { items: [] } : await tenantMailboxesService.listRecent(inList("tenantId", apps.map((a) => a.id)), 500);
   const boxes = visibleMailboxes(allBoxes, access);
-  const apps = activeApp ? allApps.filter((a) => a.id === activeApp.id) : allApps;
   const appById = new Map(apps.map((a) => [a.id, a]));
   const items: ListingRow[] = [];
   for (const b of boxes) {
@@ -66,14 +66,7 @@ export default async function MailboxesSettingsPage() {
         title="Mailboxes"
         actions={apps.length > 0 ? create(false) : undefined}
       />
-      <SettingsPage
-        title="Mailboxes"
-        subtitle={
-          activeApp
-            ? `Addresses for ${activeApp.name}. Switch apps in the sidebar to manage another.`
-            : "Addresses your apps send from and receive at. Letters to a Relay inbox show up in Inbox."
-        }
-      >
+      <SettingsPage title="Mailboxes" subtitle="Every address in this workspace.">
         <ListingTable
           framed
           title="All mailboxes"
