@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 vi.stubEnv("BETTER_AUTH_URL", "https://relay.example.test");
+vi.mock("@/db/client", () => ({ db: {} }));
 
 const { inviteUrl, isInviteOpen } = await import("./invites");
 
