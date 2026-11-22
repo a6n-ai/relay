@@ -42,6 +42,10 @@ export function ContactSection() {
     }
     const form = new FormData(e.currentTarget);
     const field = (key: string) => String(form.get(key) ?? "");
+    if (!field("cf-turnstile-response")) {
+      setError("Please tick the box to confirm you're human.");
+      return;
+    }
     const email = field("email");
     setStatus("sending");
     setError(null);
