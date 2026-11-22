@@ -27,6 +27,7 @@ vi.mock("@/lib/services/tenants.service", () => ({
 }));
 
 vi.mock("@/lib/auth/session", () => ({ getSession: async () => ({ user: { id: "ses_user" } }) }));
+vi.mock("@/lib/auth/guards", () => ({ activeMember: async () => ({ organizationId: state.activeOrgId }) }));
 
 vi.mock("@/db/client", () => {
   const chain = (): unknown => ({

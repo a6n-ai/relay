@@ -11,6 +11,7 @@ vi.mock("react", () => ({ cache: <T>(fn: T) => fn }));
 vi.mock("@/lib/mailbox/access", () => ({ mailboxAccess: async () => "all", canSeeMailbox: () => true }));
 vi.mock("@/lib/auth/active-org", () => ({ getActiveOrganizationId: async () => state.activeOrgId }));
 vi.mock("@/lib/auth/session", () => ({ getSession: async () => ({ user: { id: "ses_user" } }) }));
+vi.mock("@/lib/auth/guards", () => ({ activeMember: async () => ({ organizationId: state.activeOrgId }) }));
 vi.mock("@/lib/services/tenants.service", () => ({
   tenantsService: { listRecent: (...args: unknown[]) => state.listRecent(...args) },
 }));
