@@ -23,7 +23,7 @@ import { recordAudit } from "@/lib/services/session-service";
 import { betterAuthPassword } from "./password";
 import { ADMIN_DISABLED_PATHS, ORG_DISABLED_PATHS } from "./disabled-paths";
 import { INVITE_LIFETIME_S } from "./invites";
-import { canCreateSelfServeWorkspace, selfServeLimits } from "./workspace-limits";
+import { applySelfServeLimits, canCreateSelfServeWorkspace } from "./workspace-limits";
 import { ac, orgAc, orgRoles, roles } from "./permissions";
 import { notifyNewLoginIfNewDevice, notifyPasswordChanged, sendAuthOtp } from "./security-events";
 
@@ -100,20 +100,11 @@ export const auth = betterAuth({
       // Any signed-in user may create a workspace; self-made ones start limited (see selfServeLimits).
       // Public sign-up stays disabled above. Flat workspaces, no Foundry brand→franchise hierarchy.
       allowUserToCreateOrganization: true,
-      schema: {
-        // Not input:false: BA's create drops a hook's value for input:false fields (or throws if truthy).
-        organization: {
-          additionalFields: {
-            maxApps: { type: "number", required: false },
-            monthlyMessageQuota: { type: "number", required: false },
-            selfServe: { type: "boolean", required: false },
-          },
-        },
-      },
+      // Limits are not client fields: the create body strips unknown keys, so they are set server-side after insert.
       organizationHooks: {
         beforeCreateOrganization: async ({ user }) => {
           const platformRole = user.platformRole ?? null;
-          if (platformRole === "super_admin") return { data: { selfServe: false } };
+          if (platformRole === "super_admin") return;
           const [owned] = await db
             .select({ n: count() })
             .from(member)
@@ -128,7 +119,9 @@ export const auth = betterAuth({
           if (!canCreateSelfServeWorkspace(platformRole, Number(owned?.n ?? 0))) {
             throw new APIError("FORBIDDEN", { message: "You can create up to 3 workspaces" });
           }
-          return { data: { ...selfServeLimits(platformRole), selfServe: true } };
+        },
+        afterCreateOrganization: async ({ organization: org, user }) => {
+          await applySelfServeLimits(org.id, user.platformRole ?? null);
         },
       },
       ac: orgAc,

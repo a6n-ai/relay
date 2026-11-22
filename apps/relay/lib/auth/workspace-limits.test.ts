@@ -1,5 +1,13 @@
-import { describe, expect, it } from "vitest";
-import { canCreateSelfServeWorkspace, selfServeLimits } from "./workspace-limits";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { applySelfServeLimits, canCreateSelfServeWorkspace, selfServeLimits } from "./workspace-limits";
+
+const { set, where, update } = vi.hoisted(() => {
+  const where = vi.fn(async () => undefined);
+  const set = vi.fn(() => ({ where }));
+  const update = vi.fn(() => ({ set }));
+  return { set, where, update };
+});
+vi.mock("@/db/client", () => ({ db: { update } }));
 
 describe("selfServeLimits", () => {
   it("self-made workspaces get 1 app and 100 sends", () => {
@@ -23,5 +31,25 @@ describe("canCreateSelfServeWorkspace", () => {
 
   it("super admin has no cap", () => {
     expect(canCreateSelfServeWorkspace("super_admin", 50)).toBe(true);
+  });
+});
+
+describe("applySelfServeLimits", () => {
+  beforeEach(() => {
+    update.mockClear();
+    set.mockClear();
+    where.mockClear();
+  });
+
+  it("sets limits and selfServe on a self-made workspace", async () => {
+    await applySelfServeLimits("org_1", null);
+    expect(update).toHaveBeenCalledOnce();
+    expect(set).toHaveBeenCalledWith({ maxApps: 1, monthlyMessageQuota: 100, selfServe: true });
+    expect(where).toHaveBeenCalledOnce();
+  });
+
+  it("leaves a super admin workspace untouched", async () => {
+    await applySelfServeLimits("org_2", "super_admin");
+    expect(update).not.toHaveBeenCalled();
   });
 });
