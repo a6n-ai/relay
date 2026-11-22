@@ -27,7 +27,7 @@ export default async function GeneralSettingsPage() {
       .where(eq(organization.id, organizationId))
       .limit(1),
     db.select({ apps: count() }).from(tenants).where(eq(tenants.organizationId, organizationId)),
-    countOrganizationSendsThisMonth(organizationId),
+    countOrganizationSendsThisMonth(organizationId, undefined, "sent"),
   ]);
 
   return (
