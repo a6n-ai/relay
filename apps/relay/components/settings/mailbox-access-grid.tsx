@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
+import { toast } from "@foundry/ui/toast";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@foundry/ui/table";
 import { addMailboxGrantAction, removeMailboxGrantAction } from "@/app/(dashboard)/dashboard/settings/mailboxes/[id]/actions";
 import type { AccessGrid } from "@/lib/mailbox/access-grid";

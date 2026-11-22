@@ -59,10 +59,12 @@ export function SettingsSidebar({
               <SidebarMenu>
                 {group.items.map((item) => (
                   <SidebarMenuItem key={item.href}>
-                    <SidebarMenuButton asChild isActive={item.active} className={PRESS}>
-                      <Link href={item.href} prefetch={false} aria-current={item.active ? "page" : undefined}>
-                        <span>{item.label}</span>
-                      </Link>
+                    <SidebarMenuButton
+                      isActive={item.active}
+                      className={PRESS}
+                      render={<Link href={item.href} prefetch={false} aria-current={item.active ? "page" : undefined} />}
+                    >
+                      <span>{item.label}</span>
                     </SidebarMenuButton>
                     {item.children ? (
                       // Height and opacity share one 200ms ease in and out. Reduced motion keeps the cross-fade and drops the height move.
@@ -78,10 +80,12 @@ export function SettingsSidebar({
                           <SidebarMenuSub>
                             {item.children.map((child) => (
                               <SidebarMenuSubItem key={child.href}>
-                                <SidebarMenuSubButton asChild isActive={child.active} className={PRESS}>
-                                  <Link href={child.href} prefetch={false} aria-current={child.active ? "page" : undefined}>
-                                    <span>{child.label}</span>
-                                  </Link>
+                                <SidebarMenuSubButton
+                                  isActive={child.active}
+                                  className={PRESS}
+                                  render={<Link href={child.href} prefetch={false} aria-current={child.active ? "page" : undefined} />}
+                                >
+                                  <span>{child.label}</span>
                                 </SidebarMenuSubButton>
                               </SidebarMenuSubItem>
                             ))}
