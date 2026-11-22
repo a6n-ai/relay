@@ -5,7 +5,10 @@ import { SettingsPage } from "@/components/ds/settings";
 import { ViewHeader } from "@/components/ds/view-header";
 import { mailboxKindLabel } from "@/components/ds/plain-labels";
 import { AddMailboxForm } from "@/app/(dashboard)/dashboard/tenants/tenant-ops-forms";
-import { requirePagePermission } from "@/lib/auth/guards";
+import { MailboxAccessGrid } from "@/components/settings/mailbox-access-grid";
+import { requireActiveOrganizationId } from "@/lib/auth/active-org";
+import { can, requirePagePermission } from "@/lib/auth/guards";
+import { loadAccessGrid } from "@/lib/mailbox/access-grid";
 import { mailboxAccess, visibleMailboxes } from "@/lib/mailbox/access";
 import { sendingDomainsService } from "@/lib/services/sending.service";
 import { tenantMailboxesService } from "@/lib/services/tenant-mailboxes.service";
@@ -20,12 +23,15 @@ export default async function AppMailboxesPage({ params }: { params: Promise<{ i
   if (!app) notFound();
   const { tenant } = app;
 
-  const [{ items: domains }, allBoxes, access] = await Promise.all([
+  const [{ items: domains }, allBoxes, access, canManage, organizationId] = await Promise.all([
     sendingDomainsService.list(eq("tenantId", tenant.id), { page: 0, size: 50 }),
     tenantMailboxesService.forTenant(tenant.id),
     mailboxAccess(),
+    can({ mailbox: ["manage"] }),
+    requireActiveOrganizationId(),
   ]);
   const boxes = visibleMailboxes(allBoxes, access);
+  const grid = canManage ? await loadAccessGrid(organizationId, { tenantId: tenant.id }) : null;
 
   return (
     <PageShell>
@@ -48,6 +54,11 @@ export default async function AppMailboxesPage({ params }: { params: Promise<{ i
             ))}
           </ul>
         </SectionCard>
+        {grid ? (
+          <SectionCard title="Who can see these mailboxes" subtitle="Owners and admins always see every mailbox.">
+            <MailboxAccessGrid grid={grid} />
+          </SectionCard>
+        ) : null}
       </SettingsPage>
     </PageShell>
   );
