@@ -28,6 +28,16 @@ describe("contactSchema", () => {
     expect(contactSchema.safeParse({ ...valid, message: "x".repeat(4001) }).success).toBe(false);
   });
 
+  it("rejects name over 100 characters and company over 120", () => {
+    expect(contactSchema.safeParse({ ...valid, name: "x".repeat(101) }).success).toBe(false);
+    expect(contactSchema.safeParse({ ...valid, company: "x".repeat(121) }).success).toBe(false);
+  });
+
+  it("rejects line breaks in name and company", () => {
+    expect(contactSchema.safeParse({ ...valid, name: "Ann\r\nBcc: x@y.com" }).success).toBe(false);
+    expect(contactSchema.safeParse({ ...valid, company: "A\nB" }).success).toBe(false);
+  });
+
   it("rejects unknown volume values", () => {
     expect(contactSchema.safeParse({ ...valid, volume: "lots" }).success).toBe(false);
   });

@@ -12,10 +12,12 @@ export const VOLUMES = [
 
 const volumeValues = VOLUMES.map((v) => v.value) as [(typeof VOLUMES)[number]["value"], ...(typeof VOLUMES)[number]["value"][]];
 
+const noLineBreaks = /^[^\r\n]*$/;
+
 export const contactSchema = z.object({
-  name: z.string().trim().min(1).max(200),
+  name: z.string().trim().min(1).max(100).regex(noLineBreaks, "No line breaks"),
   email: z.string().trim().toLowerCase().max(254).email(),
-  company: z.string().trim().min(1).max(200),
+  company: z.string().trim().min(1).max(120).regex(noLineBreaks, "No line breaks"),
   volume: z.enum(volumeValues),
   message: z.string().trim().min(10).max(4000),
   website: z.string().optional(),
