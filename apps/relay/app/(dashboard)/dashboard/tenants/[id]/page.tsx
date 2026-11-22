@@ -13,6 +13,7 @@ import { emailChannelReady, operatorEmailPrereqs } from "@/lib/email/prerequisit
 import { sendingDomainsService } from "@/lib/services/sending.service";
 import { apiKeysService, tenantsService } from "@/lib/services/tenants.service";
 import { tenantMailboxesService } from "@/lib/services/tenant-mailboxes.service";
+import { mailboxAccess, visibleMailboxes } from "@/lib/mailbox/access";
 import { appMessageTagsService } from "@/lib/services/mailbox-tags.service";
 import { countTenantSendsThisMonth } from "@/lib/tenants/usage";
 import { AddMailboxForm, IssueKeyForm, UpdateQuotaForm } from "../tenant-ops-forms";
@@ -31,7 +32,7 @@ export default async function TenantDetailPage({
   const tenant = await tenantsService.read(id).catch(() => null);
   if (!tenant) notFound();
 
-  const [{ items: keys }, { items: domains }, used, from, boxes, tags, smtpRow] =
+  const [{ items: keys }, { items: domains }, used, from, allBoxes, tags, smtpRow, access] =
     await Promise.all([
       apiKeysService.list(eq("tenantId", tenant.id), { page: 0, size: 50 }),
       sendingDomainsService.list(eq("tenantId", tenant.id), { page: 0, size: 50 }),
@@ -40,7 +41,9 @@ export default async function TenantDetailPage({
       tenantMailboxesService.forTenant(tenant.id),
       appMessageTagsService.forTenant(tenant.id),
       loadOperatorSmtpRow(),
+      mailboxAccess(),
     ]);
+  const boxes = visibleMailboxes(allBoxes, access);
   const verifiedCount = domains.filter((d) => d.status === "verified").length;
   const prereqs = operatorEmailPrereqs(
     await loadEmailChannelSnapshot(verifiedCount, smtpRow?.host ?? null),
@@ -57,7 +60,7 @@ export default async function TenantDetailPage({
         create={
           <div className="flex flex-col gap-6">
       <SectionCard title="Monthly send limit" subtitle="0 means no cap. Counts messages started this calendar month (UTC).">
-        <p className="mb-3 text-sm">Sent {used.toLocaleString("en")} of {tenant.monthlyMessageQuota === 0 ? "unlimited" : tenant.monthlyMessageQuota.toLocaleString("en")} · {boxes.length} of {tenant.mailboxSeatQuota === 0 ? "unlimited" : tenant.mailboxSeatQuota.toLocaleString("en")} addresses</p>
+        <p className="mb-3 text-sm">Sent {used.toLocaleString("en")} of {tenant.monthlyMessageQuota === 0 ? "unlimited" : tenant.monthlyMessageQuota.toLocaleString("en")} · {allBoxes.length} of {tenant.mailboxSeatQuota === 0 ? "unlimited" : tenant.mailboxSeatQuota.toLocaleString("en")} addresses</p>
         <UpdateQuotaForm publicId={tenant.publicId} quota={tenant.monthlyMessageQuota} seatQuota={tenant.mailboxSeatQuota} />
       </SectionCard>
       <SectionCard title="Access keys" subtitle="Each key can send email. Other channels aren’t open yet.">

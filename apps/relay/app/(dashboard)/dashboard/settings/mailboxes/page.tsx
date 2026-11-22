@@ -6,7 +6,7 @@ import { SettingsPage } from "@/components/ds/settings";
 import { ListingTable, type ListingFilter, type ListingRow } from "@/components/ds/listing-table";
 import { mailboxKindLabel } from "@/components/ds/plain-labels";
 import { resolveActiveApp } from "@/lib/apps/active-app";
-import { canSeeMailbox, mailboxAccess } from "@/lib/mailbox/access";
+import { mailboxAccess, visibleMailboxes } from "@/lib/mailbox/access";
 import { sendingDomainsService } from "@/lib/services/sending.service";
 import { tenantMailboxesService } from "@/lib/services/tenant-mailboxes.service";
 import { tenantsService } from "@/lib/services/tenants.service";
@@ -27,7 +27,7 @@ export default async function MailboxesSettingsPage() {
     sendingDomainsService.listRecent(undefined, 500),
     mailboxAccess(),
   ]);
-  const boxes = allBoxes.filter((b) => canSeeMailbox(access, b.id));
+  const boxes = visibleMailboxes(allBoxes, access);
   const apps = activeApp ? allApps.filter((a) => a.id === activeApp.id) : allApps;
   const appById = new Map(apps.map((a) => [a.id, a]));
   const items: ListingRow[] = [];

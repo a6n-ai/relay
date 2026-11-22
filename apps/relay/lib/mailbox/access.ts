@@ -32,3 +32,7 @@ export function canSeeMailbox(access: MailboxAccess, mailboxId: bigint | null): 
   if (mailboxId === null) return false;
   return access.includes(mailboxId);
 }
+
+export function visibleMailboxes<T extends { id: bigint }>(rows: T[], access: MailboxAccess): T[] {
+  return rows.filter((b) => canSeeMailbox(access, b.id));
+}

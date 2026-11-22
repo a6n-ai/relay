@@ -19,7 +19,7 @@ vi.mock("@/db/client", () => {
   return { db: chain };
 });
 
-const { mailboxAccess, canSeeMailbox } = await import("./access");
+const { mailboxAccess, canSeeMailbox, visibleMailboxes } = await import("./access");
 
 const member = { id: "mbr_1", organizationId: "org_1", userId: 5n, role: "member", status: "active" };
 
@@ -50,6 +50,18 @@ describe("mailboxAccess", () => {
     state.member = { ...member, status: "suspended" };
     state.rows = [{ mailboxId: 1n }];
     await expect(mailboxAccess()).resolves.toEqual([]);
+  });
+});
+
+describe("visibleMailboxes", () => {
+  const boxes = [{ id: 1n }, { id: 2n }];
+
+  it("keeps only granted mailboxes for members", () => {
+    expect(visibleMailboxes(boxes, [2n])).toEqual([{ id: 2n }]);
+  });
+
+  it("keeps every mailbox for admins", () => {
+    expect(visibleMailboxes(boxes, "all")).toEqual(boxes);
   });
 });
 
