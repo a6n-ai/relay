@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { toast } from "sonner";
+import { toast } from "@foundry/ui/toast";
 import { Button } from "@foundry/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@foundry/ui/select";
 import { SettingsFooter, SettingsRow } from "@/components/ds/settings";

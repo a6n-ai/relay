@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { toast } from "sonner";
+import { toast } from "@foundry/ui/toast";
 import { EllipsisIcon } from "lucide-react";
 import { Button } from "@foundry/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@foundry/ui/dialog";
@@ -59,10 +59,8 @@ export function MemberRowActions({
   return (
     <>
       <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" aria-label={`Actions for ${name}`}>
-            <EllipsisIcon />
-          </Button>
+        <DropdownMenuTrigger render={<Button variant="ghost" size="icon" aria-label={`Actions for ${name}`} />}>
+          <EllipsisIcon />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           {canUpdate ? <DropdownMenuItem onClick={() => setDialog("roles")}>Change roles</DropdownMenuItem> : null}

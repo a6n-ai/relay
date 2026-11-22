@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { toast } from "sonner";
+import { toast } from "@foundry/ui/toast";
 import { Button } from "@foundry/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@foundry/ui/dialog";
 import { Input } from "@foundry/ui/input";
@@ -36,9 +36,7 @@ export function InviteTeammate({ roleOptions }: { roleOptions: RoleOption[] }) {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button>Invite teammate</Button>
-      </DialogTrigger>
+      <DialogTrigger render={<Button />}>Invite teammate</DialogTrigger>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Invite teammate</DialogTitle>

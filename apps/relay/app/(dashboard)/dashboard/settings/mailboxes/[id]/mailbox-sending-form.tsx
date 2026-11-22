@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@foundry/ui/toast";
 import { Button } from "@foundry/ui/button";
 import { Input } from "@foundry/ui/input";
 import { Switch } from "@foundry/ui/switch";
