@@ -7,10 +7,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { addMailboxGrantAction, removeMailboxGrantAction } from "@/app/(dashboard)/dashboard/settings/mailboxes/[id]/actions";
 import type { AccessGrid } from "@/lib/mailbox/access-grid";
 import {
+  applyServerGrants,
   beginToggle,
   grantKey,
   grantTarget,
-  isPending,
+  isLocked,
   settleToggle,
   type AccessState,
   type GridColumn,
@@ -26,9 +27,9 @@ export function MailboxAccessGrid({ grid }: { grid: AccessGrid }) {
     setState(next);
   }
 
-  // Server data replaces the optimistic copy after each router.refresh; in-flight cells stay disabled.
+  // Server data replaces the optimistic copy after each router.refresh; in-flight cells keep their optimistic value.
   useEffect(() => {
-    commit({ grants: grid.grants, pending: stateRef.current.pending });
+    commit(applyServerGrants(stateRef.current, grid.grants));
   }, [grid]);
 
   function toggle(mailboxPublicId: string, column: GridColumn, on: boolean) {
@@ -45,6 +46,7 @@ export function MailboxAccessGrid({ grid }: { grid: AccessGrid }) {
     const fail = () => {
       commit(settleToggle(stateRef.current, key, previous, false));
       toast.error("Access could not be changed. Try again.");
+      router.refresh();
     };
     request.then((result) => {
       if (result.error) return fail();
@@ -83,7 +85,7 @@ export function MailboxAccessGrid({ grid }: { grid: AccessGrid }) {
                     className="size-4 accent-primary"
                     aria-label={`${c.label} can see ${m.email}`}
                     checked={state.grants[key] !== undefined}
-                    disabled={isPending(state, key)}
+                    disabled={isLocked(state, key)}
                     onChange={(e) => toggle(m.publicId, c, e.target.checked)}
                   />
                 </TableCell>

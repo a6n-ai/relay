@@ -20,13 +20,14 @@ export function grantKey(mailboxPublicId: string, target: GrantTarget): string {
     : `${mailboxPublicId}|member:${target.memberPublicId}`;
 }
 
-export function isPending(state: AccessState, key: string): boolean {
-  return state.pending.includes(key);
+/** Locked while a request is in flight, and while an optimistic tick still lacks its grant id (until refresh). */
+export function isLocked(state: AccessState, key: string): boolean {
+  return state.pending.includes(key) || state.grants[key] === "";
 }
 
-/** Null when the cell already has a request in flight, so a second click is ignored. */
+/** Null when the cell is locked, so a second click is ignored. */
 export function beginToggle(state: AccessState, key: string, on: boolean): AccessState | null {
-  if (isPending(state, key)) return null;
+  if (isLocked(state, key)) return null;
   const grants = { ...state.grants };
   if (on) grants[key] = "";
   else delete grants[key];
@@ -41,4 +42,14 @@ export function settleToggle(state: AccessState, key: string, previous: string |
   if (previous === undefined) delete grants[key];
   else grants[key] = previous;
   return { grants, pending };
+}
+
+/** Server grants replace the optimistic copy, except cells still in flight keep their optimistic value. */
+export function applyServerGrants(state: AccessState, serverGrants: Record<string, string>): AccessState {
+  const grants = { ...serverGrants };
+  for (const key of state.pending) {
+    if (key in state.grants) grants[key] = state.grants[key];
+    else delete grants[key];
+  }
+  return { grants, pending: state.pending };
 }

@@ -47,7 +47,7 @@ describe("loadAccessGrid", () => {
   it("grid lists only this workspace's mailboxes, teams and active members", async () => {
     h.rows.set(tenantMailboxes, [{ id: 5n, publicId: "tmb_1", email: "help@alpha.test", appName: "Alpha" }]);
     h.rows.set(team, [{ id: "tem_1", name: "Support" }]);
-    h.rows.set(member, [{ publicId: "mbr_1", name: "Ana", email: "ana@example.test" }]);
+    h.rows.set(member, [{ publicId: "mbr_1", name: "Ana", email: "ana@example.test", role: "member,billing" }]);
 
     const grid = await loadAccessGrid("org_a");
 
@@ -59,6 +59,29 @@ describe("loadAccessGrid", () => {
     expect(paramsFor(tenantMailboxes)).toContain("org_a");
     expect(paramsFor(team)).toContain("org_a");
     expect(paramsFor(member)).toEqual(expect.arrayContaining(["org_a", "active"]));
+    expect(paramsFor(mailboxGrant)).toContain("org_a");
+  });
+
+  it("owners and admins are not columns; members with extra roles still are", async () => {
+    h.rows.set(team, []);
+    h.rows.set(member, [
+      { publicId: "mbr_owner", name: "Olu", email: "olu@example.test", role: "owner" },
+      { publicId: "mbr_admin", name: "Ada", email: "ada@example.test", role: "admin,billing" },
+      { publicId: "mbr_member", name: "Max", email: "max@example.test", role: "member,billing" },
+    ]);
+
+    const grid = await loadAccessGrid("org_a");
+
+    expect(grid.columns).toEqual([{ kind: "member", memberPublicId: "mbr_member", label: "Max" }]);
+  });
+
+  it("only owners and no teams gives zero columns", async () => {
+    h.rows.set(team, []);
+    h.rows.set(member, [{ publicId: "mbr_owner", name: "Olu", email: "olu@example.test", role: "owner" }]);
+
+    const grid = await loadAccessGrid("org_a");
+
+    expect(grid.columns).toEqual([]);
   });
 
   it("grid keys grants by mailbox and target", async () => {

@@ -30,4 +30,23 @@ describe("mailbox access page", () => {
     expect(h.guard).toHaveBeenCalledWith({ mailbox: ["manage"] });
     expect(h.loadAccessGrid).not.toHaveBeenCalled();
   });
+
+  it("owners-only workspace with no teams shows the Members empty state, not the grid", async () => {
+    h.guard.mockResolvedValue(undefined);
+    h.loadAccessGrid.mockResolvedValue({
+      mailboxes: [{ id: 1n, publicId: "tmb_1", email: "help@alpha.test", appName: "Alpha" }],
+      columns: [],
+      grants: {},
+    });
+
+    const seen = new WeakSet<object>();
+    const tree = JSON.stringify(await MailboxAccessPage(), (k, v) => {
+      if (k.startsWith("_") || (typeof v === "object" && v !== null && seen.has(v))) return undefined;
+      if (typeof v === "object" && v !== null) seen.add(v);
+      return v;
+    });
+
+    expect(tree).toContain("/dashboard/settings/members");
+    expect(tree).not.toContain('"grid":');
+  });
 });

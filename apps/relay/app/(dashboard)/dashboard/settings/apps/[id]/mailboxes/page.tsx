@@ -54,7 +54,7 @@ export default async function AppMailboxesPage({ params }: { params: Promise<{ i
             ))}
           </ul>
         </SectionCard>
-        {grid ? (
+        {grid && grid.mailboxes.length > 0 && grid.columns.length > 0 ? (
           <SectionCard title="Who can see these mailboxes" subtitle="Owners and admins always see every mailbox.">
             <MailboxAccessGrid grid={grid} />
           </SectionCard>

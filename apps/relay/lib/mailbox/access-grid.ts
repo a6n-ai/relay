@@ -2,6 +2,7 @@ import { and, asc, eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { mailboxGrant, member, tenantMailboxes, tenants } from "@/db/schema";
 import { grantKey, type GridColumn } from "@/components/settings/mailbox-access-state";
+import { parseRoles } from "@/lib/auth/member-rules";
 import { listGrantTargets } from "./grants";
 
 export type AccessGrid = {
@@ -14,7 +15,7 @@ export type AccessGrid = {
 export async function loadAccessGrid(organizationId: string, opts: { tenantId?: bigint } = {}): Promise<AccessGrid> {
   const forApp = opts.tenantId === undefined ? undefined : eq(tenantMailboxes.tenantId, opts.tenantId);
 
-  const [mailboxes, grantRows, targets] = await Promise.all([
+  const [mailboxes, grantRows, targets, roleRows] = await Promise.all([
     db
       .select({
         id: tenantMailboxes.id,
@@ -39,11 +40,21 @@ export async function loadAccessGrid(organizationId: string, opts: { tenantId?: 
       .leftJoin(member, eq(member.id, mailboxGrant.memberId))
       .where(and(eq(mailboxGrant.organizationId, organizationId), eq(tenants.organizationId, organizationId), forApp)),
     listGrantTargets(organizationId),
+    db
+      .select({ publicId: member.publicId, role: member.role })
+      .from(member)
+      .where(and(eq(member.organizationId, organizationId), eq(member.status, "active"))),
   ]);
 
+  // Owners and admins see every mailbox without a grant, so they are not columns.
+  const seesAll = new Set(
+    roleRows.filter((r) => parseRoles(r.role).some((x) => x === "owner" || x === "admin")).map((r) => r.publicId),
+  );
   const columns: GridColumn[] = [
     ...targets.teams.map((t): GridColumn => ({ kind: "team", teamId: t.id, label: t.name })),
-    ...targets.members.map((m): GridColumn => ({ kind: "member", memberPublicId: m.publicId, label: m.label })),
+    ...targets.members
+      .filter((m) => !seesAll.has(m.publicId))
+      .map((m): GridColumn => ({ kind: "member", memberPublicId: m.publicId, label: m.label })),
   ];
 
   const grants: Record<string, string> = {};
