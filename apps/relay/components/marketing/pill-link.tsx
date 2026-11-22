@@ -16,8 +16,13 @@ type Props = {
  */
 export function PillLink({ href, children, tone = "solid", size = "lg" }: Props) {
   return (
-    <Button size={size}
+    <Button
+      size={size}
       variant={tone === "ghost" ? "outline" : "default"}
-      className={cn(tone === "solid" && "marketing-cta-solid")} render={<Link href={href} />}>{children}</Button>
+      className={cn(tone === "solid" && "marketing-cta-solid")}
+      render={<Link href={href} />}
+    >
+      {children}
+    </Button>
   );
 }
