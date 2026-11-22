@@ -72,11 +72,18 @@ export function RelaySidebar({
               <SidebarMenu>
                 {group.items.map((item) => (
                   <SidebarMenuItem key={item.href}>
-                    <SidebarMenuButton asChild isActive={item.href === active}>
-                      <Link href={item.href} prefetch={false} aria-current={item.href === active ? "page" : undefined}>
-                        <item.icon style={{ color: iconColorVar(item.color) }} />
-                        <span>{item.label}</span>
-                      </Link>
+                    <SidebarMenuButton
+                      isActive={item.href === active}
+                      render={
+                        <Link
+                          href={item.href}
+                          prefetch={false}
+                          aria-current={item.href === active ? "page" : undefined}
+                        />
+                      }
+                    >
+                      <item.icon style={{ color: iconColorVar(item.color) }} />
+                      <span>{item.label}</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 ))}
@@ -92,15 +99,18 @@ export function RelaySidebar({
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={clientsActive}>
-                  <Link
-                    href="/dashboard/platform"
-                    prefetch={false}
-                    aria-current={clientsActive ? "page" : undefined}
-                  >
-                    <Building2Icon style={{ color: iconColorVar("purple") }} />
-                    <span>Clients</span>
-                  </Link>
+                <SidebarMenuButton
+                  isActive={clientsActive}
+                  render={
+                    <Link
+                      href="/dashboard/platform"
+                      prefetch={false}
+                      aria-current={clientsActive ? "page" : undefined}
+                    />
+                  }
+                >
+                  <Building2Icon style={{ color: iconColorVar("purple") }} />
+                  <span>Clients</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>

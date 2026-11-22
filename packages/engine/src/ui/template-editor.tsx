@@ -13,7 +13,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { BellIcon, TriangleAlertIcon } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@foundry/ui/toast";
 import { apiFetch } from "./api-fetch";
 import "@uiw/react-md-editor/markdown-editor.css";
 import { Button } from "@foundry/ui/button";

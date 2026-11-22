@@ -19,11 +19,9 @@ export function InsightBanner({ pending, failed }: { pending: number; failed: nu
           </div>
           <p className="text-sm font-normal text-pretty">{copy.body}</p>
         </div>
-        <Button variant="outline" size="sm" className="shrink-0" asChild>
-          <Link href={copy.href} prefetch={false}>
-            {copy.cta}
-            <ArrowRightIcon data-icon="inline-end" />
-          </Link>
+        <Button variant="outline" size="sm" className="shrink-0" render={<Link href={copy.href} prefetch={false} />}>
+          {copy.cta}
+          <ArrowRightIcon data-icon="inline-end" />
         </Button>
       </CardContent>
     </Card>

@@ -35,10 +35,8 @@ export function ClientsTable({
     trailing: (
       <>
         {c.isCurrent ? <Badge variant="secondary">Current</Badge> : null}
-        <Button asChild size="sm" variant="ghost">
-          <Link href={`/dashboard/platform/${c.id}`} prefetch={false}>
-            Manage
-          </Link>
+        <Button size="sm" variant="ghost" render={<Link href={`/dashboard/platform/${c.id}`} prefetch={false} />}>
+          Manage
         </Button>
         {c.isMember && !c.isCurrent ? <OpenWorkspaceButton organizationId={c.id} /> : null}
       </>

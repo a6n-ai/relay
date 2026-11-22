@@ -3,7 +3,7 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ComponentProps, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { ChevronRightIcon, PlusIcon, XIcon } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@foundry/ui/toast";
 import { Button } from "@foundry/ui/button";
 import { cn } from "@foundry/ui/cn";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from "@foundry/ui/dialog";
@@ -41,8 +41,7 @@ function useCreatedNotice() {
           </span>
         ),
         duration: plan.persistent ? Infinity : 6000,
-        closeButton: plan.persistent,
-        action: href ? { label: "View", onClick: () => router.push(href) } : undefined,
+        action: href ? { label: "View", onAction: () => router.push(href) } : undefined,
       });
       router.refresh();
     },
@@ -88,11 +87,9 @@ export function CreateDialog({
   );
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button size={pill ? "default" : "sm"}>
-          <PlusIcon data-icon="inline-start" />
-          {label}
-        </Button>
+      <DialogTrigger render={<Button size={pill ? "default" : "sm"} />}>
+        <PlusIcon data-icon="inline-start" />
+        {label}
       </DialogTrigger>
       <DialogContent
         showCloseButton={false}
@@ -108,10 +105,8 @@ export function CreateDialog({
             ) : null}
             <span className="text-foreground">{label}</span>
           </span>
-          <DialogClose asChild>
-            <Button variant="ghost" size="icon-sm" aria-label="Close">
-              <XIcon />
-            </Button>
+          <DialogClose render={<Button variant="ghost" size="icon-sm" aria-label="Close" />}>
+            <XIcon />
           </DialogClose>
         </div>
         <DialogTitle className="sr-only">{label}</DialogTitle>

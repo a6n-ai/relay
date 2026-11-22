@@ -5,7 +5,7 @@ import { ThemeProvider, makeThemeInitScript } from "@foundry/themes";
 
 // Dark is Relay's default look (Linear); people can switch to light.
 const themeInitScript = makeThemeInitScript("dark");
-import { Toaster } from "@foundry/ui/sonner";
+import { Toaster } from "@foundry/ui/toast";
 import "./globals.css";
 
 const description = "Send email, texts, WhatsApp, and in-app messages from one place, and watch every delivery.";

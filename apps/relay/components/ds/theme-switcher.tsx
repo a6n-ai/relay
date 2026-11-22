@@ -32,10 +32,8 @@ export function ThemeSwitcher() {
   const { theme, setTheme } = useTheme();
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="icon" aria-label="Theme">
-          <ThemeIcon theme={theme} />
-        </Button>
+      <DropdownMenuTrigger render={<Button variant="outline" size="icon" aria-label="Theme" />}>
+        <ThemeIcon theme={theme} />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="min-w-36">
         <DropdownMenuRadioGroup value={theme} onValueChange={(v) => setTheme(v as ThemeChoice)}>

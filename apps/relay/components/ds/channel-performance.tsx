@@ -42,11 +42,9 @@ export function ChannelPerformance({ counts }: { counts: Record<Channel, number>
         })}
       </CardContent>
       <CardFooter className="border-t border-border">
-        <Button variant="outline" size="sm" asChild>
-          <Link href="/dashboard/campaigns" prefetch={false}>
-            See report
-            <ArrowRightIcon data-icon="inline-end" />
-          </Link>
+        <Button variant="outline" size="sm" render={<Link href="/dashboard/campaigns" prefetch={false} />}>
+          See report
+          <ArrowRightIcon data-icon="inline-end" />
         </Button>
       </CardFooter>
     </Card>

@@ -84,16 +84,18 @@ export function AppSwitcher() {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-8 w-full justify-start gap-2 px-2 font-medium"
-          disabled={pending}
-        >
-          <AppWindowIcon className="size-4 shrink-0 text-muted-foreground" />
-          <span className="truncate">{active?.name ?? "Create an app"}</span>
-        </Button>
+      <DropdownMenuTrigger
+        render={
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-full justify-start gap-2 px-2 font-medium"
+            disabled={pending}
+          />
+        }
+      >
+        <AppWindowIcon className="size-4 shrink-0 text-muted-foreground" />
+        <span className="truncate">{active?.name ?? "Create an app"}</span>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-56">
         <DropdownMenuLabel>Apps</DropdownMenuLabel>

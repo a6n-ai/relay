@@ -110,11 +110,9 @@ export default async function MailboxLetterPage({
       <ViewHeader
         title={row.subject}
         tabs={
-          <Button asChild variant="ghost" size="sm">
-            <Link href="/dashboard/mailbox">
-              <ArrowLeftIcon />
-              Inbox
-            </Link>
+          <Button variant="ghost" size="sm" render={<Link href="/dashboard/mailbox" />}>
+            <ArrowLeftIcon />
+            Inbox
           </Button>
         }
         actions={

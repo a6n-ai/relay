@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2Icon } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@foundry/ui/toast";
 import { Button } from "@foundry/ui/button";
 import { apiFetch } from "@relay/engine/ui/api-fetch";
 
@@ -38,10 +38,8 @@ export function MailboxFailureActions({ publicId }: { publicId: string }) {
         {busy ? <Loader2Icon className="animate-spin" /> : null}
         Retry
       </Button>
-      <Button asChild variant="ghost" size="sm">
-        <a href={`/api/mailbox/failures/${publicId}/raw`} download>
-          Download raw .eml
-        </a>
+      <Button variant="ghost" size="sm" render={<a href={`/api/mailbox/failures/${publicId}/raw`} download />}>
+        Download raw .eml
       </Button>
     </>
   );

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { PencilIcon } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@foundry/ui/toast";
 import { Button } from "@foundry/ui/button";
 import { apiFetch } from "./api-fetch";
 import { AudienceBuilder, type AudienceValue, type ContactListOption } from "./audience-builder";

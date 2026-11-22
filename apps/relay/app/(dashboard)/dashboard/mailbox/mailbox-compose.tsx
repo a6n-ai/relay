@@ -42,16 +42,18 @@ export function MailboxCompose({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button
-          type="button"
-          size={pill ? "default" : "sm"}
-          variant={quiet ? "ghost" : "default"}
-          className={quiet ? "w-full justify-start" : undefined}
-        >
-          {icon}
-          {label}
-        </Button>
+      <DialogTrigger
+        render={
+          <Button
+            type="button"
+            size={pill ? "default" : "sm"}
+            variant={quiet ? "ghost" : "default"}
+            className={quiet ? "w-full justify-start" : undefined}
+          />
+        }
+      >
+        {icon}
+        {label}
       </DialogTrigger>
       <DialogContent
         className="sm:max-w-xl data-open:zoom-in-100 data-closed:zoom-out-100 top-auto right-4 bottom-4 left-auto max-h-[min(36rem,calc(100vh-2rem))] translate-x-0 translate-y-0 overflow-y-auto"

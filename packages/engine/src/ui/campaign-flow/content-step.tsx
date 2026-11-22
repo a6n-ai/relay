@@ -2,7 +2,7 @@
 
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
+import { toast } from "@foundry/ui/toast";
 import { CAMPAIGN_VARIABLE_SAMPLES, CAMPAIGN_VARIABLES } from "../../email-content/variables";
 import type { FooterInfo } from "../../template";
 import { CampaignAttachments, type CampaignAttachment } from "../campaign-attachments";

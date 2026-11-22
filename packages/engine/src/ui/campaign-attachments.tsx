@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { PaperclipIcon, XIcon } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@foundry/ui/toast";
 import { Button, buttonVariants } from "@foundry/ui/button";
 import { FileUpload, FileUploadDropzone, FileUploadTrigger } from "@foundry/ui/file-upload";
 import { apiFetch } from "./api-fetch";

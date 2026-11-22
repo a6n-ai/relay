@@ -156,10 +156,8 @@ export function MailboxLetterBody({
           <NoticeBar
             message="Images hidden to protect your privacy"
             actions={
-              <Button asChild variant="outline" size="sm">
-                <Link href={`?images=${publicId}`} scroll={false}>
-                  Show images
-                </Link>
+              <Button variant="outline" size="sm" render={<Link href={`?images=${publicId}`} scroll={false} />}>
+                Show images
               </Button>
             }
           />

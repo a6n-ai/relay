@@ -33,11 +33,9 @@ export function KpiActionCard({ item }: { item: KpiItem }) {
           <h3 className="nums text-3xl font-semibold tracking-tight">{item.value.toLocaleString("en")}</h3>
           {item.delta ? <StatusBadge tone={item.tone}>{item.delta}</StatusBadge> : null}
         </div>
-        <Button variant="outline" className="w-fit" asChild>
-          <Link href={item.href} prefetch={false}>
-            See statistics
-            <ArrowRightIcon data-icon="inline-end" />
-          </Link>
+        <Button variant="outline" className="w-fit" render={<Link href={item.href} prefetch={false} />}>
+          See statistics
+          <ArrowRightIcon data-icon="inline-end" />
         </Button>
       </CardContent>
     </Card>
@@ -71,11 +69,9 @@ export function KpiStrip({ items }: { items: KpiItem[] }) {
                 <h3 className="nums text-3xl font-semibold tracking-tight">{item.value.toLocaleString("en")}</h3>
                 {item.delta ? <StatusBadge tone={item.tone}>{item.delta}</StatusBadge> : null}
               </div>
-              <Button variant="outline" className="w-fit" asChild>
-                <Link href={item.href} prefetch={false}>
-                  See statistics
-                  <ArrowRightIcon data-icon="inline-end" />
-                </Link>
+              <Button variant="outline" className="w-fit" render={<Link href={item.href} prefetch={false} />}>
+                See statistics
+                <ArrowRightIcon data-icon="inline-end" />
               </Button>
             </div>
           );

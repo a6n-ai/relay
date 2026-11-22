@@ -3,7 +3,7 @@
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { CircleCheckIcon, ExternalLinkIcon, MonitorIcon, SmartphoneIcon, TriangleAlertIcon } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@foundry/ui/toast";
 import { Button } from "@foundry/ui/button";
 import { cn } from "@foundry/ui/cn";
 import { Skeleton } from "@foundry/ui/skeleton";

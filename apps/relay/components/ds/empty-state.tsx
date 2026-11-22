@@ -37,18 +37,14 @@ export function EmptyState({
       {cta || action || docsHref ? (
         <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
           {cta ? (
-            <Button asChild>
-              <Link href={cta.href} prefetch={false}>
-                {cta.label}
-              </Link>
+            <Button render={<Link href={cta.href} prefetch={false} />}>
+              {cta.label}
             </Button>
           ) : null}
           {action}
           {docsHref ? (
-            <Button asChild variant="ghost">
-              <Link href={docsHref} prefetch={false}>
-                Docs
-              </Link>
+            <Button variant="ghost" render={<Link href={docsHref} prefetch={false} />}>
+              Docs
             </Button>
           ) : null}
         </div>

@@ -26,11 +26,9 @@ export function OverviewGreeting({ name }: { name: string }) {
               Stay on top of today’s messages — waiting, sent, and anything that needs a look.
             </p>
           </div>
-          <Button size="sm" className="w-fit" asChild>
-            <Link href="/dashboard/logs" prefetch={false}>
-              View all sends
-              <ArrowRightIcon data-icon="inline-end" />
-            </Link>
+          <Button size="sm" className="w-fit" render={<Link href="/dashboard/logs" prefetch={false} />}>
+            View all sends
+            <ArrowRightIcon data-icon="inline-end" />
           </Button>
         </div>
         <SignalMark />

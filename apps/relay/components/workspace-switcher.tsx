@@ -58,16 +58,18 @@ export function WorkspaceSwitcher() {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-8 w-full justify-start gap-2 px-2 font-medium"
-          disabled={pending}
-        >
-          <Building2Icon className="size-4 shrink-0 text-muted-foreground" />
-          <span className="truncate">{active?.name ?? "Choose workspace"}</span>
-        </Button>
+      <DropdownMenuTrigger
+        render={
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-full justify-start gap-2 px-2 font-medium"
+            disabled={pending}
+          />
+        }
+      >
+        <Building2Icon className="size-4 shrink-0 text-muted-foreground" />
+        <span className="truncate">{active?.name ?? "Choose workspace"}</span>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-56">
         <DropdownMenuLabel>Your current client</DropdownMenuLabel>
