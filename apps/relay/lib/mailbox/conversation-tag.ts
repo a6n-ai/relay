@@ -17,3 +17,7 @@ export function tagFilterKey(slug: string): string {
 export function isTagFilterKey(key: string): boolean {
   return key.startsWith("tag:");
 }
+
+export function mailboxFilterKey(mailboxPublicId: string): string {
+  return `mailbox:${mailboxPublicId}`;
+}

@@ -9,8 +9,11 @@ import { mailboxScope } from "@/lib/mailbox/scope";
 import {
   groupMailboxConversations,
   indexTagsByTenantPublicId,
+  mailboxListingFilters,
   tagListingFilters,
 } from "@/lib/mailbox/listing";
+import { canSeeMailbox } from "@/lib/mailbox/access";
+import { tenantMailboxesService } from "@/lib/services/tenant-mailboxes.service";
 import { resolveActiveApp } from "@/lib/apps/active-app";
 import { loadComposeFroms } from "@/lib/mailbox/load-compose-froms";
 import { appMessageTagsService } from "@/lib/services/mailbox-tags.service";
@@ -36,13 +39,15 @@ export default async function MailboxPage() {
   await requirePagePermission({ mailbox: ["read"] });
   const scope = await mailboxScope({ onMissing: "redirect" });
   const activeApp = await resolveActiveApp();
-  const [rows, froms, tagRows, failures, failureCount] = await Promise.all([
+  const [rows, froms, tagRows, failures, failureCount, appMailboxes] = await Promise.all([
     listMailboxLetters(scope, { tenantId: activeApp?.id }),
     loadComposeFroms(),
     activeApp ? appMessageTagsService.forTenant(activeApp.id) : Promise.resolve([]),
     listInboundFailures(scope),
     countInboundFailures(scope),
+    activeApp ? tenantMailboxesService.forTenant(activeApp.id) : Promise.resolve([]),
   ]);
+  const myMailboxes = appMailboxes.filter((m) => canSeeMailbox(scope.mailboxIds, m.id));
   const tagsByTenant = indexTagsByTenantPublicId(
     activeApp
       ? tagRows.map((t) => ({
@@ -101,7 +106,7 @@ export default async function MailboxPage() {
           />
         }
         searchPlaceholder="Search subject, to, or from"
-        filters={[...MAILBOX_FILTERS, ...tagListingFilters(tagsByTenant)]}
+        filters={[...MAILBOX_FILTERS, ...mailboxListingFilters(myMailboxes), ...tagListingFilters(tagsByTenant)]}
         items={items}
       />
     </PageShell>

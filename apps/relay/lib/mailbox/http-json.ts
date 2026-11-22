@@ -1,6 +1,6 @@
 import { listMailboxLetters, readMailboxLetter } from "./list";
 
-type LetterRow = Awaited<ReturnType<typeof listMailboxLetters>>[number];
+type LetterRow = Omit<Awaited<ReturnType<typeof listMailboxLetters>>[number], "mailboxPublicId">;
 type LetterDetail = NonNullable<Awaited<ReturnType<typeof readMailboxLetter>>>;
 
 export function mailboxLetterJson(row: LetterRow) {

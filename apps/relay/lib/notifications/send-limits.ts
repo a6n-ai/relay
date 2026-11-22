@@ -30,7 +30,7 @@ export async function checkSendLimits(
     app = {
       organizationId: row.organizationId,
       quota: row.quota,
-      used: await countTenantSendsThisMonth(tenantId, undefined, "sent"),
+      used: await countTenantSendsThisMonth(tenantId),
     };
     cache.apps.set(appKey, app);
   }
@@ -47,7 +47,7 @@ export async function checkSendLimits(
       if (org) {
         workspace = {
           quota: org.quota,
-          used: await countOrganizationSendsThisMonth(app.organizationId, undefined, "sent"),
+          used: await countOrganizationSendsThisMonth(app.organizationId),
         };
         cache.workspaces.set(app.organizationId, workspace);
       }

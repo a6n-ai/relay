@@ -6,7 +6,7 @@ import {
 } from "@relay/engine";
 import type { ListingBadge, ListingFilter, ListingRow } from "@/components/ds/listing-table";
 import { outboxStatusLabel } from "@/components/ds/plain-labels";
-import { tagFilterKey } from "./conversation-tag";
+import { mailboxFilterKey, tagFilterKey } from "./conversation-tag";
 
 export type AppMessageTag = { slug: string; label: string };
 
@@ -18,6 +18,7 @@ export type MailboxListRecord = {
   toEmail: string;
   tenantName: string | null;
   tenantPublicId?: string | null;
+  mailboxPublicId?: string | null;
   status: MailboxOutboxStatus;
   direction: MailboxDirection;
   origin: MailboxOrigin;
@@ -113,6 +114,7 @@ export function groupMailboxConversations(
       })) {
         keys.add(k);
       }
+      if (letter.mailboxPublicId) keys.add(mailboxFilterKey(letter.mailboxPublicId));
     }
     for (const t of tags) keys.add(tagFilterKey(t.slug));
     const row = toMailboxListingRow({ ...latest, tags });
@@ -147,4 +149,10 @@ export function tagListingFilters(
     }
   }
   return [...seen.entries()].map(([slug, label]) => ({ id: tagFilterKey(slug), label }));
+}
+
+/** One chip per mailbox, only when there is more than one to choose between. */
+export function mailboxListingFilters(mailboxes: Array<{ publicId: string; email: string }>): ListingFilter[] {
+  if (mailboxes.length < 2) return [];
+  return mailboxes.map((m) => ({ id: mailboxFilterKey(m.publicId), label: m.email }));
 }

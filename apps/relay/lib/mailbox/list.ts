@@ -1,6 +1,6 @@
 import { and, desc, eq, inArray, isNull, or, type SQL } from "drizzle-orm";
 import { db } from "@/db/client";
-import { emailMailbox, notificationOutbox, tenants } from "@/db/schema";
+import { emailMailbox, notificationOutbox, tenantMailboxes, tenants } from "@/db/schema";
 import type { MailboxScope } from "./scope";
 
 const listColumns = {
@@ -46,10 +46,11 @@ export async function listMailboxLetters(
   const where = scopeFilter(scope, opts?.tenantId);
   if (!where) return [];
   return db
-    .select(listColumns)
+    .select({ ...listColumns, mailboxPublicId: tenantMailboxes.publicId })
     .from(emailMailbox)
     .leftJoin(notificationOutbox, eq(emailMailbox.outboxId, notificationOutbox.id))
     .leftJoin(tenants, eq(emailMailbox.tenantId, tenants.id))
+    .leftJoin(tenantMailboxes, eq(emailMailbox.mailboxId, tenantMailboxes.id))
     .where(where)
     .orderBy(desc(emailMailbox.createdAt))
     .limit(opts?.limit ?? 100);

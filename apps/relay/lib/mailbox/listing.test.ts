@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import type { MailboxDirection, MailboxOrigin } from "@relay/engine";
-import { contactInitial, toMailboxListingRow, groupMailboxConversations, tagListingFilters } from "./listing";
+import {
+  contactInitial,
+  toMailboxListingRow,
+  groupMailboxConversations,
+  mailboxListingFilters,
+  tagListingFilters,
+} from "./listing";
 import { templateTestMailboxLetter } from "./template-test";
 
 const origins: MailboxOrigin[] = ["automatic", "campaign", "test", "manual"];
@@ -122,6 +128,43 @@ describe("toMailboxListingRow", () => {
     expect(items[0]?.meta).toMatch(/^2 letters ·/);
     expect(tagListingFilters({ tnt_1: [{ slug: "vip", label: "VIP" }] })).toEqual([
       { id: "tag:vip", label: "VIP" },
+    ]);
+  });
+
+  it("lets a conversation be found under every mailbox its letters went through", () => {
+    const letter = {
+      subject: "Hi",
+      fromEmail: "a@b.com",
+      fromName: null,
+      toEmail: "help@acme.test",
+      tenantName: "Acme",
+      tenantPublicId: "tnt_1",
+      status: "sent" as const,
+      direction: "in" as MailboxDirection,
+      origin: "manual" as MailboxOrigin,
+      threadId: "<t@x>",
+    };
+    const items = groupMailboxConversations(
+      [
+        { ...letter, publicId: "mbx_2", mailboxPublicId: "tmb_sales" },
+        { ...letter, publicId: "mbx_1", mailboxPublicId: "tmb_help" },
+        { ...letter, publicId: "mbx_0", mailboxPublicId: null },
+      ],
+      {},
+    );
+    expect(items[0]?.filterKeys).toEqual(expect.arrayContaining(["mailbox:tmb_sales", "mailbox:tmb_help"]));
+  });
+
+  it("shows mailbox chips only when there is more than one mailbox", () => {
+    expect(mailboxListingFilters([{ publicId: "tmb_help", email: "help@acme.test" }])).toEqual([]);
+    expect(
+      mailboxListingFilters([
+        { publicId: "tmb_help", email: "help@acme.test" },
+        { publicId: "tmb_sales", email: "sales@acme.test" },
+      ]),
+    ).toEqual([
+      { id: "mailbox:tmb_help", label: "help@acme.test" },
+      { id: "mailbox:tmb_sales", label: "sales@acme.test" },
     ]);
   });
 });
