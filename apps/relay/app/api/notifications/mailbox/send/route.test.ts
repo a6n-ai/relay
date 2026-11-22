@@ -19,6 +19,7 @@ const state = vi.hoisted(() => ({
   mailboxes: [] as Mailbox[],
   archived: [] as { tenantId: bigint | null; fromEmail: string }[],
   sent: [] as unknown[],
+  sendLimit: null as string | null,
 }));
 
 vi.mock("react", () => ({ cache: <T>(fn: T) => fn }));
@@ -69,6 +70,10 @@ vi.mock("@/lib/mailbox/list", () => ({
   },
 }));
 
+vi.mock("@/lib/notifications/send-limits", () => ({
+  checkSendLimits: async () => state.sendLimit,
+}));
+
 vi.mock("@relay/engine", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@relay/engine")>()),
   archiveMailboxLetter: async (_db: unknown, _tables: unknown, letter: { tenantId: bigint | null; fromEmail: string }) => {
@@ -105,6 +110,7 @@ describe("POST /api/notifications/mailbox/send", () => {
     state.listRecent.mockReset();
     state.archived = [];
     state.sent = [];
+    state.sendLimit = null;
     state.letters = [
       { publicId: "eml_a", tenantId: CLIENT_A, rfcMessageId: "<a@x>", threadId: "<a@x>", rfcReferences: null },
       { publicId: "eml_b", tenantId: CLIENT_B, rfcMessageId: "<b@x>", threadId: "<b@x>", rfcReferences: null },
@@ -166,6 +172,24 @@ describe("POST /api/notifications/mailbox/send", () => {
     const res = await send({ fromId: "tmb_a", replyToId: "eml_b" });
     expect(res.status).toBe(404);
     expect(state.sent).toHaveLength(0);
+  });
+
+  it("refuses compose when the workspace is over quota", async () => {
+    signInTo("org_a", "acme", [CLIENT_A]);
+    state.sendLimit = "Workspace monthly message quota exceeded";
+    const res = await send({ fromId: "tmb_a" });
+    expect(res.status).toBe(429);
+    expect(await res.json()).toMatchObject({ title: "Workspace monthly message quota exceeded", status: 429 });
+    expect(state.sent).toHaveLength(0);
+    expect(state.archived).toHaveLength(0);
+  });
+
+  it("sends when under quota", async () => {
+    signInTo("org_a", "acme", [CLIENT_A]);
+    const res = await send({ fromId: "tmb_a" });
+    expect(res.status).toBe(200);
+    expect(state.sent).toHaveLength(1);
+    expect(state.archived).toEqual([{ tenantId: CLIENT_A, fromEmail: "hi@acme.test" }]);
   });
 
   it("stores a reply with the parent thread's tenant", async () => {

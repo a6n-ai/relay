@@ -11,6 +11,7 @@ import { readMailboxLetter } from "@/lib/mailbox/list";
 import { conversationKey } from "@/lib/mailbox/listing";
 import { manualMailboxLetter } from "@/lib/mailbox/manual-send";
 import { mailboxScope } from "@/lib/mailbox/scope";
+import { checkSendLimits } from "@/lib/notifications/send-limits";
 import { tenantMailboxesService } from "@/lib/services/tenant-mailboxes.service";
 
 const schema = z.object({
@@ -65,6 +66,9 @@ export const POST = handler(async (req: Request) => {
     });
     if (!reply) throw new ValidationError("This letter cannot start a reply yet");
   }
+
+  const limit = await checkSendLimits(tenantId);
+  if (limit) return Response.json({ title: limit, status: 429 }, { status: 429 });
 
   const rfcMessageId = generateRelayMessageId();
   const letter = manualMailboxLetter({
