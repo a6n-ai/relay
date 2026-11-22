@@ -21,6 +21,7 @@ export const activeMember = cache(async () => {
       id: member.id,
       organizationId: member.organizationId,
       role: member.role,
+      userId: member.userId,
       status: member.status,
     })
     .from(member)

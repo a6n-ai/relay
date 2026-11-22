@@ -9,3 +9,4 @@ export * from "./mailbox-tags";
 export * from "./campaigns";
 export * from "./notifications";
 export * from "./webhooks";
+export * from "./mailbox-grants";
