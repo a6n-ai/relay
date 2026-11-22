@@ -1,3 +1,5 @@
+"use client";
+
 import { Badge } from "./stageshow";
 import { ChannelGlyph } from "./demo/console-parts";
 import { RELAY_CHANNELS } from "@/components/ds/channels";
