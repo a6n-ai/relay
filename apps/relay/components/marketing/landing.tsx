@@ -1,3 +1,4 @@
+import { ContactSection } from "./contact-section";
 import { SendDemo } from "./demo/send-demo";
 import { CampaignsSlice, InboxSlice } from "./demo/slices";
 import { FeatureSection } from "./feature-section";
@@ -106,17 +107,7 @@ export function Landing() {
             </FeatureSection>
           </div>
 
-          <section data-reveal className="border-t border-border">
-            <div className="mx-auto flex max-w-6xl flex-col items-center gap-8 px-5 py-24 text-center md:px-8 md:py-32">
-              <h2 className="text-4xl font-semibold tracking-[-0.022em] text-balance md:text-5xl">Send your first message.</h2>
-              <div className="flex flex-wrap justify-center gap-3">
-                <PillLink href="/login">Sign in</PillLink>
-                <PillLink href="/docs" tone="ghost">
-                  Read the docs
-                </PillLink>
-              </div>
-            </div>
-          </section>
+          <ContactSection />
         </main>
       </LandingScroll>
     </PublicShell>
