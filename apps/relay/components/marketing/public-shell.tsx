@@ -14,14 +14,15 @@ const FOOTER = [
       { href: "/#inbox", label: "Inbox" },
       { href: "/#campaigns", label: "Campaigns" },
       { href: "/docs", label: "Docs" },
+      { href: "/#contact", label: "Contact" },
     ],
   },
   {
     title: "Channels",
     links: [
       { href: "/docs", label: "Email" },
-      { href: "/docs", label: "Text" },
-      { href: "/docs", label: "WhatsApp" },
+      { href: "/docs", label: "Text (soon)" },
+      { href: "/docs", label: "WhatsApp (soon)" },
       { href: "/docs", label: "In the app" },
     ],
   },
@@ -82,7 +83,7 @@ export function PublicShell({ children }: { children: ReactNode }) {
           <div className="flex flex-col gap-3 sm:col-span-2 md:col-span-1">
             <Wordmark />
             <p className="max-w-56 text-sm leading-6 text-muted-foreground">
-              Every message, from one place. Email, text, WhatsApp and in the app.
+              Email and in-app messages from one place. Text and WhatsApp coming soon.
             </p>
           </div>
           {FOOTER.map((col) => (

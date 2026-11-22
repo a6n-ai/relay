@@ -2,11 +2,14 @@
 
 import type { ReactNode } from "react";
 import { ChevronRightIcon } from "lucide-react";
-import { Collapse, Stage, Text, Window, type Act } from "../stageshow";
+import type { Channel } from "@relay/engine";
+import { Badge, Collapse, Stage, Text, Window, type Act } from "../stageshow";
 import { RELAY_CHANNELS } from "@/components/ds/channels";
 import { ChannelGlyph, ConsoleSidebar, FlipBadge } from "./console-parts";
 import "../console-look.css";
 import "./send-demo.css";
+
+const SOON = new Set<Channel>(["sms", "whatsapp"]);
 
 // One send arrives at the top of Sends and fans out into four channel chips
 // that flip from Queued to Delivered one by one; the payoff holds, then the
@@ -41,10 +44,10 @@ async function script(a: Act<S>) {
 const OLD = [
   { title: "Password reset", app: "Northwind app", ch: ["email"], when: "2 min ago" },
   { title: "Welcome aboard", app: "Northwind app", ch: ["email", "in_app"], when: "14 min ago" },
-  { title: "Invoice paid", app: "Billing app", ch: ["email", "sms"], when: "1 hour ago" },
-  { title: "Order shipped", app: "Store app", ch: ["email", "sms", "whatsapp"], when: "3 hours ago" },
+  { title: "Invoice paid", app: "Billing app", ch: ["email"], when: "1 hour ago" },
+  { title: "Order shipped", app: "Store app", ch: ["email", "in_app"], when: "3 hours ago" },
   { title: "Weekly summary", app: "Northwind app", ch: ["email"], when: "5 hours ago" },
-  { title: "Appointment reminder", app: "Clinic app", ch: ["sms", "whatsapp"], when: "Yesterday" },
+  { title: "Appointment reminder", app: "Clinic app", ch: ["in_app"], when: "Yesterday" },
 ] as const;
 
 function Line({ title, app, when, status, lead }: { title: string; app: string; when: string; status: ReactNode; lead: ReactNode }) {
@@ -77,7 +80,7 @@ function Scene({ s, compact }: { s: S; compact: boolean }) {
             title="Order paid"
             app="Northwind app"
             when="Just now"
-            lead={<span className="rl-chips-count">{s.shown > 0 ? "4 channels" : "Queued"}</span>}
+            lead={<span className="rl-chips-count">{s.shown > 0 ? `${RELAY_CHANNELS.length - SOON.size} channels` : "Queued"}</span>}
             status={<FlipBadge done={s.done === 4} from="Sending" to="Delivered" />}
           />
           <div className="rl-fan">
@@ -87,7 +90,7 @@ function Scene({ s, compact }: { s: S; compact: boolean }) {
                   <ChannelGlyph channel={c.key} />
                   {c.label}
                 </span>
-                <FlipBadge done={s.done > i} from="Queued" to="Delivered" />
+                {SOON.has(c.key) ? <Badge>Soon</Badge> : <FlipBadge done={s.done > i} from="Queued" to="Delivered" />}
               </div>
             ))}
           </div>

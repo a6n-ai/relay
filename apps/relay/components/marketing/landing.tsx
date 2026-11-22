@@ -10,8 +10,8 @@ import { PublicShell } from "./public-shell";
 const POINTS = [
   {
     figure: "sorter" as const,
-    title: "One send, every channel",
-    body: "Post a message once. Relay delivers it by email, text, WhatsApp and in the app.",
+    title: "One send, email and in the app",
+    body: "Post a message once. Relay sends it by email and in your app today, with text and WhatsApp next.",
   },
   {
     figure: "nameplates" as const,
@@ -35,13 +35,13 @@ export function Landing() {
             className="mx-auto max-w-6xl px-5 pt-16 md:px-8 md:pt-20"
           >
             <h1 className="max-w-3xl text-5xl leading-[1.05] font-semibold tracking-[-0.022em] text-balance md:text-[64px]">
-              One send. Every channel.
+              Email, inbox and campaigns for every app you run.
             </h1>
             <p className="mt-5 max-w-xl text-lg leading-7 text-muted-foreground">
-              Relay sends email, texts, WhatsApp and in-app messages from one place, and shows you every delivery.
+              Relay sends your apps&apos; email and in-app messages from your own domain, keeps every reply in one inbox, and shows you where each message landed.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-3">
-              <PillLink href="/login">Sign in</PillLink>
+              <PillLink href="#contact">Talk to us</PillLink>
               <PillLink href="/docs" tone="ghost">
                 Read the docs
               </PillLink>
@@ -61,7 +61,7 @@ export function Landing() {
             <p className="max-w-4xl text-2xl leading-snug font-semibold tracking-[-0.022em] text-balance md:text-4xl md:leading-[1.2]">
               Relay is where your apps send from.{" "}
               <span className="text-muted-foreground">
-                Every message leaves once, reaches people on the channel they use, and you can see where each one landed.
+                Post a message once. Relay sends it by email and in your app today, with text and WhatsApp next.
               </span>
             </p>
           </section>
@@ -88,7 +88,7 @@ export function Landing() {
           <div id="inbox" data-reveal className="scroll-mt-20">
             <FeatureSection
               title="An inbox on your own domain"
-              body="Give each person a mailbox on your domain. Replies land beside what you sent, in one conversation."
+              body="Replies from your contacts land in one inbox, on the same thread as what you sent. Attachments come through with the message, and risky content is blocked before you open it."
               href="/docs"
               linkLabel="Read the docs"
             >
@@ -99,7 +99,7 @@ export function Landing() {
             <FeatureSection
               flip
               title="Campaigns for everyone at once"
-              body="Write one message, pick the people and the channels, and watch it go out."
+              body="Write one message and pick who receives it. A review checklist runs before you schedule it, every email has a one-click unsubscribe, and each person is sent it only once."
               href="/docs"
               linkLabel="Read the docs"
             >
