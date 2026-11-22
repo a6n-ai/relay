@@ -65,7 +65,7 @@ describe("createClientAction", () => {
     expect(call.body).toMatchObject({ name: "Acme", slug: "acme", userId: "7" });
     expect(h.updates).toContainEqual({
       table: organization,
-      values: { monthlyMessageQuota: 100, maxApps: 3 },
+      values: { monthlyMessageQuota: 100, maxApps: 3, selfServe: false },
     });
   });
 

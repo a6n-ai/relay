@@ -61,9 +61,10 @@ export async function createClientAction(
     });
     const id = created?.id;
     if (!id) return { error: "Could not create client." };
+    // The owner is the creator here, so the after-create hook sees a non-staff user and writes self-serve defaults; overwrite them.
     await db
       .update(organization)
-      .set({ monthlyMessageQuota, maxApps })
+      .set({ monthlyMessageQuota, maxApps, selfServe: false })
       .where(eq(organization.id, id));
     revalidatePath("/dashboard/platform");
     return { id, ownerEmail };

@@ -20,12 +20,12 @@ export const organization = pgTable(
     slug: text("slug").notNull(),
     logo: text("logo"),
     metadata: text("metadata"),
-    /** Monthly sends across all apps in this workspace. 0 = unlimited. */
-    monthlyMessageQuota: integer("monthly_message_quota").notNull().default(0),
+    /** Monthly sends across all apps in this workspace. 0 = unlimited. Defaults limited so a failed after-create hook fails closed. */
+    monthlyMessageQuota: integer("monthly_message_quota").notNull().default(100),
     /** Max apps (tenants) this workspace may create. 0 = unlimited. */
-    maxApps: integer("max_apps").notNull().default(0),
+    maxApps: integer("max_apps").notNull().default(1),
     /** Made by a non-super-admin: sends only from its own proven domain, no operator From. */
-    selfServe: boolean("self_serve").notNull().default(false),
+    selfServe: boolean("self_serve").notNull().default(true),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()

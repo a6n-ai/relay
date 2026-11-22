@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { applySelfServeLimits, canCreateSelfServeWorkspace, selfServeLimits } from "./workspace-limits";
+import { applyStaffWorkspaceLimits, canCreateSelfServeWorkspace } from "./workspace-limits";
 
 const { set, where, update } = vi.hoisted(() => {
   const where = vi.fn(async () => undefined);
@@ -8,17 +8,6 @@ const { set, where, update } = vi.hoisted(() => {
   return { set, where, update };
 });
 vi.mock("@/db/client", () => ({ db: { update } }));
-
-describe("selfServeLimits", () => {
-  it("self-made workspaces get 1 app and 100 sends", () => {
-    expect(selfServeLimits(null)).toEqual({ maxApps: 1, monthlyMessageQuota: 100 });
-    expect(selfServeLimits("")).toEqual({ maxApps: 1, monthlyMessageQuota: 100 });
-  });
-
-  it("super admin workspaces keep defaults", () => {
-    expect(selfServeLimits("super_admin")).toBeNull();
-  });
-});
 
 describe("canCreateSelfServeWorkspace", () => {
   it("allows a third workspace", () => {
@@ -34,22 +23,23 @@ describe("canCreateSelfServeWorkspace", () => {
   });
 });
 
-describe("applySelfServeLimits", () => {
+describe("applyStaffWorkspaceLimits", () => {
   beforeEach(() => {
     update.mockClear();
     set.mockClear();
     where.mockClear();
   });
 
-  it("sets limits and selfServe on a self-made workspace", async () => {
-    await applySelfServeLimits("org_1", null);
+  it("makes a super admin workspace unlimited and not self-serve", async () => {
+    await applyStaffWorkspaceLimits("org_2", "super_admin");
     expect(update).toHaveBeenCalledOnce();
-    expect(set).toHaveBeenCalledWith({ maxApps: 1, monthlyMessageQuota: 100, selfServe: true });
+    expect(set).toHaveBeenCalledWith({ maxApps: 0, monthlyMessageQuota: 0, selfServe: false });
     expect(where).toHaveBeenCalledOnce();
   });
 
-  it("leaves a super admin workspace untouched", async () => {
-    await applySelfServeLimits("org_2", "super_admin");
+  it("leaves a self-made workspace on the column defaults", async () => {
+    await applyStaffWorkspaceLimits("org_1", null);
+    await applyStaffWorkspaceLimits("org_3", "");
     expect(update).not.toHaveBeenCalled();
   });
 });

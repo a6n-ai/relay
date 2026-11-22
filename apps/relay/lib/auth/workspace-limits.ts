@@ -10,18 +10,11 @@ export function canCreateSelfServeWorkspace(platformRole: string | null, ownedSe
   return ownedSelfServeCount < SELF_SERVE_WORKSPACE_CAP;
 }
 
-export function selfServeLimits(
-  platformRole: string | null,
-): { maxApps: number; monthlyMessageQuota: number } | null {
-  if (platformRole === "super_admin") return null;
-  return { maxApps: 1, monthlyMessageQuota: 100 };
-}
-
-export async function applySelfServeLimits(orgId: string, platformRole: string | null): Promise<void> {
-  const limits = selfServeLimits(platformRole);
-  if (!limits) return;
+// New rows default to limited (1 app, 100 sends, selfServe). Only a6n staff get unlimited, and only if this update lands.
+export async function applyStaffWorkspaceLimits(orgId: string, platformRole: string | null): Promise<void> {
+  if (platformRole !== "super_admin") return;
   await db
     .update(organizationTable)
-    .set({ ...limits, selfServe: true })
+    .set({ maxApps: 0, monthlyMessageQuota: 0, selfServe: false })
     .where(eq(organizationTable.id, orgId));
 }

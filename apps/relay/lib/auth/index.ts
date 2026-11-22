@@ -23,7 +23,7 @@ import { recordAudit } from "@/lib/services/session-service";
 import { betterAuthPassword } from "./password";
 import { ADMIN_DISABLED_PATHS, ORG_DISABLED_PATHS } from "./disabled-paths";
 import { INVITE_LIFETIME_S } from "./invites";
-import { applySelfServeLimits, canCreateSelfServeWorkspace } from "./workspace-limits";
+import { applyStaffWorkspaceLimits, canCreateSelfServeWorkspace } from "./workspace-limits";
 import { ac, orgAc, orgRoles, roles } from "./permissions";
 import { notifyNewLoginIfNewDevice, notifyPasswordChanged, sendAuthOtp } from "./security-events";
 
@@ -97,7 +97,7 @@ export const auth = betterAuth({
       },
     }),
     organization({
-      // Any signed-in user may create a workspace; self-made ones start limited (see selfServeLimits).
+      // Any signed-in user may create a workspace; self-made ones start limited by the column defaults.
       // Public sign-up stays disabled above. Flat workspaces, no Foundry brand→franchise hierarchy.
       allowUserToCreateOrganization: true,
       // Limits are not client fields: the create body strips unknown keys, so they are set server-side after insert.
@@ -121,7 +121,7 @@ export const auth = betterAuth({
           }
         },
         afterCreateOrganization: async ({ organization: org, user }) => {
-          await applySelfServeLimits(org.id, user.platformRole ?? null);
+          await applyStaffWorkspaceLimits(org.id, user.platformRole ?? null);
         },
       },
       ac: orgAc,

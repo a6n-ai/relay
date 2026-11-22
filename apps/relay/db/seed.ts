@@ -64,7 +64,7 @@ async function ensureDefaultWorkspace(userId: bigint): Promise<string> {
   if (!org) {
     [org] = await db
       .insert(organization)
-      .values({ name: "a6n", slug })
+      .values({ name: "a6n", slug, maxApps: 0, monthlyMessageQuota: 0, selfServe: false })
       .returning();
     console.log(`workspace created: ${slug}`);
   } else {
