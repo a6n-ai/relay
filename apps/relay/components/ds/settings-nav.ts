@@ -31,7 +31,7 @@ export function appSettingsLinks(publicId: string): SettingsLink[] {
   ];
 }
 
-type NavLink = { href: string; label: string; active: boolean; children?: NavLink[] };
+type NavLink = { href: string; label: string; active: boolean; open?: boolean; children?: NavLink[] };
 type NavGroup = { label: string; items: NavLink[] };
 
 /**
@@ -55,13 +55,13 @@ export function visibleSettingsNav(
   if (shows(APPS_PERM) && apps.length > 0) {
     groups.push({
       label: "Apps",
+      // Every app keeps its sub-links mounted so the sidebar can animate them closed; `open` decides the height.
       items: apps.map((a) => ({
         href: `/dashboard/settings/apps/${a.publicId}`,
         label: a.name,
         active: false,
-        ...(a.publicId === openApp?.publicId
-          ? { children: appSettingsLinks(a.publicId).map((c) => ({ ...c, active: false })) }
-          : {}),
+        open: a.publicId === openApp?.publicId,
+        children: appSettingsLinks(a.publicId).map((c) => ({ ...c, active: false })),
       })),
     });
   }

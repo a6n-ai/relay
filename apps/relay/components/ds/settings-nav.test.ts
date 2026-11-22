@@ -43,7 +43,10 @@ describe("visibleSettingsNav", () => {
     const nav = visibleSettingsNav(granted(APPS_PERM), APPS, "/dashboard/settings/apps/tnt_b/domain");
     const apps = nav.find((g) => g.label === "Apps")!.items;
     const [tntA, tntB] = apps as [(typeof apps)[number], (typeof apps)[number]];
-    expect(tntA.children).toBeUndefined();
+    expect(tntA.open).toBe(false);
+    expect(tntA.children).toHaveLength(4);
+    expect(tntA.children!.some((c) => c.active)).toBe(false);
+    expect(tntB.open).toBe(true);
     expect(tntB.children).toHaveLength(4);
     expect(tntB.children!.filter((c) => c.active).map((c) => c.label)).toEqual(["Domain"]);
     expect(tntB.children!.find((c) => c.label === "General")!.active).toBe(false);

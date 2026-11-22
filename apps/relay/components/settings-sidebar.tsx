@@ -16,9 +16,13 @@ import {
   SidebarMenuSubButton,
   SidebarMenuSubItem,
   SidebarSeparator,
+  SidebarTrigger,
 } from "@foundry/ui/sidebar";
 import { visibleSettingsNav } from "@/components/ds/settings-nav";
 import { RelaySidebarFooter } from "@/components/relay-sidebar-footer";
+
+// Colour and padding ease together; the primitives' own width/height transitions are kept.
+const PRESS = "transition-[width,height,padding,background-color,color] duration-100";
 
 /** Replaces the app sidebar on /dashboard/settings pages (Linear-style settings nav). */
 export function SettingsSidebar({
@@ -35,10 +39,17 @@ export function SettingsSidebar({
   const groups = visibleSettingsNav(new Set(allowed), apps, pathname);
   return (
     <Sidebar variant="inset" collapsible="icon">
-      <SidebarHeader className="gap-2 px-2 pt-3 pb-2 group-data-[collapsible=icon]:hidden">
-        <Link href="/dashboard" prefetch={false} className="px-2 text-[13px] text-muted-foreground hover:text-foreground">
-          ‹ Back to app
-        </Link>
+      <SidebarHeader className="gap-2 px-2 pt-3 pb-2">
+        <div className="flex flex-row items-center justify-between px-2 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
+          <Link
+            href="/dashboard"
+            prefetch={false}
+            className="rounded-md px-2 py-1 text-[13px] text-muted-foreground transition-colors duration-100 group-data-[collapsible=icon]:hidden hover:text-foreground active:bg-sidebar-accent active:text-foreground"
+          >
+            ‹ Back to app
+          </Link>
+          <SidebarTrigger className="-mr-1 max-md:hidden" />
+        </div>
       </SidebarHeader>
       <SidebarContent>
         {groups.map((group) => (
@@ -48,23 +59,35 @@ export function SettingsSidebar({
               <SidebarMenu>
                 {group.items.map((item) => (
                   <SidebarMenuItem key={item.href}>
-                    <SidebarMenuButton asChild isActive={item.active}>
+                    <SidebarMenuButton asChild isActive={item.active} className={PRESS}>
                       <Link href={item.href} prefetch={false} aria-current={item.active ? "page" : undefined}>
                         <span>{item.label}</span>
                       </Link>
                     </SidebarMenuButton>
                     {item.children ? (
-                      <SidebarMenuSub>
-                        {item.children.map((child) => (
-                          <SidebarMenuSubItem key={child.href}>
-                            <SidebarMenuSubButton asChild isActive={child.active}>
-                              <Link href={child.href} prefetch={false} aria-current={child.active ? "page" : undefined}>
-                                <span>{child.label}</span>
-                              </Link>
-                            </SidebarMenuSubButton>
-                          </SidebarMenuSubItem>
-                        ))}
-                      </SidebarMenuSub>
+                      // Height and opacity share one 200ms ease in and out. Reduced motion keeps the cross-fade and drops the height move.
+                      <div
+                        inert={!item.open}
+                        className={`grid ease-soft duration-200 motion-reduce:transition-opacity ${
+                          item.open
+                            ? "grid-rows-[1fr] opacity-100 transition-[grid-template-rows,opacity]"
+                            : "grid-rows-[0fr] opacity-0 transition-[grid-template-rows,opacity]"
+                        }`}
+                      >
+                        <div className="min-h-0 overflow-hidden">
+                          <SidebarMenuSub>
+                            {item.children.map((child) => (
+                              <SidebarMenuSubItem key={child.href}>
+                                <SidebarMenuSubButton asChild isActive={child.active} className={PRESS}>
+                                  <Link href={child.href} prefetch={false} aria-current={child.active ? "page" : undefined}>
+                                    <span>{child.label}</span>
+                                  </Link>
+                                </SidebarMenuSubButton>
+                              </SidebarMenuSubItem>
+                            ))}
+                          </SidebarMenuSub>
+                        </div>
+                      </div>
                     ) : null}
                   </SidebarMenuItem>
                 ))}
