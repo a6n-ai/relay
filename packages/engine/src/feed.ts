@@ -1,4 +1,4 @@
-import { and, desc, eq, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import type { NotificationTables } from "./schema";
 
@@ -52,7 +52,7 @@ export async function markRead(
   const onlyUnread = and(eq(n.userId, userId), isNull(n.readAt));
   const where =
     publicIds && publicIds.length > 0
-      ? and(onlyUnread, sql`${n.publicId} = any(${publicIds})`)
+      ? and(onlyUnread, inArray(n.publicId, publicIds))
       : onlyUnread;
   const rows = await db.update(n).set({ readAt: Date.now() }).where(where).returning({ id: n.id });
   return rows.length;
@@ -70,7 +70,7 @@ export async function clearFeed(
 ): Promise<number> {
   const n = tables.notifications;
   const own = eq(n.userId, userId);
-  const where = publicIds && publicIds.length > 0 ? and(own, sql`${n.publicId} = any(${publicIds})`) : own;
+  const where = publicIds && publicIds.length > 0 ? and(own, inArray(n.publicId, publicIds)) : own;
   const rows = await db.delete(n).where(where).returning({ id: n.id });
   return rows.length;
 }
