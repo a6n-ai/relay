@@ -12,7 +12,8 @@ CREATE TABLE "mailbox_grant" (
 	CONSTRAINT "mailbox_grant_one_grantee" CHECK (("mailbox_grant"."team_id" is null) <> ("mailbox_grant"."member_id" is null))
 );
 --> statement-breakpoint
-ALTER TABLE "users" ALTER COLUMN "role" SET DEFAULT 'user';--> statement-breakpoint
+-- Cast through text: drizzle-kit applies pending files in one transaction, and a literal 'user' is "unsafe use of new value" when 0010 added it in that same run (an old DB migrating 0010 and 0014 together).
+ALTER TABLE "users" ALTER COLUMN "role" SET DEFAULT 'user'::text::"user_role";--> statement-breakpoint
 ALTER TABLE "mailbox_grant" ADD CONSTRAINT "mailbox_grant_organization_id_organization_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organization"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "mailbox_grant" ADD CONSTRAINT "mailbox_grant_mailbox_id_tenant_mailboxes_id_fk" FOREIGN KEY ("mailbox_id") REFERENCES "public"."tenant_mailboxes"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "mailbox_grant" ADD CONSTRAINT "mailbox_grant_team_id_team_id_fk" FOREIGN KEY ("team_id") REFERENCES "public"."team"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
