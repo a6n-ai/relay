@@ -4,7 +4,7 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { admin } from "better-auth/plugins/admin";
 import { emailOTP } from "better-auth/plugins/email-otp";
 import { organization } from "better-auth/plugins/organization";
-import { eq } from "drizzle-orm";
+import { and, eq, inArray, or } from "drizzle-orm";
 import { ensureWorkspaceProfile } from "../../core/workspace-profile";
 import { coreDb } from "../../db/core/client";
 import { address } from "../../db/core/schema";
@@ -114,13 +114,33 @@ export function createAuth(env: Env) {
           (ctx.path === "/email-otp/send-verification-otp" && ctx.body?.type === "forget-password");
         if (resetMail) throw new APIError("NOT_FOUND");
 
-        // A suspended workspace keeps its sessions but loses organization endpoints.
+        // A suspended workspace keeps its sessions but loses organization endpoints. Every workspace a request names counts, not only the active one.
         if (ctx.path.startsWith("/organization/")) {
-          // Authoritative read: the cookie cache can predate a set-active or a suspension.
-          const orgId = (await getAuthoritativeSessionFromCtx(ctx))?.session.activeOrganizationId;
-          if (orgId) {
-            const [ws] = await securityDb(env).select({ status: workspace.status }).from(workspace).where(eq(workspace.id, orgId));
-            if (ws?.status === "suspended") throw new APIError("FORBIDDEN", { message: "workspace suspended" });
+          const b = (ctx.body ?? {}) as Record<string, unknown>, q = (ctx.query ?? {}) as Record<string, unknown>;
+          const ids = [b.organizationId, q.organizationId].filter((v): v is string => typeof v === "string");
+          const slugs = [b.organizationSlug, q.organizationSlug].filter((v): v is string => typeof v === "string");
+          if (typeof b.invitationId === "string") {
+            const [inv] = await securityDb(env).select({ o: invitation.organizationId }).from(invitation).where(eq(invitation.id, b.invitationId));
+            if (inv) ids.push(inv.o);
+          }
+          // set-active leaves the current workspace, so only its target counts.
+          if (ctx.path !== "/organization/set-active") {
+            // Authoritative read: the cookie cache can predate a set-active or a suspension.
+            const active = (await getAuthoritativeSessionFromCtx(ctx))?.session.activeOrganizationId;
+            if (active) ids.push(active);
+          }
+          if (ids.length || slugs.length) {
+            const [hit] = await securityDb(env)
+              .select({ id: workspace.id })
+              .from(workspace)
+              .where(
+                and(
+                  eq(workspace.status, "suspended"),
+                  or(ids.length ? inArray(workspace.id, ids) : undefined, slugs.length ? inArray(workspace.slug, slugs) : undefined),
+                ),
+              )
+              .limit(1);
+            if (hit) throw new APIError("FORBIDDEN", { message: "workspace suspended" });
           }
         }
       }),
@@ -219,6 +239,14 @@ export function createAuth(env: Env) {
           },
           afterRemoveMember: async ({ user, organization }) => {
             await writeAudit(env, { action: "member.remove", workspaceId: organization.id, target: user.id });
+          },
+          afterUpdateMemberRole: async ({ member, previousRole, user, organization }) => {
+            await writeAudit(env, {
+              action: "member.role_change",
+              workspaceId: organization.id,
+              target: user.id,
+              data: { from: previousRole, to: member.role },
+            });
           },
         },
         schema: {

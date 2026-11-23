@@ -2,7 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { coreDb } from "../db/core/client";
 import { address } from "../db/core/schema";
 import { securityDb } from "../db/security/client";
-import { addressGrant, app } from "../db/security/schema";
+import { addressGrant, app, member, team } from "../db/security/schema";
 import type { Env } from "../env";
 
 // relay-core and relay-security cannot foreign-key each other, so these checks are the only guard on those ids.
@@ -31,5 +31,9 @@ export async function createAddressGrant(
     .from(address)
     .where(eq(address.id, input.addressId));
   if (target?.workspaceId !== input.workspaceId) throw new Error("address does not belong to workspace");
+  const [grantee] = input.memberId
+    ? await securityDb(env).select({ workspaceId: member.organizationId }).from(member).where(eq(member.id, input.memberId))
+    : await securityDb(env).select({ workspaceId: team.organizationId }).from(team).where(eq(team.id, input.teamId ?? ""));
+  if (grantee?.workspaceId !== input.workspaceId) throw new Error("grantee does not belong to workspace");
   await securityDb(env).insert(addressGrant).values(input);
 }

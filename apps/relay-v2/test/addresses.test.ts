@@ -64,4 +64,23 @@ describe("cross-database checks", () => {
     await createAddressGrant(env, { workspaceId: a.workspaceId, addressId: id, memberId: mem.id });
     expect(await securityDb(env).select().from(addressGrant)).toHaveLength(1);
   });
+
+  it("refuses a grant whose member belongs to another workspace, and inserts nothing", async () => {
+    const a = await tenant("ggrant-a");
+    const b = await tenant("ggrant-b");
+    const { id } = await createAddress(env, { workspaceId: a.workspaceId, appId: a.appId, email: "w1@ggrant-a.test", kind: "both" });
+    const [u] = await securityDb(env)
+      .insert(user)
+      .values({ id: "usr_w2", name: "w2", email: "w2-member@ggrant-b.test" })
+      .returning();
+    const [mem] = await securityDb(env)
+      .insert(member)
+      .values({ organizationId: b.workspaceId, userId: u.id, role: "member" })
+      .returning();
+
+    await expect(
+      createAddressGrant(env, { workspaceId: a.workspaceId, addressId: id, memberId: mem.id }),
+    ).rejects.toThrow("grantee does not belong to workspace");
+    expect(await securityDb(env).select().from(addressGrant).where(eq(addressGrant.addressId, id))).toHaveLength(0);
+  });
 });
