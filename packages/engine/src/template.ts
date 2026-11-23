@@ -157,7 +157,9 @@ export function withPreviewFooter<T extends { channel: string; html: string | nu
   });
 }
 
-async function loadCampaignContent(db: Db, tables: CampaignTables, campaignId: bigint) {
+export type CampaignContentLoader = typeof loadCampaignContent;
+
+export async function loadCampaignContent(db: Db, tables: CampaignTables, campaignId: bigint) {
   const c = tables.campaignContent;
   return db
     .select({
@@ -181,13 +183,15 @@ export async function renderCampaignEmail(
   campaignId: bigint,
   locale: string,
   vars: Record<string, unknown>,
+  // A bulk sender passes a memoised loader so one campaign's rows are read once, not per recipient.
+  load: CampaignContentLoader = loadCampaignContent,
 ): Promise<{
   subject: string;
   html: string;
   text: string;
   attachments: { filename: string; url: string; contentType: string }[];
 } | null> {
-  const rows = (await loadCampaignContent(db, tables, campaignId)).map((r) => ({ ...r, enabled: true }));
+  const rows = (await load(db, tables, campaignId)).map((r) => ({ ...r, enabled: true }));
   const t = pickTemplate(rows, "email", locale);
   if (!t || !t.html || !t.text) return null;
   return {

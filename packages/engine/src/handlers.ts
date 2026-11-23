@@ -4,7 +4,9 @@ import type { CampaignTables } from "./campaign-schema";
 import type { NotificationTables } from "./schema";
 import {
   appendUnsubscribeFooter,
+  loadCampaignContent,
   renderCampaignEmail,
+  type CampaignContentLoader,
   renderCampaignText,
   renderEmailForEvent,
   renderInAppForEvent,
@@ -121,7 +123,32 @@ function payloadParts(row: OutboxRow) {
   return { href: p.href ?? null, vars: p.vars ?? {}, attachments: p.attachments ?? [] };
 }
 
+/** Memo whose entries expire after `ttlMs`; a failed load is dropped so the next call retries. */
+function memoFor(ttlMs: number) {
+  const memo = new Map<string, { at: number; value: Promise<unknown> }>();
+  return <T>(key: string, load: () => Promise<T>): Promise<T> => {
+    const hit = memo.get(key);
+    if (hit && Date.now() - hit.at < ttlMs) return hit.value as Promise<T>;
+    const value = load();
+    memo.set(key, { at: Date.now(), value });
+    value.catch(() => memo.delete(key));
+    return value;
+  };
+}
+
 export function buildHandlers(deps: HandlerDeps): Record<Channel, ChannelHandler | undefined> {
+  // A campaign send drains as hundreds of rows through these handlers: read each campaign's content
+  // and system key once. Bounded to 60 s in case a caller keeps the handlers past one drain.
+  const once = memoFor(60_000);
+  const campaignContent: CampaignContentLoader = (db, tables, campaignId) =>
+    once(`content:${campaignId}`, () => loadCampaignContent(db, tables, campaignId));
+  const campaignSystemKey = (campaignId: bigint) =>
+    once(`system:${campaignId}`, async () => {
+      const t = deps.campaigns!.tables.campaign;
+      const [c] = await deps.db.select({ systemKey: t.systemKey }).from(t).where(eq(t.id, campaignId));
+      return c?.systemKey ?? null;
+    });
+
   const { db, tables, users, providers, broadcast } = deps;
 
   const loadUser: LoadUser = async (id) => {
@@ -204,14 +231,11 @@ export function buildHandlers(deps: HandlerDeps): Record<Channel, ChannelHandler
             row.campaignId,
             target.locale,
             vars,
+            campaignContent,
           );
           if (base) {
             // A system campaign keeps the footer but leaves from the transactional sender.
-            const [c] = await db
-              .select({ systemKey: deps.campaigns.tables.campaign.systemKey })
-              .from(deps.campaigns.tables.campaign)
-              .where(eq(deps.campaigns.tables.campaign.id, row.campaignId));
-            marketing = !c?.systemKey;
+            marketing = !(await campaignSystemKey(row.campaignId));
             attachmentRefs = [...base.attachments, ...rowAttachments];
             const { unsubscribe, sender } = deps.campaigns;
             headers = listUnsubscribeHeaders(

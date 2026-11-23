@@ -412,3 +412,53 @@ describe("resolveRecipientAddress", () => {
     expect(got).toEqual({ address: "+14165550134", locale: "en" });
   });
 });
+
+describe("buildHandlers — email — campaign content per drain", () => {
+  it("reads a campaign's content and system key once across its rows", async () => {
+    const usersTable = { locale: "locale-col" };
+    const campaignContentTable = {};
+    const campaignTable = { systemKey: "sk-col" };
+    const reads = new Map<object, number>();
+    const rows = new Map<object, unknown[]>([
+      [usersTable, [{ email: "customer@example.test", phone: null, locale: "en" }]],
+      [campaignContentTable, [{ channel: "email", locale: "en", subject: "Hi {{name}}", body: null, html: "<p>Hi</p>", text: "Hi", providerTemplateId: null, attachments: [] }]],
+      [campaignTable, [{ systemKey: null }]],
+    ]);
+    const db = {
+      select: () => ({
+        from: (table: object) => ({
+          where: async () => {
+            reads.set(table, (reads.get(table) ?? 0) + 1);
+            return rows.get(table) ?? [];
+          },
+        }),
+      }),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any;
+    const send = vi.fn().mockResolvedValue({ providerMessageId: "pid" });
+    const handlers = buildHandlers({
+      db,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      tables: {} as any,
+      users: { table: usersTable, columns: { id: "id-col", email: "email-col" } },
+      providers: { email: { send } },
+      broadcast: vi.fn(),
+      campaigns: {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        tables: { campaignContent: campaignContentTable, campaign: campaignTable } as any,
+        unsubscribe: { baseUrl: "https://recover.test", secret: "shh" },
+        sender: { name: "Sender", postalAddress: "123 Main St" },
+      },
+    });
+    const row = (id: bigint) => ({ recipientId: id, recipientEmail: null, recipientPhone: null, campaignId: 42n, event: null, kind: "marketing", payload: { href: null, vars: {} } });
+
+    await handlers.email!(row(1n));
+    await handlers.email!(row(2n));
+    await handlers.email!(row(3n));
+
+    expect(send).toHaveBeenCalledTimes(3);
+    expect(reads.get(campaignContentTable)).toBe(1);
+    expect(reads.get(campaignTable)).toBe(1);
+    expect(reads.get(usersTable)).toBe(3); // per recipient, not memoised
+  });
+});
