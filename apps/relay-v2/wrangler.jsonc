@@ -1,0 +1,23 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "relay-v2",
+  "compatibility_date": "2026-11-23",
+  "compatibility_flags": ["nodejs_compat"],
+  "main": "src/server.ts",
+  "observability": { "enabled": true },
+  "workers_dev": false,
+  "d1_databases": [
+    {
+      "binding": "CENTRAL",
+      "database_name": "relay-central",
+      "database_id": "local",
+      "migrations_dir": "drizzle/central",
+    },
+  ],
+  "durable_objects": {
+    "bindings": [{ "name": "CLIENT", "class_name": "ClientDO" }],
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["ClientDO"] }],
+  "r2_buckets": [{ "binding": "MAIL", "bucket_name": "relay-mail" }],
+  "queues": { "producers": [{ "binding": "SEND", "queue": "relay-send" }] },
+}
