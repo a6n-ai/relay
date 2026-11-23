@@ -75,6 +75,26 @@ async function usageSent(workspaceId: string): Promise<number> {
   return row?.sent ?? 0;
 }
 
+// The first markSent call rejects, as if the DO were unreachable after SES accepted the email.
+function failMarkSentOnce() {
+  const realGet = env.CLIENT.get.bind(env.CLIENT);
+  let fail = true;
+  vi.spyOn(env.CLIENT, "get").mockImplementation((id) => {
+    const real = realGet(id);
+    return {
+      claimSend: (...args: Parameters<typeof real.claimSend>) => real.claimSend(...args),
+      markSendFailed: (...args: Parameters<typeof real.markSendFailed>) => real.markSendFailed(...args),
+      markSent: (...args: Parameters<typeof real.markSent>) => {
+        if (fail) {
+          fail = false;
+          return Promise.reject(new Error("do unreachable"));
+        }
+        return real.markSent(...args);
+      },
+    } as never;
+  });
+}
+
 let enqueue: MockInstance<typeof env.SEND.send>;
 
 beforeAll(async () => {
@@ -186,37 +206,103 @@ describe("handleSendBatch", () => {
     expect(await stub.getMessage(ws, job.messageId)).toMatchObject({ status: "failed", attempts: 5, error: "down" });
   });
 
-  it("records a send whose DO write failed by re-enqueueing the SES id, never sending twice", async () => {
+  it("enqueues a finalize job when markSent fails after SES accepted, and counts the send once", async () => {
     const ws = "wsp_marksent";
     const stub = await seedWorkspace(ws);
     const job = await queue(stub, ws);
-    const realGet = env.CLIENT.get.bind(env.CLIENT);
-    let failMarkSent = true;
-    vi.spyOn(env.CLIENT, "get").mockImplementation((id) => {
-      const real = realGet(id);
-      return {
-        claimSend: (...args: Parameters<typeof real.claimSend>) => real.claimSend(...args),
-        markSendFailed: (...args: Parameters<typeof real.markSendFailed>) => real.markSendFailed(...args),
-        markSent: (...args: Parameters<typeof real.markSent>) => {
-          if (failMarkSent) {
-            failMarkSent = false;
-            return Promise.reject(new Error("do unreachable"));
-          }
-          return real.markSent(...args);
-        },
-      } as never;
-    });
+    failMarkSentOnce();
+    vi.spyOn(console, "error").mockImplementation(() => {});
 
     const { outcomes } = await deliver(job);
     expect(outcomes).toEqual([{ kind: "ack" }]);
     expect(memorySesTransport.sent).toHaveLength(1);
-    expect(enqueue).toHaveBeenLastCalledWith({ workspaceId: ws, messageId: job.messageId, sesMessageId: "mem-1" });
+    expect(enqueue).toHaveBeenLastCalledWith({ kind: "finalize", workspaceId: ws, messageId: job.messageId, sesMessageId: "mem-1" });
 
     const recorded = enqueue.mock.calls.at(-1)![0] as SendJob;
     const again = await deliver(recorded);
     expect(again.outcomes).toEqual([{ kind: "ack" }]);
     expect(memorySesTransport.sent).toHaveLength(1);
     expect(await stub.getMessage(ws, job.messageId)).toMatchObject({ status: "sent", sesMessageId: "mem-1" });
+    expect(await usageSent(ws)).toBe(1);
+  });
+
+  it("finalize job marks the row sent without calling the transport", async () => {
+    const ws = "wsp_finalize";
+    const stub = await seedWorkspace(ws);
+    const job = await queue(stub, ws);
+
+    const { outcomes } = await deliver({ kind: "finalize", workspaceId: ws, messageId: job.messageId, sesMessageId: "ses-x" });
+    expect(outcomes).toEqual([{ kind: "ack" }]);
+    expect(memorySesTransport.sent).toHaveLength(0);
+    expect(await stub.getMessage(ws, job.messageId)).toMatchObject({ status: "sent", sesMessageId: "ses-x" });
+  });
+
+  it("does not bump usage again when a finalize job is redelivered", async () => {
+    const ws = "wsp_finalize_twice";
+    const stub = await seedWorkspace(ws);
+    const job = await queue(stub, ws);
+    const finalize: SendJob = { kind: "finalize", workspaceId: ws, messageId: job.messageId, sesMessageId: "ses-y" };
+
+    await deliver(finalize);
+    const again = await deliver(finalize);
+    expect(again.outcomes).toEqual([{ kind: "ack" }]);
+    expect(await usageSent(ws)).toBe(1);
+  });
+
+  it("acks when the finalize enqueue also fails, logging only the message id", async () => {
+    const ws = "wsp_finalize_lost";
+    const stub = await seedWorkspace(ws);
+    const job = await queue(stub, ws);
+    failMarkSentOnce();
+    enqueue.mockRejectedValueOnce(new Error("queue down for bob@example.com"));
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const { outcomes } = await deliver(job);
+    expect(outcomes).toEqual([{ kind: "ack" }]);
+    expect(memorySesTransport.sent).toHaveLength(1);
+    const logged = log.mock.calls.map((args) => args.join(" ")).join("\n");
+    expect(logged).toContain(job.messageId);
+    expect(logged).not.toContain("@");
+    expect(logged).not.toContain("queue down");
+    expect(logged).not.toContain("do unreachable");
+  });
+
+  it("stores the SES error with addresses masked and capped at 500 characters", async () => {
+    const ws = "wsp_mask";
+    const stub = await seedWorkspace(ws);
+    const job = await queue(stub, ws);
+    memorySesTransport.failNext(new AwsError("MessageRejected", `bad bob@example.com ${"x".repeat(600)}`, { status: 400 }));
+
+    await deliver(job);
+    const { error } = (await stub.getMessage(ws, job.messageId))!;
+    expect(error).toMatch(/^bad b\*\*\*@example\.com x/);
+    expect(error).not.toContain("bob@");
+    expect(error!.length).toBe(500);
+  });
+
+  it("fails a message whose html object is missing, without retrying or sending", async () => {
+    const ws = "wsp_nohtml";
+    const stub = await seedWorkspace(ws);
+    const job = await queue(stub, ws);
+    await env.MAIL.delete((await stub.getMessage(ws, job.messageId))!.htmlKey!);
+
+    const { outcomes } = await deliver(job);
+    expect(outcomes).toEqual([{ kind: "ack" }]);
+    expect(memorySesTransport.sent).toHaveLength(0);
+    expect(await stub.getMessage(ws, job.messageId)).toMatchObject({ status: "failed", error: "html missing", claimedUntil: null });
+  });
+
+  it("retries an unexpected failure after 30 seconds", async () => {
+    const ws = "wsp_outer";
+    const stub = await seedWorkspace(ws);
+    const job = await queue(stub, ws);
+    vi.spyOn(env.CLIENT, "get").mockImplementation(
+      () => ({ claimSend: () => Promise.reject(new Error("do down")) }) as never,
+    );
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const { outcomes } = await deliver(job);
+    expect(outcomes).toEqual([{ kind: "retry", delaySeconds: 30 }]);
   });
 
   it("fails a sender whose region has no SES config set, and acks", async () => {

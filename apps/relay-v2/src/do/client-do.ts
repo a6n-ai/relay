@@ -21,6 +21,9 @@ export type SendClaim =
 
 const CLAIM_LEASE_MS = 60_000;
 
+// Stored send errors keep the domain and first letter only, so a bounce never persists a full recipient address.
+const maskEmails = (text: string) => text.replace(/([\w.%+-])[\w.%+-]*@([\w-]+(?:\.[\w-]+)+)/g, "$1***@$2").slice(0, 500);
+
 // Higher rank wins a suppression conflict: a stronger reason is never replaced by a weaker one.
 const reasonRank = (column: SQLWrapper) =>
   sql`CASE ${column} WHEN 'complaint' THEN 4 WHEN 'bounce' THEN 3 WHEN 'unsubscribe' THEN 2 ELSE 1 END`;
@@ -187,7 +190,16 @@ export class ClientDO extends DurableObject<Env> {
 
     const { row, attempt, region } = claimed;
     const object = row.htmlKey ? await this.env.MAIL.get(row.htmlKey) : null;
-    if (row.htmlKey && !object) throw new Error("html object missing");
+    if (row.htmlKey && !object) {
+      this.ctx.storage.transactionSync(() => {
+        this.db
+          .update(schema.message)
+          .set({ status: "failed", error: "html missing", claimedUntil: null, updatedAt: Date.now() })
+          .where(eq(schema.message.id, messageId))
+          .run();
+      });
+      return { kind: "skip", reason: "failed" };
+    }
     return {
       kind: "send",
       attempt,
@@ -206,15 +218,18 @@ export class ClientDO extends DurableObject<Env> {
   }
 
   // SES accepted the message. Idempotent; a failed row is overwritten because SES has the message.
-  async markSent(workspaceId: string, messageId: string, sesMessageId: string, now = Date.now()): Promise<void> {
+  // Returns true only when this call changed the row, so the caller counts each send once.
+  async markSent(workspaceId: string, messageId: string, sesMessageId: string, now = Date.now()): Promise<boolean> {
     await this.ready(workspaceId);
-    this.ctx.storage.transactionSync(() => {
-      this.db
-        .update(schema.message)
-        .set({ status: "sent", sesMessageId, sentAt: now, claimedUntil: null, error: null, updatedAt: now })
-        .where(and(eq(schema.message.id, messageId), ne(schema.message.status, "sent")))
-        .run();
-    });
+    return this.ctx.storage.transactionSync(
+      () =>
+        this.db
+          .update(schema.message)
+          .set({ status: "sent", sesMessageId, sentAt: now, claimedUntil: null, error: null, updatedAt: now })
+          .where(and(eq(schema.message.id, messageId), ne(schema.message.status, "sent")))
+          .returning({ id: schema.message.id })
+          .all().length > 0,
+    );
   }
 
   async markSendFailed(workspaceId: string, messageId: string, error: string, final: boolean): Promise<void> {
@@ -222,7 +237,7 @@ export class ClientDO extends DurableObject<Env> {
     this.ctx.storage.transactionSync(() => {
       this.db
         .update(schema.message)
-        .set({ error, claimedUntil: null, updatedAt: Date.now(), ...(final ? { status: "failed" as const } : {}) })
+        .set({ error: maskEmails(error), claimedUntil: null, updatedAt: Date.now(), ...(final ? { status: "failed" as const } : {}) })
         .where(and(eq(schema.message.id, messageId), ne(schema.message.status, "sent")))
         .run();
     });

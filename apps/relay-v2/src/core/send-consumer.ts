@@ -21,12 +21,12 @@ export async function handleSendBatch(
 
   await Promise.all(
     batch.messages.map(async (message) => {
-      const { workspaceId, messageId, sesMessageId } = message.body;
+      const body = message.body;
+      const { workspaceId, messageId } = body;
       const stub = clientFor(env, workspaceId);
       try {
-        if (sesMessageId) {
-          await stub.markSent(workspaceId, messageId, sesMessageId);
-          countSent(workspaceId);
+        if (body.kind === "finalize") {
+          if (await stub.markSent(workspaceId, messageId, body.sesMessageId)) countSent(workspaceId);
           return message.ack();
         }
 
@@ -43,21 +43,23 @@ export async function handleSendBatch(
           return final ? message.ack() : message.retry({ delaySeconds: retryDelaySeconds(claim.attempt) });
         }
 
+        // SES accepted the message, so the send job must never run again. A finalize job carries the SES id instead.
+        let changed: boolean;
         try {
-          await stub.markSent(workspaceId, messageId, receipt.sesMessageId);
-        } catch (err) {
-          // SES accepted the message, so the original job must never run again. Carry the SES id on a new job instead.
-          console.error("relay-send: markSent failed, re-enqueueing the SES id", messageId, errorText(err));
-          await env.SEND.send({ workspaceId, messageId, sesMessageId: receipt.sesMessageId }).catch((enqueueErr) =>
-            console.error("relay-send: re-enqueue failed, SES id not recorded", messageId, errorText(enqueueErr)),
+          changed = await stub.markSent(workspaceId, messageId, receipt.sesMessageId);
+        } catch {
+          console.error("relay-send: markSent failed, enqueueing finalize", messageId);
+          // shortcut: if the finalize enqueue also fails, the SES id is lost and the sweeper may resend (duplicate email). Upgrade: persist the SES id in the DO before acking.
+          await env.SEND.send({ kind: "finalize", workspaceId, messageId, sesMessageId: receipt.sesMessageId }).catch(() =>
+            console.error("relay-send: finalize enqueue failed, SES id not recorded", messageId),
           );
           return message.ack();
         }
-        countSent(workspaceId);
+        if (changed) countSent(workspaceId);
         message.ack();
       } catch (err) {
         console.error("relay-send: job failed, retrying", messageId, errorText(err));
-        message.retry();
+        message.retry({ delaySeconds: 30 });
       }
     }),
   );
