@@ -1,8 +1,8 @@
 import type { BatchItem } from "drizzle-orm/batch";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 import { z } from "zod";
 import { centralDb } from "../db/central/client";
-import { app, member, sendingDomain, user, workspace } from "../db/central/schema";
+import { apiKey, app, member, sendingDomain, user, workspace } from "../db/central/schema";
 import type { Env } from "../env";
 import { newId } from "../lib/ids";
 import { createApiKey } from "./api-keys";
@@ -23,8 +23,8 @@ export const seedInputSchema = z.object({
   domain: z.object({ domain: text, sesRegion: text }).optional(),
 });
 
-// Writes run in one D1 batch, which is all-or-nothing. The app's first api key is created after
-// the batch, so a crash between them leaves an app with no key that a rerun will not repair.
+// Writes run in one D1 batch, which is all-or-nothing. The api key is created after the batch,
+// so a rerun issues one whenever the app has no live key.
 export async function seed(env: Env, input: SeedInput): Promise<SeedResult> {
   const db = centralDb(env);
   const emails = [...new Set(input.ownerEmails.map((e) => e.trim().toLowerCase()))];
@@ -42,6 +42,7 @@ export async function seed(env: Env, input: SeedInput): Promise<SeedResult> {
       return { id, name: email, email, role: "admin" as const };
     });
   if (newUsers.length) writes.push(db.insert(user).values(newUsers));
+  writes.push(db.update(user).set({ role: "admin" }).where(inArray(user.email, emails)));
 
   const [existingWorkspace] = await db
     .select({ id: workspace.id })
@@ -87,8 +88,13 @@ export async function seed(env: Env, input: SeedInput): Promise<SeedResult> {
   }
 
   if (writes.length) await db.batch(writes as [BatchItem<"sqlite">, ...BatchItem<"sqlite">[]]);
-  const apiKey = existingApp ? "" : (await createApiKey(env, { workspaceId, appId, name: "seed" })).secret;
-  return { workspaceId, appId, apiKey };
+  const liveKey = await db
+    .select({ id: apiKey.id })
+    .from(apiKey)
+    .where(and(eq(apiKey.appId, appId), isNull(apiKey.revokedAt)))
+    .get();
+  const secret = liveKey ? "" : (await createApiKey(env, { workspaceId, appId, name: "seed" })).secret;
+  return { workspaceId, appId, apiKey: secret };
 }
 
 // Returns the response to send when the request must not reach seed, or null to continue.

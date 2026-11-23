@@ -1,10 +1,10 @@
 import { applyD1Migrations, env, SELF, type D1Migration } from "cloudflare:test";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 import { beforeAll, describe, expect, it } from "vitest";
 import { resolveApiKey } from "../src/core/api-keys";
 import { seed, seedGuard } from "../src/core/seed";
 import { centralDb } from "../src/db/central/client";
-import { app, member, sendingDomain, user, workspace } from "../src/db/central/schema";
+import { apiKey, app, member, sendingDomain, user, workspace } from "../src/db/central/schema";
 import type { Env } from "../src/env";
 
 const { TEST_MIGRATIONS } = env as typeof env & { TEST_MIGRATIONS: D1Migration[] };
@@ -68,12 +68,29 @@ describe("seed", () => {
 
     const users = await db.select().from(user).where(eq(user.email, "c@example.com"));
     expect(users).toHaveLength(1);
+    expect(users[0].role).toBe("admin");
     const owners = await db
       .select()
       .from(member)
       .where(and(eq(member.organizationId, result.workspaceId), eq(member.userId, "usr_seedexist001")));
     expect(owners).toHaveLength(1);
     expect(owners[0].role).toBe("owner");
+  });
+
+  it("issues a missing api key on rerun, then returns no key once one is live", async () => {
+    const keyInput = { ...input, workspace: { name: "Keyless", slug: "keyless" } };
+    const first = await seed(env, keyInput);
+    await db.delete(apiKey).where(eq(apiKey.appId, first.appId));
+
+    const repaired = await seed(env, keyInput);
+    expect(repaired.apiKey).toMatch(/^rk_/);
+    const live = await db
+      .select()
+      .from(apiKey)
+      .where(and(eq(apiKey.appId, first.appId), isNull(apiKey.revokedAt)));
+    expect(live).toHaveLength(1);
+
+    expect((await seed(env, keyInput)).apiKey).toBe("");
   });
 
   it("creates the sending domain once and refuses a domain owned by another workspace", async () => {
