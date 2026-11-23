@@ -47,6 +47,17 @@ describe("API keys", () => {
     });
   });
 
+  it("refuses to bind a key to an app in another workspace", async () => {
+    const a = await seedApp("keys-mismatch-a");
+    const b = await seedApp("keys-mismatch-b");
+
+    await expect(
+      createApiKey(env, { workspaceId: a.workspaceId, appId: b.appId, name: "web" }),
+    ).rejects.toThrow("app does not belong to workspace");
+    const rows = await env.CENTRAL.prepare("SELECT COUNT(*) AS n FROM api_key WHERE app_id = ?").bind(b.appId).first<{ n: number }>();
+    expect(rows?.n).toBe(0);
+  });
+
   // Review Focus 3: a revoked key must not survive in the cache.
   it("fails a revoked key on the next call, even after it was cached", async () => {
     const { workspaceId, appId } = await seedApp("keys-revoke");

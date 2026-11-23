@@ -1,6 +1,6 @@
 import { and, eq, isNull } from "drizzle-orm";
 import { centralDb } from "../db/central/client";
-import { apiKey } from "../db/central/schema";
+import { apiKey, app } from "../db/central/schema";
 import type { Env } from "../env";
 import { newId } from "../lib/ids";
 
@@ -22,6 +22,8 @@ export async function createApiKey(
   const bytes = crypto.getRandomValues(new Uint8Array(24));
   const secret = `rk_${btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_")}`;
   const id = newId("key");
+  const owner = await centralDb(env).select({ workspaceId: app.workspaceId }).from(app).where(eq(app.id, input.appId)).get();
+  if (owner?.workspaceId !== input.workspaceId) throw new Error("app does not belong to workspace");
   await centralDb(env).insert(apiKey).values({
     id,
     workspaceId: input.workspaceId,
