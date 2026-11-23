@@ -200,6 +200,21 @@ describe("ClientDO sweeper alarm", () => {
     expect(await runInDurableObject(stub, (_i, state) => state.storage.getAlarm())).not.toBeNull();
   });
 
+  it("keeps the next sweep scheduled when sendBatch throws during an alarm run", async () => {
+    const ws = "wsp_sweep_throw";
+    const stub = await seededStub(ws);
+    const sent = await stub.send(ws, base);
+    await runInDurableObject<ClientDO, void>(stub, (inst) => {
+      const old = Date.now() - 21 * MIN;
+      inst.db.update(schema.message).set({ createdAt: old, updatedAt: old }).where(eq(schema.message.id, sent.messageId)).run();
+    });
+    sendBatch.mockRejectedValue(new Error("queue down"));
+
+    await runDurableObjectAlarm(stub).catch(() => undefined);
+    expect(sendBatch).toHaveBeenCalled();
+    expect(await runInDurableObject(stub, (_i, state) => state.storage.getAlarm())).not.toBeNull();
+  });
+
   it("alarm on a DO with no bound workspace does nothing and does not reschedule", async () => {
     const stub = env.CLIENT.get(env.CLIENT.newUniqueId());
     await runInDurableObject(stub, (_i, state) => state.storage.setAlarm(Date.now() + 1000));

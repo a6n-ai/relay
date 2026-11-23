@@ -16,7 +16,13 @@ export type MessageView = typeof schema.message.$inferSelect & { html: string | 
 
 type SendResult = { messageId: string; status: "queued" | "sent" | "failed" | "suppressed"; duplicate: boolean };
 
-export type SesEventResult = { applied: number; ignored: number; usage: { day: string; delivered: number; bounced: number }[] };
+// failed: indexes into the input whose transaction threw. They rolled back alone and must be retried.
+export type SesEventResult = {
+  applied: number;
+  ignored: number;
+  failed: number[];
+  usage: { day: string; delivered: number; bounced: number }[];
+};
 
 export type SendClaim =
   | { kind: "skip"; reason: "missing" | "sent" | "failed" | "suppressed" }
@@ -172,7 +178,8 @@ export class ClientDO extends DurableObject<Env> {
     await this.ready(workspaceId);
     const claimed = this.ctx.storage.transactionSync(():
       | SendClaim
-      | { kind: "claimed"; attempt: number; row: typeof schema.message.$inferSelect; region: string } => {
+      | { kind: "claimed"; attempt: number; row: typeof schema.message.$inferSelect; region: string }
+      | { kind: "suppressed"; htmlKey: string | null } => {
       const row = this.db.select().from(schema.message).where(eq(schema.message.id, messageId)).get();
       if (!row) return { kind: "skip", reason: "missing" };
       if (row.status !== "queued" || row.sesMessageId) {
@@ -180,6 +187,15 @@ export class ClientDO extends DurableObject<Env> {
       }
       if (row.claimedUntil != null && row.claimedUntil > now) {
         return { kind: "busy", retryInSeconds: Math.ceil((row.claimedUntil - now) / 1000) };
+      }
+      // Re-checked at claim time: a bounce or complaint can land while the row waits in the queue.
+      if (this.suppressed(row.toEmail ?? "", row.stream as Stream)) {
+        this.db
+          .update(schema.message)
+          .set({ status: "suppressed", htmlKey: null, claimedUntil: null, updatedAt: now })
+          .where(eq(schema.message.id, messageId))
+          .run();
+        return { kind: "suppressed", htmlKey: row.htmlKey };
       }
       const region = row.sesRegion;
       if (!region) {
@@ -198,6 +214,10 @@ export class ClientDO extends DurableObject<Env> {
         .run();
       return { kind: "claimed", attempt, row, region };
     });
+    if (claimed.kind === "suppressed") {
+      await this.dropHtml(claimed.htmlKey);
+      return { kind: "skip", reason: "suppressed" };
+    }
     if (claimed.kind !== "claimed") return claimed;
 
     const { row, attempt, region } = claimed;
@@ -264,10 +284,18 @@ export class ClientDO extends DurableObject<Env> {
   // Usage is returned rather than written, so the queue bumps it only after this call succeeds.
   async applySesEvents(workspaceId: string, events: SesEventJob[]): Promise<SesEventResult> {
     await this.ready(workspaceId);
-    const result: SesEventResult = { applied: 0, ignored: 0, usage: [] };
+    const result: SesEventResult = { applied: 0, ignored: 0, failed: [], usage: [] };
     const days = new Map<string, { delivered: number; bounced: number }>();
-    for (const job of events) {
-      const delta = this.ctx.storage.transactionSync(() => this.applySesEvent(workspaceId, job));
+    for (const [index, job] of events.entries()) {
+      let delta: { delivered: number; bounced: number } | null;
+      try {
+        delta = this.ctx.storage.transactionSync(() => this.applySesEvent(workspaceId, job));
+      } catch (err) {
+        // Only this event rolls back; the rest of the group still commits.
+        console.error("ClientDO: ses event failed, retrying", job.snsMessageId, err instanceof Error ? err.name : "unknown");
+        result.failed.push(index);
+        continue;
+      }
       if (!delta) {
         result.ignored++;
         continue;
@@ -397,6 +425,8 @@ export class ClientDO extends DurableObject<Env> {
       .orderBy(schema.message.createdAt)
       .limit(SWEEP_BATCH)
       .all();
+    // Before the enqueue loop: if sendBatch keeps throwing past the alarm retries, the next sweep is still scheduled.
+    if (stale.length > 0) await this.ctx.storage.setAlarm(now + SWEEP_INTERVAL_MS);
     for (let i = 0; i < stale.length; i += SWEEP_CHUNK) {
       const ids = stale.slice(i, i + SWEEP_CHUNK).map((row) => row.id);
       await this.env.SEND.sendBatch(ids.map((messageId) => ({ body: { workspaceId, messageId } })));

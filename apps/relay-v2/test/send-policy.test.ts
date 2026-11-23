@@ -223,4 +223,24 @@ describe("send policy", () => {
     expect(unverified.status).toBe(422);
     expect(await unverified.json()).toEqual({ error: "sender_not_verified" });
   });
+
+  it("refuses a subject with a line break at the API, queuing nothing", async () => {
+    const slug = "http-crlf";
+    const [ws] = await securityDb(env).insert(workspace).values({ name: slug, slug }).returning();
+    const [a] = await securityDb(env).insert(app).values({ workspaceId: ws.id, name: slug, slug: "main" }).returning();
+    const [owner] = await securityDb(env).insert(user).values({ name: slug, email: `${slug}@owner.test` }).returning();
+    await securityDb(env).insert(member).values({ organizationId: ws.id, userId: owner.id, role: "owner" });
+    const { secret } = await createApiKey(env, { workspaceId: ws.id, appId: a.id, name: "web" });
+    await seedSender(ws.id, "tiffingrab.ca", from);
+    const body = { stream: "transactional", from, to: "guest@x.com", subject: "Order\r\nBcc: spy@x.com", html: "<p>Thanks</p>", text: "Thanks" };
+
+    const res = await SELF.fetch("https://relay.test/api/v1/messages", {
+      method: "POST",
+      headers: { authorization: `Bearer ${secret}`, "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: "invalid input" });
+    expect(await rowCount(stubFor(ws.id))).toBe(0);
+  });
 });

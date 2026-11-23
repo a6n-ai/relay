@@ -41,7 +41,7 @@ function event(workspaceId: string, messageId: string, over: Partial<SesEventJob
   };
 }
 
-type Outcome = { kind: "none" } | { kind: "ack" } | { kind: "retry" };
+type Outcome = { kind: "none" } | { kind: "ack" } | { kind: "retry"; delaySeconds?: number };
 
 // Hand-made batch: records the ack or retry each message receives.
 function batchOf(bodies: SesEventJob[]) {
@@ -54,8 +54,8 @@ function batchOf(bodies: SesEventJob[]) {
     ack: () => {
       outcomes[i] = { kind: "ack" };
     },
-    retry: () => {
-      outcomes[i] = { kind: "retry" };
+    retry: (opts?: { delaySeconds?: number }) => {
+      outcomes[i] = { kind: "retry", delaySeconds: opts?.delaySeconds };
     },
   }));
   return { batch: { queue: "relay-ses-events", messages } as never, outcomes };
@@ -114,7 +114,7 @@ describe("applySesEvents", () => {
     const ws = "wsp_delivery";
     const { stub, messageId } = await sentMessage(ws);
     const result = await stub.applySesEvents(ws, [event(ws, messageId, { type: "Delivery", recipients: ["guest@x.com"] })]);
-    expect(result).toEqual({ applied: 1, ignored: 0, usage: [{ day: DAY, delivered: 1, bounced: 0 }] });
+    expect(result).toEqual({ applied: 1, ignored: 0, failed: [], usage: [{ day: DAY, delivered: 1, bounced: 0 }] });
     expect(await rows(stub, "SELECT type, recipient FROM message_event")).toEqual([{ type: "Delivery", recipient: "guest@x.com" }]);
   });
 
@@ -179,7 +179,7 @@ describe("applySesEvents", () => {
     const ws = "wsp_unknown";
     const { stub } = await sentMessage(ws);
     const bounce = event(ws, "msg_nope", { type: "Bounce", bounceType: "Permanent", recipients: ["u@x.com"] });
-    expect(await stub.applySesEvents(ws, [bounce])).toEqual({ applied: 0, ignored: 1, usage: [] });
+    expect(await stub.applySesEvents(ws, [bounce])).toEqual({ applied: 0, ignored: 1, failed: [], usage: [] });
     expect(await rows(stub, "SELECT type FROM message_event")).toEqual([]);
     expect(await stub.isSuppressed(ws, "u@x.com", "marketing")).toBe(false);
   });
@@ -188,7 +188,7 @@ describe("applySesEvents", () => {
     const ws = "wsp_other_ses";
     const { stub, messageId } = await sentMessage(ws);
     const bounce = event(ws, messageId, { sesMessageId: "other", type: "Bounce", bounceType: "Permanent", recipients: ["o@x.com"] });
-    expect(await stub.applySesEvents(ws, [bounce])).toEqual({ applied: 0, ignored: 1, usage: [] });
+    expect(await stub.applySesEvents(ws, [bounce])).toEqual({ applied: 0, ignored: 1, failed: [], usage: [] });
     expect(await rows(stub, "SELECT type FROM message_event")).toEqual([]);
     expect(await stub.isSuppressed(ws, "o@x.com", "marketing")).toBe(false);
   });
@@ -197,7 +197,7 @@ describe("applySesEvents", () => {
     const ws = "wsp_p";
     const { stub, messageId } = await sentMessage(ws);
     const foreign = event("wsp_other", messageId, { type: "Bounce", bounceType: "Permanent", recipients: ["f@x.com"] });
-    expect(await stub.applySesEvents(ws, [foreign])).toEqual({ applied: 0, ignored: 1, usage: [] });
+    expect(await stub.applySesEvents(ws, [foreign])).toEqual({ applied: 0, ignored: 1, failed: [], usage: [] });
     expect(await rows(stub, "SELECT type FROM message_event")).toEqual([]);
     expect(await stub.isSuppressed(ws, "f@x.com", "marketing")).toBe(false);
   });
@@ -240,7 +240,28 @@ describe("handleSesEventBatch", () => {
       event("wsp_fail_b", b.messageId, { sesMessageId: b.sesMessageId, type: "Delivery" }),
     ]);
     await handleSesEventBatch(batch, env);
-    expect(outcomes).toEqual([{ kind: "ack" }, { kind: "retry" }]);
+    expect(outcomes).toEqual([{ kind: "ack" }, { kind: "retry", delaySeconds: 30 }]);
     expect(await usageOf("wsp_fail_b")).toEqual({ delivered: 0, bounced: 0 });
+  });
+
+  it("commits the events around a throwing one, counts them once, and retries only that message", async () => {
+    const ws = "wsp_partial";
+    const { stub, messageId, sesMessageId } = await sentMessage(ws);
+    const first = event(ws, messageId, { sesMessageId, type: "Delivery" });
+    // A non-string recipient makes this event's transaction throw, so it rolls back alone.
+    const poison = event(ws, messageId, { sesMessageId, type: "Bounce", bounceType: "Permanent", recipients: [null as unknown as string] });
+    const third = event(ws, messageId, { sesMessageId, type: "Delivery" });
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const { batch, outcomes } = batchOf([first, poison, third]);
+    await handleSesEventBatch(batch, env);
+    expect(outcomes).toEqual([{ kind: "ack" }, { kind: "retry", delaySeconds: 30 }, { kind: "ack" }]);
+    expect(await usageOf(ws)).toEqual({ delivered: 2, bounced: 0 });
+    expect(await rows(stub, "SELECT type FROM message_event ORDER BY id")).toEqual([{ type: "Delivery" }, { type: "Delivery" }]);
+
+    const replay = batchOf([first, poison, third]);
+    await handleSesEventBatch(replay.batch, env);
+    expect(replay.outcomes).toEqual([{ kind: "ack" }, { kind: "retry", delaySeconds: 30 }, { kind: "ack" }]);
+    expect(await usageOf(ws)).toEqual({ delivered: 2, bounced: 0 });
   });
 });

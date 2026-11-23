@@ -22,9 +22,14 @@ export async function handleSendBatch(
   await Promise.all(
     batch.messages.map(async (message) => {
       const body = message.body;
-      const { workspaceId, messageId } = body;
-      const stub = clientFor(env, workspaceId);
       try {
+        const { workspaceId, messageId } = body;
+        // A job of an unknown kind must never reach the send path.
+        if (body.kind !== undefined && body.kind !== "send" && body.kind !== "finalize") {
+          console.error("relay-send: unknown job kind, acking", messageId);
+          return message.ack();
+        }
+        const stub = clientFor(env, workspaceId);
         if (body.kind === "finalize") {
           if (await stub.markSent(workspaceId, messageId, body.sesMessageId)) countSent(workspaceId);
           return message.ack();
@@ -58,7 +63,7 @@ export async function handleSendBatch(
         if (changed) countSent(workspaceId);
         message.ack();
       } catch (err) {
-        console.error("relay-send: job failed, retrying", messageId, errorText(err));
+        console.error("relay-send: job failed, retrying", body?.messageId, errorText(err));
         message.retry({ delaySeconds: 30 });
       }
     }),

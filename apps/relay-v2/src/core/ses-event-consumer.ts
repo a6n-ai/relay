@@ -16,15 +16,16 @@ export async function handleSesEventBatch(batch: MessageBatch<SesEventJob>, env:
   await Promise.all(
     [...groups].map(async ([workspaceId, messages]) => {
       try {
-        const { usage } = await clientFor(env, workspaceId).applySesEvents(
+        const { usage, failed } = await clientFor(env, workspaceId).applySesEvents(
           workspaceId,
           messages.map((m) => m.body),
         );
         await Promise.all(usage.map((u) => bumpUsage(env, workspaceId, u.day, { delivered: u.delivered, bounced: u.bounced })));
-        for (const message of messages) message.ack();
+        const failedIndexes = new Set(failed);
+        messages.forEach((message, i) => (failedIndexes.has(i) ? message.retry({ delaySeconds: 30 }) : message.ack()));
       } catch (err) {
         console.error("relay-ses-events: apply failed, retrying", workspaceId, errorText(err));
-        for (const message of messages) message.retry();
+        for (const message of messages) message.retry({ delaySeconds: 30 });
       }
     }),
   );

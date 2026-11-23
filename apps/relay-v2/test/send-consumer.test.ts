@@ -330,4 +330,42 @@ describe("handleSendBatch", () => {
     expect(outcomes).toEqual([{ kind: "ack" }, { kind: "ack" }]);
     expect(memorySesTransport.sent).toHaveLength(0);
   });
+
+  it("does not send a queued message whose recipient was suppressed while it waited", async () => {
+    const ws = "wsp_claim_suppressed";
+    const stub = await seedWorkspace(ws);
+    const job = await queue(stub, ws);
+    const htmlKey = (await stub.getMessage(ws, job.messageId))!.htmlKey!;
+    await stub.addSuppression(ws, "guest@x.com", "bounce");
+
+    const { outcomes } = await deliver(job);
+    expect(outcomes).toEqual([{ kind: "ack" }]);
+    expect(memorySesTransport.sent).toHaveLength(0);
+    expect(await stub.getMessage(ws, job.messageId)).toMatchObject({ status: "suppressed", htmlKey: null, claimedUntil: null });
+    expect(await env.MAIL.get(htmlKey)).toBeNull();
+  });
+
+  it("acks a job of an unknown kind without touching the send path", async () => {
+    const ws = "wsp_bogus_kind";
+    const stub = await seedWorkspace(ws);
+    const job = await queue(stub, ws);
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const { outcomes } = await deliver({ kind: "bogus", workspaceId: ws, messageId: job.messageId } as never);
+    expect(outcomes).toEqual([{ kind: "ack" }]);
+    expect(memorySesTransport.sent).toHaveLength(0);
+    expect(await stub.getMessage(ws, job.messageId)).toMatchObject({ status: "queued", attempts: 0 });
+  });
+
+  it("retries only a job without a workspaceId and still sends the valid job in the same batch", async () => {
+    const ws = "wsp_bad_job";
+    const stub = await seedWorkspace(ws);
+    const job = await queue(stub, ws);
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const { sent, outcomes } = await deliver({ messageId: "msg_orphan" } as never, job);
+    expect(outcomes).toEqual([{ kind: "retry", delaySeconds: 30 }, { kind: "ack" }]);
+    expect(sent).toBe(1);
+    expect(memorySesTransport.sent).toHaveLength(1);
+  });
 });
