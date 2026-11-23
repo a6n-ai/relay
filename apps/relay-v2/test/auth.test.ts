@@ -2,7 +2,7 @@ import { applyD1Migrations, env, SELF, type D1Migration } from "cloudflare:test"
 import { eq } from "drizzle-orm";
 import { beforeAll, describe, expect, it } from "vitest";
 import { centralDb } from "../src/db/central/client";
-import { member, user, workspace } from "../src/db/central/schema";
+import { member, user, verification, workspace } from "../src/db/central/schema";
 import { createAuth, pickMailer } from "../src/lib/auth";
 import { memoryOtpMailer } from "../src/lib/auth/otp-mailer";
 import { newId } from "../src/lib/ids";
@@ -53,6 +53,15 @@ describe("better-auth on D1", () => {
     await insertUser("owner@example.com", "admin");
     const cookie = await signIn("owner@example.com");
     expect(cookie).toMatch(/better-auth\.session_token=/);
+  });
+
+  it("stores the email OTP hashed, never as the plain code", async () => {
+    const email = "hash@example.com";
+    await insertUser(email, "user");
+    const otp = await sendOtp(email);
+    const rows = (await db.select().from(verification)).filter((r) => r.identifier === `sign-in-otp-${email}`);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].value).not.toContain(otp);
   });
 
   it("creates a workspace with a wsp_ id, default quota, and an owner member", async () => {

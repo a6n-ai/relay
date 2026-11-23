@@ -85,6 +85,9 @@ export function createAuth(env: Env) {
     plugins: [
       emailOTP({
         disableSignUp: true,
+        storeOTP: "hashed",
+        allowedAttempts: 5,
+        expiresIn: 600,
         sendVerificationOTP: async ({ email, otp, type }) => {
           await pickMailer(env.OTP_MAILER).send(email, otp, type);
         },
