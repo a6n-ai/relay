@@ -32,6 +32,14 @@ describe("central schema constraints", () => {
     await expect(db.insert(address).values(row)).rejects.toHaveProperty("cause.message", expect.stringMatching(/UNIQUE constraint failed/));
   });
 
+  it("rejects a non-lowercased address email", async () => {
+    const { db, ws } = await seedWorkspace("case-address");
+    const [a] = await db.insert(app).values({ workspaceId: ws.id, name: "A", slug: "a" }).returning();
+    await expect(
+      db.insert(address).values({ workspaceId: ws.id, appId: a.id, email: "X@Dup.test", kind: "sender", displayName: "X", canSend: true }),
+    ).rejects.toHaveProperty("cause.message", expect.stringMatching(/CHECK constraint failed/));
+  });
+
   it("rejects an address grant with neither member nor team", async () => {
     const { db, ws } = await seedWorkspace("grant-check");
     const [a] = await db.insert(app).values({ workspaceId: ws.id, name: "A", slug: "a" }).returning();

@@ -26,7 +26,8 @@ CREATE TABLE `address` (
 	`created_at` integer NOT NULL,
 	`updated_at` integer NOT NULL,
 	FOREIGN KEY (`workspace_id`) REFERENCES `workspace`(`id`) ON UPDATE no action ON DELETE no action,
-	FOREIGN KEY (`app_id`) REFERENCES `app`(`id`) ON UPDATE no action ON DELETE no action
+	FOREIGN KEY (`app_id`) REFERENCES `app`(`id`) ON UPDATE no action ON DELETE no action,
+	CONSTRAINT "address_email_lower" CHECK("address"."email" = lower(trim("address"."email")))
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX `address_email_unique` ON `address` (`email`);--> statement-breakpoint
@@ -154,6 +155,8 @@ CREATE TABLE `usage_daily` (
 	`delivered` integer DEFAULT 0 NOT NULL,
 	`bounced` integer DEFAULT 0 NOT NULL,
 	`inbound` integer DEFAULT 0 NOT NULL,
+	`created_at` integer NOT NULL,
+	`updated_at` integer NOT NULL,
 	PRIMARY KEY(`workspace_id`, `day`),
 	FOREIGN KEY (`workspace_id`) REFERENCES `workspace`(`id`) ON UPDATE no action ON DELETE no action
 );

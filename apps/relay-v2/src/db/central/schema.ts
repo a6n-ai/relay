@@ -174,7 +174,7 @@ export const address = sqliteTable("address", {
   canSend: flag("can_send").notNull().default(false),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
-});
+}, (t) => [check("address_email_lower", sql`${t.email} = lower(trim(${t.email}))`)]);
 
 export const addressGrant = sqliteTable(
   "address_grant",
@@ -198,6 +198,8 @@ export const usageDaily = sqliteTable(
     delivered: integer("delivered").notNull().default(0),
     bounced: integer("bounced").notNull().default(0),
     inbound: integer("inbound").notNull().default(0),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
   },
   (t) => [primaryKey({ columns: [t.workspaceId, t.day] })],
 );

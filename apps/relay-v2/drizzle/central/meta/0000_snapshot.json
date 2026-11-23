@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "87a15201-0a0f-46f4-a761-13e453078bbe",
+  "id": "430deb3c-75e5-4898-b74a-e8c7730070d8",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "account": {
@@ -226,7 +226,12 @@
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
-      "checkConstraints": {}
+      "checkConstraints": {
+        "address_email_lower": {
+          "name": "address_email_lower",
+          "value": "\"address\".\"email\" = lower(trim(\"address\".\"email\"))"
+        }
+      }
     },
     "address_grant": {
       "name": "address_grant",
@@ -1110,6 +1115,20 @@
           "notNull": true,
           "autoincrement": false,
           "default": 0
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
         }
       },
       "indexes": {},
