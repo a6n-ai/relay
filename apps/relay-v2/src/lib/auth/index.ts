@@ -61,10 +61,12 @@ export function pickMailer(kind: Env["OTP_MAILER"], env: Env): OtpMailer {
 // better-auth's limiter keys on IP and path, so rotating IPs could mail-bomb one address. One upsert keeps the count race-free.
 async function otpEmailWithinCap(env: Env, email: string): Promise<boolean> {
   const now = Date.now();
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(email));
+  const hex = [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
   const expired = sql`${rateLimit.lastRequest} < ${now - OTP_EMAIL_WINDOW_MS}`;
   const [row] = await securityDb(env)
     .insert(rateLimit)
-    .values({ id: newId("rtl"), key: `otp-email:${email}`, count: 1, lastRequest: now })
+    .values({ id: newId("rtl"), key: `otp-email:${hex}`, count: 1, lastRequest: now })
     .onConflictDoUpdate({
       target: rateLimit.key,
       set: {

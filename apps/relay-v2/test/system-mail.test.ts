@@ -1,4 +1,5 @@
 import { env } from "cloudflare:test";
+import { AwsError } from "@foundry/cloud";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { memorySesTransport } from "../src/core/ses";
 import type { Env } from "../src/env";
@@ -6,6 +7,13 @@ import { pickMailer } from "../src/lib/auth";
 import { pickInviteMailer } from "../src/lib/auth/invite-mailer";
 
 const sesEnv = env as Env;
+const rejection = (p: Promise<unknown>) =>
+  p.then(
+    () => {
+      throw new Error("expected a rejection");
+    },
+    (e: Error) => e,
+  );
 
 beforeEach(() => {
   memorySesTransport.reset();
@@ -78,5 +86,22 @@ describe("system mail through SES", () => {
     expect(logged).not.toContain("123456");
     expect(logged).not.toContain("inv_abc");
     expect(logged).not.toContain("a@x.com");
+  });
+
+  it("keeps the recipient out of a failed send's error and console output", async () => {
+    const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      memorySesTransport.failNext(new Error("Email address is not verified: bob@example.com"));
+      const plain = await rejection(pickMailer("ses", sesEnv).send("bob@example.com", "123456", "sign-in"));
+      expect(plain.message).toBe("system mail failed");
+
+      memorySesTransport.failNext(new AwsError("MessageRejected", "Email address is not verified: bob@example.com", { status: 400 }));
+      const aws = await rejection(pickMailer("ses", sesEnv).send("bob@example.com", "123456", "sign-in"));
+      expect(aws.message).toBe("system mail failed: MessageRejected/400");
+
+      expect(JSON.stringify([plain.message, aws.message, errors.mock.calls])).not.toContain("@");
+    } finally {
+      errors.mockRestore();
+    }
   });
 });

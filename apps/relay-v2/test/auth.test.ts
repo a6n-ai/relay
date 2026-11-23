@@ -4,7 +4,7 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 import { coreDb } from "../src/db/core/client";
 import { address, sendingDomain, workspaceProfile } from "../src/db/core/schema";
 import { securityDb } from "../src/db/security/client";
-import { app, member, securityAudit, team, user, verification, workspace } from "../src/db/security/schema";
+import { app, member, rateLimit, securityAudit, team, user, verification, workspace } from "../src/db/security/schema";
 import { createAuth, pickMailer } from "../src/lib/auth";
 import { writeAudit } from "../src/lib/auth/audit";
 import { consoleInviteMailer, memoryInviteMailer, pickInviteMailer } from "../src/lib/auth/invite-mailer";
@@ -411,6 +411,14 @@ describe("auth rate limit", () => {
     }
     expect((await sendFrom(ips[5], "A@X.com")).status).toBe(429);
     expect((await sendFrom("203.0.113.7", "other@x.com")).status).toBe(200);
+  });
+
+  it("keys the per-email OTP counter by hash, so no rate_limit row holds an address", async () => {
+    await insertUser("hashed@example.com", "user");
+    expect((await sendFrom("198.51.100.50", "hashed@example.com")).status).toBe(200);
+    const keys = (await db.select({ key: rateLimit.key }).from(rateLimit)).map((r) => r.key);
+    expect(keys.some((k) => /^otp-email:[0-9a-f]{64}$/.test(k))).toBe(true);
+    expect(keys.filter((k) => k.includes("@"))).toEqual([]);
   });
 
   it("returns 429 on the 6th OTP check from one IP", async () => {

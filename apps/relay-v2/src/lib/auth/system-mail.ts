@@ -1,3 +1,4 @@
+import { AwsError } from "@foundry/cloud";
 import { sesTransport } from "../../core/ses";
 import type { Env } from "../../env";
 import type { InviteMailer } from "./invite-mailer";
@@ -8,8 +9,14 @@ function systemSend(env: Env) {
   const { SYSTEM_FROM_EMAIL: from, SYSTEM_SES_REGION: region, SYSTEM_FROM_NAME: name } = env;
   if (!from || !region) throw new Error("system mail not configured");
   const transport = sesTransport(env);
-  return (mail: { to: string; subject: string; text: string; html: string }) =>
-    transport.send({ ...mail, region, stream: "transactional", from, fromName: name || null });
+  return async (mail: { to: string; subject: string; text: string; html: string }) => {
+    try {
+      await transport.send({ ...mail, region, stream: "transactional", from, fromName: name || null });
+    } catch (err) {
+      // SES replies can quote the recipient, and better-auth logs a non-APIError whole: keep only the AWS code and status.
+      throw new Error(err instanceof AwsError ? `system mail failed: ${err.code}/${err.status ?? "none"}` : "system mail failed");
+    }
+  };
 }
 
 export function sesOtpMailer(env: Env): OtpMailer {
