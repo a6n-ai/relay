@@ -99,4 +99,53 @@ describe("ClientDO send", () => {
     expect(rows).toBe(0);
     expect(enqueue).not.toHaveBeenCalled();
   });
+
+  it("leaves no row or R2 object when enqueue fails, so a same-key retry sends", async () => {
+    const ws = "wsp_enqueue_fail";
+    const stub = stubFor(ws);
+    const input = { ...base, idempotencyKey: "order:1:confirmation" };
+    enqueue.mockRejectedValueOnce(new Error("queue down"));
+
+    const failure = await runInDurableObject(stub, (instance) =>
+      instance.send(ws, input).then(() => "resolved", (e: Error) => e.message),
+    );
+    expect(failure).toBe("queue down");
+
+    const rows = await runInDurableObject(stub, (_instance, state) =>
+      state.storage.sql.exec<{ n: number }>("SELECT count(*) AS n FROM message").toArray()[0].n,
+    );
+    expect(rows).toBe(0);
+    expect((await env.MAIL.list({ prefix: `ws/${ws}/msg/` })).objects).toHaveLength(0);
+
+    const retry = await stub.send(ws, input);
+    expect(retry).toEqual({ messageId: expect.stringMatching(/^msg_/), status: "queued", duplicate: false });
+    expect(enqueue).toHaveBeenCalledTimes(2);
+    expect(enqueue).toHaveBeenLastCalledWith({ workspaceId: ws, messageId: retry.messageId });
+  });
+
+  it("keeps a marketing block when a transactional block lands on the same email", async () => {
+    const ws = "wsp_widen";
+    const stub = stubFor(ws);
+    await stub.addSuppression("w@x.com", "manual", "marketing");
+    await stub.addSuppression("w@x.com", "manual", "transactional");
+
+    const marketing = await stub.send(ws, { ...base, stream: "marketing", to: "w@x.com" });
+    const transactional = await stub.send(ws, { ...base, stream: "transactional", to: "w@x.com" });
+
+    expect(marketing.status).toBe("suppressed");
+    expect(transactional.status).toBe("suppressed");
+    expect(enqueue).not.toHaveBeenCalled();
+  });
+
+  it("scopes idempotency keys to the app within a workspace", async () => {
+    const ws = "wsp_apps";
+    const stub = stubFor(ws);
+    const a = await stub.send(ws, { ...base, appId: "app_a", idempotencyKey: "order:1:confirmation" });
+    const b = await stub.send(ws, { ...base, appId: "app_b", idempotencyKey: "order:1:confirmation" });
+
+    expect(a).toEqual({ messageId: expect.stringMatching(/^msg_/), status: "queued", duplicate: false });
+    expect(b).toEqual({ messageId: expect.stringMatching(/^msg_/), status: "queued", duplicate: false });
+    expect(b.messageId).not.toBe(a.messageId);
+    expect(enqueue).toHaveBeenCalledTimes(2);
+  });
 });

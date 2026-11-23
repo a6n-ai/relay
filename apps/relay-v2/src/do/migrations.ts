@@ -11,7 +11,7 @@ CREATE TABLE message (
   direction TEXT NOT NULL,
   stream TEXT NOT NULL,
   status TEXT NOT NULL,
-  idempotency_key TEXT UNIQUE,
+  idempotency_key TEXT,
   event TEXT,
   campaign_id TEXT,
   from_email TEXT,
@@ -36,6 +36,7 @@ CREATE TABLE message (
 CREATE INDEX message_status_created_at ON message (status, created_at);
 CREATE INDEX message_campaign_status ON message (campaign_id, status);
 CREATE INDEX message_to_email ON message (to_email);
+CREATE UNIQUE INDEX message_app_idempotency_unique ON message (app_id, idempotency_key);
 
 CREATE TABLE suppression (
   email TEXT PRIMARY KEY NOT NULL,

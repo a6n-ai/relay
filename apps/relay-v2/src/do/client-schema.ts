@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { check, index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { check, index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 import { newId } from "../lib/ids";
 
 // Mirrors CLIENT_MIGRATIONS[0] in migrations.ts; change both together.
@@ -12,7 +12,7 @@ export const message = sqliteTable(
     direction: text("direction").notNull(),
     stream: text("stream").notNull(),
     status: text("status").notNull(),
-    idempotencyKey: text("idempotency_key").unique(),
+    idempotencyKey: text("idempotency_key"),
     event: text("event"),
     campaignId: text("campaign_id"),
     fromEmail: text("from_email"),
@@ -38,6 +38,7 @@ export const message = sqliteTable(
     index("message_status_created_at").on(t.status, t.createdAt),
     index("message_campaign_status").on(t.campaignId, t.status),
     index("message_to_email").on(t.toEmail),
+    uniqueIndex("message_app_idempotency_unique").on(t.appId, t.idempotencyKey),
   ],
 );
 

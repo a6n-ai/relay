@@ -28,7 +28,7 @@ export class ClientDO extends DurableObject<Env> {
 
   async send(workspaceId: string, input: SendInput): Promise<SendResult> {
     const data = sendInputSchema.parse(input);
-    const existing = data.idempotencyKey ? this.findByKey(data.idempotencyKey) : undefined;
+    const existing = data.idempotencyKey ? this.findByKey(data.appId, data.idempotencyKey) : undefined;
     if (existing) return existing;
 
     const id = newId("msg");
@@ -63,12 +63,21 @@ export class ClientDO extends DurableObject<Env> {
     } catch (err) {
       if (htmlKey) await this.env.MAIL.delete(htmlKey);
       // A concurrent send with the same key may have inserted first.
-      const raced = data.idempotencyKey ? this.findByKey(data.idempotencyKey) : undefined;
+      const raced = data.idempotencyKey ? this.findByKey(data.appId, data.idempotencyKey) : undefined;
       if (raced) return raced;
       throw err;
     }
     if (suppressed) return { messageId: id, status: "suppressed", duplicate: false };
-    await this.env.SEND.send({ workspaceId, messageId: id });
+    try {
+      await this.env.SEND.send({ workspaceId, messageId: id });
+    } catch (err) {
+      // Keep no row: a same-key retry would otherwise return duplicate and never enqueue.
+      this.ctx.storage.transactionSync(() => {
+        this.db.delete(schema.message).where(eq(schema.message.id, id)).run();
+      });
+      if (htmlKey) await this.env.MAIL.delete(htmlKey);
+      throw err;
+    }
     return { messageId: id, status: "queued", duplicate: false };
   }
 
@@ -88,7 +97,7 @@ export class ClientDO extends DurableObject<Env> {
         target: schema.suppression.email,
         set: {
           reason,
-          stream: sql`CASE WHEN ${schema.suppression.stream} IS NULL OR excluded.stream IS NULL THEN NULL ELSE excluded.stream END`,
+          stream: sql`CASE WHEN ${schema.suppression.stream} IS NULL OR excluded.stream IS NULL OR ${schema.suppression.stream} <> excluded.stream THEN NULL ELSE excluded.stream END`,
         },
       })
       .run();
@@ -113,11 +122,11 @@ export class ClientDO extends DurableObject<Env> {
     );
   }
 
-  private findByKey(key: string): SendResult | undefined {
+  private findByKey(appId: string, key: string): SendResult | undefined {
     const row = this.db
       .select({ id: schema.message.id, status: schema.message.status })
       .from(schema.message)
-      .where(eq(schema.message.idempotencyKey, key))
+      .where(and(eq(schema.message.appId, appId), eq(schema.message.idempotencyKey, key)))
       .get();
     // Only queued and suppressed exist until the send worker lands.
     return row ? { messageId: row.id, status: row.status as SendResult["status"], duplicate: true } : undefined;
