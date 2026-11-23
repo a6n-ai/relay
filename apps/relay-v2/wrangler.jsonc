@@ -6,7 +6,13 @@
   "main": "src/server.ts",
   "observability": { "enabled": true },
   "workers_dev": false,
-  "vars": { "BETTER_AUTH_URL": "https://relay.a6n.ai" },
+  "vars": {
+    "BETTER_AUTH_URL": "https://relay.a6n.ai",
+    "SES_EVENT_TOPIC_ARNS": "",
+    "SYSTEM_FROM_EMAIL": "",
+    "SYSTEM_FROM_NAME": "",
+    "SYSTEM_SES_REGION": "",
+  },
   "d1_databases": [
     {
       "binding": "SECURITY_DB",

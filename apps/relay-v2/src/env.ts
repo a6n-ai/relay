@@ -18,6 +18,13 @@ declare global {
       INVITE_MAILER?: "memory" | "console";
       SEED_SECRET?: string;
       INTERNAL_SECRET?: string;
+      AWS_ACCESS_KEY_ID?: string;
+      AWS_SECRET_ACCESS_KEY?: string;
+      SES_EVENT_TOPIC_ARNS?: string;
+      SYSTEM_FROM_EMAIL?: string;
+      SYSTEM_FROM_NAME?: string;
+      SYSTEM_SES_REGION?: string;
+      SES_TRANSPORT?: "memory";
     }
   }
 }
