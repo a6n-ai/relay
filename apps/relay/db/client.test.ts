@@ -26,7 +26,10 @@ describe("db on Workers", () => {
     void db.select;
     void db.insert;
     expect(postgresMock).toHaveBeenCalledTimes(1);
-    expect(postgresMock).toHaveBeenCalledWith("postgres://h/x", { max: 5, prepare: false });
+    // resetModules reloads @foundry/database, so its parser functions are fresh copies: match by key.
+    expect(postgresMock).toHaveBeenCalledWith("postgres://h/x", expect.objectContaining({
+      max: 5, prepare: false, fetch_types: false, types: expect.objectContaining({ text_array: expect.anything() }),
+    }));
 
     context.mockReturnValue({ env: { HYPERDRIVE: { connectionString: "postgres://h/x" } }, ctx: {} });
     void db.select;
