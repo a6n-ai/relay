@@ -22,9 +22,13 @@ export async function recordDoState(
   env: Env,
   workspaceId: string,
   state: { doSchemaVersion?: number; doMigrateError?: string | null },
-): Promise<void> {
+): Promise<boolean> {
+  // A DO woken for an id relay-security never created must not leave a profile row behind.
+  const [ws] = await securityDb(env).select({ id: workspace.id }).from(workspace).where(eq(workspace.id, workspaceId));
+  if (!ws) return false;
   await coreDb(env)
     .insert(workspaceProfile)
     .values({ workspaceId, ...state })
     .onConflictDoUpdate({ target: workspaceProfile.workspaceId, set: { ...state, updatedAt: new Date() } });
+  return true;
 }

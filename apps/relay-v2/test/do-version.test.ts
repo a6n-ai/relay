@@ -56,6 +56,22 @@ describe("ClientDO schema version", () => {
     expect(row).toMatchObject({ doSchemaVersion: VERSION, doMigrateError: null });
   });
 
+  it("reports nothing for a workspace id relay-security does not know, then reports once it exists", async () => {
+    const id = "wsp_ghost";
+    const stub = stubFor(id);
+    expect(await stub.ping(id)).toEqual({ version: VERSION });
+    expect(await profileOf(id)).toHaveLength(0);
+    const unset = await runInDurableObject(stub, (_instance, state) => state.storage.kv.get("reported_version"));
+    expect(unset).toBeUndefined();
+
+    await db.insert(workspace).values({ id, name: "ghost", slug: "ghost" });
+    expect(await stub.ping(id)).toEqual({ version: VERSION });
+    const [row] = await profileOf(id);
+    expect(row).toMatchObject({ doSchemaVersion: VERSION, doMigrateError: null });
+    const kv = await runInDurableObject(stub, (_instance, state) => state.storage.kv.get("reported_version"));
+    expect(kv).toBe(VERSION);
+  });
+
   it("writes D1 once per version, not on every call", async () => {
     const id = await seedWorkspace("ping-once");
     const stub = stubFor(id);

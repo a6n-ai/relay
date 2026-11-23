@@ -238,4 +238,43 @@ describe("ClientDO send", () => {
     const view = await stub.getMessage(ws, sent.messageId);
     expect(view).toMatchObject({ status: "suppressed", html: null });
   });
+
+  it("rejects a workspace id other than the one the DO is named for", async () => {
+    const stub = stubFor("wsp_a");
+    // RPC rejections surface as unhandled in this plugin, so the calls run inside the DO.
+    const results = await runInDurableObject(stub, async (instance) => {
+      const first = await instance.ping("wsp_b").then(() => "resolved", (e: Error) => e.message);
+      await instance.ping("wsp_a");
+      const second = await instance.ping("wsp_b").then(() => "resolved", (e: Error) => e.message);
+      return [first, second];
+    });
+    expect(results).toEqual(["workspace mismatch", "workspace mismatch"]);
+  });
+
+  it("binds an unnamed DO to the workspace in KV", async () => {
+    const stub = env.CLIENT.get(env.CLIENT.newUniqueId());
+    const other = await runInDurableObject(stub, async (instance) => {
+      await instance.ping("wsp_a");
+      return instance.ping("wsp_b").then(() => "resolved", (e: Error) => e.message);
+    });
+    expect(other).toBe("workspace mismatch");
+    const bound = await runInDurableObject(stub, (_instance, state) => state.storage.kv.get("workspace_id"));
+    expect(bound).toBe("wsp_a");
+  });
+
+  it("keeps the higher-ranked suppression reason when an email is suppressed again", async () => {
+    const ws = "wsp_reason";
+    const stub = stubFor(ws);
+    const reason = () =>
+      runInDurableObject(stub, (_instance, state) =>
+        state.storage.sql.exec<{ reason: string }>("SELECT reason FROM suppression WHERE email = ?", "r@x.com").one().reason,
+      );
+
+    await stub.addSuppression(ws, "r@x.com", "bounce");
+    await stub.addSuppression(ws, "r@x.com", "manual");
+    expect(await reason()).toBe("bounce");
+
+    await stub.addSuppression(ws, "r@x.com", "complaint");
+    expect(await reason()).toBe("complaint");
+  });
 });

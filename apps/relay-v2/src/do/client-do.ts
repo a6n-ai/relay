@@ -1,5 +1,5 @@
 import { DurableObject } from "cloudflare:workers";
-import { and, eq, isNull, or, sql } from "drizzle-orm";
+import { and, eq, isNull, or, sql, type SQLWrapper } from "drizzle-orm";
 import { drizzle, type DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
 import { sendInputSchema, type SendInput, type Stream, type SuppressionReason } from "../core/send-input";
 import { recordDoState } from "../core/workspace-profile";
@@ -11,6 +11,10 @@ import { CLIENT_MIGRATIONS, migrate } from "./migrations";
 export type MessageView = typeof schema.message.$inferSelect & { html: string | null };
 
 type SendResult = { messageId: string; status: "queued" | "suppressed"; duplicate: boolean };
+
+// Higher rank wins a suppression conflict: a stronger reason is never replaced by a weaker one.
+const reasonRank = (column: SQLWrapper) =>
+  sql`CASE ${column} WHEN 'complaint' THEN 4 WHEN 'bounce' THEN 3 WHEN 'unsubscribe' THEN 2 ELSE 1 END`;
 
 export class ClientDO extends DurableObject<Env> {
   readonly db: DrizzleSqliteDODatabase<typeof schema>;
@@ -135,7 +139,7 @@ export class ClientDO extends DurableObject<Env> {
         .onConflictDoUpdate({
           target: schema.suppression.email,
           set: {
-            reason,
+            reason: sql`CASE WHEN (${reasonRank(schema.suppression.reason)}) >= (${reasonRank(sql.raw("excluded.reason"))}) THEN ${schema.suppression.reason} ELSE excluded.reason END`,
             stream: sql`CASE WHEN ${schema.suppression.stream} IS NULL OR excluded.stream IS NULL OR ${schema.suppression.stream} <> excluded.stream THEN NULL ELSE excluded.stream END`,
           },
         })
@@ -149,6 +153,7 @@ export class ClientDO extends DurableObject<Env> {
   }
 
   private async ready(workspaceId: string): Promise<void> {
+    this.bind(workspaceId);
     if (this.migrateError) {
       try {
         await recordDoState(this.env, workspaceId, { doMigrateError: this.migrateError.message });
@@ -166,12 +171,22 @@ export class ClientDO extends DurableObject<Env> {
     const version = CLIENT_MIGRATIONS.length;
     if (this.ctx.storage.kv.get<number>("reported_version") === version) return;
     try {
-      await recordDoState(this.env, workspaceId, { doSchemaVersion: version, doMigrateError: null });
+      // false: relay-security has no such workspace, so nothing is reported and KV stays unset.
+      if (!(await recordDoState(this.env, workspaceId, { doSchemaVersion: version, doMigrateError: null }))) return;
     } catch (err) {
       console.error("ClientDO: failed to report schema version to D1", err);
       return;
     }
     this.ctx.storage.kv.put("reported_version", version);
+  }
+
+  // Named ids (idFromName) are checked against their name. Unnamed ids fall back to the KV binding, which the alarm reads.
+  private bind(workspaceId: string): void {
+    const name = this.ctx.id.name;
+    if (name !== undefined && name !== workspaceId) throw new Error("workspace mismatch");
+    const bound = this.ctx.storage.kv.get<string>("workspace_id");
+    if (bound === undefined) this.ctx.storage.kv.put("workspace_id", workspaceId);
+    else if (bound !== workspaceId) throw new Error("workspace mismatch");
   }
 
   private suppressed(email: string, stream: Stream): boolean {
