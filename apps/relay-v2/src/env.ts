@@ -19,8 +19,8 @@ declare global {
       API_LIMIT: RateLimit;
       BETTER_AUTH_SECRET: string;
       BETTER_AUTH_URL: string;
-      OTP_MAILER?: "memory" | "console";
-      INVITE_MAILER?: "memory" | "console";
+      OTP_MAILER?: "memory" | "console" | "ses";
+      INVITE_MAILER?: "memory" | "console" | "ses";
       SEED_SECRET?: string;
       INTERNAL_SECRET?: string;
       AWS_ACCESS_KEY_ID?: string;

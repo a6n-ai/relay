@@ -5,10 +5,10 @@ import { apiKey as apiKeyPlugin } from "@better-auth/api-key";
 import { admin } from "better-auth/plugins/admin";
 import { emailOTP } from "better-auth/plugins/email-otp";
 import { organization } from "better-auth/plugins/organization";
-import { and, eq, inArray, or } from "drizzle-orm";
+import { and, eq, inArray, or, sql } from "drizzle-orm";
 import { ensureWorkspaceProfile } from "../../core/workspace-profile";
 import { coreDb } from "../../db/core/client";
-import { address } from "../../db/core/schema";
+import { address, sendingDomain } from "../../db/core/schema";
 import { securityDb } from "../../db/security/client";
 import {
   account,
@@ -30,6 +30,7 @@ import { writeAudit } from "./audit";
 import { pickInviteMailer } from "./invite-mailer";
 import { type OtpMailer, consoleOtpMailer, memoryOtpMailer } from "./otp-mailer";
 import { ac as platformAc, orgAc, orgRoles, roles as platformRoles } from "./permissions";
+import { sesOtpMailer } from "./system-mail";
 
 const ID_PREFIX: Record<string, string> = {
   user: "usr",
@@ -47,11 +48,32 @@ const ID_PREFIX: Record<string, string> = {
 };
 
 const DAY_S = 24 * 60 * 60;
+const OTP_EMAIL_WINDOW_MS = 600_000;
+const OTP_EMAIL_MAX = 5;
 
-export function pickMailer(kind: Env["OTP_MAILER"]): OtpMailer {
+export function pickMailer(kind: Env["OTP_MAILER"], env: Env): OtpMailer {
   if (kind === "memory") return memoryOtpMailer;
   if (kind === "console") return consoleOtpMailer;
+  if (kind === "ses") return sesOtpMailer(env);
   throw new Error("no OTP mailer configured");
+}
+
+// better-auth's limiter keys on IP and path, so rotating IPs could mail-bomb one address. One upsert keeps the count race-free.
+async function otpEmailWithinCap(env: Env, email: string): Promise<boolean> {
+  const now = Date.now();
+  const expired = sql`${rateLimit.lastRequest} < ${now - OTP_EMAIL_WINDOW_MS}`;
+  const [row] = await securityDb(env)
+    .insert(rateLimit)
+    .values({ id: newId("rtl"), key: `otp-email:${email}`, count: 1, lastRequest: now })
+    .onConflictDoUpdate({
+      target: rateLimit.key,
+      set: {
+        count: sql`CASE WHEN ${expired} THEN 1 ELSE ${rateLimit.count} + 1 END`,
+        lastRequest: sql`CASE WHEN ${expired} THEN ${now} ELSE ${rateLimit.lastRequest} END`,
+      },
+    })
+    .returning({ count: rateLimit.count });
+  return row.count <= OTP_EMAIL_MAX;
 }
 
 export function createAuth(env: Env) {
@@ -151,6 +173,10 @@ export function createAuth(env: Env) {
           ctx.path === "/email-otp/reset-password" ||
           (ctx.path === "/email-otp/send-verification-otp" && ctx.body?.type === "forget-password");
         if (resetMail) throw new APIError("NOT_FOUND");
+        if (ctx.path === "/email-otp/send-verification-otp") {
+          const otpEmail = String(ctx.body?.email ?? "").trim().toLowerCase();
+          if (otpEmail && !(await otpEmailWithinCap(env, otpEmail))) throw new APIError("TOO_MANY_REQUESTS");
+        }
         // Keys are created by the server only: over HTTP, metadata.appId would be client-set and skip the app check.
         if (ctx.request && ctx.path.startsWith("/api-key/")) throw new APIError("NOT_FOUND");
 
@@ -257,7 +283,7 @@ export function createAuth(env: Env) {
         allowedAttempts: 5,
         expiresIn: 600,
         sendVerificationOTP: async ({ email, otp, type }) => {
-          await pickMailer(env.OTP_MAILER).send(email, otp, type);
+          await pickMailer(env.OTP_MAILER, env).send(email, otp, type);
         },
       }),
       organization({
@@ -267,7 +293,7 @@ export function createAuth(env: Env) {
         roles: orgRoles,
         teams: { enabled: true, defaultTeam: { enabled: false }, allowRemovingAllTeams: true },
         sendInvitationEmail: async ({ id, email, role }) => {
-          await pickInviteMailer(env.INVITE_MAILER).send(email, { id, role });
+          await pickInviteMailer(env.INVITE_MAILER, env).send(email, { id, role });
         },
         organizationHooks: {
           beforeDeleteOrganization: async ({ organization }) => {
@@ -284,6 +310,12 @@ export function createAuth(env: Env) {
               .where(eq(address.workspaceId, organization.id))
               .limit(1);
             if (addr) throw new APIError("BAD_REQUEST", { message: "workspace still has addresses" });
+            const [domain] = await coreDb(env)
+              .select({ id: sendingDomain.id })
+              .from(sendingDomain)
+              .where(eq(sendingDomain.workspaceId, organization.id))
+              .limit(1);
+            if (domain) throw new APIError("BAD_REQUEST", { message: "workspace still has sending domains" });
           },
           afterCreateOrganization: async ({ organization, user }) => {
             try {

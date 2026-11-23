@@ -8,10 +8,12 @@
   "workers_dev": false,
   "vars": {
     "BETTER_AUTH_URL": "https://relay.a6n.ai",
+    "OTP_MAILER": "ses",
+    "INVITE_MAILER": "ses",
     "SES_EVENT_TOPIC_ARNS": "",
-    "SYSTEM_FROM_EMAIL": "",
-    "SYSTEM_FROM_NAME": "",
-    "SYSTEM_SES_REGION": "",
+    "SYSTEM_FROM_EMAIL": "no-reply@relay.a6n.ai",
+    "SYSTEM_FROM_NAME": "Relay",
+    "SYSTEM_SES_REGION": "ap-south-1",
   },
   "d1_databases": [
     {
