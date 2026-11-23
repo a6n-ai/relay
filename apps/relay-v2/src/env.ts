@@ -11,6 +11,7 @@ declare global {
       MAIL: R2Bucket;
       SEND: Queue<SendJob>;
       BETTER_AUTH_SECRET: string;
+      OTP_MAILER: "console" | "memory";
     }
   }
 }

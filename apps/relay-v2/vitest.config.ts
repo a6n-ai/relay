@@ -9,7 +9,14 @@ export default defineConfig({
     tanstackStart(),
     cloudflareTest({
       wrangler: { configPath: "./wrangler.jsonc" },
-      miniflare: { d1Databases: ["CENTRAL"], bindings: { TEST_MIGRATIONS: migrations } },
+      miniflare: {
+        d1Databases: ["CENTRAL"],
+        bindings: {
+          TEST_MIGRATIONS: migrations,
+          OTP_MAILER: "memory",
+          BETTER_AUTH_SECRET: "k7Qz2mVx9LrT4wNp8sHc3YbF6jDa1eUg0oRi5tKl",
+        },
+      },
     }),
   ],
 });

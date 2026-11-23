@@ -6,6 +6,7 @@
   "main": "src/server.ts",
   "observability": { "enabled": true },
   "workers_dev": false,
+  "vars": { "OTP_MAILER": "console" },
   "d1_databases": [
     {
       "binding": "CENTRAL",
