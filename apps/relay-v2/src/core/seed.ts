@@ -1,4 +1,3 @@
-import type { BatchItem } from "drizzle-orm/batch";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { coreDb } from "../db/core/client";
@@ -6,6 +5,8 @@ import { sendingDomain } from "../db/core/schema";
 import { securityDb } from "../db/security/client";
 import { apiKey, app, member, user, workspace } from "../db/security/schema";
 import type { Env } from "../env";
+import { createAuth } from "../lib/auth";
+import { writeAudit } from "../lib/auth/audit";
 import { newId } from "../lib/ids";
 import { createApiKey } from "./api-keys";
 
@@ -25,47 +26,63 @@ export const seedInputSchema = z.object({
   domain: z.object({ domain: text, sesRegion: text }).optional(),
 });
 
-// Security writes run in one D1 batch, which is all-or-nothing. The domain lives in relay-core, so it is
-// written after that batch; a rerun finds the domain already present and skips it. The api key is created
-// after the batch, so a rerun issues one whenever the app has no live key.
+// Each better-auth call commits on its own, so a failure part-way leaves rows that a rerun completes: every step
+// looks up before it writes. Reads and the domain check come first, so a refused domain writes nothing.
+// setRole needs an admin session, so existing users are promoted through the internal adapter, with the same
+// role.change audit row the set-role hook writes.
 export async function seed(env: Env, input: SeedInput): Promise<SeedResult> {
   const db = securityDb(env);
+  const auth = createAuth(env);
   const emails = [...new Set(input.ownerEmails.map((e) => e.trim().toLowerCase()))];
-  const writes: BatchItem<"sqlite">[] = [];
 
-  const userIds = new Map<string, string>();
-  for (const row of await db.select({ id: user.id, email: user.email }).from(user).where(inArray(user.email, emails))) {
-    userIds.set(row.email, row.id);
-  }
-  const newUsers = emails
-    .filter((email) => !userIds.has(email))
-    .map((email) => {
-      const id = newId("usr");
-      userIds.set(email, id);
-      return { id, name: email, email, role: "admin" as const };
-    });
-  if (newUsers.length) writes.push(db.insert(user).values(newUsers));
-  writes.push(db.update(user).set({ role: "admin" }).where(inArray(user.email, emails)));
-
+  const existingUsers = await db
+    .select({ id: user.id, email: user.email, role: user.role })
+    .from(user)
+    .where(inArray(user.email, emails));
   const [existingWorkspace] = await db
     .select({ id: workspace.id })
     .from(workspace)
     .where(eq(workspace.slug, input.workspace.slug));
-  const workspaceId = existingWorkspace?.id ?? newId("wsp");
-  if (!existingWorkspace) {
-    writes.push(db.insert(workspace).values({ id: workspaceId, name: input.workspace.name, slug: input.workspace.slug }));
+  const domain = input.domain && { ...input.domain, domain: input.domain.domain.trim().toLowerCase() };
+  const [existingDomain] = domain
+    ? await coreDb(env).select({ workspaceId: sendingDomain.workspaceId }).from(sendingDomain).where(eq(sendingDomain.domain, domain.domain))
+    : [];
+  if (existingDomain && existingDomain.workspaceId !== existingWorkspace?.id) {
+    throw new Error("domain belongs to another workspace");
   }
 
-  const ownerIds = [...userIds.values()];
+  const found = new Map(existingUsers.map((row) => [row.email, row]));
+  const ownerIds: string[] = [];
+  for (const email of emails) {
+    const row = found.get(email);
+    if (!row) {
+      const created = await auth.api.createUser({ body: { email, name: email, role: "admin" } });
+      ownerIds.push(created.user.id);
+      continue;
+    }
+    ownerIds.push(row.id);
+    if (row.role !== "admin") {
+      await (await auth.$context).internalAdapter.updateUser(row.id, { role: "admin" });
+      await writeAudit(env, { action: "role.change", target: row.id, data: { role: "admin" } });
+    }
+  }
+
+  let workspaceId = existingWorkspace?.id;
+  if (!workspaceId) {
+    const organization = await auth.api.createOrganization({
+      body: { name: input.workspace.name, slug: input.workspace.slug, userId: ownerIds[0] },
+    });
+    workspaceId = organization.id;
+  }
+
   const members = await db
     .select({ userId: member.userId })
     .from(member)
     .where(and(eq(member.organizationId, workspaceId), inArray(member.userId, ownerIds)));
   const memberOf = new Set(members.map((m) => m.userId));
-  const newMembers = ownerIds
-    .filter((userId) => !memberOf.has(userId))
-    .map((userId) => ({ id: newId("mbr"), organizationId: workspaceId, userId, role: "owner" }));
-  if (newMembers.length) writes.push(db.insert(member).values(newMembers));
+  for (const userId of ownerIds) {
+    if (!memberOf.has(userId)) await auth.api.addMember({ body: { userId, organizationId: workspaceId, role: "owner" } });
+  }
 
   const [existingApp] = await db
     .select({ id: app.id })
@@ -73,18 +90,9 @@ export async function seed(env: Env, input: SeedInput): Promise<SeedResult> {
     .where(and(eq(app.workspaceId, workspaceId), eq(app.slug, input.app.slug)));
   const appId = existingApp?.id ?? newId("app");
   if (!existingApp) {
-    writes.push(db.insert(app).values({ id: appId, workspaceId, name: input.app.name, slug: input.app.slug }));
+    await db.insert(app).values({ id: appId, workspaceId, name: input.app.name, slug: input.app.slug });
   }
 
-  const domain = input.domain && { ...input.domain, domain: input.domain.domain.trim().toLowerCase() };
-  const [existingDomain] = domain
-    ? await coreDb(env).select({ workspaceId: sendingDomain.workspaceId }).from(sendingDomain).where(eq(sendingDomain.domain, domain.domain))
-    : [];
-  if (existingDomain && existingDomain.workspaceId !== workspaceId) {
-    throw new Error("domain belongs to another workspace");
-  }
-
-  if (writes.length) await db.batch(writes as [BatchItem<"sqlite">, ...BatchItem<"sqlite">[]]);
   if (domain && !existingDomain) {
     await coreDb(env).insert(sendingDomain).values({ id: newId("dom"), workspaceId, domain: domain.domain, sesRegion: domain.sesRegion });
   }
