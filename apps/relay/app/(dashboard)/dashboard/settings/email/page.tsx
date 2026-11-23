@@ -7,6 +7,7 @@ import { loadEmailChannelSnapshot } from "@/lib/email/load-snapshot";
 import { operatorEmailPrereqs, prereqSummary } from "@/lib/email/prerequisites";
 import { loadOperatorSmtpRow } from "@/lib/email/from-address";
 import { EmailEventsSection } from "./email-events-section";
+import { TrackingDomainSection } from "./tracking-domain-section";
 import { sendingDomainsService } from "@/lib/services/sending.service";
 import { ViewHeader } from "@/components/ds/view-header";
 import { requirePagePermission } from "@/lib/auth/guards";
@@ -83,6 +84,13 @@ export default async function EmailSettingsPage() {
           <SettingsSection title="Email events" description="Which delivery events each sending stream reports, and where they go.">
             <SettingsBody>
               <EmailEventsSection />
+            </SettingsBody>
+          </SettingsSection>
+        ) : null}
+        {platform ? (
+          <SettingsSection title="Link tracking domain" description="Open and click links use this domain instead of Amazon's shared one.">
+            <SettingsBody>
+              <TrackingDomainSection />
             </SettingsBody>
           </SettingsSection>
         ) : null}

@@ -35,3 +35,4 @@ export * from "./use-notifications";
 export * from "./campaign-flow/campaign-flow";
 export * from "./campaign-flow/steps";
 export * from "./email-events-settings";
+export * from "./tracking-domain-settings";

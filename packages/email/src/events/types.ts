@@ -22,4 +22,6 @@ export interface EmailEventSettingsProvider {
   getRouting(stream: EmailStream): Promise<EmailEventRouting>;
   setRouting(stream: EmailStream, routing: { webhook: EmailEventType[]; counts?: EmailEventType[] }): Promise<void>;
   eventVolume(stream: EmailStream, days: number): Promise<Partial<Record<EmailEventType, number>>>;
+  getTracking(stream: EmailStream): Promise<{ domain: string | null }>;
+  setTracking(stream: EmailStream, domain: string | null): Promise<void>;
 }

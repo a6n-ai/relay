@@ -133,6 +133,34 @@ describe("sesEventSettings", () => {
   });
 });
 
+describe("sesEventSettings tracking domain", () => {
+  it("getTracking reads CustomRedirectDomain from the configuration set", async () => {
+    const { provider, reqs } = setup([{ ConfigurationSetName: "app-tracked", TrackingOptions: { CustomRedirectDomain: "track.a6n.ai", HttpsPolicy: "REQUIRE" } }]);
+    expect(await provider.getTracking(stream)).toEqual({ domain: "track.a6n.ai" });
+    expect(reqs[0].method).toBe("GET");
+    expect(reqs[0].url).toBe("https://email.us-east-1.amazonaws.com/v2/email/configuration-sets/app-tracked");
+  });
+
+  it("getTracking returns null when no custom domain is set", async () => {
+    const { provider } = setup([{ ConfigurationSetName: "app-tracked" }]);
+    expect(await provider.getTracking(stream)).toEqual({ domain: null });
+  });
+
+  it("setTracking PUTs the domain with HttpsPolicy REQUIRE", async () => {
+    const { provider, reqs } = setup([{}]);
+    await provider.setTracking(stream, "track.a6n.ai");
+    expect(reqs[0].method).toBe("PUT");
+    expect(reqs[0].url).toBe("https://email.us-east-1.amazonaws.com/v2/email/configuration-sets/app-tracked/tracking-options");
+    expect(reqs[0].json).toEqual({ CustomRedirectDomain: "track.a6n.ai", HttpsPolicy: "REQUIRE" });
+  });
+
+  it("setTracking with null sends an empty body to clear it (SES rejects a policy alone)", async () => {
+    const { provider, reqs } = setup([{}]);
+    await provider.setTracking(stream, null);
+    expect(reqs[0].json).toEqual({});
+  });
+});
+
 describe("normalizeRouting", () => {
   it("dedupes and puts bounce/complaint first", () => {
     expect(normalizeRouting(stream, { webhook: ["delivery", "bounce", "delivery"] }).webhook).toEqual(["bounce", "complaint", "delivery"]);

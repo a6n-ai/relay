@@ -57,6 +57,7 @@ Resources:
           TopicARN: !Ref EventsTopic
 
   # Campaigns and other marketing mail: own reputation metrics, opens and clicks tracked.
+  # Tracking domain is owned by the app (Settings → Email sending), not this template.
   MarketingConfigurationSet:
     Type: AWS::SES::ConfigurationSet
     Properties:
@@ -78,6 +79,7 @@ Resources:
           TopicARN: !Ref EventsTopic
 
   # Transactional mail for apps that turn on open/click tracking (a plan feature, not used yet).
+  # Tracking domain is owned by the app (Settings → Email sending), not this template.
   TrackedConfigurationSet:
     Type: AWS::SES::ConfigurationSet
     Properties:

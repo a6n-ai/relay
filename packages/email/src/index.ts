@@ -10,3 +10,4 @@ export * from "./metrics/types";
 export * from "./metrics/cloudwatch-provider";
 export * from "./events/types";
 export * from "./events/ses-event-settings";
+export * from "./events/tracking-domain";

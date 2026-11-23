@@ -66,8 +66,9 @@ export function sesEventSettings(opts: AwsConfig = {}): EmailEventSettingsProvid
   const ses = createAwsClient("ses", config);
   const cloudwatch = createAwsClient("monitoring", config);
 
-  const base = (stream: EmailStream) =>
-    `https://email.${ses.region}.amazonaws.com/v2/email/configuration-sets/${encodePathSegment(stream.configSet)}/event-destinations`;
+  const configSet = (stream: EmailStream) =>
+    `https://email.${ses.region}.amazonaws.com/v2/email/configuration-sets/${encodePathSegment(stream.configSet)}`;
+  const base = (stream: EmailStream) => `${configSet(stream)}/event-destinations`;
 
   async function list(stream: EmailStream): Promise<SesDestination[]> {
     const out = await ses.json<{ EventDestinations?: SesDestination[] }>(base(stream), { method: "GET", ...BUDGET });
@@ -146,6 +147,21 @@ export function sesEventSettings(opts: AwsConfig = {}): EmailEventSettingsProvid
         if (t) totals[t] = (r.Values ?? []).reduce((a, b) => a + b, 0);
       }
       return totals;
+    },
+
+    async getTracking(stream) {
+      const out = await ses.json<{ TrackingOptions?: { CustomRedirectDomain?: string } }>(configSet(stream), { method: "GET", ...BUDGET });
+      return { domain: out?.TrackingOptions?.CustomRedirectDomain ?? null };
+    },
+
+    // Omitting CustomRedirectDomain is how SES clears it back to the shared awstrack.me domain.
+    async setTracking(stream, domain) {
+      await ses.json(`${configSet(stream)}/tracking-options`, {
+        method: "PUT",
+        // Clearing is an empty body: SES rejects HttpsPolicy without CustomRedirectDomain (checked live 2026-11-23).
+        json: domain ? { CustomRedirectDomain: domain, HttpsPolicy: "REQUIRE" } : {},
+        ...BUDGET,
+      });
     },
   };
 }
