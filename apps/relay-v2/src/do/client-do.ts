@@ -1,6 +1,7 @@
 import { DurableObject } from "cloudflare:workers";
-import { and, eq, isNull, or, sql, type SQLWrapper } from "drizzle-orm";
+import { and, eq, gte, inArray, isNull, or, sql, type SQLWrapper } from "drizzle-orm";
 import { drizzle, type DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
+import { DEFAULT_MONTHLY_QUOTA, LIMITS_TTL_MS, loadWorkspaceLimits, SENDER_RETRY_MS, type WorkspaceLimits } from "../core/limits";
 import { sendInputSchema, type SendInput, type Stream, type SuppressionReason } from "../core/send-input";
 import { recordDoState } from "../core/workspace-profile";
 import type { Env } from "../env";
@@ -10,7 +11,7 @@ import { CLIENT_MIGRATIONS, migrate } from "./migrations";
 
 export type MessageView = typeof schema.message.$inferSelect & { html: string | null };
 
-type SendResult = { messageId: string; status: "queued" | "suppressed"; duplicate: boolean };
+type SendResult = { messageId: string; status: "queued" | "sent" | "failed" | "suppressed"; duplicate: boolean };
 
 // Higher rank wins a suppression conflict: a stronger reason is never replaced by a weaker one.
 const reasonRank = (column: SQLWrapper) =>
@@ -58,6 +59,10 @@ export class ClientDO extends DurableObject<Env> {
   }
 
   private async create(workspaceId: string, data: SendInput): Promise<SendResult> {
+    const limits = await this.limits(workspaceId, { forSender: data.from });
+    if (limits.status === "suspended") throw new Error("workspace_suspended");
+    const sender = limits.senders[data.from];
+    if (!sender) throw new Error("sender_not_verified");
     const id = newId("msg");
     const preSuppressed = this.suppressed(data.to, data.stream);
     // shortcut: an R2 object orphaned by a crash between the put and the insert is never swept, add a sweeper when storage cost shows up.
@@ -67,6 +72,14 @@ export class ClientDO extends DurableObject<Env> {
     let suppressed = preSuppressed;
     try {
       this.ctx.storage.transactionSync(() => {
+        // Counted in the same synchronous transaction as the insert, so concurrent sends cannot both take the last slot.
+        const monthStart = Date.UTC(new Date(now).getUTCFullYear(), new Date(now).getUTCMonth(), 1);
+        const used = this.db
+          .select({ n: sql<number>`count(*)` })
+          .from(schema.message)
+          .where(and(inArray(schema.message.status, ["queued", "sent"]), gte(schema.message.createdAt, monthStart)))
+          .get();
+        if (limits.monthlyQuota > 0 && (used?.n ?? 0) >= limits.monthlyQuota) throw new Error("quota_exceeded");
         // Re-checked here: an unsubscribe can land during the R2 put above.
         suppressed = this.suppressed(data.to, data.stream);
         this.db
@@ -81,6 +94,8 @@ export class ClientDO extends DurableObject<Env> {
             event: data.event ?? null,
             campaignId: data.campaignId ?? null,
             fromEmail: data.from,
+            fromName: sender.name,
+            sesRegion: sender.sesRegion,
             toEmail: data.to,
             subject: data.subject,
             text: data.text,
@@ -152,6 +167,31 @@ export class ClientDO extends DurableObject<Env> {
     return this.suppressed(email.trim().toLowerCase(), stream);
   }
 
+  async refreshLimits(workspaceId: string): Promise<WorkspaceLimits> {
+    await this.ready(workspaceId);
+    return this.loadLimits(workspaceId);
+  }
+
+  // The snapshot lives in KV, so a stale copy survives eviction and a D1 outage. It is never stored when empty.
+  private async limits(workspaceId: string, { forSender }: { forSender?: string } = {}): Promise<WorkspaceLimits> {
+    const cached = this.ctx.storage.kv.get<WorkspaceLimits>("limits");
+    const age = cached ? Date.now() - cached.fetchedAt : Infinity;
+    const senderMiss = forSender !== undefined && !cached?.senders[forSender];
+    if (cached && age < LIMITS_TTL_MS && !(senderMiss && age > SENDER_RETRY_MS)) return cached;
+    try {
+      return await this.loadLimits(workspaceId);
+    } catch (err) {
+      console.error("ClientDO: failed to reload workspace limits, using the cached snapshot", err);
+      return cached ?? { monthlyQuota: DEFAULT_MONTHLY_QUOTA, status: "active", senders: {}, fetchedAt: 0 };
+    }
+  }
+
+  private async loadLimits(workspaceId: string): Promise<WorkspaceLimits> {
+    const snapshot = await loadWorkspaceLimits(this.env, workspaceId);
+    this.ctx.storage.kv.put("limits", snapshot);
+    return snapshot;
+  }
+
   private async ready(workspaceId: string): Promise<void> {
     this.bind(workspaceId);
     if (this.migrateError) {
@@ -210,7 +250,6 @@ export class ClientDO extends DurableObject<Env> {
       .from(schema.message)
       .where(and(eq(schema.message.appId, appId), eq(schema.message.idempotencyKey, key)))
       .get();
-    // Only queued and suppressed exist until the send worker lands.
     return row ? { messageId: row.id, status: row.status as SendResult["status"], duplicate: true } : undefined;
   }
 }

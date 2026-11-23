@@ -105,6 +105,15 @@ describe("ClientDO schema version", () => {
   it("keeps sends working while D1 is down and reports the version once D1 is back", async () => {
     const id = await seedWorkspace("d1-down");
     const stub = stubFor(id);
+    // A snapshot loaded before the outage; a DO that never loaded limits refuses sends.
+    await runInDurableObject(stub, (_instance, state) =>
+      state.storage.kv.put("limits", {
+        monthlyQuota: 10000,
+        status: "active",
+        senders: { "relay@a6n.ai": { name: null, sesRegion: "ap-south-1" } },
+        fetchedAt: Date.now(),
+      }),
+    );
     const d1 = vi.spyOn(env.CORE_DB, "prepare").mockImplementation(() => {
       throw new Error("D1 down");
     });

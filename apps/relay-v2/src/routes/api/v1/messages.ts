@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { env } from "cloudflare:workers";
 import { resolveBearer, withinRateLimit } from "../../../core/api-keys";
-import { sendMessage } from "../../../core/messages";
+import { SEND_REFUSAL_STATUS, sendMessage, sendRefusal } from "../../../core/messages";
 import { sendInputSchema } from "../../../core/send-input";
 
 export const Route = createFileRoute("/api/v1/messages")({
@@ -15,7 +15,13 @@ export const Route = createFileRoute("/api/v1/messages")({
           .omit({ appId: true })
           .safeParse(await request.json().catch(() => undefined));
         if (!body.success) return Response.json({ error: "invalid input" }, { status: 400 });
-        return Response.json(await sendMessage(env, scope, body.data), { status: 202 });
+        try {
+          return Response.json(await sendMessage(env, scope, body.data), { status: 202 });
+        } catch (err) {
+          const refusal = sendRefusal(err);
+          if (!refusal) throw err;
+          return Response.json({ error: refusal }, { status: SEND_REFUSAL_STATUS[refusal] });
+        }
       },
     },
   },
