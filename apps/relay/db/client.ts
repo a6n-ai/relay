@@ -1,5 +1,6 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { isWorkers } from "@foundry/commons/runtime/platform";
+import { postgresOptions } from "@foundry/database";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as schema from "./schema";
@@ -24,6 +25,7 @@ function nodeDb(): Db {
   const client =
     globalForDb.__relayPg ??
     postgres(connectionString, {
+      ...postgresOptions,
       max: process.env.NODE_ENV === "production" ? 10 : 4,
       idle_timeout: 20,
       max_lifetime: 60 * 30,
@@ -43,7 +45,7 @@ function requestDb(): Db {
   if (!d) {
     const hd = (env as { HYPERDRIVE?: { connectionString: string } }).HYPERDRIVE;
     if (!hd) throw new Error("HYPERDRIVE binding missing");
-    d = drizzle(postgres(hd.connectionString, { max: 5, prepare: false }), { schema });
+    d = drizzle(postgres(hd.connectionString, { ...postgresOptions, max: 5, prepare: false }), { schema });
     perRequest.set(ctx, d);
   }
   return d;

@@ -1,5 +1,6 @@
 import postgres from "postgres";
 import { createLogger } from "@foundry/commons/logger";
+import { postgresOptions } from "@foundry/database";
 import { workerTick } from "../lib/notifications/drain";
 
 const log = createLogger("relay-drainer");
@@ -27,7 +28,7 @@ async function listenAndPoll(signal: AbortSignal): Promise<void> {
   const url = process.env.DATABASE_URL;
   let listen: ReturnType<typeof postgres> | undefined;
   if (url) {
-    listen = postgres(url, { max: 1, prepare: false, idle_timeout: 0 });
+    listen = postgres(url, { ...postgresOptions, max: 1, prepare: false, idle_timeout: 0 });
     await listen.listen("relay_work", async () => {
       try {
         const n = await workerTick();
