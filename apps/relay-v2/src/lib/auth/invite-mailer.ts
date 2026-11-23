@@ -1,3 +1,6 @@
+import type { Env } from "../../env";
+import { sesInviteMailer } from "./system-mail";
+
 export type InviteMail = { id: string; role: string };
 export type InviteMailer = { send(email: string, invite: InviteMail): Promise<void> };
 
@@ -20,8 +23,9 @@ export const memoryInviteMailer: InviteMailer & { lastInvite(email: string): Inv
   },
 };
 
-export function pickInviteMailer(kind: "memory" | "console" | undefined): InviteMailer {
+export function pickInviteMailer(kind: Env["INVITE_MAILER"], env: Env): InviteMailer {
   if (kind === "memory") return memoryInviteMailer;
   if (kind === "console") return consoleInviteMailer;
+  if (kind === "ses") return sesInviteMailer(env);
   throw new Error("no invite mailer configured");
 }

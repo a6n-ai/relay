@@ -1,6 +1,8 @@
 import { env, runInDurableObject } from "cloudflare:test";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi, type MockInstance } from "vitest";
-import { applyMigrations } from "./migrate";
+import { securityDb } from "../src/db/security/client";
+import { workspace } from "../src/db/security/schema";
+import { applyMigrations, seedVerifiedSender } from "./migrate";
 
 const base = {
   appId: "app_1",
@@ -14,6 +16,12 @@ const base = {
 
 
 const stubFor = (workspaceId: string) => env.CLIENT.get(env.CLIENT.idFromName(workspaceId));
+
+async function seededStub(workspaceId: string) {
+  await securityDb(env).insert(workspace).values({ id: workspaceId, name: workspaceId, slug: workspaceId });
+  await seedVerifiedSender(workspaceId);
+  return stubFor(workspaceId);
+}
 
 function deferred() {
   let resolve!: () => void;
@@ -35,7 +43,7 @@ beforeAll(async () => {
 });
 
 beforeEach(() => {
-  enqueue = vi.spyOn(env.SEND, "send");
+  enqueue = vi.spyOn(env.SEND, "send").mockResolvedValue(undefined as never);
 });
 
 afterEach(() => {
@@ -45,7 +53,7 @@ afterEach(() => {
 describe("ClientDO send", () => {
   it("queues a message, stores html in R2 and enqueues one send job", async () => {
     const ws = "wsp_test";
-    const stub = stubFor(ws);
+    const stub = await seededStub(ws);
     const sent = await stub.send(ws, base);
 
     expect(sent).toEqual({ messageId: expect.stringMatching(/^msg_/), status: "queued", duplicate: false });
@@ -62,7 +70,7 @@ describe("ClientDO send", () => {
 
   it("returns the original message for a repeated idempotency key and changes nothing", async () => {
     const ws = "wsp_idem";
-    const stub = stubFor(ws);
+    const stub = await seededStub(ws);
     const first = await stub.send(ws, { ...base, idempotencyKey: "order:1:confirmation" });
     const second = await stub.send(ws, {
       ...base,
@@ -77,7 +85,7 @@ describe("ClientDO send", () => {
 
   it("treats a suppressed recipient as suppressed when case and spaces differ", async () => {
     const ws = "wsp_sup";
-    const stub = stubFor(ws);
+    const stub = await seededStub(ws);
     await stub.addSuppression(ws, "a@x.com", "unsubscribe");
     const sent = await stub.send(ws, { ...base, to: " A@X.com " });
 
@@ -88,7 +96,7 @@ describe("ClientDO send", () => {
 
   it("blocks only the suppressed stream", async () => {
     const ws = "wsp_stream";
-    const stub = stubFor(ws);
+    const stub = await seededStub(ws);
     await stub.addSuppression(ws, "m@x.com", "manual", "marketing");
 
     const marketing = await stub.send(ws, { ...base, stream: "marketing", to: "m@x.com" });
@@ -101,7 +109,7 @@ describe("ClientDO send", () => {
 
   it("rejects invalid input and writes nothing", async () => {
     const ws = "wsp_invalid";
-    const stub = stubFor(ws);
+    const stub = await seededStub(ws);
     // Rejections from RPC calls surface as unhandled in this plugin, so the calls run inside the DO.
     const failures = await runInDurableObject(stub, (instance) =>
       Promise.all([
@@ -121,7 +129,7 @@ describe("ClientDO send", () => {
 
   it("leaves no row or R2 object when enqueue fails, so a same-key retry sends", async () => {
     const ws = "wsp_enqueue_fail";
-    const stub = stubFor(ws);
+    const stub = await seededStub(ws);
     const input = { ...base, idempotencyKey: "order:1:confirmation" };
     enqueue.mockRejectedValueOnce(new Error("queue down"));
 
@@ -144,7 +152,7 @@ describe("ClientDO send", () => {
 
   it("keeps a marketing block when a transactional block lands on the same email", async () => {
     const ws = "wsp_widen";
-    const stub = stubFor(ws);
+    const stub = await seededStub(ws);
     await stub.addSuppression(ws, "w@x.com", "manual", "marketing");
     await stub.addSuppression(ws, "w@x.com", "manual", "transactional");
 
@@ -158,7 +166,7 @@ describe("ClientDO send", () => {
 
   it("scopes idempotency keys to the app within a workspace", async () => {
     const ws = "wsp_apps";
-    const stub = stubFor(ws);
+    const stub = await seededStub(ws);
     const a = await stub.send(ws, { ...base, appId: "app_a", idempotencyKey: "order:1:confirmation" });
     const b = await stub.send(ws, { ...base, appId: "app_b", idempotencyKey: "order:1:confirmation" });
 
@@ -170,7 +178,7 @@ describe("ClientDO send", () => {
 
   it("settles a same-key caller that arrives during the enqueue with the same rejection and no row", async () => {
     const ws = "wsp_inflight_fail";
-    const stub = stubFor(ws);
+    const stub = await seededStub(ws);
     const input = { ...base, idempotencyKey: "order:1:confirmation" };
     const put = vi.spyOn(env.MAIL, "put");
 
@@ -197,7 +205,7 @@ describe("ClientDO send", () => {
 
   it("returns the first result as duplicate:true to a same-key caller that arrives during the enqueue", async () => {
     const ws = "wsp_inflight_ok";
-    const stub = stubFor(ws);
+    const stub = await seededStub(ws);
     const input = { ...base, idempotencyKey: "order:1:confirmation" };
     const put = vi.spyOn(env.MAIL, "put");
 
@@ -221,7 +229,7 @@ describe("ClientDO send", () => {
 
   it("suppresses a recipient who unsubscribes while the html is being stored", async () => {
     const ws = "wsp_race_sup";
-    const stub = stubFor(ws);
+    const stub = await seededStub(ws);
 
     const sent = await runInDurableObject(stub, async (instance) => {
       const realPut = env.MAIL.put.bind(env.MAIL);
@@ -237,5 +245,44 @@ describe("ClientDO send", () => {
     expect((await env.MAIL.list({ prefix: `ws/${ws}/msg/` })).objects).toHaveLength(0);
     const view = await stub.getMessage(ws, sent.messageId);
     expect(view).toMatchObject({ status: "suppressed", html: null });
+  });
+
+  it("rejects a workspace id other than the one the DO is named for", async () => {
+    const stub = stubFor("wsp_a");
+    // RPC rejections surface as unhandled in this plugin, so the calls run inside the DO.
+    const results = await runInDurableObject(stub, async (instance) => {
+      const first = await instance.ping("wsp_b").then(() => "resolved", (e: Error) => e.message);
+      await instance.ping("wsp_a");
+      const second = await instance.ping("wsp_b").then(() => "resolved", (e: Error) => e.message);
+      return [first, second];
+    });
+    expect(results).toEqual(["workspace mismatch", "workspace mismatch"]);
+  });
+
+  it("binds an unnamed DO to the workspace in KV", async () => {
+    const stub = env.CLIENT.get(env.CLIENT.newUniqueId());
+    const other = await runInDurableObject(stub, async (instance) => {
+      await instance.ping("wsp_a");
+      return instance.ping("wsp_b").then(() => "resolved", (e: Error) => e.message);
+    });
+    expect(other).toBe("workspace mismatch");
+    const bound = await runInDurableObject(stub, (_instance, state) => state.storage.kv.get("workspace_id"));
+    expect(bound).toBe("wsp_a");
+  });
+
+  it("keeps the higher-ranked suppression reason when an email is suppressed again", async () => {
+    const ws = "wsp_reason";
+    const stub = await seededStub(ws);
+    const reason = () =>
+      runInDurableObject(stub, (_instance, state) =>
+        state.storage.sql.exec<{ reason: string }>("SELECT reason FROM suppression WHERE email = ?", "r@x.com").one().reason,
+      );
+
+    await stub.addSuppression(ws, "r@x.com", "bounce");
+    await stub.addSuppression(ws, "r@x.com", "manual");
+    expect(await reason()).toBe("bounce");
+
+    await stub.addSuppression(ws, "r@x.com", "complaint");
+    expect(await reason()).toBe("complaint");
   });
 });

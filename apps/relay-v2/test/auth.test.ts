@@ -2,9 +2,9 @@ import { env, SELF } from "cloudflare:test";
 import { and, eq } from "drizzle-orm";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { coreDb } from "../src/db/core/client";
-import { address, workspaceProfile } from "../src/db/core/schema";
+import { address, sendingDomain, workspaceProfile } from "../src/db/core/schema";
 import { securityDb } from "../src/db/security/client";
-import { app, member, securityAudit, team, user, verification, workspace } from "../src/db/security/schema";
+import { app, member, rateLimit, securityAudit, team, user, verification, workspace } from "../src/db/security/schema";
 import { createAuth, pickMailer } from "../src/lib/auth";
 import { writeAudit } from "../src/lib/auth/audit";
 import { consoleInviteMailer, memoryInviteMailer, pickInviteMailer } from "../src/lib/auth/invite-mailer";
@@ -162,9 +162,9 @@ describe("better-auth on D1", () => {
   });
 
   it("fails closed when the OTP mailer is unset or unknown", () => {
-    expect(() => pickMailer(undefined)).toThrow("no OTP mailer configured");
-    expect(() => pickMailer("smtp" as Env["OTP_MAILER"])).toThrow("no OTP mailer configured");
-    expect(pickMailer("memory")).toBe(memoryOtpMailer);
+    expect(() => pickMailer(undefined, env as Env)).toThrow("no OTP mailer configured");
+    expect(() => pickMailer("smtp" as Env["OTP_MAILER"], env as Env)).toThrow("no OTP mailer configured");
+    expect(pickMailer("memory", env as Env)).toBe(memoryOtpMailer);
   });
 
   it("throws when BETTER_AUTH_SECRET is missing", () => {
@@ -366,8 +366,8 @@ describe("admin and organization plugins", () => {
 
 describe("invite mailer", () => {
   it("fails closed when unset and stores the invite id for memory", async () => {
-    expect(() => pickInviteMailer(undefined)).toThrow("no invite mailer configured");
-    expect(pickInviteMailer("memory")).toBe(memoryInviteMailer);
+    expect(() => pickInviteMailer(undefined, env as Env)).toThrow("no invite mailer configured");
+    expect(pickInviteMailer("memory", env as Env)).toBe(memoryInviteMailer);
     await memoryInviteMailer.send("Memo@Example.com", { id: "inv_abc", role: "member" });
     expect(memoryInviteMailer.lastInvite("memo@example.com")?.id).toBe("inv_abc");
   });
@@ -392,13 +392,33 @@ describe("auth rate limit", () => {
       body: JSON.stringify({ email, type: "sign-in" }),
     });
 
-  it("returns 429 on the 6th OTP send to one email from one IP, and not for another IP", async () => {
+  it("returns 429 on the 6th OTP send to one email from one IP, and the per-email cap then refuses another IP", async () => {
     await insertUser("limited@example.com", "user");
     for (let i = 0; i < 5; i++) {
       expect((await sendFrom("198.51.100.7", "limited@example.com")).status).toBe(200);
     }
     expect((await sendFrom("198.51.100.7", "limited@example.com")).status).toBe(429);
-    expect((await sendFrom("198.51.100.8", "limited@example.com")).status).toBe(200);
+    // The per-email cap (ruling 1) counts across IPs, so another IP for the same email is refused too.
+    expect((await sendFrom("198.51.100.8", "limited@example.com")).status).toBe(429);
+  });
+
+  it("caps OTP mail per email across IPs: the 6th send from a new IP is 429, another email is unaffected", async () => {
+    await insertUser("A@X.com", "user");
+    await insertUser("other@x.com", "user");
+    const ips = ["203.0.113.1", "203.0.113.2", "203.0.113.3", "203.0.113.4", "203.0.113.5", "203.0.113.6"];
+    for (const ip of ips.slice(0, 5)) {
+      expect((await sendFrom(ip, "A@X.com")).status).toBe(200);
+    }
+    expect((await sendFrom(ips[5], "A@X.com")).status).toBe(429);
+    expect((await sendFrom("203.0.113.7", "other@x.com")).status).toBe(200);
+  });
+
+  it("keys the per-email OTP counter by hash, so no rate_limit row holds an address", async () => {
+    await insertUser("hashed@example.com", "user");
+    expect((await sendFrom("198.51.100.50", "hashed@example.com")).status).toBe(200);
+    const keys = (await db.select({ key: rateLimit.key }).from(rateLimit)).map((r) => r.key);
+    expect(keys.some((k) => /^otp-email:[0-9a-f]{64}$/.test(k))).toBe(true);
+    expect(keys.filter((k) => k.includes("@"))).toEqual([]);
   });
 
   it("returns 429 on the 6th OTP check from one IP", async () => {
@@ -538,6 +558,25 @@ describe("security log and suspension", () => {
     expect(await blocked.text()).toContain("workspace still has addresses");
 
     await coreDb(env).delete(address).where(eq(address.workspaceId, orgId));
+    expect((await del()).status).toBe(200);
+  });
+
+  it("refuses to delete a workspace that still has a sending domain in relay-core, and allows it after removal", async () => {
+    const cookie = await cookieFor("dom-admin@example.com", "admin");
+    const orgId = await createWorkspace(cookie, "dom-co");
+    await coreDb(env).insert(sendingDomain).values({ workspaceId: orgId, domain: "guard.dom-co.test", sesRegion: "ap-south-1" });
+
+    const del = () =>
+      SELF.fetch(`${BASE}/organization/delete`, {
+        method: "POST",
+        headers: { ...json, cookie, origin: ORIGIN },
+        body: JSON.stringify({ organizationId: orgId }),
+      });
+    const blocked = await del();
+    expect(blocked.status).toBe(400);
+    expect(await blocked.text()).toContain("workspace still has sending domains");
+
+    await coreDb(env).delete(sendingDomain).where(eq(sendingDomain.workspaceId, orgId));
     expect((await del()).status).toBe(200);
   });
 

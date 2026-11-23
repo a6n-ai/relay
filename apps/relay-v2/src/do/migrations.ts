@@ -57,6 +57,25 @@ CREATE TABLE audit_log (
   created_at INTEGER NOT NULL
 );
 `,
+`
+ALTER TABLE message ADD COLUMN ses_region TEXT;
+ALTER TABLE message ADD COLUMN from_name TEXT;
+ALTER TABLE message ADD COLUMN claimed_until INTEGER;
+CREATE INDEX message_ses_message_id ON message (ses_message_id);
+
+CREATE TABLE message_event (
+  id TEXT PRIMARY KEY NOT NULL,
+  message_id TEXT NOT NULL,
+  type TEXT NOT NULL,
+  sns_message_id TEXT NOT NULL UNIQUE,
+  recipient TEXT,
+  detail TEXT,
+  occurred_at INTEGER NOT NULL,
+  created_at INTEGER NOT NULL,
+  CONSTRAINT message_event_type CHECK (type IN ('Send', 'Delivery', 'Bounce', 'Complaint', 'Reject', 'DeliveryDelay', 'RenderingFailure', 'Open', 'Click'))
+);
+CREATE INDEX message_event_message ON message_event (message_id, occurred_at);
+`,
 ];
 
 // PRAGMA user_version is rejected by DO SQL (SQLITE_AUTH), so the version lives in sync KV.

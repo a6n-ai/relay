@@ -6,7 +6,15 @@
   "main": "src/server.ts",
   "observability": { "enabled": true },
   "workers_dev": false,
-  "vars": { "BETTER_AUTH_URL": "https://relay.a6n.ai" },
+  "vars": {
+    "BETTER_AUTH_URL": "https://relay.a6n.ai",
+    "OTP_MAILER": "ses",
+    "INVITE_MAILER": "ses",
+    "SES_EVENT_TOPIC_ARNS": "",
+    "SYSTEM_FROM_EMAIL": "no-reply@relay.a6n.ai",
+    "SYSTEM_FROM_NAME": "Relay",
+    "SYSTEM_SES_REGION": "ap-south-1",
+  },
   "d1_databases": [
     {
       "binding": "SECURITY_DB",
@@ -26,6 +34,27 @@
   },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["ClientDO"] }],
   "r2_buckets": [{ "binding": "MAIL", "bucket_name": "relay-mail" }],
-  "queues": { "producers": [{ "binding": "SEND", "queue": "relay-send" }] },
+  "queues": {
+    "producers": [
+      { "binding": "SEND", "queue": "relay-send" },
+      { "binding": "SES_EVENTS", "queue": "relay-ses-events" },
+    ],
+    "consumers": [
+      {
+        "queue": "relay-send",
+        "max_batch_size": 10,
+        "max_batch_timeout": 2,
+        "max_retries": 10,
+        "dead_letter_queue": "relay-send-dlq",
+      },
+      {
+        "queue": "relay-ses-events",
+        "max_batch_size": 100,
+        "max_batch_timeout": 5,
+        "max_retries": 10,
+        "dead_letter_queue": "relay-ses-events-dlq",
+      },
+    ],
+  },
   "ratelimits": [{ "name": "API_LIMIT", "namespace_id": "1001", "simple": { "limit": 600, "period": 60 } }],
 }

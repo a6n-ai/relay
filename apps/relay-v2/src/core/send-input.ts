@@ -12,7 +12,8 @@ export const sendInputSchema = z.object({
   stream: streamSchema,
   from: email,
   to: email,
-  subject: z.string().min(1),
+  // The subject becomes a mail header: a line break would split it, so it is refused here, not at SES.
+  subject: z.string().min(1).refine((s) => !/[\r\n]/.test(s), "subject must not contain line breaks"),
   html: z.string(),
   text: z.string(),
   event: z.string().min(1).optional(),
