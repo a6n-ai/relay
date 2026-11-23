@@ -31,14 +31,16 @@ describe("ClientDO migrations", () => {
 
   it("applies migrations once when two requests hit a fresh DO", async () => {
     const stub = env.CLIENT.get(env.CLIENT.idFromName("migrate-concurrent"));
-    const before = applied.count;
+    const before = { count: applied.count, calls: applied.calls };
     const results = await Promise.all([stub.ping(), stub.ping()]);
     expect(results).toEqual(["ok", "ok"]);
     const after = await runInDurableObject(stub, (_instance, state) => ({
       count: applied.count,
+      calls: applied.calls,
       version: state.storage.kv.get<number>("schema_version"),
     }));
-    expect(after.count - before).toBe(CLIENT_MIGRATIONS.length);
+    expect(after.calls - before.calls).toBe(1);
+    expect(after.count - before.count).toBe(CLIENT_MIGRATIONS.length);
     expect(after.version).toBe(CLIENT_MIGRATIONS.length);
   });
 });

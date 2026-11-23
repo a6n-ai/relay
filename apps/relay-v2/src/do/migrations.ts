@@ -1,5 +1,5 @@
-// Test seam: counts committed migration scripts so tests can prove each runs once.
-export const applied = { count: 0 };
+// Test seam: counts committed migration scripts and calls to migrate, so tests can prove each runs once and migrate runs once per DO.
+export const applied = { count: 0, calls: 0 };
 
 // Index + 1 is the stored schema_version. Keep in sync with client-schema.ts.
 export const CLIENT_MIGRATIONS: readonly string[] = [
@@ -61,6 +61,7 @@ CREATE TABLE audit_log (
 // PRAGMA user_version is rejected by DO SQL (SQLITE_AUTH), so the version lives in sync KV.
 // KV and SQL share one SQLite store, so each script and its version commit together.
 export function migrate(storage: DurableObjectStorage): number {
+  applied.calls++;
   let version = storage.kv.get<number>("schema_version") ?? 0;
   for (; version < CLIENT_MIGRATIONS.length; version++) {
     const next = version + 1;
