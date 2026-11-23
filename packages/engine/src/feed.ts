@@ -57,3 +57,20 @@ export async function markRead(
   const rows = await db.update(n).set({ readAt: Date.now() }).where(where).returning({ id: n.id });
   return rows.length;
 }
+
+/**
+ * Remove the given notifications from the user's feed (or the whole feed when no ids). Returns count.
+ * A hard delete: only the feed reads these rows; delivery history lives in the outbox.
+ */
+export async function clearFeed(
+  db: Db,
+  tables: NotificationTables,
+  userId: bigint,
+  publicIds?: string[],
+): Promise<number> {
+  const n = tables.notifications;
+  const own = eq(n.userId, userId);
+  const where = publicIds && publicIds.length > 0 ? and(own, sql`${n.publicId} = any(${publicIds})`) : own;
+  const rows = await db.delete(n).where(where).returning({ id: n.id });
+  return rows.length;
+}

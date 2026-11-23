@@ -76,6 +76,19 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
     await apiFetch(endpoint, { method: "POST", body: JSON.stringify({}) });
   }, [unread, endpoint]);
 
+  /** Remove notifications from the feed: the given ids, or everything when none. */
+  const clear = useCallback(
+    async (publicIds?: string[]) => {
+      const ids = publicIds ? new Set(publicIds) : null;
+      const gone = (n: FeedItem) => !ids || ids.has(n.publicId);
+      // Clearing all also drops unread rows past the loaded page, so the badge goes to 0.
+      setUnread((u) => (ids ? Math.max(0, u - items.filter((n) => gone(n) && !n.readAt).length) : 0));
+      setItems((prev) => prev.filter((n) => !gone(n)));
+      await apiFetch(endpoint, { method: "DELETE", body: JSON.stringify(publicIds ? { publicIds } : {}) });
+    },
+    [endpoint, items],
+  );
+
   // Initial load (unless server-rendered) + refresh when the tab regains focus
   // after the feed went stale.
   useEffect(() => {
@@ -120,5 +133,5 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
     };
   }, [subscribe, refresh]);
 
-  return { items, unread, markAllRead, refresh };
+  return { items, unread, markAllRead, clear, refresh };
 }
