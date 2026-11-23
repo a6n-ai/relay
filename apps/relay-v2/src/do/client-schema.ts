@@ -2,7 +2,7 @@ import { sql } from "drizzle-orm";
 import { check, index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 import { newId } from "../lib/ids";
 
-// Mirrors CLIENT_MIGRATIONS[0] in migrations.ts; change both together.
+// Mirrors CLIENT_MIGRATIONS in migrations.ts; change both together.
 export const message = sqliteTable(
   "message",
   {
@@ -29,6 +29,9 @@ export const message = sqliteTable(
     createdAt: integer("created_at").notNull(),
     updatedAt: integer("updated_at").notNull(),
     sentAt: integer("sent_at"),
+    sesRegion: text("ses_region"),
+    fromName: text("from_name"),
+    claimedUntil: integer("claimed_until"),
   },
   (t) => [
     check("message_channel", sql`${t.channel} = 'email'`),
@@ -39,6 +42,28 @@ export const message = sqliteTable(
     index("message_campaign_status").on(t.campaignId, t.status),
     index("message_to_email").on(t.toEmail),
     uniqueIndex("message_app_idempotency_unique").on(t.appId, t.idempotencyKey),
+    index("message_ses_message_id").on(t.sesMessageId),
+  ],
+);
+
+export const messageEvent = sqliteTable(
+  "message_event",
+  {
+    id: text("id").primaryKey().$defaultFn(() => newId("mev")),
+    messageId: text("message_id").notNull(),
+    type: text("type").notNull(),
+    snsMessageId: text("sns_message_id").notNull().unique(),
+    recipient: text("recipient"),
+    detail: text("detail"),
+    occurredAt: integer("occurred_at").notNull(),
+    createdAt: integer("created_at").notNull(),
+  },
+  (t) => [
+    check(
+      "message_event_type",
+      sql`${t.type} IN ('Send', 'Delivery', 'Bounce', 'Complaint', 'Reject', 'DeliveryDelay', 'RenderingFailure', 'Open', 'Click')`,
+    ),
+    index("message_event_message").on(t.messageId, t.occurredAt),
   ],
 );
 
