@@ -98,7 +98,7 @@ function PasswordPanel({ onUseEmailOtp }: { onUseEmailOtp: () => void }) {
               <FormItem>
                 <div className="flex items-center">
                   <FormLabel>Password</FormLabel>
-                  <Link href="/forgot-password" className="ml-auto inline-flex min-h-11 items-center text-sm underline-offset-2 hover:underline md:min-h-0">
+                  <Link prefetch={false} href="/forgot-password" className="ml-auto inline-flex min-h-11 items-center text-sm underline-offset-2 hover:underline md:min-h-0">
                     Forgot your password?
                   </Link>
                 </div>

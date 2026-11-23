@@ -20,7 +20,7 @@ export function PillLink({ href, children, tone = "solid", size = "lg" }: Props)
       size={size}
       variant={tone === "ghost" ? "outline" : "default"}
       className={cn(tone === "solid" && "marketing-cta-solid")}
-      render={<Link href={href} />}
+      render={<Link prefetch={false} href={href} />}
     >
       {children}
     </Button>

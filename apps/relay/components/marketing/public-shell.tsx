@@ -45,7 +45,7 @@ const FOOTER = [
 
 export function Wordmark() {
   return (
-    <Link href="/" className="inline-flex min-h-11 items-center text-base font-semibold tracking-tight focus-visible:underline md:min-h-0">
+    <Link prefetch={false} href="/" className="inline-flex min-h-11 items-center text-base font-semibold tracking-tight focus-visible:underline md:min-h-0">
       Relay
     </Link>
   );
@@ -64,10 +64,10 @@ export function PublicShell({ children }: { children: ReactNode }) {
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-5 md:px-8">
           <Wordmark />
           <nav className="flex items-center gap-5 md:gap-6" aria-label="Main">
-            <Link href="/docs" className={link}>
+            <Link prefetch={false} href="/docs" className={link}>
               Docs
             </Link>
-            <Link href="/docs/api" className={link}>
+            <Link prefetch={false} href="/docs/api" className={link}>
               API
             </Link>
             <span className="h-4 w-px bg-border" aria-hidden />
@@ -92,7 +92,7 @@ export function PublicShell({ children }: { children: ReactNode }) {
               <ul className="flex flex-col gap-1">
                 {col.links.map((l) => (
                   <li key={`${col.title}-${l.label}`}>
-                    <Link href={l.href} className={link}>
+                    <Link prefetch={false} href={l.href} className={link}>
                       {l.label}
                     </Link>
                   </li>

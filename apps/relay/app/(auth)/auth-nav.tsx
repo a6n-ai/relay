@@ -7,7 +7,7 @@ import { Button } from "@foundry/ui/button";
 export function AuthNav() {
   return (
     <nav className="absolute inset-x-0 top-0 flex items-center justify-end p-4 md:p-6">
-      <Button variant="ghost" size="sm" className="gap-1.5" render={<Link href="/" />}>
+      <Button variant="ghost" size="sm" className="gap-1.5" render={<Link prefetch={false} href="/" />}>
         <HomeIcon className="size-4" />
         Home
       </Button>

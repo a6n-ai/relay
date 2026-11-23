@@ -28,7 +28,7 @@ export default function DocsPage() {
         </p>
         <div className="mt-12 grid grid-cols-1 gap-px bg-border sm:grid-cols-3">
           {GROUPS.map((g) => (
-            <Link key={g.href} href={g.href} className="bg-background px-5 py-10 hover:bg-muted/40 md:px-8">
+            <Link prefetch={false} key={g.href} href={g.href} className="bg-background px-5 py-10 hover:bg-muted/40 md:px-8">
               <h2 className="text-xl font-semibold tracking-tight">{g.title}</h2>
               <p className="mt-3 text-sm leading-6 text-muted-foreground">{g.body}</p>
             </Link>

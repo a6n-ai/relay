@@ -5,8 +5,13 @@
 // WHATSAPP_VERIFY_TOKEN. No DATABASE_URL: Hyperdrive. Runbook: deployment/cloudflare/README.md.
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  // OpenNext's worker wrapped with the outbox and inbound Queue consumers, RelayWake and the Email Routing handler.
-  "main": "cloudflare/worker.js",
+  // OpenNext's worker wrapped with the outbox and inbound Queue consumers, RelayWake and the Email Routing handler
+  // (cloudflare/worker.js), bundled and minified by cloudflare/prebundle.mjs (why: see that file).
+  "main": "cloudflare/dist/worker.js",
+  "no_bundle": true,
+  "build": { "command": "node cloudflare/prebundle.mjs" },
+  "rules": [{ "type": "Data", "globs": ["**/*.bin"], "fallthrough": true }],
+  "upload_source_maps": false,
   "name": "relay",
   "compatibility_date": "2026-09-01",
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],

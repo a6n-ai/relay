@@ -158,7 +158,7 @@ export function Landing() {
                   <p className="max-w-md text-base leading-7 text-muted-foreground">
                     Create a key for each app and set a monthly quota for it. The OpenAPI docs let you try a request in the browser before you write any code.
                   </p>
-                  <Link href="/docs/api" className="inline-flex min-h-11 items-center gap-1 text-sm font-medium text-primary hover:underline md:min-h-0">
+                  <Link prefetch={false} href="/docs/api" className="inline-flex min-h-11 items-center gap-1 text-sm font-medium text-primary hover:underline md:min-h-0">
                     API reference
                     <ChevronRightIcon className="size-4" aria-hidden />
                   </Link>

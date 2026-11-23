@@ -1,5 +1,5 @@
 // Custom Worker entry: OpenNext's fetch handler plus the outbox and inbound Queue consumers, the RelayWake
-// Workflow (no cron) and the Email Routing mailbox handler. wrangler.jsonc `main` points here.
+// Workflow (no cron) and the Email Routing mailbox handler. cloudflare/prebundle.mjs bundles it for wrangler.jsonc `main`.
 import openNext from "../.open-next/worker.js";
 import { bootOnce } from "./bootstrap.js";
 import { receive } from "./email.js";

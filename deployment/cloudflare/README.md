@@ -71,6 +71,8 @@ git worktree add /tmp/relay-wt HEAD && cd /tmp/relay-wt && pnpm install --frozen
 cd apps/relay && DATABASE_URL=postgres://build:build@127.0.0.1:1/build NEXT_PUBLIC_BETTER_AUTH_URL=https://relay.a6n.ai pnpm cf:build
 ```
 
+Every `wrangler deploy`/`dev`/dry-run first runs `cloudflare/prebundle.mjs` (`build.command`): it bundles `cloudflare/worker.js` unminified with `wrangler.bundle.jsonc`, minifies the text with esbuild and escapes chars above U+00FF, and `wrangler.jsonc` ships `cloudflare/dist/worker.js` with `no_bundle`. Upload 24.4 → 17.0 MiB; script held as one-byte text (~16 MB of the 128 MB isolate, was ~47 MB). Same step as realm's tiffin-grab.
+
 `wrangler dev` rewrites Host and Origin to the `relay.a6n.ai` route, so `.dev.vars` needs `BETTER_AUTH_URL=http://relay.a6n.ai`.
 
 ## Secrets

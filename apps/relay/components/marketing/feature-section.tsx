@@ -24,7 +24,7 @@ export function FeatureSection({
         <div className={`flex flex-col items-start gap-5 ${flip ? "md:order-2" : ""}`}>
           <h2 className="text-3xl font-semibold tracking-[-0.022em] text-balance md:text-4xl">{title}</h2>
           <p className="max-w-md text-base leading-7 text-muted-foreground">{body}</p>
-          <Link href={href} className="inline-flex min-h-11 items-center gap-1 text-sm font-medium text-primary hover:underline md:min-h-0">
+          <Link prefetch={false} href={href} className="inline-flex min-h-11 items-center gap-1 text-sm font-medium text-primary hover:underline md:min-h-0">
             {linkLabel}
             <ChevronRightIcon className="size-4" aria-hidden />
           </Link>
