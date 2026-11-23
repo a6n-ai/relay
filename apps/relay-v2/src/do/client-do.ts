@@ -1,5 +1,5 @@
 import { DurableObject } from "cloudflare:workers";
-import { and, eq, gte, inArray, isNull, ne, or, sql, type SQLWrapper } from "drizzle-orm";
+import { and, eq, gte, inArray, isNull, lt, ne, or, sql, type SQLWrapper } from "drizzle-orm";
 import { drizzle, type DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
 import type { SesSendRequest } from "../core/ses";
 import { DEFAULT_MONTHLY_QUOTA, LIMITS_TTL_MS, loadWorkspaceLimits, SENDER_RETRY_MS, type WorkspaceLimits } from "../core/limits";
@@ -20,6 +20,12 @@ export type SendClaim =
   | { kind: "send"; attempt: number; request: SesSendRequest };
 
 const CLAIM_LEASE_MS = 60_000;
+const SWEEP_INTERVAL_MS = 600_000;
+// Longer than the largest retry backoff, so a row still waiting on a retry is never re-sent.
+const STALE_MS = 1_200_000;
+const EXPIRE_MS = 86_400_000;
+const SWEEP_BATCH = 500;
+const SWEEP_CHUNK = 100;
 
 // Stored send errors keep the domain and first letter only, so a bounce never persists a full recipient address.
 const maskEmails = (text: string) => text.replace(/([\w.%+-])[\w.%+-]*@([\w-]+(?:\.[\w-]+)+)/g, "$1***@$2").slice(0, 500);
@@ -80,6 +86,8 @@ export class ClientDO extends DurableObject<Env> {
     const htmlKey = preSuppressed ? null : `ws/${workspaceId}/msg/${id}.html`;
     if (htmlKey) await this.env.MAIL.put(htmlKey, data.html);
     const now = Date.now();
+    // Set before the insert: a crash between insert and enqueue must still leave an alarm to sweep the row.
+    if ((await this.ctx.storage.getAlarm()) === null) await this.ctx.storage.setAlarm(now + SWEEP_INTERVAL_MS);
     let suppressed = preSuppressed;
     try {
       this.ctx.storage.transactionSync(() => {
@@ -269,6 +277,59 @@ export class ClientDO extends DurableObject<Env> {
   async refreshLimits(workspaceId: string): Promise<WorkspaceLimits> {
     await this.ready(workspaceId);
     return this.loadLimits(workspaceId);
+  }
+
+  async alarm(): Promise<void> {
+    await this.sweepQueued();
+  }
+
+  // Workspace comes only from the KV binding. Unbound: nothing to sweep, and no reschedule.
+  async sweepQueued(now = Date.now()): Promise<{ requeued: number; expired: number }> {
+    const workspaceId = this.ctx.storage.kv.get<string>("workspace_id");
+    if (workspaceId === undefined) {
+      console.error("ClientDO: sweeper ran before any workspace was bound");
+      return { requeued: 0, expired: 0 };
+    }
+    await this.ready(workspaceId);
+    const expired = this.ctx.storage.transactionSync(
+      () =>
+        this.db
+          .update(schema.message)
+          .set({ status: "failed", error: "expired after 24h in queue", updatedAt: now })
+          .where(and(eq(schema.message.status, "queued"), lt(schema.message.createdAt, now - EXPIRE_MS)))
+          .returning({ id: schema.message.id })
+          .all().length,
+    );
+    const stale = this.db
+      .select({ id: schema.message.id })
+      .from(schema.message)
+      .where(
+        and(
+          eq(schema.message.status, "queued"),
+          lt(schema.message.updatedAt, now - STALE_MS),
+          or(isNull(schema.message.claimedUntil), lt(schema.message.claimedUntil, now)),
+        ),
+      )
+      .orderBy(schema.message.createdAt)
+      .limit(SWEEP_BATCH)
+      .all();
+    for (let i = 0; i < stale.length; i += SWEEP_CHUNK) {
+      const ids = stale.slice(i, i + SWEEP_CHUNK).map((row) => row.id);
+      await this.env.SEND.sendBatch(ids.map((messageId) => ({ body: { workspaceId, messageId } })));
+      // Per chunk, after its enqueue: a throw in a later chunk leaves the sent ones fresh for the next run.
+      // One update per id: DO SQL caps bound parameters per query, so an IN list of 100 would not fit.
+      this.ctx.storage.transactionSync(() => {
+        for (const id of ids) this.db.update(schema.message).set({ updatedAt: now }).where(eq(schema.message.id, id)).run();
+      });
+    }
+    const queuedLeft = this.db
+      .select({ id: schema.message.id })
+      .from(schema.message)
+      .where(eq(schema.message.status, "queued"))
+      .limit(1)
+      .get();
+    if (queuedLeft) await this.ctx.storage.setAlarm(now + SWEEP_INTERVAL_MS);
+    return { requeued: stale.length, expired };
   }
 
   // The snapshot lives in KV, so a stale copy survives eviction and a D1 outage. It is never stored when empty.
