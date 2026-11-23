@@ -1,11 +1,11 @@
-import { applyD1Migrations, env, runInDurableObject, type D1Migration } from "cloudflare:test";
+import { env, runInDurableObject } from "cloudflare:test";
 import { beforeAll, describe, expect, it } from "vitest";
 import { CLIENT_MIGRATIONS, applied, migrate } from "../src/do/migrations";
+import { applyMigrations } from "./migrate";
 
-const { TEST_MIGRATIONS } = env as typeof env & { TEST_MIGRATIONS: D1Migration[] };
 
 beforeAll(async () => {
-  await applyD1Migrations(env.CENTRAL, TEST_MIGRATIONS);
+  await applyMigrations();
 });
 
 const tables = (sql: SqlStorage) =>

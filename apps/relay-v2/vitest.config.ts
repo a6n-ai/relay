@@ -2,7 +2,8 @@ import { cloudflareTest, readD1Migrations } from "@cloudflare/vitest-plugin";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import { defineConfig } from "vitest/config";
 
-const migrations = await readD1Migrations("./drizzle/central");
+const securityMigrations = await readD1Migrations("./drizzle/security");
+const coreMigrations = await readD1Migrations("./drizzle/core");
 
 export default defineConfig({
   plugins: [
@@ -10,9 +11,10 @@ export default defineConfig({
     cloudflareTest({
       wrangler: { configPath: "./wrangler.jsonc" },
       miniflare: {
-        d1Databases: ["CENTRAL"],
+        d1Databases: ["SECURITY_DB", "CORE_DB"],
         bindings: {
-          TEST_MIGRATIONS: migrations,
+          TEST_SECURITY_MIGRATIONS: securityMigrations,
+          TEST_CORE_MIGRATIONS: coreMigrations,
           OTP_MAILER: "memory",
           INVITE_MAILER: "memory",
           BETTER_AUTH_SECRET: "k7Qz2mVx9LrT4wNp8sHc3YbF6jDa1eUg0oRi5tKl",

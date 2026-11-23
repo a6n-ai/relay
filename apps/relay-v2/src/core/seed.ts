@@ -1,8 +1,10 @@
 import type { BatchItem } from "drizzle-orm/batch";
 import { and, eq, inArray, isNull } from "drizzle-orm";
 import { z } from "zod";
-import { centralDb } from "../db/central/client";
-import { apiKey, app, member, sendingDomain, user, workspace } from "../db/central/schema";
+import { coreDb } from "../db/core/client";
+import { sendingDomain } from "../db/core/schema";
+import { securityDb } from "../db/security/client";
+import { apiKey, app, member, user, workspace } from "../db/security/schema";
 import type { Env } from "../env";
 import { newId } from "../lib/ids";
 import { createApiKey } from "./api-keys";
@@ -23,10 +25,11 @@ export const seedInputSchema = z.object({
   domain: z.object({ domain: text, sesRegion: text }).optional(),
 });
 
-// Writes run in one D1 batch, which is all-or-nothing. The api key is created after the batch,
-// so a rerun issues one whenever the app has no live key.
+// Security writes run in one D1 batch, which is all-or-nothing. The domain lives in relay-core, so it is
+// written after that batch; a rerun finds the domain already present and skips it. The api key is created
+// after the batch, so a rerun issues one whenever the app has no live key.
 export async function seed(env: Env, input: SeedInput): Promise<SeedResult> {
-  const db = centralDb(env);
+  const db = securityDb(env);
   const emails = [...new Set(input.ownerEmails.map((e) => e.trim().toLowerCase()))];
   const writes: BatchItem<"sqlite">[] = [];
 
@@ -73,21 +76,18 @@ export async function seed(env: Env, input: SeedInput): Promise<SeedResult> {
     writes.push(db.insert(app).values({ id: appId, workspaceId, name: input.app.name, slug: input.app.slug }));
   }
 
-  if (input.domain) {
-    const domain = input.domain.domain.trim().toLowerCase();
-    const [existingDomain] = await db
-      .select({ workspaceId: sendingDomain.workspaceId })
-      .from(sendingDomain)
-      .where(eq(sendingDomain.domain, domain));
-    if (existingDomain && existingDomain.workspaceId !== workspaceId) {
-      throw new Error("domain belongs to another workspace");
-    }
-    if (!existingDomain) {
-      writes.push(db.insert(sendingDomain).values({ id: newId("dom"), workspaceId, domain, sesRegion: input.domain.sesRegion }));
-    }
+  const domain = input.domain && { ...input.domain, domain: input.domain.domain.trim().toLowerCase() };
+  const [existingDomain] = domain
+    ? await coreDb(env).select({ workspaceId: sendingDomain.workspaceId }).from(sendingDomain).where(eq(sendingDomain.domain, domain.domain))
+    : [];
+  if (existingDomain && existingDomain.workspaceId !== workspaceId) {
+    throw new Error("domain belongs to another workspace");
   }
 
   if (writes.length) await db.batch(writes as [BatchItem<"sqlite">, ...BatchItem<"sqlite">[]]);
+  if (domain && !existingDomain) {
+    await coreDb(env).insert(sendingDomain).values({ id: newId("dom"), workspaceId, domain: domain.domain, sesRegion: domain.sesRegion });
+  }
   const liveKey = await db
     .select({ id: apiKey.id })
     .from(apiKey)

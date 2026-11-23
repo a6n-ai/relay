@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "1eb76018-bd09-41e3-9190-2df6de5d5aad",
+  "id": "27158f57-cd8e-4860-9faa-a6298f410847",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "account": {
@@ -119,120 +119,6 @@
       "uniqueConstraints": {},
       "checkConstraints": {}
     },
-    "address": {
-      "name": "address",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "workspace_id": {
-          "name": "workspace_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "app_id": {
-          "name": "app_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "email": {
-          "name": "email",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "kind": {
-          "name": "kind",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "display_name": {
-          "name": "display_name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "can_send": {
-          "name": "can_send",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        }
-      },
-      "indexes": {
-        "address_email_unique": {
-          "name": "address_email_unique",
-          "columns": [
-            "email"
-          ],
-          "isUnique": true
-        }
-      },
-      "foreignKeys": {
-        "address_workspace_id_workspace_id_fk": {
-          "name": "address_workspace_id_workspace_id_fk",
-          "tableFrom": "address",
-          "tableTo": "workspace",
-          "columnsFrom": [
-            "workspace_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "address_app_id_app_id_fk": {
-          "name": "address_app_id_app_id_fk",
-          "tableFrom": "address",
-          "tableTo": "app",
-          "columnsFrom": [
-            "app_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {
-        "address_email_lower": {
-          "name": "address_email_lower",
-          "value": "\"address\".\"email\" = lower(trim(\"address\".\"email\"))"
-        }
-      }
-    },
     "address_grant": {
       "name": "address_grant",
       "columns": {
@@ -292,19 +178,6 @@
             "id"
           ],
           "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "address_grant_address_id_address_id_fk": {
-          "name": "address_grant_address_id_address_id_fk",
-          "tableFrom": "address_grant",
-          "tableTo": "address",
-          "columnsFrom": [
-            "address_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
           "onUpdate": "no action"
         },
         "address_grant_member_id_member_id_fk": {
@@ -767,8 +640,8 @@
       "uniqueConstraints": {},
       "checkConstraints": {}
     },
-    "sending_domain": {
-      "name": "sending_domain",
+    "security_audit": {
+      "name": "security_audit",
       "columns": {
         "id": {
           "name": "id",
@@ -777,42 +650,54 @@
           "notNull": true,
           "autoincrement": false
         },
+        "actor_user_id": {
+          "name": "actor_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "workspace_id": {
           "name": "workspace_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
+          "notNull": false,
           "autoincrement": false
         },
-        "domain": {
-          "name": "domain",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "ses_region": {
-          "name": "ses_region",
+        "action": {
+          "name": "action",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
         },
-        "status": {
-          "name": "status",
+        "target": {
+          "name": "target",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "'pending'"
+          "notNull": false,
+          "autoincrement": false
         },
-        "dkim_status": {
-          "name": "dkim_status",
+        "ip": {
+          "name": "ip",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "'pending'"
+          "notNull": false,
+          "autoincrement": false
+        },
+        "user_agent": {
+          "name": "user_agent",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "data": {
+          "name": "data",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
         },
         "created_at": {
           "name": "created_at",
@@ -820,39 +705,10 @@
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
         }
       },
-      "indexes": {
-        "sending_domain_domain_unique": {
-          "name": "sending_domain_domain_unique",
-          "columns": [
-            "domain"
-          ],
-          "isUnique": true
-        }
-      },
-      "foreignKeys": {
-        "sending_domain_workspace_id_workspace_id_fk": {
-          "name": "sending_domain_workspace_id_workspace_id_fk",
-          "tableFrom": "sending_domain",
-          "tableTo": "workspace",
-          "columnsFrom": [
-            "workspace_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
+      "indexes": {},
+      "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "checkConstraints": {}
@@ -1113,98 +969,6 @@
       "uniqueConstraints": {},
       "checkConstraints": {}
     },
-    "usage_daily": {
-      "name": "usage_daily",
-      "columns": {
-        "workspace_id": {
-          "name": "workspace_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "day": {
-          "name": "day",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "sent": {
-          "name": "sent",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": 0
-        },
-        "delivered": {
-          "name": "delivered",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": 0
-        },
-        "bounced": {
-          "name": "bounced",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": 0
-        },
-        "inbound": {
-          "name": "inbound",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": 0
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "usage_daily_workspace_id_workspace_id_fk": {
-          "name": "usage_daily_workspace_id_workspace_id_fk",
-          "tableFrom": "usage_daily",
-          "tableTo": "workspace",
-          "columnsFrom": [
-            "workspace_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "usage_daily_workspace_id_day_pk": {
-          "columns": [
-            "workspace_id",
-            "day"
-          ],
-          "name": "usage_daily_workspace_id_day_pk"
-        }
-      },
-      "uniqueConstraints": {},
-      "checkConstraints": {}
-    },
     "user": {
       "name": "user",
       "columns": {
@@ -1393,29 +1157,6 @@
           "notNull": false,
           "autoincrement": false
         },
-        "mailing_country": {
-          "name": "mailing_country",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "'CA'"
-        },
-        "physical_address": {
-          "name": "physical_address",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "monthly_message_quota": {
-          "name": "monthly_message_quota",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": 10000
-        },
         "status": {
           "name": "status",
           "type": "text",
@@ -1423,29 +1164,6 @@
           "notNull": true,
           "autoincrement": false,
           "default": "'active'"
-        },
-        "default_ses_region": {
-          "name": "default_ses_region",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "'ap-south-1'"
-        },
-        "do_schema_version": {
-          "name": "do_schema_version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": 0
-        },
-        "do_migrate_error": {
-          "name": "do_migrate_error",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
         },
         "created_at": {
           "name": "created_at",

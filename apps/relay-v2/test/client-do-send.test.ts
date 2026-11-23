@@ -1,5 +1,6 @@
-import { applyD1Migrations, env, runInDurableObject, type D1Migration } from "cloudflare:test";
+import { env, runInDurableObject } from "cloudflare:test";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi, type MockInstance } from "vitest";
+import { applyMigrations } from "./migrate";
 
 const base = {
   appId: "app_1",
@@ -11,7 +12,6 @@ const base = {
   text: "Thanks",
 };
 
-const { TEST_MIGRATIONS } = env as typeof env & { TEST_MIGRATIONS: D1Migration[] };
 
 const stubFor = (workspaceId: string) => env.CLIENT.get(env.CLIENT.idFromName(workspaceId));
 
@@ -31,7 +31,7 @@ const tick = () => new Promise<void>((r) => setTimeout(r, 0));
 let enqueue: MockInstance<typeof env.SEND.send>;
 
 beforeAll(async () => {
-  await applyD1Migrations(env.CENTRAL, TEST_MIGRATIONS);
+  await applyMigrations();
 });
 
 beforeEach(() => {

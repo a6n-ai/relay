@@ -7,8 +7,9 @@
     "build": "vite build",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "db:generate": "drizzle-kit generate",
-    "db:migrate:local": "wrangler d1 migrations apply relay-central --local"
+    "db:generate:security": "drizzle-kit generate --config drizzle.security.config.ts",
+    "db:generate:core": "drizzle-kit generate --config drizzle.core.config.ts",
+    "db:migrate:local": "wrangler d1 migrations apply relay-security --local && wrangler d1 migrations apply relay-core --local"
   },
   "dependencies": {
     "@tanstack/react-router": "^1.170.46",

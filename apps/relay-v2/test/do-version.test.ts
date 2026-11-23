@@ -1,14 +1,16 @@
-import { applyD1Migrations, env, runInDurableObject, SELF, type D1Migration } from "cloudflare:test";
+import { env, runInDurableObject, SELF } from "cloudflare:test";
 import { eq } from "drizzle-orm";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { guardInternal } from "../src/core/internal-guard";
 import { sweepWorkspaces } from "../src/core/do-sweep";
 import { CLIENT_MIGRATIONS } from "../src/do/migrations";
-import { centralDb } from "../src/db/central/client";
-import { workspace } from "../src/db/central/schema";
+import { coreDb } from "../src/db/core/client";
+import { workspaceProfile } from "../src/db/core/schema";
+import { securityDb } from "../src/db/security/client";
+import { workspace } from "../src/db/security/schema";
+import { applyMigrations } from "./migrate";
 
-const { TEST_MIGRATIONS } = env as typeof env & { TEST_MIGRATIONS: D1Migration[] };
-const db = centralDb(env);
+const db = securityDb(env);
 const VERSION = CLIENT_MIGRATIONS.length;
 const SWEEP_URL = "https://relay.test/api/internal/do-sweep";
 
@@ -24,17 +26,21 @@ const base = {
 
 const stubFor = (workspaceId: string) => env.CLIENT.get(env.CLIENT.idFromName(workspaceId));
 
+const profileOf = (workspaceId: string) =>
+  coreDb(env).select().from(workspaceProfile).where(eq(workspaceProfile.workspaceId, workspaceId));
+
 async function seedWorkspace(slug: string) {
   const [row] = await db.insert(workspace).values({ name: slug, slug }).returning();
   return row.id;
 }
 
 beforeAll(async () => {
-  await applyD1Migrations(env.CENTRAL, TEST_MIGRATIONS);
+  await applyMigrations();
 });
 
 beforeEach(async () => {
   await db.delete(workspace);
+  await coreDb(env).delete(workspaceProfile);
 });
 
 afterEach(() => {
@@ -46,7 +52,7 @@ describe("ClientDO schema version", () => {
     const id = await seedWorkspace("ping-a");
     expect(await stubFor(id).ping(id)).toEqual({ version: VERSION });
 
-    const [row] = await db.select().from(workspace).where(eq(workspace.id, id));
+    const [row] = await profileOf(id);
     expect(row).toMatchObject({ doSchemaVersion: VERSION, doMigrateError: null });
   });
 
@@ -54,10 +60,10 @@ describe("ClientDO schema version", () => {
     const id = await seedWorkspace("ping-once");
     const stub = stubFor(id);
     await stub.ping(id);
-    await db.update(workspace).set({ updatedAt: new Date(1) }).where(eq(workspace.id, id));
+    await coreDb(env).update(workspaceProfile).set({ updatedAt: new Date(1) }).where(eq(workspaceProfile.workspaceId, id));
     await stub.ping(id);
 
-    const [row] = await db.select().from(workspace).where(eq(workspace.id, id));
+    const [row] = await profileOf(id);
     expect(row.updatedAt.getTime()).toBe(1);
   });
 
@@ -76,14 +82,14 @@ describe("ClientDO schema version", () => {
       state.storage.sql.exec<{ n: number }>("SELECT count(*) AS n FROM message").toArray()[0].n,
     );
     expect(rows).toBe(0);
-    const [row] = await db.select().from(workspace).where(eq(workspace.id, id));
+    const [row] = await profileOf(id);
     expect(row.doMigrateError).toBe("boom");
   });
 
   it("keeps sends working while D1 is down and reports the version once D1 is back", async () => {
     const id = await seedWorkspace("d1-down");
     const stub = stubFor(id);
-    const d1 = vi.spyOn(env.CENTRAL, "prepare").mockImplementation(() => {
+    const d1 = vi.spyOn(env.CORE_DB, "prepare").mockImplementation(() => {
       throw new Error("D1 down");
     });
     const log = vi.spyOn(console, "error").mockImplementation(() => {});
@@ -97,7 +103,7 @@ describe("ClientDO schema version", () => {
     d1.mockRestore();
     log.mockRestore();
     expect(await stub.ping(id)).toEqual({ version: VERSION });
-    const [row] = await db.select().from(workspace).where(eq(workspace.id, id));
+    const [row] = await profileOf(id);
     expect(row.doSchemaVersion).toBe(VERSION);
     const kvAfter = await runInDurableObject(stub, (_instance, state) => state.storage.kv.get("reported_version"));
     expect(kvAfter).toBe(VERSION);
@@ -109,7 +115,7 @@ describe("ClientDO schema version", () => {
     await runInDurableObject(stub, (instance) => {
       instance.migrateError = new Error("boom");
     });
-    const d1 = vi.spyOn(env.CENTRAL, "prepare").mockImplementation(() => {
+    const d1 = vi.spyOn(env.CORE_DB, "prepare").mockImplementation(() => {
       throw new Error("D1 down");
     });
     const log = vi.spyOn(console, "error").mockImplementation(() => {});
@@ -133,7 +139,7 @@ describe("sweepWorkspaces", () => {
     ]);
 
     expect(await sweepWorkspaces(env)).toEqual({ total: 3, upToDate: 3, behind: [], failed: [] });
-    const rows = await db.select({ version: workspace.doSchemaVersion }).from(workspace);
+    const rows = await coreDb(env).select({ version: workspaceProfile.doSchemaVersion }).from(workspaceProfile);
     expect(rows.map((r) => r.version)).toEqual([VERSION, VERSION, VERSION]);
   });
 
@@ -149,7 +155,7 @@ describe("sweepWorkspaces", () => {
       behind: [id],
       failed: [{ workspaceId: id, error: "workspace storage migration failed" }],
     });
-    const [row] = await db.select().from(workspace).where(eq(workspace.id, id));
+    const [row] = await profileOf(id);
     expect(row.doMigrateError).toBe("boom");
   });
 });

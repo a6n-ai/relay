@@ -1,11 +1,14 @@
-import { APIError, createAuthMiddleware } from "better-auth/api";
+import { APIError, createAuthMiddleware, getAuthoritativeSessionFromCtx, getSessionFromCtx, isAPIError } from "better-auth/api";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { admin } from "better-auth/plugins/admin";
 import { emailOTP } from "better-auth/plugins/email-otp";
 import { organization } from "better-auth/plugins/organization";
 import { eq } from "drizzle-orm";
-import { centralDb } from "../../db/central/client";
+import { ensureWorkspaceProfile } from "../../core/workspace-profile";
+import { coreDb } from "../../db/core/client";
+import { address } from "../../db/core/schema";
+import { securityDb } from "../../db/security/client";
 import {
   account,
   app,
@@ -18,9 +21,10 @@ import {
   rateLimit,
   verification,
   workspace,
-} from "../../db/central/schema";
+} from "../../db/security/schema";
 import type { Env } from "../../env";
 import { newId } from "../ids";
+import { writeAudit } from "./audit";
 import { pickInviteMailer } from "./invite-mailer";
 import { type OtpMailer, consoleOtpMailer, memoryOtpMailer } from "./otp-mailer";
 import { ac as platformAc, orgAc, orgRoles, roles as platformRoles } from "./permissions";
@@ -51,14 +55,22 @@ export function createAuth(env: Env) {
   if (!env.BETTER_AUTH_SECRET || !env.BETTER_AUTH_URL) {
     throw new Error("BETTER_AUTH_SECRET and BETTER_AUTH_URL are required");
   }
-  // input: false keeps quota, status and region server-set; a client cannot choose them on create.
+  // input: false keeps status server-set; a client cannot choose it on create.
   const serverOnly = { input: false } as const;
+
+  // Audit context from the request. Organization hooks get no request, so they log without ip or user agent.
+  const requestMeta = (ctx: { headers?: Headers; request?: Request }) => {
+    const headers = ctx.headers ?? ctx.request?.headers;
+    return { ip: headers?.get("cf-connecting-ip") ?? null, userAgent: headers?.get("user-agent") ?? null };
+  };
+  const actorOf = async (ctx: Parameters<typeof getSessionFromCtx>[0]) =>
+    (await getSessionFromCtx(ctx))?.user.id ?? null;
 
   return betterAuth({
     secret: env.BETTER_AUTH_SECRET,
     baseURL: env.BETTER_AUTH_URL,
     trustedOrigins: [env.BETTER_AUTH_URL],
-    database: drizzleAdapter(centralDb(env), {
+    database: drizzleAdapter(securityDb(env), {
       provider: "sqlite",
       schema: {
         user,
@@ -87,6 +99,7 @@ export function createAuth(env: Env) {
       window: 60,
       max: 100,
       customRules: {
+        "/get-session": false,
         "/email-otp/send-verification-otp": { window: 600, max: 5 },
         "/sign-in/email-otp": { window: 600, max: 5 },
         "/email-otp/check-verification-otp": { window: 600, max: 5 },
@@ -100,6 +113,49 @@ export function createAuth(env: Env) {
           ctx.path === "/forget-password/email-otp" ||
           (ctx.path === "/email-otp/send-verification-otp" && ctx.body?.type === "forget-password");
         if (resetMail) throw new APIError("NOT_FOUND");
+
+        // A suspended workspace keeps its sessions but loses organization endpoints.
+        if (ctx.path.startsWith("/organization/")) {
+          // Authoritative read: the cookie cache can predate a set-active or a suspension.
+          const orgId = (await getAuthoritativeSessionFromCtx(ctx))?.session.activeOrganizationId;
+          if (orgId) {
+            const [ws] = await securityDb(env).select({ status: workspace.status }).from(workspace).where(eq(workspace.id, orgId));
+            if (ws?.status === "suspended") throw new APIError("FORBIDDEN", { message: "workspace suspended" });
+          }
+        }
+      }),
+      after: createAuthMiddleware(async (ctx) => {
+        const result = ctx.context.returned;
+        const meta = requestMeta(ctx);
+        const body = (ctx.body ?? {}) as { email?: string; userId?: string; role?: string; banReason?: string };
+
+        if (ctx.path === "/sign-in/email-otp") {
+          if (isAPIError(result)) {
+            const email = String(body.email ?? "").trim().toLowerCase();
+            await writeAudit(env, { action: "sign_in.failure", target: email, data: { status: result.statusCode }, ...meta });
+          } else {
+            const signedIn = (result as { user: { id: string } }).user;
+            await writeAudit(env, { action: "sign_in.success", actorUserId: signedIn.id, target: signedIn.id, ...meta });
+          }
+          return;
+        }
+        if (isAPIError(result)) return;
+
+        switch (ctx.path) {
+          case "/admin/set-role":
+            return writeAudit(env, { action: "role.change", actorUserId: await actorOf(ctx), target: body.userId, data: { role: body.role }, ...meta });
+          case "/admin/ban-user":
+            return writeAudit(env, { action: "user.ban", actorUserId: await actorOf(ctx), target: body.userId, ...meta });
+          case "/admin/unban-user":
+            return writeAudit(env, { action: "user.unban", actorUserId: await actorOf(ctx), target: body.userId, ...meta });
+          case "/admin/impersonate-user":
+            return writeAudit(env, { action: "impersonate.start", actorUserId: await actorOf(ctx), target: body.userId, ...meta });
+          case "/admin/stop-impersonating": {
+            // The impersonated session is gone by now, so the admin comes from the response.
+            const admin = (result as { user: { id: string } }).user;
+            return writeAudit(env, { action: "impersonate.stop", actorUserId: admin.id, ...meta });
+          }
+        }
       }),
     },
     session: {
@@ -128,23 +184,48 @@ export function createAuth(env: Env) {
         },
         organizationHooks: {
           beforeDeleteOrganization: async ({ organization }) => {
-            const [hit] = await centralDb(env)
+            const [hit] = await securityDb(env)
               .select({ id: app.id })
               .from(app)
               .where(eq(app.workspaceId, organization.id))
               .limit(1);
             if (hit) throw new APIError("BAD_REQUEST", { message: "workspace still has apps" });
+            // Addresses live in relay-core, so the foreign key cannot guard this delete.
+            const [addr] = await coreDb(env)
+              .select({ id: address.id })
+              .from(address)
+              .where(eq(address.workspaceId, organization.id))
+              .limit(1);
+            if (addr) throw new APIError("BAD_REQUEST", { message: "workspace still has addresses" });
+          },
+          afterCreateOrganization: async ({ organization, user }) => {
+            await ensureWorkspaceProfile(env, organization.id);
+            await writeAudit(env, { action: "workspace.create", actorUserId: user.id, workspaceId: organization.id, target: organization.id });
+          },
+          afterDeleteOrganization: async ({ organization, user }) => {
+            await writeAudit(env, { action: "workspace.delete", actorUserId: user.id, workspaceId: organization.id, target: organization.id });
+          },
+          afterCreateInvitation: async ({ invitation, inviter, organization }) => {
+            await writeAudit(env, { action: "invite.create", actorUserId: inviter.id, workspaceId: organization.id, target: invitation.email, data: { role: invitation.role } });
+          },
+          afterAcceptInvitation: async ({ invitation, user, organization }) => {
+            await writeAudit(env, { action: "invite.accept", actorUserId: user.id, workspaceId: organization.id, target: invitation.email });
+          },
+          afterCancelInvitation: async ({ invitation, cancelledBy, organization }) => {
+            await writeAudit(env, { action: "invite.cancel", actorUserId: cancelledBy.id, workspaceId: organization.id, target: invitation.email });
+          },
+          afterAddMember: async ({ member, user, organization }) => {
+            await writeAudit(env, { action: "member.add", workspaceId: organization.id, target: user.id, data: { role: member.role } });
+          },
+          afterRemoveMember: async ({ user, organization }) => {
+            await writeAudit(env, { action: "member.remove", workspaceId: organization.id, target: user.id });
           },
         },
         schema: {
           organization: {
             modelName: "workspace",
             additionalFields: {
-              mailingCountry: { type: "string", defaultValue: "CA", required: false, ...serverOnly },
-              physicalAddress: { type: "string", required: false, ...serverOnly },
-              monthlyMessageQuota: { type: "number", defaultValue: 10000, required: false, ...serverOnly },
               status: { type: "string", defaultValue: "active", required: false, ...serverOnly },
-              defaultSesRegion: { type: "string", defaultValue: "ap-south-1", required: false, ...serverOnly },
             },
           },
         },

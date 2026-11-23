@@ -1,14 +1,14 @@
-import { applyD1Migrations, createExecutionContext, env, SELF, type D1Migration } from "cloudflare:test";
+import { createExecutionContext, env, SELF } from "cloudflare:test";
 import { beforeAll, describe, expect, it } from "vitest";
 import { createApiKey } from "../src/core/api-keys";
-import { centralDb } from "../src/db/central/client";
-import { app, workspace } from "../src/db/central/schema";
+import { securityDb } from "../src/db/security/client";
+import { app, workspace } from "../src/db/security/schema";
 import { RelayRpc } from "../src/rpc/relay-rpc";
+import { applyMigrations } from "./migrate";
 
-const { TEST_MIGRATIONS } = env as typeof env & { TEST_MIGRATIONS: D1Migration[] };
 
 beforeAll(async () => {
-  await applyD1Migrations(env.CENTRAL, TEST_MIGRATIONS);
+  await applyMigrations();
 });
 
 const message = {
@@ -21,7 +21,7 @@ const message = {
 };
 
 async function tenant(slug: string) {
-  const db = centralDb(env);
+  const db = securityDb(env);
   const [ws] = await db.insert(workspace).values({ name: slug, slug }).returning();
   const [a] = await db.insert(app).values({ workspaceId: ws.id, name: slug, slug: "main" }).returning();
   const { secret } = await createApiKey(env, { workspaceId: ws.id, appId: a.id, name: "web" });

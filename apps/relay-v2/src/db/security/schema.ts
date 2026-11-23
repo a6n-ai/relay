@@ -1,24 +1,6 @@
 import { sql } from "drizzle-orm";
-import {
-  check,
-  integer,
-  primaryKey,
-  sqliteTable,
-  text,
-  uniqueIndex,
-} from "drizzle-orm/sqlite-core";
-import { newId } from "../../lib/ids";
-
-// better-auth writes Date values to *_at columns; timestamp_ms maps them to epoch-ms integers.
-const id = (prefix: string) => text("id").primaryKey().$defaultFn(() => newId(prefix));
-const createdAt = () => integer("created_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date());
-const updatedAt = () =>
-  integer("updated_at", { mode: "timestamp_ms" })
-    .notNull()
-    .$defaultFn(() => new Date())
-    .$onUpdateFn(() => new Date());
-const timestamp = (name: string) => integer(name, { mode: "timestamp_ms" });
-const flag = (name: string) => integer(name, { mode: "boolean" });
+import { check, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { createdAt, flag, id, timestamp, updatedAt } from "../columns";
 
 export const user = sqliteTable("user", {
   id: id("usr"),
@@ -86,13 +68,7 @@ export const workspace = sqliteTable("workspace", {
   slug: text("slug").notNull().unique(),
   logo: text("logo"),
   metadata: text("metadata"),
-  mailingCountry: text("mailing_country").notNull().default("CA"),
-  physicalAddress: text("physical_address"),
-  monthlyMessageQuota: integer("monthly_message_quota").notNull().default(10000),
   status: text("status", { enum: ["active", "suspended"] }).notNull().default("active"),
-  defaultSesRegion: text("default_ses_region").notNull().default("ap-south-1"),
-  doSchemaVersion: integer("do_schema_version").notNull().default(0),
-  doMigrateError: text("do_migrate_error"),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 });
@@ -162,35 +138,13 @@ export const apiKey = sqliteTable("api_key", {
   updatedAt: updatedAt(),
 });
 
-export const sendingDomain = sqliteTable("sending_domain", {
-  id: id("dom"),
-  workspaceId: text("workspace_id").notNull().references(() => workspace.id),
-  domain: text("domain").notNull().unique(),
-  sesRegion: text("ses_region").notNull(),
-  status: text("status", { enum: ["pending", "verified", "failed"] }).notNull().default("pending"),
-  dkimStatus: text("dkim_status").notNull().default("pending"),
-  createdAt: createdAt(),
-  updatedAt: updatedAt(),
-});
-
-export const address = sqliteTable("address", {
-  id: id("adr"),
-  workspaceId: text("workspace_id").notNull().references(() => workspace.id),
-  appId: text("app_id").notNull().references(() => app.id),
-  email: text("email").notNull().unique(),
-  kind: text("kind", { enum: ["inbox", "sender", "both"] }).notNull(),
-  displayName: text("display_name"),
-  canSend: flag("can_send").notNull().default(false),
-  createdAt: createdAt(),
-  updatedAt: updatedAt(),
-}, (t) => [check("address_email_lower", sql`${t.email} = lower(trim(${t.email}))`)]);
-
+// addressId is checked in code against relay-core: D1 cannot foreign-key across databases.
 export const addressGrant = sqliteTable(
   "address_grant",
   {
     id: id("grt"),
     workspaceId: text("workspace_id").notNull().references(() => workspace.id),
-    addressId: text("address_id").notNull().references(() => address.id, { onDelete: "cascade" }),
+    addressId: text("address_id").notNull(),
     memberId: text("member_id").references(() => member.id, { onDelete: "cascade" }),
     teamId: text("team_id").references(() => team.id, { onDelete: "cascade" }),
     createdAt: createdAt(),
@@ -198,17 +152,15 @@ export const addressGrant = sqliteTable(
   (t) => [check("address_grant_one_target", sql`(${t.memberId} IS NULL) <> (${t.teamId} IS NULL)`)],
 );
 
-export const usageDaily = sqliteTable(
-  "usage_daily",
-  {
-    workspaceId: text("workspace_id").notNull().references(() => workspace.id),
-    day: text("day").notNull(),
-    sent: integer("sent").notNull().default(0),
-    delivered: integer("delivered").notNull().default(0),
-    bounced: integer("bounced").notNull().default(0),
-    inbound: integer("inbound").notNull().default(0),
-    createdAt: createdAt(),
-    updatedAt: updatedAt(),
-  },
-  (t) => [primaryKey({ columns: [t.workspaceId, t.day] })],
-);
+// Never store OTPs, tokens or key secrets in data.
+export const securityAudit = sqliteTable("security_audit", {
+  id: id("sau"),
+  actorUserId: text("actor_user_id"),
+  workspaceId: text("workspace_id"),
+  action: text("action").notNull(),
+  target: text("target"),
+  ip: text("ip"),
+  userAgent: text("user_agent"),
+  data: text("data"),
+  createdAt: createdAt(),
+});

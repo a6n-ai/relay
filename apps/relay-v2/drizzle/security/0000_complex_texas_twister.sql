@@ -15,22 +15,6 @@ CREATE TABLE `account` (
 	FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint
-CREATE TABLE `address` (
-	`id` text PRIMARY KEY NOT NULL,
-	`workspace_id` text NOT NULL,
-	`app_id` text NOT NULL,
-	`email` text NOT NULL,
-	`kind` text NOT NULL,
-	`display_name` text,
-	`can_send` integer DEFAULT false NOT NULL,
-	`created_at` integer NOT NULL,
-	`updated_at` integer NOT NULL,
-	FOREIGN KEY (`workspace_id`) REFERENCES `workspace`(`id`) ON UPDATE no action ON DELETE no action,
-	FOREIGN KEY (`app_id`) REFERENCES `app`(`id`) ON UPDATE no action ON DELETE no action,
-	CONSTRAINT "address_email_lower" CHECK("address"."email" = lower(trim("address"."email")))
-);
---> statement-breakpoint
-CREATE UNIQUE INDEX `address_email_unique` ON `address` (`email`);--> statement-breakpoint
 CREATE TABLE `address_grant` (
 	`id` text PRIMARY KEY NOT NULL,
 	`workspace_id` text NOT NULL,
@@ -39,7 +23,6 @@ CREATE TABLE `address_grant` (
 	`team_id` text,
 	`created_at` integer NOT NULL,
 	FOREIGN KEY (`workspace_id`) REFERENCES `workspace`(`id`) ON UPDATE no action ON DELETE no action,
-	FOREIGN KEY (`address_id`) REFERENCES `address`(`id`) ON UPDATE no action ON DELETE cascade,
 	FOREIGN KEY (`member_id`) REFERENCES `member`(`id`) ON UPDATE no action ON DELETE cascade,
 	FOREIGN KEY (`team_id`) REFERENCES `team`(`id`) ON UPDATE no action ON DELETE cascade,
 	CONSTRAINT "address_grant_one_target" CHECK(("address_grant"."member_id" IS NULL) <> ("address_grant"."team_id" IS NULL))
@@ -106,19 +89,18 @@ CREATE TABLE `rate_limit` (
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX `rate_limit_key_unique` ON `rate_limit` (`key`);--> statement-breakpoint
-CREATE TABLE `sending_domain` (
+CREATE TABLE `security_audit` (
 	`id` text PRIMARY KEY NOT NULL,
-	`workspace_id` text NOT NULL,
-	`domain` text NOT NULL,
-	`ses_region` text NOT NULL,
-	`status` text DEFAULT 'pending' NOT NULL,
-	`dkim_status` text DEFAULT 'pending' NOT NULL,
-	`created_at` integer NOT NULL,
-	`updated_at` integer NOT NULL,
-	FOREIGN KEY (`workspace_id`) REFERENCES `workspace`(`id`) ON UPDATE no action ON DELETE no action
+	`actor_user_id` text,
+	`workspace_id` text,
+	`action` text NOT NULL,
+	`target` text,
+	`ip` text,
+	`user_agent` text,
+	`data` text,
+	`created_at` integer NOT NULL
 );
 --> statement-breakpoint
-CREATE UNIQUE INDEX `sending_domain_domain_unique` ON `sending_domain` (`domain`);--> statement-breakpoint
 CREATE TABLE `session` (
 	`id` text PRIMARY KEY NOT NULL,
 	`expires_at` integer NOT NULL,
@@ -156,19 +138,6 @@ CREATE TABLE `team_member` (
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX `team_member_membership_key_unique` ON `team_member` (`membership_key`);--> statement-breakpoint
-CREATE TABLE `usage_daily` (
-	`workspace_id` text NOT NULL,
-	`day` text NOT NULL,
-	`sent` integer DEFAULT 0 NOT NULL,
-	`delivered` integer DEFAULT 0 NOT NULL,
-	`bounced` integer DEFAULT 0 NOT NULL,
-	`inbound` integer DEFAULT 0 NOT NULL,
-	`created_at` integer NOT NULL,
-	`updated_at` integer NOT NULL,
-	PRIMARY KEY(`workspace_id`, `day`),
-	FOREIGN KEY (`workspace_id`) REFERENCES `workspace`(`id`) ON UPDATE no action ON DELETE no action
-);
---> statement-breakpoint
 CREATE TABLE `user` (
 	`id` text PRIMARY KEY NOT NULL,
 	`name` text NOT NULL,
@@ -199,13 +168,7 @@ CREATE TABLE `workspace` (
 	`slug` text NOT NULL,
 	`logo` text,
 	`metadata` text,
-	`mailing_country` text DEFAULT 'CA' NOT NULL,
-	`physical_address` text,
-	`monthly_message_quota` integer DEFAULT 10000 NOT NULL,
 	`status` text DEFAULT 'active' NOT NULL,
-	`default_ses_region` text DEFAULT 'ap-south-1' NOT NULL,
-	`do_schema_version` integer DEFAULT 0 NOT NULL,
-	`do_migrate_error` text,
 	`created_at` integer NOT NULL,
 	`updated_at` integer NOT NULL
 );

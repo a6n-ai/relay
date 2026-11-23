@@ -9,10 +9,16 @@
   "vars": { "BETTER_AUTH_URL": "https://relay.a6n.ai" },
   "d1_databases": [
     {
-      "binding": "CENTRAL",
-      "database_name": "relay-central",
+      "binding": "SECURITY_DB",
+      "database_name": "relay-security",
       "database_id": "local",
-      "migrations_dir": "drizzle/central",
+      "migrations_dir": "drizzle/security",
+    },
+    {
+      "binding": "CORE_DB",
+      "database_name": "relay-core",
+      "database_id": "local",
+      "migrations_dir": "drizzle/core",
     },
   ],
   "durable_objects": {

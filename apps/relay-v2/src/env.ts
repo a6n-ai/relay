@@ -6,7 +6,8 @@ export type SendJob = { workspaceId: string; messageId: string };
 declare global {
   namespace Cloudflare {
     interface Env {
-      CENTRAL: D1Database;
+      SECURITY_DB: D1Database;
+      CORE_DB: D1Database;
       CLIENT: DurableObjectNamespace<ClientDO>;
       MAIL: R2Bucket;
       SEND: Queue<SendJob>;

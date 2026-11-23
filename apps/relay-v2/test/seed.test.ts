@@ -1,14 +1,16 @@
-import { applyD1Migrations, env, SELF, type D1Migration } from "cloudflare:test";
+import { env, SELF } from "cloudflare:test";
 import { and, eq, inArray, isNull } from "drizzle-orm";
 import { beforeAll, describe, expect, it } from "vitest";
 import { resolveApiKey } from "../src/core/api-keys";
 import { guardInternal } from "../src/core/internal-guard";
 import { seed } from "../src/core/seed";
-import { centralDb } from "../src/db/central/client";
-import { apiKey, app, member, sendingDomain, user, workspace } from "../src/db/central/schema";
+import { securityDb } from "../src/db/security/client";
+import { coreDb } from "../src/db/core/client";
+import { sendingDomain } from "../src/db/core/schema";
+import { apiKey, app, member, user, workspace } from "../src/db/security/schema";
+import { applyMigrations } from "./migrate";
 
-const { TEST_MIGRATIONS } = env as typeof env & { TEST_MIGRATIONS: D1Migration[] };
-const db = centralDb(env);
+const db = securityDb(env);
 const SEED_URL = "https://relay.test/api/internal/seed";
 
 const input = {
@@ -18,7 +20,7 @@ const input = {
 };
 
 beforeAll(async () => {
-  await applyD1Migrations(env.CENTRAL, TEST_MIGRATIONS);
+  await applyMigrations();
 });
 
 async function counts(emails: string[], slug: string) {
@@ -98,7 +100,7 @@ describe("seed", () => {
     const first = await seed(env, domainInput);
     await seed(env, domainInput);
 
-    const domains = await db.select().from(sendingDomain).where(eq(sendingDomain.domain, "mail.dom.test"));
+    const domains = await coreDb(env).select().from(sendingDomain).where(eq(sendingDomain.domain, "mail.dom.test"));
     expect(domains).toHaveLength(1);
     expect(domains[0].workspaceId).toBe(first.workspaceId);
 

@@ -2,8 +2,7 @@ import { DurableObject } from "cloudflare:workers";
 import { and, eq, isNull, or, sql } from "drizzle-orm";
 import { drizzle, type DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
 import { sendInputSchema, type SendInput, type Stream, type SuppressionReason } from "../core/send-input";
-import { centralDb } from "../db/central/client";
-import { workspace } from "../db/central/schema";
+import { recordDoState } from "../core/workspace-profile";
 import type { Env } from "../env";
 import { newId } from "../lib/ids";
 import * as schema from "./client-schema";
@@ -152,10 +151,7 @@ export class ClientDO extends DurableObject<Env> {
   private async ready(workspaceId: string): Promise<void> {
     if (this.migrateError) {
       try {
-        await centralDb(this.env)
-          .update(workspace)
-          .set({ doMigrateError: this.migrateError.message })
-          .where(eq(workspace.id, workspaceId));
+        await recordDoState(this.env, workspaceId, { doMigrateError: this.migrateError.message });
       } catch (err) {
         console.error("ClientDO: failed to record migrate error in D1", err);
       }
@@ -170,10 +166,7 @@ export class ClientDO extends DurableObject<Env> {
     const version = CLIENT_MIGRATIONS.length;
     if (this.ctx.storage.kv.get<number>("reported_version") === version) return;
     try {
-      await centralDb(this.env)
-        .update(workspace)
-        .set({ doSchemaVersion: version, doMigrateError: null })
-        .where(eq(workspace.id, workspaceId));
+      await recordDoState(this.env, workspaceId, { doSchemaVersion: version, doMigrateError: null });
     } catch (err) {
       console.error("ClientDO: failed to report schema version to D1", err);
       return;

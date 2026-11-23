@@ -1,22 +1,24 @@
-import { applyD1Migrations, env, SELF, type D1Migration } from "cloudflare:test";
-import { eq } from "drizzle-orm";
+import { env, SELF } from "cloudflare:test";
+import { and, eq } from "drizzle-orm";
 import { beforeAll, describe, expect, it, vi } from "vitest";
-import { centralDb } from "../src/db/central/client";
-import { app, member, user, verification, workspace } from "../src/db/central/schema";
+import { coreDb } from "../src/db/core/client";
+import { address, workspaceProfile } from "../src/db/core/schema";
+import { securityDb } from "../src/db/security/client";
+import { app, member, securityAudit, user, verification, workspace } from "../src/db/security/schema";
 import { createAuth, pickMailer } from "../src/lib/auth";
 import { consoleInviteMailer, memoryInviteMailer, pickInviteMailer } from "../src/lib/auth/invite-mailer";
 import { memoryOtpMailer } from "../src/lib/auth/otp-mailer";
 import { newId } from "../src/lib/ids";
 import type { Env } from "../src/env";
+import { applyMigrations } from "./migrate";
 
-const { TEST_MIGRATIONS } = env as typeof env & { TEST_MIGRATIONS: D1Migration[] };
 const ORIGIN = "http://localhost";
 const BASE = `${ORIGIN}/api/auth`;
 const json = { "content-type": "application/json" };
-const db = centralDb(env);
+const db = securityDb(env);
 
 beforeAll(async () => {
-  await applyD1Migrations(env.CENTRAL, TEST_MIGRATIONS);
+  await applyMigrations();
 });
 
 async function insertUser(email: string, role: "user" | "admin"): Promise<void> {
@@ -83,8 +85,8 @@ describe("better-auth on D1", () => {
     const org = (await res.json()) as { id: string };
     expect(org.id).toMatch(/^wsp_/);
 
-    const [row] = await db.select().from(workspace).where(eq(workspace.id, org.id));
-    expect(row.monthlyMessageQuota).toBe(10000);
+    const [profile] = await coreDb(env).select().from(workspaceProfile).where(eq(workspaceProfile.workspaceId, org.id));
+    expect(profile.monthlyMessageQuota).toBe(10000);
 
     const [m] = await db.select().from(member).where(eq(member.organizationId, org.id));
     expect(m.role).toBe("owner");
@@ -384,3 +386,111 @@ describe("password mail paths", () => {
   });
 });
 
+
+describe("security log and suspension", () => {
+  it("writes a sign_in.success row whose data holds no OTP", async () => {
+    await insertUser("audit@example.com", "user");
+    const otp = await sendOtp("audit@example.com");
+    const res = await SELF.fetch(`${BASE}/sign-in/email-otp`, {
+      method: "POST",
+      headers: { ...json, ...freshIp() },
+      body: JSON.stringify({ email: "audit@example.com", otp }),
+    });
+    expect(res.status).toBe(200);
+
+    const [owner] = await db.select().from(user).where(eq(user.email, "audit@example.com"));
+    const rows = await db
+      .select()
+      .from(securityAudit)
+      .where(and(eq(securityAudit.action, "sign_in.success"), eq(securityAudit.target, owner.id)));
+    expect(rows).toHaveLength(1);
+    expect(JSON.stringify(rows[0])).not.toContain(otp);
+  });
+
+  it("writes a sign_in.failure row for a wrong OTP", async () => {
+    await insertUser("denied@example.com", "user");
+    await sendOtp("denied@example.com");
+    const res = await SELF.fetch(`${BASE}/sign-in/email-otp`, {
+      method: "POST",
+      headers: { ...json, ...freshIp() },
+      body: JSON.stringify({ email: "denied@example.com", otp: "000000" }),
+    });
+    expect(res.status).toBeGreaterThanOrEqual(400);
+
+    const rows = await db
+      .select()
+      .from(securityAudit)
+      .where(and(eq(securityAudit.action, "sign_in.failure"), eq(securityAudit.target, "denied@example.com")));
+    expect(rows).toHaveLength(1);
+  });
+
+  it("records the acting admin on role.change and workspace.create", async () => {
+    const adminCookie = await cookieFor("audit-admin@example.com", "admin");
+    await insertUser("audit-target@example.com", "user");
+    const [target] = await db.select().from(user).where(eq(user.email, "audit-target@example.com"));
+    const [admin] = await db.select().from(user).where(eq(user.email, "audit-admin@example.com"));
+
+    const role = await SELF.fetch(`${BASE}/admin/set-role`, {
+      method: "POST",
+      headers: { ...json, cookie: adminCookie, origin: ORIGIN },
+      body: JSON.stringify({ userId: target.id, role: "admin" }),
+    });
+    expect(role.status).toBe(200);
+    const [roleRow] = await db
+      .select()
+      .from(securityAudit)
+      .where(and(eq(securityAudit.action, "role.change"), eq(securityAudit.target, target.id)));
+    expect(roleRow).toMatchObject({ actorUserId: admin.id, data: '{"role":"admin"}' });
+
+    const orgId = await createWorkspace(adminCookie, "audit-co");
+    const [createRow] = await db
+      .select()
+      .from(securityAudit)
+      .where(and(eq(securityAudit.action, "workspace.create"), eq(securityAudit.workspaceId, orgId)));
+    expect(createRow).toMatchObject({ actorUserId: admin.id, target: orgId });
+  });
+
+  it("refuses organization endpoints while the active workspace is suspended", async () => {
+    const cookie = await cookieFor("suspend-admin@example.com", "admin");
+    const orgId = await createWorkspace(cookie, "suspend-co");
+    const setActive = await SELF.fetch(`${BASE}/organization/set-active`, {
+      method: "POST",
+      headers: { ...json, cookie, origin: ORIGIN },
+      body: JSON.stringify({ organizationId: orgId }),
+    });
+    expect(setActive.status).toBe(200);
+
+    const invite = (email: string) =>
+      SELF.fetch(`${BASE}/organization/invite-member`, {
+        method: "POST",
+        headers: { ...json, cookie, origin: ORIGIN },
+        body: JSON.stringify({ organizationId: orgId, email, role: "member" }),
+      });
+    expect((await invite("s1@example.com")).status).toBe(200);
+
+    await db.update(workspace).set({ status: "suspended" }).where(eq(workspace.id, orgId));
+    expect((await invite("s2@example.com")).status).toBe(403);
+
+    await db.update(workspace).set({ status: "active" }).where(eq(workspace.id, orgId));
+    expect((await invite("s3@example.com")).status).toBe(200);
+  });
+
+  it("refuses to delete a workspace that still has addresses in relay-core", async () => {
+    const cookie = await cookieFor("addr-admin@example.com", "admin");
+    const orgId = await createWorkspace(cookie, "addr-co");
+    await coreDb(env).insert(address).values({ workspaceId: orgId, appId: "app_none", email: "guard@addr-co.test", kind: "inbox" });
+
+    const del = () =>
+      SELF.fetch(`${BASE}/organization/delete`, {
+        method: "POST",
+        headers: { ...json, cookie, origin: ORIGIN },
+        body: JSON.stringify({ organizationId: orgId }),
+      });
+    const blocked = await del();
+    expect(blocked.status).toBe(400);
+    expect(await blocked.text()).toContain("workspace still has addresses");
+
+    await coreDb(env).delete(address).where(eq(address.workspaceId, orgId));
+    expect((await del()).status).toBe(200);
+  });
+});
