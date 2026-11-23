@@ -45,6 +45,13 @@
         "max_retries": 10,
         "dead_letter_queue": "relay-send-dlq",
       },
+      {
+        "queue": "relay-ses-events",
+        "max_batch_size": 100,
+        "max_batch_timeout": 5,
+        "max_retries": 10,
+        "dead_letter_queue": "relay-ses-events-dlq",
+      },
     ],
   },
   "ratelimits": [{ "name": "API_LIMIT", "namespace_id": "1001", "simple": { "limit": 600, "period": 60 } }],

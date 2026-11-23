@@ -4,7 +4,9 @@ import { drizzle, type DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlit
 import type { SesSendRequest } from "../core/ses";
 import { DEFAULT_MONTHLY_QUOTA, LIMITS_TTL_MS, loadWorkspaceLimits, SENDER_RETRY_MS, type WorkspaceLimits } from "../core/limits";
 import { sendInputSchema, type SendInput, type Stream, type SuppressionReason } from "../core/send-input";
+import type { SesEventJob } from "../core/ses-events";
 import { recordDoState } from "../core/workspace-profile";
+import { utcDay } from "../core/usage";
 import type { Env } from "../env";
 import { newId } from "../lib/ids";
 import * as schema from "./client-schema";
@@ -13,6 +15,8 @@ import { CLIENT_MIGRATIONS, migrate } from "./migrations";
 export type MessageView = typeof schema.message.$inferSelect & { html: string | null };
 
 type SendResult = { messageId: string; status: "queued" | "sent" | "failed" | "suppressed"; duplicate: boolean };
+
+export type SesEventResult = { applied: number; ignored: number; usage: { day: string; delivered: number; bounced: number }[] };
 
 export type SendClaim =
   | { kind: "skip"; reason: "missing" | "sent" | "failed" | "suppressed" }
@@ -253,20 +257,100 @@ export class ClientDO extends DurableObject<Env> {
 
   async addSuppression(workspaceId: string, email: string, reason: SuppressionReason, stream?: Stream): Promise<void> {
     await this.ready(workspaceId);
+    this.ctx.storage.transactionSync(() => this.writeSuppression(email, reason, stream));
+  }
+
+  // One transactionSync per event. A replayed, foreign or unknown event changes nothing and counts as ignored.
+  // Usage is returned rather than written, so the queue bumps it only after this call succeeds.
+  async applySesEvents(workspaceId: string, events: SesEventJob[]): Promise<SesEventResult> {
+    await this.ready(workspaceId);
+    const result: SesEventResult = { applied: 0, ignored: 0, usage: [] };
+    const days = new Map<string, { delivered: number; bounced: number }>();
+    for (const job of events) {
+      const delta = this.ctx.storage.transactionSync(() => this.applySesEvent(workspaceId, job));
+      if (!delta) {
+        result.ignored++;
+        continue;
+      }
+      result.applied++;
+      const day = utcDay(job.occurredAt);
+      const usage = days.get(day) ?? { delivered: 0, bounced: 0 };
+      usage.delivered += delta.delivered;
+      usage.bounced += delta.bounced;
+      days.set(day, usage);
+    }
+    result.usage = [...days].filter(([, u]) => u.delivered || u.bounced).map(([day, u]) => ({ day, ...u }));
+    return result;
+  }
+
+  // Returns the usage this event adds, or null when it is ignored. Must run inside transactionSync.
+  private applySesEvent(workspaceId: string, job: SesEventJob): { delivered: number; bounced: number } | null {
+    if (job.workspaceId !== workspaceId) return null;
+    const row = this.db
+      .select({ sesMessageId: schema.message.sesMessageId })
+      .from(schema.message)
+      .where(eq(schema.message.id, job.messageId))
+      .get();
+    if (!row || (row.sesMessageId && row.sesMessageId !== job.sesMessageId)) return null;
+    const detail = job.bounceType || job.link ? JSON.stringify({ bounceType: job.bounceType, link: job.link }) : null;
+    const inserted = this.db
+      .insert(schema.messageEvent)
+      .values({
+        messageId: job.messageId,
+        type: job.type,
+        snsMessageId: job.snsMessageId,
+        recipient: job.recipients[0] ?? null,
+        detail,
+        occurredAt: job.occurredAt,
+        createdAt: Date.now(),
+      })
+      .onConflictDoNothing({ target: schema.messageEvent.snsMessageId })
+      .returning({ id: schema.messageEvent.id })
+      .all();
+    if (inserted.length === 0) return null;
+    const usage = { delivered: 0, bounced: 0 };
+    switch (job.type) {
+      case "Open":
+        this.db
+          .update(schema.message)
+          .set({ opens: sql`${schema.message.opens} + 1` })
+          .where(eq(schema.message.id, job.messageId))
+          .run();
+        break;
+      case "Click":
+        this.db
+          .update(schema.message)
+          .set({ clicks: sql`${schema.message.clicks} + 1` })
+          .where(eq(schema.message.id, job.messageId))
+          .run();
+        break;
+      case "Delivery":
+        usage.delivered = 1;
+        break;
+      case "Bounce":
+        usage.bounced = 1;
+        if (job.bounceType === "Permanent") for (const r of job.recipients) this.writeSuppression(r, "bounce");
+        break;
+      case "Complaint":
+        for (const r of job.recipients) this.writeSuppression(r, "complaint");
+        break;
+    }
+    return usage;
+  }
+
+  private writeSuppression(email: string, reason: SuppressionReason, stream?: Stream): void {
     // Widen on conflict: an all-streams row must never be narrowed by a later stream-scoped one.
-    this.ctx.storage.transactionSync(() => {
-      this.db
-        .insert(schema.suppression)
-        .values({ email: email.trim().toLowerCase(), reason, stream: stream ?? null, createdAt: Date.now() })
-        .onConflictDoUpdate({
-          target: schema.suppression.email,
-          set: {
-            reason: sql`CASE WHEN (${reasonRank(schema.suppression.reason)}) >= (${reasonRank(sql.raw("excluded.reason"))}) THEN ${schema.suppression.reason} ELSE excluded.reason END`,
-            stream: sql`CASE WHEN ${schema.suppression.stream} IS NULL OR excluded.stream IS NULL OR ${schema.suppression.stream} <> excluded.stream THEN NULL ELSE excluded.stream END`,
-          },
-        })
-        .run();
-    });
+    this.db
+      .insert(schema.suppression)
+      .values({ email: email.trim().toLowerCase(), reason, stream: stream ?? null, createdAt: Date.now() })
+      .onConflictDoUpdate({
+        target: schema.suppression.email,
+        set: {
+          reason: sql`CASE WHEN (${reasonRank(schema.suppression.reason)}) >= (${reasonRank(sql.raw("excluded.reason"))}) THEN ${schema.suppression.reason} ELSE excluded.reason END`,
+          stream: sql`CASE WHEN ${schema.suppression.stream} IS NULL OR excluded.stream IS NULL OR ${schema.suppression.stream} <> excluded.stream THEN NULL ELSE excluded.stream END`,
+        },
+      })
+      .run();
   }
 
   async isSuppressed(workspaceId: string, email: string, stream: Stream): Promise<boolean> {
