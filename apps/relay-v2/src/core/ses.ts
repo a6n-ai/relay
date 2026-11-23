@@ -41,10 +41,20 @@ export function retryDelaySeconds(attempt: number): number {
   return Math.min(30 * 2 ** (attempt - 1), 900);
 }
 
-// Same From format as channels/email/address.ts (unquoted).
+// shortcut: one encoded-word per name; RFC 2047 caps a word at 75 chars (about 45 UTF-8 bytes of name), split if long names appear.
+function formatFrom(name: string | null, address: string): string {
+  if (!name) return address;
+  if (/^[\x20-\x7e]*$/.test(name)) return `"${name.replace(/[\\"]/g, "\\$&")}" <${address}>`;
+  const bytes = new TextEncoder().encode(name);
+  return `=?UTF-8?B?${btoa(String.fromCharCode(...bytes))}?= <${address}>`;
+}
+
 export function sendEmailBody(req: SesSendRequest) {
+  if ([req.from, req.fromName, req.to, req.subject].some((v) => v && /[\r\n]/.test(v))) {
+    throw new Error("header contains a line break");
+  }
   return {
-    FromEmailAddress: req.fromName ? `${req.fromName} <${req.from}>` : req.from,
+    FromEmailAddress: formatFrom(req.fromName, req.from),
     Destination: { ToAddresses: [req.to] },
     ConfigurationSetName: configSetFor(req.region, req.stream),
     ...(req.tags

@@ -41,7 +41,7 @@ describe("configSetFor", () => {
 describe("sendEmailBody", () => {
   it("builds the SESv2 body with tags and HTML", () => {
     const body = sendEmailBody(request);
-    expect(body.FromEmailAddress).toBe("TiffinGrab <orders@tiffingrab.ca>");
+    expect(body.FromEmailAddress).toBe('"TiffinGrab" <orders@tiffingrab.ca>');
     expect(body.ConfigurationSetName).toBe("tiffin-grab-transactional");
     expect(body.EmailTags).toEqual([
       { Name: "ws", Value: "wsp_a" },
@@ -52,6 +52,22 @@ describe("sendEmailBody", () => {
 
   it("omits Html when html is null", () => {
     expect(sendEmailBody({ ...request, html: null }).Content.Simple.Body.Html).toBeUndefined();
+  });
+
+  it.each([
+    ["a comma", "Tiffin, Grab", '"Tiffin, Grab" <orders@tiffingrab.ca>'],
+    ["a double quote", 'Say "hi"', '"Say \\"hi\\"" <orders@tiffingrab.ca>'],
+    ["a backslash", "a\\b", '"a\\\\b" <orders@tiffingrab.ca>'],
+    ["a non-ASCII name", "Café", "=?UTF-8?B?Q2Fmw6k=?= <orders@tiffingrab.ca>"],
+    ["a null name", null, "orders@tiffingrab.ca"],
+  ])("formats the From display name for %s", (_label, fromName, expected) => {
+    expect(sendEmailBody({ ...request, fromName }).FromEmailAddress).toBe(expected);
+  });
+
+  it("rejects a line break in a header field", () => {
+    expect(() => sendEmailBody({ ...request, subject: "Hi\r\nBcc: x@evil.com" })).toThrow(
+      "header contains a line break",
+    );
   });
 });
 
@@ -68,6 +84,18 @@ describe("sesTransport", () => {
       /^AWS4-HMAC-SHA256 Credential=AKIDTEST\/\d{8}\/us-east-1\/ses\/aws4_request/,
     );
   });
+
+  it.each(["from", "fromName", "to", "subject"] as const)(
+    "rejects a line break in %s before any request is made",
+    async (field) => {
+      const fetchSpy = sesOk({ MessageId: "ses-1" });
+      const transport = sesTransport(credsEnv, fetchSpy as unknown as typeof fetch);
+      await expect(transport.send({ ...request, [field]: "x\r\nBcc: a@b.c" })).rejects.toThrow(
+        "header contains a line break",
+      );
+      expect(fetchSpy).not.toHaveBeenCalled();
+    },
+  );
 
   it("rejects when SES returns no MessageId", async () => {
     const transport = sesTransport(credsEnv, sesOk({}) as unknown as typeof fetch);
