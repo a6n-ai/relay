@@ -13,6 +13,7 @@ declare global {
       BETTER_AUTH_SECRET: string;
       BETTER_AUTH_URL: string;
       OTP_MAILER?: "memory" | "console";
+      SEED_SECRET?: string;
     }
   }
 }

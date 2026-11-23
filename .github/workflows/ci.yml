@@ -44,3 +44,19 @@ jobs:
           if [ -n "$(git status --porcelain apps/relay/db/migrations)" ]; then
             echo "Schema changed without a migration: run pnpm --filter relay db:generate"; exit 1
           fi
+
+  relay-v2:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 2
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter relay-v2 typecheck
+      - run: pnpm --filter relay-v2 test
+      - run: pnpm --filter relay-v2 build
