@@ -46,8 +46,10 @@ describe("verifySnsMessage", () => {
     expect(await verifySnsMessage({ ...msg, SignatureVersion: "2" }, fetchCert)).toBe(false);
   });
 
-  it("rejects an unknown SignatureVersion without throwing", async () => {
-    expect(await verifySnsMessage({ ...signed({}), SignatureVersion: "3" }, fetchCert)).toBe(false);
+  it("rejects an unknown SignatureVersion without throwing or fetching", async () => {
+    const spy = vi.fn(async (_url: string) => certPem);
+    expect(await verifySnsMessage({ ...signed({}), SignatureVersion: "3" }, spy)).toBe(false);
+    expect(spy).not.toHaveBeenCalled();
   });
 
   it("never fetches a cert for a URL outside the SNS host", async () => {
@@ -55,6 +57,29 @@ describe("verifySnsMessage", () => {
     const msg = signed({ SigningCertURL: "https://sns.ap-south-1.amazonaws.com.evil.com/SimpleNotificationService-abc123.pem" });
     expect(await verifySnsMessage(msg, spy)).toBe(false);
     expect(spy).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["query", `${CERT_URL}?n=1`],
+    ["fragment", `${CERT_URL}#x`],
+    ["userinfo", CERT_URL.replace("https://", "https://user@")],
+  ])("rejects a cert URL with a %s and never fetches it", async (_label, url) => {
+    const spy = vi.fn(async (_url: string) => certPem);
+    expect(await verifySnsMessage(signed({ SigningCertURL: url }), spy)).toBe(false);
+    expect(spy).not.toHaveBeenCalled();
+  });
+
+  it("caps the cert cache: the oldest of 40 distinct certs is evicted and refetched", async () => {
+    const spy = vi.fn(async (_url: string) => certPem);
+    const urlFor = (i: number) => `https://sns.ap-south-1.amazonaws.com/SimpleNotificationService-ca${i.toString(16).padStart(2, "0")}.pem`;
+    for (let i = 0; i < 40; i++) await verifySnsMessage(signed({ SigningCertURL: urlFor(i) }), spy);
+    expect(spy).toHaveBeenCalledTimes(40);
+
+    await verifySnsMessage(signed({ SigningCertURL: urlFor(39) }), spy);
+    expect(spy).toHaveBeenCalledTimes(40);
+
+    await verifySnsMessage(signed({ SigningCertURL: urlFor(0) }), spy);
+    expect(spy).toHaveBeenCalledTimes(41);
   });
 
   it("returns false when the cert fetch fails", async () => {

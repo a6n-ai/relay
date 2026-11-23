@@ -44,14 +44,28 @@ export function snsHostUrl(url: string, region: string): URL | null {
 
 export function isValidSnsCertUrl(url: string, topicRegion: string): boolean {
   const u = snsHostUrl(url, topicRegion);
-  return u !== null && /^\/SimpleNotificationService-[0-9a-f]+\.pem$/.test(u.pathname);
+  return (
+    u !== null &&
+    u.search === "" &&
+    u.hash === "" &&
+    !u.username &&
+    !u.password &&
+    /^\/SimpleNotificationService-[0-9a-f]+\.pem$/.test(u.pathname)
+  );
 }
 
+// Bounded: cert names are attacker-chosen, so unbounded growth would exhaust memory.
+const CERT_CACHE_MAX = 32;
 const certs = new Map<string, string>();
+
+function cacheCert(key: string, pem: string): void {
+  if (certs.size >= CERT_CACHE_MAX) certs.delete(certs.keys().next().value as string);
+  certs.set(key, pem);
+}
 
 // Test seam: lets route tests verify against the fixture cert without network.
 export function primeCertCache(url: string, pem: string): void {
-  certs.set(url, pem);
+  cacheCert(url, pem);
 }
 
 async function fetchPem(url: string): Promise<string> {
@@ -67,13 +81,14 @@ export async function verifySnsMessage(
 ): Promise<boolean> {
   try {
     if (!isValidSnsCertUrl(msg.SigningCertURL, snsRegion(msg.TopicArn))) return false;
-    let pem = certs.get(msg.SigningCertURL);
-    if (!pem) {
-      pem = await fetchCert(msg.SigningCertURL);
-      certs.set(msg.SigningCertURL, pem);
-    }
     const alg = msg.SignatureVersion === "2" ? "RSA-SHA256" : msg.SignatureVersion === "1" ? "RSA-SHA1" : null;
     if (!alg) return false;
+    const key = new URL(msg.SigningCertURL).href;
+    let pem = certs.get(key);
+    if (!pem) {
+      pem = await fetchCert(key);
+      cacheCert(key, pem);
+    }
     const verifier = createVerify(alg);
     verifier.update(snsStringToSign(msg));
     return verifier.verify(pem, msg.Signature, "base64");
