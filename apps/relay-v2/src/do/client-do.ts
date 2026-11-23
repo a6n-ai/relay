@@ -17,6 +17,8 @@ export class ClientDO extends DurableObject<Env> {
   readonly db: DrizzleSqliteDODatabase<typeof schema>;
   // Public so tests can force the failure path; a failed migration must never serve data.
   migrateError: Error | undefined;
+  // Same-key sends share one in-flight promise, so a second caller never sees a row that is about to be rolled back.
+  private readonly inFlight = new Map<string, Promise<SendResult>>();
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
@@ -38,17 +40,32 @@ export class ClientDO extends DurableObject<Env> {
   async send(workspaceId: string, input: SendInput): Promise<SendResult> {
     await this.ready(workspaceId);
     const data = sendInputSchema.parse(input);
-    const existing = data.idempotencyKey ? this.findByKey(data.appId, data.idempotencyKey) : undefined;
+    if (!data.idempotencyKey) return this.create(workspaceId, data);
+
+    const key = `${data.appId}:${data.idempotencyKey}`;
+    // No await between this check and the set, so a same-key caller always finds the entry.
+    const pending = this.inFlight.get(key);
+    if (pending) return { ...(await pending), duplicate: true };
+    const existing = this.findByKey(data.appId, data.idempotencyKey);
     if (existing) return existing;
 
+    const created = this.create(workspaceId, data).finally(() => this.inFlight.delete(key));
+    this.inFlight.set(key, created);
+    return created;
+  }
+
+  private async create(workspaceId: string, data: SendInput): Promise<SendResult> {
     const id = newId("msg");
-    const suppressed = this.suppressed(data.to, data.stream);
+    const preSuppressed = this.suppressed(data.to, data.stream);
     // shortcut: an R2 object orphaned by a crash between the put and the insert is never swept, add a sweeper when storage cost shows up.
-    const htmlKey = suppressed ? null : `ws/${workspaceId}/msg/${id}.html`;
+    const htmlKey = preSuppressed ? null : `ws/${workspaceId}/msg/${id}.html`;
     if (htmlKey) await this.env.MAIL.put(htmlKey, data.html);
     const now = Date.now();
+    let suppressed = preSuppressed;
     try {
       this.ctx.storage.transactionSync(() => {
+        // Re-checked here: an unsubscribe can land during the R2 put above.
+        suppressed = this.suppressed(data.to, data.stream);
         this.db
           .insert(schema.message)
           .values({
@@ -64,20 +81,20 @@ export class ClientDO extends DurableObject<Env> {
             toEmail: data.to,
             subject: data.subject,
             text: data.text,
-            htmlKey,
+            htmlKey: suppressed ? null : htmlKey,
             createdAt: now,
             updatedAt: now,
           })
           .run();
       });
     } catch (err) {
-      if (htmlKey) await this.env.MAIL.delete(htmlKey);
-      // A concurrent send with the same key may have inserted first.
-      const raced = data.idempotencyKey ? this.findByKey(data.appId, data.idempotencyKey) : undefined;
-      if (raced) return raced;
+      await this.dropHtml(htmlKey);
       throw err;
     }
-    if (suppressed) return { messageId: id, status: "suppressed", duplicate: false };
+    if (suppressed) {
+      await this.dropHtml(htmlKey);
+      return { messageId: id, status: "suppressed", duplicate: false };
+    }
     try {
       await this.env.SEND.send({ workspaceId, messageId: id });
     } catch (err) {
@@ -85,10 +102,20 @@ export class ClientDO extends DurableObject<Env> {
       this.ctx.storage.transactionSync(() => {
         this.db.delete(schema.message).where(eq(schema.message.id, id)).run();
       });
-      if (htmlKey) await this.env.MAIL.delete(htmlKey);
+      await this.dropHtml(htmlKey);
       throw err;
     }
     return { messageId: id, status: "queued", duplicate: false };
+  }
+
+  // A failed delete must not replace the error that caused the rollback.
+  private async dropHtml(htmlKey: string | null): Promise<void> {
+    if (!htmlKey) return;
+    try {
+      await this.env.MAIL.delete(htmlKey);
+    } catch (err) {
+      console.error("ClientDO: failed to delete html object", htmlKey, err);
+    }
   }
 
   async getMessage(workspaceId: string, id: string): Promise<MessageView | null> {
@@ -102,17 +129,19 @@ export class ClientDO extends DurableObject<Env> {
   async addSuppression(workspaceId: string, email: string, reason: SuppressionReason, stream?: Stream): Promise<void> {
     await this.ready(workspaceId);
     // Widen on conflict: an all-streams row must never be narrowed by a later stream-scoped one.
-    this.db
-      .insert(schema.suppression)
-      .values({ email: email.trim().toLowerCase(), reason, stream: stream ?? null, createdAt: Date.now() })
-      .onConflictDoUpdate({
-        target: schema.suppression.email,
-        set: {
-          reason,
-          stream: sql`CASE WHEN ${schema.suppression.stream} IS NULL OR excluded.stream IS NULL OR ${schema.suppression.stream} <> excluded.stream THEN NULL ELSE excluded.stream END`,
-        },
-      })
-      .run();
+    this.ctx.storage.transactionSync(() => {
+      this.db
+        .insert(schema.suppression)
+        .values({ email: email.trim().toLowerCase(), reason, stream: stream ?? null, createdAt: Date.now() })
+        .onConflictDoUpdate({
+          target: schema.suppression.email,
+          set: {
+            reason,
+            stream: sql`CASE WHEN ${schema.suppression.stream} IS NULL OR excluded.stream IS NULL OR ${schema.suppression.stream} <> excluded.stream THEN NULL ELSE excluded.stream END`,
+          },
+        })
+        .run();
+    });
   }
 
   async isSuppressed(workspaceId: string, email: string, stream: Stream): Promise<boolean> {

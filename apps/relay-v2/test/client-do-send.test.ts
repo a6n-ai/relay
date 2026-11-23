@@ -15,6 +15,19 @@ const { TEST_MIGRATIONS } = env as typeof env & { TEST_MIGRATIONS: D1Migration[]
 
 const stubFor = (workspaceId: string) => env.CLIENT.get(env.CLIENT.idFromName(workspaceId));
 
+function deferred() {
+  let resolve!: () => void;
+  let reject!: (err: Error) => void;
+  const promise = new Promise<void>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+}
+
+const settle = <T>(p: Promise<T>) => p.then((value) => ({ value }), (e: Error) => ({ error: e.message }));
+const tick = () => new Promise<void>((r) => setTimeout(r, 0));
+
 let enqueue: MockInstance<typeof env.SEND.send>;
 
 beforeAll(async () => {
@@ -153,5 +166,76 @@ describe("ClientDO send", () => {
     expect(b).toEqual({ messageId: expect.stringMatching(/^msg_/), status: "queued", duplicate: false });
     expect(b.messageId).not.toBe(a.messageId);
     expect(enqueue).toHaveBeenCalledTimes(2);
+  });
+
+  it("settles a same-key caller that arrives during the enqueue with the same rejection and no row", async () => {
+    const ws = "wsp_inflight_fail";
+    const stub = stubFor(ws);
+    const input = { ...base, idempotencyKey: "order:1:confirmation" };
+    const put = vi.spyOn(env.MAIL, "put");
+
+    const [a, b] = await runInDurableObject(stub, async (instance) => {
+      const gate = deferred();
+      enqueue.mockImplementationOnce(() => gate.promise.then(() => ({}) as QueueSendResponse));
+      const first = settle(instance.send(ws, input));
+      await vi.waitFor(() => expect(enqueue).toHaveBeenCalledTimes(1));
+      const second = settle(instance.send(ws, input));
+      await tick();
+      gate.reject(new Error("queue down"));
+      return Promise.all([first, second]);
+    });
+
+    expect(a).toEqual({ error: "queue down" });
+    expect(b).toEqual({ error: "queue down" });
+    expect(put).toHaveBeenCalledTimes(1);
+    const rows = await runInDurableObject(stub, (_instance, state) =>
+      state.storage.sql.exec<{ n: number }>("SELECT count(*) AS n FROM message").toArray()[0].n,
+    );
+    expect(rows).toBe(0);
+    expect((await env.MAIL.list({ prefix: `ws/${ws}/msg/` })).objects).toHaveLength(0);
+  });
+
+  it("returns the first result as duplicate:true to a same-key caller that arrives during the enqueue", async () => {
+    const ws = "wsp_inflight_ok";
+    const stub = stubFor(ws);
+    const input = { ...base, idempotencyKey: "order:1:confirmation" };
+    const put = vi.spyOn(env.MAIL, "put");
+
+    const [a, b] = await runInDurableObject(stub, async (instance) => {
+      const gate = deferred();
+      enqueue.mockImplementationOnce(() => gate.promise.then(() => ({}) as QueueSendResponse));
+      const first = settle(instance.send(ws, input));
+      await vi.waitFor(() => expect(enqueue).toHaveBeenCalledTimes(1));
+      const second = settle(instance.send(ws, input));
+      await tick();
+      gate.resolve();
+      return Promise.all([first, second]);
+    });
+
+    expect(a).toEqual({ value: { messageId: expect.stringMatching(/^msg_/), status: "queued", duplicate: false } });
+    const messageId = (a as { value: { messageId: string } }).value.messageId;
+    expect(b).toEqual({ value: { messageId, status: "queued", duplicate: true } });
+    expect(put).toHaveBeenCalledTimes(1);
+    expect(enqueue).toHaveBeenCalledTimes(1);
+  });
+
+  it("suppresses a recipient who unsubscribes while the html is being stored", async () => {
+    const ws = "wsp_race_sup";
+    const stub = stubFor(ws);
+
+    const sent = await runInDurableObject(stub, async (instance) => {
+      const realPut = env.MAIL.put.bind(env.MAIL);
+      vi.spyOn(env.MAIL, "put").mockImplementationOnce(async (key, value) => {
+        await instance.addSuppression(ws, base.to, "unsubscribe");
+        return (await realPut(key, value)) as R2Object;
+      });
+      return instance.send(ws, base);
+    });
+
+    expect(sent).toEqual({ messageId: expect.stringMatching(/^msg_/), status: "suppressed", duplicate: false });
+    expect(enqueue).not.toHaveBeenCalled();
+    expect((await env.MAIL.list({ prefix: `ws/${ws}/msg/` })).objects).toHaveLength(0);
+    const view = await stub.getMessage(ws, sent.messageId);
+    expect(view).toMatchObject({ status: "suppressed", html: null });
   });
 });
