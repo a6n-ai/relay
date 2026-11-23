@@ -1,5 +1,5 @@
 import { env, SELF } from "cloudflare:test";
-import { and, eq, inArray, isNull } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { beforeAll, describe, expect, it } from "vitest";
 import { resolveApiKey } from "../src/core/api-keys";
 import { guardInternal } from "../src/core/internal-guard";
@@ -82,14 +82,15 @@ describe("seed", () => {
   it("issues a missing api key on rerun, then returns no key once one is live", async () => {
     const keyInput = { ...input, workspace: { name: "Keyless", slug: "keyless" } };
     const first = await seed(env, keyInput);
-    await db.delete(apiKey).where(eq(apiKey.appId, first.appId));
+    const forApp = (appId: string) => sql`json_extract(${apiKey.metadata}, '$.appId') = ${appId}`;
+    await db.delete(apiKey).where(forApp(first.appId));
 
     const repaired = await seed(env, keyInput);
     expect(repaired.apiKey).toMatch(/^rk_/);
     const live = await db
       .select()
       .from(apiKey)
-      .where(and(eq(apiKey.appId, first.appId), isNull(apiKey.revokedAt)));
+      .where(and(forApp(first.appId), eq(apiKey.enabled, true)));
     expect(live).toHaveLength(1);
 
     expect((await seed(env, keyInput)).apiKey).toBe("");

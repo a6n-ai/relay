@@ -2,7 +2,7 @@ import { createExecutionContext, env, SELF } from "cloudflare:test";
 import { beforeAll, describe, expect, it } from "vitest";
 import { createApiKey } from "../src/core/api-keys";
 import { securityDb } from "../src/db/security/client";
-import { app, workspace } from "../src/db/security/schema";
+import { app, member, user, workspace } from "../src/db/security/schema";
 import { RelayRpc } from "../src/rpc/relay-rpc";
 import { applyMigrations } from "./migrate";
 
@@ -24,6 +24,8 @@ async function tenant(slug: string) {
   const db = securityDb(env);
   const [ws] = await db.insert(workspace).values({ name: slug, slug }).returning();
   const [a] = await db.insert(app).values({ workspaceId: ws.id, name: slug, slug: "main" }).returning();
+  const [owner] = await db.insert(user).values({ name: slug, email: `${slug}@owner.test` }).returning();
+  await db.insert(member).values({ organizationId: ws.id, userId: owner.id, role: "owner" });
   const { secret } = await createApiKey(env, { workspaceId: ws.id, appId: a.id, name: "web" });
   return { workspaceId: ws.id, appId: a.id, secret };
 }

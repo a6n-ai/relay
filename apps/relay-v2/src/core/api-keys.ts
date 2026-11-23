@@ -1,50 +1,52 @@
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { securityDb } from "../db/security/client";
-import { apiKey, app, workspace } from "../db/security/schema";
+import { apiKey, app, member, workspace } from "../db/security/schema";
 import type { Env } from "../env";
-import { newId } from "../lib/ids";
+import { createAuth } from "../lib/auth";
 
 export type KeyScope = { workspaceId: string; appId: string; keyId: string };
 
-async function sha256Hex(text: string): Promise<string> {
-  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
-  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
-}
-
+// Keys are created as the workspace owner, who holds the organization's apiKey create permission.
 export async function createApiKey(
   env: Env,
   input: { workspaceId: string; appId: string; name: string },
 ): Promise<{ id: string; secret: string }> {
-  const bytes = crypto.getRandomValues(new Uint8Array(24));
-  const secret = `rk_${btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_")}`;
-  const id = newId("key");
   const db = securityDb(env);
   const [owner] = await db.select({ workspaceId: app.workspaceId }).from(app).where(eq(app.id, input.appId));
   if (owner?.workspaceId !== input.workspaceId) throw new Error("app does not belong to workspace");
-  await db.insert(apiKey).values({
-    id,
-    workspaceId: input.workspaceId,
-    appId: input.appId,
-    name: input.name,
-    prefix: secret.slice(0, 8),
-    hash: await sha256Hex(secret),
+  const [creator] = await db
+    .select({ userId: member.userId })
+    .from(member)
+    .where(and(eq(member.organizationId, input.workspaceId), eq(member.role, "owner")))
+    .limit(1);
+  if (!creator) throw new Error("workspace has no owner");
+  const key = await createAuth(env).api.createApiKey({
+    body: { userId: creator.userId, organizationId: input.workspaceId, name: input.name, metadata: { appId: input.appId } },
   });
-  return { id, secret };
+  return { id: key.id, secret: key.key };
 }
 
 export async function revokeApiKey(env: Env, id: string): Promise<void> {
-  await securityDb(env).update(apiKey).set({ revokedAt: new Date() }).where(eq(apiKey.id, id));
+  await securityDb(env).update(apiKey).set({ enabled: false }).where(eq(apiKey.id, id));
 }
 
-// No cache: a revoked key or a suspended workspace is refused on the next call.
+// The plugin checks enabled and expiry against D1 on every call; the workspace status is read here.
 export async function resolveApiKey(env: Env, secret: string): Promise<KeyScope | null> {
-  const hash = await sha256Hex(secret);
-  const [row] = await securityDb(env)
-    .select({ workspaceId: apiKey.workspaceId, appId: apiKey.appId, keyId: apiKey.id })
-    .from(apiKey)
-    .innerJoin(workspace, eq(workspace.id, apiKey.workspaceId))
-    .where(and(eq(apiKey.hash, hash), isNull(apiKey.revokedAt), eq(workspace.status, "active")));
-  return row ?? null;
+  const { valid, key } = await createAuth(env).api.verifyApiKey({ body: { key: secret } });
+  if (!valid || !key) return null;
+  const appId = (key.metadata as { appId?: unknown } | null)?.appId;
+  if (typeof appId !== "string") return null;
+  const [ws] = await securityDb(env)
+    .select({ status: workspace.status })
+    .from(workspace)
+    .where(eq(workspace.id, key.referenceId));
+  if (ws?.status !== "active") return null;
+  return { workspaceId: key.referenceId, appId, keyId: key.id };
+}
+
+// Keyed by key id, so one key's traffic cannot spend another key's budget.
+export async function withinRateLimit(env: Env, keyId: string): Promise<boolean> {
+  return (await env.API_LIMIT.limit({ key: keyId })).success;
 }
 
 export async function resolveBearer(env: Env, request: Request): Promise<KeyScope | null> {

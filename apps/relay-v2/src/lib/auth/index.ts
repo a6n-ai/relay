@@ -1,6 +1,7 @@
 import { APIError, createAuthMiddleware, getAuthoritativeSessionFromCtx, getSessionFromCtx, isAPIError } from "better-auth/api";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { apiKey as apiKeyPlugin } from "@better-auth/api-key";
 import { admin } from "better-auth/plugins/admin";
 import { emailOTP } from "better-auth/plugins/email-otp";
 import { organization } from "better-auth/plugins/organization";
@@ -11,6 +12,7 @@ import { address } from "../../db/core/schema";
 import { securityDb } from "../../db/security/client";
 import {
   account,
+  apiKey,
   app,
   invitation,
   member,
@@ -41,6 +43,7 @@ const ID_PREFIX: Record<string, string> = {
   team: "tea",
   teamMember: "tmm",
   rateLimit: "rtl",
+  apikey: "key",
 };
 
 const DAY_S = 24 * 60 * 60;
@@ -83,6 +86,7 @@ export function createAuth(env: Env) {
         team,
         teamMember,
         rateLimit,
+        apikey: apiKey,
       },
     }),
     advanced: {
@@ -113,6 +117,8 @@ export function createAuth(env: Env) {
           ctx.path === "/forget-password/email-otp" ||
           (ctx.path === "/email-otp/send-verification-otp" && ctx.body?.type === "forget-password");
         if (resetMail) throw new APIError("NOT_FOUND");
+        // Keys are created by the server only: over HTTP, metadata.appId would be client-set and skip the app check.
+        if (ctx.request && ctx.path.startsWith("/api-key/")) throw new APIError("NOT_FOUND");
 
         // A suspended workspace keeps its sessions but loses organization endpoints. Every workspace a request names counts, not only the active one.
         if (ctx.path.startsWith("/organization/")) {
@@ -209,6 +215,8 @@ export function createAuth(env: Env) {
     },
     plugins: [
       admin({ ac: platformAc, roles: platformRoles }),
+      // Org-owned keys: referenceId is the workspace. Verified against D1 on every call, so revocation is immediate.
+      apiKeyPlugin({ references: "organization", defaultPrefix: "rk_", enableMetadata: true, rateLimit: { enabled: false } }),
       emailOTP({
         disableSignUp: true,
         storeOTP: "hashed",

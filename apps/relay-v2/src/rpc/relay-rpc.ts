@@ -1,5 +1,5 @@
 import { WorkerEntrypoint } from "cloudflare:workers";
-import { resolveApiKey } from "../core/api-keys";
+import { resolveApiKey, withinRateLimit } from "../core/api-keys";
 import { getMessageForScope, sendMessage } from "../core/messages";
 import { sendInputSchema } from "../core/send-input";
 import type { Env } from "../env";
@@ -8,6 +8,7 @@ import type { Env } from "../env";
 async function scopeOf(env: Env, apiKey: string) {
   const scope = await resolveApiKey(env, apiKey);
   if (!scope) throw new Error("unauthorized");
+  if (!(await withinRateLimit(env, scope.keyId))) throw new Error("rate limited");
   return scope;
 }
 

@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { check, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { check, index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 import { createdAt, flag, id, timestamp, updatedAt } from "../columns";
 
 export const user = sqliteTable("user", {
@@ -125,18 +125,35 @@ export const app = sqliteTable(
   (t) => [uniqueIndex("app_workspace_slug").on(t.workspaceId, t.slug)],
 );
 
-export const apiKey = sqliteTable("api_key", {
-  id: id("key"),
-  workspaceId: text("workspace_id").notNull().references(() => workspace.id),
-  appId: text("app_id").notNull().references(() => app.id),
-  name: text("name").notNull(),
-  prefix: text("prefix").notNull(),
-  hash: text("hash").notNull().unique(),
-  lastUsedAt: timestamp("last_used_at"),
-  revokedAt: timestamp("revoked_at"),
-  createdAt: createdAt(),
-  updatedAt: updatedAt(),
-});
+// Columns are the @better-auth/api-key 1.7.18 model "apikey". referenceId is the owning workspace; metadata holds { appId }.
+export const apiKey = sqliteTable(
+  "apikey",
+  {
+    id: id("key"),
+    configId: text("config_id").notNull().default("default"),
+    name: text("name"),
+    start: text("start"),
+    prefix: text("prefix"),
+    key: text("key").notNull(),
+    referenceId: text("reference_id").notNull().references(() => workspace.id),
+    refillInterval: integer("refill_interval"),
+    refillAmount: integer("refill_amount"),
+    lastRefillAt: timestamp("last_refill_at"),
+    enabled: flag("enabled").notNull().default(true),
+    rateLimitEnabled: flag("rate_limit_enabled").notNull().default(false),
+    rateLimitTimeWindow: integer("rate_limit_time_window"),
+    rateLimitMax: integer("rate_limit_max"),
+    requestCount: integer("request_count").notNull().default(0),
+    remaining: integer("remaining"),
+    lastRequest: timestamp("last_request"),
+    expiresAt: timestamp("expires_at"),
+    permissions: text("permissions"),
+    metadata: text("metadata"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [uniqueIndex("apikey_key").on(t.key), index("apikey_reference").on(t.referenceId)],
+);
 
 // addressId is checked in code against relay-core: D1 cannot foreign-key across databases.
 export const addressGrant = sqliteTable(

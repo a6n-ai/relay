@@ -1,5 +1,5 @@
 import type { BatchItem } from "drizzle-orm/batch";
-import { and, eq, inArray, isNull } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { coreDb } from "../db/core/client";
 import { sendingDomain } from "../db/core/schema";
@@ -91,7 +91,7 @@ export async function seed(env: Env, input: SeedInput): Promise<SeedResult> {
   const liveKey = await db
     .select({ id: apiKey.id })
     .from(apiKey)
-    .where(and(eq(apiKey.appId, appId), isNull(apiKey.revokedAt)))
+    .where(and(sql`json_extract(${apiKey.metadata}, '$.appId') = ${appId}`, eq(apiKey.enabled, true)))
     .get();
   const secret = liveKey ? "" : (await createApiKey(env, { workspaceId, appId, name: "seed" })).secret;
   return { workspaceId, appId, apiKey: secret };

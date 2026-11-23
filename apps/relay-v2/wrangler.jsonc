@@ -27,4 +27,5 @@
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["ClientDO"] }],
   "r2_buckets": [{ "binding": "MAIL", "bucket_name": "relay-mail" }],
   "queues": { "producers": [{ "binding": "SEND", "queue": "relay-send" }] },
+  "ratelimits": [{ "name": "API_LIMIT", "namespace_id": "1001", "simple": { "limit": 600, "period": 60 } }],
 }

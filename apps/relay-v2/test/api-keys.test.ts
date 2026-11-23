@@ -1,9 +1,9 @@
-import { createExecutionContext, env } from "cloudflare:test";
+import { createExecutionContext, env, SELF } from "cloudflare:test";
 import { eq } from "drizzle-orm";
 import { beforeAll, describe, expect, it } from "vitest";
 import { createApiKey, resolveApiKey, revokeApiKey } from "../src/core/api-keys";
 import { securityDb } from "../src/db/security/client";
-import { app, workspace } from "../src/db/security/schema";
+import { app, member, user, workspace } from "../src/db/security/schema";
 import { RelayRpc } from "../src/rpc/relay-rpc";
 import { applyMigrations } from "./migrate";
 
@@ -16,15 +16,25 @@ async function seedApp(slug: string) {
   const db = securityDb(env);
   const [ws] = await db.insert(workspace).values({ name: slug, slug }).returning();
   const [a] = await db.insert(app).values({ workspaceId: ws.id, name: slug, slug: "main" }).returning();
+  const [owner] = await db.insert(user).values({ name: slug, email: `${slug}@owner.test` }).returning();
+  await db.insert(member).values({ organizationId: ws.id, userId: owner.id, role: "owner" });
   return { workspaceId: ws.id, appId: a.id };
 }
+
+const sendBody = JSON.stringify({ to: "a@x.com", subject: "hi", text: "hi" });
+const post = (secret: string) =>
+  SELF.fetch("https://relay.test/api/v1/messages", {
+    method: "POST",
+    headers: { authorization: `Bearer ${secret}`, "content-type": "application/json" },
+    body: sendBody,
+  });
 
 describe("API keys", () => {
   it("resolves a created key to its workspace and app", async () => {
     const { workspaceId, appId } = await seedApp("keys-resolve");
     const { id, secret } = await createApiKey(env, { workspaceId, appId, name: "web" });
 
-    expect(secret).toMatch(/^rk_[A-Za-z0-9_-]{32}$/);
+    expect(secret).toMatch(/^rk_[A-Za-z]{64}$/);
     expect(await resolveApiKey(env, secret)).toEqual({ workspaceId, appId, keyId: id });
   });
 
@@ -35,16 +45,17 @@ describe("API keys", () => {
     expect(await resolveApiKey(env, "rk_not-a-real-secret-0000000000000000")).toBeNull();
   });
 
-  it("stores only the hash and the prefix, never the secret", async () => {
+  it("stores the key owned by the workspace with the app in metadata, never the secret", async () => {
     const { workspaceId, appId } = await seedApp("keys-hash");
     const { secret } = await createApiKey(env, { workspaceId, appId, name: "web" });
 
-    const rows = await env.SECURITY_DB.prepare("SELECT * FROM api_key").all();
+    const rows = await env.SECURITY_DB.prepare("SELECT * FROM apikey").all();
     const stored = JSON.stringify(rows.results);
     expect(stored).not.toContain(secret);
     expect(stored).not.toContain(secret.slice(3));
-    expect(rows.results.find((r) => r.prefix === secret.slice(0, 8))).toMatchObject({
-      hash: expect.stringMatching(/^[0-9a-f]{64}$/),
+    expect(rows.results.find((r) => r.reference_id === workspaceId)).toMatchObject({
+      prefix: "rk_",
+      metadata: JSON.stringify({ appId }),
     });
   });
 
@@ -55,7 +66,9 @@ describe("API keys", () => {
     await expect(
       createApiKey(env, { workspaceId: a.workspaceId, appId: b.appId, name: "web" }),
     ).rejects.toThrow("app does not belong to workspace");
-    const rows = await env.SECURITY_DB.prepare("SELECT COUNT(*) AS n FROM api_key WHERE app_id = ?").bind(b.appId).first<{ n: number }>();
+    const rows = await env.SECURITY_DB.prepare("SELECT COUNT(*) AS n FROM apikey WHERE json_extract(metadata, '$.appId') = ?")
+      .bind(b.appId)
+      .first<{ n: number }>();
     expect(rows?.n).toBe(0);
   });
 
@@ -83,5 +96,32 @@ describe("API keys", () => {
     expect(await resolveApiKey(env, secret)).toBeNull();
     const rpc = new RelayRpc(createExecutionContext(), env);
     await expect(rpc.send(secret, {})).rejects.toThrow("unauthorized");
+  });
+
+  it("answers 429 on HTTP and throws rate limited over RPC once a key is over API_LIMIT", async () => {
+    const { workspaceId, appId } = await seedApp("keys-limit");
+    const { id, secret } = await createApiKey(env, { workspaceId, appId, name: "web" });
+
+    const spent = await env.API_LIMIT.limit({ key: id, delta: 600 });
+    expect(spent.success).toBe(true);
+
+    const res = await post(secret);
+    expect(res.status).toBe(429);
+    expect(await res.json()).toEqual({ error: "rate limited" });
+    const rpc = new RelayRpc(createExecutionContext(), env);
+    await expect(rpc.send(secret, {})).rejects.toThrow("rate limited");
+  });
+
+  it("does not let HTTP create keys, so metadata.appId stays server-set", async () => {
+    const { workspaceId, appId } = await seedApp("keys-http");
+    const res = await SELF.fetch("https://relay.test/api/auth/api-key/create", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ name: "evil", organizationId: workspaceId, metadata: { appId } }),
+    });
+
+    expect(res.status).toBe(404);
+    const rows = await env.SECURITY_DB.prepare("SELECT COUNT(*) AS n FROM apikey WHERE reference_id = ?").bind(workspaceId).first<{ n: number }>();
+    expect(rows?.n).toBe(0);
   });
 });

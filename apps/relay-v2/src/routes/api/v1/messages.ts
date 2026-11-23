@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { env } from "cloudflare:workers";
-import { resolveBearer } from "../../../core/api-keys";
+import { resolveBearer, withinRateLimit } from "../../../core/api-keys";
 import { sendMessage } from "../../../core/messages";
 import { sendInputSchema } from "../../../core/send-input";
 
@@ -10,6 +10,7 @@ export const Route = createFileRoute("/api/v1/messages")({
       POST: async ({ request }) => {
         const scope = await resolveBearer(env, request);
         if (!scope) return Response.json({ error: "unauthorized" }, { status: 401 });
+        if (!(await withinRateLimit(env, scope.keyId))) return Response.json({ error: "rate limited" }, { status: 429 });
         const body = sendInputSchema
           .omit({ appId: true })
           .safeParse(await request.json().catch(() => undefined));

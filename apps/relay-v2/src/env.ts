@@ -11,6 +11,7 @@ declare global {
       CLIENT: DurableObjectNamespace<ClientDO>;
       MAIL: R2Bucket;
       SEND: Queue<SendJob>;
+      API_LIMIT: RateLimit;
       BETTER_AUTH_SECRET: string;
       BETTER_AUTH_URL: string;
       OTP_MAILER?: "memory" | "console";
