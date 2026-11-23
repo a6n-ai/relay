@@ -33,7 +33,10 @@
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["ClientDO"] }],
   "r2_buckets": [{ "binding": "MAIL", "bucket_name": "relay-mail" }],
   "queues": {
-    "producers": [{ "binding": "SEND", "queue": "relay-send" }],
+    "producers": [
+      { "binding": "SEND", "queue": "relay-send" },
+      { "binding": "SES_EVENTS", "queue": "relay-ses-events" },
+    ],
     "consumers": [
       {
         "queue": "relay-send",

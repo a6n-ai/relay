@@ -1,3 +1,4 @@
+import type { SesEventJob } from "./core/ses-events";
 import type { ClientDO } from "./do/client-do";
 
 // finalize: the SES send already happened; the job only records the SES id and never calls SES.
@@ -14,6 +15,7 @@ declare global {
       CLIENT: DurableObjectNamespace<ClientDO>;
       MAIL: R2Bucket;
       SEND: Queue<SendJob>;
+      SES_EVENTS: Queue<SesEventJob>;
       API_LIMIT: RateLimit;
       BETTER_AUTH_SECRET: string;
       BETTER_AUTH_URL: string;
