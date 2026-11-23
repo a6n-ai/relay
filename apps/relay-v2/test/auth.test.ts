@@ -4,7 +4,7 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 import { coreDb } from "../src/db/core/client";
 import { address, workspaceProfile } from "../src/db/core/schema";
 import { securityDb } from "../src/db/security/client";
-import { app, member, securityAudit, user, verification, workspace } from "../src/db/security/schema";
+import { app, member, securityAudit, team, user, verification, workspace } from "../src/db/security/schema";
 import { createAuth, pickMailer } from "../src/lib/auth";
 import { consoleInviteMailer, memoryInviteMailer, pickInviteMailer } from "../src/lib/auth/invite-mailer";
 import { memoryOtpMailer } from "../src/lib/auth/otp-mailer";
@@ -163,6 +163,27 @@ async function createWorkspace(cookie: string, slug: string): Promise<string> {
   });
   expect(res.status).toBe(200);
   return ((await res.json()) as { id: string }).id;
+}
+
+// Active workspace A and suspended workspace B holding team "Ops"; the admin owns both.
+async function suspendedTeam(slug: string): Promise<{ cookie: string; suspendedId: string; teamId: string }> {
+  const cookie = await cookieFor(`${slug}-admin@example.com`, "admin");
+  const active = await createWorkspace(cookie, `${slug}-active`);
+  const suspendedId = await createWorkspace(cookie, `${slug}-suspended`);
+  const created = await SELF.fetch(`${BASE}/organization/create-team`, {
+    method: "POST",
+    headers: { ...json, cookie, origin: ORIGIN },
+    body: JSON.stringify({ name: "Ops", organizationId: suspendedId }),
+  });
+  expect(created.status).toBe(200);
+  const { id: teamId } = (await created.json()) as { id: string };
+  await SELF.fetch(`${BASE}/organization/set-active`, {
+    method: "POST",
+    headers: { ...json, cookie, origin: ORIGIN },
+    body: JSON.stringify({ organizationId: active }),
+  });
+  await db.update(workspace).set({ status: "suspended" }).where(eq(workspace.id, suspendedId));
+  return { cookie, suspendedId, teamId };
 }
 
 describe("admin and organization plugins", () => {
@@ -514,6 +535,56 @@ describe("security log and suspension", () => {
     expect(res.status).toBe(403);
   });
 
+  it("refuses update-team that names a suspended workspace in data.organizationId, and leaves the team unchanged", async () => {
+    const { suspendedId, teamId, cookie } = await suspendedTeam("team-data");
+    const res = await SELF.fetch(`${BASE}/organization/update-team`, {
+      method: "POST",
+      headers: { ...json, cookie, origin: ORIGIN },
+      body: JSON.stringify({ teamId, data: { name: "Hacked", organizationId: suspendedId } }),
+    });
+    expect(res.status).toBe(403);
+    expect((await db.select().from(team).where(eq(team.id, teamId)))[0].name).toBe("Ops");
+  });
+
+  it("refuses a team-scoped mutation whose teamId belongs to a suspended workspace", async () => {
+    const { teamId, cookie } = await suspendedTeam("team-scoped");
+    const res = await SELF.fetch(`${BASE}/organization/update-team`, {
+      method: "POST",
+      headers: { ...json, cookie, origin: ORIGIN },
+      body: JSON.stringify({ teamId, data: { name: "Renamed" } }),
+    });
+    expect(res.status).toBe(403);
+    expect((await db.select().from(team).where(eq(team.id, teamId)))[0].name).toBe("Ops");
+  });
+
+  it("refuses a mutation with an unknown teamId and changes nothing", async () => {
+    const cookie = await cookieFor("team-unknown@example.com", "admin");
+    await createWorkspace(cookie, "team-unknown");
+    const res = await SELF.fetch(`${BASE}/organization/update-team`, {
+      method: "POST",
+      headers: { ...json, cookie, origin: ORIGIN },
+      body: JSON.stringify({ teamId: "tea_missing", data: { name: "Unknown-renamed" } }),
+    });
+    expect(res.status).toBe(400);
+    expect(await res.text()).toContain("team not found");
+    expect(await db.select().from(team).where(eq(team.name, "Unknown-renamed"))).toHaveLength(0);
+  });
+
+  it("lets a user whose active workspace is suspended list their workspaces", async () => {
+    const cookie = await cookieFor("list-suspended@example.com", "admin");
+    const orgId = await createWorkspace(cookie, "list-suspended");
+    await SELF.fetch(`${BASE}/organization/set-active`, {
+      method: "POST",
+      headers: { ...json, cookie, origin: ORIGIN },
+      body: JSON.stringify({ organizationId: orgId }),
+    });
+    await db.update(workspace).set({ status: "suspended" }).where(eq(workspace.id, orgId));
+
+    const res = await SELF.fetch(`${BASE}/organization/list`, { headers: { cookie, origin: ORIGIN } });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual(expect.arrayContaining([expect.objectContaining({ id: orgId })]));
+  });
+
   it("refuses set-active into a suspended workspace", async () => {
     const cookie = await cookieFor("switch-admin@example.com", "admin");
     const active = await createWorkspace(cookie, "switch-active");
@@ -554,6 +625,7 @@ describe("security log and suspension", () => {
 
   it("writes one member.role_change row when an owner changes a member's role", async () => {
     const cookie = await cookieFor("role-owner@example.com", "admin");
+    const [owner] = await db.select().from(user).where(eq(user.email, "role-owner@example.com"));
     const orgId = await createWorkspace(cookie, "role-co");
     await insertUser("role-member@example.com", "user");
     const [target] = await db.select().from(user).where(eq(user.email, "role-member@example.com"));
@@ -570,6 +642,6 @@ describe("security log and suspension", () => {
       .from(securityAudit)
       .where(and(eq(securityAudit.action, "member.role_change"), eq(securityAudit.workspaceId, orgId)));
     expect(rows).toHaveLength(1);
-    expect(rows[0]).toMatchObject({ target: target.id, data: '{"from":"member","to":"admin"}' });
+    expect(rows[0]).toMatchObject({ actorUserId: owner.id, target: target.id, data: '{"to":"admin"}' });
   });
 });

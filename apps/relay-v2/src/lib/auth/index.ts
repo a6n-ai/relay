@@ -117,14 +117,24 @@ export function createAuth(env: Env) {
         // A suspended workspace keeps its sessions but loses organization endpoints. Every workspace a request names counts, not only the active one.
         if (ctx.path.startsWith("/organization/")) {
           const b = (ctx.body ?? {}) as Record<string, unknown>, q = (ctx.query ?? {}) as Record<string, unknown>;
-          const ids = [b.organizationId, q.organizationId].filter((v): v is string => typeof v === "string");
-          const slugs = [b.organizationSlug, q.organizationSlug].filter((v): v is string => typeof v === "string");
-          if (typeof b.invitationId === "string") {
+          const str = (v: unknown): v is string => typeof v === "string";
+          // update-team reads its workspace from data.organizationId before falling back to the active one.
+          const data = (b.data ?? {}) as Record<string, unknown>;
+          const ids = [b.organizationId, q.organizationId, data.organizationId].filter(str);
+          const slugs = [b.organizationSlug, q.organizationSlug].filter(str);
+          if (str(b.invitationId)) {
             const [inv] = await securityDb(env).select({ o: invitation.organizationId }).from(invitation).where(eq(invitation.id, b.invitationId));
             if (inv) ids.push(inv.o);
           }
-          // set-active leaves the current workspace, so only its target counts.
-          if (ctx.path !== "/organization/set-active") {
+          // A team names its workspace. An unknown team fails closed on mutations.
+          const mutation = ctx.method !== "GET";
+          for (const teamId of [b.teamId, q.teamId].filter(str)) {
+            const [t] = await securityDb(env).select({ o: team.organizationId }).from(team).where(eq(team.id, teamId));
+            if (t) ids.push(t.o);
+            else if (mutation) throw new APIError("BAD_REQUEST", { message: "team not found" });
+          }
+          // set-active leaves the current workspace and list shows every membership, so neither is gated by the active one.
+          if (ctx.path !== "/organization/set-active" && ctx.path !== "/organization/list") {
             // Authoritative read: the cookie cache can predate a set-active or a suspension.
             const active = (await getAuthoritativeSessionFromCtx(ctx))?.session.activeOrganizationId;
             if (active) ids.push(active);
@@ -147,7 +157,7 @@ export function createAuth(env: Env) {
       after: createAuthMiddleware(async (ctx) => {
         const result = ctx.context.returned;
         const meta = requestMeta(ctx);
-        const body = (ctx.body ?? {}) as { email?: string; userId?: string; role?: string; banReason?: string };
+        const body = (ctx.body ?? {}) as { email?: string; userId?: string; memberId?: string; role?: string; banReason?: string };
 
         if (ctx.path === "/sign-in/email-otp") {
           if (isAPIError(result)) {
@@ -168,6 +178,21 @@ export function createAuth(env: Env) {
             return writeAudit(env, { action: "user.ban", actorUserId: await actorOf(ctx), target: body.userId, ...meta });
           case "/admin/unban-user":
             return writeAudit(env, { action: "user.unban", actorUserId: await actorOf(ctx), target: body.userId, ...meta });
+          case "/organization/update-member-role": {
+            // The org hook gets no request, so the acting user and the member's user are read here.
+            const [m] = await securityDb(env)
+              .select({ userId: member.userId, organizationId: member.organizationId })
+              .from(member)
+              .where(eq(member.id, body.memberId ?? ""));
+            return writeAudit(env, {
+              action: "member.role_change",
+              actorUserId: await actorOf(ctx),
+              workspaceId: m?.organizationId,
+              target: m?.userId,
+              data: { to: body.role },
+              ...meta,
+            });
+          }
           case "/admin/impersonate-user":
             return writeAudit(env, { action: "impersonate.start", actorUserId: await actorOf(ctx), target: body.userId, ...meta });
           case "/admin/stop-impersonating": {
@@ -239,14 +264,6 @@ export function createAuth(env: Env) {
           },
           afterRemoveMember: async ({ user, organization }) => {
             await writeAudit(env, { action: "member.remove", workspaceId: organization.id, target: user.id });
-          },
-          afterUpdateMemberRole: async ({ member, previousRole, user, organization }) => {
-            await writeAudit(env, {
-              action: "member.role_change",
-              workspaceId: organization.id,
-              target: user.id,
-              data: { from: previousRole, to: member.role },
-            });
           },
         },
         schema: {

@@ -5,7 +5,7 @@ import { createAddress, createAddressGrant } from "../src/core/addresses";
 import { coreDb } from "../src/db/core/client";
 import { address } from "../src/db/core/schema";
 import { securityDb } from "../src/db/security/client";
-import { addressGrant, app, member, user, workspace } from "../src/db/security/schema";
+import { addressGrant, app, member, team, user, workspace } from "../src/db/security/schema";
 import { applyMigrations } from "./migrate";
 
 beforeAll(async () => {
@@ -82,5 +82,31 @@ describe("cross-database checks", () => {
       createAddressGrant(env, { workspaceId: a.workspaceId, addressId: id, memberId: mem.id }),
     ).rejects.toThrow("grantee does not belong to workspace");
     expect(await securityDb(env).select().from(addressGrant).where(eq(addressGrant.addressId, id))).toHaveLength(0);
+  });
+
+  it("requires exactly one grantee and inserts only the chosen target", async () => {
+    const a = await tenant("one-grantee");
+    const { id } = await createAddress(env, { workspaceId: a.workspaceId, appId: a.appId, email: "one@one-grantee.test", kind: "both" });
+    const [u] = await securityDb(env)
+      .insert(user)
+      .values({ id: "usr_one", name: "one", email: "one-member@one-grantee.test" })
+      .returning();
+    const [mem] = await securityDb(env)
+      .insert(member)
+      .values({ organizationId: a.workspaceId, userId: u.id, role: "member" })
+      .returning();
+    const [t] = await securityDb(env).insert(team).values({ organizationId: a.workspaceId, name: "Ops" }).returning();
+
+    await expect(
+      createAddressGrant(env, { workspaceId: a.workspaceId, addressId: id, memberId: mem.id, teamId: t.id }),
+    ).rejects.toThrow("exactly one grantee required");
+    await expect(createAddressGrant(env, { workspaceId: a.workspaceId, addressId: id })).rejects.toThrow(
+      "exactly one grantee required",
+    );
+    expect(await securityDb(env).select().from(addressGrant).where(eq(addressGrant.addressId, id))).toHaveLength(0);
+
+    await createAddressGrant(env, { workspaceId: a.workspaceId, addressId: id, teamId: t.id });
+    const [row] = await securityDb(env).select().from(addressGrant).where(eq(addressGrant.addressId, id));
+    expect(row).toMatchObject({ teamId: t.id, memberId: null });
   });
 });
