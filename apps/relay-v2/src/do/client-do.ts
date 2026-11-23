@@ -122,23 +122,33 @@ export class ClientDO extends DurableObject<Env> {
 
   private async ready(workspaceId: string): Promise<void> {
     if (this.migrateError) {
-      await centralDb(this.env)
-        .update(workspace)
-        .set({ doMigrateError: this.migrateError.message })
-        .where(eq(workspace.id, workspaceId));
+      try {
+        await centralDb(this.env)
+          .update(workspace)
+          .set({ doMigrateError: this.migrateError.message })
+          .where(eq(workspace.id, workspaceId));
+      } catch (err) {
+        console.error("ClientDO: failed to record migrate error in D1", err);
+      }
       throw new Error("workspace storage migration failed");
     }
     await this.reportVersion(workspaceId);
   }
 
   // D1 is written once per schema version per DO: KV remembers what was last reported.
+  // A D1 failure must not block sends, so KV stays unset and the next call retries.
   private async reportVersion(workspaceId: string): Promise<void> {
     const version = CLIENT_MIGRATIONS.length;
     if (this.ctx.storage.kv.get<number>("reported_version") === version) return;
-    await centralDb(this.env)
-      .update(workspace)
-      .set({ doSchemaVersion: version, doMigrateError: null })
-      .where(eq(workspace.id, workspaceId));
+    try {
+      await centralDb(this.env)
+        .update(workspace)
+        .set({ doSchemaVersion: version, doMigrateError: null })
+        .where(eq(workspace.id, workspaceId));
+    } catch (err) {
+      console.error("ClientDO: failed to report schema version to D1", err);
+      return;
+    }
     this.ctx.storage.kv.put("reported_version", version);
   }
 

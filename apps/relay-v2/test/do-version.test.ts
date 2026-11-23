@@ -1,6 +1,6 @@
 import { applyD1Migrations, env, runInDurableObject, SELF, type D1Migration } from "cloudflare:test";
 import { eq } from "drizzle-orm";
-import { beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { guardInternal } from "../src/core/internal-guard";
 import { sweepWorkspaces } from "../src/core/do-sweep";
 import { CLIENT_MIGRATIONS } from "../src/do/migrations";
@@ -35,6 +35,10 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   await db.delete(workspace);
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
 });
 
 describe("ClientDO schema version", () => {
@@ -74,6 +78,49 @@ describe("ClientDO schema version", () => {
     expect(rows).toBe(0);
     const [row] = await db.select().from(workspace).where(eq(workspace.id, id));
     expect(row.doMigrateError).toBe("boom");
+  });
+
+  it("keeps sends working while D1 is down and reports the version once D1 is back", async () => {
+    const id = await seedWorkspace("d1-down");
+    const stub = stubFor(id);
+    const d1 = vi.spyOn(env.CENTRAL, "prepare").mockImplementation(() => {
+      throw new Error("D1 down");
+    });
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const sent = await stub.send(id, base);
+    expect(sent.status).toBe("queued");
+    expect(log).toHaveBeenCalled();
+    const kv = await runInDurableObject(stub, (_instance, state) => state.storage.kv.get("reported_version"));
+    expect(kv).toBeUndefined();
+
+    d1.mockRestore();
+    log.mockRestore();
+    expect(await stub.ping(id)).toEqual({ version: VERSION });
+    const [row] = await db.select().from(workspace).where(eq(workspace.id, id));
+    expect(row.doSchemaVersion).toBe(VERSION);
+    const kvAfter = await runInDurableObject(stub, (_instance, state) => state.storage.kv.get("reported_version"));
+    expect(kvAfter).toBe(VERSION);
+  });
+
+  it("rejects with the migration error even when D1 is down", async () => {
+    const id = await seedWorkspace("d1-down-migrate");
+    const stub = stubFor(id);
+    await runInDurableObject(stub, (instance) => {
+      instance.migrateError = new Error("boom");
+    });
+    const d1 = vi.spyOn(env.CENTRAL, "prepare").mockImplementation(() => {
+      throw new Error("D1 down");
+    });
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const failure = await runInDurableObject(stub, (instance) =>
+      instance.send(id, base).then(() => "resolved", (e: Error) => e.message),
+    );
+    expect(failure).toBe("workspace storage migration failed");
+    expect(log).toHaveBeenCalled();
+    d1.mockRestore();
+    log.mockRestore();
   });
 });
 
