@@ -6,7 +6,7 @@
   "main": "src/server.ts",
   "observability": { "enabled": true },
   "workers_dev": false,
-  "vars": { "OTP_MAILER": "console" },
+  "vars": { "BETTER_AUTH_URL": "https://relay.a6n.ai" },
   "d1_databases": [
     {
       "binding": "CENTRAL",

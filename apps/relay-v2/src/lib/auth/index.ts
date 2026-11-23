@@ -16,6 +16,7 @@ import {
 } from "../../db/central/schema";
 import type { Env } from "../../env";
 import { newId } from "../ids";
+import { ORG_DISABLED_PATHS } from "./disabled-paths";
 import { type OtpMailer, consoleOtpMailer, memoryOtpMailer } from "./otp-mailer";
 import { orgAc, orgRoles } from "./permissions";
 
@@ -34,13 +35,24 @@ const ID_PREFIX: Record<string, string> = {
 
 const DAY_S = 24 * 60 * 60;
 
+export function pickMailer(kind: Env["OTP_MAILER"]): OtpMailer {
+  if (kind === "memory") return memoryOtpMailer;
+  if (kind === "console") return consoleOtpMailer;
+  throw new Error("no OTP mailer configured");
+}
+
 export function createAuth(env: Env) {
-  const mailer: OtpMailer = env.OTP_MAILER === "memory" ? memoryOtpMailer : consoleOtpMailer;
+  if (!env.BETTER_AUTH_SECRET || !env.BETTER_AUTH_URL) {
+    throw new Error("BETTER_AUTH_SECRET and BETTER_AUTH_URL are required");
+  }
   // input: false keeps quota, status and region server-set; a client cannot choose them on create.
   const serverOnly = { input: false } as const;
 
   return betterAuth({
     secret: env.BETTER_AUTH_SECRET,
+    baseURL: env.BETTER_AUTH_URL,
+    trustedOrigins: [env.BETTER_AUTH_URL],
+    disabledPaths: [...ORG_DISABLED_PATHS],
     database: drizzleAdapter(centralDb(env), {
       provider: "sqlite",
       schema: {
@@ -56,8 +68,14 @@ export function createAuth(env: Env) {
       },
     }),
     advanced: {
+      useSecureCookies: env.BETTER_AUTH_URL.startsWith("https://"),
       database: {
         generateId: ({ model }) => newId(ID_PREFIX[model] ?? model),
+      },
+    },
+    user: {
+      additionalFields: {
+        role: { type: "string", required: false, defaultValue: "user", input: false },
       },
     },
     session: {
@@ -66,9 +84,14 @@ export function createAuth(env: Env) {
     },
     plugins: [
       emailOTP({
-        sendVerificationOTP: ({ email, otp, type }) => mailer.send(email, otp, type),
+        disableSignUp: true,
+        sendVerificationOTP: async ({ email, otp, type }) => {
+          await pickMailer(env.OTP_MAILER).send(email, otp, type);
+        },
       }),
       organization({
+        // Workspaces are created by platform admins only; the creator becomes owner.
+        allowUserToCreateOrganization: async (user) => user.role === "admin",
         ac: orgAc,
         roles: orgRoles,
         teams: { enabled: true, defaultTeam: { enabled: false }, allowRemovingAllTeams: true },
