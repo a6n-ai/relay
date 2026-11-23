@@ -1,24 +1,29 @@
+import { APIError } from "better-auth/api";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { admin } from "better-auth/plugins/admin";
 import { emailOTP } from "better-auth/plugins/email-otp";
 import { organization } from "better-auth/plugins/organization";
+import { eq } from "drizzle-orm";
 import { centralDb } from "../../db/central/client";
 import {
   account,
+  app,
   invitation,
   member,
   session,
   team,
   teamMember,
   user,
+  rateLimit,
   verification,
   workspace,
 } from "../../db/central/schema";
 import type { Env } from "../../env";
 import { newId } from "../ids";
-import { ORG_DISABLED_PATHS } from "./disabled-paths";
+import { pickInviteMailer } from "./invite-mailer";
 import { type OtpMailer, consoleOtpMailer, memoryOtpMailer } from "./otp-mailer";
-import { orgAc, orgRoles } from "./permissions";
+import { ac as platformAc, orgAc, orgRoles, roles as platformRoles } from "./permissions";
 
 const ID_PREFIX: Record<string, string> = {
   user: "usr",
@@ -31,6 +36,7 @@ const ID_PREFIX: Record<string, string> = {
   invitation: "inv",
   team: "tea",
   teamMember: "tmm",
+  rateLimit: "rtl",
 };
 
 const DAY_S = 24 * 60 * 60;
@@ -52,7 +58,6 @@ export function createAuth(env: Env) {
     secret: env.BETTER_AUTH_SECRET,
     baseURL: env.BETTER_AUTH_URL,
     trustedOrigins: [env.BETTER_AUTH_URL],
-    disabledPaths: [...ORG_DISABLED_PATHS],
     database: drizzleAdapter(centralDb(env), {
       provider: "sqlite",
       schema: {
@@ -65,17 +70,25 @@ export function createAuth(env: Env) {
         invitation,
         team,
         teamMember,
+        rateLimit,
       },
     }),
     advanced: {
       useSecureCookies: env.BETTER_AUTH_URL.startsWith("https://"),
+      ipAddress: { ipAddressHeaders: ["cf-connecting-ip"] },
       database: {
         generateId: ({ model }) => newId(ID_PREFIX[model] ?? model),
       },
     },
-    user: {
-      additionalFields: {
-        role: { type: "string", required: false, defaultValue: "user", input: false },
+    // Workers Rate Limiting cannot express a 600 s window, so auth uses the database store.
+    rateLimit: {
+      enabled: true,
+      storage: "database",
+      window: 60,
+      max: 100,
+      customRules: {
+        "/email-otp/send-verification-otp": { window: 600, max: 5 },
+        "/sign-in/email-otp": { window: 600, max: 5 },
       },
     },
     session: {
@@ -83,6 +96,7 @@ export function createAuth(env: Env) {
       cookieCache: { enabled: true, maxAge: 5 * 60 },
     },
     plugins: [
+      admin({ ac: platformAc, roles: platformRoles }),
       emailOTP({
         disableSignUp: true,
         storeOTP: "hashed",
@@ -98,6 +112,19 @@ export function createAuth(env: Env) {
         ac: orgAc,
         roles: orgRoles,
         teams: { enabled: true, defaultTeam: { enabled: false }, allowRemovingAllTeams: true },
+        sendInvitationEmail: async ({ id, email, role }) => {
+          await pickInviteMailer(env.INVITE_MAILER).send(email, { id, role });
+        },
+        organizationHooks: {
+          beforeDeleteOrganization: async ({ organization }) => {
+            const [hit] = await centralDb(env)
+              .select({ id: app.id })
+              .from(app)
+              .where(eq(app.workspaceId, organization.id))
+              .limit(1);
+            if (hit) throw new APIError("BAD_REQUEST", { message: "workspace still has apps" });
+          },
+        },
         schema: {
           organization: {
             modelName: "workspace",

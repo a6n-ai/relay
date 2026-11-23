@@ -1,5 +1,8 @@
 import { createAccessControl } from "better-auth/plugins/access";
-import { defaultStatements as adminStatements } from "better-auth/plugins/admin/access";
+import {
+  adminAc as platformAdminAc,
+  defaultStatements as adminStatements,
+} from "better-auth/plugins/admin/access";
 import {
   adminAc,
   defaultStatements,
@@ -19,9 +22,9 @@ export const statement = {
 export const ac = createAccessControl(statement);
 
 export const roles = {
+  // Platform admin: better-auth's full admin set (ban, impersonate, list) plus Relay's resources.
   admin: ac.newRole({
-    user: ["create", "set-role"],
-    session: ["list", "revoke", "delete"],
+    ...platformAdminAc.statements,
     settings: ["read", "write"],
     audit: ["read"],
     tenant: ["read", "write"],

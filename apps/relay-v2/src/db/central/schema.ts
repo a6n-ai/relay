@@ -73,6 +73,13 @@ export const verification = sqliteTable("verification", {
   updatedAt: updatedAt(),
 });
 
+export const rateLimit = sqliteTable("rate_limit", {
+  id: id("rtl"),
+  key: text("key").notNull().unique(),
+  count: integer("count").notNull(),
+  lastRequest: integer("last_request").notNull(),
+});
+
 export const workspace = sqliteTable("workspace", {
   id: id("wsp"),
   name: text("name").notNull(),

@@ -98,6 +98,14 @@ CREATE TABLE `member` (
 	FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint
+CREATE TABLE `rate_limit` (
+	`id` text PRIMARY KEY NOT NULL,
+	`key` text NOT NULL,
+	`count` integer NOT NULL,
+	`last_request` integer NOT NULL
+);
+--> statement-breakpoint
+CREATE UNIQUE INDEX `rate_limit_key_unique` ON `rate_limit` (`key`);--> statement-breakpoint
 CREATE TABLE `sending_domain` (
 	`id` text PRIMARY KEY NOT NULL,
 	`workspace_id` text NOT NULL,
