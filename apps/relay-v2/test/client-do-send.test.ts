@@ -43,7 +43,7 @@ beforeAll(async () => {
 });
 
 beforeEach(() => {
-  enqueue = vi.spyOn(env.SEND, "send");
+  enqueue = vi.spyOn(env.SEND, "send").mockResolvedValue(undefined as never);
 });
 
 afterEach(() => {

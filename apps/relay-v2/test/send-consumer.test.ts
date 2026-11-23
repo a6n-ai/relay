@@ -1,0 +1,247 @@
+import { AwsError } from "@foundry/cloud";
+import { env, runInDurableObject } from "cloudflare:test";
+import { and, eq } from "drizzle-orm";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi, type MockInstance } from "vitest";
+import { handleSendBatch } from "../src/core/send-consumer";
+import { memorySesTransport } from "../src/core/ses";
+import { utcDay } from "../src/core/usage";
+import { coreDb } from "../src/db/core/client";
+import { address, sendingDomain, usageDaily } from "../src/db/core/schema";
+import { securityDb } from "../src/db/security/client";
+import { workspace } from "../src/db/security/schema";
+import type { SendJob } from "../src/env";
+import { applyMigrations } from "./migrate";
+
+const base = {
+  appId: "app_1",
+  stream: "transactional" as const,
+  from: "orders@tiffingrab.ca",
+  to: "guest@x.com",
+  subject: "Order 1",
+  html: "<p>Thanks</p>",
+  text: "Thanks",
+};
+
+type Outcome = { kind: "none" } | { kind: "ack" } | { kind: "retry"; delaySeconds?: number };
+
+// Hand-made batch: records the ack or retry each message receives.
+function batchOf(bodies: SendJob[]) {
+  const outcomes: Outcome[] = bodies.map((): Outcome => ({ kind: "none" }));
+  const messages = bodies.map((body, i) => ({
+    id: `job-${i}`,
+    timestamp: new Date(),
+    body,
+    attempts: 1,
+    ack: () => {
+      outcomes[i] = { kind: "ack" };
+    },
+    retry: (opts?: { delaySeconds?: number }) => {
+      outcomes[i] = { kind: "retry", delaySeconds: opts?.delaySeconds };
+    },
+  }));
+  return { batch: { queue: "relay-send", messages } as never, outcomes };
+}
+
+async function deliver(...bodies: SendJob[]) {
+  const { batch, outcomes } = batchOf(bodies);
+  const { sent } = await handleSendBatch(batch, env, memorySesTransport);
+  return { sent, outcomes };
+}
+
+async function seedWorkspace(workspaceId: string, sesRegion = "us-east-1") {
+  await securityDb(env).insert(workspace).values({ id: workspaceId, name: workspaceId, slug: workspaceId });
+  await coreDb(env)
+    .insert(sendingDomain)
+    .values({ workspaceId, domain: "tiffingrab.ca", sesRegion, status: "verified" })
+    .onConflictDoUpdate({ target: sendingDomain.domain, set: { workspaceId, sesRegion, status: "verified" } });
+  await coreDb(env)
+    .insert(address)
+    .values({ workspaceId, appId: "app_1", email: "orders@tiffingrab.ca", kind: "sender", displayName: "TiffinGrab", canSend: true })
+    .onConflictDoUpdate({ target: address.email, set: { workspaceId, displayName: "TiffinGrab", canSend: true } });
+  return env.CLIENT.get(env.CLIENT.idFromName(workspaceId));
+}
+
+// Sends through the DO; the SEND spy captures the job instead of letting the consumer run it.
+async function queue(stub: Awaited<ReturnType<typeof seedWorkspace>>, workspaceId: string, input = base) {
+  const { messageId } = await stub.send(workspaceId, input);
+  return { workspaceId, messageId } satisfies SendJob;
+}
+
+async function usageSent(workspaceId: string): Promise<number> {
+  const [row] = await coreDb(env)
+    .select({ sent: usageDaily.sent })
+    .from(usageDaily)
+    .where(and(eq(usageDaily.workspaceId, workspaceId), eq(usageDaily.day, utcDay(Date.now()))));
+  return row?.sent ?? 0;
+}
+
+let enqueue: MockInstance<typeof env.SEND.send>;
+
+beforeAll(async () => {
+  await applyMigrations();
+});
+
+beforeEach(() => {
+  memorySesTransport.reset();
+  enqueue = vi.spyOn(env.SEND, "send").mockResolvedValue(undefined as never);
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
+describe("utcDay", () => {
+  it("formats epoch ms as the UTC calendar day", () => {
+    expect(utcDay(Date.UTC(2026, 10, 24, 23, 59))).toBe("2026-11-24");
+  });
+});
+
+describe("handleSendBatch", () => {
+  it("sends once, marks the row sent, acks and counts the send", async () => {
+    const ws = "wsp_send_ok";
+    const stub = await seedWorkspace(ws);
+    const job = await queue(stub, ws);
+    const { sent, outcomes } = await deliver(job);
+
+    expect(sent).toBe(1);
+    expect(outcomes).toEqual([{ kind: "ack" }]);
+    expect(memorySesTransport.sent).toHaveLength(1);
+    expect(memorySesTransport.sent[0]).toMatchObject({
+      region: "us-east-1",
+      stream: "transactional",
+      tags: { ws, msg: job.messageId },
+    });
+    expect(await stub.getMessage(ws, job.messageId)).toMatchObject({ status: "sent", sesMessageId: "mem-1", attempts: 1 });
+    expect(await usageSent(ws)).toBe(1);
+  });
+
+  it("does not send again when the same job is redelivered after a send", async () => {
+    const ws = "wsp_redeliver";
+    const stub = await seedWorkspace(ws);
+    const job = await queue(stub, ws);
+    await deliver(job);
+    const second = await deliver(job);
+
+    expect(second.outcomes).toEqual([{ kind: "ack" }]);
+    expect(memorySesTransport.sent).toHaveLength(1);
+  });
+
+  it("sends once when two copies of a job are handled concurrently, and retries the loser later", async () => {
+    const ws = "wsp_race";
+    const stub = await seedWorkspace(ws);
+    const job = await queue(stub, ws);
+    const [a, b] = await Promise.all([deliver(job), deliver(job)]);
+
+    expect(memorySesTransport.sent).toHaveLength(1);
+    const outcomes = [a.outcomes[0], b.outcomes[0]];
+    expect(outcomes.filter((o) => o.kind === "ack")).toHaveLength(1);
+    const busy = outcomes.find((o) => o.kind === "retry");
+    expect(busy?.kind === "retry" && busy.delaySeconds).toBeGreaterThanOrEqual(1);
+    expect(busy?.kind === "retry" && busy.delaySeconds).toBeLessThanOrEqual(60);
+  });
+
+  it("retries a retryable SES failure with backoff and sends on the next delivery", async () => {
+    const ws = "wsp_retry";
+    const stub = await seedWorkspace(ws);
+    const job = await queue(stub, ws);
+    memorySesTransport.failNext(new AwsError("Throttling", "slow", { status: 429 }));
+
+    const first = await deliver(job);
+    expect(first.outcomes).toEqual([{ kind: "retry", delaySeconds: 30 }]);
+    expect(await stub.getMessage(ws, job.messageId)).toMatchObject({
+      status: "queued",
+      attempts: 1,
+      error: "slow",
+      claimedUntil: null,
+    });
+
+    const second = await deliver(job);
+    expect(second.outcomes).toEqual([{ kind: "ack" }]);
+    expect(memorySesTransport.sent).toHaveLength(1);
+    expect(await stub.getMessage(ws, job.messageId)).toMatchObject({ status: "sent", attempts: 2 });
+  });
+
+  it("fails a permanent SES rejection and acks", async () => {
+    const ws = "wsp_reject";
+    const stub = await seedWorkspace(ws);
+    const job = await queue(stub, ws);
+    memorySesTransport.failNext(new AwsError("MessageRejected", "bad", { status: 400 }));
+
+    const { outcomes } = await deliver(job);
+    expect(outcomes).toEqual([{ kind: "ack" }]);
+    expect(await stub.getMessage(ws, job.messageId)).toMatchObject({ status: "failed", error: "bad" });
+  });
+
+  it("fails the message on the fifth attempt even when the error is retryable", async () => {
+    const ws = "wsp_exhaust";
+    const stub = await seedWorkspace(ws);
+    const job = await queue(stub, ws);
+    await runInDurableObject(stub, (_instance, state) =>
+      state.storage.sql.exec("UPDATE message SET attempts = 4 WHERE id = ?", job.messageId),
+    );
+    memorySesTransport.failNext(new AwsError("ServiceUnavailable", "down", { status: 503 }));
+
+    const { outcomes } = await deliver(job);
+    expect(outcomes).toEqual([{ kind: "ack" }]);
+    expect(await stub.getMessage(ws, job.messageId)).toMatchObject({ status: "failed", attempts: 5, error: "down" });
+  });
+
+  it("records a send whose DO write failed by re-enqueueing the SES id, never sending twice", async () => {
+    const ws = "wsp_marksent";
+    const stub = await seedWorkspace(ws);
+    const job = await queue(stub, ws);
+    const realGet = env.CLIENT.get.bind(env.CLIENT);
+    let failMarkSent = true;
+    vi.spyOn(env.CLIENT, "get").mockImplementation((id) => {
+      const real = realGet(id);
+      return {
+        claimSend: (...args: Parameters<typeof real.claimSend>) => real.claimSend(...args),
+        markSendFailed: (...args: Parameters<typeof real.markSendFailed>) => real.markSendFailed(...args),
+        markSent: (...args: Parameters<typeof real.markSent>) => {
+          if (failMarkSent) {
+            failMarkSent = false;
+            return Promise.reject(new Error("do unreachable"));
+          }
+          return real.markSent(...args);
+        },
+      } as never;
+    });
+
+    const { outcomes } = await deliver(job);
+    expect(outcomes).toEqual([{ kind: "ack" }]);
+    expect(memorySesTransport.sent).toHaveLength(1);
+    expect(enqueue).toHaveBeenLastCalledWith({ workspaceId: ws, messageId: job.messageId, sesMessageId: "mem-1" });
+
+    const recorded = enqueue.mock.calls.at(-1)![0] as SendJob;
+    const again = await deliver(recorded);
+    expect(again.outcomes).toEqual([{ kind: "ack" }]);
+    expect(memorySesTransport.sent).toHaveLength(1);
+    expect(await stub.getMessage(ws, job.messageId)).toMatchObject({ status: "sent", sesMessageId: "mem-1" });
+  });
+
+  it("fails a sender whose region has no SES config set, and acks", async () => {
+    const ws = "wsp_region";
+    const stub = await seedWorkspace(ws, "eu-west-1");
+    const job = await queue(stub, ws);
+
+    const { outcomes } = await deliver(job);
+    expect(outcomes).toEqual([{ kind: "ack" }]);
+    expect(memorySesTransport.sent).toHaveLength(0);
+    expect(await stub.getMessage(ws, job.messageId)).toMatchObject({
+      status: "failed",
+      error: "no SES config set for region eu-west-1",
+    });
+  });
+
+  it("acks a suppressed or missing message without sending", async () => {
+    const ws = "wsp_suppressed";
+    const stub = await seedWorkspace(ws);
+    await stub.addSuppression(ws, "guest@x.com", "unsubscribe");
+    const job = await queue(stub, ws);
+    const missing: SendJob = { workspaceId: ws, messageId: "msg_missing" };
+
+    const { outcomes } = await deliver(job, missing);
+    expect(outcomes).toEqual([{ kind: "ack" }, { kind: "ack" }]);
+    expect(memorySesTransport.sent).toHaveLength(0);
+  });
+});

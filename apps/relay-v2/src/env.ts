@@ -1,6 +1,7 @@
 import type { ClientDO } from "./do/client-do";
 
-export type SendJob = { workspaceId: string; messageId: string };
+// sesMessageId: the SES send already happened; the job only records it and never calls SES.
+export type SendJob = { workspaceId: string; messageId: string; sesMessageId?: string };
 
 // Global so that cloudflare:workers `env` is typed with the same bindings.
 declare global {

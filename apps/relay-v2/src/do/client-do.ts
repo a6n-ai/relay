@@ -1,6 +1,7 @@
 import { DurableObject } from "cloudflare:workers";
-import { and, eq, gte, inArray, isNull, or, sql, type SQLWrapper } from "drizzle-orm";
+import { and, eq, gte, inArray, isNull, ne, or, sql, type SQLWrapper } from "drizzle-orm";
 import { drizzle, type DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
+import type { SesSendRequest } from "../core/ses";
 import { DEFAULT_MONTHLY_QUOTA, LIMITS_TTL_MS, loadWorkspaceLimits, SENDER_RETRY_MS, type WorkspaceLimits } from "../core/limits";
 import { sendInputSchema, type SendInput, type Stream, type SuppressionReason } from "../core/send-input";
 import { recordDoState } from "../core/workspace-profile";
@@ -12,6 +13,13 @@ import { CLIENT_MIGRATIONS, migrate } from "./migrations";
 export type MessageView = typeof schema.message.$inferSelect & { html: string | null };
 
 type SendResult = { messageId: string; status: "queued" | "sent" | "failed" | "suppressed"; duplicate: boolean };
+
+export type SendClaim =
+  | { kind: "skip"; reason: "missing" | "sent" | "failed" | "suppressed" }
+  | { kind: "busy"; retryInSeconds: number }
+  | { kind: "send"; attempt: number; request: SesSendRequest };
+
+const CLAIM_LEASE_MS = 60_000;
 
 // Higher rank wins a suppression conflict: a stronger reason is never replaced by a weaker one.
 const reasonRank = (column: SQLWrapper) =>
@@ -142,6 +150,82 @@ export class ClientDO extends DurableObject<Env> {
     if (!row) return null;
     const object = row.htmlKey ? await this.env.MAIL.get(row.htmlKey) : null;
     return { ...row, html: object ? await object.text() : null };
+  }
+
+  // A lease (claimed_until) stops a second job from sending while the first is in flight.
+  async claimSend(workspaceId: string, messageId: string, now = Date.now()): Promise<SendClaim> {
+    await this.ready(workspaceId);
+    const claimed = this.ctx.storage.transactionSync(():
+      | SendClaim
+      | { kind: "claimed"; attempt: number; row: typeof schema.message.$inferSelect; region: string } => {
+      const row = this.db.select().from(schema.message).where(eq(schema.message.id, messageId)).get();
+      if (!row) return { kind: "skip", reason: "missing" };
+      if (row.status !== "queued" || row.sesMessageId) {
+        return { kind: "skip", reason: row.status === "queued" ? "sent" : (row.status as "sent" | "failed" | "suppressed") };
+      }
+      if (row.claimedUntil != null && row.claimedUntil > now) {
+        return { kind: "busy", retryInSeconds: Math.ceil((row.claimedUntil - now) / 1000) };
+      }
+      const region = row.sesRegion;
+      if (!region) {
+        this.db
+          .update(schema.message)
+          .set({ status: "failed", error: "no SES region", claimedUntil: null, updatedAt: now })
+          .where(eq(schema.message.id, messageId))
+          .run();
+        return { kind: "skip", reason: "failed" };
+      }
+      const attempt = row.attempts + 1;
+      this.db
+        .update(schema.message)
+        .set({ claimedUntil: now + CLAIM_LEASE_MS, attempts: attempt, updatedAt: now })
+        .where(eq(schema.message.id, messageId))
+        .run();
+      return { kind: "claimed", attempt, row, region };
+    });
+    if (claimed.kind !== "claimed") return claimed;
+
+    const { row, attempt, region } = claimed;
+    const object = row.htmlKey ? await this.env.MAIL.get(row.htmlKey) : null;
+    if (row.htmlKey && !object) throw new Error("html object missing");
+    return {
+      kind: "send",
+      attempt,
+      request: {
+        region,
+        stream: row.stream as Stream,
+        from: row.fromEmail ?? "",
+        fromName: row.fromName,
+        to: row.toEmail ?? "",
+        subject: row.subject ?? "",
+        html: object ? await object.text() : null,
+        text: row.text ?? "",
+        tags: { ws: workspaceId, msg: messageId },
+      },
+    };
+  }
+
+  // SES accepted the message. Idempotent; a failed row is overwritten because SES has the message.
+  async markSent(workspaceId: string, messageId: string, sesMessageId: string, now = Date.now()): Promise<void> {
+    await this.ready(workspaceId);
+    this.ctx.storage.transactionSync(() => {
+      this.db
+        .update(schema.message)
+        .set({ status: "sent", sesMessageId, sentAt: now, claimedUntil: null, error: null, updatedAt: now })
+        .where(and(eq(schema.message.id, messageId), ne(schema.message.status, "sent")))
+        .run();
+    });
+  }
+
+  async markSendFailed(workspaceId: string, messageId: string, error: string, final: boolean): Promise<void> {
+    await this.ready(workspaceId);
+    this.ctx.storage.transactionSync(() => {
+      this.db
+        .update(schema.message)
+        .set({ error, claimedUntil: null, updatedAt: Date.now(), ...(final ? { status: "failed" as const } : {}) })
+        .where(and(eq(schema.message.id, messageId), ne(schema.message.status, "sent")))
+        .run();
+    });
   }
 
   async addSuppression(workspaceId: string, email: string, reason: SuppressionReason, stream?: Stream): Promise<void> {
