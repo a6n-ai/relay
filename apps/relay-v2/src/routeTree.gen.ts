@@ -12,6 +12,8 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as ApiV1MessagesRouteImport } from './routes/api/v1/messages'
+import { Route as ApiV1MessagesIdRouteImport } from './routes/api/v1/messages.$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -28,35 +30,68 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiV1MessagesRoute = ApiV1MessagesRouteImport.update({
+  id: '/api/v1/messages',
+  path: '/api/v1/messages',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiV1MessagesIdRoute = ApiV1MessagesIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => ApiV1MessagesRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/api/health': typeof ApiHealthRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/v1/messages': typeof ApiV1MessagesRouteWithChildren
+  '/api/v1/messages/$id': typeof ApiV1MessagesIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/api/health': typeof ApiHealthRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/v1/messages': typeof ApiV1MessagesRouteWithChildren
+  '/api/v1/messages/$id': typeof ApiV1MessagesIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/api/health': typeof ApiHealthRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/v1/messages': typeof ApiV1MessagesRouteWithChildren
+  '/api/v1/messages/$id': typeof ApiV1MessagesIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/api/health' | '/api/auth/$'
+  fullPaths:
+    | '/'
+    | '/api/health'
+    | '/api/auth/$'
+    | '/api/v1/messages'
+    | '/api/v1/messages/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/api/health' | '/api/auth/$'
-  id: '__root__' | '/' | '/api/health' | '/api/auth/$'
+  to:
+    | '/'
+    | '/api/health'
+    | '/api/auth/$'
+    | '/api/v1/messages'
+    | '/api/v1/messages/$id'
+  id:
+    | '__root__'
+    | '/'
+    | '/api/health'
+    | '/api/auth/$'
+    | '/api/v1/messages'
+    | '/api/v1/messages/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ApiHealthRoute: typeof ApiHealthRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiV1MessagesRoute: typeof ApiV1MessagesRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
@@ -82,13 +117,40 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/v1/messages': {
+      id: '/api/v1/messages'
+      path: '/api/v1/messages'
+      fullPath: '/api/v1/messages'
+      preLoaderRoute: typeof ApiV1MessagesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v1/messages/$id': {
+      id: '/api/v1/messages/$id'
+      path: '/$id'
+      fullPath: '/api/v1/messages/$id'
+      preLoaderRoute: typeof ApiV1MessagesIdRouteImport
+      parentRoute: typeof ApiV1MessagesRoute
+    }
   }
 }
+
+interface ApiV1MessagesRouteChildren {
+  ApiV1MessagesIdRoute: typeof ApiV1MessagesIdRoute
+}
+
+const ApiV1MessagesRouteChildren: ApiV1MessagesRouteChildren = {
+  ApiV1MessagesIdRoute: ApiV1MessagesIdRoute,
+}
+
+const ApiV1MessagesRouteWithChildren = ApiV1MessagesRoute._addFileChildren(
+  ApiV1MessagesRouteChildren,
+)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ApiHealthRoute: ApiHealthRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiV1MessagesRoute: ApiV1MessagesRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
