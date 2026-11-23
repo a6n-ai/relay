@@ -1,4 +1,4 @@
-import { APIError } from "better-auth/api";
+import { APIError, createAuthMiddleware } from "better-auth/api";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { admin } from "better-auth/plugins/admin";
@@ -89,7 +89,18 @@ export function createAuth(env: Env) {
       customRules: {
         "/email-otp/send-verification-otp": { window: 600, max: 5 },
         "/sign-in/email-otp": { window: 600, max: 5 },
+        "/email-otp/check-verification-otp": { window: 600, max: 5 },
       },
+    },
+    // Relay has no passwords, so these paths only mail OTPs to existing users. Blocked before the handler runs.
+    hooks: {
+      before: createAuthMiddleware(async (ctx) => {
+        const resetMail =
+          ctx.path === "/email-otp/request-password-reset" ||
+          ctx.path === "/forget-password/email-otp" ||
+          (ctx.path === "/email-otp/send-verification-otp" && ctx.body?.type === "forget-password");
+        if (resetMail) throw new APIError("NOT_FOUND");
+      }),
     },
     session: {
       expiresIn: 30 * DAY_S,

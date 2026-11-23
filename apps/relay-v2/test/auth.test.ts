@@ -353,5 +353,34 @@ describe("auth rate limit", () => {
     expect((await sendFrom("198.51.100.7", "limited@example.com")).status).toBe(429);
     expect((await sendFrom("198.51.100.8", "limited@example.com")).status).toBe(200);
   });
+
+  it("returns 429 on the 6th OTP check from one IP", async () => {
+    const check = () =>
+      SELF.fetch(`${BASE}/email-otp/check-verification-otp`, {
+        method: "POST",
+        headers: { ...json, "cf-connecting-ip": "198.51.100.30" },
+        body: JSON.stringify({ email: "guess@example.com", type: "sign-in", otp: "000000" }),
+      });
+    for (let i = 0; i < 5; i++) expect((await check()).status).not.toBe(429);
+    expect((await check()).status).toBe(429);
+  });
+});
+
+describe("password mail paths", () => {
+  it.each([
+    ["/email-otp/request-password-reset", {}],
+    ["/forget-password/email-otp", {}],
+    ["/email-otp/send-verification-otp", { type: "forget-password" }],
+  ])("%s returns 404 and mails no OTP to an existing user", async (path, extra) => {
+    const email = `${newId("usr")}@example.com`;
+    await insertUser(email, "user");
+    const res = await SELF.fetch(`${BASE}${path}`, {
+      method: "POST",
+      headers: json,
+      body: JSON.stringify({ email, ...extra }),
+    });
+    expect(res.status).toBe(404);
+    expect(memoryOtpMailer.lastOtp(email)).toBeUndefined();
+  });
 });
 
