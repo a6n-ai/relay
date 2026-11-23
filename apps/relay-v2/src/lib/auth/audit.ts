@@ -13,14 +13,20 @@ export type AuditEvent = {
 };
 
 // Callers pass only ids, emails and roles. Never an OTP, a token or a key secret.
+// Best effort: the action has already committed, so a failed audit row must not fail the caller.
 export async function writeAudit(env: Env, event: AuditEvent): Promise<void> {
-  await securityDb(env).insert(securityAudit).values({
-    action: event.action,
-    actorUserId: event.actorUserId ?? null,
-    workspaceId: event.workspaceId ?? null,
-    target: event.target ?? null,
-    ip: event.ip ?? null,
-    userAgent: event.userAgent ?? null,
-    data: event.data ? JSON.stringify(event.data) : null,
-  });
+  try {
+    await securityDb(env).insert(securityAudit).values({
+      action: event.action,
+      actorUserId: event.actorUserId ?? null,
+      workspaceId: event.workspaceId ?? null,
+      target: event.target?.slice(0, 320) ?? null,
+      ip: event.ip ?? null,
+      userAgent: event.userAgent ?? null,
+      data: event.data ? JSON.stringify(event.data) : null,
+    });
+  } catch (error) {
+    // Action and message only: data and target can hold emails or ids.
+    console.error(`audit write failed: ${event.action}: ${error instanceof Error ? error.message : String(error)}`);
+  }
 }

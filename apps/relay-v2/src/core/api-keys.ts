@@ -49,6 +49,7 @@ export async function withinRateLimit(env: Env, keyId: string): Promise<boolean>
   return (await env.API_LIMIT.limit({ key: keyId })).success;
 }
 
+// Every key-authenticated route must also call withinRateLimit.
 export async function resolveBearer(env: Env, request: Request): Promise<KeyScope | null> {
   const secret = request.headers.get("authorization")?.match(/^Bearer (\S+)$/)?.[1];
   return secret ? resolveApiKey(env, secret) : null;

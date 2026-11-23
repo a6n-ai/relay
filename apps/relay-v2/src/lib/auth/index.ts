@@ -109,12 +109,46 @@ export function createAuth(env: Env) {
         "/email-otp/check-verification-otp": { window: 600, max: 5 },
       },
     },
+    // Role writes from every path (set-role, update-user, seed) reach user.update.after. The request body says whether one was asked for.
+    // The seed has no endpoint context, so it writes its own role.change row.
+    databaseHooks: {
+      user: {
+        create: {
+          after: async (user, ctx) => {
+            await writeAudit(env, {
+              action: "user.create",
+              actorUserId: ctx ? await actorOf(ctx) : null,
+              target: user.id,
+              data: { role: user.role },
+              ...(ctx ? requestMeta(ctx) : {}),
+            });
+          },
+        },
+        update: {
+          after: async (user, ctx) => {
+            const body = (ctx?.body ?? {}) as { role?: unknown; data?: { role?: unknown } };
+            const roleWritten =
+              (ctx?.path === "/admin/set-role" && body.role !== undefined) ||
+              (ctx?.path === "/admin/update-user" && body.data?.role !== undefined);
+            if (!roleWritten) return;
+            await writeAudit(env, {
+              action: "role.change",
+              actorUserId: ctx ? await actorOf(ctx) : null,
+              target: user.id,
+              data: { to: user.role },
+              ...(ctx ? requestMeta(ctx) : {}),
+            });
+          },
+        },
+      },
+    },
     // Relay has no passwords, so these paths only mail OTPs to existing users. Blocked before the handler runs.
     hooks: {
       before: createAuthMiddleware(async (ctx) => {
         const resetMail =
           ctx.path === "/email-otp/request-password-reset" ||
           ctx.path === "/forget-password/email-otp" ||
+          ctx.path === "/email-otp/reset-password" ||
           (ctx.path === "/email-otp/send-verification-otp" && ctx.body?.type === "forget-password");
         if (resetMail) throw new APIError("NOT_FOUND");
         // Keys are created by the server only: over HTTP, metadata.appId would be client-set and skip the app check.
@@ -178,8 +212,8 @@ export function createAuth(env: Env) {
         if (isAPIError(result)) return;
 
         switch (ctx.path) {
-          case "/admin/set-role":
-            return writeAudit(env, { action: "role.change", actorUserId: await actorOf(ctx), target: body.userId, data: { role: body.role }, ...meta });
+          case "/admin/remove-user":
+            return writeAudit(env, { action: "user.remove", actorUserId: await actorOf(ctx), target: body.userId, ...meta });
           case "/admin/ban-user":
             return writeAudit(env, { action: "user.ban", actorUserId: await actorOf(ctx), target: body.userId, ...meta });
           case "/admin/unban-user":
@@ -252,7 +286,12 @@ export function createAuth(env: Env) {
             if (addr) throw new APIError("BAD_REQUEST", { message: "workspace still has addresses" });
           },
           afterCreateOrganization: async ({ organization, user }) => {
-            await ensureWorkspaceProfile(env, organization.id);
+            try {
+              await ensureWorkspaceProfile(env, organization.id);
+            } catch (error) {
+              // Repair-on-read creates the missing profile later.
+              console.error(`workspace profile failed: workspace.create: ${error instanceof Error ? error.message : String(error)}`);
+            }
             await writeAudit(env, { action: "workspace.create", actorUserId: user.id, workspaceId: organization.id, target: organization.id });
           },
           afterDeleteOrganization: async ({ organization, user }) => {

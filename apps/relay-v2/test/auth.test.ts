@@ -6,11 +6,35 @@ import { address, workspaceProfile } from "../src/db/core/schema";
 import { securityDb } from "../src/db/security/client";
 import { app, member, securityAudit, team, user, verification, workspace } from "../src/db/security/schema";
 import { createAuth, pickMailer } from "../src/lib/auth";
+import { writeAudit } from "../src/lib/auth/audit";
 import { consoleInviteMailer, memoryInviteMailer, pickInviteMailer } from "../src/lib/auth/invite-mailer";
 import { memoryOtpMailer } from "../src/lib/auth/otp-mailer";
 import { newId } from "../src/lib/ids";
 import type { Env } from "../src/env";
 import { applyMigrations } from "./migrate";
+
+// Flips the security_audit insert to reject, to prove audit failures do not fail the caller.
+const auditFault = vi.hoisted(() => ({ fail: false }));
+vi.mock("../src/db/security/client", async (importOriginal) => {
+  const real = await importOriginal<typeof import("../src/db/security/client")>();
+  return {
+    ...real,
+    securityDb: (env: Env) => {
+      const db = real.securityDb(env);
+      return new Proxy(db, {
+        get(target, prop) {
+          if (prop === "insert" && auditFault.fail) {
+            return (table: unknown) =>
+              table === securityAudit
+                ? { values: () => Promise.reject(new Error("audit table down")) }
+                : target.insert(table as never);
+          }
+          return Reflect.get(target, prop);
+        },
+      });
+    },
+  };
+});
 
 const ORIGIN = "http://localhost";
 const BASE = `${ORIGIN}/api/auth`;
@@ -394,6 +418,7 @@ describe("password mail paths", () => {
     ["/email-otp/request-password-reset", {}],
     ["/forget-password/email-otp", {}],
     ["/email-otp/send-verification-otp", { type: "forget-password" }],
+    ["/email-otp/reset-password", {}],
   ])("%s returns 404 and mails no OTP to an existing user", async (path, extra) => {
     const email = `${newId("usr")}@example.com`;
     await insertUser(email, "user");
@@ -457,11 +482,12 @@ describe("security log and suspension", () => {
       body: JSON.stringify({ userId: target.id, role: "admin" }),
     });
     expect(role.status).toBe(200);
-    const [roleRow] = await db
+    const roleRows = await db
       .select()
       .from(securityAudit)
       .where(and(eq(securityAudit.action, "role.change"), eq(securityAudit.target, target.id)));
-    expect(roleRow).toMatchObject({ actorUserId: admin.id, data: '{"role":"admin"}' });
+    expect(roleRows).toHaveLength(1);
+    expect(roleRows[0]).toMatchObject({ actorUserId: admin.id, data: '{"to":"admin"}' });
 
     const orgId = await createWorkspace(adminCookie, "audit-co");
     const [createRow] = await db
@@ -643,5 +669,105 @@ describe("security log and suspension", () => {
       .where(and(eq(securityAudit.action, "member.role_change"), eq(securityAudit.workspaceId, orgId)));
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({ actorUserId: owner.id, target: target.id, data: '{"to":"admin"}' });
+  });
+});
+
+describe("audit coverage and best-effort writes", () => {
+  const countRows = (action: string, target: string) =>
+    db
+      .select()
+      .from(securityAudit)
+      .where(and(eq(securityAudit.action, action), eq(securityAudit.target, target)));
+
+  it("keeps the workspace and returns 200 when the audit insert fails", async () => {
+    const cookie = await cookieFor("audit-down@example.com", "admin");
+    const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+    auditFault.fail = true;
+    try {
+      const res = await SELF.fetch(`${BASE}/organization/create`, {
+        method: "POST",
+        headers: { ...json, cookie, origin: ORIGIN },
+        body: JSON.stringify({ name: "Audit Down", slug: "audit-down" }),
+      });
+      expect(res.status).toBe(200);
+      const { id: orgId } = (await res.json()) as { id: string };
+      expect(await db.select().from(workspace).where(eq(workspace.id, orgId))).toHaveLength(1);
+      const logged = errors.mock.calls.flat().join(" ");
+      expect(logged).toContain("audit write failed: workspace.create: audit table down");
+      expect(logged).not.toContain(orgId);
+    } finally {
+      auditFault.fail = false;
+      errors.mockRestore();
+    }
+  });
+
+  it("truncates a target longer than 320 characters", async () => {
+    await writeAudit(env, { action: "test.truncate", target: "t".repeat(400) });
+    const [row] = await db.select().from(securityAudit).where(eq(securityAudit.action, "test.truncate"));
+    expect(row.target).toHaveLength(320);
+  });
+
+  it("writes one role.change row when an admin update-user sets a role", async () => {
+    const adminCookie = await cookieFor("upd-admin@example.com", "admin");
+    const [admin] = await db.select().from(user).where(eq(user.email, "upd-admin@example.com"));
+    await insertUser("upd-target@example.com", "user");
+    const [target] = await db.select().from(user).where(eq(user.email, "upd-target@example.com"));
+
+    const res = await SELF.fetch(`${BASE}/admin/update-user`, {
+      method: "POST",
+      headers: { ...json, cookie: adminCookie, origin: ORIGIN },
+      body: JSON.stringify({ userId: target.id, data: { role: "admin" } }),
+    });
+    expect(res.status).toBe(200);
+    const rows = await countRows("role.change", target.id);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ actorUserId: admin.id, data: '{"to":"admin"}' });
+  });
+
+  it("writes one user.create row when an admin creates a user with a role", async () => {
+    const adminCookie = await cookieFor("create-admin@example.com", "admin");
+    const [admin] = await db.select().from(user).where(eq(user.email, "create-admin@example.com"));
+    const email = "created-by-admin@example.com";
+
+    const res = await SELF.fetch(`${BASE}/admin/create-user`, {
+      method: "POST",
+      headers: { ...json, cookie: adminCookie, origin: ORIGIN },
+      body: JSON.stringify({ email, name: "Created", role: "user" }),
+    });
+    expect(res.status).toBe(200);
+    const [created] = await db.select().from(user).where(eq(user.email, email));
+    const rows = await countRows("user.create", created.id);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ actorUserId: admin.id, data: '{"role":"user"}' });
+  });
+
+  it("writes one user.remove row when an admin removes a user", async () => {
+    const adminCookie = await cookieFor("remove-admin@example.com", "admin");
+    const [admin] = await db.select().from(user).where(eq(user.email, "remove-admin@example.com"));
+    await insertUser("removed@example.com", "user");
+    const [target] = await db.select().from(user).where(eq(user.email, "removed@example.com"));
+
+    const res = await SELF.fetch(`${BASE}/admin/remove-user`, {
+      method: "POST",
+      headers: { ...json, cookie: adminCookie, origin: ORIGIN },
+      body: JSON.stringify({ userId: target.id }),
+    });
+    expect(res.status).toBe(200);
+    const rows = await countRows("user.remove", target.id);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ actorUserId: admin.id });
+  });
+
+  it("keeps workspace status active when an owner sends status in organization/update", async () => {
+    const cookie = await cookieFor("status-owner@example.com", "admin");
+    const orgId = await createWorkspace(cookie, "status-co");
+    const res = await SELF.fetch(`${BASE}/organization/update`, {
+      method: "POST",
+      headers: { ...json, cookie, origin: ORIGIN },
+      body: JSON.stringify({ organizationId: orgId, data: { name: "Status Co", status: "suspended" } }),
+    });
+    expect(res.status).toBe(200);
+    const [row] = await db.select().from(workspace).where(eq(workspace.id, orgId));
+    expect(row.status).toBe("active");
   });
 });

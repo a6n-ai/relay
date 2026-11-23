@@ -11,13 +11,13 @@
     {
       "binding": "SECURITY_DB",
       "database_name": "relay-security",
-      "database_id": "local",
+      "database_id": "local-security",
       "migrations_dir": "drizzle/security",
     },
     {
       "binding": "CORE_DB",
       "database_name": "relay-core",
-      "database_id": "local",
+      "database_id": "local-core",
       "migrations_dir": "drizzle/core",
     },
   ],
