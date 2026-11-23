@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as ApiInternalDoSweepRouteImport } from './routes/api/internal/do-sweep'
 import { Route as ApiInternalSeedRouteImport } from './routes/api/internal/seed'
 import { Route as ApiV1MessagesRouteImport } from './routes/api/v1/messages'
 import { Route as ApiV1MessagesIdRouteImport } from './routes/api/v1/messages.$id'
@@ -29,6 +30,11 @@ const ApiHealthRoute = ApiHealthRouteImport.update({
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiInternalDoSweepRoute = ApiInternalDoSweepRouteImport.update({
+  id: '/api/internal/do-sweep',
+  path: '/api/internal/do-sweep',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiInternalSeedRoute = ApiInternalSeedRouteImport.update({
@@ -51,6 +57,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/api/health': typeof ApiHealthRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/internal/do-sweep': typeof ApiInternalDoSweepRoute
   '/api/internal/seed': typeof ApiInternalSeedRoute
   '/api/v1/messages': typeof ApiV1MessagesRouteWithChildren
   '/api/v1/messages/$id': typeof ApiV1MessagesIdRoute
@@ -59,6 +66,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/api/health': typeof ApiHealthRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/internal/do-sweep': typeof ApiInternalDoSweepRoute
   '/api/internal/seed': typeof ApiInternalSeedRoute
   '/api/v1/messages': typeof ApiV1MessagesRouteWithChildren
   '/api/v1/messages/$id': typeof ApiV1MessagesIdRoute
@@ -68,6 +76,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/api/health': typeof ApiHealthRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/internal/do-sweep': typeof ApiInternalDoSweepRoute
   '/api/internal/seed': typeof ApiInternalSeedRoute
   '/api/v1/messages': typeof ApiV1MessagesRouteWithChildren
   '/api/v1/messages/$id': typeof ApiV1MessagesIdRoute
@@ -78,6 +87,7 @@ export interface FileRouteTypes {
     | '/'
     | '/api/health'
     | '/api/auth/$'
+    | '/api/internal/do-sweep'
     | '/api/internal/seed'
     | '/api/v1/messages'
     | '/api/v1/messages/$id'
@@ -86,6 +96,7 @@ export interface FileRouteTypes {
     | '/'
     | '/api/health'
     | '/api/auth/$'
+    | '/api/internal/do-sweep'
     | '/api/internal/seed'
     | '/api/v1/messages'
     | '/api/v1/messages/$id'
@@ -94,6 +105,7 @@ export interface FileRouteTypes {
     | '/'
     | '/api/health'
     | '/api/auth/$'
+    | '/api/internal/do-sweep'
     | '/api/internal/seed'
     | '/api/v1/messages'
     | '/api/v1/messages/$id'
@@ -103,6 +115,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ApiHealthRoute: typeof ApiHealthRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiInternalDoSweepRoute: typeof ApiInternalDoSweepRoute
   ApiInternalSeedRoute: typeof ApiInternalSeedRoute
   ApiV1MessagesRoute: typeof ApiV1MessagesRouteWithChildren
 }
@@ -128,6 +141,13 @@ declare module '@tanstack/react-router' {
       path: '/api/auth/$'
       fullPath: '/api/auth/$'
       preLoaderRoute: typeof ApiAuthSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/internal/do-sweep': {
+      id: '/api/internal/do-sweep'
+      path: '/api/internal/do-sweep'
+      fullPath: '/api/internal/do-sweep'
+      preLoaderRoute: typeof ApiInternalDoSweepRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/internal/seed': {
@@ -170,6 +190,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ApiHealthRoute: ApiHealthRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiInternalDoSweepRoute: ApiInternalDoSweepRoute,
   ApiInternalSeedRoute: ApiInternalSeedRoute,
   ApiV1MessagesRoute: ApiV1MessagesRouteWithChildren,
 }

@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "430deb3c-75e5-4898-b74a-e8c7730070d8",
+  "id": "863325fb-ef0b-4238-b375-330576e5eb5c",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "account": {
@@ -1385,6 +1385,21 @@
           "notNull": true,
           "autoincrement": false,
           "default": "'ap-south-1'"
+        },
+        "do_schema_version": {
+          "name": "do_schema_version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "do_migrate_error": {
+          "name": "do_migrate_error",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
         },
         "created_at": {
           "name": "created_at",

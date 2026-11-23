@@ -1,6 +1,12 @@
-import { env, runInDurableObject } from "cloudflare:test";
-import { describe, expect, it } from "vitest";
+import { applyD1Migrations, env, runInDurableObject, type D1Migration } from "cloudflare:test";
+import { beforeAll, describe, expect, it } from "vitest";
 import { CLIENT_MIGRATIONS, applied, migrate } from "../src/do/migrations";
+
+const { TEST_MIGRATIONS } = env as typeof env & { TEST_MIGRATIONS: D1Migration[] };
+
+beforeAll(async () => {
+  await applyD1Migrations(env.CENTRAL, TEST_MIGRATIONS);
+});
 
 const tables = (sql: SqlStorage) =>
   sql
@@ -32,8 +38,8 @@ describe("ClientDO migrations", () => {
   it("applies migrations once when two requests hit a fresh DO", async () => {
     const stub = env.CLIENT.get(env.CLIENT.idFromName("migrate-concurrent"));
     const before = { count: applied.count, calls: applied.calls };
-    const results = await Promise.all([stub.ping(), stub.ping()]);
-    expect(results).toEqual(["ok", "ok"]);
+    const results = await Promise.all([stub.ping("migrate-concurrent"), stub.ping("migrate-concurrent")]);
+    expect(results).toEqual([{ version: CLIENT_MIGRATIONS.length }, { version: CLIENT_MIGRATIONS.length }]);
     const after = await runInDurableObject(stub, (_instance, state) => ({
       count: applied.count,
       calls: applied.calls,

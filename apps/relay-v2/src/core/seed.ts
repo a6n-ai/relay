@@ -96,14 +96,3 @@ export async function seed(env: Env, input: SeedInput): Promise<SeedResult> {
   const secret = liveKey ? "" : (await createApiKey(env, { workspaceId, appId, name: "seed" })).secret;
   return { workspaceId, appId, apiKey: secret };
 }
-
-// Returns the response to send when the request must not reach seed, or null to continue.
-// Constant-time compare: workers-types does not type crypto.subtle.timingSafeEqual.
-export function seedGuard(request: Request, env: Env): Response | null {
-  if (!env.SEED_SECRET) return new Response(null, { status: 404 });
-  const expected = new TextEncoder().encode(`Bearer ${env.SEED_SECRET}`);
-  const given = new TextEncoder().encode(request.headers.get("authorization") ?? "");
-  let diff = expected.length ^ given.length;
-  for (let i = 0; i < expected.length; i++) diff |= expected[i] ^ (given[i % given.length] ?? 0);
-  return diff === 0 ? null : Response.json({ error: "unauthorized" }, { status: 401 });
-}

@@ -84,6 +84,8 @@ export const workspace = sqliteTable("workspace", {
   monthlyMessageQuota: integer("monthly_message_quota").notNull().default(10000),
   status: text("status", { enum: ["active", "suspended"] }).notNull().default("active"),
   defaultSesRegion: text("default_ses_region").notNull().default("ap-south-1"),
+  doSchemaVersion: integer("do_schema_version").notNull().default(0),
+  doMigrateError: text("do_migrate_error"),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 });

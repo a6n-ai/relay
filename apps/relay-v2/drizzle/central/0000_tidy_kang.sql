@@ -196,6 +196,8 @@ CREATE TABLE `workspace` (
 	`monthly_message_quota` integer DEFAULT 10000 NOT NULL,
 	`status` text DEFAULT 'active' NOT NULL,
 	`default_ses_region` text DEFAULT 'ap-south-1' NOT NULL,
+	`do_schema_version` integer DEFAULT 0 NOT NULL,
+	`do_migrate_error` text,
 	`created_at` integer NOT NULL,
 	`updated_at` integer NOT NULL
 );

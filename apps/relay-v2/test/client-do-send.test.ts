@@ -1,5 +1,5 @@
-import { env, runInDurableObject } from "cloudflare:test";
-import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from "vitest";
+import { applyD1Migrations, env, runInDurableObject, type D1Migration } from "cloudflare:test";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi, type MockInstance } from "vitest";
 
 const base = {
   appId: "app_1",
@@ -11,9 +11,15 @@ const base = {
   text: "Thanks",
 };
 
+const { TEST_MIGRATIONS } = env as typeof env & { TEST_MIGRATIONS: D1Migration[] };
+
 const stubFor = (workspaceId: string) => env.CLIENT.get(env.CLIENT.idFromName(workspaceId));
 
 let enqueue: MockInstance<typeof env.SEND.send>;
+
+beforeAll(async () => {
+  await applyD1Migrations(env.CENTRAL, TEST_MIGRATIONS);
+});
 
 beforeEach(() => {
   enqueue = vi.spyOn(env.SEND, "send");
@@ -33,7 +39,7 @@ describe("ClientDO send", () => {
     const obj = await env.MAIL.get(`ws/${ws}/msg/${sent.messageId}.html`);
     expect(await obj?.text()).toBe(base.html);
 
-    const view = await stub.getMessage(sent.messageId);
+    const view = await stub.getMessage(ws, sent.messageId);
     expect(view).toMatchObject({ id: sent.messageId, subject: base.subject, status: "queued" });
     expect(view?.html).toBe(base.html);
 
@@ -52,14 +58,14 @@ describe("ClientDO send", () => {
     });
 
     expect(second).toEqual({ messageId: first.messageId, status: "queued", duplicate: true });
-    expect((await stub.getMessage(first.messageId))?.subject).toBe(base.subject);
+    expect((await stub.getMessage(ws, first.messageId))?.subject).toBe(base.subject);
     expect(enqueue).toHaveBeenCalledTimes(1);
   });
 
   it("treats a suppressed recipient as suppressed when case and spaces differ", async () => {
     const ws = "wsp_sup";
     const stub = stubFor(ws);
-    await stub.addSuppression("a@x.com", "unsubscribe");
+    await stub.addSuppression(ws, "a@x.com", "unsubscribe");
     const sent = await stub.send(ws, { ...base, to: " A@X.com " });
 
     expect(sent).toEqual({ messageId: expect.stringMatching(/^msg_/), status: "suppressed", duplicate: false });
@@ -70,7 +76,7 @@ describe("ClientDO send", () => {
   it("blocks only the suppressed stream", async () => {
     const ws = "wsp_stream";
     const stub = stubFor(ws);
-    await stub.addSuppression("m@x.com", "manual", "marketing");
+    await stub.addSuppression(ws, "m@x.com", "manual", "marketing");
 
     const marketing = await stub.send(ws, { ...base, stream: "marketing", to: "m@x.com" });
     const transactional = await stub.send(ws, { ...base, stream: "transactional", to: "m@x.com" });
@@ -126,8 +132,8 @@ describe("ClientDO send", () => {
   it("keeps a marketing block when a transactional block lands on the same email", async () => {
     const ws = "wsp_widen";
     const stub = stubFor(ws);
-    await stub.addSuppression("w@x.com", "manual", "marketing");
-    await stub.addSuppression("w@x.com", "manual", "transactional");
+    await stub.addSuppression(ws, "w@x.com", "manual", "marketing");
+    await stub.addSuppression(ws, "w@x.com", "manual", "transactional");
 
     const marketing = await stub.send(ws, { ...base, stream: "marketing", to: "w@x.com" });
     const transactional = await stub.send(ws, { ...base, stream: "transactional", to: "w@x.com" });

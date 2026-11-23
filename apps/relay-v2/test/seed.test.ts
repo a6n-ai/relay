@@ -2,10 +2,10 @@ import { applyD1Migrations, env, SELF, type D1Migration } from "cloudflare:test"
 import { and, eq, inArray, isNull } from "drizzle-orm";
 import { beforeAll, describe, expect, it } from "vitest";
 import { resolveApiKey } from "../src/core/api-keys";
-import { seed, seedGuard } from "../src/core/seed";
+import { guardInternal } from "../src/core/internal-guard";
+import { seed } from "../src/core/seed";
 import { centralDb } from "../src/db/central/client";
 import { apiKey, app, member, sendingDomain, user, workspace } from "../src/db/central/schema";
-import type { Env } from "../src/env";
 
 const { TEST_MIGRATIONS } = env as typeof env & { TEST_MIGRATIONS: D1Migration[] };
 const db = centralDb(env);
@@ -110,7 +110,7 @@ describe("seed", () => {
 
 describe("POST /api/internal/seed", () => {
   it("returns 404 when SEED_SECRET is unset, before checking the bearer", async () => {
-    const denied = seedGuard(new Request(SEED_URL, { method: "POST" }), { ...env, SEED_SECRET: undefined } as Env);
+    const denied = guardInternal(new Request(SEED_URL, { method: "POST" }), undefined);
     expect(denied?.status).toBe(404);
   });
 
