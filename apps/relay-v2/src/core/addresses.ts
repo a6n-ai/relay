@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { coreDb } from "../db/core/client";
 import { address } from "../db/core/schema";
 import { securityDb } from "../db/security/client";
@@ -39,4 +39,15 @@ export async function createAddressGrant(
   await securityDb(env)
     .insert(addressGrant)
     .values({ workspaceId: input.workspaceId, addressId: input.addressId, memberId: input.memberId ?? null, teamId: input.teamId ?? null });
+}
+
+export async function inboxForRecipient(
+  env: Env,
+  email: string,
+): Promise<{ addressId: string; workspaceId: string; appId: string } | null> {
+  const [row] = await coreDb(env)
+    .select({ addressId: address.id, workspaceId: address.workspaceId, appId: address.appId })
+    .from(address)
+    .where(and(eq(address.email, email.trim().toLowerCase()), inArray(address.kind, ["inbox", "both"])));
+  return row ?? null;
 }

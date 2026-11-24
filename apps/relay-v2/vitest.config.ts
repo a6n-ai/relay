@@ -23,6 +23,7 @@ export default defineConfig({
           BETTER_AUTH_URL: "http://localhost",
           SEED_SECRET: "test-seed-secret-7Hq2vLx9",
           INTERNAL_SECRET: "test-internal-secret-4Lm8pQw2",
+          WEBHOOK_SECRET_KEY: "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=",
         },
       },
     }),

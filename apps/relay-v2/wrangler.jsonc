@@ -2,7 +2,7 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "relay-v2",
   "compatibility_date": "2026-11-23",
-  "compatibility_flags": ["nodejs_compat"],
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
   "main": "src/server.ts",
   "observability": { "enabled": true },
   "workers_dev": false,
@@ -38,6 +38,8 @@
     "producers": [
       { "binding": "SEND", "queue": "relay-send" },
       { "binding": "SES_EVENTS", "queue": "relay-ses-events" },
+      { "binding": "INBOUND", "queue": "relay-v2-inbound" },
+      { "binding": "WEBHOOKS", "queue": "relay-webhooks" },
     ],
     "consumers": [
       {
@@ -53,6 +55,21 @@
         "max_batch_timeout": 5,
         "max_retries": 10,
         "dead_letter_queue": "relay-ses-events-dlq",
+      },
+      // new queue; the old Worker's relay-inbound drains under its own consumer
+      {
+        "queue": "relay-v2-inbound",
+        "max_batch_size": 10,
+        "max_batch_timeout": 5,
+        "max_retries": 10,
+        "dead_letter_queue": "relay-v2-inbound-dlq",
+      },
+      {
+        "queue": "relay-webhooks",
+        "max_batch_size": 20,
+        "max_batch_timeout": 5,
+        "max_retries": 10,
+        "dead_letter_queue": "relay-webhooks-dlq",
       },
     ],
   },

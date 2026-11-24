@@ -1,5 +1,5 @@
 import { DurableObject } from "cloudflare:workers";
-import { and, eq, gte, inArray, isNull, lt, ne, or, sql, type SQLWrapper } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, isNull, lt, ne, or, sql, type SQLWrapper } from "drizzle-orm";
 import { drizzle, type DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
 import type { SesSendRequest } from "../core/ses";
 import { DEFAULT_MONTHLY_QUOTA, LIMITS_TTL_MS, loadWorkspaceLimits, SENDER_RETRY_MS, type WorkspaceLimits } from "../core/limits";
@@ -7,12 +7,27 @@ import { sendInputSchema, type SendInput, type Stream, type SuppressionReason } 
 import type { SesEventJob } from "../core/ses-events";
 import { recordDoState } from "../core/workspace-profile";
 import { utcDay } from "../core/usage";
-import type { Env } from "../env";
+import { decryptSecret, encryptSecret, KEY_ERROR, newWebhookSecret, signBody } from "../core/webhook-crypto";
+import { webhookBody, webhookHeaders } from "../core/mailbox-received";
+import { MAX_WEBHOOK_ATTEMPTS, webhookRetryDelaySeconds, type WebhookClaim, type WebhookOutcome } from "../core/webhook-consumer";
+import { isPublicWebhookUrl, type WebhookInput, type WebhookPatch, type WebhookView } from "../core/webhooks";
+import type { Env, InboundJob } from "../env";
 import { newId } from "../lib/ids";
+import { storeInbound, writeInboundFailure, type InboundDeps, type InboundResult } from "./inbound";
 import * as schema from "./client-schema";
 import { CLIENT_MIGRATIONS, migrate } from "./migrations";
+import { deleteWebhookRow, failDeliveryRow, listWebhookRows, toWebhookView, updateWebhookRow, type WebhookRow } from "./webhooks";
 
-export type MessageView = typeof schema.message.$inferSelect & { html: string | null };
+export type AttachmentView = {
+  id: string;
+  filename: string;
+  contentType: string;
+  sizeBytes: number;
+  contentId: string | null;
+  position: number;
+};
+
+export type MessageView = typeof schema.message.$inferSelect & { html: string | null; attachments: AttachmentView[] };
 
 type SendResult = { messageId: string; status: "queued" | "sent" | "failed" | "suppressed"; duplicate: boolean };
 
@@ -106,7 +121,13 @@ export class ClientDO extends DurableObject<Env> {
         const used = this.db
           .select({ n: sql<number>`count(*)` })
           .from(schema.message)
-          .where(and(inArray(schema.message.status, ["queued", "sent"]), gte(schema.message.createdAt, monthStart)))
+          .where(
+            and(
+              eq(schema.message.direction, "out"),
+              inArray(schema.message.status, ["queued", "sent"]),
+              gte(schema.message.createdAt, monthStart),
+            ),
+          )
           .get();
         if (limits.monthlyQuota > 0 && (used?.n ?? 0) >= limits.monthlyQuota) throw new Error("quota_exceeded");
         // Re-checked here: an unsubscribe can land during the R2 put above.
@@ -170,7 +191,182 @@ export class ClientDO extends DurableObject<Env> {
     const row = this.db.select().from(schema.message).where(eq(schema.message.id, id)).get();
     if (!row) return null;
     const object = row.htmlKey ? await this.env.MAIL.get(row.htmlKey) : null;
-    return { ...row, html: object ? await object.text() : null };
+    const attachments = this.db
+      .select({
+        id: schema.attachment.id,
+        filename: schema.attachment.filename,
+        contentType: schema.attachment.contentType,
+        sizeBytes: schema.attachment.sizeBytes,
+        contentId: schema.attachment.contentId,
+        position: schema.attachment.position,
+      })
+      .from(schema.attachment)
+      .where(eq(schema.attachment.messageId, id))
+      .orderBy(asc(schema.attachment.position))
+      .all();
+    return { ...row, html: object ? await object.text() : null, attachments };
+  }
+
+  // The letter is already in R2 under job.rawKey. Idempotent on the raw key and on the app's Message-ID.
+  async ingestInbound(workspaceId: string, job: InboundJob): Promise<InboundResult> {
+    await this.ready(workspaceId);
+    // Armed so the sweep re-enqueues any delivery whose enqueue below fails.
+    if ((await this.ctx.storage.getAlarm()) === null) await this.ctx.storage.setAlarm(Date.now() + SWEEP_INTERVAL_MS);
+    return storeInbound(this.inboundDeps(), workspaceId, job);
+  }
+
+  async recordInboundFailure(workspaceId: string, job: InboundJob, error: string): Promise<void> {
+    await this.ready(workspaceId);
+    writeInboundFailure(this.inboundDeps(), workspaceId, job, error);
+  }
+
+  private inboundDeps(): InboundDeps {
+    return { storage: this.ctx.storage, db: this.db, env: this.env };
+  }
+
+  // The plaintext secret leaves here once; only its ciphertext is stored, bound to this webhook id by the AAD.
+  async createWebhook(workspaceId: string, appId: string, input: WebhookInput): Promise<{ webhook: WebhookView; secret: string }> {
+    await this.ready(workspaceId);
+    const id = newId("whk");
+    const secret = input.secret ?? newWebhookSecret();
+    const now = Date.now();
+    const row: WebhookRow = {
+      id,
+      appId,
+      url: input.url,
+      secretEnc: await encryptSecret(this.env.WEBHOOK_SECRET_KEY, secret, `${workspaceId}:${id}`),
+      events: JSON.stringify(input.events),
+      enabled: input.enabled === false ? 0 : 1,
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.ctx.storage.transactionSync(() => {
+      this.db.insert(schema.webhook).values(row).run();
+    });
+    return { webhook: toWebhookView(row), secret };
+  }
+
+  async listWebhooks(workspaceId: string, appId: string): Promise<WebhookView[]> {
+    await this.ready(workspaceId);
+    return listWebhookRows(this.db, appId).map(toWebhookView);
+  }
+
+  async updateWebhook(workspaceId: string, appId: string, id: string, patch: WebhookPatch): Promise<WebhookView | null> {
+    await this.ready(workspaceId);
+    const row = this.ctx.storage.transactionSync(() =>
+      updateWebhookRow(this.db, appId, id, {
+        ...(patch.url !== undefined ? { url: patch.url } : {}),
+        ...(patch.events !== undefined ? { events: JSON.stringify(patch.events) } : {}),
+        ...(patch.enabled !== undefined ? { enabled: patch.enabled ? 1 : 0 } : {}),
+        updatedAt: Date.now(),
+      }),
+    );
+    return row ? toWebhookView(row) : null;
+  }
+
+  async deleteWebhook(workspaceId: string, appId: string, id: string): Promise<boolean> {
+    await this.ready(workspaceId);
+    return this.ctx.storage.transactionSync(() => deleteWebhookRow(this.db, appId, id));
+  }
+
+  // The secret is decrypted here and only its HMAC signature leaves, inside the returned headers.
+  async claimWebhookDelivery(workspaceId: string, deliveryId: string, now = Date.now()): Promise<WebhookClaim> {
+    await this.ready(workspaceId);
+    const row = this.db.select().from(schema.webhookDelivery).where(eq(schema.webhookDelivery.id, deliveryId)).get();
+    if (!row || row.status !== "pending") return { kind: "skip" };
+    if (row.claimedUntil != null && row.claimedUntil > now) {
+      return { kind: "busy", retryInSeconds: Math.ceil((row.claimedUntil - now) / 1000) };
+    }
+    const hook = this.db.select().from(schema.webhook).where(eq(schema.webhook.id, row.webhookId)).get();
+    if (!hook || hook.enabled !== 1 || !(JSON.parse(hook.events) as string[]).includes(row.event)) {
+      this.failDelivery(deliveryId, "Webhook missing or disabled", now);
+      return { kind: "skip" };
+    }
+    // Re-checked per delivery: a stored URL may predate a rule change.
+    if (!isPublicWebhookUrl(hook.url)) {
+      this.failDelivery(deliveryId, "URL not public", now);
+      return { kind: "skip" };
+    }
+    const payload = await this.env.MAIL.get(row.payloadKey);
+    if (!payload) {
+      this.failDelivery(deliveryId, "Payload missing", now);
+      return { kind: "skip" };
+    }
+    let secret: string;
+    try {
+      secret = await decryptSecret(this.env.WEBHOOK_SECRET_KEY, hook.secretEnc, `${workspaceId}:${hook.id}`);
+    } catch (err) {
+      // A missing key is a config problem: throw so the consumer retries without spending an attempt.
+      if (err instanceof Error && err.message === KEY_ERROR) throw err;
+      this.failDelivery(deliveryId, "Secret unreadable", now);
+      return { kind: "skip" };
+    }
+    const body = webhookBody(row.id, row.event, row.createdAt, await payload.text());
+    const headers = webhookHeaders(row.event, await signBody(secret, body));
+
+    // Re-read inside the transaction: a concurrent claim may have taken the lease while the reads above awaited.
+    return this.ctx.storage.transactionSync((): WebhookClaim => {
+      const current = this.db.select().from(schema.webhookDelivery).where(eq(schema.webhookDelivery.id, deliveryId)).get();
+      if (!current || current.status !== "pending") return { kind: "skip" };
+      if (current.claimedUntil != null && current.claimedUntil > now) {
+        return { kind: "busy", retryInSeconds: Math.ceil((current.claimedUntil - now) / 1000) };
+      }
+      const attempt = current.attempts + 1;
+      this.db
+        .update(schema.webhookDelivery)
+        .set({ claimedUntil: now + CLAIM_LEASE_MS, attempts: attempt, updatedAt: now })
+        .where(eq(schema.webhookDelivery.id, deliveryId))
+        .run();
+      return { kind: "deliver", attempt, url: hook.url, body, headers };
+    });
+  }
+
+  // Returns the delay before the next attempt, or null when the delivery is finished (sent or failed for good).
+  async markWebhookDelivery(
+    workspaceId: string,
+    deliveryId: string,
+    outcome: WebhookOutcome,
+    now = Date.now(),
+  ): Promise<{ retryInSeconds: number | null }> {
+    await this.ready(workspaceId);
+    return this.ctx.storage.transactionSync(() => {
+      const row = this.db.select().from(schema.webhookDelivery).where(eq(schema.webhookDelivery.id, deliveryId)).get();
+      if (!row) return { retryInSeconds: null };
+      const responseStatus = outcome.status ?? null;
+      if (outcome.ok) {
+        this.db
+          .update(schema.webhookDelivery)
+          .set({ status: "sent", responseStatus, lastError: null, claimedUntil: null, updatedAt: now })
+          .where(eq(schema.webhookDelivery.id, deliveryId))
+          .run();
+        return { retryInSeconds: null };
+      }
+      if (row.attempts < MAX_WEBHOOK_ATTEMPTS) {
+        const retryInSeconds = webhookRetryDelaySeconds(row.attempts);
+        this.db
+          .update(schema.webhookDelivery)
+          .set({
+            lastError: outcome.error,
+            responseStatus,
+            nextAttemptAt: now + retryInSeconds * 1000,
+            claimedUntil: null,
+            updatedAt: now,
+          })
+          .where(eq(schema.webhookDelivery.id, deliveryId))
+          .run();
+        return { retryInSeconds };
+      }
+      this.db
+        .update(schema.webhookDelivery)
+        .set({ status: "failed", lastError: outcome.error, responseStatus, claimedUntil: null, updatedAt: now })
+        .where(eq(schema.webhookDelivery.id, deliveryId))
+        .run();
+      return { retryInSeconds: null };
+    });
+  }
+
+  private failDelivery(deliveryId: string, error: string, now: number): void {
+    this.ctx.storage.transactionSync(() => failDeliveryRow(this.db, deliveryId, error, now));
   }
 
   // A lease (claimed_until) stops a second job from sending while the first is in flight.
@@ -425,8 +621,28 @@ export class ClientDO extends DurableObject<Env> {
       .orderBy(schema.message.createdAt)
       .limit(SWEEP_BATCH)
       .all();
-    // Before the enqueue loop: if sendBatch keeps throwing past the alarm retries, the next sweep is still scheduled.
-    if (stale.length > 0) await this.ctx.storage.setAlarm(now + SWEEP_INTERVAL_MS);
+    this.ctx.storage.transactionSync(() =>
+      this.db
+        .update(schema.webhookDelivery)
+        .set({ status: "failed", lastError: "expired", claimedUntil: null, updatedAt: now })
+        .where(and(eq(schema.webhookDelivery.status, "pending"), lt(schema.webhookDelivery.createdAt, now - EXPIRE_MS)))
+        .run(),
+    );
+    const staleDeliveries = this.db
+      .select({ id: schema.webhookDelivery.id })
+      .from(schema.webhookDelivery)
+      .where(
+        and(
+          eq(schema.webhookDelivery.status, "pending"),
+          lt(schema.webhookDelivery.updatedAt, now - STALE_MS),
+          or(isNull(schema.webhookDelivery.claimedUntil), lt(schema.webhookDelivery.claimedUntil, now)),
+        ),
+      )
+      .orderBy(schema.webhookDelivery.createdAt)
+      .limit(SWEEP_BATCH)
+      .all();
+    // Before the enqueue loops: if sendBatch keeps throwing past the alarm retries, the next sweep is still scheduled.
+    if (stale.length > 0 || staleDeliveries.length > 0) await this.ctx.storage.setAlarm(now + SWEEP_INTERVAL_MS);
     for (let i = 0; i < stale.length; i += SWEEP_CHUNK) {
       const ids = stale.slice(i, i + SWEEP_CHUNK).map((row) => row.id);
       await this.env.SEND.sendBatch(ids.map((messageId) => ({ body: { workspaceId, messageId } })));
@@ -436,13 +652,26 @@ export class ClientDO extends DurableObject<Env> {
         for (const id of ids) this.db.update(schema.message).set({ updatedAt: now }).where(eq(schema.message.id, id)).run();
       });
     }
+    for (let i = 0; i < staleDeliveries.length; i += SWEEP_CHUNK) {
+      const ids = staleDeliveries.slice(i, i + SWEEP_CHUNK).map((row) => row.id);
+      await this.env.WEBHOOKS.sendBatch(ids.map((deliveryId) => ({ body: { workspaceId, deliveryId } })));
+      this.ctx.storage.transactionSync(() => {
+        for (const id of ids) this.db.update(schema.webhookDelivery).set({ updatedAt: now }).where(eq(schema.webhookDelivery.id, id)).run();
+      });
+    }
     const queuedLeft = this.db
       .select({ id: schema.message.id })
       .from(schema.message)
       .where(eq(schema.message.status, "queued"))
       .limit(1)
       .get();
-    if (queuedLeft) await this.ctx.storage.setAlarm(now + SWEEP_INTERVAL_MS);
+    const pendingLeft = this.db
+      .select({ id: schema.webhookDelivery.id })
+      .from(schema.webhookDelivery)
+      .where(eq(schema.webhookDelivery.status, "pending"))
+      .limit(1)
+      .get();
+    if (queuedLeft || pendingLeft) await this.ctx.storage.setAlarm(now + SWEEP_INTERVAL_MS);
     return { requeued: stale.length, expired };
   }
 
