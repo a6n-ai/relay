@@ -35,6 +35,8 @@ const COPY = new Map<string, string>([
   ["delivery not failed", "Only failed deliveries can be retried."],
   ["webhook disabled", "Turn this webhook on before retrying its deliveries."],
   ["webhooks unavailable", "Webhooks are unavailable right now. Try again later."],
+  ["missing email column", "The CSV needs an email column in its first row."],
+  ["too many rows", "Import at most 10,000 contacts at a time."],
 ]);
 
 // The server's fixed copy is mapped to plain words; anything unknown (a network failure, a 500) gets the fallback, never the raw text.

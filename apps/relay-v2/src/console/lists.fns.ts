@@ -8,6 +8,7 @@ import {
   addMemberFor,
   createListFor,
   deleteListFor,
+  importCsvFor,
   listListsFor,
   listMembersFor,
   removeMemberFor,
@@ -16,6 +17,7 @@ import {
 
 const READ = { permission: { list: ["read"] } };
 const WRITE = { permission: { list: ["write"] }, write: true };
+const IMPORT = { permission: { list: ["import"] }, write: true };
 
 // Null means the role cannot see lists or their members: the page shows a denied state instead of an error.
 export const fetchLists = createServerFn({ method: "GET" })
@@ -81,6 +83,17 @@ export const addMemberFn = createServerFn({ method: "POST" })
     try {
       const actor = await requireActor(env, getRequestHeaders(), WRITE);
       return await addMemberFor(env, actor, data.listId, data.member);
+    } catch (err) {
+      toResponseError(err);
+    }
+  });
+
+export const importCsvFn = createServerFn({ method: "POST" })
+  .validator(validate(z.object({ listId: id, csv: z.string().max(2_000_000) })))
+  .handler(async ({ data }) => {
+    try {
+      const actor = await requireActor(env, getRequestHeaders(), IMPORT);
+      return await importCsvFor(env, actor, data);
     } catch (err) {
       toResponseError(err);
     }

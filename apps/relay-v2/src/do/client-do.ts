@@ -40,8 +40,11 @@ import {
   deleteListRow,
   listListRows,
   listMemberRows,
+  IMPORT_CHUNK,
+  importMemberRow,
   removeMemberRow,
   updateListRow,
+  type ImportResult,
   type ListInput,
   type ListView,
   type MemberInput,
@@ -369,6 +372,22 @@ export class ClientDO extends DurableObject<Env> {
   async addMember(workspaceId: string, listId: string, input: MemberInput): Promise<"added" | "existing" | "suppressed" | "missing"> {
     await this.ready(workspaceId);
     return this.ctx.storage.transactionSync(() => addMemberRow(this.ctx.storage.sql, listId, input, (email) => this.suppressed(email, "marketing")));
+  }
+
+  async importMembers(workspaceId: string, listId: string, rows: MemberInput[]): Promise<ImportResult | null> {
+    await this.ready(workspaceId);
+    const sql = this.ctx.storage.sql;
+    const list = sql.exec<{ app_id: string }>("SELECT app_id FROM contact_list WHERE id = ?", listId).toArray()[0];
+    if (!list) return null;
+    const total: ImportResult = { added: 0, existing: 0, suppressed: 0 };
+    for (let start = 0; start < rows.length; start += IMPORT_CHUNK) {
+      this.ctx.storage.transactionSync(() => {
+        for (const row of rows.slice(start, start + IMPORT_CHUNK)) {
+          total[importMemberRow(sql, listId, list.app_id, row, (email) => this.suppressed(email, "marketing"))] += 1;
+        }
+      });
+    }
+    return total;
   }
 
   async removeMember(workspaceId: string, listId: string, memberId: string): Promise<boolean> {

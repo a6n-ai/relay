@@ -1,5 +1,6 @@
+import { parseContactsCsv } from "../core/csv";
 import { clientFor } from "../core/messages";
-import type { ListInput, ListView, MemberInput, MemberView } from "../do/lists";
+import type { ImportResult, ListInput, ListView, MemberInput, MemberView } from "../do/lists";
 import { decodeCursor } from "../do/console-reads";
 import type { Env } from "../env";
 import { writeAudit } from "../lib/auth/audit";
@@ -9,6 +10,7 @@ import { getApp } from "./apps";
 
 const READ = { list: ["read"] };
 const WRITE = { list: ["write"] };
+const IMPORT = { list: ["import"] };
 
 function requireRead(actor: ConsoleActor): void {
   if (!allows(actor.roles, READ)) throw new ConsoleError(403, "forbidden");
@@ -16,6 +18,11 @@ function requireRead(actor: ConsoleActor): void {
 
 function requireWrite(actor: ConsoleActor): void {
   if (!allows(actor.roles, WRITE)) throw new ConsoleError(403, "forbidden");
+  if (actor.workspaceStatus === "suspended") throw new ConsoleError(403, "workspace suspended");
+}
+
+function requireImport(actor: ConsoleActor): void {
+  if (!allows(actor.roles, IMPORT)) throw new ConsoleError(403, "forbidden");
   if (actor.workspaceStatus === "suspended") throw new ConsoleError(403, "workspace suspended");
 }
 
@@ -91,4 +98,30 @@ export async function removeMemberFor(env: Env, actor: ConsoleActor, listId: str
     target: memberId,
     data: { listId },
   });
+}
+
+// Parser errors carry fixed messages, so they go out as 400 as they are.
+export async function importCsvFor(
+  env: Env,
+  actor: ConsoleActor,
+  input: { listId: string; csv: string },
+): Promise<ImportResult & { invalid: number; duplicates: number }> {
+  requireImport(actor);
+  let parsed: ReturnType<typeof parseContactsCsv>;
+  try {
+    parsed = parseContactsCsv(input.csv);
+  } catch (err) {
+    throw new ConsoleError(400, err instanceof Error ? err.message : "invalid csv");
+  }
+  const result = await clientFor(env, actor.workspaceId).importMembers(actor.workspaceId, input.listId, parsed.rows);
+  if (!result) throw new ConsoleError(404, "not found");
+  const counts = { ...result, invalid: parsed.invalid, duplicates: parsed.duplicates };
+  await writeAudit(env, {
+    action: "list.import",
+    actorUserId: actor.userId,
+    workspaceId: actor.workspaceId,
+    target: input.listId,
+    data: counts,
+  });
+  return counts;
 }

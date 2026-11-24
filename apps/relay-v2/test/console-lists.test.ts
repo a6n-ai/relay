@@ -3,7 +3,16 @@ import { eq } from "drizzle-orm";
 import { beforeAll, describe, expect, it } from "vitest";
 import { requireActor } from "../src/console/actor";
 import { addApp } from "../src/console/apps";
-import { addMemberFor, createListFor, deleteListFor, listListsFor, listMembersFor, removeMemberFor, updateListFor } from "../src/console/lists";
+import {
+  addMemberFor,
+  createListFor,
+  deleteListFor,
+  importCsvFor,
+  listListsFor,
+  listMembersFor,
+  removeMemberFor,
+  updateListFor,
+} from "../src/console/lists";
 import { securityDb } from "../src/db/security/client";
 import { securityAudit } from "../src/db/security/schema";
 import { addMember, cookieFor, createWorkspace, headersFor, ORIGIN, setActive } from "./console-helpers";
@@ -68,5 +77,38 @@ describe("lists console", () => {
     ).filter((r) => r.action.startsWith("list."));
     expect(rows.map((r) => r.action)).toEqual(["list.create", "list.member.add", "list.member.remove"]);
     for (const r of rows) expect(JSON.stringify(r)).not.toContain("@");
+  });
+
+  it("refuses a CSV import from a member with 403", async () => {
+    const { owner, workspaceId } = await workspaceFor("lst-imp-role@example.com", "Lst Imp Role Co");
+    const { id: appId } = await addApp(env, owner, { name: "Web", slug: "web" });
+    const list = await createListFor(env, owner, appId, { name: "Imp", consentSource: "import_other" });
+    const cookie = await addMember(workspaceId, "lst-imp-member@example.com", "member");
+    const member = await requireActor(env, headersFor(cookie));
+    await expect(importCsvFor(env, member, { listId: list.id, csv: "email\na@x.com" })).rejects.toMatchObject({ status: 403 });
+  });
+
+  it("imports a CSV for an owner and returns all five counts", async () => {
+    const { owner } = await workspaceFor("lst-imp-owner@example.com", "Lst Imp Owner Co");
+    const { id: appId } = await addApp(env, owner, { name: "Web", slug: "web" });
+    const list = await createListFor(env, owner, appId, { name: "Imp", consentSource: "import_other" });
+    const csv = "email,first_name\na@x.com,Ann\nA@X.com,dup\nnot-an-email,x\nb@x.com,Bo";
+    expect(await importCsvFor(env, owner, { listId: list.id, csv })).toEqual({
+      added: 2,
+      existing: 0,
+      suppressed: 0,
+      invalid: 1,
+      duplicates: 1,
+    });
+  });
+
+  it("returns 400 with the parser message for a CSV without an email column", async () => {
+    const { owner } = await workspaceFor("lst-imp-bad@example.com", "Lst Imp Bad Co");
+    const { id: appId } = await addApp(env, owner, { name: "Web", slug: "web" });
+    const list = await createListFor(env, owner, appId, { name: "Imp", consentSource: "import_other" });
+    await expect(importCsvFor(env, owner, { listId: list.id, csv: "name\nPriya" })).rejects.toMatchObject({
+      status: 400,
+      message: "missing email column",
+    });
   });
 });

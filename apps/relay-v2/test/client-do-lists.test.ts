@@ -98,4 +98,41 @@ describe("contact lists in the workspace DO", () => {
     });
     expect(cursorError).toBe("invalid cursor");
   });
+
+  it("imports 250 rows across three chunks, and a re-run adds none", async () => {
+    const ws = "ws_list_import";
+    const stub = stubFor(ws);
+    const list = await stub.createList(ws, "app_1", { name: "L", consentSource: "import_other" });
+    const rows = Array.from({ length: 250 }, (_, i) => ({ email: `i${i}@x.com` }));
+    expect(await stub.importMembers(ws, list.id, rows)).toEqual({ added: 250, existing: 0, suppressed: 0 });
+    expect(await stub.importMembers(ws, list.id, rows)).toEqual({ added: 0, existing: 250, suppressed: 0 });
+  });
+
+  it("leaves an existing member unchanged on re-import", async () => {
+    const ws = "ws_list_keep";
+    const stub = stubFor(ws);
+    const list = await stub.createList(ws, "app_1", { name: "L", consentSource: "purchase" });
+    await stub.addMember(ws, list.id, { email: "keep@x.com", firstName: "Original", consentAt: 1_000 });
+    await stub.importMembers(ws, list.id, [{ email: "KEEP@x.com", firstName: "Changed", consentAt: 2_000 }]);
+    const page = await stub.listMembers(ws, list.id);
+    expect(page?.rows).toMatchObject([{ email: "keep@x.com", firstName: "Original", consentAt: 1_000, source: "manual" }]);
+  });
+
+  it("counts a suppressed address as suppressed and does not add it", async () => {
+    const ws = "ws_list_import_supp";
+    const stub = stubFor(ws);
+    const list = await stub.createList(ws, "app_1", { name: "L", consentSource: "import_other" });
+    await stub.addSuppression(ws, "gone@x.com", "complaint");
+    expect(await stub.importMembers(ws, list.id, [{ email: "gone@x.com" }, { email: "ok@x.com" }])).toEqual({
+      added: 1,
+      existing: 0,
+      suppressed: 1,
+    });
+    expect((await stub.listMembers(ws, list.id))?.rows.map((r) => r.email)).toEqual(["ok@x.com"]);
+  });
+
+  it("returns null for a missing list", async () => {
+    const ws = "ws_list_import_missing";
+    expect(await stubFor(ws).importMembers(ws, "ctl_missing00000", [{ email: "a@x.com" }])).toBeNull();
+  });
 });

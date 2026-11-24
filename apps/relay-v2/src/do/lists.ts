@@ -166,6 +166,36 @@ export function addMemberRow(
   return "added";
 }
 
+export type ImportResult = { added: number; existing: number; suppressed: number };
+export const IMPORT_CHUNK = 100;
+
+// The unique index makes a repeat a no-op, so only a row that was inserted counts as added.
+export function importMemberRow(
+  sql: SqlStorage,
+  listId: string,
+  appId: string,
+  input: MemberInput,
+  isSuppressed: (email: string) => boolean,
+): keyof ImportResult {
+  const email = input.email.trim().toLowerCase();
+  if (isSuppressed(email)) return "suppressed";
+  const now = Date.now();
+  const inserted = sql
+    .exec(
+      "INSERT INTO contact_list_member (id, list_id, app_id, email, first_name, last_name, source, consent_at, created_at) VALUES (?, ?, ?, ?, ?, ?, 'import', ?, ?) ON CONFLICT (list_id, email) DO NOTHING RETURNING id",
+      newId("clm"),
+      listId,
+      appId,
+      email,
+      input.firstName || null,
+      input.lastName || null,
+      input.consentAt ?? now,
+      now,
+    )
+    .toArray();
+  return inserted.length > 0 ? "added" : "existing";
+}
+
 export function removeMemberRow(sql: SqlStorage, listId: string, memberId: string): boolean {
   return sql.exec("DELETE FROM contact_list_member WHERE id = ? AND list_id = ? RETURNING id", memberId, listId).toArray().length > 0;
 }
