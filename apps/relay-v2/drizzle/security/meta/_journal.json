@@ -15,6 +15,13 @@
       "when": 1795511023122,
       "tag": "0001_demonic_meltdown",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1795518389657,
+      "tag": "0002_tiny_roland_deschain",
+      "breakpoints": true
     }
   ]
 }

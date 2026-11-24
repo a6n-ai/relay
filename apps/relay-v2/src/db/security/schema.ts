@@ -167,7 +167,11 @@ export const addressGrant = sqliteTable(
     teamId: text("team_id").references(() => team.id, { onDelete: "cascade" }),
     createdAt: createdAt(),
   },
-  (t) => [check("address_grant_one_target", sql`(${t.memberId} IS NULL) <> (${t.teamId} IS NULL)`)],
+  (t) => [
+    check("address_grant_one_target", sql`(${t.memberId} IS NULL) <> (${t.teamId} IS NULL)`),
+    uniqueIndex("address_grant_member_unique").on(t.addressId, t.memberId).where(sql`${t.memberId} IS NOT NULL`),
+    uniqueIndex("address_grant_team_unique").on(t.addressId, t.teamId).where(sql`${t.teamId} IS NOT NULL`),
+  ],
 );
 
 // Never store OTPs, tokens or key secrets in data.

@@ -19,6 +19,7 @@ const COPY = new Map<string, string>([
   ["unknown region", "That sending region is not available."],
   ["address must use one of your domains", "Add the domain first, then create addresses on it."],
   ["address already exists", "That address is already set up."],
+  ["already has access", "That person or team already has access to this address."],
   ["domain claimed", "That domain is already used by another workspace."],
   ["domain registered", "That domain is already registered and cannot be added here."],
   ["domain not verified", "Verify the domain's DNS records before using it for a mailbox address."],

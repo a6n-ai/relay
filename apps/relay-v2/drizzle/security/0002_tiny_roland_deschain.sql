@@ -1,0 +1,4 @@
+DELETE FROM `address_grant` WHERE `member_id` IS NOT NULL AND `rowid` NOT IN (SELECT MIN(`rowid`) FROM `address_grant` WHERE `member_id` IS NOT NULL GROUP BY `address_id`, `member_id`);--> statement-breakpoint
+DELETE FROM `address_grant` WHERE `team_id` IS NOT NULL AND `rowid` NOT IN (SELECT MIN(`rowid`) FROM `address_grant` WHERE `team_id` IS NOT NULL GROUP BY `address_id`, `team_id`);--> statement-breakpoint
+CREATE UNIQUE INDEX `address_grant_member_unique` ON `address_grant` (`address_id`,`member_id`) WHERE "address_grant"."member_id" IS NOT NULL;--> statement-breakpoint
+CREATE UNIQUE INDEX `address_grant_team_unique` ON `address_grant` (`address_id`,`team_id`) WHERE "address_grant"."team_id" IS NOT NULL;
