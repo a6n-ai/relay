@@ -25,13 +25,13 @@ describe("ClientDO migrations", () => {
     expect(result.tables).toEqual(expect.arrayContaining(["audit_log", "message", "suppression"]));
   });
 
-  it("fresh DO reaches schema_version 3 with message_event and the inbound tables", async () => {
+  it("fresh DO reaches the latest schema_version with message_event and the inbound tables", async () => {
     const stub = env.CLIENT.get(env.CLIENT.idFromName("migrate-v3"));
     const result = await runInDurableObject(stub, (_instance, state) => ({
       version: state.storage.kv.get<number>("schema_version"),
       tables: tables(state.storage.sql),
     }));
-    expect(result.version).toBe(3);
+    expect(result.version).toBe(CLIENT_MIGRATIONS.length);
     expect(result.tables).toEqual(
       expect.arrayContaining(["message_event", "attachment", "webhook", "webhook_delivery", "inbound_failure"]),
     );
@@ -56,7 +56,7 @@ describe("ClientDO migrations", () => {
       const row = storage.sql.exec<{ ses_region: string | null }>("SELECT ses_region FROM message WHERE id = ?", "msg_old000000001").one();
       return { version, sesRegion: row.ses_region };
     });
-    expect(result).toEqual({ version: 3, sesRegion: null });
+    expect(result).toEqual({ version: CLIENT_MIGRATIONS.length, sesRegion: null });
   });
 
   it("upgrades a version-2 DO in place, keeping rows with null inbound columns", async () => {
@@ -84,7 +84,7 @@ describe("ClientDO migrations", () => {
         .one();
       return { version, addressId: row.address_id, rfcMessageId: row.rfc_message_id };
     });
-    expect(result).toEqual({ version: 3, addressId: null, rfcMessageId: null });
+    expect(result).toEqual({ version: CLIENT_MIGRATIONS.length, addressId: null, rfcMessageId: null });
   });
 
   it("enforces Message-ID uniqueness for inbound rows per app, and never for outbound rows", async () => {

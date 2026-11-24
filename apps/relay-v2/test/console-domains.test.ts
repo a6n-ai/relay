@@ -19,10 +19,9 @@ import { coreDb } from "../src/db/core/client";
 import { address, sendingDomain } from "../src/db/core/schema";
 import { securityDb } from "../src/db/security/client";
 import { addressGrant, member } from "../src/db/security/schema";
-import { addMember, cookieFor, createWorkspace, ORIGIN, setActive } from "./console-helpers";
+import { addMember, cookieFor, createWorkspace, headersFor, ORIGIN, setActive } from "./console-helpers";
 import { applyMigrations } from "./migrate";
 
-const headersFor = (cookie: string) => new Headers({ cookie });
 const WRITE = { permission: { sending: ["write"] }, write: true };
 
 beforeAll(async () => {

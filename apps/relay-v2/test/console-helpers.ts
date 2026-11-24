@@ -10,6 +10,7 @@ import { newId } from "../src/lib/ids";
 export const ORIGIN = "http://localhost";
 export const BASE = `${ORIGIN}/api/auth`;
 export const json = { "content-type": "application/json" };
+export const headersFor = (cookie: string) => new Headers({ cookie });
 const db = securityDb(env);
 
 export async function insertUser(email: string, role: "user" | "admin"): Promise<void> {

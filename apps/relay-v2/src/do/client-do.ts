@@ -1,5 +1,5 @@
 import { DurableObject } from "cloudflare:workers";
-import { and, asc, eq, gte, inArray, isNull, lt, ne, or, sql, type SQLWrapper } from "drizzle-orm";
+import { and, eq, gte, inArray, isNull, lt, ne, or, sql, type SQLWrapper } from "drizzle-orm";
 import { drizzle, type DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
 import type { SesSendRequest } from "../core/ses";
 import { DEFAULT_MONTHLY_QUOTA, LIMITS_TTL_MS, loadWorkspaceLimits, SENDER_RETRY_MS, type WorkspaceLimits } from "../core/limits";
@@ -13,6 +13,15 @@ import { MAX_WEBHOOK_ATTEMPTS, webhookRetryDelaySeconds, type WebhookClaim, type
 import { isPublicWebhookUrl, type WebhookInput, type WebhookPatch, type WebhookView } from "../core/webhooks";
 import type { Env, InboundJob } from "../env";
 import { newId } from "../lib/ids";
+import {
+  attachmentViews,
+  listMessageRows,
+  readMessageDetail,
+  type MessageAccess,
+  type MessageDetail,
+  type MessageQuery,
+  type MessageSummary,
+} from "./console-reads";
 import { storeInbound, writeInboundFailure, type InboundDeps, type InboundResult } from "./inbound";
 import * as schema from "./client-schema";
 import { CLIENT_MIGRATIONS, migrate } from "./migrations";
@@ -191,20 +200,21 @@ export class ClientDO extends DurableObject<Env> {
     const row = this.db.select().from(schema.message).where(eq(schema.message.id, id)).get();
     if (!row) return null;
     const object = row.htmlKey ? await this.env.MAIL.get(row.htmlKey) : null;
-    const attachments = this.db
-      .select({
-        id: schema.attachment.id,
-        filename: schema.attachment.filename,
-        contentType: schema.attachment.contentType,
-        sizeBytes: schema.attachment.sizeBytes,
-        contentId: schema.attachment.contentId,
-        position: schema.attachment.position,
-      })
-      .from(schema.attachment)
-      .where(eq(schema.attachment.messageId, id))
-      .orderBy(asc(schema.attachment.position))
-      .all();
-    return { ...row, html: object ? await object.text() : null, attachments };
+    return { ...row, html: object ? await object.text() : null, attachments: attachmentViews(this.db, id) };
+  }
+
+  async listMessages(
+    workspaceId: string,
+    q: MessageQuery,
+    access: MessageAccess,
+  ): Promise<{ rows: MessageSummary[]; nextCursor: string | null }> {
+    await this.ready(workspaceId);
+    return listMessageRows(this.db, q, access);
+  }
+
+  async getMessageDetail(workspaceId: string, id: string, access: MessageAccess): Promise<MessageDetail | null> {
+    await this.ready(workspaceId);
+    return readMessageDetail(this.db, this.env, id, access);
   }
 
   // The letter is already in R2 under job.rawKey. Idempotent on the raw key and on the app's Message-ID.

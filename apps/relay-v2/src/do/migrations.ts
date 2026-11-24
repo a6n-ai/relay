@@ -148,6 +148,11 @@ CREATE TABLE inbound_failure (
   updated_at INTEGER NOT NULL
 );
 `,
+`
+CREATE INDEX message_direction_created ON message (direction, created_at, id);
+CREATE INDEX message_in_reply_to ON message (in_reply_to);
+CREATE INDEX webhook_delivery_webhook_created ON webhook_delivery (webhook_id, created_at, id);
+`,
 ];
 
 // PRAGMA user_version is rejected by DO SQL (SQLITE_AUTH), so the version lives in sync KV.

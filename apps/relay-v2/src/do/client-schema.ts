@@ -52,6 +52,8 @@ export const message = sqliteTable(
     uniqueIndex("message_raw_key_unique").on(t.rawKey),
     uniqueIndex("message_in_rfc_unique").on(t.appId, t.rfcMessageId).where(sql`${t.direction} = 'in'`),
     index("message_address_created").on(t.addressId, t.createdAt),
+    index("message_direction_created").on(t.direction, t.createdAt, t.id),
+    index("message_in_reply_to").on(t.inReplyTo),
   ],
 );
 
@@ -154,6 +156,7 @@ export const webhookDelivery = sqliteTable(
     check("webhook_delivery_status", sql`${t.status} IN ('pending', 'sent', 'failed')`),
     uniqueIndex("webhook_delivery_unique").on(t.webhookId, t.messageId, t.event),
     index("webhook_delivery_status").on(t.status, t.updatedAt),
+    index("webhook_delivery_webhook_created").on(t.webhookId, t.createdAt, t.id),
   ],
 );
 
