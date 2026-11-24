@@ -111,4 +111,18 @@ describe("console platform admin", { timeout: 60_000 }, () => {
     expect(res.status).toBe(200);
     expect(await res.text()).toContain("adm-page-co");
   });
+
+  it("opens the admin page for a platform admin with no workspace membership, and still redirects a plain user", async () => {
+    await workspaceFor("adm-bare-host@example.com", "adm-bare-co");
+    const bare = await cookieFor("adm-bare@example.com", "admin");
+
+    const page = await SELF.fetch(`${ORIGIN}/admin`, { redirect: "manual", headers: { cookie: bare } });
+    expect(page.status).toBe(200);
+    expect(await page.text()).toContain("adm-bare-co");
+
+    const plain = await cookieFor("adm-bare-user@example.com", "user");
+    const res = await SELF.fetch(`${ORIGIN}/admin`, { redirect: "manual", headers: { cookie: plain } });
+    expect([302, 307]).toContain(res.status);
+    expect(res.headers.get("location")).toBe("/no-workspace");
+  });
 });

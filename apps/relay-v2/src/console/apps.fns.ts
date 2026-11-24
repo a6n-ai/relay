@@ -4,12 +4,10 @@ import { env } from "cloudflare:workers";
 import { z } from "zod";
 import { requireActor, toResponseError } from "./actor";
 import { addApp, createKey, getApp, listApps, listKeys, revokeKey } from "./apps";
+import { appId, name } from "./schemas";
 
 const READ = { permission: { tenant: ["read"] } };
 const WRITE = { permission: { tenant: ["write"] }, write: true };
-
-const name = z.string().trim().min(1).max(80);
-const appId = z.string().min(1);
 
 export const fetchApps = createServerFn({ method: "GET" }).handler(async () => {
   try {

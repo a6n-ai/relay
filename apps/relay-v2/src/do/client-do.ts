@@ -373,12 +373,23 @@ export class ClientDO extends DurableObject<Env> {
   async claimSend(workspaceId: string, messageId: string, now = Date.now()): Promise<SendClaim> {
     await this.ready(workspaceId);
     const queued = this.db
-      .select({ fromEmail: schema.message.fromEmail })
+      .select({
+        fromEmail: schema.message.fromEmail,
+        status: schema.message.status,
+        sesMessageId: schema.message.sesMessageId,
+        claimedUntil: schema.message.claimedUntil,
+      })
       .from(schema.message)
       .where(eq(schema.message.id, messageId))
       .get();
     if (!queued) return { kind: "skip", reason: "missing" };
-    // Read before the transaction. With no snapshot and no D1, the job retries: queued mail is never failed for an outage.
+    if (queued.status !== "queued" || queued.sesMessageId) {
+      return { kind: "skip", reason: queued.status === "queued" ? "sent" : (queued.status as "sent" | "failed" | "suppressed") };
+    }
+    if (queued.claimedUntil != null && queued.claimedUntil > now) {
+      return { kind: "busy", retryInSeconds: Math.ceil((queued.claimedUntil - now) / 1000) };
+    }
+    // Only a row about to be sent needs limits. Read before the transaction. With no snapshot and no D1, the job retries: queued mail is never failed for an outage.
     const limits = await this.limits(workspaceId, { forSender: queued.fromEmail ?? undefined });
     if (limits.fetchedAt === 0) return { kind: "busy", retryInSeconds: 60 };
     const claimed = this.ctx.storage.transactionSync(():

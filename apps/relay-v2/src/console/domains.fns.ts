@@ -12,12 +12,10 @@ import {
   removeAddress,
   updateAddress,
 } from "./domains";
+import { displayName, id } from "./schemas";
 
 const READ = { permission: { sending: ["read"] } };
 const WRITE = { permission: { sending: ["write"] }, write: true };
-
-const id = z.string().min(1);
-const displayName = z.string().trim().max(80).optional();
 
 // Null means the role cannot read sending domains (billing): the page shows a denied state instead of an error.
 export const fetchDomains = createServerFn({ method: "GET" }).handler(async () => {

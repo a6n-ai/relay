@@ -7,7 +7,9 @@ export const Route = createFileRoute("/_app")({
   beforeLoad: async ({ location }) => {
     const shell = await getShell();
     if (!shell) throw redirect({ to: "/sign-in", search: { redirect: location.href } });
-    if (!shell.active) throw redirect({ to: "/no-workspace" });
+    // The platform admin page covers every workspace, so an admin with no membership can still open it.
+    const platformPage = shell.platformAdmin && location.pathname === "/admin";
+    if (!shell.active && !platformPage) throw redirect({ to: "/no-workspace" });
     return { shell };
   },
   component: AppLayout,

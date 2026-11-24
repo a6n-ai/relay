@@ -15,12 +15,10 @@ import {
   removeMember,
   setTeamMember,
 } from "./members";
+import { id, inviteInput, role } from "./schemas";
 
 const READ = {};
 const perm = (need: Record<string, string[]>) => ({ permission: need, write: true });
-
-const id = z.string().min(1);
-const role = z.enum(["owner", "admin", "member", "billing"]);
 
 export const fetchPeople = createServerFn({ method: "GET" }).handler(async () => {
   try {
@@ -30,8 +28,6 @@ export const fetchPeople = createServerFn({ method: "GET" }).handler(async () =>
     toResponseError(err);
   }
 });
-
-export const inviteInput = z.object({ email: z.string().trim().toLowerCase().email(), role });
 
 export const inviteMemberFn = createServerFn({ method: "POST" })
   .validator(inviteInput)

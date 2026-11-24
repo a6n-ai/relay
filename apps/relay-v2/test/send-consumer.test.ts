@@ -411,4 +411,22 @@ describe("handleSendBatch", () => {
     vi.restoreAllMocks();
     expect(await stub.getMessage(ws, job.messageId)).toMatchObject({ status: "queued", attempts: 0 });
   });
+
+  it("acks a duplicate of a sent message after its workspace is suspended, without loading limits or failing it", async () => {
+    const ws = "wsp_claim_sent_suspend";
+    const stub = await seedWorkspace(ws);
+    const job = await queue(stub, ws);
+    await deliver(job);
+    await setWorkspaceStatus(env, { userId: "usr_ops_test" }, ws, "suspended");
+    vi.spyOn(env.CORE_DB, "prepare").mockImplementation(() => {
+      throw new Error("D1 down");
+    });
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const { outcomes } = await deliver(job);
+    expect(outcomes).toEqual([{ kind: "ack" }]);
+    expect(memorySesTransport.sent).toHaveLength(1);
+    vi.restoreAllMocks();
+    expect(await stub.getMessage(ws, job.messageId)).toMatchObject({ status: "sent" });
+  });
 });

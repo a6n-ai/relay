@@ -13,7 +13,7 @@ import {
   removeMember,
   setTeamMember,
 } from "../src/console/members";
-import { inviteInput } from "../src/console/members.fns";
+import { inviteInput } from "../src/console/schemas";
 import { securityDb } from "../src/db/security/client";
 import { invitation, member, user, workspace } from "../src/db/security/schema";
 import { memoryInviteMailer } from "../src/lib/auth/invite-mailer";
