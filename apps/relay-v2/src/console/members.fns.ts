@@ -31,8 +31,10 @@ export const fetchPeople = createServerFn({ method: "GET" }).handler(async () =>
   }
 });
 
+export const inviteInput = z.object({ email: z.string().trim().toLowerCase().email(), role });
+
 export const inviteMemberFn = createServerFn({ method: "POST" })
-  .validator(z.object({ email: z.string().trim().min(3).max(254), role }))
+  .validator(inviteInput)
   .handler(async ({ data }) => {
     try {
       const headers = getRequestHeaders();

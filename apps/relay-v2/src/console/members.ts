@@ -84,17 +84,23 @@ export async function inviteMember(
   if ((await invitesInWindow(env, actor.workspaceId)) >= INVITES_PER_DAY) throw new ConsoleError(429, "invite limit reached");
 
   const email = input.email.trim().toLowerCase();
-  // Sign-up is disabled, so the invite is the only path that creates a row for a new email. Existing rows are left alone.
-  await securityDb(env)
-    .insert(user)
-    .values({ name: email.split("@")[0], email, role: "user", emailVerified: false })
-    .onConflictDoNothing({ target: user.email });
+  const cancel = (invitationId: string) =>
+    authCall(() => createAuth(env).api.cancelInvitation({ headers, body: { invitationId } }));
   const { id } = await authCall(() => createAuth(env).api.createInvitation({ headers, body: { email, role: input.role } }));
-
   // Concurrent requests can all pass the count above. Recounting after the insert keeps live invites at or under the cap.
   if ((await invitesInWindow(env, actor.workspaceId)) > INVITES_PER_DAY) {
-    await authCall(() => createAuth(env).api.cancelInvitation({ headers, body: { invitationId: id } }));
+    await cancel(id);
     throw new ConsoleError(429, "invite limit reached");
+  }
+  // Sign-up is disabled, so the invite is the only path that creates a row for a new email. Existing rows are left alone.
+  try {
+    await securityDb(env)
+      .insert(user)
+      .values({ name: email.split("@")[0], email, role: "user", emailVerified: false })
+      .onConflictDoNothing({ target: user.email });
+  } catch (err) {
+    await cancel(id);
+    throw err;
   }
   return { id };
 }
@@ -167,11 +173,13 @@ export async function setTeamMember(
 }
 
 // Any signed-in user may look at an invite; the id is the secret, so the page shows only what the invite already says.
+// A signed-in user for another email gets only the state, so the workspace name and invitee email never reach their page.
 export async function getInvite(env: Env, headers: Headers, id: string) {
-  await requireSession(env, headers);
+  const { userId } = await requireSession(env, headers);
   const [row] = await securityDb(env)
     .select({
       workspaceName: workspace.name,
+      workspaceStatus: workspace.status,
       role: invitation.role,
       email: invitation.email,
       status: invitation.status,
@@ -181,7 +189,16 @@ export async function getInvite(env: Env, headers: Headers, id: string) {
     .innerJoin(workspace, eq(workspace.id, invitation.organizationId))
     .where(eq(invitation.id, id));
   if (!row) return null;
-  return { workspaceName: row.workspaceName, role: row.role ?? "member", email: row.email, status: effectiveStatus(row) };
+  const [me] = await securityDb(env).select({ email: user.email }).from(user).where(eq(user.id, userId));
+  if (me?.email !== row.email) return { state: "other-email" as const };
+  if (row.workspaceStatus === "suspended") return { state: "suspended" as const };
+  return {
+    state: "invite" as const,
+    workspaceName: row.workspaceName,
+    role: row.role ?? "member",
+    email: row.email,
+    status: effectiveStatus(row),
+  };
 }
 
 export async function acceptInvite(env: Env, headers: Headers, id: string): Promise<void> {
@@ -192,7 +209,7 @@ export async function acceptInvite(env: Env, headers: Headers, id: string): Prom
     .where(eq(invitation.id, id));
   if (!row) throw new ConsoleError(404, "not found");
   const [me] = await securityDb(env).select({ email: user.email }).from(user).where(eq(user.id, userId));
-  if (me.email !== row.email) throw new ConsoleError(403, "this invite is for another email");
+  if (me?.email !== row.email) throw new ConsoleError(403, "this invite is for another email");
   const status = effectiveStatus(row);
   if (status !== "pending") throw new ConsoleError(409, `invite ${status}`);
   await authCall(() => createAuth(env).api.acceptInvitation({ headers, body: { invitationId: id } }));

@@ -13,6 +13,7 @@ import {
   removeMember,
   setTeamMember,
 } from "../src/console/members";
+import { inviteInput } from "../src/console/members.fns";
 import { securityDb } from "../src/db/security/client";
 import { invitation, member, user, workspace } from "../src/db/security/schema";
 import { memoryInviteMailer } from "../src/lib/auth/invite-mailer";
@@ -133,7 +134,7 @@ describe("console members, teams and invites", { timeout: 60_000 }, () => {
       status: 403,
       message: "this invite is for another email",
     });
-    await expect(getInvite(env, headersFor(otherCookie), id)).resolves.toMatchObject({ workspaceName: "Mem Accept Co" });
+    await expect(getInvite(env, headersFor(otherCookie), id)).resolves.toEqual({ state: "other-email" });
   });
 
   it("redirects a signed-out visit to the invite page to sign-in with the invite path", async () => {
@@ -170,5 +171,52 @@ describe("console members, teams and invites", { timeout: 60_000 }, () => {
       status: 403,
       message: "workspace suspended",
     });
+  });
+
+  it("rejects a malformed invite email at the validator and normalises a valid one", async () => {
+    expect(inviteInput.safeParse({ email: "not-an-email", role: "member" }).success).toBe(false);
+    const [row] = await db.select().from(user).where(eq(user.email, "not-an-email"));
+    expect(row).toBeUndefined();
+    expect(inviteInput.parse({ email: " Padded@X.test ", role: "member" }).email).toBe("padded@x.test");
+  });
+
+  it("creates no user row for an invite refused by the daily cap", async () => {
+    const owner = await workspaceFor("mem-cap-norow@example.com", "Mem Cap NoRow Co");
+    const ownerId = await userIdOf("mem-cap-norow@example.com");
+    await seedInvites(owner.workspaceId, ownerId, 20, new Date());
+    const actor = await requireActor(env, headersFor(owner.cookie), INVITE);
+    await expect(
+      inviteMember(env, actor, headersFor(owner.cookie), { email: "capped-new@x.test", role: "member" }),
+    ).rejects.toMatchObject({ status: 429 });
+    const [row] = await db.select().from(user).where(eq(user.email, "capped-new@x.test"));
+    expect(row).toBeUndefined();
+  });
+
+  it("shows a signed-in user for another email only a neutral page, without the workspace name or invitee email", async () => {
+    const owner = await workspaceFor("mem-leak-owner@example.com", "Mem Leak Co");
+    const actor = await requireActor(env, headersFor(owner.cookie), INVITE);
+    const { id } = await inviteMember(env, actor, headersFor(owner.cookie), { email: "leak-invitee@x.test", role: "member" });
+    const otherCookie = await cookieFor("leak-other@example.com", "user");
+
+    const res = await SELF.fetch(`${ORIGIN}/invite/${id}`, { redirect: "manual", headers: { cookie: otherCookie } });
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).toContain("This invite is for a different email address");
+    expect(html).toContain("Sign out");
+    expect(html).not.toContain("Mem Leak Co");
+    expect(html).not.toContain("leak-invitee@x.test");
+  });
+
+  it("shows a workspace suspended state to the invitee when the workspace is suspended", async () => {
+    const owner = await workspaceFor("mem-invsusp-owner@example.com", "Mem InvSusp Co");
+    const actor = await requireActor(env, headersFor(owner.cookie), INVITE);
+    const { id } = await inviteMember(env, actor, headersFor(owner.cookie), { email: "invsusp-invitee@x.test", role: "member" });
+    await db.update(workspace).set({ status: "suspended" }).where(eq(workspace.id, owner.workspaceId));
+    const cookie = await signIn("invsusp-invitee@x.test");
+
+    await expect(getInvite(env, headersFor(cookie), id)).resolves.toEqual({ state: "suspended" });
+    const res = await SELF.fetch(`${ORIGIN}/invite/${id}`, { redirect: "manual", headers: { cookie } });
+    expect(res.status).toBe(200);
+    expect(await res.text()).toContain("This workspace is suspended");
   });
 });

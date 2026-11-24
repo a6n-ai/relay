@@ -4,6 +4,7 @@ import { useState } from "react";
 import { getShell } from "../console/shell.fns";
 import { acceptInviteFn, getInviteFn } from "../console/members.fns";
 import { ROLE_LABEL, type MemberRole } from "../components/role-select";
+import { SignOutButton } from "../components/sign-out-button";
 
 export const Route = createFileRoute("/invite/$id")({
   beforeLoad: async ({ location }) => {
@@ -38,6 +39,13 @@ function InvitePage() {
     <main className="mx-auto flex min-h-svh max-w-sm flex-col justify-center gap-4 p-6">
       {!invite ? (
         <h1 className="text-lg font-medium">This invite was not found.</h1>
+      ) : invite.state === "other-email" ? (
+        <>
+          <h1 className="text-lg font-medium">This invite is for a different email address.</h1>
+          <SignOutButton />
+        </>
+      ) : invite.state === "suspended" ? (
+        <h1 className="text-lg font-medium">This workspace is suspended, so the invite cannot be accepted.</h1>
       ) : invite.status !== "pending" ? (
         <h1 className="text-lg font-medium">This invite is {invite.status}.</h1>
       ) : (
