@@ -15,8 +15,10 @@ import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiInternalDoSweepRouteImport } from './routes/api/internal/do-sweep'
 import { Route as ApiInternalSeedRouteImport } from './routes/api/internal/seed'
 import { Route as ApiV1MessagesRouteImport } from './routes/api/v1/messages'
+import { Route as ApiV1WebhooksRouteImport } from './routes/api/v1/webhooks'
 import { Route as ApiWebhooksSesRouteImport } from './routes/api/webhooks/ses'
 import { Route as ApiV1MessagesIdRouteImport } from './routes/api/v1/messages.$id'
+import { Route as ApiV1WebhooksIdRouteImport } from './routes/api/v1/webhooks.$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -48,6 +50,11 @@ const ApiV1MessagesRoute = ApiV1MessagesRouteImport.update({
   path: '/api/v1/messages',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiV1WebhooksRoute = ApiV1WebhooksRouteImport.update({
+  id: '/api/v1/webhooks',
+  path: '/api/v1/webhooks',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiWebhooksSesRoute = ApiWebhooksSesRouteImport.update({
   id: '/api/webhooks/ses',
   path: '/api/webhooks/ses',
@@ -58,6 +65,11 @@ const ApiV1MessagesIdRoute = ApiV1MessagesIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => ApiV1MessagesRoute,
 } as any)
+const ApiV1WebhooksIdRoute = ApiV1WebhooksIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => ApiV1WebhooksRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -66,8 +78,10 @@ export interface FileRoutesByFullPath {
   '/api/internal/do-sweep': typeof ApiInternalDoSweepRoute
   '/api/internal/seed': typeof ApiInternalSeedRoute
   '/api/v1/messages': typeof ApiV1MessagesRouteWithChildren
+  '/api/v1/webhooks': typeof ApiV1WebhooksRouteWithChildren
   '/api/webhooks/ses': typeof ApiWebhooksSesRoute
   '/api/v1/messages/$id': typeof ApiV1MessagesIdRoute
+  '/api/v1/webhooks/$id': typeof ApiV1WebhooksIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -76,8 +90,10 @@ export interface FileRoutesByTo {
   '/api/internal/do-sweep': typeof ApiInternalDoSweepRoute
   '/api/internal/seed': typeof ApiInternalSeedRoute
   '/api/v1/messages': typeof ApiV1MessagesRouteWithChildren
+  '/api/v1/webhooks': typeof ApiV1WebhooksRouteWithChildren
   '/api/webhooks/ses': typeof ApiWebhooksSesRoute
   '/api/v1/messages/$id': typeof ApiV1MessagesIdRoute
+  '/api/v1/webhooks/$id': typeof ApiV1WebhooksIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -87,8 +103,10 @@ export interface FileRoutesById {
   '/api/internal/do-sweep': typeof ApiInternalDoSweepRoute
   '/api/internal/seed': typeof ApiInternalSeedRoute
   '/api/v1/messages': typeof ApiV1MessagesRouteWithChildren
+  '/api/v1/webhooks': typeof ApiV1WebhooksRouteWithChildren
   '/api/webhooks/ses': typeof ApiWebhooksSesRoute
   '/api/v1/messages/$id': typeof ApiV1MessagesIdRoute
+  '/api/v1/webhooks/$id': typeof ApiV1WebhooksIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -99,8 +117,10 @@ export interface FileRouteTypes {
     | '/api/internal/do-sweep'
     | '/api/internal/seed'
     | '/api/v1/messages'
+    | '/api/v1/webhooks'
     | '/api/webhooks/ses'
     | '/api/v1/messages/$id'
+    | '/api/v1/webhooks/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -109,8 +129,10 @@ export interface FileRouteTypes {
     | '/api/internal/do-sweep'
     | '/api/internal/seed'
     | '/api/v1/messages'
+    | '/api/v1/webhooks'
     | '/api/webhooks/ses'
     | '/api/v1/messages/$id'
+    | '/api/v1/webhooks/$id'
   id:
     | '__root__'
     | '/'
@@ -119,8 +141,10 @@ export interface FileRouteTypes {
     | '/api/internal/do-sweep'
     | '/api/internal/seed'
     | '/api/v1/messages'
+    | '/api/v1/webhooks'
     | '/api/webhooks/ses'
     | '/api/v1/messages/$id'
+    | '/api/v1/webhooks/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -130,6 +154,7 @@ export interface RootRouteChildren {
   ApiInternalDoSweepRoute: typeof ApiInternalDoSweepRoute
   ApiInternalSeedRoute: typeof ApiInternalSeedRoute
   ApiV1MessagesRoute: typeof ApiV1MessagesRouteWithChildren
+  ApiV1WebhooksRoute: typeof ApiV1WebhooksRouteWithChildren
   ApiWebhooksSesRoute: typeof ApiWebhooksSesRoute
 }
 
@@ -177,6 +202,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiV1MessagesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/v1/webhooks': {
+      id: '/api/v1/webhooks'
+      path: '/api/v1/webhooks'
+      fullPath: '/api/v1/webhooks'
+      preLoaderRoute: typeof ApiV1WebhooksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/webhooks/ses': {
       id: '/api/webhooks/ses'
       path: '/api/webhooks/ses'
@@ -190,6 +222,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/v1/messages/$id'
       preLoaderRoute: typeof ApiV1MessagesIdRouteImport
       parentRoute: typeof ApiV1MessagesRoute
+    }
+    '/api/v1/webhooks/$id': {
+      id: '/api/v1/webhooks/$id'
+      path: '/$id'
+      fullPath: '/api/v1/webhooks/$id'
+      preLoaderRoute: typeof ApiV1WebhooksIdRouteImport
+      parentRoute: typeof ApiV1WebhooksRoute
     }
   }
 }
@@ -206,6 +245,18 @@ const ApiV1MessagesRouteWithChildren = ApiV1MessagesRoute._addFileChildren(
   ApiV1MessagesRouteChildren,
 )
 
+interface ApiV1WebhooksRouteChildren {
+  ApiV1WebhooksIdRoute: typeof ApiV1WebhooksIdRoute
+}
+
+const ApiV1WebhooksRouteChildren: ApiV1WebhooksRouteChildren = {
+  ApiV1WebhooksIdRoute: ApiV1WebhooksIdRoute,
+}
+
+const ApiV1WebhooksRouteWithChildren = ApiV1WebhooksRoute._addFileChildren(
+  ApiV1WebhooksRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ApiHealthRoute: ApiHealthRoute,
@@ -213,6 +264,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiInternalDoSweepRoute: ApiInternalDoSweepRoute,
   ApiInternalSeedRoute: ApiInternalSeedRoute,
   ApiV1MessagesRoute: ApiV1MessagesRouteWithChildren,
+  ApiV1WebhooksRoute: ApiV1WebhooksRouteWithChildren,
   ApiWebhooksSesRoute: ApiWebhooksSesRoute,
 }
 export const routeTree = rootRouteImport

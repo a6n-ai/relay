@@ -7,10 +7,13 @@ import { sendInputSchema, type SendInput, type Stream, type SuppressionReason } 
 import type { SesEventJob } from "../core/ses-events";
 import { recordDoState } from "../core/workspace-profile";
 import { utcDay } from "../core/usage";
+import { encryptSecret, newWebhookSecret } from "../core/webhook-crypto";
+import type { WebhookInput, WebhookPatch, WebhookView } from "../core/webhooks";
 import type { Env } from "../env";
 import { newId } from "../lib/ids";
 import * as schema from "./client-schema";
 import { CLIENT_MIGRATIONS, migrate } from "./migrations";
+import { deleteWebhookRow, listWebhookRows, toWebhookView, updateWebhookRow, type WebhookRow } from "./webhooks";
 
 export type MessageView = typeof schema.message.$inferSelect & { html: string | null };
 
@@ -177,6 +180,51 @@ export class ClientDO extends DurableObject<Env> {
     if (!row) return null;
     const object = row.htmlKey ? await this.env.MAIL.get(row.htmlKey) : null;
     return { ...row, html: object ? await object.text() : null };
+  }
+
+  // The plaintext secret leaves here once; only its ciphertext is stored, bound to this webhook id by the AAD.
+  async createWebhook(workspaceId: string, appId: string, input: WebhookInput): Promise<{ webhook: WebhookView; secret: string }> {
+    await this.ready(workspaceId);
+    const id = newId("whk");
+    const secret = input.secret ?? newWebhookSecret();
+    const now = Date.now();
+    const row: WebhookRow = {
+      id,
+      appId,
+      url: input.url,
+      secretEnc: await encryptSecret(this.env.WEBHOOK_SECRET_KEY, secret, `${workspaceId}:${id}`),
+      events: JSON.stringify(input.events),
+      enabled: input.enabled === false ? 0 : 1,
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.ctx.storage.transactionSync(() => {
+      this.db.insert(schema.webhook).values(row).run();
+    });
+    return { webhook: toWebhookView(row), secret };
+  }
+
+  async listWebhooks(workspaceId: string, appId: string): Promise<WebhookView[]> {
+    await this.ready(workspaceId);
+    return listWebhookRows(this.db, appId).map(toWebhookView);
+  }
+
+  async updateWebhook(workspaceId: string, appId: string, id: string, patch: WebhookPatch): Promise<WebhookView | null> {
+    await this.ready(workspaceId);
+    const row = this.ctx.storage.transactionSync(() =>
+      updateWebhookRow(this.db, appId, id, {
+        ...(patch.url !== undefined ? { url: patch.url } : {}),
+        ...(patch.events !== undefined ? { events: JSON.stringify(patch.events) } : {}),
+        ...(patch.enabled !== undefined ? { enabled: patch.enabled ? 1 : 0 } : {}),
+        updatedAt: Date.now(),
+      }),
+    );
+    return row ? toWebhookView(row) : null;
+  }
+
+  async deleteWebhook(workspaceId: string, appId: string, id: string): Promise<boolean> {
+    await this.ready(workspaceId);
+    return this.ctx.storage.transactionSync(() => deleteWebhookRow(this.db, appId, id));
   }
 
   // A lease (claimed_until) stops a second job from sending while the first is in flight.
