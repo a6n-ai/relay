@@ -81,6 +81,29 @@ describe("ClientDO sweeper alarm", () => {
     expect(alarm).not.toBeNull();
   });
 
+  it("still sweeps a stale queued row when an automation run is pending", async () => {
+    const ws = "wsp_sweep_auto";
+    const stub = await seededStub(ws);
+    const sent = await stub.send(ws, base);
+    const now = Date.now();
+    await runInDurableObject<ClientDO, void>(stub, (inst, state) => {
+      inst.db.update(schema.message).set({ createdAt: now - 21 * MIN, updatedAt: now - 21 * MIN }).where(eq(schema.message.id, sent.messageId)).run();
+      state.storage.sql.exec(
+        "INSERT INTO automation (id, app_id, name, list_id, template_id, from_email, delay_hours, enabled, created_at, updated_at) VALUES ('aut_sweep1', 'app_1', 'A', 'ctl_none', 'tpl_none', 'relay@a6n.ai', 1, 1, 1, 1)",
+      );
+      state.storage.sql.exec(
+        "INSERT INTO automation_run (automation_id, email, due_at, status, created_at) VALUES ('aut_sweep1', 'a@x.com', ?, 'pending', 1)",
+        now + HOUR,
+      );
+    });
+    sendBatch.mockClear();
+
+    await runDurableObjectAlarm(stub);
+    expect(sendBatch).toHaveBeenCalledWith([{ body: { workspaceId: ws, messageId: sent.messageId } }]);
+    const alarm = await runInDurableObject(stub, (_inst, state) => state.storage.getAlarm());
+    expect(alarm).not.toBeNull();
+  });
+
   it("re-enqueues a stale queued row once, then nothing until it is stale again", async () => {
     const ws = "wsp_sweep_stale";
     const stub = await seededStub(ws);

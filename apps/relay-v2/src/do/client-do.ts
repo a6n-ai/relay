@@ -64,6 +64,7 @@ import {
   deleteListRow,
   listListRows,
   listMemberRows,
+  exportMemberRows,
   IMPORT_CHUNK,
   importMemberRow,
   removeMemberRow,
@@ -97,6 +98,20 @@ import {
   type AudienceHookView,
 } from "./audience-hook";
 import type { AudiencePage, HookCall } from "../core/audience-hook";
+import {
+  createAutomationRow,
+  deleteAutomationRow,
+  earliestDue,
+  enrolAutomations,
+  listAutomationRows,
+  nextAutomationAlarm,
+  runDueAutomationRows,
+  setAutomationEnabledRow,
+  updateAutomationRow,
+  type AutomationInput,
+  type AutomationPatch,
+  type AutomationView,
+} from "./automations";
 
 export type AttachmentView = {
   id: string;
@@ -236,7 +251,7 @@ export class ClientDO extends DurableObject<Env> {
         this.db.delete(schema.message).where(eq(schema.message.id, id)).run();
       });
       await this.dropHtml(htmlKey);
-      throw err;
+      throw new Error("queue_failed", { cause: err });
     }
     return { messageId: id, status: "queued", duplicate: false };
   }
@@ -410,7 +425,13 @@ export class ClientDO extends DurableObject<Env> {
 
   async addMember(workspaceId: string, listId: string, input: MemberInput): Promise<"added" | "existing" | "suppressed" | "missing"> {
     await this.ready(workspaceId);
-    return this.ctx.storage.transactionSync(() => addMemberRow(this.ctx.storage.sql, listId, input, (email) => this.suppressed(email, "marketing")));
+    const outcome = this.ctx.storage.transactionSync(() => {
+      const result = addMemberRow(this.ctx.storage.sql, listId, input, (email) => this.suppressed(email, "marketing"));
+      if (result === "added") enrolAutomations(this.ctx.storage.sql, listId, input.email.trim().toLowerCase(), Date.now());
+      return result;
+    });
+    if (outcome === "added") await this.scheduleAlarmAt(earliestDue(this.ctx.storage.sql));
+    return outcome;
   }
 
   async importMembers(workspaceId: string, listId: string, rows: MemberInput[]): Promise<ImportResult | null> {
@@ -422,10 +443,13 @@ export class ClientDO extends DurableObject<Env> {
     for (let start = 0; start < rows.length; start += IMPORT_CHUNK) {
       this.ctx.storage.transactionSync(() => {
         for (const row of rows.slice(start, start + IMPORT_CHUNK)) {
-          total[importMemberRow(sql, listId, list.app_id, row, (email) => this.suppressed(email, "marketing"))] += 1;
+          const outcome = importMemberRow(sql, listId, list.app_id, row, (email) => this.suppressed(email, "marketing"));
+          if (outcome === "added") enrolAutomations(sql, listId, row.email.trim().toLowerCase(), Date.now());
+          total[outcome] += 1;
         }
       });
     }
+    if (total.added > 0) await this.scheduleAlarmAt(earliestDue(sql));
     return total;
   }
 
@@ -1269,7 +1293,14 @@ export class ClientDO extends DurableObject<Env> {
   }
 
   async alarm(): Promise<void> {
-    await this.sweepQueued();
+    const now = Date.now();
+    // A failed automation pass must not stop the sweep. It retries on the next alarm.
+    const outcome = await this.runDueAutomations(now).catch((err: unknown) => {
+      console.error("ClientDO: automation pass failed", err instanceof Error ? err.name : "unknown");
+      return { sent: 0, skipped: 0, more: false, blocked: true };
+    });
+    await this.sweepQueued(now);
+    await this.scheduleAlarmAt(nextAutomationAlarm(this.ctx.storage.sql, now, outcome));
   }
 
   // Workspace comes only from the KV binding. Unbound: nothing to sweep, and no reschedule.
@@ -1654,6 +1685,58 @@ export class ClientDO extends DurableObject<Env> {
     const jobs = queue.map((messageId, i) => ({ body: { workspaceId: ctx.workspaceId, messageId }, delaySeconds: Math.floor((ctx.offset + i) / ctx.rate) }));
     if (jobs.length > 0) await this.env.SEND.sendBatch(jobs);
     return { handled, queued: queue.length, lastEmail, quotaHit };
+  }
+
+  async createAutomation(workspaceId: string, appId: string, input: AutomationInput): Promise<AutomationView | "bad_list" | "bad_template"> {
+    await this.ready(workspaceId);
+    return createAutomationRow(this.ctx.storage.sql, appId, input);
+  }
+
+  async listAutomations(workspaceId: string, appId?: string): Promise<AutomationView[]> {
+    await this.ready(workspaceId);
+    return listAutomationRows(this.ctx.storage.sql, appId);
+  }
+
+  async updateAutomation(workspaceId: string, id: string, patch: AutomationPatch): Promise<AutomationView | "missing" | "bad_template"> {
+    await this.ready(workspaceId);
+    return updateAutomationRow(this.ctx.storage.sql, id, patch);
+  }
+
+  async setAutomationEnabled(workspaceId: string, id: string, on: boolean, postalAddress: string | null) {
+    await this.ready(workspaceId);
+    const result = setAutomationEnabledRow(this.ctx.storage.sql, id, on, postalAddress);
+    if (on) await this.scheduleAlarmAt(earliestDue(this.ctx.storage.sql));
+    return result;
+  }
+
+  async deleteAutomation(workspaceId: string, id: string): Promise<"deleted" | "missing"> {
+    await this.ready(workspaceId);
+    return deleteAutomationRow(this.ctx.storage.sql, id);
+  }
+
+  // Bound workspace only: the alarm has no id of its own, so an unbound DO has no automations to run.
+  async runDueAutomations(now = Date.now()): Promise<{ sent: number; skipped: number; more: boolean; blocked: boolean }> {
+    const workspaceId = this.ctx.storage.kv.get<string>("workspace_id");
+    if (workspaceId === undefined) return { sent: 0, skipped: 0, more: false, blocked: false };
+    await this.ready(workspaceId);
+    const limits = await this.limits(workspaceId);
+    return runDueAutomationRows(
+      this.ctx.storage.sql,
+      { send: (input) => this.send(workspaceId, input), refreshLimits: () => this.loadLimits(workspaceId), postalAddress: limits.postalAddress },
+      now,
+    );
+  }
+
+  async exportMembers(workspaceId: string, listId: string, afterEmail: string | null): Promise<{ rows: MemberView[]; next: string | null } | null> {
+    await this.ready(workspaceId);
+    return exportMemberRows(this.ctx.storage.sql, listId, (email) => this.suppressed(email, "marketing"), afterEmail);
+  }
+
+  // Lowers the alarm only: the sweeper and automation runs share one alarm, and neither may push the other later.
+  private async scheduleAlarmAt(at: number | null): Promise<void> {
+    if (at === null) return;
+    const current = await this.ctx.storage.getAlarm();
+    if (current === null || at < current) await this.ctx.storage.setAlarm(at);
   }
 }
 

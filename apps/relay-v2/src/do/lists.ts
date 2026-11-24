@@ -25,10 +25,26 @@ export type MemberView = {
   source: "manual" | "import";
   consentAt: number;
   state: MemberState;
+  optedOut: string[];
   createdAt: number;
 };
 
 const PAGE = 50;
+export const EXPORT_PAGE = 1000;
+
+// One query per page: the brand domains each address opted out of, sorted.
+function optedOutByEmail(sql: SqlStorage, emails: string[]): Map<string, string[]> {
+  const out = new Map<string, string[]>();
+  if (emails.length === 0) return out;
+  const rows = sql
+    .exec<{ email: string; domains: string }>(
+      "SELECT email, json_group_array(domain) AS domains FROM marketing_optout WHERE email IN (SELECT value FROM json_each(?)) GROUP BY email",
+      JSON.stringify(emails),
+    )
+    .toArray();
+  for (const r of rows) out.set(r.email, (JSON.parse(r.domains) as string[]).sort());
+  return out;
+}
 
 // The member count is one LEFT JOIN, so a page of lists costs one query.
 function listViews(sql: SqlStorage, where: string, bindings: unknown[]): ListView[] {
@@ -127,6 +143,7 @@ export function listMemberRows(
     .toArray();
   const page = fetched.slice(0, PAGE);
   const last = page[page.length - 1];
+  const optedOut = optedOutByEmail(sql, page.map((r) => r.email));
   const rows: MemberView[] = page.map((r) => ({
     id: r.id,
     email: r.email,
@@ -135,9 +152,47 @@ export function listMemberRows(
     source: r.source,
     consentAt: r.consentAt,
     state: isSuppressed(r.email) ? "suppressed" : "subscribed",
+    optedOut: optedOut.get(r.email) ?? [],
     createdAt: r.createdAt,
   }));
   return { rows, nextCursor: fetched.length > PAGE && last ? encodeCursor(last.createdAt, last.id) : null };
+}
+
+// Keyset on email, so a resumed export never repeats or skips an address.
+export function exportMemberRows(
+  sql: SqlStorage,
+  listId: string,
+  isSuppressed: (email: string) => boolean,
+  afterEmail: string | null,
+): { rows: MemberView[]; next: string | null } | null {
+  if (sql.exec("SELECT id FROM contact_list WHERE id = ?", listId).toArray().length === 0) return null;
+  const fetched = sql
+    .exec<MemberRow>(
+      `SELECT m.id, m.email, m.first_name AS firstName, m.last_name AS lastName, m.source,
+              m.consent_at AS consentAt, m.created_at AS createdAt
+       FROM contact_list_member m
+       WHERE m.list_id = ? AND (? IS NULL OR m.email > ?)
+       ORDER BY m.email LIMIT ?`,
+      listId,
+      afterEmail,
+      afterEmail,
+      EXPORT_PAGE + 1,
+    )
+    .toArray();
+  const page = fetched.slice(0, EXPORT_PAGE);
+  const optedOut = optedOutByEmail(sql, page.map((r) => r.email));
+  const rows: MemberView[] = page.map((r) => ({
+    id: r.id,
+    email: r.email,
+    firstName: r.firstName,
+    lastName: r.lastName,
+    source: r.source,
+    consentAt: r.consentAt,
+    state: isSuppressed(r.email) ? "suppressed" : "subscribed",
+    optedOut: optedOut.get(r.email) ?? [],
+    createdAt: r.createdAt,
+  }));
+  return { rows, next: fetched.length > EXPORT_PAGE ? page[page.length - 1]!.email : null };
 }
 
 export function addMemberRow(

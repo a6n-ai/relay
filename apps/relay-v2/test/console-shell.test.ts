@@ -179,6 +179,7 @@ describe("console shell", { timeout: 60_000 }, () => {
       [
         "audience_empty",
         "audience_hook_missing",
+        "data_fields_need_hook",
         "from_missing",
         "html_missing",
         "postal_address_missing",
