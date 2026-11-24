@@ -1,4 +1,5 @@
 import handler from "@tanstack/react-start/server-entry";
+import { receiveEmail } from "./core/email-worker";
 import { handleSendBatch } from "./core/send-consumer";
 import { handleSesEventBatch } from "./core/ses-event-consumer";
 import type { SesEventJob } from "./core/ses-events";
@@ -9,6 +10,7 @@ export { RelayRpc } from "./rpc/relay-rpc";
 
 export default {
   fetch: handler.fetch,
+  email: receiveEmail,
   async queue(batch: MessageBatch<unknown>, env: Env) {
     if (batch.queue === "relay-send") {
       await handleSendBatch(batch as MessageBatch<SendJob>, env);

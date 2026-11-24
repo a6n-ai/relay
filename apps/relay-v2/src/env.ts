@@ -6,6 +6,17 @@ export type SendJob =
   | { kind?: "send"; workspaceId: string; messageId: string }
   | { kind: "finalize"; workspaceId: string; messageId: string; sesMessageId: string };
 
+export type InboundJob = {
+  workspaceId: string;
+  appId: string;
+  addressId: string;
+  rawKey: string;
+  envelopeFrom: string;
+  envelopeTo: string;
+  authResults: string | null;
+  receivedAt: number;
+};
+
 // Global so that cloudflare:workers `env` is typed with the same bindings.
 declare global {
   namespace Cloudflare {
@@ -16,6 +27,7 @@ declare global {
       MAIL: R2Bucket;
       SEND: Queue<SendJob>;
       SES_EVENTS: Queue<SesEventJob>;
+      INBOUND: Queue<InboundJob>;
       API_LIMIT: RateLimit;
       BETTER_AUTH_SECRET: string;
       BETTER_AUTH_URL: string;
