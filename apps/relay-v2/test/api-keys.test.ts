@@ -91,7 +91,7 @@ describe("API keys", () => {
     const { id, secret } = await createApiKey(env, { workspaceId, appId, name: "web" });
 
     expect(await resolveApiKey(env, secret)).not.toBeNull();
-    await revokeApiKey(env, id);
+    await revokeApiKey(env, workspaceId, id);
 
     expect(await resolveApiKey(env, secret)).toBeNull();
     const rpc = new RelayRpc(createExecutionContext(), env);

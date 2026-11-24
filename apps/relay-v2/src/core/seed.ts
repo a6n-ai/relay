@@ -8,6 +8,7 @@ import type { Env } from "../env";
 import { createAuth } from "../lib/auth";
 import { writeAudit } from "../lib/auth/audit";
 import { newId } from "../lib/ids";
+import { createApp } from "./apps";
 import { createApiKey } from "./api-keys";
 
 export type SeedInput = {
@@ -88,10 +89,7 @@ export async function seed(env: Env, input: SeedInput): Promise<SeedResult> {
     .select({ id: app.id })
     .from(app)
     .where(and(eq(app.workspaceId, workspaceId), eq(app.slug, input.app.slug)));
-  const appId = existingApp?.id ?? newId("app");
-  if (!existingApp) {
-    await db.insert(app).values({ id: appId, workspaceId, name: input.app.name, slug: input.app.slug });
-  }
+  const appId = existingApp?.id ?? (await createApp(env, { workspaceId, ...input.app })).id;
 
   if (domain && !existingDomain) {
     await coreDb(env).insert(sendingDomain).values({ id: newId("dom"), workspaceId, domain: domain.domain, sesRegion: domain.sesRegion });

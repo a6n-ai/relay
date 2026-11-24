@@ -13,7 +13,9 @@ import { Route as AppRouteImport } from './routes/_app'
 import { Route as NoWorkspaceRouteImport } from './routes/no-workspace'
 import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
+import { Route as AppAppsRouteImport } from './routes/_app/apps'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
+import { Route as AppAppsAppIdRouteImport } from './routes/_app/apps_.$appId'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiDevOtpRouteImport } from './routes/api/dev/otp'
 import { Route as ApiInternalDoSweepRouteImport } from './routes/api/internal/do-sweep'
@@ -43,10 +45,20 @@ const AppIndexRoute = AppIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAppsRoute = AppAppsRouteImport.update({
+  id: '/apps',
+  path: '/apps',
+  getParentRoute: () => AppRoute,
+} as any)
 const ApiHealthRoute = ApiHealthRouteImport.update({
   id: '/api/health',
   path: '/api/health',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AppAppsAppIdRoute = AppAppsAppIdRouteImport.update({
+  id: '/apps_/$appId',
+  path: '/apps/$appId',
+  getParentRoute: () => AppRoute,
 } as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
@@ -98,7 +110,9 @@ export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/no-workspace': typeof NoWorkspaceRoute
   '/sign-in': typeof SignInRoute
+  '/apps': typeof AppAppsRoute
   '/api/health': typeof ApiHealthRoute
+  '/apps/$appId': typeof AppAppsAppIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/dev/otp': typeof ApiDevOtpRoute
   '/api/internal/do-sweep': typeof ApiInternalDoSweepRoute
@@ -112,8 +126,10 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/no-workspace': typeof NoWorkspaceRoute
   '/sign-in': typeof SignInRoute
+  '/apps': typeof AppAppsRoute
   '/api/health': typeof ApiHealthRoute
   '/': typeof AppIndexRoute
+  '/apps/$appId': typeof AppAppsAppIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/dev/otp': typeof ApiDevOtpRoute
   '/api/internal/do-sweep': typeof ApiInternalDoSweepRoute
@@ -129,8 +145,10 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteWithChildren
   '/no-workspace': typeof NoWorkspaceRoute
   '/sign-in': typeof SignInRoute
+  '/_app/apps': typeof AppAppsRoute
   '/api/health': typeof ApiHealthRoute
   '/_app/': typeof AppIndexRoute
+  '/_app/apps_/$appId': typeof AppAppsAppIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/dev/otp': typeof ApiDevOtpRoute
   '/api/internal/do-sweep': typeof ApiInternalDoSweepRoute
@@ -147,7 +165,9 @@ export interface FileRouteTypes {
     | '/'
     | '/no-workspace'
     | '/sign-in'
+    | '/apps'
     | '/api/health'
+    | '/apps/$appId'
     | '/api/auth/$'
     | '/api/dev/otp'
     | '/api/internal/do-sweep'
@@ -161,8 +181,10 @@ export interface FileRouteTypes {
   to:
     | '/no-workspace'
     | '/sign-in'
+    | '/apps'
     | '/api/health'
     | '/'
+    | '/apps/$appId'
     | '/api/auth/$'
     | '/api/dev/otp'
     | '/api/internal/do-sweep'
@@ -177,8 +199,10 @@ export interface FileRouteTypes {
     | '/_app'
     | '/no-workspace'
     | '/sign-in'
+    | '/_app/apps'
     | '/api/health'
     | '/_app/'
+    | '/_app/apps_/$appId'
     | '/api/auth/$'
     | '/api/dev/otp'
     | '/api/internal/do-sweep'
@@ -234,12 +258,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/apps': {
+      id: '/_app/apps'
+      path: '/apps'
+      fullPath: '/apps'
+      preLoaderRoute: typeof AppAppsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/api/health': {
       id: '/api/health'
       path: '/api/health'
       fullPath: '/api/health'
       preLoaderRoute: typeof ApiHealthRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_app/apps_/$appId': {
+      id: '/_app/apps_/$appId'
+      path: '/apps/$appId'
+      fullPath: '/apps/$appId'
+      preLoaderRoute: typeof AppAppsAppIdRouteImport
+      parentRoute: typeof AppRoute
     }
     '/api/auth/$': {
       id: '/api/auth/$'
@@ -308,11 +346,15 @@ declare module '@tanstack/react-router' {
 }
 
 interface AppRouteChildren {
+  AppAppsRoute: typeof AppAppsRoute
   AppIndexRoute: typeof AppIndexRoute
+  AppAppsAppIdRoute: typeof AppAppsAppIdRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppAppsRoute: AppAppsRoute,
   AppIndexRoute: AppIndexRoute,
+  AppAppsAppIdRoute: AppAppsAppIdRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
