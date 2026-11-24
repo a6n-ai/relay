@@ -1,8 +1,10 @@
 import { DurableObject } from "cloudflare:workers";
 import { and, eq, gte, inArray, isNull, lt, ne, or, sql, type SQLWrapper } from "drizzle-orm";
 import { drizzle, type DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
-import { domainOf } from "../core/campaigns";
-import { fillUnsubscribe } from "../core/merge";
+import { campaignProblems, domainOf, IMPLIED_CONSENT_MS, type CampaignProblem } from "../core/campaigns";
+import { CHUNK_SIZE, ENQUEUE_BATCH } from "../core/campaign-workflow";
+import { contactValues, fillUnsubscribe, MERGE_SAMPLES, renderMerge } from "../core/merge";
+import { sesSendRate } from "../core/send-rate";
 import type { SesSendRequest } from "../core/ses";
 import { DEFAULT_MONTHLY_QUOTA, LIMITS_TTL_MS, loadWorkspaceLimits, SENDER_RETRY_MS, type WorkspaceLimits } from "../core/limits";
 import { sendInputSchema, type SendInput, type Stream, type SuppressionReason } from "../core/send-input";
@@ -37,11 +39,13 @@ import {
 import { storeInbound, writeInboundFailure, type InboundDeps, type InboundResult } from "./inbound";
 import * as schema from "./client-schema";
 import {
+  bumpCampaign,
   createCampaignRow,
   deleteCampaignRow,
   getCampaignRow,
   listCampaignRows,
   previewAudienceRows,
+  recipientQuery,
   updateCampaignRow,
   type AudiencePreview,
   type CampaignPatch,
@@ -79,7 +83,7 @@ export type AttachmentView = {
 
 export type MessageView = typeof schema.message.$inferSelect & { html: string | null; attachments: AttachmentView[] };
 
-type SendResult = { messageId: string; status: "queued" | "sent" | "failed" | "suppressed"; duplicate: boolean };
+export type SendResult = { messageId: string; status: "queued" | "sent" | "failed" | "suppressed"; duplicate: boolean };
 
 // failed: indexes into the input whose transaction threw. They rolled back alone and must be retried.
 export type SesEventResult = {
@@ -164,19 +168,7 @@ export class ClientDO extends DurableObject<Env> {
     try {
       this.ctx.storage.transactionSync(() => {
         // Counted in the same synchronous transaction as the insert, so concurrent sends cannot both take the last slot.
-        const monthStart = Date.UTC(new Date(now).getUTCFullYear(), new Date(now).getUTCMonth(), 1);
-        const used = this.db
-          .select({ n: sql<number>`count(*)` })
-          .from(schema.message)
-          .where(
-            and(
-              eq(schema.message.direction, "out"),
-              inArray(schema.message.status, ["queued", "sent"]),
-              gte(schema.message.createdAt, monthStart),
-            ),
-          )
-          .get();
-        if (limits.monthlyQuota > 0 && (used?.n ?? 0) >= limits.monthlyQuota) throw new Error("quota_exceeded");
+        if (limits.monthlyQuota > 0 && this.monthUsed(now) >= limits.monthlyQuota) throw new Error("quota_exceeded");
         // Re-checked here: an unsubscribe can land during the R2 put above.
         suppressed = this.suppressed(data.to, data.stream, data.from);
         this.db
@@ -428,6 +420,251 @@ export class ClientDO extends DurableObject<Env> {
   async deleteCampaign(workspaceId: string, id: string): Promise<"deleted" | "missing" | "not_draft"> {
     await this.ready(workspaceId);
     return this.ctx.storage.transactionSync(() => deleteCampaignRow(this.ctx.storage.sql, id));
+  }
+  // Postal address is snapshotted here: a later Settings change does not alter a scheduled campaign.
+  async scheduleCampaign(
+    workspaceId: string,
+    id: string,
+    at: number,
+    postalAddress: string | null,
+  ): Promise<{ runSeq: number } | { problems: CampaignProblem[] } | "missing" | "not_draft"> {
+    await this.ready(workspaceId);
+    return this.ctx.storage.transactionSync((): { runSeq: number } | { problems: CampaignProblem[] } | "missing" | "not_draft" => {
+      const row = getCampaignRow(this.ctx.storage.sql, id);
+      if (!row) return "missing";
+      if (row.status !== "draft") return "not_draft";
+      const problems = campaignProblems(row, postalAddress);
+      if (problems.length > 0) return { problems };
+      const runSeq = row.runSeq + 1;
+      this.ctx.storage.sql.exec(
+        "UPDATE campaign SET status = 'scheduled', scheduled_at = ?, run_seq = ?, postal_address = ?, cursor = NULL, recipients = 0, error = NULL, updated_at = ? WHERE id = ?",
+        at,
+        runSeq,
+        postalAddress,
+        Date.now(),
+        id,
+      );
+      return { runSeq };
+    });
+  }
+  async unscheduleCampaign(workspaceId: string, id: string): Promise<"draft" | "missing" | "not_scheduled"> {
+    await this.ready(workspaceId);
+    return this.ctx.storage.transactionSync((): "draft" | "missing" | "not_scheduled" => {
+      const head = this.campaignHead(id);
+      if (!head) return "missing";
+      if (head.status !== "scheduled") return "not_scheduled";
+      this.ctx.storage.sql.exec("UPDATE campaign SET status = 'draft', scheduled_at = NULL, updated_at = ? WHERE id = ?", Date.now(), id);
+      return "draft";
+    });
+  }
+  // Retries of the start step land here with status already sending, so they return go too.
+  async startCampaign(workspaceId: string, id: string, runSeq: number, now = Date.now()): Promise<"go" | "stale"> {
+    await this.ready(workspaceId);
+    return this.ctx.storage.transactionSync((): "go" | "stale" => {
+      const head = this.campaignHead(id);
+      if (!head || head.runSeq !== runSeq) return "stale";
+      if (head.status === "sending") return "go";
+      if (head.status !== "scheduled") return "stale";
+      this.ctx.storage.sql.exec("UPDATE campaign SET status = 'sending', started_at = coalesce(started_at, ?), updated_at = ? WHERE id = ?", now, now, id);
+      return "go";
+    });
+  }
+  // One sub-chunk is one transactionSync of inserts, then one sendBatch. The cursor moves only after the batch succeeds,
+  // so a retried chunk resumes at the same recipient and finds the rows it already inserted by key.
+  async campaignChunk(
+    workspaceId: string,
+    id: string,
+    runSeq: number,
+    now = Date.now(),
+  ): Promise<{ state: "more" | "done" | "stopped"; enqueued: number; paceMs: number }> {
+    await this.ready(workspaceId);
+    const sql = this.ctx.storage.sql;
+    let enqueued = 0;
+    const stopped = () => ({ state: "stopped" as const, enqueued, paceMs: 0 });
+    const live = () => {
+      const head = this.campaignHead(id);
+      return head !== undefined && head.status === "sending" && head.runSeq === runSeq;
+    };
+    const setPaused = (error: string) =>
+      sql.exec("UPDATE campaign SET status = 'paused', error = ?, updated_at = ? WHERE id = ? AND status = 'sending' AND run_seq = ?", error, now, id, runSeq);
+    if (!live()) return stopped();
+    const campaign = sql
+      .exec<{ appId: string; fromEmail: string | null; subject: string; listIds: string; postalAddress: string | null; cursor: string | null }>(
+        "SELECT app_id AS appId, from_email AS fromEmail, subject, list_ids AS listIds, postal_address AS postalAddress, cursor FROM campaign WHERE id = ?",
+        id,
+      )
+      .one();
+    const limits = await this.limits(workspaceId, { forSender: campaign.fromEmail ?? undefined });
+    // No snapshot yet: throw so the Workflow step retries. A missing snapshot must not look like a revoked sender.
+    if (limits.fetchedAt === 0) throw new Error("limits unavailable");
+    if (limits.status === "suspended") {
+      this.ctx.storage.transactionSync(() => setPaused("workspace_suspended"));
+      return stopped();
+    }
+    const sender = limits.senders[campaign.fromEmail ?? ""];
+    if (!sender) {
+      this.ctx.storage.transactionSync(() => setPaused("sender_not_verified"));
+      return stopped();
+    }
+    const rate = sesSendRate(this.env, sender.sesRegion);
+    if ((await this.ctx.storage.getAlarm()) === null) await this.ctx.storage.setAlarm(now + SWEEP_INTERVAL_MS);
+    let cursor = campaign.cursor ?? "";
+    for (let sub = 0; sub < CHUNK_SIZE / ENQUEUE_BATCH; sub++) {
+      if (!live()) return stopped();
+      const rows = sql
+        .exec<{ email: string; firstName: string | null; lastName: string | null }>(
+          `SELECT email, firstName, lastName FROM (${recipientQuery()}) WHERE email > ? ORDER BY email LIMIT ?`,
+          campaign.appId,
+          campaign.listIds,
+          now - IMPLIED_CONSENT_MS,
+          cursor,
+          ENQUEUE_BATCH,
+        )
+        .toArray();
+      if (rows.length === 0) {
+        this.ctx.storage.transactionSync(() =>
+          sql.exec("UPDATE campaign SET status = 'sent', finished_at = ?, updated_at = ? WHERE id = ? AND run_seq = ?", now, now, id, runSeq),
+        );
+        return { state: "done", enqueued, paceMs: 0 };
+      }
+      const queue: string[] = [];
+      let handled = 0;
+      let lastEmail = cursor;
+      let quotaHit = false;
+      this.ctx.storage.transactionSync(() => {
+        let used = this.monthUsed(now);
+        for (const r of rows) {
+          const key = `campaign:${id}:${r.email}`;
+          const existing = this.findByKey(campaign.appId, key);
+          if (existing) {
+            if (existing.status === "queued") queue.push(existing.messageId);
+          } else {
+            if (limits.monthlyQuota > 0 && used >= limits.monthlyQuota) {
+              quotaHit = true;
+              break;
+            }
+            const values = contactValues({ email: r.email, firstName: r.firstName, lastName: r.lastName }, campaign.postalAddress ?? "");
+            const suppressed = this.suppressed(r.email, "marketing", campaign.fromEmail);
+            const messageId = newId("msg");
+            this.db
+              .insert(schema.message)
+              .values({
+                id: messageId,
+                appId: campaign.appId,
+                direction: "out",
+                stream: "marketing",
+                status: suppressed ? "suppressed" : "queued",
+                idempotencyKey: key,
+                event: "campaign",
+                campaignId: id,
+                fromEmail: campaign.fromEmail,
+                fromName: sender.name,
+                sesRegion: sender.sesRegion,
+                toEmail: r.email,
+                subject: renderMerge(campaign.subject, values, "subject"),
+                text: null,
+                htmlKey: null,
+                mergeData: JSON.stringify({ email: r.email, firstName: r.firstName, lastName: r.lastName }),
+                createdAt: now,
+                updatedAt: now,
+              })
+              .run();
+            if (suppressed) bumpCampaign(sql, id, { suppressed: 1 });
+            else {
+              used += 1;
+              queue.push(messageId);
+              bumpCampaign(sql, id, { queued: 1 });
+            }
+          }
+          lastEmail = r.email;
+          handled += 1;
+        }
+      });
+      const jobs = queue.map((messageId, i) => ({ body: { workspaceId, messageId }, delaySeconds: Math.floor((enqueued + i) / rate) }));
+      if (jobs.length > 0) await this.env.SEND.sendBatch(jobs);
+      // Runs even if a pause landed during sendBatch: the rows are enqueued, so the cursor must cover them.
+      if (handled > 0) {
+        this.ctx.storage.transactionSync(() =>
+          sql.exec("UPDATE campaign SET cursor = ?, recipients = recipients + ?, updated_at = ? WHERE id = ? AND run_seq = ?", lastEmail, handled, now, id, runSeq),
+        );
+        cursor = lastEmail;
+      }
+      enqueued += queue.length;
+      if (quotaHit) {
+        this.ctx.storage.transactionSync(() => setPaused("quota_exceeded"));
+        return stopped();
+      }
+    }
+    return { state: "more", enqueued, paceMs: Math.ceil(enqueued / rate) * 1000 };
+  }
+  async pauseCampaign(workspaceId: string, id: string, error: string | null = null): Promise<"paused" | "missing" | "not_sending"> {
+    await this.ready(workspaceId);
+    return this.ctx.storage.transactionSync((): "paused" | "missing" | "not_sending" => {
+      const head = this.campaignHead(id);
+      if (!head) return "missing";
+      if (head.status !== "sending") return "not_sending";
+      this.ctx.storage.sql.exec(
+        "UPDATE campaign SET status = 'paused', error = ?, updated_at = ? WHERE id = ? AND status = 'sending' AND run_seq = ?",
+        error,
+        Date.now(),
+        id,
+        head.runSeq,
+      );
+      return "paused";
+    });
+  }
+  async resumeCampaign(workspaceId: string, id: string): Promise<{ runSeq: number } | "missing" | "not_paused"> {
+    await this.ready(workspaceId);
+    return this.ctx.storage.transactionSync((): { runSeq: number } | "missing" | "not_paused" => {
+      const head = this.campaignHead(id);
+      if (!head) return "missing";
+      if (head.status !== "paused") return "not_paused";
+      const runSeq = head.runSeq + 1;
+      this.ctx.storage.sql.exec("UPDATE campaign SET status = 'sending', run_seq = ?, error = NULL, updated_at = ? WHERE id = ?", runSeq, Date.now(), id);
+      return { runSeq };
+    });
+  }
+  // Queued rows nobody has claimed fail here. Rows already claimed or handed to SES are left to finish.
+  async cancelCampaign(workspaceId: string, id: string, now = Date.now()): Promise<{ dropped: number } | "missing" | "not_cancellable"> {
+    await this.ready(workspaceId);
+    return this.ctx.storage.transactionSync((): { dropped: number } | "missing" | "not_cancellable" => {
+      const head = this.campaignHead(id);
+      if (!head) return "missing";
+      if (!["scheduled", "sending", "paused"].includes(head.status)) return "not_cancellable";
+      this.ctx.storage.sql.exec("UPDATE campaign SET status = 'cancelled', finished_at = ?, updated_at = ? WHERE id = ?", now, now, id);
+      const dropped = this.db
+        .update(schema.message)
+        .set({ status: "failed", error: "campaign_cancelled", claimedUntil: null, updatedAt: now })
+        .where(
+          and(
+            eq(schema.message.campaignId, id),
+            eq(schema.message.status, "queued"),
+            isNull(schema.message.sesMessageId),
+            or(isNull(schema.message.claimedUntil), lt(schema.message.claimedUntil, now)),
+          ),
+        )
+        .returning({ id: schema.message.id })
+        .all().length;
+      bumpCampaign(this.ctx.storage.sql, id, { queued: -dropped, failed: dropped });
+      return { dropped };
+    });
+  }
+  // Sent through the normal send path with the signed-in user's own address. No campaign id, so no counters move.
+  async testSendCampaign(workspaceId: string, id: string, to: string, postalAddress: string | null): Promise<SendResult | "missing"> {
+    await this.ready(workspaceId);
+    const c = getCampaignRow(this.ctx.storage.sql, id);
+    if (!c) return "missing";
+    if (!c.fromEmail) throw new Error("sender_not_verified");
+    const values = { ...MERGE_SAMPLES, "contact.email": to, postal_address: postalAddress ?? MERGE_SAMPLES.postal_address };
+    return this.send(workspaceId, {
+      appId: c.appId,
+      stream: "marketing",
+      from: c.fromEmail,
+      to,
+      subject: `[Test] ${renderMerge(c.subject, values, "subject")}`,
+      html: renderMerge(c.html, values, "html"),
+      text: renderMerge(c.text, values, "text"),
+    });
   }
   async previewAudience(
     workspaceId: string,
@@ -1086,6 +1323,23 @@ export class ClientDO extends DurableObject<Env> {
     );
   }
 
+  // Call inside a transactionSync: the count and the insert it guards must not interleave.
+  private monthUsed(now: number): number {
+    const monthStart = Date.UTC(new Date(now).getUTCFullYear(), new Date(now).getUTCMonth(), 1);
+    const used = this.db
+      .select({ n: sql<number>`count(*)` })
+      .from(schema.message)
+      .where(
+        and(eq(schema.message.direction, "out"), inArray(schema.message.status, ["queued", "sent"]), gte(schema.message.createdAt, monthStart)),
+      )
+      .get();
+    return used?.n ?? 0;
+  }
+  private campaignHead(id: string): { status: string; runSeq: number } | undefined {
+    return this.ctx.storage.sql
+      .exec<{ status: string; runSeq: number }>("SELECT status, run_seq AS runSeq FROM campaign WHERE id = ?", id)
+      .toArray()[0];
+  }
   private findByKey(appId: string, key: string): SendResult | undefined {
     const row = this.db
       .select({ id: schema.message.id, status: schema.message.status })

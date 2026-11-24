@@ -3,12 +3,29 @@ import { getRequestHeaders } from "@tanstack/react-start/server";
 import { env } from "cloudflare:workers";
 import { z } from "zod";
 import { ConsoleError, requireActor, toResponseError } from "./actor";
-import { campaignOptionsFor, createCampaignFor, deleteCampaignFor, getCampaignFor, listCampaignsFor, previewAudienceFor, previewHtmlFor, setPostalAddressFor, updateCampaignFor } from "./campaigns";
+import {
+  campaignOptionsFor,
+  cancelCampaignFor,
+  createCampaignFor,
+  deleteCampaignFor,
+  getCampaignFor,
+  listCampaignsFor,
+  pauseCampaignFor,
+  previewAudienceFor,
+  previewHtmlFor,
+  resumeCampaignFor,
+  scheduleCampaignFor,
+  setPostalAddressFor,
+  testSendFor,
+  unscheduleCampaignFor,
+  updateCampaignFor,
+} from "./campaigns";
 import { campaignPatch, id, name, postalAddress, validate } from "./schemas";
 
 const READ = { permission: { campaign: ["read"] } };
 const WRITE = { permission: { campaign: ["write"] }, write: true };
 const SETTINGS = { permission: { settings: ["write"] }, write: true };
+const SEND = { permission: { campaign: ["send"] }, write: true };
 
 // Null means the role cannot see campaigns: the page shows a denied state instead of an error.
 export const fetchCampaigns = createServerFn({ method: "GET" })
@@ -99,6 +116,72 @@ export const deleteCampaignFn = createServerFn({ method: "POST" })
     try {
       const actor = await requireActor(env, getRequestHeaders(), WRITE);
       await deleteCampaignFor(env, actor, data.id);
+    } catch (err) {
+      toResponseError(err);
+    }
+  });
+
+export const scheduleCampaignFn = createServerFn({ method: "POST" })
+  .validator(validate(z.object({ id, at: z.number().int().positive() })))
+  .handler(async ({ data }) => {
+    try {
+      const actor = await requireActor(env, getRequestHeaders(), SEND);
+      return await scheduleCampaignFor(env, actor, data.id, data.at);
+    } catch (err) {
+      toResponseError(err);
+    }
+  });
+
+export const unscheduleCampaignFn = createServerFn({ method: "POST" })
+  .validator(validate(z.object({ id })))
+  .handler(async ({ data }) => {
+    try {
+      const actor = await requireActor(env, getRequestHeaders(), SEND);
+      await unscheduleCampaignFor(env, actor, data.id);
+    } catch (err) {
+      toResponseError(err);
+    }
+  });
+
+export const pauseCampaignFn = createServerFn({ method: "POST" })
+  .validator(validate(z.object({ id })))
+  .handler(async ({ data }) => {
+    try {
+      const actor = await requireActor(env, getRequestHeaders(), SEND);
+      await pauseCampaignFor(env, actor, data.id);
+    } catch (err) {
+      toResponseError(err);
+    }
+  });
+
+export const resumeCampaignFn = createServerFn({ method: "POST" })
+  .validator(validate(z.object({ id })))
+  .handler(async ({ data }) => {
+    try {
+      const actor = await requireActor(env, getRequestHeaders(), SEND);
+      return await resumeCampaignFor(env, actor, data.id);
+    } catch (err) {
+      toResponseError(err);
+    }
+  });
+
+export const cancelCampaignFn = createServerFn({ method: "POST" })
+  .validator(validate(z.object({ id })))
+  .handler(async ({ data }) => {
+    try {
+      const actor = await requireActor(env, getRequestHeaders(), SEND);
+      return await cancelCampaignFor(env, actor, data.id);
+    } catch (err) {
+      toResponseError(err);
+    }
+  });
+
+export const testSendCampaignFn = createServerFn({ method: "POST" })
+  .validator(validate(z.object({ id })))
+  .handler(async ({ data }) => {
+    try {
+      const actor = await requireActor(env, getRequestHeaders(), WRITE);
+      return await testSendFor(env, actor, data.id);
     } catch (err) {
       toResponseError(err);
     }

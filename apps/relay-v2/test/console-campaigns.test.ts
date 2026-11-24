@@ -1,10 +1,22 @@
 import { env, SELF } from "cloudflare:test";
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { clientFor } from "../src/core/messages";
 import { requireActor } from "../src/console/actor";
 import { addApp } from "../src/console/apps";
-import { createCampaignFor, previewHtmlFor, updateCampaignFor } from "../src/console/campaigns";
+import {
+  cancelCampaignFor,
+  createCampaignFor,
+  getCampaignFor,
+  pauseCampaignFor,
+  previewHtmlFor,
+  resumeCampaignFor,
+  scheduleCampaignFor,
+  setPostalAddressFor,
+  testSendFor,
+  updateCampaignFor,
+} from "../src/console/campaigns";
 import { addMember, cookieFor, createWorkspace, headersFor, ORIGIN, setActive } from "./console-helpers";
-import { applyMigrations } from "./migrate";
+import { applyMigrations, seedVerifiedSender } from "./migrate";
 
 beforeAll(async () => {
   await applyMigrations();
@@ -67,5 +79,109 @@ describe("campaigns console", () => {
     const preview = await previewHtmlFor(env, owner, campaign.id);
     expect(preview.htmlSafe).not.toContain("<script");
     expect(preview.htmlSafe).toContain("Priya");
+  });
+});
+
+describe("campaign lifecycle console", () => {
+  const BODY = {
+    subject: "Hi {{contact.first_name}}",
+    html: '<p>Hi</p><p>{{postal_address}}</p><a href="{{unsubscribe_url}}">Unsubscribe</a>',
+    text: "Hi {{postal_address}} {{unsubscribe_url}}",
+  };
+  const HOUR = 3_600_000;
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  // The DO is the writer; the fixture writes the sender directly so the Workflow tests need no verified domain.
+  async function readyFixture(email: string, name: string) {
+    const { owner, workspaceId } = await workspaceFor(email, name);
+    const { id: appId } = await addApp(env, owner, { name: "Web", slug: "web" });
+    const client = clientFor(env, workspaceId);
+    const list = await client.createList(workspaceId, appId, { name: "L", consentSource: "express_optin" });
+    await client.addMember(workspaceId, list.id, { email: "ann@x.com", firstName: "Ann" });
+    const campaign = await createCampaignFor(env, owner, appId, "Spring");
+    await seedVerifiedSender(workspaceId);
+    await client.updateCampaign(workspaceId, campaign.id, { ...BODY, fromEmail: "relay@a6n.ai", listIds: [list.id] });
+    await setPostalAddressFor(env, owner, "1 Main St");
+    return { owner, workspaceId, campaignId: campaign.id };
+  }
+
+  function spyWorkflow() {
+    const create = vi.spyOn(env.CAMPAIGNS, "create").mockResolvedValue({ id: "run", status: async () => ({}) } as never);
+    const terminate = vi.fn(async () => {});
+    vi.spyOn(env.CAMPAIGNS, "get").mockReturnValue({ terminate } as never);
+    return { create, terminate };
+  }
+
+  it("schedules a ready campaign as instance <id>-1", async () => {
+    const { owner, campaignId } = await readyFixture("cmp-sched@example.com", "Cmp Sched Co");
+    const { create } = spyWorkflow();
+    const at = Date.now() + HOUR;
+    expect(await scheduleCampaignFor(env, owner, campaignId, at)).toEqual({ runSeq: 1 });
+    expect(create).toHaveBeenCalledWith({
+      id: `${campaignId}-1`,
+      params: expect.objectContaining({ campaignId, runSeq: 1, at }),
+    });
+    expect(await getCampaignFor(env, owner, campaignId)).toMatchObject({ status: "scheduled", runSeq: 1 });
+  });
+
+  it("returns the campaign to draft with 503 when the workflow cannot start", async () => {
+    const { owner, campaignId } = await readyFixture("cmp-503@example.com", "Cmp 503 Co");
+    const { create } = spyWorkflow();
+    create.mockRejectedValueOnce(new Error("workflow down"));
+    await expect(scheduleCampaignFor(env, owner, campaignId, Date.now() + HOUR)).rejects.toMatchObject({ status: 503 });
+    expect(await getCampaignFor(env, owner, campaignId)).toMatchObject({ status: "draft" });
+  });
+
+  it("refuses a member schedule with 403", async () => {
+    const { workspaceId, campaignId } = await readyFixture("cmp-403@example.com", "Cmp 403 Co");
+    spyWorkflow();
+    const cookie = await addMember(workspaceId, "cmp-403-member@example.com", "member");
+    const member = await requireActor(env, headersFor(cookie));
+    await expect(scheduleCampaignFor(env, member, campaignId, Date.now() + HOUR)).rejects.toMatchObject({ status: 403 });
+  });
+
+  it("refuses a schedule two years out with 400 invalid schedule", async () => {
+    const { owner, campaignId } = await readyFixture("cmp-far@example.com", "Cmp Far Co");
+    spyWorkflow();
+    await expect(scheduleCampaignFor(env, owner, campaignId, Date.now() + 730 * 86_400_000)).rejects.toMatchObject({
+      status: 400,
+      message: "invalid schedule",
+    });
+  });
+
+  it("pauses and resumes, starting the new run as <id>-2", async () => {
+    const { owner, campaignId } = await readyFixture("cmp-resume@example.com", "Cmp Resume Co");
+    const { create, terminate } = spyWorkflow();
+    await scheduleCampaignFor(env, owner, campaignId, Date.now() + HOUR);
+    await clientFor(env, owner.workspaceId).startCampaign(owner.workspaceId, campaignId, 1);
+    await pauseCampaignFor(env, owner, campaignId);
+    expect(terminate).toHaveBeenCalled();
+    expect(await resumeCampaignFor(env, owner, campaignId)).toEqual({ runSeq: 2 });
+    expect(create).toHaveBeenLastCalledWith({
+      id: `${campaignId}-2`,
+      params: expect.objectContaining({ runSeq: 2, at: 0 }),
+    });
+  });
+
+  it("cancels a paused campaign and reports the dropped count", async () => {
+    const { owner, campaignId } = await readyFixture("cmp-cancel@example.com", "Cmp Cancel Co");
+    spyWorkflow();
+    await scheduleCampaignFor(env, owner, campaignId, Date.now() + HOUR);
+    await clientFor(env, owner.workspaceId).startCampaign(owner.workspaceId, campaignId, 1);
+    await pauseCampaignFor(env, owner, campaignId);
+    expect(await cancelCampaignFor(env, owner, campaignId)).toEqual({ dropped: 0 });
+    expect(await getCampaignFor(env, owner, campaignId)).toMatchObject({ status: "cancelled" });
+  });
+
+  it("sends a test only to the signed-in user's own address", async () => {
+    const { owner, workspaceId, campaignId } = await readyFixture("cmp-test@example.com", "Cmp Test Co");
+    const { messageId, status } = await testSendFor(env, owner, campaignId);
+    expect(status).toBe("queued");
+    const view = await clientFor(env, workspaceId).getMessage(workspaceId, messageId);
+    expect(view).toMatchObject({ toEmail: "cmp-test@example.com", campaignId: null });
+    expect(view?.subject).toMatch(/^\[Test\] /);
   });
 });

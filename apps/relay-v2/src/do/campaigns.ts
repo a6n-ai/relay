@@ -14,6 +14,7 @@ export type CampaignView = {
   text: string;
   listIds: string[];
   scheduledAt: number | null;
+  runSeq: number;
   startedAt: number | null;
   finishedAt: number | null;
   recipients: number;
@@ -27,7 +28,7 @@ export type AudiencePreview = { members: number; suppressed: number; lapsed: num
 
 const PAGE = 50;
 const SUMMARY_COLUMNS = `id, app_id AS appId, name, status, from_email AS fromEmail, subject, list_ids AS listIds,
-  scheduled_at AS scheduledAt, started_at AS startedAt, finished_at AS finishedAt, recipients, error,
+  scheduled_at AS scheduledAt, run_seq AS runSeq, started_at AS startedAt, finished_at AS finishedAt, recipients, error,
   created_at AS createdAt, updated_at AS updatedAt`;
 const VIEW_COLUMNS = `${SUMMARY_COLUMNS}, html, text`;
 
@@ -44,6 +45,30 @@ export function recipientQuery(): string {
     WHERE m.app_id = ? AND m.list_id IN (SELECT value FROM json_each(?))
       AND NOT (l.consent_source = 'purchase' AND m.consent_at < ?)
     GROUP BY m.email ORDER BY m.email`;
+}
+
+export type CampaignCounter =
+  | "queued"
+  | "sent"
+  | "failed"
+  | "suppressed"
+  | "delivered"
+  | "opened"
+  | "clicked"
+  | "bounced"
+  | "complained"
+  | "unsubscribed";
+
+// Column names come from the typed union above, so the interpolation is never user input.
+// Call inside the caller's transactionSync: the counter moves with the message it counts.
+export function bumpCampaign(sql: SqlStorage, campaignId: string | null, delta: Partial<Record<CampaignCounter, number>>): void {
+  const entries = Object.entries(delta).filter(([, n]) => n);
+  if (!campaignId || entries.length === 0) return;
+  sql.exec(
+    `UPDATE campaign SET ${entries.map(([col]) => `${col} = ${col} + ?`).join(", ")} WHERE id = ?`,
+    ...entries.map(([, n]) => n),
+    campaignId,
+  );
 }
 
 export function createCampaignRow(sql: SqlStorage, appId: string, name: string): CampaignView {
