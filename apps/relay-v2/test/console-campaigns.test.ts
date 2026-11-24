@@ -5,6 +5,7 @@ import { requireActor } from "../src/console/actor";
 import { addApp } from "../src/console/apps";
 import {
   cancelCampaignFor,
+  campaignStatsFor,
   createCampaignFor,
   getCampaignFor,
   pauseCampaignFor,
@@ -183,5 +184,18 @@ describe("campaign lifecycle console", () => {
     const view = await clientFor(env, workspaceId).getMessage(workspaceId, messageId);
     expect(view).toMatchObject({ toEmail: "cmp-test@example.com", campaignId: null });
     expect(view?.subject).toMatch(/^\[Test\] /);
+  });
+});
+
+describe("campaign stats console", () => {
+  it("returns stats to a member and 404 across workspaces", async () => {
+    const a = await workspaceFor("cmp-stats-a@example.com", "Stats A Co");
+    const b = await workspaceFor("cmp-stats-b@example.com", "Stats B Co");
+    const { id: appId } = await addApp(env, a.owner, { name: "Web", slug: "web" });
+    const campaign = await createCampaignFor(env, a.owner, appId, "Spring");
+    await expect(campaignStatsFor(env, b.owner, campaign.id)).rejects.toMatchObject({ status: 404 });
+    const cookie = await addMember(a.workspaceId, "cmp-stats-member@example.com", "member");
+    const member = await requireActor(env, headersFor(cookie));
+    expect(await campaignStatsFor(env, member, campaign.id)).toMatchObject({ total: 0, queued: 0 });
   });
 });

@@ -5,6 +5,7 @@ import { z } from "zod";
 import { ConsoleError, requireActor, toResponseError } from "./actor";
 import {
   campaignOptionsFor,
+  campaignStatsFor,
   cancelCampaignFor,
   createCampaignFor,
   deleteCampaignFor,
@@ -34,6 +35,18 @@ export const fetchCampaigns = createServerFn({ method: "GET" })
     try {
       const actor = await requireActor(env, getRequestHeaders(), READ);
       return await listCampaignsFor(env, actor, data.appId, data.cursor);
+    } catch (err) {
+      if (err instanceof ConsoleError && err.status === 403) return null;
+      toResponseError(err);
+    }
+  });
+
+export const fetchCampaignStats = createServerFn({ method: "GET" })
+  .validator(validate(z.object({ id })))
+  .handler(async ({ data }) => {
+    try {
+      const actor = await requireActor(env, getRequestHeaders(), READ);
+      return await campaignStatsFor(env, actor, data.id);
     } catch (err) {
       if (err instanceof ConsoleError && err.status === 403) return null;
       toResponseError(err);

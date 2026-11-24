@@ -42,6 +42,9 @@ import { storeInbound, writeInboundFailure, type InboundDeps, type InboundResult
 import * as schema from "./client-schema";
 import {
   bumpCampaign,
+  type CampaignStats,
+  campaignStatsRow,
+  statsOf,
   createCampaignRow,
   deleteCampaignRow,
   getCampaignRow,
@@ -420,6 +423,59 @@ export class ClientDO extends DurableObject<Env> {
   async getCampaign(workspaceId: string, id: string): Promise<CampaignView | null> {
     await this.ready(workspaceId);
     return getCampaignRow(this.ctx.storage.sql, id);
+  }
+  async campaignStats(workspaceId: string, id: string): Promise<CampaignStats | null> {
+    await this.ready(workspaceId);
+    return campaignStatsRow(this.ctx.storage.sql, id);
+  }
+  // Admin and test helper, no console route: rebuilds the counters from messages and events, and returns both sets.
+  async recountCampaign(workspaceId: string, id: string): Promise<{ before: CampaignStats; after: CampaignStats } | null> {
+    await this.ready(workspaceId);
+    return this.ctx.storage.transactionSync(() => {
+      const sql = this.ctx.storage.sql;
+      const before = campaignStatsRow(sql, id);
+      if (!before) return null;
+      const byStatus = sql
+        .exec<{ status: string; n: number; opened: number; clicked: number; unsubscribed: number }>(
+          "SELECT status, count(*) AS n, sum(opens > 0) AS opened, sum(clicks > 0) AS clicked, sum(unsubscribed_at IS NOT NULL) AS unsubscribed FROM message WHERE campaign_id = ? GROUP BY status",
+          id,
+        )
+        .toArray();
+      const events = sql
+        .exec<{ type: string; n: number }>(
+          "SELECT e.type AS type, count(DISTINCT e.message_id) AS n FROM message_event e JOIN message m ON m.id = e.message_id WHERE m.campaign_id = ? AND e.type IN ('Delivery', 'Bounce', 'Complaint') GROUP BY e.type",
+          id,
+        )
+        .toArray();
+      const counts = { queued: 0, sent: 0, failed: 0, suppressed: 0 };
+      for (const r of byStatus) if (r.status in counts) counts[r.status as keyof typeof counts] += r.n;
+      const sumOf = (k: "opened" | "clicked" | "unsubscribed") => byStatus.reduce((t, r) => t + (r[k] ?? 0), 0);
+      const eventCount = (type: string) => events.find((e) => e.type === type)?.n ?? 0;
+      const afterRow = {
+        ...counts,
+        delivered: eventCount("Delivery"),
+        opened: sumOf("opened"),
+        clicked: sumOf("clicked"),
+        bounced: eventCount("Bounce"),
+        complained: eventCount("Complaint"),
+        unsubscribed: sumOf("unsubscribed"),
+      };
+      sql.exec(
+        "UPDATE campaign SET queued = ?, sent = ?, failed = ?, suppressed = ?, delivered = ?, opened = ?, clicked = ?, bounced = ?, complained = ?, unsubscribed = ? WHERE id = ?",
+        afterRow.queued,
+        afterRow.sent,
+        afterRow.failed,
+        afterRow.suppressed,
+        afterRow.delivered,
+        afterRow.opened,
+        afterRow.clicked,
+        afterRow.bounced,
+        afterRow.complained,
+        afterRow.unsubscribed,
+        id,
+      );
+      return { before, after: statsOf(afterRow) };
+    });
   }
   async updateCampaign(workspaceId: string, id: string, patch: CampaignPatch): Promise<CampaignView | "missing" | "not_draft" | "bad_list"> {
     await this.ready(workspaceId);
@@ -891,6 +947,7 @@ export class ClientDO extends DurableObject<Env> {
           .set({ status: "suppressed", htmlKey: null, claimedUntil: null, updatedAt: now })
           .where(eq(schema.message.id, messageId))
           .run();
+        bumpCampaign(this.ctx.storage.sql, row.campaignId, { queued: -1, suppressed: 1 });
         return { kind: "suppressed", htmlKey: row.htmlKey };
       }
       // A suspension or a revoked sender can land while the row waits in the queue; the message fails, it is not held.
@@ -906,6 +963,7 @@ export class ClientDO extends DurableObject<Env> {
           })
           .where(eq(schema.message.id, messageId))
           .run();
+        bumpCampaign(this.ctx.storage.sql, row.campaignId, { queued: -1, failed: 1 });
         return { kind: "refused", htmlKey: row.htmlKey };
       }
       let body: MessageBody | null = null;
@@ -925,6 +983,7 @@ export class ClientDO extends DurableObject<Env> {
             .set({ status: "failed", error, claimedUntil: null, updatedAt: now })
             .where(eq(schema.message.id, messageId))
             .run();
+          bumpCampaign(this.ctx.storage.sql, row.campaignId, { queued: -1, failed: 1 });
           return { kind: "skip", reason: "failed" };
         }
       }
@@ -935,6 +994,7 @@ export class ClientDO extends DurableObject<Env> {
           .set({ status: "failed", error: "no SES region", claimedUntil: null, updatedAt: now })
           .where(eq(schema.message.id, messageId))
           .run();
+        bumpCampaign(this.ctx.storage.sql, row.campaignId, { queued: -1, failed: 1 });
         return { kind: "skip", reason: "failed" };
       }
       const attempt = row.attempts + 1;
@@ -964,6 +1024,7 @@ export class ClientDO extends DurableObject<Env> {
           .set({ status: "failed", error: "html missing", claimedUntil: null, updatedAt: Date.now() })
           .where(eq(schema.message.id, messageId))
           .run();
+        bumpCampaign(this.ctx.storage.sql, row.campaignId, { queued: -1, failed: 1 });
       });
       return { kind: "skip", reason: "failed" };
     }
@@ -989,25 +1050,37 @@ export class ClientDO extends DurableObject<Env> {
   // Returns true only when this call changed the row, so the caller counts each send once.
   async markSent(workspaceId: string, messageId: string, sesMessageId: string, now = Date.now()): Promise<boolean> {
     await this.ready(workspaceId);
-    return this.ctx.storage.transactionSync(
-      () =>
-        this.db
-          .update(schema.message)
-          .set({ status: "sent", sesMessageId, sentAt: now, claimedUntil: null, error: null, updatedAt: now })
-          .where(and(eq(schema.message.id, messageId), ne(schema.message.status, "sent")))
-          .returning({ id: schema.message.id })
-          .all().length > 0,
-    );
+    return this.ctx.storage.transactionSync(() => {
+      const prior = this.db
+        .select({ status: schema.message.status, campaignId: schema.message.campaignId })
+        .from(schema.message)
+        .where(eq(schema.message.id, messageId))
+        .get();
+      if (!prior || prior.status === "sent") return false;
+      this.db
+        .update(schema.message)
+        .set({ status: "sent", sesMessageId, sentAt: now, claimedUntil: null, error: null, updatedAt: now })
+        .where(and(eq(schema.message.id, messageId), ne(schema.message.status, "sent")))
+        .run();
+      bumpCampaign(this.ctx.storage.sql, prior.campaignId, { sent: 1, [prior.status]: -1 });
+      return true;
+    });
   }
 
   async markSendFailed(workspaceId: string, messageId: string, error: string, final: boolean): Promise<void> {
     await this.ready(workspaceId);
     this.ctx.storage.transactionSync(() => {
+      const prior = this.db
+        .select({ status: schema.message.status, campaignId: schema.message.campaignId })
+        .from(schema.message)
+        .where(eq(schema.message.id, messageId))
+        .get();
       this.db
         .update(schema.message)
         .set({ error: maskEmails(error), claimedUntil: null, updatedAt: Date.now(), ...(final ? { status: "failed" as const } : {}) })
         .where(and(eq(schema.message.id, messageId), ne(schema.message.status, "sent")))
         .run();
+      if (final && prior?.status === "queued") bumpCampaign(this.ctx.storage.sql, prior.campaignId, { queued: -1, failed: 1 });
     });
   }
 
@@ -1051,7 +1124,12 @@ export class ClientDO extends DurableObject<Env> {
   private applySesEvent(workspaceId: string, job: SesEventJob): { delivered: number; bounced: number } | null {
     if (job.workspaceId !== workspaceId) return null;
     const row = this.db
-      .select({ sesMessageId: schema.message.sesMessageId })
+      .select({
+        sesMessageId: schema.message.sesMessageId,
+        campaignId: schema.message.campaignId,
+        opens: schema.message.opens,
+        clicks: schema.message.clicks,
+      })
       .from(schema.message)
       .where(eq(schema.message.id, job.messageId))
       .get();
@@ -1072,6 +1150,20 @@ export class ClientDO extends DurableObject<Env> {
       .returning({ id: schema.messageEvent.id })
       .all();
     if (inserted.length === 0) return null;
+    // Campaign counters move on the first event of each type for the message, not on every replay.
+    const firstOf = (type: "Delivery" | "Bounce" | "Complaint") =>
+      !this.db
+        .select({ id: schema.messageEvent.id })
+        .from(schema.messageEvent)
+        .where(
+          and(
+            eq(schema.messageEvent.messageId, job.messageId),
+            eq(schema.messageEvent.type, type),
+            ne(schema.messageEvent.id, inserted[0].id),
+          ),
+        )
+        .limit(1)
+        .get();
     const usage = { delivered: 0, bounced: 0 };
     switch (job.type) {
       case "Open":
@@ -1080,6 +1172,7 @@ export class ClientDO extends DurableObject<Env> {
           .set({ opens: sql`${schema.message.opens} + 1` })
           .where(eq(schema.message.id, job.messageId))
           .run();
+        if (row.opens === 0) bumpCampaign(this.ctx.storage.sql, row.campaignId, { opened: 1 });
         break;
       case "Click":
         this.db
@@ -1087,15 +1180,19 @@ export class ClientDO extends DurableObject<Env> {
           .set({ clicks: sql`${schema.message.clicks} + 1` })
           .where(eq(schema.message.id, job.messageId))
           .run();
+        if (row.clicks === 0) bumpCampaign(this.ctx.storage.sql, row.campaignId, { clicked: 1 });
         break;
       case "Delivery":
         usage.delivered = 1;
+        if (firstOf("Delivery")) bumpCampaign(this.ctx.storage.sql, row.campaignId, { delivered: 1 });
         break;
       case "Bounce":
         usage.bounced = 1;
+        if (firstOf("Bounce")) bumpCampaign(this.ctx.storage.sql, row.campaignId, { bounced: 1 });
         if (job.bounceType === "Permanent") for (const r of job.recipients) this.writeSuppression(r, "bounce");
         break;
       case "Complaint":
+        if (firstOf("Complaint")) bumpCampaign(this.ctx.storage.sql, row.campaignId, { complained: 1 });
         for (const r of job.recipients) this.writeSuppression(r, "complaint");
         break;
     }
@@ -1144,13 +1241,7 @@ export class ClientDO extends DurableObject<Env> {
         .run();
       if (msg.unsubscribedAt !== null) return;
       this.db.update(schema.message).set({ unsubscribedAt: now }).where(eq(schema.message.id, messageId)).run();
-      if (msg.campaignId) {
-        this.db
-          .update(schema.campaign)
-          .set({ unsubscribed: sql`${schema.campaign.unsubscribed} + 1`, updatedAt: now })
-          .where(eq(schema.campaign.id, msg.campaignId))
-          .run();
-      }
+      bumpCampaign(this.ctx.storage.sql, msg.campaignId, { unsubscribed: 1 });
     });
   }
   async listSuppressions(workspaceId: string, q: { prefix?: string; cursor?: string }): Promise<{ rows: SuppressionView[]; nextCursor: string | null }> {
@@ -1186,15 +1277,18 @@ export class ClientDO extends DurableObject<Env> {
       return { requeued: 0, expired: 0 };
     }
     await this.ready(workspaceId);
-    const expired = this.ctx.storage.transactionSync(
-      () =>
-        this.db
-          .update(schema.message)
-          .set({ status: "failed", error: "expired after 24h in queue", updatedAt: now })
-          .where(and(eq(schema.message.status, "queued"), lt(schema.message.createdAt, now - EXPIRE_MS)))
-          .returning({ id: schema.message.id })
-          .all().length,
-    );
+    const expired = this.ctx.storage.transactionSync(() => {
+      const rows = this.db
+        .update(schema.message)
+        .set({ status: "failed", error: "expired after 24h in queue", updatedAt: now })
+        .where(and(eq(schema.message.status, "queued"), lt(schema.message.createdAt, now - EXPIRE_MS)))
+        .returning({ campaignId: schema.message.campaignId })
+        .all();
+      const perCampaign = new Map<string, number>();
+      for (const r of rows) if (r.campaignId) perCampaign.set(r.campaignId, (perCampaign.get(r.campaignId) ?? 0) + 1);
+      for (const [campaignId, n] of perCampaign) bumpCampaign(this.ctx.storage.sql, campaignId, { queued: -n, failed: n });
+      return rows.length;
+    });
     const stale = this.db
       .select({ id: schema.message.id })
       .from(schema.message)

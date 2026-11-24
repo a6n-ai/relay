@@ -9,7 +9,7 @@ import { address, sendingDomain, workspaceProfile } from "../db/core/schema";
 import { securityDb } from "../db/security/client";
 import { user as securityUser } from "../db/security/schema";
 import { decodeCursor } from "../do/console-reads";
-import type { AudiencePreview, CampaignPatch, CampaignSummary, CampaignView } from "../do/campaigns";
+import type { AudiencePreview, CampaignPatch, CampaignStats, CampaignSummary, CampaignView } from "../do/campaigns";
 import type { SendResult } from "../do/client-do";
 import type { ListView } from "../do/lists";
 import type { Env } from "../env";
@@ -90,6 +90,13 @@ export async function listCampaignsFor(
 export async function getCampaignFor(env: Env, actor: ConsoleActor, id: string): Promise<CampaignView> {
   requireRead(actor);
   return campaignOr404(env, actor, id);
+}
+
+export async function campaignStatsFor(env: Env, actor: ConsoleActor, id: string): Promise<CampaignStats> {
+  requireRead(actor);
+  const stats = await clientFor(env, actor.workspaceId).campaignStats(actor.workspaceId, id);
+  if (!stats) throw new ConsoleError(404, "not found");
+  return stats;
 }
 
 export async function createCampaignFor(env: Env, actor: ConsoleActor, appId: string, name: string): Promise<CampaignView> {

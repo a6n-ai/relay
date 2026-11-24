@@ -224,3 +224,34 @@ describe("ClientDO sweeper alarm", () => {
     expect(await runInDurableObject(stub, (_i, state) => state.storage.getAlarm())).toBeNull();
   });
 });
+
+describe("campaign counters in the sweeper", () => {
+  it("moves an expired campaign row from queued to failed", async () => {
+    const ws = "ws_sweep_campaign";
+    const stub = await seededStub(ws);
+    const c = await stub.createCampaign(ws, "app_1", "C");
+    await runInDurableObject(stub, (instance, state) => {
+      state.storage.sql.exec("UPDATE campaign SET queued = 1 WHERE id = ?", c.id);
+      instance.db
+        .insert(schema.message)
+        .values({
+          id: "msg_sweep_camp",
+          appId: "app_1",
+          direction: "out",
+          stream: "marketing",
+          status: "queued",
+          fromEmail: "relay@a6n.ai",
+          toEmail: "a@x.com",
+          subject: "s",
+          text: "t",
+          sesRegion: "ap-south-1",
+          campaignId: c.id,
+          createdAt: 0,
+          updatedAt: 0,
+        })
+        .run();
+    });
+    await runInDurableObject(stub, (instance) => instance.sweepQueued(Date.now()));
+    expect(await stub.campaignStats(ws, c.id)).toMatchObject({ queued: 0, failed: 1, total: 1 });
+  });
+});

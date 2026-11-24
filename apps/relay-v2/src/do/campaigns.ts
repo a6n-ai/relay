@@ -71,6 +71,35 @@ export function bumpCampaign(sql: SqlStorage, campaignId: string | null, delta: 
   );
 }
 
+export type CampaignStats = {
+  total: number;
+  queued: number;
+  sent: number;
+  failed: number;
+  suppressed: number;
+  delivered: number;
+  opened: number;
+  clicked: number;
+  bounced: number;
+  complained: number;
+  unsubscribed: number;
+};
+
+export function statsOf(s: Omit<CampaignStats, "total">): CampaignStats {
+  return { ...s, total: s.queued + s.sent + s.failed + s.suppressed };
+}
+
+// Reads the counter columns only: the stats path never counts message rows.
+export function campaignStatsRow(sql: SqlStorage, id: string): CampaignStats | null {
+  const row = sql
+    .exec<Omit<CampaignStats, "total">>(
+      "SELECT queued, sent, failed, suppressed, delivered, opened, clicked, bounced, complained, unsubscribed FROM campaign WHERE id = ?",
+      id,
+    )
+    .toArray()[0];
+  return row ? statsOf(row) : null;
+}
+
 export function createCampaignRow(sql: SqlStorage, appId: string, name: string): CampaignView {
   const id = newId("cmp");
   const now = Date.now();

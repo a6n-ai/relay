@@ -1,6 +1,10 @@
 import { env, runInDurableObject } from "cloudflare:test";
-import { beforeAll, describe, expect, it } from "vitest";
-import { applyMigrations } from "./migrate";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import type { SesEventJob } from "../src/core/ses-events";
+import { ensureWorkspaceProfile } from "../src/core/workspace-profile";
+import { securityDb } from "../src/db/security/client";
+import { workspace } from "../src/db/security/schema";
+import { applyMigrations, seedVerifiedSender } from "./migrate";
 
 beforeAll(async () => {
   await applyMigrations();
@@ -88,5 +92,125 @@ describe("campaign drafts in the workspace DO", () => {
     const second = await stub.listCampaigns(ws, first.nextCursor ?? undefined);
     expect(second.rows).toHaveLength(1);
     expect(second.nextCursor).toBeNull();
+  });
+});
+
+describe("campaign live counters", () => {
+  const BODY = {
+    subject: "Hi {{contact.first_name}}",
+    html: '<p>Hi {{contact.first_name}}</p><p>{{postal_address}}</p><a href="{{unsubscribe_url}}">Unsubscribe</a>',
+    text: "Hi {{contact.first_name}} {{postal_address}} {{unsubscribe_url}}",
+    fromEmail: "relay@a6n.ai",
+  };
+  const EMAILS = ["a@x.com", "b@x.com", "c@x.com", "d@x.com", "e@x.com"];
+
+  beforeEach(() => {
+    vi.spyOn(env.SEND, "sendBatch").mockResolvedValue({ metadata: { metrics: { backlogCount: 0, backlogBytes: 0 } } } as never);
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  async function queuedCampaign(name: string) {
+    const ws = `ws_stats_${name}`;
+    await securityDb(env).insert(workspace).values({ id: ws, name: ws, slug: ws });
+    await seedVerifiedSender(ws);
+    await ensureWorkspaceProfile(env, ws);
+    const stub = stubFor(ws);
+    const list = await stub.createList(ws, "app_1", { name: "L", consentSource: "express_optin" });
+    for (const email of EMAILS) await stub.addMember(ws, list.id, { email });
+    const c = await stub.createCampaign(ws, "app_1", "C");
+    await stub.updateCampaign(ws, c.id, { ...BODY, listIds: [list.id] });
+    const scheduled = await stub.scheduleCampaign(ws, c.id, 0, "1 Main St");
+    if (typeof scheduled !== "object" || !("runSeq" in scheduled)) throw new Error("not scheduled");
+    expect(await stub.startCampaign(ws, c.id, scheduled.runSeq)).toBe("go");
+    await stub.campaignChunk(ws, c.id, scheduled.runSeq);
+    const msgs = await runInDurableObject(stub, (_instance, state) =>
+      state.storage.sql.exec<{ id: string; email: string }>("SELECT id, to_email AS email FROM message WHERE campaign_id = ? ORDER BY to_email", c.id).toArray(),
+    );
+    return { ws, stub, id: c.id, msgs };
+  }
+
+  it("bumps each counter once per message and matches a recount", async () => {
+    const { ws, stub, id, msgs } = await queuedCampaign("main");
+    for (const i of [0, 1, 2, 3]) {
+      expect(await stub.claimSend(ws, msgs[i].id)).toMatchObject({ kind: "send" });
+      expect(await stub.markSent(ws, msgs[i].id, `ses-${i}`)).toBe(true);
+    }
+    expect(await stub.markSent(ws, msgs[0].id, "ses-0")).toBe(false);
+
+    const ev = (i: number, type: SesEventJob["type"], sns: string, extra: Partial<SesEventJob> = {}): SesEventJob => ({
+      workspaceId: ws,
+      messageId: msgs[i].id,
+      sesMessageId: `ses-${i}`,
+      snsMessageId: sns,
+      type,
+      occurredAt: 1,
+      recipients: [msgs[i].email],
+      ...extra,
+    });
+    await stub.applySesEvents(ws, [
+      ev(0, "Delivery", "d0"),
+      ev(1, "Delivery", "d1"),
+      ev(2, "Delivery", "d2"),
+      ev(0, "Delivery", "d0"),
+      ev(0, "Open", "o1"),
+      ev(0, "Open", "o2"),
+      ev(0, "Click", "c1", { link: "https://x.test" }),
+      ev(3, "Bounce", "b3", { bounceType: "Permanent" }),
+      ev(1, "Complaint", "k1"),
+    ]);
+    await stub.unsubscribe(ws, msgs[0].id);
+    await stub.unsubscribe(ws, msgs[0].id);
+    await stub.markSendFailed(ws, msgs[4].id, "boom", true);
+
+    const expected = {
+      total: 5,
+      sent: 4,
+      delivered: 3,
+      opened: 1,
+      clicked: 1,
+      bounced: 1,
+      complained: 1,
+      unsubscribed: 1,
+      queued: 0,
+      failed: 1,
+      suppressed: 0,
+    };
+    expect(await stub.campaignStats(ws, id)).toEqual(expected);
+    const recount = await stub.recountCampaign(ws, id);
+    expect(recount?.before).toEqual(expected);
+    expect(recount?.after).toEqual(expected);
+  });
+
+  it("recount reports drift, rewrites the row, and campaignStats reads the true value", async () => {
+    const { ws, stub, id } = await queuedCampaign("drift");
+    await runInDurableObject(stub, (_instance, state) => state.storage.sql.exec("UPDATE campaign SET queued = 0 WHERE id = ?", id));
+    const recount = await stub.recountCampaign(ws, id);
+    expect(recount?.before).toMatchObject({ queued: 0, total: 0 });
+    expect(recount?.after).toMatchObject({ queued: 5, total: 5 });
+    expect(await stub.campaignStats(ws, id)).toMatchObject({ queued: 5 });
+  });
+
+  it("moves a claim-time suppression from queued to suppressed, and ignores non-campaign mail", async () => {
+    const { ws, stub, id, msgs } = await queuedCampaign("suppress");
+    await stub.addSuppression(ws, msgs[0].email, "manual", "marketing");
+    expect(await stub.claimSend(ws, msgs[0].id)).toEqual({ kind: "skip", reason: "suppressed" });
+    expect(await stub.campaignStats(ws, id)).toMatchObject({ queued: 4, suppressed: 1, total: 5 });
+
+    await runInDurableObject(stub, (_instance, state) =>
+      state.storage.sql.exec(
+        "INSERT INTO message (id, app_id, direction, stream, status, event, from_email, from_name, ses_region, to_email, subject, attempts, opens, clicks, created_at, updated_at) VALUES ('msg_plain', 'app_1', 'out', 'transactional', 'queued', 'transactional', 'relay@a6n.ai', 'A', 'ap-south-1', 'z@x.com', 'S', 0, 0, 0, 0, 0)",
+      ),
+    );
+    expect(await stub.claimSend(ws, "msg_plain")).toMatchObject({ kind: "send" });
+    expect(await stub.markSent(ws, "msg_plain", "ses-plain")).toBe(true);
+    expect(await stub.campaignStats(ws, id)).toMatchObject({ queued: 4, suppressed: 1, sent: 0, total: 5 });
+  });
+
+  it("returns null for an unknown campaign", async () => {
+    const stub = stubFor("ws_stats_unknown");
+    expect(await stub.campaignStats("ws_stats_unknown", "cmp_nope000000000")).toBeNull();
+    expect(await stub.recountCampaign("ws_stats_unknown", "cmp_nope000000000")).toBeNull();
   });
 });
