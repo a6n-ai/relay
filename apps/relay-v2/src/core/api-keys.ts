@@ -26,8 +26,13 @@ export async function createApiKey(
   return { id: key.id, secret: key.key };
 }
 
-export async function revokeApiKey(env: Env, id: string): Promise<void> {
-  await securityDb(env).update(apiKey).set({ enabled: false }).where(eq(apiKey.id, id));
+export async function revokeApiKey(env: Env, workspaceId: string, id: string): Promise<boolean> {
+  const rows = await securityDb(env)
+    .update(apiKey)
+    .set({ enabled: false })
+    .where(and(eq(apiKey.id, id), eq(apiKey.referenceId, workspaceId)))
+    .returning({ id: apiKey.id });
+  return rows.length > 0;
 }
 
 // The plugin checks enabled and expiry against D1 on every call; the workspace status is read here.

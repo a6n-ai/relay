@@ -41,6 +41,32 @@ export async function createAddressGrant(
     .values({ workspaceId: input.workspaceId, addressId: input.addressId, memberId: input.memberId ?? null, teamId: input.teamId ?? null });
 }
 
+export async function updateAddress(
+  env: Env,
+  workspaceId: string,
+  id: string,
+  patch: { displayName?: string | null; canSend?: boolean },
+): Promise<boolean> {
+  const rows = await coreDb(env)
+    .update(address)
+    .set({ ...patch, updatedAt: new Date() })
+    .where(and(eq(address.id, id), eq(address.workspaceId, workspaceId)))
+    .returning({ id: address.id });
+  return rows.length > 0;
+}
+
+// Grants live in relay-security, so they go first: a failure leaves an address without grants, never a grant to a missing address.
+export async function deleteAddress(env: Env, workspaceId: string, id: string): Promise<boolean> {
+  const [owned] = await coreDb(env)
+    .select({ id: address.id })
+    .from(address)
+    .where(and(eq(address.id, id), eq(address.workspaceId, workspaceId)));
+  if (!owned) return false;
+  await securityDb(env).delete(addressGrant).where(and(eq(addressGrant.addressId, id), eq(addressGrant.workspaceId, workspaceId)));
+  await coreDb(env).delete(address).where(eq(address.id, id));
+  return true;
+}
+
 export async function inboxForRecipient(
   env: Env,
   email: string,

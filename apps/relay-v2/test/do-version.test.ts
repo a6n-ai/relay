@@ -5,6 +5,7 @@ import { guardInternal } from "../src/core/internal-guard";
 import { sweepWorkspaces } from "../src/core/do-sweep";
 import { CLIENT_MIGRATIONS } from "../src/do/migrations";
 import { coreDb } from "../src/db/core/client";
+import { ensureWorkspaceProfile } from "../src/core/workspace-profile";
 import { workspaceProfile } from "../src/db/core/schema";
 import { securityDb } from "../src/db/security/client";
 import { workspace } from "../src/db/security/schema";
@@ -29,8 +30,10 @@ const stubFor = (workspaceId: string) => env.CLIENT.get(env.CLIENT.idFromName(wo
 const profileOf = (workspaceId: string) =>
   coreDb(env).select().from(workspaceProfile).where(eq(workspaceProfile.workspaceId, workspaceId));
 
+// Production creates the profile with the workspace (afterCreateOrganization), so seeds do the same.
 async function seedWorkspace(slug: string) {
   const [row] = await db.insert(workspace).values({ name: slug, slug }).returning();
+  await ensureWorkspaceProfile(env, row.id);
   return row.id;
 }
 
@@ -65,6 +68,7 @@ describe("ClientDO schema version", () => {
     expect(unset).toBeUndefined();
 
     await db.insert(workspace).values({ id, name: "ghost", slug: "ghost" });
+    await ensureWorkspaceProfile(env, id);
     expect(await stub.ping(id)).toEqual({ version: VERSION });
     const [row] = await profileOf(id);
     expect(row).toMatchObject({ doSchemaVersion: VERSION, doMigrateError: null });
@@ -157,11 +161,12 @@ describe("ClientDO schema version", () => {
 
 describe("sweepWorkspaces", () => {
   it("pings every workspace and reports all of them up to date", async () => {
-    await db.insert(workspace).values([
+    const created = await db.insert(workspace).values([
       { name: "s1", slug: "s1" },
       { name: "s2", slug: "s2" },
       { name: "s3", slug: "s3" },
-    ]);
+    ]).returning({ id: workspace.id });
+    for (const { id } of created) await ensureWorkspaceProfile(env, id);
 
     expect(await sweepWorkspaces(env)).toEqual({ total: 3, upToDate: 3, behind: [], failed: [] });
     const rows = await coreDb(env).select({ version: workspaceProfile.doSchemaVersion }).from(workspaceProfile);

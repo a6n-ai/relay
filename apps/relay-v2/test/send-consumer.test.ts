@@ -2,6 +2,8 @@ import { AwsError } from "@foundry/cloud";
 import { env, runInDurableObject } from "cloudflare:test";
 import { and, eq } from "drizzle-orm";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi, type MockInstance } from "vitest";
+import { setWorkspaceStatus } from "../src/console/admin";
+import { refreshWorkspaceLimits } from "../src/core/limits";
 import { handleSendBatch } from "../src/core/send-consumer";
 import { memorySesTransport } from "../src/core/ses";
 import { utcDay } from "../src/core/usage";
@@ -367,5 +369,64 @@ describe("handleSendBatch", () => {
     expect(outcomes).toEqual([{ kind: "retry", delaySeconds: 30 }, { kind: "ack" }]);
     expect(sent).toBe(1);
     expect(memorySesTransport.sent).toHaveLength(1);
+  });
+
+  it("fails a queued message whose workspace was suspended after it was queued, and drops its html", async () => {
+    const ws = "wsp_claim_suspend";
+    const stub = await seedWorkspace(ws);
+    const job = await queue(stub, ws);
+    await setWorkspaceStatus(env, { userId: "usr_ops_test" }, ws, "suspended");
+
+    const { outcomes } = await deliver(job);
+    expect(outcomes).toEqual([{ kind: "ack" }]);
+    expect(memorySesTransport.sent).toHaveLength(0);
+    expect(await stub.getMessage(ws, job.messageId)).toMatchObject({ status: "failed", error: "workspace_suspended", claimedUntil: null });
+    expect(await env.MAIL.get(`ws/${ws}/msg/${job.messageId}.html`)).toBeNull();
+  });
+
+  it("fails a queued message whose sender stopped being verified after it was queued", async () => {
+    const ws = "wsp_claim_sender";
+    const stub = await seedWorkspace(ws);
+    const job = await queue(stub, ws);
+    await coreDb(env).update(address).set({ canSend: false }).where(eq(address.email, "orders@tiffingrab.ca"));
+    await refreshWorkspaceLimits(env, ws);
+
+    const { outcomes } = await deliver(job);
+    expect(outcomes).toEqual([{ kind: "ack" }]);
+    expect(memorySesTransport.sent).toHaveLength(0);
+    expect(await stub.getMessage(ws, job.messageId)).toMatchObject({ status: "failed", error: "sender_not_verified" });
+  });
+
+  it("answers busy and keeps the message queued when limits cannot be loaded and none are cached", async () => {
+    const ws = "wsp_claim_no_limits";
+    const stub = await seedWorkspace(ws);
+    const job = await queue(stub, ws);
+    await runInDurableObject(stub, (_instance, state) => state.storage.kv.delete("limits"));
+    vi.spyOn(env.CORE_DB, "prepare").mockImplementation(() => {
+      throw new Error("D1 down");
+    });
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    expect(await stub.claimSend(ws, job.messageId)).toEqual({ kind: "busy", retryInSeconds: 60 });
+    vi.restoreAllMocks();
+    expect(await stub.getMessage(ws, job.messageId)).toMatchObject({ status: "queued", attempts: 0 });
+  });
+
+  it("acks a duplicate of a sent message after its workspace is suspended, without loading limits or failing it", async () => {
+    const ws = "wsp_claim_sent_suspend";
+    const stub = await seedWorkspace(ws);
+    const job = await queue(stub, ws);
+    await deliver(job);
+    await setWorkspaceStatus(env, { userId: "usr_ops_test" }, ws, "suspended");
+    vi.spyOn(env.CORE_DB, "prepare").mockImplementation(() => {
+      throw new Error("D1 down");
+    });
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const { outcomes } = await deliver(job);
+    expect(outcomes).toEqual([{ kind: "ack" }]);
+    expect(memorySesTransport.sent).toHaveLength(1);
+    vi.restoreAllMocks();
+    expect(await stub.getMessage(ws, job.messageId)).toMatchObject({ status: "sent" });
   });
 });

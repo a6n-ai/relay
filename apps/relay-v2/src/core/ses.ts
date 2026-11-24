@@ -82,7 +82,7 @@ type AwsSes = ReturnType<typeof createAwsClient>;
 // Keyed by fetch as well as region so an injected fetch is never served a client bound to another.
 const clients = new Map<string, { fetch: typeof fetch | undefined; client: AwsSes }>();
 
-function clientFor(region: string, env: Env, fetchImpl: typeof fetch | undefined): AwsSes {
+export function sesClient(region: string, env: Env, fetchImpl?: typeof fetch): AwsSes {
   const hit = clients.get(region);
   if (hit && hit.fetch === fetchImpl) return hit.client;
   const { AWS_ACCESS_KEY_ID: accessKeyId, AWS_SECRET_ACCESS_KEY: secretAccessKey } = env;
@@ -100,7 +100,7 @@ export function sesTransport(env: Env, fetchImpl?: typeof fetch): SesTransport {
   return {
     async send(req) {
       const body = sendEmailBody(req);
-      const res = await clientFor(req.region, env, fetchImpl).json<{ MessageId?: string }>(
+      const res = await sesClient(req.region, env, fetchImpl).json<{ MessageId?: string }>(
         `https://email.${req.region}.amazonaws.com/v2/email/outbound-emails`,
         { json: body, retries: 0, timeoutMs: 10_000 },
       );

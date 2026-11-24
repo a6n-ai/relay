@@ -35,6 +35,7 @@ declare global {
       BETTER_AUTH_URL: string;
       OTP_MAILER?: "memory" | "console" | "ses";
       INVITE_MAILER?: "memory" | "console" | "ses";
+      DEV_OTP_PEEK?: "1";
       SEED_SECRET?: string;
       INTERNAL_SECRET?: string;
       AWS_ACCESS_KEY_ID?: string;

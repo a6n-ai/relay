@@ -9,9 +9,19 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
+import { Route as AppRouteImport } from './routes/_app'
+import { Route as NoWorkspaceRouteImport } from './routes/no-workspace'
+import { Route as SignInRouteImport } from './routes/sign-in'
+import { Route as AppIndexRouteImport } from './routes/_app/index'
+import { Route as AppAdminRouteImport } from './routes/_app/admin'
+import { Route as AppAppsRouteImport } from './routes/_app/apps'
+import { Route as AppDomainsRouteImport } from './routes/_app/domains'
+import { Route as AppMembersRouteImport } from './routes/_app/members'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
+import { Route as InviteIdRouteImport } from './routes/invite.$id'
+import { Route as AppAppsAppIdRouteImport } from './routes/_app/apps_.$appId'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as ApiDevOtpRouteImport } from './routes/api/dev/otp'
 import { Route as ApiInternalDoSweepRouteImport } from './routes/api/internal/do-sweep'
 import { Route as ApiInternalSeedRouteImport } from './routes/api/internal/seed'
 import { Route as ApiV1MessagesRouteImport } from './routes/api/v1/messages'
@@ -20,19 +30,68 @@ import { Route as ApiWebhooksSesRouteImport } from './routes/api/webhooks/ses'
 import { Route as ApiV1MessagesIdRouteImport } from './routes/api/v1/messages.$id'
 import { Route as ApiV1WebhooksIdRouteImport } from './routes/api/v1/webhooks.$id'
 
-const IndexRoute = IndexRouteImport.update({
+const AppRoute = AppRouteImport.update({
+  id: '/_app',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NoWorkspaceRoute = NoWorkspaceRouteImport.update({
+  id: '/no-workspace',
+  path: '/no-workspace',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SignInRoute = SignInRouteImport.update({
+  id: '/sign-in',
+  path: '/sign-in',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAdminRoute = AppAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAppsRoute = AppAppsRouteImport.update({
+  id: '/apps',
+  path: '/apps',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppDomainsRoute = AppDomainsRouteImport.update({
+  id: '/domains',
+  path: '/domains',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppMembersRoute = AppMembersRouteImport.update({
+  id: '/members',
+  path: '/members',
+  getParentRoute: () => AppRoute,
 } as any)
 const ApiHealthRoute = ApiHealthRouteImport.update({
   id: '/api/health',
   path: '/api/health',
   getParentRoute: () => rootRouteImport,
 } as any)
+const InviteIdRoute = InviteIdRouteImport.update({
+  id: '/invite/$id',
+  path: '/invite/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppAppsAppIdRoute = AppAppsAppIdRouteImport.update({
+  id: '/apps_/$appId',
+  path: '/apps/$appId',
+  getParentRoute: () => AppRoute,
+} as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiDevOtpRoute = ApiDevOtpRouteImport.update({
+  id: '/api/dev/otp',
+  path: '/api/dev/otp',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiInternalDoSweepRoute = ApiInternalDoSweepRouteImport.update({
@@ -72,9 +131,18 @@ const ApiV1WebhooksIdRoute = ApiV1WebhooksIdRouteImport.update({
 } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
+  '/': typeof AppIndexRoute
+  '/no-workspace': typeof NoWorkspaceRoute
+  '/sign-in': typeof SignInRoute
+  '/admin': typeof AppAdminRoute
+  '/apps': typeof AppAppsRoute
+  '/domains': typeof AppDomainsRoute
+  '/members': typeof AppMembersRoute
   '/api/health': typeof ApiHealthRoute
+  '/invite/$id': typeof InviteIdRoute
+  '/apps/$appId': typeof AppAppsAppIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/dev/otp': typeof ApiDevOtpRoute
   '/api/internal/do-sweep': typeof ApiInternalDoSweepRoute
   '/api/internal/seed': typeof ApiInternalSeedRoute
   '/api/v1/messages': typeof ApiV1MessagesRouteWithChildren
@@ -84,9 +152,18 @@ export interface FileRoutesByFullPath {
   '/api/v1/webhooks/$id': typeof ApiV1WebhooksIdRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
+  '/no-workspace': typeof NoWorkspaceRoute
+  '/sign-in': typeof SignInRoute
+  '/admin': typeof AppAdminRoute
+  '/apps': typeof AppAppsRoute
+  '/domains': typeof AppDomainsRoute
+  '/members': typeof AppMembersRoute
   '/api/health': typeof ApiHealthRoute
+  '/invite/$id': typeof InviteIdRoute
+  '/': typeof AppIndexRoute
+  '/apps/$appId': typeof AppAppsAppIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/dev/otp': typeof ApiDevOtpRoute
   '/api/internal/do-sweep': typeof ApiInternalDoSweepRoute
   '/api/internal/seed': typeof ApiInternalSeedRoute
   '/api/v1/messages': typeof ApiV1MessagesRouteWithChildren
@@ -97,9 +174,19 @@ export interface FileRoutesByTo {
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
+  '/_app': typeof AppRouteWithChildren
+  '/no-workspace': typeof NoWorkspaceRoute
+  '/sign-in': typeof SignInRoute
+  '/_app/admin': typeof AppAdminRoute
+  '/_app/apps': typeof AppAppsRoute
+  '/_app/domains': typeof AppDomainsRoute
+  '/_app/members': typeof AppMembersRoute
   '/api/health': typeof ApiHealthRoute
+  '/invite/$id': typeof InviteIdRoute
+  '/_app/': typeof AppIndexRoute
+  '/_app/apps_/$appId': typeof AppAppsAppIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/dev/otp': typeof ApiDevOtpRoute
   '/api/internal/do-sweep': typeof ApiInternalDoSweepRoute
   '/api/internal/seed': typeof ApiInternalSeedRoute
   '/api/v1/messages': typeof ApiV1MessagesRouteWithChildren
@@ -112,8 +199,17 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/no-workspace'
+    | '/sign-in'
+    | '/admin'
+    | '/apps'
+    | '/domains'
+    | '/members'
     | '/api/health'
+    | '/invite/$id'
+    | '/apps/$appId'
     | '/api/auth/$'
+    | '/api/dev/otp'
     | '/api/internal/do-sweep'
     | '/api/internal/seed'
     | '/api/v1/messages'
@@ -123,9 +219,18 @@ export interface FileRouteTypes {
     | '/api/v1/webhooks/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
-    | '/'
+    | '/no-workspace'
+    | '/sign-in'
+    | '/admin'
+    | '/apps'
+    | '/domains'
+    | '/members'
     | '/api/health'
+    | '/invite/$id'
+    | '/'
+    | '/apps/$appId'
     | '/api/auth/$'
+    | '/api/dev/otp'
     | '/api/internal/do-sweep'
     | '/api/internal/seed'
     | '/api/v1/messages'
@@ -135,9 +240,19 @@ export interface FileRouteTypes {
     | '/api/v1/webhooks/$id'
   id:
     | '__root__'
-    | '/'
+    | '/_app'
+    | '/no-workspace'
+    | '/sign-in'
+    | '/_app/admin'
+    | '/_app/apps'
+    | '/_app/domains'
+    | '/_app/members'
     | '/api/health'
+    | '/invite/$id'
+    | '/_app/'
+    | '/_app/apps_/$appId'
     | '/api/auth/$'
+    | '/api/dev/otp'
     | '/api/internal/do-sweep'
     | '/api/internal/seed'
     | '/api/v1/messages'
@@ -148,9 +263,13 @@ export interface FileRouteTypes {
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
+  AppRoute: typeof AppRouteWithChildren
+  NoWorkspaceRoute: typeof NoWorkspaceRoute
+  SignInRoute: typeof SignInRoute
   ApiHealthRoute: typeof ApiHealthRoute
+  InviteIdRoute: typeof InviteIdRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiDevOtpRoute: typeof ApiDevOtpRoute
   ApiInternalDoSweepRoute: typeof ApiInternalDoSweepRoute
   ApiInternalSeedRoute: typeof ApiInternalSeedRoute
   ApiV1MessagesRoute: typeof ApiV1MessagesRouteWithChildren
@@ -160,12 +279,61 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
+    '/_app': {
+      id: '/_app'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/no-workspace': {
+      id: '/no-workspace'
+      path: '/no-workspace'
+      fullPath: '/no-workspace'
+      preLoaderRoute: typeof NoWorkspaceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sign-in': {
+      id: '/sign-in'
+      path: '/sign-in'
+      fullPath: '/sign-in'
+      preLoaderRoute: typeof SignInRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_app/': {
+      id: '/_app/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AppIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/admin': {
+      id: '/_app/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AppAdminRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/apps': {
+      id: '/_app/apps'
+      path: '/apps'
+      fullPath: '/apps'
+      preLoaderRoute: typeof AppAppsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/domains': {
+      id: '/_app/domains'
+      path: '/domains'
+      fullPath: '/domains'
+      preLoaderRoute: typeof AppDomainsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/members': {
+      id: '/_app/members'
+      path: '/members'
+      fullPath: '/members'
+      preLoaderRoute: typeof AppMembersRouteImport
+      parentRoute: typeof AppRoute
     }
     '/api/health': {
       id: '/api/health'
@@ -174,11 +342,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiHealthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/invite/$id': {
+      id: '/invite/$id'
+      path: '/invite/$id'
+      fullPath: '/invite/$id'
+      preLoaderRoute: typeof InviteIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_app/apps_/$appId': {
+      id: '/_app/apps_/$appId'
+      path: '/apps/$appId'
+      fullPath: '/apps/$appId'
+      preLoaderRoute: typeof AppAppsAppIdRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/api/auth/$': {
       id: '/api/auth/$'
       path: '/api/auth/$'
       fullPath: '/api/auth/$'
       preLoaderRoute: typeof ApiAuthSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/dev/otp': {
+      id: '/api/dev/otp'
+      path: '/api/dev/otp'
+      fullPath: '/api/dev/otp'
+      preLoaderRoute: typeof ApiDevOtpRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/internal/do-sweep': {
@@ -233,6 +422,26 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AppRouteChildren {
+  AppAdminRoute: typeof AppAdminRoute
+  AppAppsRoute: typeof AppAppsRoute
+  AppDomainsRoute: typeof AppDomainsRoute
+  AppMembersRoute: typeof AppMembersRoute
+  AppIndexRoute: typeof AppIndexRoute
+  AppAppsAppIdRoute: typeof AppAppsAppIdRoute
+}
+
+const AppRouteChildren: AppRouteChildren = {
+  AppAdminRoute: AppAdminRoute,
+  AppAppsRoute: AppAppsRoute,
+  AppDomainsRoute: AppDomainsRoute,
+  AppMembersRoute: AppMembersRoute,
+  AppIndexRoute: AppIndexRoute,
+  AppAppsAppIdRoute: AppAppsAppIdRoute,
+}
+
+const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
+
 interface ApiV1MessagesRouteChildren {
   ApiV1MessagesIdRoute: typeof ApiV1MessagesIdRoute
 }
@@ -258,9 +467,13 @@ const ApiV1WebhooksRouteWithChildren = ApiV1WebhooksRoute._addFileChildren(
 )
 
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
+  AppRoute: AppRouteWithChildren,
+  NoWorkspaceRoute: NoWorkspaceRoute,
+  SignInRoute: SignInRoute,
   ApiHealthRoute: ApiHealthRoute,
+  InviteIdRoute: InviteIdRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiDevOtpRoute: ApiDevOtpRoute,
   ApiInternalDoSweepRoute: ApiInternalDoSweepRoute,
   ApiInternalSeedRoute: ApiInternalSeedRoute,
   ApiV1MessagesRoute: ApiV1MessagesRouteWithChildren,

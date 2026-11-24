@@ -12,6 +12,7 @@ import { memoryOtpMailer } from "../src/lib/auth/otp-mailer";
 import { newId } from "../src/lib/ids";
 import type { Env } from "../src/env";
 import { applyMigrations } from "./migrate";
+import { BASE, cookieFor, createWorkspace, freshIp, insertUser, json, ORIGIN, sendOtp, signIn } from "./console-helpers";
 
 // Flips the security_audit insert to reject, to prove audit failures do not fail the caller.
 const auditFault = vi.hoisted(() => ({ fail: false }));
@@ -36,50 +37,11 @@ vi.mock("../src/db/security/client", async (importOriginal) => {
   };
 });
 
-const ORIGIN = "http://localhost";
-const BASE = `${ORIGIN}/api/auth`;
-const json = { "content-type": "application/json" };
 const db = securityDb(env);
 
 beforeAll(async () => {
   await applyMigrations();
 });
-
-async function insertUser(email: string, role: "user" | "admin"): Promise<void> {
-  await db.insert(user).values({ id: newId("usr"), name: email, email, role });
-}
-
-// Each helper call gets its own client IP, so the per-IP OTP limit never trips across tests.
-let ipSeq = 0;
-function freshIp(): Record<string, string> {
-  ipSeq += 1;
-  return { "cf-connecting-ip": `10.0.${Math.floor(ipSeq / 250)}.${(ipSeq % 250) + 1}` };
-}
-async function sendOtp(email: string): Promise<string> {
-  const sent = await SELF.fetch(`${BASE}/email-otp/send-verification-otp`, {
-    method: "POST",
-    headers: { ...json, ...freshIp() },
-    body: JSON.stringify({ email, type: "sign-in" }),
-  });
-  expect(sent.status).toBe(200);
-  const otp = memoryOtpMailer.lastOtp(email);
-  expect(otp).toMatch(/^\d{6}$/);
-  return otp as string;
-}
-
-async function signIn(email: string): Promise<string> {
-  const otp = await sendOtp(email);
-  const res = await SELF.fetch(`${BASE}/sign-in/email-otp`, {
-    method: "POST",
-    headers: { ...json, ...freshIp() },
-    body: JSON.stringify({ email, otp }),
-  });
-  expect(res.status).toBe(200);
-  return res.headers
-    .getSetCookie()
-    .map((c) => c.split(";")[0])
-    .join("; ");
-}
 
 describe("better-auth on D1", () => {
   it("signs in with an email OTP and returns a session cookie", async () => {
@@ -116,19 +78,19 @@ describe("better-auth on D1", () => {
     expect(m.role).toBe("owner");
   });
 
-  it("rejects organization/create from a signed-in non-admin and writes no workspace", async () => {
+  it("creates a self-serve workspace for a signed-in non-admin, capped at 100 sends a month", async () => {
     await insertUser("plain@example.com", "user");
     const cookie = await signIn("plain@example.com");
     const res = await SELF.fetch(`${BASE}/organization/create`, {
       method: "POST",
       headers: { ...json, cookie, origin: ORIGIN },
-      body: JSON.stringify({ name: "Blocked", slug: "blocked" }),
+      body: JSON.stringify({ name: "Selfserve", slug: "selfserve" }),
     });
-    expect(res.status).toBeGreaterThanOrEqual(400);
-    expect(res.status).toBeLessThan(500);
+    expect(res.status).toBe(200);
+    const org = (await res.json()) as { id: string };
 
-    const rows = await db.select().from(workspace).where(eq(workspace.slug, "blocked"));
-    expect(rows).toHaveLength(0);
+    const [profile] = await coreDb(env).select().from(workspaceProfile).where(eq(workspaceProfile.workspaceId, org.id));
+    expect(profile).toMatchObject({ selfServe: true, monthlyMessageQuota: 100 });
   });
 
   it("rejects organization/create without a session with 401", async () => {
@@ -173,21 +135,6 @@ describe("better-auth on D1", () => {
     );
   });
 });
-
-async function cookieFor(email: string, role: "user" | "admin"): Promise<string> {
-  await insertUser(email, role);
-  return signIn(email);
-}
-
-async function createWorkspace(cookie: string, slug: string): Promise<string> {
-  const res = await SELF.fetch(`${BASE}/organization/create`, {
-    method: "POST",
-    headers: { ...json, cookie, origin: ORIGIN },
-    body: JSON.stringify({ name: slug, slug }),
-  });
-  expect(res.status).toBe(200);
-  return ((await res.json()) as { id: string }).id;
-}
 
 // Active workspace A and suspended workspace B holding team "Ops"; the admin owns both.
 async function suspendedTeam(slug: string): Promise<{ cookie: string; suspendedId: string; teamId: string }> {

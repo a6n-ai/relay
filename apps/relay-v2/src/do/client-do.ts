@@ -372,10 +372,31 @@ export class ClientDO extends DurableObject<Env> {
   // A lease (claimed_until) stops a second job from sending while the first is in flight.
   async claimSend(workspaceId: string, messageId: string, now = Date.now()): Promise<SendClaim> {
     await this.ready(workspaceId);
+    const queued = this.db
+      .select({
+        fromEmail: schema.message.fromEmail,
+        status: schema.message.status,
+        sesMessageId: schema.message.sesMessageId,
+        claimedUntil: schema.message.claimedUntil,
+      })
+      .from(schema.message)
+      .where(eq(schema.message.id, messageId))
+      .get();
+    if (!queued) return { kind: "skip", reason: "missing" };
+    if (queued.status !== "queued" || queued.sesMessageId) {
+      return { kind: "skip", reason: queued.status === "queued" ? "sent" : (queued.status as "sent" | "failed" | "suppressed") };
+    }
+    if (queued.claimedUntil != null && queued.claimedUntil > now) {
+      return { kind: "busy", retryInSeconds: Math.ceil((queued.claimedUntil - now) / 1000) };
+    }
+    // Only a row about to be sent needs limits. Read before the transaction. With no snapshot and no D1, the job retries: queued mail is never failed for an outage.
+    const limits = await this.limits(workspaceId, { forSender: queued.fromEmail ?? undefined });
+    if (limits.fetchedAt === 0) return { kind: "busy", retryInSeconds: 60 };
     const claimed = this.ctx.storage.transactionSync(():
       | SendClaim
       | { kind: "claimed"; attempt: number; row: typeof schema.message.$inferSelect; region: string }
-      | { kind: "suppressed"; htmlKey: string | null } => {
+      | { kind: "suppressed"; htmlKey: string | null }
+      | { kind: "refused"; htmlKey: string | null } => {
       const row = this.db.select().from(schema.message).where(eq(schema.message.id, messageId)).get();
       if (!row) return { kind: "skip", reason: "missing" };
       if (row.status !== "queued" || row.sesMessageId) {
@@ -392,6 +413,21 @@ export class ClientDO extends DurableObject<Env> {
           .where(eq(schema.message.id, messageId))
           .run();
         return { kind: "suppressed", htmlKey: row.htmlKey };
+      }
+      // A suspension or a revoked sender can land while the row waits in the queue; the message fails, it is not held.
+      if (limits.status === "suspended" || !limits.senders[row.fromEmail ?? ""]) {
+        this.db
+          .update(schema.message)
+          .set({
+            status: "failed",
+            error: limits.status === "suspended" ? "workspace_suspended" : "sender_not_verified",
+            htmlKey: null,
+            claimedUntil: null,
+            updatedAt: now,
+          })
+          .where(eq(schema.message.id, messageId))
+          .run();
+        return { kind: "refused", htmlKey: row.htmlKey };
       }
       const region = row.sesRegion;
       if (!region) {
@@ -413,6 +449,10 @@ export class ClientDO extends DurableObject<Env> {
     if (claimed.kind === "suppressed") {
       await this.dropHtml(claimed.htmlKey);
       return { kind: "skip", reason: "suppressed" };
+    }
+    if (claimed.kind === "refused") {
+      await this.dropHtml(claimed.htmlKey);
+      return { kind: "skip", reason: "failed" };
     }
     if (claimed.kind !== "claimed") return claimed;
 
@@ -714,7 +754,7 @@ export class ClientDO extends DurableObject<Env> {
     const version = CLIENT_MIGRATIONS.length;
     if (this.ctx.storage.kv.get<number>("reported_version") === version) return;
     try {
-      // false: relay-security has no such workspace, so nothing is reported and KV stays unset.
+      // false: no profile row yet (or no workspace), so nothing is reported and KV stays unset for a retry.
       if (!(await recordDoState(this.env, workspaceId, { doSchemaVersion: version, doMigrateError: null }))) return;
     } catch (err) {
       console.error("ClientDO: failed to report schema version to D1", err);
