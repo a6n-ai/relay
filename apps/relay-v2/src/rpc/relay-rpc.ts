@@ -15,7 +15,7 @@ async function scopeOf(env: Env, apiKey: string) {
 export class RelayRpc extends WorkerEntrypoint<Env> {
   async send(apiKey: string, input: unknown) {
     const scope = await scopeOf(this.env, apiKey);
-    return sendMessage(this.env, scope, sendInputSchema.omit({ appId: true }).parse(input));
+    return sendMessage(this.env, scope, sendInputSchema.omit({ appId: true, campaignId: true }).parse(input));
   }
 
   async getMessage(apiKey: string, id: string) {

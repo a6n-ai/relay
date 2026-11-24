@@ -139,5 +139,7 @@ describe("unsubscribe endpoint", () => {
     expect(forged.status).toBe(400);
     expect(await forged.text()).toBe(await garbage.text());
     expect(spy).not.toHaveBeenCalled();
+    expect((await SELF.fetch(url("wsp_x.msg_y.AAAA"))).status).toBe(400);
+    expect(spy).not.toHaveBeenCalled();
   });
 });

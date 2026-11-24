@@ -195,6 +195,19 @@ describe("campaign live counters", () => {
     expect(recount?.after).toEqual(expected);
   });
 
+  it("a lapsed claim's failure does not repaint a row suppressed meanwhile, nor move a counter", async () => {
+    const { ws, stub, id, msgs } = await queuedCampaign("lapse");
+    await stub.addSuppression(ws, EMAILS[1], "manual", "marketing");
+    expect(await stub.claimSend(ws, msgs[1].id)).toMatchObject({ kind: "skip", reason: "suppressed" });
+    const before = await stub.campaignStats(ws, id);
+
+    await stub.markSendFailed(ws, msgs[1].id, "lapsed lease", true);
+
+    expect(await stub.getMessage(ws, msgs[1].id)).toMatchObject({ status: "suppressed" });
+    expect(await stub.campaignStats(ws, id)).toEqual(before);
+    expect(before).toMatchObject({ queued: 4, suppressed: 1, failed: 0 });
+  });
+
   it("recount reports drift, rewrites the row, and campaignStats reads the true value", async () => {
     const { ws, stub, id } = await queuedCampaign("drift");
     await runInDurableObject(stub, (_instance, state) => state.storage.sql.exec("UPDATE campaign SET queued = 0 WHERE id = ?", id));

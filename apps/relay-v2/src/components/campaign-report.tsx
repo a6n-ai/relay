@@ -1,7 +1,7 @@
 import { Button } from "@foundry/ui/button";
 import { useRouter } from "@tanstack/react-router";
-import { useEffect } from "react";
-import { cancelCampaignFn, pauseCampaignFn, resumeCampaignFn, unscheduleCampaignFn } from "../console/campaigns.fns";
+import { useEffect, useState } from "react";
+import { cancelCampaignFn, pauseCampaignFn, previewAudienceFn, resumeCampaignFn, unscheduleCampaignFn } from "../console/campaigns.fns";
 import type { AudiencePreview, CampaignStats, CampaignView } from "../do/campaigns";
 import { reasonText } from "./error-text";
 import { ConfirmDialog } from "./confirm-dialog";
@@ -15,25 +15,30 @@ import { useCan } from "./use-can";
 
 const LIVE = 10_000;
 
-export function CampaignReport({
-  campaign,
-  stats,
-  audience,
-}: {
-  campaign: CampaignView;
-  stats: CampaignStats;
-  audience: AudiencePreview;
-}) {
+export function CampaignReport({ campaign, stats }: { campaign: CampaignView; stats: CampaignStats }) {
   const router = useRouter();
   const canSend = useCan({ campaign: ["send"] });
   const { id, status } = campaign;
+  // The audience is counted once for the meter; the polled loader would re-run the whole audience count every tick.
+  const [audience, setAudience] = useState<AudiencePreview | null>(null);
+  useEffect(() => {
+    let live = true;
+    previewAudienceFn({ data: { id } })
+      .then((a) => live && setAudience(a ?? null))
+      .catch(() => live && setAudience(null));
+    return () => {
+      live = false;
+    };
+  }, [id]);
 
   // Counters move while a send runs, so the loader re-reads them on an interval until the campaign settles.
+  // Queued mail can still be waiting after the status reads sent, so polling continues while anything is queued.
+  const waiting = stats.queued > 0;
   useEffect(() => {
-    if (status !== "scheduled" && status !== "sending") return;
+    if (status !== "scheduled" && status !== "sending" && !waiting) return;
     const timer = setInterval(() => void router.invalidate(), LIVE);
     return () => clearInterval(timer);
-  }, [status, router]);
+  }, [status, waiting, router]);
 
   const act = (action: () => Promise<unknown>, success: string) => runAction(action, success, () => router.invalidate());
   const cancel = (
@@ -45,7 +50,8 @@ export function CampaignReport({
       onConfirm={() => void act(() => cancelCampaignFn({ data: { id } }), "Campaign cancelled")}
     />
   );
-  const percent = audience.sendable > 0 ? (campaign.recipients / audience.sendable) * 100 : 0;
+  const sendable = audience?.sendable ?? 0;
+  const percent = sendable > 0 ? (campaign.recipients / sendable) * 100 : 0;
   const tiles: [string, number][] = [
     ["Recipients", campaign.recipients],
     ["Waiting", stats.queued],
@@ -80,7 +86,7 @@ export function CampaignReport({
         <div className="flex items-center gap-3">
           <MeterBar percent={percent} />
           <span className="text-xs tabular-nums text-muted-foreground">
-            {campaign.recipients} of {audience.sendable}
+            {campaign.recipients} of {audience ? audience.sendable : "..."}
           </span>
         </div>
       )}

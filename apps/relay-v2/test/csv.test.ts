@@ -11,6 +11,12 @@ describe("parseContactsCsv", () => {
     });
   });
 
+  it("accepts exactly 10,000 data rows and refuses the 10,001st", () => {
+    const rows = (n: number) => Array.from({ length: n }, (_, i) => `u${i}@x.com`).join("\n");
+    expect(parseContactsCsv(`email\n${rows(10_000)}\n`).rows).toHaveLength(10_000);
+    expect(() => parseContactsCsv(`email\n${rows(10_001)}\n`)).toThrow("too many rows");
+  });
+
   it("parses a BOM and CRLF the same as plain LF", () => {
     const plain = parseContactsCsv("email,first_name\na@x.com,Ann\n");
     expect(parseContactsCsv("﻿email,first_name\r\na@x.com,Ann\r\n")).toEqual(plain);

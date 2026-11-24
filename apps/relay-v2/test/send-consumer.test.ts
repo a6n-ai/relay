@@ -347,6 +347,18 @@ describe("handleSendBatch", () => {
     expect(await env.MAIL.get(htmlKey)).toBeNull();
   });
 
+  it("does not send a queued marketing message whose recipient opted out while it waited", async () => {
+    const ws = "wsp_claim_optout";
+    const stub = await seedWorkspace(ws);
+    const job = await queue(stub, ws, { ...base, stream: "marketing", html: '<a href="{{unsubscribe_url}}">Stop</a>', text: "Stop: {{unsubscribe_url}}" });
+    await stub.unsubscribe(ws, job.messageId);
+
+    const { outcomes } = await deliver(job);
+    expect(outcomes).toEqual([{ kind: "ack" }]);
+    expect(memorySesTransport.sent).toHaveLength(0);
+    expect(await stub.getMessage(ws, job.messageId)).toMatchObject({ status: "suppressed", claimedUntil: null });
+  });
+
   it("acks a job of an unknown kind without touching the send path", async () => {
     const ws = "wsp_bogus_kind";
     const stub = await seedWorkspace(ws);

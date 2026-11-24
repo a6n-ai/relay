@@ -1020,12 +1020,13 @@ export class ClientDO extends DurableObject<Env> {
     const object = row.htmlKey ? await this.env.MAIL.get(row.htmlKey) : null;
     if (row.htmlKey && !object) {
       this.ctx.storage.transactionSync(() => {
-        this.db
+        const changed = this.db
           .update(schema.message)
           .set({ status: "failed", error: "html missing", claimedUntil: null, updatedAt: Date.now() })
-          .where(eq(schema.message.id, messageId))
-          .run();
-        bumpCampaign(this.ctx.storage.sql, row.campaignId, { queued: -1, failed: 1 });
+          .where(and(eq(schema.message.id, messageId), eq(schema.message.status, "queued")))
+          .returning({ id: schema.message.id })
+          .all();
+        if (changed.length) bumpCampaign(this.ctx.storage.sql, row.campaignId, { queued: -1, failed: 1 });
       });
       return { kind: "skip", reason: "failed" };
     }
@@ -1071,17 +1072,14 @@ export class ClientDO extends DurableObject<Env> {
   async markSendFailed(workspaceId: string, messageId: string, error: string, final: boolean): Promise<void> {
     await this.ready(workspaceId);
     this.ctx.storage.transactionSync(() => {
-      const prior = this.db
-        .select({ status: schema.message.status, campaignId: schema.message.campaignId })
-        .from(schema.message)
-        .where(eq(schema.message.id, messageId))
-        .get();
-      this.db
+      // Only a queued row is repainted: a claim that lost its lease may find the row already suppressed, sent or failed.
+      const changed = this.db
         .update(schema.message)
         .set({ error: maskEmails(error), claimedUntil: null, updatedAt: Date.now(), ...(final ? { status: "failed" as const } : {}) })
-        .where(and(eq(schema.message.id, messageId), ne(schema.message.status, "sent")))
-        .run();
-      if (final && prior?.status === "queued") bumpCampaign(this.ctx.storage.sql, prior.campaignId, { queued: -1, failed: 1 });
+        .where(and(eq(schema.message.id, messageId), eq(schema.message.status, "queued")))
+        .returning({ campaignId: schema.message.campaignId })
+        .all();
+      if (final && changed.length) bumpCampaign(this.ctx.storage.sql, changed[0].campaignId, { queued: -1, failed: 1 });
     });
   }
 

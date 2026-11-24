@@ -4,12 +4,7 @@ import { CampaignReport } from "../../components/campaign-report";
 import { DeniedState, deniedReason } from "../../components/denied-state";
 import { isNotFound } from "../../components/error-text";
 import { ViewHeader } from "../../components/view-header";
-import {
-  fetchCampaign,
-  fetchCampaignOptions,
-  fetchCampaignStats,
-  previewAudienceFn,
-} from "../../console/campaigns.fns";
+import { fetchCampaign, fetchCampaignOptions, fetchCampaignStats } from "../../console/campaigns.fns";
 
 type CampaignSearch = { appId?: string };
 
@@ -25,12 +20,9 @@ export const Route = createFileRoute("/_app/campaigns_/$campaignId")({
     if (!campaign) return null;
     if ("missing" in campaign) return campaign;
     if (campaign.status !== "draft") {
-      const [stats, audience] = await Promise.all([
-        fetchCampaignStats({ data: { id: params.campaignId } }),
-        previewAudienceFn({ data: { id: params.campaignId } }),
-      ]);
-      if (!stats || !audience) return null;
-      return { campaign, stats, audience };
+      const stats = await fetchCampaignStats({ data: { id: params.campaignId } });
+      if (!stats) return null;
+      return { campaign, stats };
     }
     const options = await fetchCampaignOptions({ data: { appId: campaign.appId } });
     if (!options) return null;
@@ -72,7 +64,7 @@ function CampaignPage() {
       />
       <div className="p-4">
         {page.stats ? (
-          <CampaignReport campaign={campaign} stats={page.stats} audience={page.audience} />
+          <CampaignReport campaign={campaign} stats={page.stats} />
         ) : (
           <CampaignEditor campaign={campaign} options={page.options} />
         )}

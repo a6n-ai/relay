@@ -52,10 +52,12 @@ export function CampaignEditor({ campaign, options }: { campaign: CampaignView; 
     { from, subject, html, text },
   );
   const leaving = useRef(false);
-  useBlocker({
-    shouldBlockFn: () => !leaving.current && !window.confirm("Leave this page? Your unsaved changes will be lost."),
+  const blocker = useBlocker({
+    shouldBlockFn: () => !leaving.current,
+    withResolver: true,
     disabled: !dirty,
   });
+  const blocked = blocker.status === "blocked" ? blocker : null;
 
   // The audience is counted from the saved campaign, so it reloads whenever the saved lists change.
   const savedLists = campaign.listIds.join(",");
@@ -165,6 +167,14 @@ export function CampaignEditor({ campaign, options }: { campaign: CampaignView; 
 
   return (
     <div className="grid gap-6">
+      <ConfirmDialog
+        open={blocked !== null}
+        onOpenChange={(open) => !open && blocked?.reset()}
+        title="Leave this page?"
+        description="Your unsaved changes will be lost."
+        confirmLabel="Leave without saving"
+        onConfirm={() => blocked?.proceed()}
+      />
       <div className="flex flex-wrap items-center gap-2">
         <StatusBadge status={campaign.status} />
         <span className="text-sm text-muted-foreground">{campaign.name}</span>

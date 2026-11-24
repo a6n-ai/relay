@@ -12,7 +12,7 @@ export const Route = createFileRoute("/api/v1/messages")({
         if (!scope) return Response.json({ error: "unauthorized" }, { status: 401 });
         if (!(await withinRateLimit(env, scope.keyId))) return Response.json({ error: "rate limited" }, { status: 429 });
         const body = sendInputSchema
-          .omit({ appId: true })
+          .omit({ appId: true, campaignId: true })
           .safeParse(await request.json().catch(() => undefined));
         if (!body.success) return Response.json({ error: "invalid input" }, { status: 400 });
         try {
