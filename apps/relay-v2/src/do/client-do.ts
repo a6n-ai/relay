@@ -28,9 +28,11 @@ import {
   listSuppressionRows,
   type FailureView,
   type SuppressionView,
+  messageBody,
   readMessageDetail,
   readMessageFile,
   type MessageAccess,
+  type MessageBody,
   type MessageFile,
   type MessageDetail,
   type MessageQuery,
@@ -229,8 +231,14 @@ export class ClientDO extends DurableObject<Env> {
     await this.ready(workspaceId);
     const row = this.db.select().from(schema.message).where(eq(schema.message.id, id)).get();
     if (!row) return null;
+    const body = messageBody(this.db, row);
     const object = row.htmlKey ? await this.env.MAIL.get(row.htmlKey) : null;
-    return { ...row, html: object ? await object.text() : null, attachments: attachmentViews(this.db, id) };
+    return {
+      ...row,
+      html: body?.html ?? (object ? await object.text() : null),
+      text: body?.text ?? row.text,
+      attachments: attachmentViews(this.db, id),
+    };
   }
 
   async listMessages(
@@ -865,7 +873,7 @@ export class ClientDO extends DurableObject<Env> {
     const fill = (s: string) => (url ? fillUnsubscribe(s, url) : s);
     const claimed = this.ctx.storage.transactionSync(():
       | SendClaim
-      | { kind: "claimed"; attempt: number; row: typeof schema.message.$inferSelect; region: string }
+      | { kind: "claimed"; attempt: number; row: typeof schema.message.$inferSelect; region: string; body: MessageBody | null }
       | { kind: "suppressed"; htmlKey: string | null }
       | { kind: "refused"; htmlKey: string | null } => {
       const row = this.db.select().from(schema.message).where(eq(schema.message.id, messageId)).get();
@@ -900,12 +908,21 @@ export class ClientDO extends DurableObject<Env> {
           .run();
         return { kind: "refused", htmlKey: row.htmlKey };
       }
+      let body: MessageBody | null = null;
       if (row.campaignId) {
         const content = getCampaignRow(this.ctx.storage.sql, row.campaignId);
-        if (!content?.html && !content?.text) {
+        body = messageBody(this.db, row);
+        const error = !content
+          ? "template missing"
+          : !content.html && !content.text
+            ? "campaign content missing"
+            : !body
+              ? "template missing"
+              : null;
+        if (error) {
           this.db
             .update(schema.message)
-            .set({ status: "failed", error: "campaign content missing", claimedUntil: null, updatedAt: now })
+            .set({ status: "failed", error, claimedUntil: null, updatedAt: now })
             .where(eq(schema.message.id, messageId))
             .run();
           return { kind: "skip", reason: "failed" };
@@ -926,7 +943,7 @@ export class ClientDO extends DurableObject<Env> {
         .set({ claimedUntil: now + CLAIM_LEASE_MS, attempts: attempt, updatedAt: now })
         .where(eq(schema.message.id, messageId))
         .run();
-      return { kind: "claimed", attempt, row, region };
+      return { kind: "claimed", attempt, row, region, body };
     });
     if (claimed.kind === "suppressed") {
       await this.dropHtml(claimed.htmlKey);
@@ -938,7 +955,7 @@ export class ClientDO extends DurableObject<Env> {
     }
     if (claimed.kind !== "claimed") return claimed;
 
-    const { row, attempt, region } = claimed;
+    const { row, attempt, region, body } = claimed;
     const object = row.htmlKey ? await this.env.MAIL.get(row.htmlKey) : null;
     if (row.htmlKey && !object) {
       this.ctx.storage.transactionSync(() => {
@@ -960,8 +977,8 @@ export class ClientDO extends DurableObject<Env> {
         fromName: row.fromName,
         to: row.toEmail ?? "",
         subject: row.subject ?? "",
-        html: object ? fill(await object.text()) : null,
-        text: fill(row.text ?? ""),
+        html: body ? fill(body.html) : object ? fill(await object.text()) : null,
+        text: body ? fill(body.text) : fill(row.text ?? ""),
         tags: { ws: workspaceId, msg: messageId },
         ...(url ? { headers: listUnsubscribeHeaders(url) } : {}),
       },

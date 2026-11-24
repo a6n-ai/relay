@@ -1,6 +1,7 @@
 import { and, asc, desc, eq, gt, lt, ne, or, sql, type SQL } from "drizzle-orm";
 import type { DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
 import { safeDownloadName } from "../core/download";
+import { contactValues, parseMergeData, renderMerge } from "../core/merge";
 import type { Env } from "../env";
 import type { Stream, SuppressionReason } from "../core/send-input";
 import type { AttachmentView, MessageView } from "./client-do";
@@ -307,19 +308,46 @@ function threadOf(
     .map((r): ThreadItem => ({ ...r, direction: r.direction as "in" | "out" }));
 }
 
+// Campaign messages keep no html or text of their own: they render from the campaign row and their merge data.
+// Null means "not a campaign message" or "the campaign or its merge data is gone"; the caller decides which.
+export type MessageBody = { html: string; text: string };
+
+export function messageBody(db: Db, row: { campaignId: string | null; mergeData: string | null }): MessageBody | null {
+  const merge = parseMergeData(row.mergeData);
+  if (!row.campaignId || !merge) return null;
+  const c = db
+    .select({ html: schema.campaign.html, text: schema.campaign.text, postalAddress: schema.campaign.postalAddress })
+    .from(schema.campaign)
+    .where(eq(schema.campaign.id, row.campaignId))
+    .get();
+  if (!c) return null;
+  const values = contactValues(merge, c.postalAddress ?? "");
+  return { html: renderMerge(c.html, values, "html"), text: renderMerge(c.text, values, "text") };
+}
+
 // The R2 key comes only from the stored row; the URL names just the part.
 // contentType is the stored type of an attachment, and null for the html and raw parts.
-export type MessageFile = { key: string; name: string; contentType: string | null };
+// A body is html rendered on read for a campaign message, so it needs no R2 read.
+export type MessageFile = { key: string; name: string; contentType: string | null } | { body: string; name: string; contentType: null };
 
 export function readMessageFile(db: Db, id: string, part: string, access: MessageAccess): MessageFile | null {
   const row = db
-    .select({ direction: schema.message.direction, htmlKey: schema.message.htmlKey, rawKey: schema.message.rawKey })
+    .select({
+      direction: schema.message.direction,
+      htmlKey: schema.message.htmlKey,
+      rawKey: schema.message.rawKey,
+      campaignId: schema.message.campaignId,
+      mergeData: schema.message.mergeData,
+    })
     .from(schema.message)
     .where(and(eq(schema.message.id, id), visibleTo(access)))
     .get();
   if (!row) return null;
-  if (part === "html")
+  if (part === "html") {
+    const body = messageBody(db, row);
+    if (body) return { body: body.html, name: `${id}.html`, contentType: null };
     return row.htmlKey ? { key: row.htmlKey, name: `${id}.html`, contentType: null } : null;
+  }
   if (part === "raw")
     return row.direction === "in" && row.rawKey ? { key: row.rawKey, name: `${id}.eml`, contentType: null } : null;
   const file = db
@@ -354,10 +382,12 @@ export async function readMessageDetail(db: Db, env: Env, id: string, access: Me
     .where(eq(schema.messageEvent.messageId, id))
     .orderBy(asc(schema.messageEvent.occurredAt), asc(schema.messageEvent.id))
     .all();
+  const body = messageBody(db, row);
   const object = row.htmlKey ? await env.MAIL.get(row.htmlKey) : null;
   return {
     ...row,
-    html: object ? await object.text() : null,
+    html: body?.html ?? (object ? await object.text() : null),
+    text: body?.text ?? row.text,
     attachments: attachmentViews(db, id),
     events,
     thread: threadOf(db, row, access),

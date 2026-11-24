@@ -465,3 +465,72 @@ describe("unsubscribe link and headers", () => {
     expect(await runInDurableObject(stub, (_i, state) => state.storage.sql.exec("SELECT attempts FROM message WHERE id = ?", job.messageId).one())).toEqual({ attempts: 0 });
   });
 });
+
+describe("campaign messages render at claim", () => {
+  const HTML = '<p>Hi {{contact.first_name}}</p><p>{{postal_address}}</p><a href="{{unsubscribe_url}}">Stop</a>';
+  const TEXT = "Hi {{contact.first_name}} {{postal_address}} {{unsubscribe_url}}";
+
+  // A campaign row and one queued message as the Workflow writes them: no html_key, no text, merge data only.
+  async function campaignMessage(stub: Awaited<ReturnType<typeof seedWorkspace>>, id: string, campaignId: string, firstName: string | null) {
+    const merge = JSON.stringify({ email: `${id}@x.com`, firstName, lastName: null });
+    await runInDurableObject(stub, (_i, state) => {
+      state.storage.sql.exec(
+        "INSERT OR IGNORE INTO campaign (id, app_id, name, status, from_email, subject, html, text, postal_address, created_at, updated_at) VALUES (?, 'app_1', 'C', 'sent', 'orders@tiffingrab.ca', 'Hi', ?, ?, '1 Main St', 0, 0)",
+        campaignId,
+        HTML,
+        TEXT,
+      );
+      state.storage.sql.exec(
+        "INSERT INTO message (id, app_id, direction, stream, status, event, campaign_id, from_email, from_name, ses_region, to_email, subject, merge_data, attempts, opens, clicks, created_at, updated_at) VALUES (?, 'app_1', 'out', 'marketing', 'queued', 'campaign', ?, 'orders@tiffingrab.ca', 'TiffinGrab', 'us-east-1', ?, 'Hi', ?, 0, 0, 0, 0, 0)",
+        id,
+        campaignId,
+        `${id}@x.com`,
+        merge,
+      );
+    });
+  }
+
+  it("renders the stored campaign per recipient, escaped in HTML, with the unsubscribe link filled", async () => {
+    const ws = "wsp_send_campaign";
+    const stub = await seedWorkspace(ws);
+    const mailGet = vi.spyOn(env.MAIL, "get");
+    await campaignMessage(stub, "msg_camp_xss", "cmp_render", "<img src=x onerror=alert(1)>");
+    const { sent, outcomes } = await deliver({ workspaceId: ws, messageId: "msg_camp_xss" });
+
+    expect(sent).toBe(1);
+    expect(outcomes).toEqual([{ kind: "ack" }]);
+    expect(memorySesTransport.sent[0]?.html).toContain("Hi &lt;img src=x onerror=alert(1)&gt;");
+    expect(memorySesTransport.sent[0]?.html).toContain(`/u/${ws}.msg_camp_xss.`);
+    expect(memorySesTransport.sent[0]?.html).not.toContain("{{unsubscribe_url}}");
+    expect(memorySesTransport.sent[0]?.text).toContain("Hi <img src=x onerror=alert(1)> 1 Main St");
+    expect(mailGet).not.toHaveBeenCalled();
+  });
+
+  it("gives two recipients of one stored campaign their own first names", async () => {
+    const ws = "wsp_send_campaign_two";
+    const stub = await seedWorkspace(ws);
+    await campaignMessage(stub, "msg_camp_ann", "cmp_two", "Ann");
+    await campaignMessage(stub, "msg_camp_ben", "cmp_two", "Ben");
+    await deliver({ workspaceId: ws, messageId: "msg_camp_ann" }, { workspaceId: ws, messageId: "msg_camp_ben" });
+
+    expect(memorySesTransport.sent.map((m) => m.text)).toEqual([
+      expect.stringContaining("Hi Ann 1 Main St"),
+      expect.stringContaining("Hi Ben 1 Main St"),
+    ]);
+  });
+
+  it("fails a campaign message whose campaign row is gone, with template missing", async () => {
+    const ws = "wsp_send_campaign_gone";
+    const stub = await seedWorkspace(ws);
+    await campaignMessage(stub, "msg_camp_gone", "cmp_gone", "Ann");
+    await runInDurableObject(stub, (_i, state) => state.storage.sql.exec("DELETE FROM campaign WHERE id = 'cmp_gone'"));
+    const { sent } = await deliver({ workspaceId: ws, messageId: "msg_camp_gone" });
+
+    expect(sent).toBe(0);
+    expect(memorySesTransport.sent).toHaveLength(0);
+    const row = await runInDurableObject(stub, (_i, state) =>
+      state.storage.sql.exec<{ status: string; error: string }>("SELECT status, error FROM message WHERE id = 'msg_camp_gone'").one(),
+    );
+    expect(row).toEqual({ status: "failed", error: "template missing" });
+  });
+});
