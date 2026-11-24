@@ -49,7 +49,12 @@ const COPY = new Map<string, string>([
   ["sender_not_verified", "Choose a From address on a verified domain."],
   ["workspace_suspended", "This workspace is suspended, so sending is paused."],
   ["unknown list", "That list no longer exists. Refresh and try again."],
+  ["too_many_recipients", "This campaign has more recipients than one send allows."],
+  ["run_failed", "Sending hit an error and stopped. Resume to try again."],
 ]);
+
+// Paused campaigns store a code on the row, not an Error, so the report maps it through the same COPY.
+export const reasonText = (code: string | null): string | null => (code ? (COPY.get(code) ?? FALLBACK) : null);
 
 export const isNotFound = (err: unknown): boolean => err instanceof Error && err.message === "not found";
 

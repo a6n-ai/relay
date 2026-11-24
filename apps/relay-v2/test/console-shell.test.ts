@@ -2,6 +2,7 @@ import { env, runInDurableObject, SELF } from "cloudflare:test";
 import { and, eq } from "drizzle-orm";
 import { beforeAll, describe, expect, it } from "vitest";
 import { PROBLEM_LABEL } from "../src/components/campaign-problems";
+import { reasonText } from "../src/components/error-text";
 import { clientFor } from "../src/core/messages";
 import { safeRedirect } from "../src/console/shell.fns";
 import { securityDb } from "../src/db/security/client";
@@ -185,6 +186,14 @@ describe("console shell", { timeout: 60_000 }, () => {
         "unsubscribe_missing",
       ].sort(),
     );
+  });
+});
+
+describe("campaign pause reasons", () => {
+  it("maps the stored pause codes to plain copy", () => {
+    expect(reasonText("too_many_recipients")).toBe("This campaign has more recipients than one send allows.");
+    expect(reasonText("run_failed")).toBe("Sending hit an error and stopped. Resume to try again.");
+    expect(reasonText(null)).toBeNull();
   });
 });
 
