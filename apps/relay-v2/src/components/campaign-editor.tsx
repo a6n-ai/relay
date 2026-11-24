@@ -2,8 +2,8 @@ import { Button } from "@foundry/ui/button";
 import { Checkbox } from "@foundry/ui/checkbox";
 import { Input } from "@foundry/ui/input";
 import { Label } from "@foundry/ui/label";
+import { RadioGroup, RadioGroupItem } from "@foundry/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@foundry/ui/select";
-import { Textarea } from "@foundry/ui/textarea";
 import { toast } from "@foundry/ui/toast";
 import { useBlocker, useRouter, useNavigate } from "@tanstack/react-router";
 import { type FormEvent, useEffect, useRef, useState } from "react";
@@ -21,17 +21,24 @@ import { campaignProblems } from "../core/campaign-problems";
 import { isDirty } from "./campaign-dirty";
 import { ConfirmDialog } from "./confirm-dialog";
 import { PROBLEM_LABEL } from "./campaign-problems";
+import { ContentFields, type LetterPreview } from "./content-fields";
 import { errorText } from "./error-text";
 import { FormError } from "./form-error";
-import { LetterView } from "./letter-view";
 import { ScheduleDialog } from "./schedule-dialog";
 import { StatusBadge } from "./status-badge";
 import { useCan } from "./use-can";
 
 export type CampaignOptions = { senders: string[]; lists: ListView[]; postalAddress: string | null };
-type Preview = { htmlSafe: string; text: string; subject: string };
 
-export function CampaignEditor({ campaign, options }: { campaign: CampaignView; options: CampaignOptions }) {
+export function CampaignEditor({
+  campaign,
+  options,
+  hookReady,
+}: {
+  campaign: CampaignView;
+  options: CampaignOptions;
+  hookReady: boolean;
+}) {
   const router = useRouter();
   const navigate = useNavigate();
   const canWrite = useCan({ campaign: ["write"] });
@@ -42,14 +49,22 @@ export function CampaignEditor({ campaign, options }: { campaign: CampaignView; 
   const [html, setHtml] = useState(campaign.html);
   const [text, setText] = useState(campaign.text);
   const [listIds, setListIds] = useState(campaign.listIds);
+  const [audienceKind, setAudienceKind] = useState(campaign.audienceKind);
+  const [audienceQuery, setAudienceQuery] = useState(campaign.audienceQuery ?? "");
   const [audience, setAudience] = useState<{ sendable: number; suppressed: number; lapsed: number } | null>(null);
-  const [preview, setPreview] = useState<Preview | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [address, setAddress] = useState(options.postalAddress ?? "");
   const dirty = isDirty(
-    { from: campaign.fromEmail ?? "", subject: campaign.subject, html: campaign.html, text: campaign.text },
-    { from, subject, html, text },
+    {
+      from: campaign.fromEmail ?? "",
+      subject: campaign.subject,
+      html: campaign.html,
+      text: campaign.text,
+      audienceKind: campaign.audienceKind,
+      audienceQuery: campaign.audienceQuery,
+    },
+    { from, subject, html, text, audienceKind, audienceQuery: audienceQuery.trim() || null },
   );
   const leaving = useRef(false);
   const blocker = useBlocker({
@@ -79,7 +94,7 @@ export function CampaignEditor({ campaign, options }: { campaign: CampaignView; 
       text: campaign.text,
       listIds: campaign.listIds,
       audienceKind: campaign.audienceKind,
-      hookReady: false,
+      hookReady,
     },
     options.postalAddress,
   );
@@ -90,7 +105,18 @@ export function CampaignEditor({ campaign, options }: { campaign: CampaignView; 
     setError(null);
     try {
       await updateCampaignFn({
-        data: { id: campaign.id, patch: { fromEmail: from || null, subject, html, text, listIds } },
+        data: {
+          id: campaign.id,
+          patch: {
+            fromEmail: from || null,
+            subject,
+            html,
+            text,
+            listIds,
+            audienceKind,
+            audienceQuery: audienceQuery.trim() || null,
+          },
+        },
       });
       toast.success("Campaign saved");
       await router.invalidate();
@@ -124,13 +150,9 @@ export function CampaignEditor({ campaign, options }: { campaign: CampaignView; 
     }
   }
 
-  async function showPreview() {
-    if (await saveFirst()) return;
-    try {
-      setPreview((await previewHtmlFn({ data: { id: campaign.id } })) ?? null);
-    } catch (err) {
-      toast.error(errorText(err, "Could not load the preview."));
-    }
+  async function previewLetter(): Promise<LetterPreview | null> {
+    if (await saveFirst()) return null;
+    return (await previewHtmlFn({ data: { id: campaign.id } })) ?? null;
   }
 
   async function sendTest() {
@@ -197,37 +219,67 @@ export function CampaignEditor({ campaign, options }: { campaign: CampaignView; 
           </SelectContent>
         </Select>
 
-        <Label htmlFor="campaign-subject">Subject</Label>
-        <Input id="campaign-subject" value={subject} disabled={!canWrite} onChange={(e) => setSubject(e.target.value)} />
-
         <fieldset className="grid gap-2">
-          <legend className="text-sm font-medium">Lists</legend>
-          {options.lists.length === 0 ? <p className="text-sm text-muted-foreground">No lists in this app yet.</p> : null}
-          {options.lists.map((l) => (
-            <Label key={l.id} className="flex items-center gap-2 font-normal">
-              <Checkbox
-                checked={listIds.includes(l.id)}
-                disabled={!canWrite}
-                onCheckedChange={(on) => toggleList(l.id, on === true)}
-              />
-              {l.name}
+          <legend className="text-sm font-medium">Audience</legend>
+          <RadioGroup
+            value={audienceKind}
+            onValueChange={(v) => setAudienceKind(v as "lists" | "hook")}
+            aria-label="Audience"
+            className="grid gap-2"
+          >
+            <Label htmlFor="audience-lists" className="flex items-center gap-2 font-normal">
+              <RadioGroupItem id="audience-lists" value="lists" disabled={!canWrite} />
+              Lists
             </Label>
-          ))}
-          {audience ? (
-            <p className="text-sm text-muted-foreground tabular-nums">
-              {audience.sendable} will receive this ({audience.suppressed} suppressed, {audience.lapsed} lapsed)
-            </p>
-          ) : null}
+            <Label htmlFor="audience-hook" className="flex items-center gap-2 font-normal">
+              <RadioGroupItem id="audience-hook" value="hook" disabled={!canWrite || !hookReady} />
+              App audience
+            </Label>
+          </RadioGroup>
+          {audienceKind === "hook" ? (
+            <>
+              <Label htmlFor="campaign-audience-query">Audience filter</Label>
+              <Input
+                id="campaign-audience-query"
+                value={audienceQuery}
+                disabled={!canWrite}
+                onChange={(e) => setAudienceQuery(e.target.value)}
+              />
+              <p className="text-sm text-muted-foreground">Counted when it sends</p>
+            </>
+          ) : (
+            <>
+              {options.lists.length === 0 ? <p className="text-sm text-muted-foreground">No lists in this app yet.</p> : null}
+              {options.lists.map((l) => (
+                <Label key={l.id} className="flex items-center gap-2 font-normal">
+                  <Checkbox
+                    checked={listIds.includes(l.id)}
+                    disabled={!canWrite}
+                    onCheckedChange={(on) => toggleList(l.id, on === true)}
+                  />
+                  {l.name}
+                </Label>
+              ))}
+              {audience ? (
+                <p className="text-sm text-muted-foreground tabular-nums">
+                  {audience.sendable} will receive this ({audience.suppressed} suppressed, {audience.lapsed} lapsed)
+                </p>
+              ) : null}
+            </>
+          )}
         </fieldset>
 
-        <Label htmlFor="campaign-html">HTML</Label>
-        <Textarea id="campaign-html" rows={10} value={html} disabled={!canWrite} onChange={(e) => setHtml(e.target.value)} />
-        <Label htmlFor="campaign-text">Plain text</Label>
-        <Textarea id="campaign-text" rows={6} value={text} disabled={!canWrite} onChange={(e) => setText(e.target.value)} />
-        <p className="text-xs text-muted-foreground">
-          Merge fields: {"{{contact.name}}"}, {"{{contact.first_name}}"}, {"{{contact.email}}"}, {"{{unsubscribe_url}}"},{" "}
-          {"{{postal_address}}"}
-        </p>
+        <ContentFields
+          value={{ subject, html, text }}
+          onChange={(next) => {
+            setSubject(next.subject);
+            setHtml(next.html);
+            setText(next.text);
+          }}
+          dataFields={campaign.audienceKind === "hook"}
+          disabled={!canWrite}
+          onPreview={previewLetter}
+        />
 
         <FormError message={error} />
         {canWrite ? (
@@ -240,9 +292,6 @@ export function CampaignEditor({ campaign, options }: { campaign: CampaignView; 
       </form>
 
       <div className="flex flex-wrap gap-2">
-        <Button variant="outline" size="sm" onClick={showPreview}>
-          Preview
-        </Button>
         {canWrite ? (
           <Button variant="outline" size="sm" onClick={sendTest}>
             Send test to me
@@ -258,13 +307,6 @@ export function CampaignEditor({ campaign, options }: { campaign: CampaignView; 
           />
         ) : null}
       </div>
-
-      {preview ? (
-        <div className="grid gap-2">
-          <p className="text-sm font-medium">{preview.subject}</p>
-          <LetterView htmlSafe={preview.htmlSafe} text={preview.text} blockedRemote={0} images={false} onShowImages={() => undefined} />
-        </div>
-      ) : null}
 
       <section className="grid max-w-2xl gap-3">
         <h2 className="text-sm font-medium">Before it can be sent</h2>

@@ -4,6 +4,7 @@ import { CampaignReport } from "../../components/campaign-report";
 import { DeniedState, deniedReason } from "../../components/denied-state";
 import { isNotFound } from "../../components/error-text";
 import { ViewHeader } from "../../components/view-header";
+import { fetchAudienceHook } from "../../console/apps.fns";
 import { fetchCampaign, fetchCampaignOptions, fetchCampaignStats } from "../../console/campaigns.fns";
 
 type CampaignSearch = { appId?: string };
@@ -24,9 +25,12 @@ export const Route = createFileRoute("/_app/campaigns_/$campaignId")({
       if (!stats) return null;
       return { campaign, stats };
     }
-    const options = await fetchCampaignOptions({ data: { appId: campaign.appId } });
+    const [options, hook] = await Promise.all([
+      fetchCampaignOptions({ data: { appId: campaign.appId } }),
+      fetchAudienceHook({ data: { appId: campaign.appId } }),
+    ]);
     if (!options) return null;
-    return { campaign, options };
+    return { campaign, options, hookReady: hook?.enabled === true };
   },
   component: CampaignPage,
 });
@@ -66,7 +70,7 @@ function CampaignPage() {
         {page.stats ? (
           <CampaignReport campaign={campaign} stats={page.stats} />
         ) : (
-          <CampaignEditor campaign={campaign} options={page.options} />
+          <CampaignEditor campaign={campaign} options={page.options} hookReady={page.hookReady} />
         )}
       </div>
     </>
