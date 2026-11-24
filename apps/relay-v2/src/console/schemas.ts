@@ -42,3 +42,18 @@ export const campaignPatch = z.object({
   text: z.string().max(500_000).optional(),
   listIds: z.array(id).max(50).optional(),
 });
+export const templateInput = z.object({
+  name: z.string().trim().min(1).max(120),
+  event: z.string().trim().min(1).max(80).nullable().optional(),
+  locale: z.string().trim().min(2).max(35).optional(),
+  subject: z
+    .string()
+    .max(300)
+    .refine((s) => !/[\r\n]/.test(s), "subject must not contain line breaks")
+    .optional(),
+  intro: z.string().max(2000).nullable().optional(),
+  html: z.string().max(500_000).optional(),
+  text: z.string().max(500_000).optional(),
+  enabled: z.boolean().optional(),
+});
+export const templatePatch = templateInput.partial();

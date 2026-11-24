@@ -78,6 +78,8 @@ export function CampaignEditor({ campaign, options }: { campaign: CampaignView; 
       html: campaign.html,
       text: campaign.text,
       listIds: campaign.listIds,
+      audienceKind: campaign.audienceKind,
+      hookReady: false,
     },
     options.postalAddress,
   );

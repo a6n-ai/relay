@@ -41,6 +41,20 @@ describe("merge fields", () => {
     expect(parseMergeData(null)).toBeNull();
   });
 
+  it("renders data.* fields escaped in html and empty when unknown", () => {
+    expect(renderMerge("{{data.plan}} {{data.x}}", { "data.plan": "<b>" }, "html")).toBe("&lt;b&gt; ");
+  });
+
+  it("accepts data.* only when asked", () => {
+    expect(unknownMergeFields("{{data.plan}}")).toEqual(["data.plan"]);
+    expect(unknownMergeFields("{{data.plan}}", { data: true })).toEqual([]);
+    expect(unknownMergeFields("{{contact.phone}}", { data: true })).toEqual(["contact.phone"]);
+  });
+
+  it("maps data keys into contact values", () => {
+    expect(contactValues({ email: "a@x.com", firstName: null, lastName: null, data: { plan: "pro" } }, "")["data.plan"]).toBe("pro");
+  });
+
   it("joins first and last name for contact.name", () => {
     expect(contactValues({ email: "a@x.com", firstName: "Ann", lastName: "Lee" }, "1 Main St")["contact.name"]).toBe("Ann Lee");
     expect(contactValues({ email: "a@x.com", firstName: null, lastName: null }, "1 Main St").postal_address).toBe("1 Main St");
@@ -49,7 +63,7 @@ describe("merge fields", () => {
 
 describe("campaign problems", () => {
   it("lists the content problems of an empty draft", () => {
-    const empty = { fromEmail: null, subject: "", html: "", text: "", listIds: [] };
+    const empty = { fromEmail: null, subject: "", html: "", text: "", listIds: [], audienceKind: "lists" as const, hookReady: false };
     expect(campaignProblems(empty, null)).toEqual([
       "from_missing",
       "subject_missing",
@@ -59,5 +73,11 @@ describe("campaign problems", () => {
       "unsubscribe_missing",
       "postal_address_missing",
     ]);
+  });
+
+  it("needs a ready hook, not lists, for a hook audience", () => {
+    const base = { fromEmail: "a@x.com", subject: "s", html: "{{unsubscribe_url}} {{postal_address}}", text: "{{unsubscribe_url}} {{postal_address}}", listIds: [], audienceKind: "hook" as const };
+    expect(campaignProblems({ ...base, hookReady: false }, "1 Main")).toEqual(["audience_hook_missing"]);
+    expect(campaignProblems({ ...base, hookReady: true }, "1 Main")).toEqual([]);
   });
 });

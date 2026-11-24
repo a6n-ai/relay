@@ -187,12 +187,14 @@ export const contactList = sqliteTable(
     name: text("name").notNull(),
     consentSource: text("consent_source").notNull(),
     consentNote: text("consent_note"),
+    importRef: text("import_ref"),
     createdAt: integer("created_at").notNull(),
     updatedAt: integer("updated_at").notNull(),
   },
   (t) => [
     check("contact_list_consent", sql`${t.consentSource} IN ('purchase', 'express_optin', 'event_signup', 'import_other')`),
     index("contact_list_app_created").on(t.appId, t.createdAt, t.id),
+    uniqueIndex("contact_list_import_ref").on(t.importRef).where(sql`${t.importRef} IS NOT NULL`),
   ],
 );
 
@@ -241,6 +243,10 @@ export const campaign = sqliteTable(
     html: text("html").notNull().default(""),
     text: text("text").notNull().default(""),
     listIds: text("list_ids").notNull().default("[]"),
+    audienceKind: text("audience_kind").notNull().default("lists"),
+    audienceQuery: text("audience_query"),
+    templateId: text("template_id"),
+    importRef: text("import_ref"),
     scheduledAt: integer("scheduled_at"),
     runSeq: integer("run_seq").notNull().default(0),
     cursor: text("cursor"),
@@ -266,5 +272,85 @@ export const campaign = sqliteTable(
     check("campaign_stream", sql`${t.stream} IN ('transactional', 'tracked', 'marketing')`),
     check("campaign_status", sql`${t.status} IN ('draft', 'scheduled', 'sending', 'paused', 'sent', 'cancelled')`),
     index("campaign_created").on(t.createdAt, t.id),
+    uniqueIndex("campaign_import_ref").on(t.importRef).where(sql`${t.importRef} IS NOT NULL`),
   ],
+);
+
+export const template = sqliteTable(
+  "template",
+  {
+    id: text("id").primaryKey().$defaultFn(() => newId("tpl")),
+    appId: text("app_id").notNull(),
+    name: text("name").notNull(),
+    event: text("event"),
+    locale: text("locale").notNull().default("en"),
+    subject: text("subject").notNull().default(""),
+    intro: text("intro"),
+    html: text("html").notNull().default(""),
+    text: text("text").notNull().default(""),
+    enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+    importRef: text("import_ref"),
+    createdAt: integer("created_at").notNull(),
+    updatedAt: integer("updated_at").notNull(),
+  },
+  (t) => [
+    uniqueIndex("template_app_event")
+      .on(t.appId, t.event, t.locale)
+      .where(sql`${t.event} IS NOT NULL`),
+    uniqueIndex("template_import_ref").on(t.importRef).where(sql`${t.importRef} IS NOT NULL`),
+    index("template_app_created").on(t.appId, t.createdAt, t.id),
+  ],
+);
+
+export const automation = sqliteTable(
+  "automation",
+  {
+    id: text("id").primaryKey().$defaultFn(() => newId("aut")),
+    appId: text("app_id").notNull(),
+    name: text("name").notNull(),
+    listId: text("list_id").notNull(),
+    templateId: text("template_id").notNull(),
+    fromEmail: text("from_email").notNull(),
+    delayHours: integer("delay_hours").notNull(),
+    enabled: integer("enabled", { mode: "boolean" }).notNull().default(false),
+    createdAt: integer("created_at").notNull(),
+    updatedAt: integer("updated_at").notNull(),
+  },
+  (t) => [
+    check("automation_delay", sql`${t.delayHours} BETWEEN 0 AND 720`),
+    index("automation_list").on(t.listId),
+  ],
+);
+
+export const automationRun = sqliteTable(
+  "automation_run",
+  {
+    automationId: text("automation_id").notNull(),
+    email: text("email").notNull(),
+    dueAt: integer("due_at").notNull(),
+    status: text("status").notNull().default("pending"),
+    messageId: text("message_id"),
+    error: text("error"),
+    createdAt: integer("created_at").notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.automationId, t.email] }),
+    check("automation_run_status", sql`${t.status} IN ('pending', 'sent', 'skipped')`),
+    index("automation_run_due").on(t.status, t.dueAt),
+  ],
+);
+
+export const audienceHook = sqliteTable(
+  "audience_hook",
+  {
+    appId: text("app_id").primaryKey().notNull(),
+    kind: text("kind").notNull(),
+    url: text("url"),
+    binding: text("binding"),
+    secretEnc: text("secret_enc"),
+    enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+    createdAt: integer("created_at").notNull(),
+    updatedAt: integer("updated_at").notNull(),
+  },
+  (t) => [check("audience_hook_kind", sql`${t.kind} IN ('https', 'binding')`)],
 );

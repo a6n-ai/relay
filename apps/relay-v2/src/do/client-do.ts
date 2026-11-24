@@ -75,6 +75,17 @@ import {
   type MemberView,
 } from "./lists";
 import { maskEmails } from "../core/mask-emails";
+import {
+  createTemplateRow,
+  deleteTemplateRow,
+  getTemplateRow,
+  listTemplateRows,
+  templateOverrideRows,
+  updateTemplateRow,
+  type TemplateInput,
+  type TemplateOverride,
+  type TemplateView,
+} from "./templates";
 import { deleteWebhookRow, failDeliveryRow, listWebhookRows, toWebhookView, updateWebhookRow, type WebhookRow } from "./webhooks";
 
 export type AttachmentView = {
@@ -485,6 +496,30 @@ export class ClientDO extends DurableObject<Env> {
     await this.ready(workspaceId);
     return this.ctx.storage.transactionSync(() => deleteCampaignRow(this.ctx.storage.sql, id));
   }
+  async createTemplate(workspaceId: string, appId: string, input: TemplateInput): Promise<TemplateView | "event_taken"> {
+    await this.ready(workspaceId);
+    return this.ctx.storage.transactionSync(() => createTemplateRow(this.ctx.storage.sql, appId, input));
+  }
+  async listTemplates(workspaceId: string, appId?: string, cursor?: string): Promise<{ rows: TemplateView[]; nextCursor: string | null }> {
+    await this.ready(workspaceId);
+    return listTemplateRows(this.ctx.storage.sql, cursor, appId);
+  }
+  async getTemplate(workspaceId: string, id: string): Promise<TemplateView | null> {
+    await this.ready(workspaceId);
+    return getTemplateRow(this.ctx.storage.sql, id);
+  }
+  async updateTemplate(workspaceId: string, id: string, patch: Partial<TemplateInput>): Promise<TemplateView | "missing" | "event_taken"> {
+    await this.ready(workspaceId);
+    return this.ctx.storage.transactionSync(() => updateTemplateRow(this.ctx.storage.sql, id, patch));
+  }
+  async deleteTemplate(workspaceId: string, id: string): Promise<"deleted" | "missing" | "in_use"> {
+    await this.ready(workspaceId);
+    return this.ctx.storage.transactionSync(() => deleteTemplateRow(this.ctx.storage.sql, id));
+  }
+  async templateOverrides(workspaceId: string, appId: string): Promise<TemplateOverride[]> {
+    await this.ready(workspaceId);
+    return templateOverrideRows(this.ctx.storage.sql, appId);
+  }
   // Postal address is snapshotted here: a later Settings change does not alter a scheduled campaign.
   async scheduleCampaign(
     workspaceId: string,
@@ -497,7 +532,8 @@ export class ClientDO extends DurableObject<Env> {
       const row = getCampaignRow(this.ctx.storage.sql, id);
       if (!row) return "missing";
       if (row.status !== "draft") return "not_draft";
-      const problems = campaignProblems(row, postalAddress);
+      const hookReady = this.ctx.storage.sql.exec("SELECT 1 FROM audience_hook WHERE app_id = ? AND enabled = 1", row.appId).toArray().length > 0;
+      const problems = campaignProblems({ ...row, hookReady }, postalAddress);
       if (problems.length > 0) return { problems };
       const runSeq = row.runSeq + 1;
       this.ctx.storage.sql.exec(

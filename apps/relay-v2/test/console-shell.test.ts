@@ -178,6 +178,7 @@ describe("console shell", { timeout: 60_000 }, () => {
     expect(Object.keys(PROBLEM_LABEL).sort()).toEqual(
       [
         "audience_empty",
+        "audience_hook_missing",
         "from_missing",
         "html_missing",
         "postal_address_missing",

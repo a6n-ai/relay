@@ -13,6 +13,7 @@ export type CampaignView = {
   html: string;
   text: string;
   listIds: string[];
+  audienceKind: "lists" | "hook";
   scheduledAt: number | null;
   runSeq: number;
   startedAt: number | null;
@@ -27,7 +28,7 @@ export type CampaignPatch = Partial<Pick<CampaignView, "name" | "fromEmail" | "s
 export type AudiencePreview = { members: number; suppressed: number; lapsed: number; sendable: number };
 
 const PAGE = 50;
-const SUMMARY_COLUMNS = `id, app_id AS appId, name, status, from_email AS fromEmail, subject, list_ids AS listIds,
+const SUMMARY_COLUMNS = `id, app_id AS appId, name, status, from_email AS fromEmail, subject, list_ids AS listIds, audience_kind AS audienceKind,
   scheduled_at AS scheduledAt, run_seq AS runSeq, started_at AS startedAt, finished_at AS finishedAt, recipients, error,
   created_at AS createdAt, updated_at AS updatedAt`;
 const VIEW_COLUMNS = `${SUMMARY_COLUMNS}, html, text`;

@@ -193,6 +193,43 @@ CREATE TABLE campaign (
 );
 CREATE INDEX campaign_created ON campaign (created_at, id);
 `,
+`
+CREATE TABLE template (
+  id TEXT PRIMARY KEY NOT NULL, app_id TEXT NOT NULL, name TEXT NOT NULL,
+  event TEXT, locale TEXT NOT NULL DEFAULT 'en', subject TEXT NOT NULL DEFAULT '', intro TEXT,
+  html TEXT NOT NULL DEFAULT '', text TEXT NOT NULL DEFAULT '', enabled INTEGER NOT NULL DEFAULT 1,
+  import_ref TEXT, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL
+);
+CREATE UNIQUE INDEX template_app_event ON template (app_id, event, locale) WHERE event IS NOT NULL;
+CREATE UNIQUE INDEX template_import_ref ON template (import_ref) WHERE import_ref IS NOT NULL;
+CREATE INDEX template_app_created ON template (app_id, created_at, id);
+CREATE TABLE automation (
+  id TEXT PRIMARY KEY NOT NULL, app_id TEXT NOT NULL, name TEXT NOT NULL, list_id TEXT NOT NULL,
+  template_id TEXT NOT NULL, from_email TEXT NOT NULL, delay_hours INTEGER NOT NULL,
+  enabled INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL,
+  CONSTRAINT automation_delay CHECK (delay_hours BETWEEN 0 AND 720)
+);
+CREATE INDEX automation_list ON automation (list_id);
+CREATE TABLE automation_run (
+  automation_id TEXT NOT NULL, email TEXT NOT NULL, due_at INTEGER NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending', message_id TEXT, error TEXT, created_at INTEGER NOT NULL,
+  PRIMARY KEY (automation_id, email),
+  CONSTRAINT automation_run_status CHECK (status IN ('pending', 'sent', 'skipped'))
+);
+CREATE INDEX automation_run_due ON automation_run (status, due_at);
+CREATE TABLE audience_hook (
+  app_id TEXT PRIMARY KEY NOT NULL, kind TEXT NOT NULL, url TEXT, binding TEXT, secret_enc TEXT,
+  enabled INTEGER NOT NULL DEFAULT 1, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL,
+  CONSTRAINT audience_hook_kind CHECK (kind IN ('https', 'binding'))
+);
+ALTER TABLE campaign ADD COLUMN audience_kind TEXT NOT NULL DEFAULT 'lists';
+ALTER TABLE campaign ADD COLUMN audience_query TEXT;
+ALTER TABLE campaign ADD COLUMN template_id TEXT;
+ALTER TABLE campaign ADD COLUMN import_ref TEXT;
+ALTER TABLE contact_list ADD COLUMN import_ref TEXT;
+CREATE UNIQUE INDEX campaign_import_ref ON campaign (import_ref) WHERE import_ref IS NOT NULL;
+CREATE UNIQUE INDEX contact_list_import_ref ON contact_list (import_ref) WHERE import_ref IS NOT NULL;
+`,
 ];
 
 // PRAGMA user_version is rejected by DO SQL (SQLITE_AUTH), so the version lives in sync KV.

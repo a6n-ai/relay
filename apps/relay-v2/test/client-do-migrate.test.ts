@@ -41,7 +41,7 @@ describe("ClientDO migrations", () => {
     const stub = env.CLIENT.get(env.CLIENT.idFromName("migrate-upgrade"));
     const result = await runInDurableObject(stub, (_instance, state) => {
       const { storage } = state;
-      for (const table of ["campaign", "marketing_optout", "contact_list_member", "contact_list", "inbound_failure", "webhook_delivery", "webhook", "attachment", "message_event", "message", "suppression", "audit_log"])
+      for (const table of ["template", "automation_run", "automation", "audience_hook", "campaign", "marketing_optout", "contact_list_member", "contact_list", "inbound_failure", "webhook_delivery", "webhook", "attachment", "message_event", "message", "suppression", "audit_log"])
         storage.sql.exec(`DROP TABLE IF EXISTS ${table}`);
       storage.kv.delete("schema_version");
       storage.transactionSync(() => {
@@ -63,7 +63,7 @@ describe("ClientDO migrations", () => {
     const stub = env.CLIENT.get(env.CLIENT.idFromName("migrate-upgrade-v2"));
     const result = await runInDurableObject(stub, (_instance, state) => {
       const { storage } = state;
-      for (const table of ["campaign", "marketing_optout", "contact_list_member", "contact_list", "inbound_failure", "webhook_delivery", "webhook", "attachment", "message_event", "message", "suppression", "audit_log"])
+      for (const table of ["template", "automation_run", "automation", "audience_hook", "campaign", "marketing_optout", "contact_list_member", "contact_list", "inbound_failure", "webhook_delivery", "webhook", "attachment", "message_event", "message", "suppression", "audit_log"])
         storage.sql.exec(`DROP TABLE IF EXISTS ${table}`);
       storage.kv.delete("schema_version");
       storage.transactionSync(() => {
@@ -175,8 +175,8 @@ describe("ClientDO migrations", () => {
 });
 
 describe("ClientDO migration 6 (contact lists and campaigns)", () => {
-  it("pins six scripts and creates the list, member, opt-out and campaign tables with the message columns", async () => {
-    expect(CLIENT_MIGRATIONS.length).toBe(6);
+  it("pins seven scripts and creates the list, member, opt-out and campaign tables with the message columns", async () => {
+    expect(CLIENT_MIGRATIONS.length).toBe(7);
     const stub = env.CLIENT.get(env.CLIENT.idFromName("migrate-six"));
     const result = await runInDurableObject(stub, (_instance, state) => ({
       version: state.storage.kv.get<number>("schema_version"),
@@ -184,7 +184,7 @@ describe("ClientDO migration 6 (contact lists and campaigns)", () => {
       messageColumns: state.storage.sql.exec<{ name: string }>("PRAGMA table_info('message')").toArray().map((r) => r.name),
       memberColumns: state.storage.sql.exec<{ name: string }>("PRAGMA table_info('contact_list_member')").toArray().map((r) => r.name),
     }));
-    expect(result.version).toBe(6);
+    expect(result.version).toBe(CLIENT_MIGRATIONS.length);
     expect(result.tables).toEqual(expect.arrayContaining(["contact_list", "contact_list_member", "marketing_optout", "campaign"]));
     expect(result.memberColumns).not.toContain("unsubscribed_at");
     expect(result.messageColumns).toEqual(expect.arrayContaining(["unsubscribed_at", "merge_data"]));
@@ -194,7 +194,7 @@ describe("ClientDO migration 6 (contact lists and campaigns)", () => {
     const stub = env.CLIENT.get(env.CLIENT.idFromName("migrate-five"));
     const result = await runInDurableObject(stub, (_instance, state) => {
       const { storage } = state;
-      for (const table of ["campaign", "marketing_optout", "contact_list_member", "contact_list"]) storage.sql.exec(`DROP TABLE IF EXISTS ${table}`);
+      for (const table of ["template", "automation_run", "automation", "audience_hook", "campaign", "marketing_optout", "contact_list_member", "contact_list"]) storage.sql.exec(`DROP TABLE IF EXISTS ${table}`);
       storage.sql.exec("ALTER TABLE message DROP COLUMN unsubscribed_at");
       storage.sql.exec("ALTER TABLE message DROP COLUMN merge_data");
       storage.sql.exec("INSERT INTO suppression (email, reason, stream, created_at) VALUES ('keep@x.test', 'manual', NULL, 1)");
@@ -208,9 +208,50 @@ describe("ClientDO migration 6 (contact lists and campaigns)", () => {
         tables: tables(storage.sql),
       };
     });
-    expect(result.version).toBe(6);
-    expect(result.delta).toBe(1);
+    expect(result.version).toBe(CLIENT_MIGRATIONS.length);
+    expect(result.delta).toBe(2);
     expect(result.kept).toEqual(["keep@x.test"]);
     expect(result.tables).toEqual(expect.arrayContaining(["contact_list", "contact_list_member", "campaign"]));
+  });
+});
+
+describe("ClientDO migration 7", () => {
+  it("adds the template, automation and audience_hook tables and campaign audience columns", async () => {
+    const stub = env.CLIENT.get(env.CLIENT.idFromName("migrate-v7-fresh"));
+    const result = await runInDurableObject(stub, (_instance, state) => ({
+      version: state.storage.kv.get<number>("schema_version"),
+      tables: tables(state.storage.sql),
+      campaignCols: state.storage.sql.exec<{ name: string }>("PRAGMA table_info('campaign')").toArray().map((r) => r.name),
+    }));
+    expect(CLIENT_MIGRATIONS.length).toBe(7);
+    expect(result.version).toBe(7);
+    expect(result.tables).toEqual(expect.arrayContaining(["template", "automation", "automation_run", "audience_hook"]));
+    expect(result.campaignCols).toContain("audience_kind");
+  });
+
+  it("upgrades a version-6 DO, keeping a campaign row on the lists audience", async () => {
+    const stub = env.CLIENT.get(env.CLIENT.idFromName("migrate-v6-upgrade"));
+    const result = await runInDurableObject(stub, (_instance, state) => {
+      const { storage } = state;
+      storage.sql.exec("DROP TABLE IF EXISTS template");
+      storage.sql.exec("DROP TABLE IF EXISTS automation_run");
+      storage.sql.exec("DROP TABLE IF EXISTS automation");
+      storage.sql.exec("DROP TABLE IF EXISTS audience_hook");
+      storage.sql.exec("DROP INDEX IF EXISTS campaign_import_ref");
+      storage.sql.exec("DROP INDEX IF EXISTS contact_list_import_ref");
+      storage.sql.exec("ALTER TABLE campaign DROP COLUMN audience_kind");
+      storage.sql.exec("ALTER TABLE campaign DROP COLUMN audience_query");
+      storage.sql.exec("ALTER TABLE campaign DROP COLUMN template_id");
+      storage.sql.exec("ALTER TABLE campaign DROP COLUMN import_ref");
+      storage.sql.exec("ALTER TABLE contact_list DROP COLUMN import_ref");
+      storage.kv.put("schema_version", 6);
+      storage.sql.exec("INSERT INTO campaign (id, app_id, name, created_at, updated_at) VALUES (?, ?, ?, ?, ?)", "cmp_old000000001", "app_1", "Old", 1, 1);
+      const version = migrate(storage);
+      const row = storage.sql.exec<{ audience_kind: string }>("SELECT audience_kind FROM campaign WHERE id = ?", "cmp_old000000001").one();
+      return { version, audienceKind: row.audience_kind, tables: tables(storage.sql) };
+    });
+    expect(result.version).toBe(CLIENT_MIGRATIONS.length);
+    expect(result.audienceKind).toBe("lists");
+    expect(result.tables).toEqual(expect.arrayContaining(["template", "automation"]));
   });
 });
