@@ -1,13 +1,18 @@
 import { and, eq, inArray, or } from "drizzle-orm";
+import { sanitizeEmailHtml } from "../core/sanitize-html";
 import { clientFor } from "../core/messages";
-import { decodeCursor, type MessageAccess, type MessageDetail, type MessageQuery } from "../do/console-reads";
+import { decodeCursor, type MessageAccess, type MessageDetail, type MessageQuery, type MessageStatus } from "../do/console-reads";
 import { securityDb } from "../db/security/client";
 import { addressGrant, member, team, teamMember } from "../db/security/schema";
 import type { Env } from "../env";
 import { allows } from "../lib/auth/permissions";
 import { ConsoleError, type ConsoleActor } from "./actor";
 
-export type ConsoleMessage = Omit<MessageDetail, "html" | "htmlKey" | "rawKey" | "claimedUntil" | "idempotencyKey"> & {
+export type ConsoleMessage = Omit<
+  MessageDetail,
+  "html" | "htmlKey" | "rawKey" | "claimedUntil" | "idempotencyKey" | "status"
+> & {
+  status: MessageStatus;
   htmlSafe: string | null;
   blockedRemote: number;
   hasRaw: boolean;
@@ -50,12 +55,12 @@ export async function listMessagesFor(env: Env, actor: ConsoleActor, q: MessageQ
   const inboundAllowed = allows(actor.roles, { mailbox: ["read"] });
   if (q.direction === "out" ? !access.out : !inboundAllowed) throw new ConsoleError(403, "forbidden");
   if (q.cursor !== undefined && !decodeCursor(q.cursor)) throw new ConsoleError(400, "invalid cursor");
-  const page = await clientFor(env, actor.workspaceId).listMessages(
+  const { rows, nextCursor } = await clientFor(env, actor.workspaceId).listMessages(
     actor.workspaceId,
     { ...q, email: q.email?.trim().toLowerCase() || undefined },
     access,
   );
-  return { ...page, restricted: Array.isArray(access.inbound) };
+  return { rows, nextCursor, restricted: Array.isArray(access.inbound) };
 }
 
 // A letter the reader may not see is a 404, the same as one that does not exist.
@@ -69,5 +74,12 @@ export async function getMessageFor(
   const view = await clientFor(env, actor.workspaceId).getMessageDetail(actor.workspaceId, id, access);
   if (!view) throw new ConsoleError(404, "not found");
   const { html, htmlKey, rawKey, claimedUntil, idempotencyKey, ...rest } = view;
-  return { ...rest, htmlSafe: null, blockedRemote: 0, hasRaw: rawKey !== null };
+  const safe = html === null ? null : sanitizeEmailHtml(html, { remoteImages: opts.images ? "allow" : "block" });
+  return {
+    ...rest,
+    status: rest.status as MessageStatus,
+    htmlSafe: safe?.html ?? null,
+    blockedRemote: safe?.blockedRemote ?? 0,
+    hasRaw: rawKey !== null,
+  };
 }

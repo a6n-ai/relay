@@ -17,9 +17,11 @@ import { Route as AppAdminRouteImport } from './routes/_app/admin'
 import { Route as AppAppsRouteImport } from './routes/_app/apps'
 import { Route as AppDomainsRouteImport } from './routes/_app/domains'
 import { Route as AppMembersRouteImport } from './routes/_app/members'
+import { Route as AppMessagesRouteImport } from './routes/_app/messages'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as InviteIdRouteImport } from './routes/invite.$id'
 import { Route as AppAppsAppIdRouteImport } from './routes/_app/apps_.$appId'
+import { Route as AppMessagesMessageIdRouteImport } from './routes/_app/messages_.$messageId'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiDevOtpRouteImport } from './routes/api/dev/otp'
 import { Route as ApiInternalDoSweepRouteImport } from './routes/api/internal/do-sweep'
@@ -69,6 +71,11 @@ const AppMembersRoute = AppMembersRouteImport.update({
   path: '/members',
   getParentRoute: () => AppRoute,
 } as any)
+const AppMessagesRoute = AppMessagesRouteImport.update({
+  id: '/messages',
+  path: '/messages',
+  getParentRoute: () => AppRoute,
+} as any)
 const ApiHealthRoute = ApiHealthRouteImport.update({
   id: '/api/health',
   path: '/api/health',
@@ -82,6 +89,11 @@ const InviteIdRoute = InviteIdRouteImport.update({
 const AppAppsAppIdRoute = AppAppsAppIdRouteImport.update({
   id: '/apps_/$appId',
   path: '/apps/$appId',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppMessagesMessageIdRoute = AppMessagesMessageIdRouteImport.update({
+  id: '/messages_/$messageId',
+  path: '/messages/$messageId',
   getParentRoute: () => AppRoute,
 } as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
@@ -138,9 +150,11 @@ export interface FileRoutesByFullPath {
   '/apps': typeof AppAppsRoute
   '/domains': typeof AppDomainsRoute
   '/members': typeof AppMembersRoute
+  '/messages': typeof AppMessagesRoute
   '/api/health': typeof ApiHealthRoute
   '/invite/$id': typeof InviteIdRoute
   '/apps/$appId': typeof AppAppsAppIdRoute
+  '/messages/$messageId': typeof AppMessagesMessageIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/dev/otp': typeof ApiDevOtpRoute
   '/api/internal/do-sweep': typeof ApiInternalDoSweepRoute
@@ -158,10 +172,12 @@ export interface FileRoutesByTo {
   '/apps': typeof AppAppsRoute
   '/domains': typeof AppDomainsRoute
   '/members': typeof AppMembersRoute
+  '/messages': typeof AppMessagesRoute
   '/api/health': typeof ApiHealthRoute
   '/invite/$id': typeof InviteIdRoute
   '/': typeof AppIndexRoute
   '/apps/$appId': typeof AppAppsAppIdRoute
+  '/messages/$messageId': typeof AppMessagesMessageIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/dev/otp': typeof ApiDevOtpRoute
   '/api/internal/do-sweep': typeof ApiInternalDoSweepRoute
@@ -181,10 +197,12 @@ export interface FileRoutesById {
   '/_app/apps': typeof AppAppsRoute
   '/_app/domains': typeof AppDomainsRoute
   '/_app/members': typeof AppMembersRoute
+  '/_app/messages': typeof AppMessagesRoute
   '/api/health': typeof ApiHealthRoute
   '/invite/$id': typeof InviteIdRoute
   '/_app/': typeof AppIndexRoute
   '/_app/apps_/$appId': typeof AppAppsAppIdRoute
+  '/_app/messages_/$messageId': typeof AppMessagesMessageIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/dev/otp': typeof ApiDevOtpRoute
   '/api/internal/do-sweep': typeof ApiInternalDoSweepRoute
@@ -205,9 +223,11 @@ export interface FileRouteTypes {
     | '/apps'
     | '/domains'
     | '/members'
+    | '/messages'
     | '/api/health'
     | '/invite/$id'
     | '/apps/$appId'
+    | '/messages/$messageId'
     | '/api/auth/$'
     | '/api/dev/otp'
     | '/api/internal/do-sweep'
@@ -225,10 +245,12 @@ export interface FileRouteTypes {
     | '/apps'
     | '/domains'
     | '/members'
+    | '/messages'
     | '/api/health'
     | '/invite/$id'
     | '/'
     | '/apps/$appId'
+    | '/messages/$messageId'
     | '/api/auth/$'
     | '/api/dev/otp'
     | '/api/internal/do-sweep'
@@ -247,10 +269,12 @@ export interface FileRouteTypes {
     | '/_app/apps'
     | '/_app/domains'
     | '/_app/members'
+    | '/_app/messages'
     | '/api/health'
     | '/invite/$id'
     | '/_app/'
     | '/_app/apps_/$appId'
+    | '/_app/messages_/$messageId'
     | '/api/auth/$'
     | '/api/dev/otp'
     | '/api/internal/do-sweep'
@@ -335,6 +359,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppMembersRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/messages': {
+      id: '/_app/messages'
+      path: '/messages'
+      fullPath: '/messages'
+      preLoaderRoute: typeof AppMessagesRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/api/health': {
       id: '/api/health'
       path: '/api/health'
@@ -354,6 +385,13 @@ declare module '@tanstack/react-router' {
       path: '/apps/$appId'
       fullPath: '/apps/$appId'
       preLoaderRoute: typeof AppAppsAppIdRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/messages_/$messageId': {
+      id: '/_app/messages_/$messageId'
+      path: '/messages/$messageId'
+      fullPath: '/messages/$messageId'
+      preLoaderRoute: typeof AppMessagesMessageIdRouteImport
       parentRoute: typeof AppRoute
     }
     '/api/auth/$': {
@@ -427,8 +465,10 @@ interface AppRouteChildren {
   AppAppsRoute: typeof AppAppsRoute
   AppDomainsRoute: typeof AppDomainsRoute
   AppMembersRoute: typeof AppMembersRoute
+  AppMessagesRoute: typeof AppMessagesRoute
   AppIndexRoute: typeof AppIndexRoute
   AppAppsAppIdRoute: typeof AppAppsAppIdRoute
+  AppMessagesMessageIdRoute: typeof AppMessagesMessageIdRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
@@ -436,8 +476,10 @@ const AppRouteChildren: AppRouteChildren = {
   AppAppsRoute: AppAppsRoute,
   AppDomainsRoute: AppDomainsRoute,
   AppMembersRoute: AppMembersRoute,
+  AppMessagesRoute: AppMessagesRoute,
   AppIndexRoute: AppIndexRoute,
   AppAppsAppIdRoute: AppAppsAppIdRoute,
+  AppMessagesMessageIdRoute: AppMessagesMessageIdRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)

@@ -7,6 +7,7 @@ import { createAddress, createAddressGrant } from "../src/core/addresses";
 import { clientFor } from "../src/core/messages";
 import { securityDb } from "../src/db/security/client";
 import { addressGrant, app, member, team, teamMember, user } from "../src/db/security/schema";
+import { parseMessagesSearch } from "../src/components/messages-search";
 import { newId } from "../src/lib/ids";
 import { addMember, cookieFor, createWorkspace, headersFor, setActive } from "./console-helpers";
 import { applyMigrations } from "./migrate";
@@ -239,5 +240,46 @@ describe("message reads", () => {
     expect(indexes).toEqual(
       expect.arrayContaining(["message_direction_created", "message_in_reply_to", "webhook_delivery_webhook_created"]),
     );
+  });
+});
+
+describe("letter HTML", () => {
+  const HOSTILE =
+    '<p>Hi</p><script>alert(1)</script><img src=x onerror=alert(2)><meta http-equiv="refresh" content="0;url=https://evil.example"><base href="https://evil.example/"><img src="https://track.example/p.gif">';
+
+  it("strips script, handlers, meta and base, and blocks remote images unless they are shown", async () => {
+    const t = await tenant("letter");
+    const addr = await inbox(t.workspaceId, t.appA, "in@letter.test");
+    const [id] = await seed(t.workspaceId, [
+      { appId: t.appA, direction: "in", addressId: addr, rfcMessageId: "letter@x", fromEmail: "x@example.com", createdAt: 1 },
+    ]);
+    const htmlKey = `letter/${id}.html`;
+    await env.MAIL.put(htmlKey, HOSTILE);
+    await runInDurableObject(clientFor(env, t.workspaceId), (_instance, state) => {
+      state.storage.sql.exec("UPDATE message SET html_key = ? WHERE id = ?", htmlKey, id);
+    });
+
+    const blocked = await getMessageFor(env, t.owner, id, { images: false });
+    expect(blocked.htmlSafe).toContain("Hi");
+    for (const bad of ["<script", "onerror", "http-equiv", "<base", "track.example"]) {
+      expect(blocked.htmlSafe, bad).not.toContain(bad);
+    }
+    expect(blocked.blockedRemote).toBe(1);
+
+    const shown = await getMessageFor(env, t.owner, id, { images: true });
+    expect(shown.htmlSafe).toContain("track.example");
+    expect(shown.htmlSafe).not.toContain("<script");
+  });
+});
+
+describe("parseMessagesSearch", () => {
+  it("drops unknown or garbage values and defaults dir to out", () => {
+    expect(parseMessagesSearch({ dir: "sideways", status: "lost", cursor: 5 })).toEqual({ dir: "out" });
+  });
+
+  it("keeps the valid filters", () => {
+    expect(
+      parseMessagesSearch({ dir: "in", app: "app_1", status: "failed", email: " a@b.co ", cursor: "1700.msg_abcdefghijkl" }),
+    ).toEqual({ dir: "in", app: "app_1", status: "failed", email: "a@b.co", cursor: "1700.msg_abcdefghijkl" });
   });
 });
