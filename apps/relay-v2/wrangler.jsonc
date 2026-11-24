@@ -64,6 +64,13 @@
         "max_retries": 10,
         "dead_letter_queue": "relay-inbound-dlq",
       },
+      {
+        "queue": "relay-webhooks",
+        "max_batch_size": 20,
+        "max_batch_timeout": 5,
+        "max_retries": 10,
+        "dead_letter_queue": "relay-webhooks-dlq",
+      },
     ],
   },
   "ratelimits": [{ "name": "API_LIMIT", "namespace_id": "1001", "simple": { "limit": 600, "period": 60 } }],

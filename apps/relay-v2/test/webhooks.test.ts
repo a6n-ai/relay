@@ -58,8 +58,29 @@ describe("webhook URL validation", () => {
     "https://[ff02::1]/h",
     "http://example.com/h",
     "https://user:pw@example.com/h",
+    "https://[64:ff9b::7f00:1]/h",
+    "https://[64:ff9b::a9fe:a9fe]/h",
+    "https://[2002:7f00:1::1]/h",
+    "https://[2002:c0a8:101::1]/h",
+    "https://198.18.0.1/h",
+    "https://198.19.255.1/h",
+    "https://192.0.0.1/h",
+    "https://[::ffff:0:10.0.0.1]/h",
+    "https://[::ffff:0:a00:1]/h",
+    "https://[::ffff:0:7f00:1]/h",
+    "https://localhost../h",
+    "https://example.internal.../h",
   ];
-  const accepted = ["https://example.com/h", "https://8.8.8.8/h", "https://[2606:4700::1111]/h"];
+  const accepted = [
+    "https://example.com/h",
+    "https://8.8.8.8/h",
+    "https://[2606:4700::1111]/h",
+    "https://[64:ff9b::808:808]/h",
+    "https://[2002:808:808::1]/h",
+    "https://198.20.0.1/h",
+    "https://192.0.2.1/h",
+    "https://example.com../h",
+  ];
 
   it.each(rejected)("rejects %s", (value) => {
     expect(webhookInputSchema.safeParse({ url: value, events: ["mailbox.received"] }).success).toBe(false);

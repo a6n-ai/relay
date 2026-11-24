@@ -40,6 +40,14 @@ export function updateWebhookRow(
     .all()[0];
 }
 
+// Terminal: the lease is cleared and the row can never be claimed again.
+export function failDeliveryRow(db: DrizzleSqliteDODatabase<typeof schema>, id: string, error: string, now: number): void {
+  db.update(schema.webhookDelivery)
+    .set({ status: "failed", lastError: error, claimedUntil: null, updatedAt: now })
+    .where(and(eq(schema.webhookDelivery.id, id), eq(schema.webhookDelivery.status, "pending")))
+    .run();
+}
+
 export function deleteWebhookRow(db: DrizzleSqliteDODatabase<typeof schema>, appId: string, id: string): boolean {
   return (
     db

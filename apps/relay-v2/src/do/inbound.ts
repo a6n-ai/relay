@@ -271,7 +271,7 @@ export async function storeInbound(deps: InboundDeps, workspaceId: string, job: 
     try {
       await env.WEBHOOKS.sendBatch(stored.deliveryIds.map((deliveryId) => ({ body: { workspaceId, deliveryId } })));
     } catch (err) {
-      // shortcut: a failed enqueue is not retried until the Task 8 alarm sweep lands, then it re-enqueues pending deliveries.
+      // The rows stay pending; the ClientDO alarm sweep re-enqueues them.
       console.error("inbound: webhook enqueue failed", stored.messageId, stored.deliveryIds.join(","), errorName(err));
     }
   }

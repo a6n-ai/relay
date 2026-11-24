@@ -28,7 +28,9 @@ function isPublicIPv4(ip: number): boolean {
     (a === 100 && b >= 64 && b <= 127) ||
     (a === 169 && b === 254) ||
     (a === 172 && b >= 16 && b <= 31) ||
-    (a === 192 && b === 168)
+    (a === 192 && b === 168) ||
+    (a === 192 && b === 0 && ((ip >>> 8) & 0xff) === 0) ||
+    (a === 198 && (b === 18 || b === 19))
   );
 }
 
@@ -41,18 +43,31 @@ function expandIPv6(addr: string): number[] {
   return [...headGroups, ...zeros, ...tailGroups].map((group) => parseInt(group, 16));
 }
 
+const isZeroGroups = (groups: number[], from: number, to: number) => groups.slice(from, to).every((g) => g === 0);
+
+// IPv6 literals that carry an IPv4 address; that address is judged by the IPv4 rules.
+function embeddedIPv4(groups: number[]): number | undefined {
+  const low32 = groups[6] * 0x10000 + groups[7];
+  // ::/96 compatible, ::ffff:0:0/96 mapped, ::ffff:0:0:0/96 translated
+  if (isZeroGroups(groups, 0, 5) && (groups[5] === 0 || groups[5] === 0xffff)) return low32;
+  if (isZeroGroups(groups, 0, 4) && groups[4] === 0xffff && groups[5] === 0) return low32;
+  // 64:ff9b::/96 NAT64
+  if (groups[0] === 0x64 && groups[1] === 0xff9b && isZeroGroups(groups, 2, 6)) return low32;
+  // 2002::/16 6to4 keeps the IPv4 address in bits 16-47
+  if (groups[0] === 0x2002) return groups[1] * 0x10000 + groups[2];
+  return undefined;
+}
+
 function isPublicIPv6(addr: string): boolean {
   const groups = expandIPv6(addr);
-  // ::/96 and ::ffff:0:0/96 carry an IPv4 address in the last 32 bits.
-  if (groups.slice(0, 5).every((g) => g === 0) && (groups[5] === 0 || groups[5] === 0xffff)) {
-    return isPublicIPv4(groups[6] * 0x10000 + groups[7]);
-  }
+  const embedded = embeddedIPv4(groups);
+  if (embedded !== undefined) return isPublicIPv4(embedded);
   const first = groups[0];
   return (first & 0xffc0) !== 0xfe80 && (first & 0xfe00) !== 0xfc00 && (first & 0xff00) !== 0xff00;
 }
 
 export function isPublicWebhookHost(hostname: string): boolean {
-  const host = hostname.replace(/\.$/, "");
+  const host = hostname.replace(/\.+$/, "");
   if (PRIVATE_NAME.test(host)) return false;
   if (host.startsWith("[")) return isPublicIPv6(host.slice(1, -1));
   if (/^\d+\.\d+\.\d+\.\d+$/.test(host)) {
@@ -61,22 +76,17 @@ export function isPublicWebhookHost(hostname: string): boolean {
   return true;
 }
 
-const httpsUrl = z
-  .string()
-  .max(2048)
-  .refine((value) => {
-    try {
-      const url = new URL(value);
-      return (
-        url.protocol === "https:" &&
-        url.username === "" &&
-        url.password === "" &&
-        isPublicWebhookHost(url.hostname)
-      );
-    } catch {
-      return false;
-    }
-  }, "url must be a public https URL without credentials");
+// Also checked at delivery: a stored URL may predate a rule change.
+export function isPublicWebhookUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && url.username === "" && url.password === "" && isPublicWebhookHost(url.hostname);
+  } catch {
+    return false;
+  }
+}
+
+const httpsUrl = z.string().max(2048).refine(isPublicWebhookUrl, "url must be a public https URL without credentials");
 
 export const webhookInputSchema = z.object({
   url: httpsUrl,
