@@ -1,0 +1,199 @@
+import { isAPIError } from "better-auth/api";
+import { and, asc, count, desc, eq, gte } from "drizzle-orm";
+import { securityDb } from "../db/security/client";
+import { invitation, member, team, teamMember, user, workspace } from "../db/security/schema";
+import type { Env } from "../env";
+import { createAuth } from "../lib/auth";
+import { ConsoleError, type ConsoleActor, type OrgRole, parseRoles, requireSession } from "./actor";
+
+const DAY_MS = 86_400_000;
+const INVITES_PER_DAY = 20;
+
+// better-auth refusals keep their message; only a 403 or 404 keeps its status, every other refusal is a 400.
+async function authCall<T>(call: () => Promise<T>): Promise<T> {
+  try {
+    return await call();
+  } catch (err) {
+    if (isAPIError(err) && err.statusCode < 500) {
+      throw new ConsoleError(err.statusCode === 403 || err.statusCode === 404 ? err.statusCode : 400, err.message);
+    }
+    throw err;
+  }
+}
+
+const effectiveStatus = (i: { status: string; expiresAt: Date }) =>
+  i.status === "pending" && i.expiresAt.getTime() < Date.now() ? "expired" : i.status;
+
+export async function listPeople(env: Env, actor: ConsoleActor) {
+  const db = securityDb(env);
+  const ws = actor.workspaceId;
+  const [rows, invites, teams, links] = await Promise.all([
+    db
+      .select({ id: member.id, userId: member.userId, role: member.role, email: user.email, name: user.name })
+      .from(member)
+      .innerJoin(user, eq(user.id, member.userId))
+      .where(eq(member.organizationId, ws))
+      .orderBy(asc(member.createdAt)),
+    db
+      .select({ id: invitation.id, email: invitation.email, role: invitation.role, status: invitation.status, expiresAt: invitation.expiresAt })
+      .from(invitation)
+      .where(eq(invitation.organizationId, ws))
+      .orderBy(desc(invitation.createdAt)),
+    db.select({ id: team.id, name: team.name }).from(team).where(eq(team.organizationId, ws)).orderBy(asc(team.createdAt)),
+    db
+      .select({ teamId: teamMember.teamId, userId: teamMember.userId })
+      .from(teamMember)
+      .innerJoin(team, eq(team.id, teamMember.teamId))
+      .where(eq(team.organizationId, ws)),
+  ]);
+  const memberByUser = new Map(rows.map((m) => [m.userId, m.id]));
+  return {
+    members: rows.map(({ role, ...m }) => ({ ...m, roles: parseRoles(role) })),
+    invites: invites.map((i) => ({
+      id: i.id,
+      email: i.email,
+      role: i.role ?? "member",
+      status: effectiveStatus(i),
+      expiresAt: i.expiresAt.getTime(),
+    })),
+    teams: teams.map((t) => ({
+      ...t,
+      memberIds: links
+        .filter((l) => l.teamId === t.id)
+        .map((l) => memberByUser.get(l.userId))
+        .filter((id): id is string => id !== undefined),
+    })),
+  };
+}
+
+async function invitesInWindow(env: Env, workspaceId: string): Promise<number> {
+  const [row] = await securityDb(env)
+    .select({ n: count() })
+    .from(invitation)
+    .where(and(eq(invitation.organizationId, workspaceId), gte(invitation.createdAt, new Date(Date.now() - DAY_MS))));
+  return row.n;
+}
+
+export async function inviteMember(
+  env: Env,
+  actor: ConsoleActor,
+  headers: Headers,
+  input: { email: string; role: OrgRole },
+): Promise<{ id: string }> {
+  if (input.role === "owner" && !actor.roles.includes("owner")) throw new ConsoleError(403, "forbidden");
+  if ((await invitesInWindow(env, actor.workspaceId)) >= INVITES_PER_DAY) throw new ConsoleError(429, "invite limit reached");
+
+  const email = input.email.trim().toLowerCase();
+  // Sign-up is disabled, so the invite is the only path that creates a row for a new email. Existing rows are left alone.
+  await securityDb(env)
+    .insert(user)
+    .values({ name: email.split("@")[0], email, role: "user", emailVerified: false })
+    .onConflictDoNothing({ target: user.email });
+  const { id } = await authCall(() => createAuth(env).api.createInvitation({ headers, body: { email, role: input.role } }));
+
+  // Concurrent requests can all pass the count above. Recounting after the insert keeps live invites at or under the cap.
+  if ((await invitesInWindow(env, actor.workspaceId)) > INVITES_PER_DAY) {
+    await authCall(() => createAuth(env).api.cancelInvitation({ headers, body: { invitationId: id } }));
+    throw new ConsoleError(429, "invite limit reached");
+  }
+  return { id };
+}
+
+export async function cancelInvite(env: Env, actor: ConsoleActor, headers: Headers, id: string): Promise<void> {
+  const [row] = await securityDb(env)
+    .select({ id: invitation.id })
+    .from(invitation)
+    .where(and(eq(invitation.id, id), eq(invitation.organizationId, actor.workspaceId)));
+  if (!row) throw new ConsoleError(404, "not found");
+  await authCall(() => createAuth(env).api.cancelInvitation({ headers, body: { invitationId: id } }));
+}
+
+async function ownMember(env: Env, actor: ConsoleActor, memberId: string) {
+  const [row] = await securityDb(env)
+    .select({ id: member.id, userId: member.userId, role: member.role })
+    .from(member)
+    .where(and(eq(member.id, memberId), eq(member.organizationId, actor.workspaceId)));
+  if (!row) throw new ConsoleError(404, "not found");
+  return { ...row, roles: parseRoles(row.role) };
+}
+
+export async function changeRole(env: Env, actor: ConsoleActor, headers: Headers, memberId: string, role: OrgRole): Promise<void> {
+  const target = await ownMember(env, actor, memberId);
+  const touchesOwner = role === "owner" || target.roles.includes("owner");
+  if (touchesOwner && !actor.roles.includes("owner")) throw new ConsoleError(403, "forbidden");
+  await authCall(() => createAuth(env).api.updateMemberRole({ headers, body: { memberId, role } }));
+}
+
+// better-auth refuses removing the last owner; that refusal comes back as a 400.
+export async function removeMember(env: Env, actor: ConsoleActor, headers: Headers, memberId: string): Promise<void> {
+  const target = await ownMember(env, actor, memberId);
+  if (target.roles.includes("owner") && !actor.roles.includes("owner")) throw new ConsoleError(403, "forbidden");
+  await authCall(() => createAuth(env).api.removeMember({ headers, body: { memberIdOrEmail: memberId } }));
+}
+
+export async function createTeam(env: Env, headers: Headers, name: string): Promise<{ id: string }> {
+  const created = await authCall(() => createAuth(env).api.createTeam({ headers, body: { name } }));
+  return { id: created.id };
+}
+
+async function ownTeam(env: Env, actor: ConsoleActor, teamId: string): Promise<void> {
+  const [row] = await securityDb(env)
+    .select({ id: team.id })
+    .from(team)
+    .where(and(eq(team.id, teamId), eq(team.organizationId, actor.workspaceId)));
+  if (!row) throw new ConsoleError(404, "not found");
+}
+
+export async function deleteTeam(env: Env, actor: ConsoleActor, headers: Headers, teamId: string): Promise<void> {
+  await ownTeam(env, actor, teamId);
+  await authCall(() => createAuth(env).api.removeTeam({ headers, body: { teamId } }));
+}
+
+export async function setTeamMember(
+  env: Env,
+  actor: ConsoleActor,
+  headers: Headers,
+  teamId: string,
+  memberId: string,
+  on: boolean,
+): Promise<void> {
+  await ownTeam(env, actor, teamId);
+  const target = await ownMember(env, actor, memberId);
+  const body = { teamId, userId: target.userId };
+  await authCall(async () => {
+    if (on) await createAuth(env).api.addTeamMember({ headers, body });
+    else await createAuth(env).api.removeTeamMember({ headers, body });
+  });
+}
+
+// Any signed-in user may look at an invite; the id is the secret, so the page shows only what the invite already says.
+export async function getInvite(env: Env, headers: Headers, id: string) {
+  await requireSession(env, headers);
+  const [row] = await securityDb(env)
+    .select({
+      workspaceName: workspace.name,
+      role: invitation.role,
+      email: invitation.email,
+      status: invitation.status,
+      expiresAt: invitation.expiresAt,
+    })
+    .from(invitation)
+    .innerJoin(workspace, eq(workspace.id, invitation.organizationId))
+    .where(eq(invitation.id, id));
+  if (!row) return null;
+  return { workspaceName: row.workspaceName, role: row.role ?? "member", email: row.email, status: effectiveStatus(row) };
+}
+
+export async function acceptInvite(env: Env, headers: Headers, id: string): Promise<void> {
+  const { userId } = await requireSession(env, headers);
+  const [row] = await securityDb(env)
+    .select({ email: invitation.email, status: invitation.status, expiresAt: invitation.expiresAt })
+    .from(invitation)
+    .where(eq(invitation.id, id));
+  if (!row) throw new ConsoleError(404, "not found");
+  const [me] = await securityDb(env).select({ email: user.email }).from(user).where(eq(user.id, userId));
+  if (me.email !== row.email) throw new ConsoleError(403, "this invite is for another email");
+  const status = effectiveStatus(row);
+  if (status !== "pending") throw new ConsoleError(409, `invite ${status}`);
+  await authCall(() => createAuth(env).api.acceptInvitation({ headers, body: { invitationId: id } }));
+}

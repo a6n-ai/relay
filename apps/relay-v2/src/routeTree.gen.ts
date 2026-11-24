@@ -15,7 +15,9 @@ import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AppAppsRouteImport } from './routes/_app/apps'
 import { Route as AppDomainsRouteImport } from './routes/_app/domains'
+import { Route as AppMembersRouteImport } from './routes/_app/members'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
+import { Route as InviteIdRouteImport } from './routes/invite.$id'
 import { Route as AppAppsAppIdRouteImport } from './routes/_app/apps_.$appId'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiDevOtpRouteImport } from './routes/api/dev/otp'
@@ -56,9 +58,19 @@ const AppDomainsRoute = AppDomainsRouteImport.update({
   path: '/domains',
   getParentRoute: () => AppRoute,
 } as any)
+const AppMembersRoute = AppMembersRouteImport.update({
+  id: '/members',
+  path: '/members',
+  getParentRoute: () => AppRoute,
+} as any)
 const ApiHealthRoute = ApiHealthRouteImport.update({
   id: '/api/health',
   path: '/api/health',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InviteIdRoute = InviteIdRouteImport.update({
+  id: '/invite/$id',
+  path: '/invite/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppAppsAppIdRoute = AppAppsAppIdRouteImport.update({
@@ -118,7 +130,9 @@ export interface FileRoutesByFullPath {
   '/sign-in': typeof SignInRoute
   '/apps': typeof AppAppsRoute
   '/domains': typeof AppDomainsRoute
+  '/members': typeof AppMembersRoute
   '/api/health': typeof ApiHealthRoute
+  '/invite/$id': typeof InviteIdRoute
   '/apps/$appId': typeof AppAppsAppIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/dev/otp': typeof ApiDevOtpRoute
@@ -135,7 +149,9 @@ export interface FileRoutesByTo {
   '/sign-in': typeof SignInRoute
   '/apps': typeof AppAppsRoute
   '/domains': typeof AppDomainsRoute
+  '/members': typeof AppMembersRoute
   '/api/health': typeof ApiHealthRoute
+  '/invite/$id': typeof InviteIdRoute
   '/': typeof AppIndexRoute
   '/apps/$appId': typeof AppAppsAppIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -155,7 +171,9 @@ export interface FileRoutesById {
   '/sign-in': typeof SignInRoute
   '/_app/apps': typeof AppAppsRoute
   '/_app/domains': typeof AppDomainsRoute
+  '/_app/members': typeof AppMembersRoute
   '/api/health': typeof ApiHealthRoute
+  '/invite/$id': typeof InviteIdRoute
   '/_app/': typeof AppIndexRoute
   '/_app/apps_/$appId': typeof AppAppsAppIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -176,7 +194,9 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/apps'
     | '/domains'
+    | '/members'
     | '/api/health'
+    | '/invite/$id'
     | '/apps/$appId'
     | '/api/auth/$'
     | '/api/dev/otp'
@@ -193,7 +213,9 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/apps'
     | '/domains'
+    | '/members'
     | '/api/health'
+    | '/invite/$id'
     | '/'
     | '/apps/$appId'
     | '/api/auth/$'
@@ -212,7 +234,9 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/_app/apps'
     | '/_app/domains'
+    | '/_app/members'
     | '/api/health'
+    | '/invite/$id'
     | '/_app/'
     | '/_app/apps_/$appId'
     | '/api/auth/$'
@@ -231,6 +255,7 @@ export interface RootRouteChildren {
   NoWorkspaceRoute: typeof NoWorkspaceRoute
   SignInRoute: typeof SignInRoute
   ApiHealthRoute: typeof ApiHealthRoute
+  InviteIdRoute: typeof InviteIdRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiDevOtpRoute: typeof ApiDevOtpRoute
   ApiInternalDoSweepRoute: typeof ApiInternalDoSweepRoute
@@ -284,11 +309,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppDomainsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/members': {
+      id: '/_app/members'
+      path: '/members'
+      fullPath: '/members'
+      preLoaderRoute: typeof AppMembersRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/api/health': {
       id: '/api/health'
       path: '/api/health'
       fullPath: '/api/health'
       preLoaderRoute: typeof ApiHealthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/invite/$id': {
+      id: '/invite/$id'
+      path: '/invite/$id'
+      fullPath: '/invite/$id'
+      preLoaderRoute: typeof InviteIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_app/apps_/$appId': {
@@ -367,6 +406,7 @@ declare module '@tanstack/react-router' {
 interface AppRouteChildren {
   AppAppsRoute: typeof AppAppsRoute
   AppDomainsRoute: typeof AppDomainsRoute
+  AppMembersRoute: typeof AppMembersRoute
   AppIndexRoute: typeof AppIndexRoute
   AppAppsAppIdRoute: typeof AppAppsAppIdRoute
 }
@@ -374,6 +414,7 @@ interface AppRouteChildren {
 const AppRouteChildren: AppRouteChildren = {
   AppAppsRoute: AppAppsRoute,
   AppDomainsRoute: AppDomainsRoute,
+  AppMembersRoute: AppMembersRoute,
   AppIndexRoute: AppIndexRoute,
   AppAppsAppIdRoute: AppAppsAppIdRoute,
 }
@@ -409,6 +450,7 @@ const rootRouteChildren: RootRouteChildren = {
   NoWorkspaceRoute: NoWorkspaceRoute,
   SignInRoute: SignInRoute,
   ApiHealthRoute: ApiHealthRoute,
+  InviteIdRoute: InviteIdRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiDevOtpRoute: ApiDevOtpRoute,
   ApiInternalDoSweepRoute: ApiInternalDoSweepRoute,
