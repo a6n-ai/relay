@@ -45,6 +45,10 @@ const COPY = new Map<string, string>([
   ["sender not verified", "Choose a From address on a verified domain."],
   ["invalid schedule", "Pick a time within the next year, not in the past."],
   ["could not schedule", "The campaign could not be scheduled. Try again in a moment."],
+  ["quota_exceeded", "This workspace has used its monthly send limit. Try again next month."],
+  ["sender_not_verified", "Choose a From address on a verified domain."],
+  ["workspace_suspended", "This workspace is suspended, so sending is paused."],
+  ["unknown list", "That list no longer exists. Refresh and try again."],
 ]);
 
 export const isNotFound = (err: unknown): boolean => err instanceof Error && err.message === "not found";

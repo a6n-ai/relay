@@ -9,12 +9,21 @@ import { CreateDialog } from "./create-dialog";
 import { errorText } from "./error-text";
 import { FormError } from "./form-error";
 
-export function ScheduleDialog({ campaignId, onDone }: { campaignId: string; onDone: () => void }) {
+export function ScheduleDialog({
+  campaignId,
+  beforeSubmit,
+  onDone,
+}: {
+  campaignId: string;
+  beforeSubmit: () => Promise<string | null>;
+  onDone: () => void;
+}) {
   return (
     <CreateDialog trigger="Schedule…" title="Schedule campaign">
       {(done) => (
         <ScheduleForm
           campaignId={campaignId}
+          beforeSubmit={beforeSubmit}
           done={() => {
             done();
             onDone();
@@ -26,11 +35,20 @@ export function ScheduleDialog({ campaignId, onDone }: { campaignId: string; onD
 }
 
 // The datetime-local value is read as the browser's local time, so Date gives the UTC instant the server stores.
-function ScheduleForm({ campaignId, done }: { campaignId: string; done: () => void }) {
+function ScheduleForm({
+  campaignId,
+  beforeSubmit,
+  done,
+}: {
+  campaignId: string;
+  beforeSubmit: () => Promise<string | null>;
+  done: () => void;
+}) {
   const [mode, setMode] = useState<"now" | "at">("now");
   const [when, setWhen] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   async function submit(event: FormEvent) {
     event.preventDefault();
     const at = mode === "now" ? Date.now() : new Date(when).getTime();
@@ -41,6 +59,11 @@ function ScheduleForm({ campaignId, done }: { campaignId: string; done: () => vo
     setPending(true);
     setError(null);
     try {
+      const saveError = await beforeSubmit();
+      if (saveError) {
+        setError(saveError);
+        return;
+      }
       await scheduleCampaignFn({ data: { id: campaignId, at } });
       toast.success("Campaign scheduled");
       done();
@@ -70,6 +93,7 @@ function ScheduleForm({ campaignId, done }: { campaignId: string; done: () => vo
         required={mode === "at"}
         onChange={(e) => setWhen(e.target.value)}
       />
+      <p className="text-xs text-muted-foreground">Times are in your time zone: {zone}.</p>
       <FormError message={error} />
       <div className="flex justify-end">
         <Button type="submit" disabled={pending || (mode === "at" && !when)}>

@@ -5,8 +5,8 @@ import { Label } from "@foundry/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@foundry/ui/select";
 import { Textarea } from "@foundry/ui/textarea";
 import { toast } from "@foundry/ui/toast";
-import { useRouter, useNavigate } from "@tanstack/react-router";
-import { type FormEvent, useEffect, useState } from "react";
+import { useBlocker, useRouter, useNavigate } from "@tanstack/react-router";
+import { type FormEvent, useEffect, useRef, useState } from "react";
 import {
   deleteCampaignFn,
   previewAudienceFn,
@@ -18,6 +18,7 @@ import {
 import type { CampaignView } from "../do/campaigns";
 import type { ListView } from "../do/lists";
 import { campaignProblems } from "../core/campaign-problems";
+import { isDirty } from "./campaign-dirty";
 import { ConfirmDialog } from "./confirm-dialog";
 import { PROBLEM_LABEL } from "./campaign-problems";
 import { errorText } from "./error-text";
@@ -46,6 +47,15 @@ export function CampaignEditor({ campaign, options }: { campaign: CampaignView; 
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [address, setAddress] = useState(options.postalAddress ?? "");
+  const dirty = isDirty(
+    { from: campaign.fromEmail ?? "", subject: campaign.subject, html: campaign.html, text: campaign.text },
+    { from, subject, html, text },
+  );
+  const leaving = useRef(false);
+  useBlocker({
+    shouldBlockFn: () => !leaving.current && !window.confirm("Leave this page? Your unsaved changes will be lost."),
+    disabled: !dirty,
+  });
 
   // The audience is counted from the saved campaign, so it reloads whenever the saved lists change.
   const savedLists = campaign.listIds.join(",");
@@ -70,8 +80,8 @@ export function CampaignEditor({ campaign, options }: { campaign: CampaignView; 
     options.postalAddress,
   );
 
-  async function save(event: FormEvent) {
-    event.preventDefault();
+  // Returns the error text when the save failed, null when it worked or nothing was unsaved.
+  async function persist(): Promise<string | null> {
     setPending(true);
     setError(null);
     try {
@@ -80,12 +90,23 @@ export function CampaignEditor({ campaign, options }: { campaign: CampaignView; 
       });
       toast.success("Campaign saved");
       await router.invalidate();
+      return null;
     } catch (err) {
-      setError(errorText(err, "Could not save this campaign."));
+      const message = errorText(err, "Could not save this campaign.");
+      setError(message);
+      return message;
     } finally {
       setPending(false);
     }
   }
+
+  async function save(event: FormEvent) {
+    event.preventDefault();
+    await persist();
+  }
+
+  // Preview, test send and schedule read the saved row, so they save unsaved edits first.
+  const saveFirst = (): Promise<string | null> => (dirty ? persist() : Promise.resolve(null));
 
   async function toggleList(listId: string, on: boolean) {
     const next = on ? [...listIds, listId] : listIds.filter((x) => x !== listId);
@@ -100,6 +121,7 @@ export function CampaignEditor({ campaign, options }: { campaign: CampaignView; 
   }
 
   async function showPreview() {
+    if (await saveFirst()) return;
     try {
       setPreview((await previewHtmlFn({ data: { id: campaign.id } })) ?? null);
     } catch (err) {
@@ -108,9 +130,12 @@ export function CampaignEditor({ campaign, options }: { campaign: CampaignView; 
   }
 
   async function sendTest() {
+    if (await saveFirst()) return;
     try {
-      await testSendCampaignFn({ data: { id: campaign.id } });
-      toast.success("Test sent to your email");
+      const result = await testSendCampaignFn({ data: { id: campaign.id } });
+      if (result.status === "suppressed") toast.error("Your address is suppressed");
+      else if (result.status === "failed") toast.error("The test could not be sent");
+      else toast.success("Test sent to your email");
     } catch (err) {
       toast.error(errorText(err, "Could not send the test."));
     }
@@ -120,6 +145,7 @@ export function CampaignEditor({ campaign, options }: { campaign: CampaignView; 
     try {
       await deleteCampaignFn({ data: { id: campaign.id } });
       toast.success("Campaign deleted");
+      leaving.current = true;
       await navigate({ to: "/campaigns", search: { appId: campaign.appId } });
     } catch (err) {
       toast.error(errorText(err, "Could not delete this campaign."));
@@ -252,7 +278,7 @@ export function CampaignEditor({ campaign, options }: { campaign: CampaignView; 
         ) : null}
         {canSend ? (
           problems.length === 0 ? (
-            <ScheduleDialog campaignId={campaign.id} onDone={() => router.invalidate()} />
+            <ScheduleDialog campaignId={campaign.id} beforeSubmit={saveFirst} onDone={() => router.invalidate()} />
           ) : (
             <Button size="sm" disabled className="w-fit">
               Schedule…
