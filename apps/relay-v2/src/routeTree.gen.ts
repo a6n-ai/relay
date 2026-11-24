@@ -14,6 +14,7 @@ import { Route as NoWorkspaceRouteImport } from './routes/no-workspace'
 import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AppAppsRouteImport } from './routes/_app/apps'
+import { Route as AppDomainsRouteImport } from './routes/_app/domains'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as AppAppsAppIdRouteImport } from './routes/_app/apps_.$appId'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
@@ -48,6 +49,11 @@ const AppIndexRoute = AppIndexRouteImport.update({
 const AppAppsRoute = AppAppsRouteImport.update({
   id: '/apps',
   path: '/apps',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppDomainsRoute = AppDomainsRouteImport.update({
+  id: '/domains',
+  path: '/domains',
   getParentRoute: () => AppRoute,
 } as any)
 const ApiHealthRoute = ApiHealthRouteImport.update({
@@ -111,6 +117,7 @@ export interface FileRoutesByFullPath {
   '/no-workspace': typeof NoWorkspaceRoute
   '/sign-in': typeof SignInRoute
   '/apps': typeof AppAppsRoute
+  '/domains': typeof AppDomainsRoute
   '/api/health': typeof ApiHealthRoute
   '/apps/$appId': typeof AppAppsAppIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -127,6 +134,7 @@ export interface FileRoutesByTo {
   '/no-workspace': typeof NoWorkspaceRoute
   '/sign-in': typeof SignInRoute
   '/apps': typeof AppAppsRoute
+  '/domains': typeof AppDomainsRoute
   '/api/health': typeof ApiHealthRoute
   '/': typeof AppIndexRoute
   '/apps/$appId': typeof AppAppsAppIdRoute
@@ -146,6 +154,7 @@ export interface FileRoutesById {
   '/no-workspace': typeof NoWorkspaceRoute
   '/sign-in': typeof SignInRoute
   '/_app/apps': typeof AppAppsRoute
+  '/_app/domains': typeof AppDomainsRoute
   '/api/health': typeof ApiHealthRoute
   '/_app/': typeof AppIndexRoute
   '/_app/apps_/$appId': typeof AppAppsAppIdRoute
@@ -166,6 +175,7 @@ export interface FileRouteTypes {
     | '/no-workspace'
     | '/sign-in'
     | '/apps'
+    | '/domains'
     | '/api/health'
     | '/apps/$appId'
     | '/api/auth/$'
@@ -182,6 +192,7 @@ export interface FileRouteTypes {
     | '/no-workspace'
     | '/sign-in'
     | '/apps'
+    | '/domains'
     | '/api/health'
     | '/'
     | '/apps/$appId'
@@ -200,6 +211,7 @@ export interface FileRouteTypes {
     | '/no-workspace'
     | '/sign-in'
     | '/_app/apps'
+    | '/_app/domains'
     | '/api/health'
     | '/_app/'
     | '/_app/apps_/$appId'
@@ -263,6 +275,13 @@ declare module '@tanstack/react-router' {
       path: '/apps'
       fullPath: '/apps'
       preLoaderRoute: typeof AppAppsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/domains': {
+      id: '/_app/domains'
+      path: '/domains'
+      fullPath: '/domains'
+      preLoaderRoute: typeof AppDomainsRouteImport
       parentRoute: typeof AppRoute
     }
     '/api/health': {
@@ -347,12 +366,14 @@ declare module '@tanstack/react-router' {
 
 interface AppRouteChildren {
   AppAppsRoute: typeof AppAppsRoute
+  AppDomainsRoute: typeof AppDomainsRoute
   AppIndexRoute: typeof AppIndexRoute
   AppAppsAppIdRoute: typeof AppAppsAppIdRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
   AppAppsRoute: AppAppsRoute,
+  AppDomainsRoute: AppDomainsRoute,
   AppIndexRoute: AppIndexRoute,
   AppAppsAppIdRoute: AppAppsAppIdRoute,
 }
