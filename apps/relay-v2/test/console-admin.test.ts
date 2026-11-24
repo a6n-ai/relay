@@ -8,7 +8,7 @@ import { addAddress, addDomain, checkDomain } from "../src/console/domains";
 import { inviteMember } from "../src/console/members";
 import { memorySesIdentity } from "../src/core/ses-identity";
 import { securityDb } from "../src/db/security/client";
-import { invitation, securityAudit, user } from "../src/db/security/schema";
+import { invitation, securityAudit, user, workspace } from "../src/db/security/schema";
 import { addMember, cookieFor, createWorkspace, ORIGIN, setActive } from "./console-helpers";
 import { applyMigrations } from "./migrate";
 
@@ -74,6 +74,19 @@ describe("console platform admin", { timeout: 60_000 }, () => {
     expect(activeRow).toMatchObject({ suspendedAt: null, inboundUntil: null });
     expect(suspendedRow?.suspendedAt).toBeTypeOf("number");
     expect(suspendedRow?.inboundUntil).toBe((suspendedRow?.suspendedAt ?? 0) + 7 * 24 * 60 * 60 * 1000);
+  });
+
+  it("keeps the first suspended_at when a suspended workspace is suspended again", async () => {
+    const a = await workspaceFor("adm-resusp@example.com", "adm-resusp-co");
+    await setWorkspaceStatus(env, OPS, a.workspaceId, "suspended");
+    const first = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
+    await securityDb(env).update(workspace).set({ suspendedAt: first }).where(eq(workspace.id, a.workspaceId));
+    await setWorkspaceStatus(env, OPS, a.workspaceId, "suspended");
+    const [row] = await securityDb(env).select({ at: workspace.suspendedAt }).from(workspace).where(eq(workspace.id, a.workspaceId));
+    expect(row?.at?.getTime()).toBe(first.getTime());
+    await setWorkspaceStatus(env, OPS, a.workspaceId, "active");
+    const [after] = await securityDb(env).select({ at: workspace.suspendedAt }).from(workspace).where(eq(workspace.id, a.workspaceId));
+    expect(after?.at).toBeNull();
   });
 
   it("answers 404 to a workspace member who is not a platform admin", async () => {

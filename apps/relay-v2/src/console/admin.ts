@@ -79,7 +79,12 @@ export async function setWorkspaceStatus(
 ): Promise<void> {
   const rows = await securityDb(env)
     .update(workspace)
-    .set({ status, suspendedAt: status === "suspended" ? new Date() : null, updatedAt: new Date() })
+    // A repeat suspend keeps the first suspended_at so the inbound grace window never extends.
+    .set({
+      status,
+      suspendedAt: status === "suspended" ? sql`coalesce(${workspace.suspendedAt}, ${Date.now()})` : null,
+      updatedAt: new Date(),
+    })
     .where(eq(workspace.id, workspaceId))
     .returning({ id: workspace.id });
   if (rows.length === 0) throw new ConsoleError(404, "not found");
