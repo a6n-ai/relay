@@ -81,7 +81,7 @@ function AddressAccessPage() {
         ]}
         rows={grants}
         rowKey={(g) => g.id}
-        empty="Nobody has access to this address yet."
+        empty="Only owners and admins can read this address. Share it with a member or team below."
       />
     </>
   );

@@ -356,6 +356,25 @@ describe("downloads", () => {
     expect(res.headers.get("content-disposition")).toBe('attachment; filename="ab.pdf"');
   });
 
+  it("shows the same sanitised attachment name in the detail view as the download", async () => {
+    const t = await tenant("dl-label");
+    const addr = await inbox(t.workspaceId, t.appA, "in@label.test");
+    const letter = await storedLetter(t, addr, { attachments: [{ filename: "invoice‮gnp.exe", body: PDF }] });
+    const detail = await getMessageFor(env, t.owner, letter.id, { images: false });
+    expect(detail.attachments[0].filename).toBe("invoicegnp.exe");
+  });
+
+  it("falls through to the download for an empty attachment asked to preview", async () => {
+    const t = await tenant("dl-empty");
+    const addr = await inbox(t.workspaceId, t.appA, "in@empty.test");
+    const letter = await storedLetter(t, addr, { attachments: [{ filename: "empty.txt", body: "", contentType: "text/plain" }] });
+    const res = await SELF.fetch(`${ORIGIN}/api/console/messages/${letter.id}/${letter.attIds[0]}?view=1`, {
+      headers: { cookie: t.cookie },
+    });
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-disposition")).toMatch(/^attachment;/);
+  });
+
   it("has no raw route for an outbound letter", async () => {
     const t = await tenant("dl-out");
     const [outId] = await seed(t.workspaceId, [{ appId: t.appA, direction: "out", toEmail: "c@example.com", createdAt: 1 }]);
@@ -560,6 +579,16 @@ describe("inline images", () => {
     const blocked = await view(t, letter.id, false);
     expect(blocked.htmlSafe).not.toContain("data:image");
     expect(blocked.htmlSafe).not.toContain("cid:");
+  });
+
+  it("counts a cid-only letter's inline image as blocked, so show-images has something to reveal", async () => {
+    const t = await tenant("img-held");
+    const addr = await inbox(t.workspaceId, t.appA, "in@img-held.test");
+    const letter = await storedLetter(t, addr, {
+      html: '<p>Sig</p><img src="cid:logo@x">',
+      attachments: [{ filename: "logo.png", body: PNG, contentId: "<logo@x>", contentType: "image/png" }],
+    });
+    expect((await view(t, letter.id, false)).blockedRemote).toBe(1);
   });
 
   it("does not inline an SVG attachment", async () => {

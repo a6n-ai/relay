@@ -1,6 +1,17 @@
 export type TimelineItem = { label: string; at: number; detail?: string | null };
 
-export const formatWhen = (at: number) => new Date(at).toLocaleString("en-CA", { dateStyle: "medium", timeStyle: "short" });
+// Fixed locale and zone: the Worker and the browser must render the same text or React re-renders on hydration.
+const WHEN = new Intl.DateTimeFormat("en-GB", {
+  timeZone: "UTC",
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+  timeZoneName: "short",
+});
+export const formatWhen = (at: number) => WHEN.format(at);
 
 export function EventTimeline({ items }: { items: TimelineItem[] }) {
   return (

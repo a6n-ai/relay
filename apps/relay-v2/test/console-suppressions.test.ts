@@ -5,7 +5,7 @@ import { requireActor } from "../src/console/actor";
 import { addSuppressionFor, listSuppressionsFor, removeSuppressionFor } from "../src/console/suppressions";
 import { clientFor } from "../src/core/messages";
 import { securityDb } from "../src/db/security/client";
-import { workspace } from "../src/db/security/schema";
+import { securityAudit, workspace } from "../src/db/security/schema";
 import { addMember, cookieFor, createWorkspace, headersFor, ORIGIN, setActive } from "./console-helpers";
 import { applyMigrations } from "./migrate";
 
@@ -59,6 +59,22 @@ describe("suppressions console", () => {
     await stub(workspaceId).addSuppression(workspaceId, "r@x.test", "bounce");
     await removeSuppressionFor(env, owner, "r@x.test");
     expect((await listSuppressionsFor(env, owner, {})).rows).toEqual([]);
+  });
+
+  it("audits add and remove with a masked address, and only a removal that happened", async () => {
+    const { owner, workspaceId } = await workspaceFor("sup-audit@example.com", "Sup Audit Co");
+    await addSuppressionFor(env, owner, { email: "Secret.Person@Example.test", stream: "marketing" });
+    await stub(workspaceId).addSuppression(workspaceId, "c@x.test", "complaint");
+    await expect(removeSuppressionFor(env, owner, "c@x.test")).rejects.toMatchObject({ status: 409 });
+    await removeSuppressionFor(env, owner, "secret.person@example.test");
+    const rows = await securityDb(env)
+      .select({ action: securityAudit.action, target: securityAudit.target, data: securityAudit.data })
+      .from(securityAudit)
+      .where(eq(securityAudit.workspaceId, workspaceId));
+    const audits = rows.filter((r) => r.action.startsWith("suppression."));
+    expect(audits.map((r) => r.action).sort()).toEqual(["suppression.add", "suppression.remove"]);
+    expect(audits.find((r) => r.action === "suppression.add")).toMatchObject({ target: "s***@example.test", data: '{"stream":"marketing"}' });
+    expect(JSON.stringify(rows)).not.toMatch(/secret\.person|c@x\.test/i);
   });
 
   it("refuses to remove a complaint or unsubscribe row and keeps it", async () => {

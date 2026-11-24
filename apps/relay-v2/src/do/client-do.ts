@@ -34,6 +34,7 @@ import {
 import { storeInbound, writeInboundFailure, type InboundDeps, type InboundResult } from "./inbound";
 import * as schema from "./client-schema";
 import { CLIENT_MIGRATIONS, migrate } from "./migrations";
+import { maskEmails } from "../core/mask-emails";
 import { deleteWebhookRow, failDeliveryRow, listWebhookRows, toWebhookView, updateWebhookRow, type WebhookRow } from "./webhooks";
 
 export type AttachmentView = {
@@ -69,9 +70,6 @@ const STALE_MS = 1_200_000;
 const EXPIRE_MS = 86_400_000;
 const SWEEP_BATCH = 500;
 const SWEEP_CHUNK = 100;
-
-// Stored send errors keep the domain and first letter only, so a bounce never persists a full recipient address.
-const maskEmails = (text: string) => text.replace(/([\w.%+-])[\w.%+-]*@([\w-]+(?:\.[\w-]+)+)/g, "$1***@$2").slice(0, 500);
 
 // Higher rank wins a suppression conflict: a stronger reason is never replaced by a weaker one.
 const reasonRank = (column: SQLWrapper) =>
@@ -752,7 +750,7 @@ export class ClientDO extends DurableObject<Env> {
     return this.ctx.storage.transactionSync(() => {
       const row = this.db.select({ reason: schema.suppression.reason }).from(schema.suppression).where(eq(schema.suppression.email, key)).get();
       if (!row) return "missing";
-      if (row.reason === "unsubscribe" || row.reason === "complaint") return "opted_out";
+      if (row.reason !== "bounce" && row.reason !== "manual") return "opted_out";
       this.db.delete(schema.suppression).where(eq(schema.suppression.email, key)).run();
       return "removed";
     });

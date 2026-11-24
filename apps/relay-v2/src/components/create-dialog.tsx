@@ -26,7 +26,7 @@ export function CreateDialog({
       }}
     >
       <DialogTrigger render={<Button size="sm" />}>{trigger}</DialogTrigger>
-      <DialogContent>
+      <DialogContent showCloseButton={!locked}>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>

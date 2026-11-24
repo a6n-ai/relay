@@ -9,6 +9,7 @@ export const Route = createFileRoute("/api/console/messages/$id/$part")({
       GET: async ({ request, params }) => {
         try {
           const actor = await requireActor(env, request.headers);
+          if (params.id.length > 64 || params.part.length > 64) throw new ConsoleError(404, "not found");
           const view = new URL(request.url).searchParams.get("view") === "1";
           return await messageFileFor(env, actor, params.id, params.part, view);
         } catch (err) {

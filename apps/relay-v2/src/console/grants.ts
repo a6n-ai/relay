@@ -83,8 +83,9 @@ export async function addGrant(
   input: { addressId: string; memberId?: string; teamId?: string },
 ): Promise<void> {
   requireManage(actor);
+  let grantId: string;
   try {
-    await createAddressGrant(env, { workspaceId: actor.workspaceId, ...input });
+    grantId = await createAddressGrant(env, { ...input, workspaceId: actor.workspaceId });
   } catch (err) {
     throw grantFailure(err);
   }
@@ -93,7 +94,7 @@ export async function addGrant(
     actorUserId: actor.userId,
     workspaceId: actor.workspaceId,
     target: input.addressId,
-    data: { kind: input.memberId ? "member" : "team" },
+    data: input.memberId ? { grantId, memberId: input.memberId } : { grantId, teamId: input.teamId },
   });
 }
 
@@ -102,12 +103,14 @@ export async function removeGrant(env: Env, actor: ConsoleActor, grantId: string
   const rows = await securityDb(env)
     .delete(addressGrant)
     .where(and(eq(addressGrant.id, grantId), eq(addressGrant.workspaceId, actor.workspaceId)))
-    .returning({ addressId: addressGrant.addressId });
+    .returning({ addressId: addressGrant.addressId, memberId: addressGrant.memberId, teamId: addressGrant.teamId });
   if (rows.length === 0) throw new ConsoleError(404, "not found");
+  const [row] = rows;
   await writeAudit(env, {
     action: "address_grant.remove",
     actorUserId: actor.userId,
     workspaceId: actor.workspaceId,
-    target: rows[0].addressId,
+    target: row.addressId,
+    data: row.memberId ? { grantId, memberId: row.memberId } : { grantId, teamId: row.teamId },
   });
 }

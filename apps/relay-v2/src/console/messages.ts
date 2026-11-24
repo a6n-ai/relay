@@ -82,7 +82,7 @@ export async function getMessageFor(
     ...rest,
     status: rest.status as MessageStatus,
     htmlSafe: safe?.html ?? null,
-    blockedRemote: safe?.blockedRemote ?? 0,
+    blockedRemote: (safe?.blockedRemote ?? 0) + (html !== null && !opts.images ? heldCidImages(html, rest.attachments) : 0),
     hasRaw: rawKey !== null,
   };
 }
@@ -91,6 +91,16 @@ const CID_SRC = /(\ssrc\s*=\s*)(["'])cid:([^"']*)\2/gi;
 const INLINE_TYPES = new Set(["image/png", "image/jpeg", "image/gif", "image/webp"]);
 const INLINE_MAX_BYTES = 512 * 1024;
 const INLINE_BUDGET_BYTES = 2 * 1024 * 1024;
+
+// Block mode drops cid: srcs silently, so count the ones show-images would inline; otherwise a letter with only inline images has no button.
+function heldCidImages(html: string, attachments: AttachmentView[]): number {
+  const inlineable = new Set(
+    attachments.flatMap((a) =>
+      a.contentId && INLINE_TYPES.has(a.contentType) && a.sizeBytes <= INLINE_MAX_BYTES ? [a.contentId.replace(/^<|>$/g, "").trim()] : [],
+    ),
+  );
+  return [...html.matchAll(CID_SRC)].filter((m) => inlineable.has(m[3].trim())).length;
+}
 
 // Show-images only. The letter frame is an opaque-origin sandbox that cannot send this reader's session, so an inline
 // image is written in as a data: URI from this letter's own attachments. Any other cid: src is left for the sanitiser to drop.
@@ -149,9 +159,9 @@ export async function messageFileFor(
   const file = await clientFor(env, actor.workspaceId).getMessageFile(actor.workspaceId, id, part, access);
   if (!file || !file.key.startsWith(`ws/${actor.workspaceId}/`)) throw new ConsoleError(404, "not found");
   if (view && file.contentType !== null) {
-    const head = await env.MAIL.get(file.key, { range: { offset: 0, length: PREVIEW_HEAD_BYTES } });
-    if (!head) throw new ConsoleError(404, "not found");
-    const type = previewType(new Uint8Array(await head.arrayBuffer()), file.contentType);
+    // A zero-byte object makes R2 reject the range read; that falls through to the download like any non-preview.
+    const head = await env.MAIL.get(file.key, { range: { offset: 0, length: PREVIEW_HEAD_BYTES } }).catch(() => null);
+    const type = head && head.size > 0 ? previewType(new Uint8Array(await head.arrayBuffer()), file.contentType) : null;
     if (type) {
       const preview = await env.MAIL.get(file.key);
       if (!preview) throw new ConsoleError(404, "not found");

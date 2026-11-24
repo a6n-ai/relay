@@ -43,7 +43,7 @@ function MessagesPage() {
       <ViewHeader title="Messages" />
       <MessagesTabs active={tab} />
       <div className="grid gap-4 p-4">
-        <Filters search={search} apps={apps ?? []} />
+        <Filters key={search.dir} search={search} apps={apps ?? []} />
         <ResourceTable
           columns={[
             { header: "When", cell: (m) => <span className="text-xs tabular-nums">{formatWhen(m.createdAt)}</span> },
@@ -56,11 +56,11 @@ function MessagesPage() {
                 </Link>
               ),
             },
-            { header: "Status", cell: (m) => <StatusBadge status={m.status} /> },
+            { header: "Status", cell: (m) => <StatusBadge status={m.status} direction={m.direction} /> },
           ]}
           rows={page.rows}
           rowKey={(m) => m.id}
-          empty={page.restricted ? "No addresses are shared with you yet." : "No messages match these filters."}
+          empty={page.restricted && search.dir === "in" ? "No addresses are shared with you yet." : "No messages match these filters."}
         />
         <nav aria-label="Pages" className="flex justify-between text-sm">
           <Link to="/messages" search={{ ...search, cursor: undefined }} className="hover:underline">

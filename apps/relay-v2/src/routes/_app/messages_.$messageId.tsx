@@ -5,7 +5,7 @@ import { LetterView } from "../../components/letter-view";
 import { ViewHeader } from "../../components/view-header";
 import { StatusBadge } from "../../components/status-badge";
 import { fetchApps } from "../../console/apps.fns";
-import { previewHint } from "../../core/download";
+import { previewHint } from "../../components/preview-hint";
 import { fetchMessage } from "../../console/messages.fns";
 
 export const Route = createFileRoute("/_app/messages_/$messageId")({
@@ -44,8 +44,9 @@ function MessagePage() {
   const m = result.message;
   const appName = apps?.find((a) => a.id === m.appId)?.name ?? "App";
   const timeline: TimelineItem[] = [
-    { label: "Queued", at: m.createdAt },
-    ...(m.sentAt === null ? [] : [{ label: "Sent", at: m.sentAt }]),
+    ...(m.direction === "in"
+      ? [{ label: "Received", at: m.createdAt }]
+      : [{ label: "Queued", at: m.createdAt }, ...(m.sentAt === null ? [] : [{ label: "Sent", at: m.sentAt }])]),
     ...m.events.map((e) => ({ label: e.type, at: e.occurredAt, detail: e.detail })),
     ...(m.status === "failed" ? [{ label: "Failed", at: m.updatedAt, detail: m.error }] : []),
   ];
@@ -63,7 +64,7 @@ function MessagePage() {
           <dd>{appName}</dd>
           <dt className="text-muted-foreground">Status</dt>
           <dd>
-            <StatusBadge status={m.status} />
+            <StatusBadge status={m.status} direction={m.direction} />
           </dd>
         </dl>
 

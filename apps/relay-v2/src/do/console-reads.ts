@@ -58,7 +58,7 @@ export function decodeCursor(raw: string): { createdAt: number; id: string } | n
   if (dot < 1) return null;
   const ts = raw.slice(0, dot);
   const id = raw.slice(dot + 1);
-  if (!/^\d{1,16}$/.test(ts) || !ID_SHAPE.test(id)) return null;
+  if (!/^\d{1,15}$/.test(ts) || !ID_SHAPE.test(id)) return null;
   return { createdAt: Number(ts), id };
 }
 
@@ -255,6 +255,7 @@ export function listMessageRows(
   return { rows: page, nextCursor };
 }
 
+// The label, the preview hint and the download share one name, so a bidi override never shows a false extension.
 export function attachmentViews(db: Db, messageId: string): AttachmentView[] {
   return db
     .select({
@@ -268,7 +269,8 @@ export function attachmentViews(db: Db, messageId: string): AttachmentView[] {
     .from(schema.attachment)
     .where(eq(schema.attachment.messageId, messageId))
     .orderBy(asc(schema.attachment.position))
-    .all();
+    .all()
+    .map((a) => ({ ...a, filename: safeDownloadName(a.filename, `attachment-${a.position}`) }));
 }
 
 // Stored Message-ID values are bare (no angle brackets), space-separated in the reply headers.
