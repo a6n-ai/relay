@@ -310,13 +310,15 @@ describe("console sending domains and addresses", { timeout: 60_000 }, () => {
 });
 
 describe("self-serve sending domain cap", { timeout: 60_000 }, () => {
-  it("caps a self-serve workspace at one sending domain and leaves a platform-made workspace alone", async () => {
+  it("caps a self-serve workspace at three sending domains and leaves a platform-made workspace alone", async () => {
     const cookie = await cookieFor("dom-cap-self@example.com", "user");
     const selfServe = await createWorkspace(cookie, "Dom Cap Self Co");
     await setActive(cookie, selfServe);
     const actor = await requireActor(env, headersFor(cookie), WRITE);
     await addDomain(env, actor, { domain: "dom-cap-one.test" });
-    await expect(addDomain(env, actor, { domain: "dom-cap-two.test" })).rejects.toMatchObject({
+    await addDomain(env, actor, { domain: "dom-cap-two.test" });
+    await addDomain(env, actor, { domain: "dom-cap-three.test" });
+    await expect(addDomain(env, actor, { domain: "dom-cap-four.test" })).rejects.toMatchObject({
       status: 409,
       message: "domain limit reached",
     });
