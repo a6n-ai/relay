@@ -451,7 +451,9 @@ describe("unsubscribe link and headers", () => {
     const transactional = await queue(stub, ws, { ...base, html: '<a href="{{unsubscribe_url}}">Stop</a>' });
     await deliver(marketing, transactional);
 
-    const [mail, order] = memorySesTransport.sent;
+    // deliver runs both jobs concurrently, so find each by content rather than by send order.
+    const mail = memorySesTransport.sent.find((m) => m.headers !== undefined);
+    const order = memorySesTransport.sent.find((m) => m.headers === undefined);
     expect(mail?.html).toContain(`/u/${ws}.${marketing.messageId}.`);
     expect(mail?.text).not.toContain("{{unsubscribe_url}}");
     expect(mail?.headers).toEqual([

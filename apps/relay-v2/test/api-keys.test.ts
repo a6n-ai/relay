@@ -105,13 +105,15 @@ describe("API keys", () => {
     const { workspaceId, appId } = await seedApp("keys-limit");
     const { id, secret } = await createApiKey(env, { workspaceId, appId, name: "web" });
 
-    const spent = await env.API_LIMIT.limit({ key: id, delta: 600 });
-    expect(spent.success).toBe(true);
+    // The limiter window is a fixed 60 s, so spend the budget right before each call; otherwise a window rollover between spend and call makes this flaky.
+    const exhaust = () => env.API_LIMIT.limit({ key: id, delta: 600 });
 
+    await exhaust();
     const res = await post(secret);
     expect(res.status).toBe(429);
     expect(await res.json()).toEqual({ error: "rate limited" });
     const rpc = new RelayRpc(createExecutionContext(), env);
+    await exhaust();
     await expect(rpc.send(secret, {})).rejects.toThrow("rate limited");
   });
 
