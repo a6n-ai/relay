@@ -372,10 +372,20 @@ export class ClientDO extends DurableObject<Env> {
   // A lease (claimed_until) stops a second job from sending while the first is in flight.
   async claimSend(workspaceId: string, messageId: string, now = Date.now()): Promise<SendClaim> {
     await this.ready(workspaceId);
+    const queued = this.db
+      .select({ fromEmail: schema.message.fromEmail })
+      .from(schema.message)
+      .where(eq(schema.message.id, messageId))
+      .get();
+    if (!queued) return { kind: "skip", reason: "missing" };
+    // Read before the transaction. With no snapshot and no D1, the job retries: queued mail is never failed for an outage.
+    const limits = await this.limits(workspaceId, { forSender: queued.fromEmail ?? undefined });
+    if (limits.fetchedAt === 0) return { kind: "busy", retryInSeconds: 60 };
     const claimed = this.ctx.storage.transactionSync(():
       | SendClaim
       | { kind: "claimed"; attempt: number; row: typeof schema.message.$inferSelect; region: string }
-      | { kind: "suppressed"; htmlKey: string | null } => {
+      | { kind: "suppressed"; htmlKey: string | null }
+      | { kind: "refused"; htmlKey: string | null } => {
       const row = this.db.select().from(schema.message).where(eq(schema.message.id, messageId)).get();
       if (!row) return { kind: "skip", reason: "missing" };
       if (row.status !== "queued" || row.sesMessageId) {
@@ -392,6 +402,21 @@ export class ClientDO extends DurableObject<Env> {
           .where(eq(schema.message.id, messageId))
           .run();
         return { kind: "suppressed", htmlKey: row.htmlKey };
+      }
+      // A suspension or a revoked sender can land while the row waits in the queue; the message fails, it is not held.
+      if (limits.status === "suspended" || !limits.senders[row.fromEmail ?? ""]) {
+        this.db
+          .update(schema.message)
+          .set({
+            status: "failed",
+            error: limits.status === "suspended" ? "workspace_suspended" : "sender_not_verified",
+            htmlKey: null,
+            claimedUntil: null,
+            updatedAt: now,
+          })
+          .where(eq(schema.message.id, messageId))
+          .run();
+        return { kind: "refused", htmlKey: row.htmlKey };
       }
       const region = row.sesRegion;
       if (!region) {
@@ -413,6 +438,10 @@ export class ClientDO extends DurableObject<Env> {
     if (claimed.kind === "suppressed") {
       await this.dropHtml(claimed.htmlKey);
       return { kind: "skip", reason: "suppressed" };
+    }
+    if (claimed.kind === "refused") {
+      await this.dropHtml(claimed.htmlKey);
+      return { kind: "skip", reason: "failed" };
     }
     if (claimed.kind !== "claimed") return claimed;
 

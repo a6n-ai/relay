@@ -13,6 +13,7 @@ import { Route as AppRouteImport } from './routes/_app'
 import { Route as NoWorkspaceRouteImport } from './routes/no-workspace'
 import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
+import { Route as AppAdminRouteImport } from './routes/_app/admin'
 import { Route as AppAppsRouteImport } from './routes/_app/apps'
 import { Route as AppDomainsRouteImport } from './routes/_app/domains'
 import { Route as AppMembersRouteImport } from './routes/_app/members'
@@ -46,6 +47,11 @@ const SignInRoute = SignInRouteImport.update({
 const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAdminRoute = AppAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => AppRoute,
 } as any)
 const AppAppsRoute = AppAppsRouteImport.update({
@@ -128,6 +134,7 @@ export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/no-workspace': typeof NoWorkspaceRoute
   '/sign-in': typeof SignInRoute
+  '/admin': typeof AppAdminRoute
   '/apps': typeof AppAppsRoute
   '/domains': typeof AppDomainsRoute
   '/members': typeof AppMembersRoute
@@ -147,6 +154,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/no-workspace': typeof NoWorkspaceRoute
   '/sign-in': typeof SignInRoute
+  '/admin': typeof AppAdminRoute
   '/apps': typeof AppAppsRoute
   '/domains': typeof AppDomainsRoute
   '/members': typeof AppMembersRoute
@@ -169,6 +177,7 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteWithChildren
   '/no-workspace': typeof NoWorkspaceRoute
   '/sign-in': typeof SignInRoute
+  '/_app/admin': typeof AppAdminRoute
   '/_app/apps': typeof AppAppsRoute
   '/_app/domains': typeof AppDomainsRoute
   '/_app/members': typeof AppMembersRoute
@@ -192,6 +201,7 @@ export interface FileRouteTypes {
     | '/'
     | '/no-workspace'
     | '/sign-in'
+    | '/admin'
     | '/apps'
     | '/domains'
     | '/members'
@@ -211,6 +221,7 @@ export interface FileRouteTypes {
   to:
     | '/no-workspace'
     | '/sign-in'
+    | '/admin'
     | '/apps'
     | '/domains'
     | '/members'
@@ -232,6 +243,7 @@ export interface FileRouteTypes {
     | '/_app'
     | '/no-workspace'
     | '/sign-in'
+    | '/_app/admin'
     | '/_app/apps'
     | '/_app/domains'
     | '/_app/members'
@@ -293,6 +305,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof AppIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/admin': {
+      id: '/_app/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AppAdminRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/apps': {
@@ -404,6 +423,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AppRouteChildren {
+  AppAdminRoute: typeof AppAdminRoute
   AppAppsRoute: typeof AppAppsRoute
   AppDomainsRoute: typeof AppDomainsRoute
   AppMembersRoute: typeof AppMembersRoute
@@ -412,6 +432,7 @@ interface AppRouteChildren {
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppAdminRoute: AppAdminRoute,
   AppAppsRoute: AppAppsRoute,
   AppDomainsRoute: AppDomainsRoute,
   AppMembersRoute: AppMembersRoute,

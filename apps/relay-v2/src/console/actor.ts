@@ -63,19 +63,28 @@ export async function requireActor(
   }
 
   if (need.write) {
-    const origin = headers.get("origin");
-    if (origin !== null && origin !== new URL(env.BETTER_AUTH_URL).origin) {
-      throw new ConsoleError(403, "cross-origin write");
-    }
+    assertSameOrigin(env, headers);
     if (row.status === "suspended") throw new ConsoleError(403, "workspace suspended");
   }
 
   return { userId, platformAdmin, workspaceId: activeWorkspaceId, roles, workspaceStatus: row.status };
 }
 
-export async function requirePlatformAdmin(env: Env, headers: Headers): Promise<{ userId: string }> {
+function assertSameOrigin(env: Env, headers: Headers): void {
+  const origin = headers.get("origin");
+  if (origin !== null && origin !== new URL(env.BETTER_AUTH_URL).origin) {
+    throw new ConsoleError(403, "cross-origin write");
+  }
+}
+
+export async function requirePlatformAdmin(
+  env: Env,
+  headers: Headers,
+  { write = false }: { write?: boolean } = {},
+): Promise<{ userId: string }> {
   const { userId, platformAdmin } = await requireSession(env, headers);
   if (!platformAdmin) throw new ConsoleError(404, "not found");
+  if (write) assertSameOrigin(env, headers);
   return { userId };
 }
 
