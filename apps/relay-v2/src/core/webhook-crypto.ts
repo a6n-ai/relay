@@ -1,4 +1,4 @@
-const KEY_ERROR = "webhook key not configured";
+export const KEY_ERROR = "webhook key not configured";
 const DECRYPT_ERROR = "webhook secret could not be decrypted";
 const encoder = new TextEncoder();
 

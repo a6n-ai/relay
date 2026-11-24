@@ -1,6 +1,7 @@
 import { env, runInDurableObject, SELF } from "cloudflare:test";
 import { beforeAll, describe, expect, it } from "vitest";
 import { createApiKey } from "../src/core/api-keys";
+import { webhookInputSchema } from "../src/core/webhooks";
 import { securityDb } from "../src/db/security/client";
 import { app, member, user, workspace } from "../src/db/security/schema";
 import { applyMigrations } from "./migrate";
@@ -36,6 +37,38 @@ const request = (method: string, path: string, secret?: string, body?: unknown) 
     },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
+
+describe("webhook URL validation", () => {
+  const rejected = [
+    "https://localhost/h",
+    "https://a.localhost/h",
+    "https://10.0.0.1/h",
+    "https://169.254.169.254/h",
+    "https://[::1]/h",
+    "https://[fe80::1]/h",
+    "https://[fc00::1]/h",
+    "https://x.internal/h",
+    "https://2130706433/h",
+    "https://0177.0.0.1/h",
+    "https://[::ffff:127.0.0.1]/h",
+    "https://100.64.0.1/h",
+    "https://172.16.0.1/h",
+    "https://192.168.1.1/h",
+    "https://224.0.0.1/h",
+    "https://[ff02::1]/h",
+    "http://example.com/h",
+    "https://user:pw@example.com/h",
+  ];
+  const accepted = ["https://example.com/h", "https://8.8.8.8/h", "https://[2606:4700::1111]/h"];
+
+  it.each(rejected)("rejects %s", (value) => {
+    expect(webhookInputSchema.safeParse({ url: value, events: ["mailbox.received"] }).success).toBe(false);
+  });
+
+  it.each(accepted)("accepts %s", (value) => {
+    expect(webhookInputSchema.safeParse({ url: value, events: ["mailbox.received"] }).success).toBe(true);
+  });
+});
 
 describe("webhooks API", () => {
   it("creates a webhook with the given secret and stores it encrypted", async () => {
@@ -138,6 +171,30 @@ describe("webhooks API", () => {
       expect(await (await request("GET", "", key)).json()).toEqual({ data: [] });
     }
     expect(await (await request("GET", "", keyA)).json()).toMatchObject({ data: [{ id: created.webhook.id }] });
+  });
+
+  it("rejects a private target with 400", async () => {
+    const { workspaceId, appIds } = await seedWorkspace("hook-private", ["main"]);
+    const key = await keyFor(workspaceId, appIds[0]);
+
+    const res = await request("POST", "", key, { url: "https://169.254.169.254/h", events: ["mailbox.received"] });
+    expect(res.status).toBe(400);
+  });
+
+  it("returns 503 and stores nothing when the webhook key is unset", async () => {
+    const { workspaceId, appIds } = await seedWorkspace("hook-nokey", ["main"]);
+    const key = await keyFor(workspaceId, appIds[0]);
+
+    const saved = env.WEBHOOK_SECRET_KEY;
+    env.WEBHOOK_SECRET_KEY = undefined;
+    try {
+      const res = await request("POST", "", key, { url, events: ["mailbox.received"] });
+      expect(res.status).toBe(503);
+      expect(await res.json()).toEqual({ error: "webhooks unavailable" });
+    } finally {
+      env.WEBHOOK_SECRET_KEY = saved;
+    }
+    expect(await (await request("GET", "", key)).json()).toEqual({ data: [] });
   });
 
   it("returns 401 without a key", async () => {

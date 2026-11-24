@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { env } from "cloudflare:workers";
 import { resolveBearer, withinRateLimit } from "../../../core/api-keys";
+import { KEY_ERROR } from "../../../core/webhook-crypto";
 import { createWebhookForScope, listWebhooksForScope, webhookInputSchema } from "../../../core/webhooks";
 
 export const Route = createFileRoute("/api/v1/webhooks")({
@@ -18,7 +19,14 @@ export const Route = createFileRoute("/api/v1/webhooks")({
         if (!(await withinRateLimit(env, scope.keyId))) return Response.json({ error: "rate limited" }, { status: 429 });
         const body = webhookInputSchema.safeParse(await request.json().catch(() => undefined));
         if (!body.success) return Response.json({ error: "invalid input" }, { status: 400 });
-        return Response.json(await createWebhookForScope(env, scope, body.data), { status: 201 });
+        try {
+          return Response.json(await createWebhookForScope(env, scope, body.data), { status: 201 });
+        } catch (err) {
+          if (err instanceof Error && err.message === KEY_ERROR) {
+            return Response.json({ error: "webhooks unavailable" }, { status: 503 });
+          }
+          throw err;
+        }
       },
     },
   },
