@@ -278,7 +278,7 @@ type Tenant = Awaited<ReturnType<typeof tenant>>;
 async function storedLetter(
   t: Tenant,
   addressId: string,
-  opts: { html?: string; attachments?: { filename: string; body: string; contentId?: string }[] } = {},
+  opts: { html?: string; attachments?: { filename: string; body: string; contentId?: string; contentType?: string }[] } = {},
 ) {
   const [id] = await seed(t.workspaceId, [
     { appId: t.appA, direction: "in", addressId, rfcMessageId: `${newId("msg")}@x`, createdAt: 1 },
@@ -299,12 +299,13 @@ async function storedLetter(
     state.storage.sql.exec("UPDATE message SET html_key = ?, raw_key = ? WHERE id = ?", htmlKey, rawKey, id);
     for (const f of files) {
       state.storage.sql.exec(
-        "INSERT INTO attachment (id, message_id, app_id, position, filename, content_type, size_bytes, content_id, r2_key, created_at) VALUES (?, ?, ?, ?, ?, 'application/pdf', ?, ?, ?, 1)",
+        "INSERT INTO attachment (id, message_id, app_id, position, filename, content_type, size_bytes, content_id, r2_key, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)",
         f.id,
         id,
         t.appA,
         f.position,
         f.filename,
+        f.contentType ?? "application/pdf",
         f.body.length,
         f.contentId ?? null,
         f.key,
@@ -418,17 +419,92 @@ describe("downloads", () => {
     expect(res.status).toBe(404);
   });
 
-  it("rewrites inline cid images to this route before sanitising, so they render when images are shown", async () => {
-    const t = await tenant("dl-cid");
-    const addr = await inbox(t.workspaceId, t.appA, "in@dl-cid.test");
-    const letter = await storedLetter(t, addr, {
-      html: '<p>Logo</p><img src="cid:logo@x"><img src="cid:missing@x">',
-      attachments: [{ filename: "logo.png", body: "png", contentId: "<logo@x>" }],
+  it("HEAD on a raw letter never returns a body, and a hidden letter answers like a missing one", async () => {
+    const t = await tenant("dl-head");
+    const addr = await inbox(t.workspaceId, t.appA, "in@dl-head.test");
+    const letter = await storedLetter(t, addr);
+    const m = await memberOf(t.workspaceId, "dl-head-member@example.com", "member");
+    const hidden = await SELF.fetch(`${ORIGIN}/api/console/messages/${letter.id}/raw`, {
+      method: "HEAD",
+      headers: { cookie: m.cookie },
     });
-    const view = await getMessageFor(env, t.owner, letter.id, { images: false });
-    expect(view.htmlSafe).toContain(`src="/api/console/messages/${letter.id}/${letter.attIds[0]}"`);
-    expect(view.htmlSafe).not.toContain("cid:logo");
-    expect(view.htmlSafe).not.toContain("cid:missing");
+    const missing = await SELF.fetch(`${ORIGIN}/api/console/messages/${newId("msg")}/raw`, {
+      method: "HEAD",
+      headers: { cookie: m.cookie },
+    });
+    expect(hidden.status).toBe(missing.status);
+    expect(await hidden.text()).toBe("");
+    if (hidden.status === 200) expect(hidden.headers.get("content-disposition")).toContain("attachment");
+  });
+});
+
+describe("inline images", () => {
+  const PNG = "PNGDATA";
+  const KB = 1024;
+
+  // Owner's view of a letter, with images shown or blocked.
+  const view = (t: Tenant, id: string, images: boolean) => getMessageFor(env, t.owner, id, { images });
+
+  it("inlines a PNG as a data: URI when images are shown, and drops it when blocked", async () => {
+    const t = await tenant("img-png");
+    const addr = await inbox(t.workspaceId, t.appA, "in@img-png.test");
+    const letter = await storedLetter(t, addr, {
+      html: '<p>Logo</p><img src="cid:logo@x">',
+      attachments: [{ filename: "logo.png", body: PNG, contentId: "<logo@x>", contentType: "image/png" }],
+    });
+    const shown = await view(t, letter.id, true);
+    expect(shown.htmlSafe).toContain(`src="data:image/png;base64,${btoa(PNG)}"`);
+    const blocked = await view(t, letter.id, false);
+    expect(blocked.htmlSafe).not.toContain("data:image");
+    expect(blocked.htmlSafe).not.toContain("cid:");
+  });
+
+  it("does not inline an SVG attachment", async () => {
+    const t = await tenant("img-svg");
+    const addr = await inbox(t.workspaceId, t.appA, "in@img-svg.test");
+    const letter = await storedLetter(t, addr, {
+      html: '<img src="cid:logo@x">',
+      attachments: [{ filename: "logo.svg", body: "<svg/>", contentId: "<logo@x>", contentType: "image/svg+xml" }],
+    });
+    const shown = await view(t, letter.id, true);
+    expect(shown.htmlSafe).not.toContain("data:");
+    expect(shown.htmlSafe).not.toContain("cid:");
+  });
+
+  it("does not inline an image over 512 KB", async () => {
+    const t = await tenant("img-big");
+    const addr = await inbox(t.workspaceId, t.appA, "in@img-big.test");
+    const letter = await storedLetter(t, addr, {
+      html: '<img src="cid:big@x">',
+      attachments: [{ filename: "big.png", body: "a".repeat(600 * KB), contentId: "<big@x>", contentType: "image/png" }],
+    });
+    const shown = await view(t, letter.id, true);
+    expect(shown.htmlSafe).not.toContain("data:image/png");
+  });
+
+  it("stops inlining once the letter's images total 2 MB", async () => {
+    const t = await tenant("img-budget");
+    const addr = await inbox(t.workspaceId, t.appA, "in@img-budget.test");
+    const five = Array.from({ length: 5 }, (_, i) => ({
+      filename: `p${i}.png`,
+      body: "a".repeat(500 * KB),
+      contentId: `<p${i}@x>`,
+      contentType: "image/png",
+    }));
+    const html = five.map((_, i) => `<img src="cid:p${i}@x">`).join("");
+    const letter = await storedLetter(t, addr, { html, attachments: five });
+    const shown = await view(t, letter.id, true);
+    expect((shown.htmlSafe ?? "").split("data:image/png;base64,").length - 1).toBe(4);
+    expect(shown.htmlSafe).not.toContain("cid:");
+  });
+
+  it("does not inline another letter's attachment for the same content-id", async () => {
+    const t = await tenant("img-other");
+    const addr = await inbox(t.workspaceId, t.appA, "in@img-other.test");
+    await storedLetter(t, addr, { attachments: [{ filename: "a.png", body: PNG, contentId: "<shared@x>", contentType: "image/png" }] });
+    const letter = await storedLetter(t, addr, { html: '<img src="cid:shared@x">' });
+    const shown = await view(t, letter.id, true);
+    expect(shown.htmlSafe).not.toContain("data:");
   });
 });
 

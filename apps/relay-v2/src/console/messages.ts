@@ -76,8 +76,8 @@ export async function getMessageFor(
   const view = await clientFor(env, actor.workspaceId).getMessageDetail(actor.workspaceId, id, access);
   if (!view) throw new ConsoleError(404, "not found");
   const { html, htmlKey, rawKey, claimedUntil, idempotencyKey, ...rest } = view;
-  const linked = html === null ? null : linkInlineImages(html, rest.id, rest.attachments);
-  const safe = linked === null ? null : sanitizeEmailHtml(linked, { remoteImages: opts.images ? "allow" : "block" });
+  const inlined = html === null || !opts.images ? html : await inlineCidImages(env, actor, access, rest.id, html, rest.attachments);
+  const safe = inlined === null ? null : sanitizeEmailHtml(inlined, { remoteImages: opts.images ? "allow" : "block" });
   return {
     ...rest,
     status: rest.status as MessageStatus,
@@ -87,13 +87,46 @@ export async function getMessageFor(
   };
 }
 
-// Runs before sanitising, which drops cid: URLs. Only known attachment ids are written in, so the letter cannot pick a URL.
-function linkInlineImages(html: string, messageId: string, attachments: AttachmentView[]): string {
-  const byCid = new Map(attachments.flatMap((a) => (a.contentId ? [[a.contentId.replace(/^<|>$/g, "").trim(), a.id]] : [])));
-  return html.replace(/(\ssrc\s*=\s*)(["'])cid:([^"']*)\2/gi, (whole, lead: string, quote: string, cid: string) => {
-    const attId = byCid.get(cid.trim());
-    return attId ? `${lead}${quote}/api/console/messages/${messageId}/${attId}${quote}` : whole;
+const CID_SRC = /(\ssrc\s*=\s*)(["'])cid:([^"']*)\2/gi;
+const INLINE_TYPES = new Set(["image/png", "image/jpeg", "image/gif", "image/webp"]);
+const INLINE_MAX_BYTES = 512 * 1024;
+const INLINE_BUDGET_BYTES = 2 * 1024 * 1024;
+
+// Show-images only. The letter frame is an opaque-origin sandbox that cannot send this reader's session, so an inline
+// image is written in as a data: URI from this letter's own attachments. Any other cid: src is left for the sanitiser to drop.
+async function inlineCidImages(
+  env: Env,
+  actor: ConsoleActor,
+  access: MessageAccess,
+  messageId: string,
+  html: string,
+  attachments: AttachmentView[],
+): Promise<string> {
+  const byCid = new Map(attachments.flatMap((a) => (a.contentId ? [[a.contentId.replace(/^<|>$/g, "").trim(), a] as const] : [])));
+  const images = new Map<string, { uri: string; size: number }>();
+  for (const cid of new Set([...html.matchAll(CID_SRC)].map((m) => m[3].trim()))) {
+    const att = byCid.get(cid);
+    if (!att || !INLINE_TYPES.has(att.contentType)) continue;
+    const file = await clientFor(env, actor.workspaceId).getMessageFile(actor.workspaceId, messageId, att.id, access);
+    if (!file || !file.key.startsWith(`ws/${actor.workspaceId}/`)) continue;
+    const object = await env.MAIL.get(file.key);
+    if (!object || object.size > INLINE_MAX_BYTES) continue;
+    const bytes = new Uint8Array(await object.arrayBuffer());
+    images.set(cid, { uri: `data:${att.contentType};base64,${base64(bytes)}`, size: bytes.byteLength });
+  }
+  let total = 0;
+  return html.replace(CID_SRC, (whole, lead: string, quote: string, cid: string) => {
+    const img = images.get(cid.trim());
+    if (!img || total + img.size > INLINE_BUDGET_BYTES) return whole;
+    total += img.size;
+    return `${lead}${quote}${img.uri}${quote}`;
   });
+}
+
+function base64(bytes: Uint8Array): string {
+  let binary = "";
+  for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return btoa(binary);
 }
 
 export async function messageFileFor(env: Env, actor: ConsoleActor, id: string, part: string): Promise<Response> {

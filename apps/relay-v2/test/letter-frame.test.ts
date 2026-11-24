@@ -15,7 +15,7 @@ describe("letterSrcDoc", () => {
   it("allows https images, styles and fonts when remote images are shown", () => {
     const doc = letterSrcDoc("<p>hi</p>", false);
     expect(doc.match(CSP)?.[1]).toBe(
-      "default-src 'none'; img-src data: https: 'self'; style-src 'unsafe-inline' https:; font-src data: https:; media-src 'none'; frame-src 'none'; form-action 'none'",
+      "default-src 'none'; img-src data: https:; style-src 'unsafe-inline' https:; font-src data: https:; media-src 'none'; frame-src 'none'; form-action 'none'",
     );
     expect(doc.endsWith("<p>hi</p>")).toBe(true);
   });

@@ -15,7 +15,7 @@ export function safeDownloadName(name: string, fallback: string): string {
     .replace(/[/\\]/g, "_")
     .replace(/\.{2,}/g, ".")
     .replace(/^[\s.]+/, "");
-  const capped = [...cleaned].slice(0, MAX_NAME).join("");
+  const capped = [...cleaned].slice(0, MAX_NAME).join("").replace(/[\s.]+$/, "");
   return capped || fallback;
 }
 

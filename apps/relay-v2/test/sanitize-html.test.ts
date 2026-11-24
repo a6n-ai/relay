@@ -271,6 +271,15 @@ describe("sanitizeEmailHtml", () => {
     expect(out.blockedRemote).toBe(0);
   });
 
+  it("keeps only raster data: image sources, dropping svg and other data types", () => {
+    for (const src of ["data:image/svg+xml;base64,PHN2Zz4=", "data:image/svg+xml,%3Csvg%3E", "data:text/html,x"]) {
+      const out = sanitizeEmailHtml(`<img src="${src}">`, { remoteImages: "allow" });
+      expect(out.html, src).toBe("<img>");
+    }
+    const webp = sanitizeEmailHtml(`<img src="data:image/webp;base64,UklG">`, { remoteImages: "allow" });
+    expect(webp.html).toBe(`<img src="data:image/webp;base64,UklG">`);
+  });
+
   it("drops cid: sources in both modes", () => {
     for (const remoteImages of ["allow", "block"] as const) {
       const out = sanitizeEmailHtml(`<img src="cid:logo@x"><p>x</p>`, { remoteImages });

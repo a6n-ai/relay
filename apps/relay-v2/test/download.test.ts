@@ -31,6 +31,12 @@ describe("safeDownloadName", () => {
     expect(safeDownloadName("  ‮  ", "f")).toBe("f");
   });
 
+  it("trims trailing dots and spaces, including after the length cap", () => {
+    expect(safeDownloadName("invoice. ", "f")).toBe("invoice");
+    expect(safeDownloadName("a.b...", "f")).toBe("a.b");
+    expect(safeDownloadName(`${"a".repeat(199)}. .x`, "f")).toBe("a".repeat(199));
+  });
+
   it("caps the length at 200 characters", () => {
     expect(safeDownloadName("a".repeat(500), "f")).toHaveLength(200);
   });

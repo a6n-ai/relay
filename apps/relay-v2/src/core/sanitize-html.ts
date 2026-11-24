@@ -34,10 +34,13 @@ function normalizeUrl(value: string): string {
   return decodeHTML(value).replace(/[\u0000- ]/g, "").toLowerCase();
 }
 
+// SVG can carry script, so only raster image data may load as an img src.
+const RASTER_DATA = /^data:image\/(png|jpeg|gif|webp)[;,]/;
+
 function unsafeUrl(attr: string, tag: string, value: string): boolean {
   const v = normalizeUrl(value);
   if (v.startsWith("javascript:") || v.startsWith("vbscript:") || v.startsWith("cid:")) return true;
-  if (v.startsWith("data:")) return !(attr === "src" && tag === "img" && v.startsWith("data:image/"));
+  if (v.startsWith("data:")) return !(attr === "src" && tag === "img" && RASTER_DATA.test(v));
   return false;
 }
 
