@@ -9,7 +9,8 @@ export const Route = createFileRoute("/api/console/messages/$id/$part")({
       GET: async ({ request, params }) => {
         try {
           const actor = await requireActor(env, request.headers);
-          return await messageFileFor(env, actor, params.id, params.part);
+          const view = new URL(request.url).searchParams.get("view") === "1";
+          return await messageFileFor(env, actor, params.id, params.part, view);
         } catch (err) {
           if (err instanceof ConsoleError) return Response.json({ error: err.message }, { status: err.status });
           console.error("console download failed", params.id, err instanceof Error ? err.name : "unknown");

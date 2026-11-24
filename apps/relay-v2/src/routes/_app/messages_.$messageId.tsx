@@ -5,6 +5,7 @@ import { LetterView } from "../../components/letter-view";
 import { ViewHeader } from "../../components/view-header";
 import { StatusBadge } from "../../components/status-badge";
 import { fetchApps } from "../../console/apps.fns";
+import { previewHint } from "../../core/download";
 import { fetchMessage } from "../../console/messages.fns";
 
 export const Route = createFileRoute("/_app/messages_/$messageId")({
@@ -88,6 +89,19 @@ function MessagePage() {
                     {a.filename}
                   </a>{" "}
                   <span className="text-xs text-muted-foreground">{kb(a.sizeBytes)}</span>
+                  {previewHint(a.contentType, a.filename) ? (
+                    <>
+                      {" "}
+                      <a
+                        href={`/api/console/messages/${m.id}/${a.id}?view=1`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="hover:underline"
+                      >
+                        Open
+                      </a>
+                    </>
+                  ) : null}
                 </li>
               ))}
             </ul>

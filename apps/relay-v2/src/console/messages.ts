@@ -1,7 +1,7 @@
 import { and, eq, inArray, or } from "drizzle-orm";
 import { sanitizeEmailHtml } from "../core/sanitize-html";
 import { clientFor } from "../core/messages";
-import { downloadResponse } from "../core/download";
+import { downloadResponse, PREVIEW_HEAD_BYTES, previewResponse, previewType } from "../core/download";
 import type { AttachmentView } from "../do/client-do";
 import { decodeCursor, type MessageAccess, type MessageDetail, type MessageQuery, type MessageStatus } from "../do/console-reads";
 import { securityDb } from "../db/security/client";
@@ -137,10 +137,27 @@ function base64(bytes: Uint8Array): string {
   return btoa(binary);
 }
 
-export async function messageFileFor(env: Env, actor: ConsoleActor, id: string, part: string): Promise<Response> {
+// view=1 previews only what the first bytes prove is safe to show; anything else falls through to the download.
+export async function messageFileFor(
+  env: Env,
+  actor: ConsoleActor,
+  id: string,
+  part: string,
+  view = false,
+): Promise<Response> {
   const access = await messageAccess(env, actor);
   const file = await clientFor(env, actor.workspaceId).getMessageFile(actor.workspaceId, id, part, access);
   if (!file || !file.key.startsWith(`ws/${actor.workspaceId}/`)) throw new ConsoleError(404, "not found");
+  if (view && file.contentType !== null) {
+    const head = await env.MAIL.get(file.key, { range: { offset: 0, length: PREVIEW_HEAD_BYTES } });
+    if (!head) throw new ConsoleError(404, "not found");
+    const type = previewType(new Uint8Array(await head.arrayBuffer()), file.contentType);
+    if (type) {
+      const preview = await env.MAIL.get(file.key);
+      if (!preview) throw new ConsoleError(404, "not found");
+      return previewResponse(preview.body, preview.size, file.name, type);
+    }
+  }
   const object = await env.MAIL.get(file.key);
   if (!object) throw new ConsoleError(404, "not found");
   return downloadResponse(object.body, object.size, file.name);

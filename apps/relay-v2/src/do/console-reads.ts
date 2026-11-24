@@ -166,26 +166,37 @@ function threadOf(
 }
 
 // The R2 key comes only from the stored row; the URL names just the part.
-export function readMessageFile(
-  db: Db,
-  id: string,
-  part: string,
-  access: MessageAccess,
-): { key: string; name: string } | null {
+// contentType is the stored type of an attachment, and null for the html and raw parts.
+export type MessageFile = { key: string; name: string; contentType: string | null };
+
+export function readMessageFile(db: Db, id: string, part: string, access: MessageAccess): MessageFile | null {
   const row = db
     .select({ direction: schema.message.direction, htmlKey: schema.message.htmlKey, rawKey: schema.message.rawKey })
     .from(schema.message)
     .where(and(eq(schema.message.id, id), visibleTo(access)))
     .get();
   if (!row) return null;
-  if (part === "html") return row.htmlKey ? { key: row.htmlKey, name: `${id}.html` } : null;
-  if (part === "raw") return row.direction === "in" && row.rawKey ? { key: row.rawKey, name: `${id}.eml` } : null;
+  if (part === "html")
+    return row.htmlKey ? { key: row.htmlKey, name: `${id}.html`, contentType: null } : null;
+  if (part === "raw")
+    return row.direction === "in" && row.rawKey ? { key: row.rawKey, name: `${id}.eml`, contentType: null } : null;
   const file = db
-    .select({ r2Key: schema.attachment.r2Key, filename: schema.attachment.filename, position: schema.attachment.position })
+    .select({
+      r2Key: schema.attachment.r2Key,
+      filename: schema.attachment.filename,
+      position: schema.attachment.position,
+      contentType: schema.attachment.contentType,
+    })
     .from(schema.attachment)
     .where(and(eq(schema.attachment.id, part), eq(schema.attachment.messageId, id)))
     .get();
-  return file ? { key: file.r2Key, name: safeDownloadName(file.filename, `attachment-${file.position}`) } : null;
+  return file
+    ? {
+        key: file.r2Key,
+        name: safeDownloadName(file.filename, `attachment-${file.position}`),
+        contentType: file.contentType,
+      }
+    : null;
 }
 
 export async function readMessageDetail(db: Db, env: Env, id: string, access: MessageAccess): Promise<MessageDetail | null> {

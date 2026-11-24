@@ -278,7 +278,7 @@ type Tenant = Awaited<ReturnType<typeof tenant>>;
 async function storedLetter(
   t: Tenant,
   addressId: string,
-  opts: { html?: string; attachments?: { filename: string; body: string; contentId?: string; contentType?: string }[] } = {},
+  opts: { html?: string; attachments?: { filename: string; body: string | Uint8Array; contentId?: string; contentType?: string }[] } = {},
 ) {
   const [id] = await seed(t.workspaceId, [
     { appId: t.appA, direction: "in", addressId, rfcMessageId: `${newId("msg")}@x`, createdAt: 1 },
@@ -435,6 +435,109 @@ describe("downloads", () => {
     expect(hidden.status).toBe(missing.status);
     expect(await hidden.text()).toBe("");
     if (hidden.status === 200) expect(hidden.headers.get("content-disposition")).toContain("attachment");
+  });
+});
+
+describe("attachment previews", () => {
+  const PNG = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0x0d]);
+  const JPEG = Uint8Array.from([0xff, 0xd8, 0xff, 0xe0, 0, 0x10]);
+  const PDF_CSP = "default-src 'none'; object-src 'none'; frame-ancestors 'none'";
+  const view = (cookie: string, id: string, part: string) =>
+    SELF.fetch(`${ORIGIN}/api/console/messages/${id}/${part}?view=1`, { headers: { cookie } });
+
+  it("serves sniffed image and PDF bytes inline with the sniffed type, whatever the stored type says", async () => {
+    const t = await tenant("pv-bytes");
+    const addr = await inbox(t.workspaceId, t.appA, "in@pv-bytes.test");
+    const letter = await storedLetter(t, addr, {
+      attachments: [
+        { filename: "a.png", body: PNG, contentType: "application/octet-stream" },
+        { filename: "b.jpg", body: JPEG, contentType: "image/png" },
+        { filename: "c.gif", body: "GIF89a\u0001\u0000", contentType: "image/gif" },
+        { filename: "d.webp", body: "RIFF\u0004\u0000\u0000\u0000WEBPVP8 ", contentType: "image/webp" },
+        { filename: "e.pdf", body: "%PDF-1.7 bytes", contentType: "application/pdf" },
+      ],
+    });
+    const expected: [string, string][] = [
+      ["a.png", "image/png"],
+      ["b.jpg", "image/jpeg"],
+      ["c.gif", "image/gif"],
+      ["d.webp", "image/webp"],
+      ["e.pdf", "application/pdf"],
+    ];
+    for (const [i, [filename, type]] of expected.entries()) {
+      const res = await view(t.cookie, letter.id, letter.attIds[i]);
+      expect(res.status, filename).toBe(200);
+      expect(res.headers.get("content-type"), filename).toBe(type);
+      expect(res.headers.get("content-disposition"), filename).toBe(`inline; filename="${filename}"`);
+      expect(res.headers.get("content-security-policy"), filename).toBe(type === "application/pdf" ? PDF_CSP : "sandbox");
+      expect(res.headers.get("x-content-type-options")).toBe("nosniff");
+      expect(res.headers.get("cache-control")).toBe("private, no-store");
+    }
+    const png = await view(t.cookie, letter.id, letter.attIds[0]);
+    expect(new Uint8Array(await png.arrayBuffer())).toEqual(PNG);
+  });
+
+  it("serves text/plain as UTF-8 text under the sandbox", async () => {
+    const t = await tenant("pv-text");
+    const addr = await inbox(t.workspaceId, t.appA, "in@pv-text.test");
+    const letter = await storedLetter(t, addr, {
+      attachments: [{ filename: "notes.txt", body: "hello <b>there</b>", contentType: "text/plain" }],
+    });
+    const res = await view(t.cookie, letter.id, letter.attIds[0]);
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toBe("text/plain; charset=utf-8");
+    expect(res.headers.get("content-security-policy")).toBe("sandbox");
+    expect(res.headers.get("content-disposition")).toBe('inline; filename="notes.txt"');
+    expect(await res.text()).toBe("hello <b>there</b>");
+  });
+
+  it("downloads what it cannot preview: HTML labelled as an image, SVG, NUL text, and HTML as text", async () => {
+    const t = await tenant("pv-download");
+    const addr = await inbox(t.workspaceId, t.appA, "in@pv-download.test");
+    const letter = await storedLetter(t, addr, {
+      attachments: [
+        { filename: "page.png", body: "<p>x</p>", contentType: "image/png" },
+        { filename: "logo.svg", body: "<svg xmlns='http://www.w3.org/2000/svg'></svg>", contentType: "image/svg+xml" },
+        { filename: "log.txt", body: "a\u0000b", contentType: "text/plain" },
+        { filename: "page.txt", body: "<p>x</p>", contentType: "text/html" },
+      ],
+    });
+    for (const [i, filename] of ["page.png", "logo.svg", "log.txt", "page.txt"].entries()) {
+      const res = await view(t.cookie, letter.id, letter.attIds[i]);
+      expect(res.status, filename).toBe(200);
+      expect(res.headers.get("content-type"), filename).toBe("application/octet-stream");
+      expect(res.headers.get("content-disposition"), filename).toBe(`attachment; filename="${filename}"`);
+      expect(res.headers.get("content-security-policy"), filename).toBe("sandbox; default-src 'none'");
+    }
+  });
+
+  it("sends ?view=1 on the html and raw letter to the download", async () => {
+    const t = await tenant("pv-letter");
+    const addr = await inbox(t.workspaceId, t.appA, "in@pv-letter.test");
+    const letter = await storedLetter(t, addr, { html: "<p>Hello</p>" });
+    const html = await view(t.cookie, letter.id, "html");
+    expect(html.headers.get("content-type")).toBe("application/octet-stream");
+    expect(html.headers.get("content-disposition")).toBe(`attachment; filename="${letter.id}.html"`);
+    const raw = await view(t.cookie, letter.id, "raw");
+    expect(raw.headers.get("content-type")).toBe("application/octet-stream");
+    expect(raw.headers.get("content-disposition")).toBe(`attachment; filename="${letter.id}.eml"`);
+  });
+
+  it("404s a hidden or foreign preview exactly like a missing one", async () => {
+    const t = await tenant("pv-hidden");
+    const addr = await inbox(t.workspaceId, t.appA, "in@pv-hidden.test");
+    const letter = await storedLetter(t, addr, { attachments: [{ filename: "a.png", body: PNG, contentType: "image/png" }] });
+    const m = await memberOf(t.workspaceId, "pv-member@example.com", "member");
+    const other = await tenant("pv-foreign");
+    const hidden = await view(m.cookie, letter.id, letter.attIds[0]);
+    const foreign = await view(other.cookie, letter.id, letter.attIds[0]);
+    const missing = await view(m.cookie, newId("msg"), letter.attIds[0]);
+    expect(hidden.status).toBe(404);
+    expect(foreign.status).toBe(404);
+    expect(missing.status).toBe(404);
+    const missingBody = await missing.text();
+    expect(await hidden.text()).toBe(missingBody);
+    expect(await foreign.text()).toBe(missingBody);
   });
 });
 

@@ -19,6 +19,7 @@ import {
   readMessageDetail,
   readMessageFile,
   type MessageAccess,
+  type MessageFile,
   type MessageDetail,
   type MessageQuery,
   type MessageSummary,
@@ -223,7 +224,7 @@ export class ClientDO extends DurableObject<Env> {
     id: string,
     part: string,
     access: MessageAccess,
-  ): Promise<{ key: string; name: string } | null> {
+  ): Promise<MessageFile | null> {
     await this.ready(workspaceId);
     return readMessageFile(this.db, id, part, access);
   }
