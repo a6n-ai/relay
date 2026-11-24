@@ -57,3 +57,11 @@ export const templateInput = z.object({
   enabled: z.boolean().optional(),
 });
 export const templatePatch = templateInput.partial();
+export const automationInput = z.object({
+  name,
+  listId: id,
+  templateId: id,
+  fromEmail: z.string().trim().toLowerCase().max(254).email(),
+  delayHours: z.number().int().min(0).max(720),
+});
+export const automationPatch = automationInput.omit({ listId: true }).partial();

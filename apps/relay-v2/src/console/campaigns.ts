@@ -47,7 +47,7 @@ async function stopRun(env: Env, campaignId: string, runSeq: number): Promise<vo
 }
 
 // Same join as the send path's sender snapshot: the address's domain must be verified in this workspace.
-async function verifiedSenders(env: Env, workspaceId: string, appId: string): Promise<string[]> {
+export async function verifiedSenders(env: Env, workspaceId: string, appId: string): Promise<string[]> {
   const rows = await coreDb(env)
     .select({ email: address.email })
     .from(address)
