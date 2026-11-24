@@ -33,6 +33,18 @@ import {
 } from "./console-reads";
 import { storeInbound, writeInboundFailure, type InboundDeps, type InboundResult } from "./inbound";
 import * as schema from "./client-schema";
+import {
+  createCampaignRow,
+  deleteCampaignRow,
+  getCampaignRow,
+  listCampaignRows,
+  previewAudienceRows,
+  updateCampaignRow,
+  type AudiencePreview,
+  type CampaignPatch,
+  type CampaignSummary,
+  type CampaignView,
+} from "./campaigns";
 import { CLIENT_MIGRATIONS, migrate } from "./migrations";
 import {
   addMemberRow,
@@ -393,6 +405,36 @@ export class ClientDO extends DurableObject<Env> {
   async removeMember(workspaceId: string, listId: string, memberId: string): Promise<boolean> {
     await this.ready(workspaceId);
     return this.ctx.storage.transactionSync(() => removeMemberRow(this.ctx.storage.sql, listId, memberId));
+  }
+  async createCampaign(workspaceId: string, appId: string, name: string): Promise<CampaignView> {
+    await this.ready(workspaceId);
+    return this.ctx.storage.transactionSync(() => createCampaignRow(this.ctx.storage.sql, appId, name));
+  }
+  async listCampaigns(workspaceId: string, cursor?: string, appId?: string): Promise<{ rows: CampaignSummary[]; nextCursor: string | null }> {
+    await this.ready(workspaceId);
+    return listCampaignRows(this.ctx.storage.sql, cursor, appId);
+  }
+  async getCampaign(workspaceId: string, id: string): Promise<CampaignView | null> {
+    await this.ready(workspaceId);
+    return getCampaignRow(this.ctx.storage.sql, id);
+  }
+  async updateCampaign(workspaceId: string, id: string, patch: CampaignPatch): Promise<CampaignView | "missing" | "not_draft" | "bad_list"> {
+    await this.ready(workspaceId);
+    return this.ctx.storage.transactionSync(() => updateCampaignRow(this.ctx.storage.sql, id, patch));
+  }
+  async deleteCampaign(workspaceId: string, id: string): Promise<"deleted" | "missing" | "not_draft"> {
+    await this.ready(workspaceId);
+    return this.ctx.storage.transactionSync(() => deleteCampaignRow(this.ctx.storage.sql, id));
+  }
+  async previewAudience(
+    workspaceId: string,
+    appId: string,
+    listIds: string[],
+    fromEmail: string | null,
+    now = Date.now(),
+  ): Promise<AudiencePreview> {
+    await this.ready(workspaceId);
+    return previewAudienceRows(this.ctx.storage.sql, appId, listIds, fromEmail, (email) => this.suppressed(email, "marketing"), now);
   }
 
   async listWebhookDeliveries(
@@ -931,7 +973,7 @@ export class ClientDO extends DurableObject<Env> {
       return await this.loadLimits(workspaceId);
     } catch (err) {
       console.error("ClientDO: failed to reload workspace limits, using the cached snapshot", err);
-      return cached ?? { monthlyQuota: DEFAULT_MONTHLY_QUOTA, status: "active", senders: {}, fetchedAt: 0 };
+      return cached ?? { monthlyQuota: DEFAULT_MONTHLY_QUOTA, postalAddress: null, status: "active", senders: {}, fetchedAt: 0 };
     }
   }
 

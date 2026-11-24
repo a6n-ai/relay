@@ -29,3 +29,12 @@ export const memberInput = z.object({
   lastName: z.string().trim().max(80).optional(),
   consentAt: z.number().int().positive().refine((at) => at <= Date.now(), "consentAt is in the future").optional(),
 });
+export const postalAddress = z.string().trim().min(1).max(300);
+export const campaignPatch = z.object({
+  name: name.optional(),
+  fromEmail: z.string().trim().toLowerCase().max(254).email().nullable().optional(),
+  subject: z.string().max(300).optional(),
+  html: z.string().max(500_000).optional(),
+  text: z.string().max(500_000).optional(),
+  listIds: z.array(id).max(50).optional(),
+});
