@@ -210,6 +210,12 @@ importers:
       '@foundry/cloud':
         specifier: github:a6n-ai/foundry#path:packages/cloud
         version: https://codeload.github.com/a6n-ai/foundry/tar.gz/e0328c83e60b5821b9893b3a33989211c7552da9#path:packages/cloud(@opennextjs/cloudflare@1.20.16(diff@9.0.0)(next@16.4.5(@babel/core@7.29.13(supports-color@10.2.2))(@types/node@22.20.5)(babel-plugin-react-compiler@1.0.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(supports-color@10.2.2)(wrangler@4.166.0(@cloudflare/workers-types@5.20261121.1)(@types/node@22.20.5)(vitest@4.1.12(@types/node@22.20.5)(vite@8.3.7(@types/node@22.20.5)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.36.0)(tsx@4.23.15)(yaml@2.9.1)))))
+      '@foundry/themes':
+        specifier: github:a6n-ai/foundry#path:packages/themes
+        version: https://codeload.github.com/a6n-ai/foundry/tar.gz/f9bc1ab46bf1443b1b46533e92a1d0d870b6c1be#path:packages/themes(react@19.3.1)
+      '@foundry/ui':
+        specifier: github:a6n-ai/foundry#path:packages/ui
+        version: https://codeload.github.com/a6n-ai/foundry/tar.gz/f9bc1ab46bf1443b1b46533e92a1d0d870b6c1be#path:packages/ui(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       '@tanstack/react-router':
         specifier: ^1.170.46
         version: 1.170.46(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
@@ -222,6 +228,9 @@ importers:
       drizzle-orm:
         specifier: ^0.45.4
         version: 0.45.4(@cloudflare/workers-types@5.20261121.1)(kysely@0.29.8)(postgres@3.4.9)
+      lucide-react:
+        specifier: ^1.70.0
+        version: 1.70.0(@types/react@19.3.0)(react@19.3.1)
       nanoid:
         specifier: ^5.1.16
         version: 5.1.16
@@ -247,6 +256,9 @@ importers:
       '@cloudflare/workers-types':
         specifier: ^5.20261114.1
         version: 5.20261121.1
+      '@tailwindcss/vite':
+        specifier: ^4.3.5
+        version: 4.3.5(vite@8.3.7(@types/node@22.20.5)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.36.0)(tsx@4.23.15)(yaml@2.9.1))
       '@types/react':
         specifier: ^19.2.0
         version: 19.3.0
@@ -259,6 +271,9 @@ importers:
       drizzle-kit:
         specifier: ^0.31.11
         version: 0.31.11
+      tailwindcss:
+        specifier: ^4.3.5
+        version: 4.3.5
       typescript:
         specifier: ^7.0.2
         version: 7.0.2
@@ -2602,6 +2617,11 @@ packages:
 
   '@tailwindcss/postcss@4.3.5':
     resolution: {integrity: sha512-FAV37Tlx9wBiT/hkfgVD0Q6CWsP2oUX3lf28nrfjW8+ksILjnpuFulUqWDfNR4/ZiEHHDRBX8DUTzD1Rys687A==}
+
+  '@tailwindcss/vite@4.3.5':
+    resolution: {integrity: sha512-BCNiY0a1ZjdOHVqw7kyb7U72BwfMF3dfUuN+tQsLWky/J5JOI/r7abibglXfygrZhVO/3u3V+E25kkKTeMkXaQ==}
+    peerDependencies:
+      vite: ^8.2.4
 
   '@tanstack/history@1.162.5':
     resolution: {integrity: sha512-w1+YvwmTkwt5n8yUqEH3IWZ9DsmorCZW/EQ3KYHnqEgIkOZpH54NvW6/Epq3Dzb8H0ifIeYX8PExvrNLIH5FIA==}
@@ -9235,6 +9255,13 @@ snapshots:
       '@tailwindcss/oxide': 4.3.5
       postcss: 8.5.32
       tailwindcss: 4.3.5
+
+  '@tailwindcss/vite@4.3.5(vite@8.3.7(@types/node@22.20.5)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.36.0)(tsx@4.23.15)(yaml@2.9.1))':
+    dependencies:
+      '@tailwindcss/node': 4.3.5
+      '@tailwindcss/oxide': 4.3.5
+      tailwindcss: 4.3.5
+      vite: 8.3.7(@types/node@22.20.5)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.36.0)(tsx@4.23.15)(yaml@2.9.1)
 
   '@tanstack/history@1.162.5': {}
 

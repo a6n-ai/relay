@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as ApiDevOtpRouteImport } from './routes/api/dev/otp'
 import { Route as ApiInternalDoSweepRouteImport } from './routes/api/internal/do-sweep'
 import { Route as ApiInternalSeedRouteImport } from './routes/api/internal/seed'
 import { Route as ApiV1MessagesRouteImport } from './routes/api/v1/messages'
@@ -33,6 +34,11 @@ const ApiHealthRoute = ApiHealthRouteImport.update({
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiDevOtpRoute = ApiDevOtpRouteImport.update({
+  id: '/api/dev/otp',
+  path: '/api/dev/otp',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiInternalDoSweepRoute = ApiInternalDoSweepRouteImport.update({
@@ -75,6 +81,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/api/health': typeof ApiHealthRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/dev/otp': typeof ApiDevOtpRoute
   '/api/internal/do-sweep': typeof ApiInternalDoSweepRoute
   '/api/internal/seed': typeof ApiInternalSeedRoute
   '/api/v1/messages': typeof ApiV1MessagesRouteWithChildren
@@ -87,6 +94,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/api/health': typeof ApiHealthRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/dev/otp': typeof ApiDevOtpRoute
   '/api/internal/do-sweep': typeof ApiInternalDoSweepRoute
   '/api/internal/seed': typeof ApiInternalSeedRoute
   '/api/v1/messages': typeof ApiV1MessagesRouteWithChildren
@@ -100,6 +108,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/api/health': typeof ApiHealthRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/dev/otp': typeof ApiDevOtpRoute
   '/api/internal/do-sweep': typeof ApiInternalDoSweepRoute
   '/api/internal/seed': typeof ApiInternalSeedRoute
   '/api/v1/messages': typeof ApiV1MessagesRouteWithChildren
@@ -114,6 +123,7 @@ export interface FileRouteTypes {
     | '/'
     | '/api/health'
     | '/api/auth/$'
+    | '/api/dev/otp'
     | '/api/internal/do-sweep'
     | '/api/internal/seed'
     | '/api/v1/messages'
@@ -126,6 +136,7 @@ export interface FileRouteTypes {
     | '/'
     | '/api/health'
     | '/api/auth/$'
+    | '/api/dev/otp'
     | '/api/internal/do-sweep'
     | '/api/internal/seed'
     | '/api/v1/messages'
@@ -138,6 +149,7 @@ export interface FileRouteTypes {
     | '/'
     | '/api/health'
     | '/api/auth/$'
+    | '/api/dev/otp'
     | '/api/internal/do-sweep'
     | '/api/internal/seed'
     | '/api/v1/messages'
@@ -151,6 +163,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ApiHealthRoute: typeof ApiHealthRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiDevOtpRoute: typeof ApiDevOtpRoute
   ApiInternalDoSweepRoute: typeof ApiInternalDoSweepRoute
   ApiInternalSeedRoute: typeof ApiInternalSeedRoute
   ApiV1MessagesRoute: typeof ApiV1MessagesRouteWithChildren
@@ -179,6 +192,13 @@ declare module '@tanstack/react-router' {
       path: '/api/auth/$'
       fullPath: '/api/auth/$'
       preLoaderRoute: typeof ApiAuthSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/dev/otp': {
+      id: '/api/dev/otp'
+      path: '/api/dev/otp'
+      fullPath: '/api/dev/otp'
+      preLoaderRoute: typeof ApiDevOtpRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/internal/do-sweep': {
@@ -261,6 +281,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ApiHealthRoute: ApiHealthRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiDevOtpRoute: ApiDevOtpRoute,
   ApiInternalDoSweepRoute: ApiInternalDoSweepRoute,
   ApiInternalSeedRoute: ApiInternalSeedRoute,
   ApiV1MessagesRoute: ApiV1MessagesRouteWithChildren,
