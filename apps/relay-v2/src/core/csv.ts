@@ -96,7 +96,7 @@ export function parseContactsCsv(text: string): ParsedContacts {
 }
 
 // A leading = + - @ tab or CR would run as a formula in a spreadsheet; the quote makes the cell plain text.
-const FORMULA_START = /^[=+\-@\t\r]/;
+const FORMULA_START = /^\s*[=+\-@\t\r]/;
 
 export function csvCell(v: string): string {
   const safe = FORMULA_START.test(v) ? `'${v}` : v;

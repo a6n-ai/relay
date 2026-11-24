@@ -18,6 +18,10 @@ async function seededStub(ws: string) {
   await seedVerifiedSender(ws);
   const stub = stubFor(ws);
   await stub.ping(ws);
+  // Runs re-check readiness against the workspace postal address, so it must be on the profile (created by the first limits load).
+  await stub.refreshLimits(ws);
+  await coreDb(env).update(workspaceProfile).set({ physicalAddress: "1 Main St" }).where(eq(workspaceProfile.workspaceId, ws));
+  await stub.refreshLimits(ws);
   return stub;
 }
 
@@ -220,5 +224,57 @@ describe("list automations in the workspace DO", () => {
     expect(await stub.runDueAutomations(due)).toMatchObject({ sent: 100, more: true });
     expect(await stub.runDueAutomations(due)).toMatchObject({ sent: 50, more: false });
     expect(await automationMessages(stub)).toHaveLength(150);
+  });
+
+  it("skips a run whose rendered subject breaks a line, and still sends the next run", async () => {
+    const ws = "ws_aut_newline";
+    const { stub, list, aut } = await setup(ws);
+    const tpl = (await stub.createTemplate(ws, "app_1", { ...TEMPLATE, subject: "Hi\nthere" })) as { id: string };
+    const broken = await stub.createAutomation(ws, "app_1", { name: "Broken", listId: list.id, templateId: tpl.id, fromEmail: FROM, delayHours: 2 });
+    if (broken === "bad_list" || broken === "bad_template") throw new Error(broken);
+    await stub.setAutomationEnabled(ws, aut.id, true, "1 Main St");
+    await stub.setAutomationEnabled(ws, broken.id, true, "1 Main St");
+    await stub.addMember(ws, list.id, { email: "a@x.com" });
+    const due = Math.max(...(await runs(stub)).map((r) => r.due_at));
+    expect(await stub.runDueAutomations(due)).toMatchObject({ sent: 1, skipped: 1, blocked: false });
+    const rows = await runs(stub);
+    expect(rows).toHaveLength(2);
+    expect(rows).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ email: "a@x.com", status: "skipped", error: "invalid_input" }),
+        expect.objectContaining({ email: "a@x.com", status: "sent" }),
+      ]),
+    );
+  });
+
+  it("skips pending runs when the automation is disabled, and arms the alarm again on enable", async () => {
+    const ws = "ws_aut_toggle";
+    const { stub, list, aut } = await setup(ws, "express_optin", 2);
+    await stub.setAutomationEnabled(ws, aut.id, true, "1 Main St");
+    await stub.addMember(ws, list.id, { email: "a@x.com" });
+    const due = (await runs(stub))[0].due_at;
+    await stub.setAutomationEnabled(ws, aut.id, false, "1 Main St");
+    expect(await runs(stub)).toEqual([expect.objectContaining({ email: "a@x.com", status: "skipped", error: "disabled" })]);
+    expect(await stub.runDueAutomations(due)).toMatchObject({ sent: 0 });
+    expect(await automationMessages(stub)).toEqual([]);
+
+    await stub.setAutomationEnabled(ws, aut.id, true, "1 Main St");
+    await stub.addMember(ws, list.id, { email: "b@x.com" });
+    const dueB = Math.max(...(await runs(stub)).map((r) => r.due_at));
+    await runInDurableObject(stub, (_i, state) => state.storage.deleteAlarm());
+    await stub.setAutomationEnabled(ws, aut.id, true, "1 Main St");
+    expect(await runInDurableObject(stub, (_i, state) => state.storage.getAlarm())).toBe(dueB);
+  });
+
+  it("skips a pending run once its template loses the unsubscribe link after enable", async () => {
+    const ws = "ws_aut_ready";
+    const { stub, list, aut, tpl } = await setup(ws);
+    await stub.setAutomationEnabled(ws, aut.id, true, "1 Main St");
+    await stub.addMember(ws, list.id, { email: "a@x.com" });
+    await stub.updateTemplate(ws, tpl.id, { html: "<p>Hi</p><p>{{postal_address}}</p>" });
+    const due = (await runs(stub))[0].due_at;
+    expect(await stub.runDueAutomations(due)).toMatchObject({ sent: 0, skipped: 1 });
+    expect(await runs(stub)).toEqual([expect.objectContaining({ email: "a@x.com", status: "skipped", error: "unsubscribe_missing" })]);
+    expect(sendSpy).not.toHaveBeenCalled();
   });
 });

@@ -136,7 +136,7 @@ describe("ClientDO send", () => {
     const failure = await runInDurableObject(stub, (instance) =>
       instance.send(ws, input).then(() => "resolved", (e: Error) => e.message),
     );
-    expect(failure).toBe("queue down");
+    expect(failure).toBe("queue_failed");
 
     const rows = await runInDurableObject(stub, (_instance, state) =>
       state.storage.sql.exec<{ n: number }>("SELECT count(*) AS n FROM message").toArray()[0].n,
@@ -193,8 +193,8 @@ describe("ClientDO send", () => {
       return Promise.all([first, second]);
     });
 
-    expect(a).toEqual({ error: "queue down" });
-    expect(b).toEqual({ error: "queue down" });
+    expect(a).toEqual({ error: "queue_failed" });
+    expect(b).toEqual({ error: "queue_failed" });
     expect(put).toHaveBeenCalledTimes(1);
     const rows = await runInDurableObject(stub, (_instance, state) =>
       state.storage.sql.exec<{ n: number }>("SELECT count(*) AS n FROM message").toArray()[0].n,

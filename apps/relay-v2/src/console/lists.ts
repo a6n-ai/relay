@@ -148,34 +148,33 @@ export async function exportMembersFor(env: Env, actor: ConsoleActor, listId: st
   if (!pending) throw new ConsoleError(404, "not found");
   const encoder = new TextEncoder();
   let headerSent = false;
-  let rowsOut = 0;
   const stream = new ReadableStream<Uint8Array>({
     async pull(controller) {
       if (!headerSent) {
         headerSent = true;
+        await writeAudit(env, { action: "list.export", actorUserId: actor.userId, workspaceId: actor.workspaceId, target: listId });
         controller.enqueue(encoder.encode(`${membersCsvHeader}\n`));
         return;
       }
       if (pending === null) {
-        await writeAudit(env, {
-          action: "list.export",
-          actorUserId: actor.userId,
-          workspaceId: actor.workspaceId,
-          target: listId,
-          data: { rows: rowsOut },
-        });
         controller.close();
         return;
       }
       const page: { rows: MemberView[]; next: string | null } = pending;
-      rowsOut += page.rows.length;
       // Always enqueue, even an empty page, so the stream keeps pulling.
       controller.enqueue(encoder.encode(page.rows.map(memberCsvLine).join("")));
       if (page.next === null) {
         pending = null;
         return;
       }
-      const following = await client.exportMembers(actor.workspaceId, listId, page.next);
+      let following: { rows: MemberView[]; next: string | null } | null;
+      try {
+        following = await client.exportMembers(actor.workspaceId, listId, page.next);
+      } catch (err) {
+        // Errors the runtime would swallow must still fail the download, not end it as a short file.
+        controller.error(err);
+        return;
+      }
       if (!following) {
         controller.error(new ConsoleError(404, "not found"));
         return;

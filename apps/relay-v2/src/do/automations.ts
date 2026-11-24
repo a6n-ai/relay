@@ -27,6 +27,7 @@ export type AutomationView = {
 
 export type AutomationDeps = {
   send: (input: SendInput) => Promise<SendResult>;
+  refreshLimits: () => Promise<unknown>;
   postalAddress: string | null;
 };
 
@@ -114,7 +115,26 @@ export function updateAutomationRow(sql: SqlStorage, id: string, patch: Automati
   return viewOf(sql, id)!;
 }
 
-// Turning on checks the same readiness as a campaign. Turning off is always allowed.
+function readinessProblems(
+  auto: { fromEmail: string; listId: string },
+  template: TemplateView | null,
+  postalAddress: string | null,
+): CampaignProblem[] {
+  return campaignProblems(
+    {
+      fromEmail: auto.fromEmail,
+      subject: template?.subject ?? "",
+      html: template?.html ?? "",
+      text: template?.text ?? "",
+      listIds: [auto.listId],
+      audienceKind: "lists",
+      hookReady: false,
+    },
+    postalAddress,
+  );
+}
+
+// Turning on checks the same readiness as a campaign. Turning off is always allowed and skips the pending runs.
 export function setAutomationEnabledRow(
   sql: SqlStorage,
   id: string,
@@ -124,20 +144,10 @@ export function setAutomationEnabledRow(
   const current = viewOf(sql, id);
   if (!current) return "missing";
   if (on) {
-    const template = getTemplateRow(sql, current.templateId);
-    const problems = campaignProblems(
-      {
-        fromEmail: current.fromEmail,
-        subject: template?.subject ?? "",
-        html: template?.html ?? "",
-        text: template?.text ?? "",
-        listIds: [current.listId],
-        audienceKind: "lists",
-        hookReady: false,
-      },
-      postalAddress,
-    );
+    const problems = readinessProblems(current, getTemplateRow(sql, current.templateId), postalAddress);
     if (problems.length > 0) return { problems };
+  } else {
+    sql.exec("UPDATE automation_run SET status = 'skipped', error = 'disabled' WHERE automation_id = ? AND status = 'pending'", id);
   }
   sql.exec("UPDATE automation SET enabled = ?, updated_at = ? WHERE id = ?", on ? 1 : 0, Date.now(), id);
   return viewOf(sql, id)!;
@@ -204,7 +214,10 @@ export async function sendTemplateForAutomation(
   });
 }
 
-type Due = { automationId: string; email: string; appId: string; listId: string; templateId: string; fromEmail: string };
+type Due = { automationId: string; email: string; appId: string; listId: string; templateId: string; fromEmail: string; error: string | null };
+
+// Refusals that clear once the workspace or queue recovers. Every other send error skips its run.
+const TRANSIENT_SEND_ERRORS = new Set(["workspace_suspended", "quota_exceeded", "limits unavailable", "queue_failed"]);
 
 function markRun(sql: SqlStorage, run: Due, status: "sent" | "skipped", detail: { messageId?: string; error?: string }): void {
   sql.exec(
@@ -239,7 +252,7 @@ export async function runDueAutomationRows(
 ): Promise<{ sent: number; skipped: number; more: boolean; blocked: boolean }> {
   const due = sql
     .exec<Due>(
-      `SELECT r.automation_id AS automationId, r.email, a.app_id AS appId, a.list_id AS listId, a.template_id AS templateId, a.from_email AS fromEmail
+      `SELECT r.automation_id AS automationId, r.email, a.app_id AS appId, a.list_id AS listId, a.template_id AS templateId, a.from_email AS fromEmail, r.error
        FROM automation_run r JOIN automation a ON a.id = r.automation_id
        WHERE r.status = 'pending' AND a.enabled = 1 AND r.due_at <= ?
        ORDER BY r.due_at, r.automation_id, r.email LIMIT ?`,
@@ -263,6 +276,13 @@ export async function runDueAutomationRows(
       skipped += 1;
       continue;
     }
+    // Readiness can lapse after enable (for example, the unsubscribe link removed from the template).
+    const [problem] = readinessProblems(run, template, deps.postalAddress);
+    if (problem) {
+      markRun(sql, run, "skipped", { error: problem });
+      skipped += 1;
+      continue;
+    }
     const member = sql
       .exec<{ firstName: string | null; lastName: string | null }>(
         "SELECT first_name AS firstName, last_name AS lastName FROM contact_list_member WHERE list_id = ? AND email = ?",
@@ -275,15 +295,22 @@ export async function runDueAutomationRows(
       result = await sendTemplateForAutomation(deps, { automationId: run.automationId, appId: run.appId, fromEmail: run.fromEmail, email: run.email, ...member }, template);
     } catch (err) {
       const message = err instanceof Error ? err.message : "unknown";
-      if (message === "sender_not_verified" || message === "empty_subject") {
-        markRun(sql, run, "skipped", { error: message });
-        skipped += 1;
+      if (message === "sender_not_verified" && run.error !== "sender_retry") {
+        // A sender verified after our snapshot would look unverified here. Reload once and retry on the next pass.
+        await deps.refreshLimits();
+        sql.exec("UPDATE automation_run SET error = 'sender_retry' WHERE automation_id = ? AND email = ?", run.automationId, run.email);
         continue;
       }
-      // Quota, suspension and transient failures leave the run pending. Stop so the rest wait for the retry.
-      blocked = true;
-      console.error("automation send deferred", message);
-      break;
+      if (TRANSIENT_SEND_ERRORS.has(message)) {
+        // Quota, suspension and queue failures leave the run pending. Stop so the rest wait for the retry.
+        blocked = true;
+        console.error("automation send deferred", message);
+        break;
+      }
+      const skipError = message === "sender_not_verified" || message === "empty_subject" ? message : "invalid_input";
+      markRun(sql, run, "skipped", { error: skipError });
+      skipped += 1;
+      continue;
     }
     markRun(sql, run, "sent", { messageId: result.messageId, error: result.status === "suppressed" ? "suppressed" : undefined });
     sent += 1;

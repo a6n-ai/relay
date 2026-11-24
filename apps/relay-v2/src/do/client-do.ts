@@ -241,7 +241,7 @@ export class ClientDO extends DurableObject<Env> {
         this.db.delete(schema.message).where(eq(schema.message.id, id)).run();
       });
       await this.dropHtml(htmlKey);
-      throw err;
+      throw new Error("queue_failed", { cause: err });
     }
     return { messageId: id, status: "queued", duplicate: false };
   }
@@ -1554,7 +1554,9 @@ export class ClientDO extends DurableObject<Env> {
 
   async setAutomationEnabled(workspaceId: string, id: string, on: boolean, postalAddress: string | null) {
     await this.ready(workspaceId);
-    return setAutomationEnabledRow(this.ctx.storage.sql, id, on, postalAddress);
+    const result = setAutomationEnabledRow(this.ctx.storage.sql, id, on, postalAddress);
+    if (on) await this.scheduleAlarmAt(earliestDue(this.ctx.storage.sql));
+    return result;
   }
 
   async deleteAutomation(workspaceId: string, id: string): Promise<"deleted" | "missing"> {
@@ -1570,7 +1572,7 @@ export class ClientDO extends DurableObject<Env> {
     const limits = await this.limits(workspaceId);
     return runDueAutomationRows(
       this.ctx.storage.sql,
-      { send: (input) => this.send(workspaceId, input), postalAddress: limits.postalAddress },
+      { send: (input) => this.send(workspaceId, input), refreshLimits: () => this.loadLimits(workspaceId), postalAddress: limits.postalAddress },
       now,
     );
   }
