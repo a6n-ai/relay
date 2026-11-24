@@ -4,7 +4,7 @@ import { Label } from "@foundry/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@foundry/ui/select";
 import { Switch } from "@foundry/ui/switch";
 import { toast } from "@foundry/ui/toast";
-import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
 import { ConfirmDialog } from "../../components/confirm-dialog";
 import { CreateDialog } from "../../components/create-dialog";
@@ -48,6 +48,7 @@ function DomainsPage() {
   const { shell } = Route.useRouteContext();
   const router = useRouter();
   const canWrite = useCan({ sending: ["write"] });
+  const canManageMail = useCan({ mailbox: ["manage"] });
   if (!data) {
     return (
       <>
@@ -146,16 +147,24 @@ function DomainsPage() {
           },
           {
             header: "",
-            cell: (a) =>
-              canWrite ? (
-                <ConfirmDialog
-                  trigger="Remove"
-                  title="Remove this address?"
-                  description="Mail to it stops being received, and the app can no longer send from it."
-                  confirmLabel="Remove address"
-                  onConfirm={() => remove(a.id)}
-                />
-              ) : null,
+            cell: (a) => (
+              <div className="flex justify-end gap-2">
+                {canManageMail && a.kind !== "sender" ? (
+                  <Button variant="outline" size="sm" render={<Link to="/domains/addresses/$addressId" params={{ addressId: a.id }} />}>
+                    Access
+                  </Button>
+                ) : null}
+                {canWrite ? (
+                  <ConfirmDialog
+                    trigger="Remove"
+                    title="Remove this address?"
+                    description="Mail to it stops being received, and the app can no longer send from it."
+                    confirmLabel="Remove address"
+                    onConfirm={() => remove(a.id)}
+                  />
+                ) : null}
+              </div>
+            ),
           },
         ]}
         rows={addresses}

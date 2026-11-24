@@ -1,8 +1,24 @@
 import { Badge } from "@foundry/ui/badge";
 
-const TONE = { pending: "warning", verified: "success", failed: "danger" } as const;
-const LABEL = { pending: "Pending", verified: "Verified", failed: "Failed" } as const;
+const TONE = {
+  pending: "warning",
+  verified: "success",
+  failed: "danger",
+  queued: "info",
+  sent: "success",
+  suppressed: "neutral",
+} as const;
+const LABEL = {
+  pending: "Pending",
+  verified: "Verified",
+  failed: "Failed",
+  queued: "Queued",
+  sent: "Sent",
+  suppressed: "Suppressed",
+} as const;
 
-export function StatusBadge({ status }: { status: keyof typeof TONE }) {
+// Inbound rows are stored as "sent"; the operator sees what happened to them, which is receipt.
+export function StatusBadge({ status, direction }: { status: keyof typeof TONE; direction?: string }) {
+  if (direction === "in") return <Badge variant="success">Received</Badge>;
   return <Badge variant={TONE[status]}>{LABEL[status]}</Badge>;
 }

@@ -1,10 +1,12 @@
-import { env, SELF } from "cloudflare:test";
+import { env, runInDurableObject, SELF } from "cloudflare:test";
 import { and, eq } from "drizzle-orm";
 import { beforeAll, describe, expect, it } from "vitest";
+import { clientFor } from "../src/core/messages";
 import { safeRedirect } from "../src/console/shell.fns";
 import { securityDb } from "../src/db/security/client";
-import { member, user, workspace } from "../src/db/security/schema";
-import { cookieFor, createWorkspace, ORIGIN, setActive } from "./console-helpers";
+import { newId } from "../src/lib/ids";
+import { app, member, user, workspace } from "../src/db/security/schema";
+import { addMember, cookieFor, createWorkspace, ORIGIN, setActive } from "./console-helpers";
 import { applyMigrations } from "./migrate";
 
 const db = securityDb(env);
@@ -152,5 +154,79 @@ describe("safeRedirect", () => {
 
   it("keeps an encoded path as a path, not a host", () => {
     expect(safeRedirect("/%2F%2Fevil.example")).toBe("/%2F%2Fevil.example");
+  });
+});
+
+describe("messages pages", { timeout: 60_000 }, () => {
+  async function workspaceWithMail() {
+    const tag = crypto.randomUUID().slice(0, 8);
+    const owner = await cookieFor(`msg-owner-${tag}@example.com`, "admin");
+    const wsId = await createWorkspace(owner, `Mail Page ${tag}`);
+    await setActive(owner, wsId);
+    const [a] = await db.insert(app).values({ workspaceId: wsId, name: "Mail App", slug: "mail" }).returning();
+    const [outId, inId] = [newId("msg"), newId("msg")];
+    await runInDurableObject(clientFor(env, wsId), (_instance, state) => {
+      state.storage.sql.exec(
+        "INSERT INTO message (id, app_id, direction, stream, status, from_email, to_email, subject, created_at, updated_at) VALUES (?, ?, 'out', 'transactional', 'sent', 'from@example.com', 'to@example.com', 'Outbound SEEDED', 1, 1)",
+        outId,
+        a.id,
+      );
+      state.storage.sql.exec(
+        "INSERT INTO message (id, app_id, direction, stream, status, from_email, to_email, subject, created_at, updated_at) VALUES (?, ?, 'in', 'transactional', 'sent', 'sender@example.com', 'to@example.com', 'Inbound SEEDED', 2, 2)",
+        inId,
+        a.id,
+      );
+    });
+    return { owner, wsId, outId, inId, tag };
+  }
+
+  it("lists outbound and inbound messages", async () => {
+    const t = await workspaceWithMail();
+    const out = await getPage("/messages?dir=out", t.owner);
+    expect(out.status).toBe(200);
+    expect(await out.text()).toContain("Outbound SEEDED");
+    const inbound = await getPage("/messages?dir=in", t.owner);
+    expect(inbound.status).toBe(200);
+    expect(await inbound.text()).toContain("Inbound SEEDED");
+  });
+
+  it("renders the letter in a sandboxed frame with no scripts or same origin", async () => {
+    const t = await workspaceWithMail();
+    const htmlKey = `letter/${t.outId}.html`;
+    await env.MAIL.put(htmlKey, "<p>Hello</p>");
+    await runInDurableObject(clientFor(env, t.wsId), (_instance, state) => {
+      state.storage.sql.exec("UPDATE message SET html_key = ? WHERE id = ?", htmlKey, t.outId);
+    });
+    const res = await getPage(`/messages/${t.outId}`, t.owner);
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).toContain('sandbox="allow-popups allow-popups-to-escape-sandbox"');
+    expect(html).not.toContain("allow-scripts");
+    expect(html).not.toContain("allow-same-origin");
+  });
+
+  it("shows the denied state to billing on inbound mail", async () => {
+    const t = await workspaceWithMail();
+    const billing = await addMember(t.wsId, `msg-billing-${t.tag}@example.com`, "billing");
+    const res = await getPage("/messages?dir=in", billing);
+    expect(res.status).toBe(200);
+    expect(await res.text()).toContain("Not available to your role");
+  });
+
+  it("shows the no-grant copy to a member with no address grants", async () => {
+    const t = await workspaceWithMail();
+    const member1 = await addMember(t.wsId, `msg-member-${t.tag}@example.com`, "member");
+    const res = await getPage("/messages?dir=in", member1);
+    expect(res.status).toBe(200);
+    expect(await res.text()).toContain("No addresses are shared with you yet.");
+  });
+
+  it("shows the not-found copy, not the generic error, for a missing message", async () => {
+    const t = await workspaceWithMail();
+    const res = await getPage("/messages/msg_doesnotexist", t.owner);
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).toContain("shared with you.");
+    expect(html).not.toContain("Something went wrong");
   });
 });

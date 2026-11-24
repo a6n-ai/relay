@@ -1,5 +1,5 @@
 import { DurableObject } from "cloudflare:workers";
-import { and, asc, eq, gte, inArray, isNull, lt, ne, or, sql, type SQLWrapper } from "drizzle-orm";
+import { and, eq, gte, inArray, isNull, lt, ne, or, sql, type SQLWrapper } from "drizzle-orm";
 import { drizzle, type DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
 import type { SesSendRequest } from "../core/ses";
 import { DEFAULT_MONTHLY_QUOTA, LIMITS_TTL_MS, loadWorkspaceLimits, SENDER_RETRY_MS, type WorkspaceLimits } from "../core/limits";
@@ -13,9 +13,28 @@ import { MAX_WEBHOOK_ATTEMPTS, webhookRetryDelaySeconds, type WebhookClaim, type
 import { isPublicWebhookUrl, type WebhookInput, type WebhookPatch, type WebhookView } from "../core/webhooks";
 import type { Env, InboundJob } from "../env";
 import { newId } from "../lib/ids";
+import {
+  attachmentViews,
+  type DeliveryView,
+  getInboundFailureRow,
+  listDeliveryRows,
+  listInboundFailureRows,
+  listMessageRows,
+  listSuppressionRows,
+  type FailureView,
+  type SuppressionView,
+  readMessageDetail,
+  readMessageFile,
+  type MessageAccess,
+  type MessageFile,
+  type MessageDetail,
+  type MessageQuery,
+  type MessageSummary,
+} from "./console-reads";
 import { storeInbound, writeInboundFailure, type InboundDeps, type InboundResult } from "./inbound";
 import * as schema from "./client-schema";
 import { CLIENT_MIGRATIONS, migrate } from "./migrations";
+import { maskEmails } from "../core/mask-emails";
 import { deleteWebhookRow, failDeliveryRow, listWebhookRows, toWebhookView, updateWebhookRow, type WebhookRow } from "./webhooks";
 
 export type AttachmentView = {
@@ -51,9 +70,6 @@ const STALE_MS = 1_200_000;
 const EXPIRE_MS = 86_400_000;
 const SWEEP_BATCH = 500;
 const SWEEP_CHUNK = 100;
-
-// Stored send errors keep the domain and first letter only, so a bounce never persists a full recipient address.
-const maskEmails = (text: string) => text.replace(/([\w.%+-])[\w.%+-]*@([\w-]+(?:\.[\w-]+)+)/g, "$1***@$2").slice(0, 500);
 
 // Higher rank wins a suppression conflict: a stronger reason is never replaced by a weaker one.
 const reasonRank = (column: SQLWrapper) =>
@@ -191,20 +207,31 @@ export class ClientDO extends DurableObject<Env> {
     const row = this.db.select().from(schema.message).where(eq(schema.message.id, id)).get();
     if (!row) return null;
     const object = row.htmlKey ? await this.env.MAIL.get(row.htmlKey) : null;
-    const attachments = this.db
-      .select({
-        id: schema.attachment.id,
-        filename: schema.attachment.filename,
-        contentType: schema.attachment.contentType,
-        sizeBytes: schema.attachment.sizeBytes,
-        contentId: schema.attachment.contentId,
-        position: schema.attachment.position,
-      })
-      .from(schema.attachment)
-      .where(eq(schema.attachment.messageId, id))
-      .orderBy(asc(schema.attachment.position))
-      .all();
-    return { ...row, html: object ? await object.text() : null, attachments };
+    return { ...row, html: object ? await object.text() : null, attachments: attachmentViews(this.db, id) };
+  }
+
+  async listMessages(
+    workspaceId: string,
+    q: MessageQuery,
+    access: MessageAccess,
+  ): Promise<{ rows: MessageSummary[]; nextCursor: string | null }> {
+    await this.ready(workspaceId);
+    return listMessageRows(this.db, q, access);
+  }
+
+  async getMessageDetail(workspaceId: string, id: string, access: MessageAccess): Promise<MessageDetail | null> {
+    await this.ready(workspaceId);
+    return readMessageDetail(this.db, this.env, id, access);
+  }
+
+  async getMessageFile(
+    workspaceId: string,
+    id: string,
+    part: string,
+    access: MessageAccess,
+  ): Promise<MessageFile | null> {
+    await this.ready(workspaceId);
+    return readMessageFile(this.db, id, part, access);
   }
 
   // The letter is already in R2 under job.rawKey. Idempotent on the raw key and on the app's Message-ID.
@@ -218,6 +245,37 @@ export class ClientDO extends DurableObject<Env> {
   async recordInboundFailure(workspaceId: string, job: InboundJob, error: string): Promise<void> {
     await this.ready(workspaceId);
     writeInboundFailure(this.inboundDeps(), workspaceId, job, error);
+  }
+  async listInboundFailures(workspaceId: string, inbound: "all" | string[]): Promise<FailureView[]> {
+    await this.ready(workspaceId);
+    return listInboundFailureRows(this.db, inbound);
+  }
+  // Server only: the console never returns rawKey or authResults.
+  async getInboundFailure(workspaceId: string, id: string) {
+    await this.ready(workspaceId);
+    return getInboundFailureRow(this.db, id);
+  }
+  // The raw letter is removed only when no message still points at it.
+  async deleteInboundFailure(workspaceId: string, id: string): Promise<boolean> {
+    await this.ready(workspaceId);
+    const removed = this.ctx.storage.transactionSync(() => {
+      const row = this.db
+        .select({ rawKey: schema.inboundFailure.rawKey })
+        .from(schema.inboundFailure)
+        .where(eq(schema.inboundFailure.id, id))
+        .get();
+      if (!row) return null;
+      this.db.delete(schema.inboundFailure).where(eq(schema.inboundFailure.id, id)).run();
+      const shared = this.db
+        .select({ id: schema.message.id })
+        .from(schema.message)
+        .where(eq(schema.message.rawKey, row.rawKey))
+        .get();
+      return { rawKey: row.rawKey, shared: shared !== undefined };
+    });
+    if (!removed) return false;
+    if (!removed.shared && removed.rawKey.startsWith(`ws/${workspaceId}/raw/`)) await this.env.MAIL.delete(removed.rawKey);
+    return true;
   }
 
   private inboundDeps(): InboundDeps {
@@ -267,6 +325,65 @@ export class ClientDO extends DurableObject<Env> {
   async deleteWebhook(workspaceId: string, appId: string, id: string): Promise<boolean> {
     await this.ready(workspaceId);
     return this.ctx.storage.transactionSync(() => deleteWebhookRow(this.db, appId, id));
+  }
+
+  async listWebhookDeliveries(
+    workspaceId: string,
+    appId: string,
+    webhookId: string,
+    cursor?: string,
+  ): Promise<{ rows: DeliveryView[]; nextCursor: string | null }> {
+    await this.ready(workspaceId);
+    return listDeliveryRows(this.db, { appId, webhookId, cursor });
+  }
+
+  // Only a failed row can be retried. Failed rows hold no lease, so no send is in flight to race.
+  async retryWebhookDelivery(
+    workspaceId: string,
+    appId: string,
+    deliveryId: string,
+    now = Date.now(),
+  ): Promise<"queued" | "missing" | "not_failed" | "webhook_disabled"> {
+    await this.ready(workspaceId);
+    const outcome = this.ctx.storage.transactionSync((): "queued" | "missing" | "not_failed" | "webhook_disabled" => {
+      const row = this.db
+        .select()
+        .from(schema.webhookDelivery)
+        .where(and(eq(schema.webhookDelivery.id, deliveryId), eq(schema.webhookDelivery.appId, appId)))
+        .get();
+      if (!row) return "missing";
+      if (row.status !== "failed") return "not_failed";
+      const hook = this.db
+        .select({ enabled: schema.webhook.enabled })
+        .from(schema.webhook)
+        .where(and(eq(schema.webhook.id, row.webhookId), eq(schema.webhook.appId, appId)))
+        .get();
+      if (!hook || hook.enabled !== 1) return "webhook_disabled";
+      this.db
+        .update(schema.webhookDelivery)
+        .set({
+          status: "pending",
+          attempts: 0,
+          nextAttemptAt: now,
+          claimedUntil: null,
+          lastError: null,
+          responseStatus: null,
+          retriedAt: now,
+          updatedAt: now,
+        })
+        .where(eq(schema.webhookDelivery.id, deliveryId))
+        .run();
+      return "queued";
+    });
+    if (outcome !== "queued") return outcome;
+    // Armed so the sweep covers a failed enqueue below, as ingestInbound does.
+    if ((await this.ctx.storage.getAlarm()) === null) await this.ctx.storage.setAlarm(now + SWEEP_INTERVAL_MS);
+    try {
+      await this.env.WEBHOOKS.send({ workspaceId, deliveryId });
+    } catch (err) {
+      console.error("ClientDO: webhook retry enqueue failed", deliveryId, err instanceof Error ? err.name : "unknown");
+    }
+    return outcome;
   }
 
   // The secret is decrypted here and only its HMAC signature leaves, inside the returned headers.
@@ -622,6 +739,22 @@ export class ClientDO extends DurableObject<Env> {
     return this.suppressed(email.trim().toLowerCase(), stream);
   }
 
+  async listSuppressions(workspaceId: string, q: { prefix?: string; cursor?: string }): Promise<{ rows: SuppressionView[]; nextCursor: string | null }> {
+    await this.ready(workspaceId);
+    return listSuppressionRows(this.db, { prefix: q.prefix?.trim().toLowerCase(), cursor: q.cursor });
+  }
+  // Unsubscribe and complaint rows are kept: a recipient who opted out cannot be re-enabled from the console.
+  async removeSuppression(workspaceId: string, email: string): Promise<"removed" | "missing" | "opted_out"> {
+    await this.ready(workspaceId);
+    const key = email.trim().toLowerCase();
+    return this.ctx.storage.transactionSync(() => {
+      const row = this.db.select({ reason: schema.suppression.reason }).from(schema.suppression).where(eq(schema.suppression.email, key)).get();
+      if (!row) return "missing";
+      if (row.reason !== "bounce" && row.reason !== "manual") return "opted_out";
+      this.db.delete(schema.suppression).where(eq(schema.suppression.email, key)).run();
+      return "removed";
+    });
+  }
   async refreshLimits(workspaceId: string): Promise<WorkspaceLimits> {
     await this.ready(workspaceId);
     return this.loadLimits(workspaceId);
@@ -665,7 +798,12 @@ export class ClientDO extends DurableObject<Env> {
       this.db
         .update(schema.webhookDelivery)
         .set({ status: "failed", lastError: "expired", claimedUntil: null, updatedAt: now })
-        .where(and(eq(schema.webhookDelivery.status, "pending"), lt(schema.webhookDelivery.createdAt, now - EXPIRE_MS)))
+        .where(
+          and(
+            eq(schema.webhookDelivery.status, "pending"),
+            sql`max(${schema.webhookDelivery.createdAt}, coalesce(${schema.webhookDelivery.retriedAt}, 0)) < ${now - EXPIRE_MS}`,
+          ),
+        )
         .run(),
     );
     const staleDeliveries = this.db

@@ -25,7 +25,7 @@ export async function createAddress(
 export async function createAddressGrant(
   env: Env,
   input: { workspaceId: string; addressId: string; memberId?: string; teamId?: string },
-): Promise<void> {
+): Promise<string> {
   if (Boolean(input.memberId) === Boolean(input.teamId)) throw new Error("exactly one grantee required");
   const [target] = await coreDb(env)
     .select({ workspaceId: address.workspaceId })
@@ -36,9 +36,11 @@ export async function createAddressGrant(
     ? await securityDb(env).select({ workspaceId: member.organizationId }).from(member).where(eq(member.id, input.memberId))
     : await securityDb(env).select({ workspaceId: team.organizationId }).from(team).where(eq(team.id, input.teamId ?? ""));
   if (grantee?.workspaceId !== input.workspaceId) throw new Error("grantee does not belong to workspace");
-  await securityDb(env)
+  const [row] = await securityDb(env)
     .insert(addressGrant)
-    .values({ workspaceId: input.workspaceId, addressId: input.addressId, memberId: input.memberId ?? null, teamId: input.teamId ?? null });
+    .values({ workspaceId: input.workspaceId, addressId: input.addressId, memberId: input.memberId ?? null, teamId: input.teamId ?? null })
+    .returning({ id: addressGrant.id });
+  return row.id;
 }
 
 export async function updateAddress(

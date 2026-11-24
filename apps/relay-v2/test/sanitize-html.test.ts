@@ -1,0 +1,333 @@
+import { describe, expect, it } from "vitest";
+import { sanitizeEmailHtml } from "../src/core/sanitize-html";
+
+const LEGIT = `<!DOCTYPE html>
+<html lang="en" xmlns:v="urn:schemas-microsoft-com:vml">
+<head><style>@media (max-width:600px){.x{padding:0 !important}}</style>
+<!--[if mso]><style>td{font-family:Arial !important}</style><![endif]--></head>
+<body style="margin:0"><div style='display:none;font-family:"Poppins"'>Save &#847;&zwnj;&nbsp;</div>
+<table role="presentation"><tr><td><a href="https://app.tiffingrab.ca/subscribe?a=1&amp;b=2">Go</a>
+<a href="mailto:hi@x.ca">Mail</a><a href="{{contact.url|https://x.ca}}">Var</a><img src="data:image/png;base64,AAA" alt=""><br/></td></tr></table></body></html>`;
+
+describe("sanitizeEmailHtml", () => {
+  it("keeps legitimate email markup untouched", () => {
+    const out = sanitizeEmailHtml(LEGIT);
+    expect(out.removed).toEqual([]);
+    for (const s of [
+      "<!DOCTYPE html>",
+      "<!--[if mso]>",
+      "<![endif]-->",
+      "@media (max-width:600px)",
+      "&#847;&zwnj;&nbsp;",
+      "font-family:&quot;Poppins&quot;",
+      "a=1&amp;b=2",
+      "mailto:hi@x.ca",
+      "{{contact.url|https://x.ca}}",
+      "data:image/png;base64,AAA",
+    ]) {
+      expect(out.html).toContain(s);
+    }
+  });
+
+  it("removes scripts, embeds and forms", () => {
+    const out = sanitizeEmailHtml(
+      `<p>a</p><script>alert(1)</script><iframe src="x"></iframe><object></object><embed><form action="/x"><input></form><base href="https://evil">`,
+    );
+    expect(out.html).toBe("<p>a</p>");
+    expect(out.removed).toEqual(["<script>", "<iframe>", "<object>", "<embed>", "<form>", "<base>"]);
+  });
+
+  it.each(["block", "allow"] as const)("removes meta refresh in %s mode", (remoteImages) => {
+    const out = sanitizeEmailHtml(`<p>a</p><meta http-equiv="refresh" content="0;url=https://e.com/a">`, { remoteImages });
+    expect(out.html).toBe("<p>a</p>");
+    expect(out.removed).toEqual(["<meta>"]);
+  });
+
+  it("removes a Content-Security-Policy meta from email", () => {
+    const out = sanitizeEmailHtml(`<meta http-equiv="Content-Security-Policy" content="default-src *"><p>a</p>`);
+    expect(out.html).toBe("<p>a</p>");
+    expect(out.removed).toEqual(["<meta>"]);
+  });
+
+  it("removes event handler and srcdoc attributes", () => {
+    const out = sanitizeEmailHtml(`<a href="https://x.ca" onclick="x()" onMouseOver="y()">x</a><div srcdoc="z">d</div>`);
+    expect(out.html).toBe(`<a href="https://x.ca">x</a><div>d</div>`);
+    expect(out.removed).toEqual(["onclick on <a>", "onMouseOver on <a>", "srcdoc on <div>"]);
+  });
+
+  it("removes obfuscated script URLs", () => {
+    for (const href of ["JaVaScRiPt:alert(1)", " javascript:x", "java\tscript:x", "&#106;avascript:x", "vbscript:x", "data:text/html,<b>"]) {
+      const out = sanitizeEmailHtml(`<a href="${href}">x</a>`);
+      expect(out.html).toBe("<a>x</a>");
+      expect(out.removed).toEqual(["unsafe href on <a>"]);
+    }
+  });
+
+  it("removes a data: image that isn't an image", () => {
+    expect(sanitizeEmailHtml(`<img src="data:text/html;base64,AA">`).html).toBe("<img>");
+  });
+
+  it("drops style attributes using expression() or script URLs", () => {
+    expect(sanitizeEmailHtml(`<p style="width:expression(alert(1))">x</p>`).html).toBe("<p>x</p>");
+  });
+
+  it("keeps Google Fonts stylesheet links but drops other links", () => {
+    const out = sanitizeEmailHtml(
+      `<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins"><link rel="stylesheet" href="https://evil.example/x.css">`,
+    );
+    expect(out.html).toContain("fonts.googleapis.com");
+    expect(out.html).not.toContain("evil.example");
+    expect(out.removed).toEqual(["<link>"]);
+  });
+
+  it("decodes named entities before checking URLs (&colon; &Tab; &NewLine;)", () => {
+    for (const href of ["javascript&colon;alert(1)", "java&Tab;script:x", "java&NewLine;script:x", "&#x6A;avascript:x", "&#106avascript:x"]) {
+      expect(sanitizeEmailHtml(`<a href="${href}">x</a>`).html).toBe("<a>x</a>");
+    }
+  });
+
+  it("sanitizes markup a browser would expose by closing a comment early at --!>", () => {
+    const out = sanitizeEmailHtml("<p>a</p><!-- --!><img src=x onerror=alert(1)> -->");
+    expect(out.html).not.toContain("onerror");
+    expect(out.html).not.toContain("--!>");
+  });
+
+  it("drops raw-text containers browsers parse differently (noscript, xmp, template…)", () => {
+    const out = sanitizeEmailHtml('<noscript><p title="</noscript><img src=x onerror=alert(1)>"></noscript><xmp>x</xmp><template>t</template>');
+    expect(out.html).not.toMatch(/onerror|noscript|xmp|template/);
+  });
+
+  it("drops style, title and foreignObject inside svg/math, where browsers parse markup", () => {
+    const out = sanitizeEmailHtml(
+      "<svg><style><img src=x onerror=alert(1)></style><title><img src=x onerror=alert(2)></title><foreignObject><p>x</p></foreignObject><rect/></svg><math><style>y</style></math>",
+    );
+    expect(out.html).not.toMatch(/onerror|<style|<title|foreignObject/i);
+    expect(out.html).toContain("<rect");
+  });
+
+  it("default mode keeps https images (today's behaviour)", () => {
+    const out = sanitizeEmailHtml(`<img src="https://x.ca/a.png"><p style="background:url(https://x.ca/b.png)">b</p>`);
+    expect(out.html).toContain('src="https://x.ca/a.png"');
+    expect(out.blockedRemote).toBe(0);
+  });
+
+  it("block mode removes remote loads and counts them", () => {
+    const out = sanitizeEmailHtml(
+      `<img src="https://x.ca/a.png"><img src="//x.ca/b.png"><img srcset="https://x.ca/c.png 2x"><td background="https://x.ca/d.png">` +
+        `<p style="background-image:url('https://x.ca/e.png')">e</p><a href="https://x.ca">link</a>`,
+      { remoteImages: "block" },
+    );
+    expect(out.html).not.toMatch(/x\.ca\/(a|b|c|d|e)\.png/);
+    expect(out.html).toContain('href="https://x.ca"');
+    expect(out.blockedRemote).toBe(5);
+  });
+
+  it.each([
+    `<img srcset="a.png 1x, /\\65.com/p 2x">`,
+    `<img src="/\\65.com/p">`,
+    `<img srcset="a.png 1x, \\\\e.com/p 2x">`,
+    `<img srcset="a.png 1x&#44;/\\65.com/p">`,
+  ])("block mode judges HTML attribute URLs without CSS unescaping: %s", (html) => {
+    const out = sanitizeEmailHtml(html, { remoteImages: "block" });
+    expect(out.html).not.toMatch(/65\.com|e\.com/);
+    expect(out.blockedRemote).toBeGreaterThan(0);
+  });
+
+  it("block mode scrubs remote url() in <style> blocks and drops the fonts link", () => {
+    const out = sanitizeEmailHtml(
+      `<head><style>.a{background:url(https://x.ca/f.png)}.b{background:url(data:image/png;base64,AA)}</style>` +
+        `<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins"></head>`,
+      { remoteImages: "block" },
+    );
+    expect(out.html).not.toContain("x.ca/f.png");
+    expect(out.html).toContain("data:image/png;base64,AA");
+    expect(out.html).not.toContain("fonts.googleapis.com");
+    expect(out.blockedRemote).toBe(2);
+  });
+
+  it("block mode removes remote url() written with entities in a style attribute", () => {
+    const out = sanitizeEmailHtml(
+      `<p style="background:url(&quot;https://x.ca/p.gif&quot;)">a</p><p style="background:url(&#104;ttps://x.ca/q.gif)">b</p>`,
+      { remoteImages: "block" },
+    );
+    expect(out.html).not.toContain("x.ca");
+    expect(out.blockedRemote).toBe(2);
+  });
+
+  it("block mode removes remote url() written with CSS escapes", () => {
+    const out = sanitizeEmailHtml(
+      `<p style="background:url(\\68ttps://x.ca/r.gif)">a</p><p style="background:ur\\l(https://x.ca/s.gif)">b</p>`,
+      { remoteImages: "block" },
+    );
+    expect(out.html).not.toContain("x.ca");
+    expect(out.blockedRemote).toBe(2);
+  });
+
+  it("block mode removes remote @import in string and url() forms, and escaped @import", () => {
+    const out = sanitizeEmailHtml(
+      `<style>@import "https://x.ca/a.css";@import url(https://x.ca/b.css);@\\69mport 'https://x.ca/c.css';.a{color:red}</style>`,
+      { remoteImages: "block" },
+    );
+    expect(out.html).not.toContain("x.ca");
+    expect(out.html).toContain(".a{color:red}");
+    expect(out.blockedRemote).toBe(3);
+  });
+
+  it("block mode removes remote SVG image, use and xlink:href loads", () => {
+    const out = sanitizeEmailHtml(
+      `<svg><image href="https://x.ca/i.png"/><use href="https://x.ca/u.svg#a"/><use xlink:href="https://x.ca/x.svg#b"/><use href="#local"/></svg>`,
+      { remoteImages: "block" },
+    );
+    expect(out.html).not.toContain("x.ca");
+    expect(out.html).toContain('href="#local"');
+    expect(out.blockedRemote).toBe(3);
+  });
+
+  it("block mode removes remote href and xlink:href on SVG gradients, patterns and filters", () => {
+    const out = sanitizeEmailHtml(
+      `<svg><linearGradient href="https://x.ca/g.svg#a"/><radialGradient xlink:href="//x.ca/r.svg#b"/><pattern href="https://x.ca/p.svg#c"/><filter href="https://x.ca/f.svg#d"/></svg>`,
+      { remoteImages: "block" },
+    );
+    expect(out.html).not.toContain("x.ca");
+    expect(out.blockedRemote).toBe(4);
+  });
+
+  it("block mode removes remote url() in SVG presentation attributes and counts each", () => {
+    const out = sanitizeEmailHtml(
+      `<svg><rect fill="url(https://x.ca/p.svg#g)" stroke="url(//x.ca/s)" filter="url(https://x.ca/f.svg#f)" mask="url(#local)"/>` +
+        `<path marker-end="url(https://x.ca/m)" clip-path="url(&quot;https://x.ca/c&quot;)"/></svg>`,
+      { remoteImages: "block" },
+    );
+    expect(out.html).not.toContain("x.ca");
+    expect(out.html).toContain('mask="url(#local)"');
+    expect(out.blockedRemote).toBe(5);
+  });
+
+  it("block mode removes remote legacy lowsrc and dynsrc image attributes", () => {
+    const out = sanitizeEmailHtml(
+      `<img lowsrc="https://x.ca/lo.png" dynsrc="//x.ca/d.avi" src="data:image/gif;base64,R0lGOD">`,
+      { remoteImages: "block" },
+    );
+    expect(out.html).toBe(`<img src="data:image/gif;base64,R0lGOD">`);
+    expect(out.blockedRemote).toBe(2);
+  });
+
+  it("block mode removes remote image-set() sources given as plain strings", () => {
+    const out = sanitizeEmailHtml(
+      `<p style="background:image-set(&quot;https://x.ca/g.png&quot; 1x)">a</p>` +
+        `<style>.b{background:-webkit-image-set("https://x.ca/h.png" 1x)}.c{background:image-set("data:image/png;base64,AA" 1x)}</style>` +
+        `<style>.d{background:image-set(url(https://x.ca/j.png) 1x)}</style>`,
+      { remoteImages: "block" },
+    );
+    expect(out.html).not.toContain("x.ca");
+    expect(out.html).toContain("data:image/png;base64,AA");
+    expect(out.blockedRemote).toBe(3);
+  });
+
+  it("block mode drops a remote url() nested in another function, in style attributes and <style>", () => {
+    const declarations = [
+      "background:var(--x, url(https://e.com/a))",
+      "background:cross-fade(url(https://e.com/a), red)",
+      'background:image-set(url(data:image/png;base64,AA) 1x, "https://e.com/b" 2x)',
+      "background:url(/\\\\e.com/a)",
+    ];
+    for (const decl of declarations) {
+      const attr = sanitizeEmailHtml(`<p style='${decl}'>x</p>`, { remoteImages: "block" });
+      expect(attr.html).not.toContain("e.com");
+      expect(attr.blockedRemote).toBe(1);
+      const sheet = sanitizeEmailHtml(`<style>.a{${decl}}</style>`, { remoteImages: "block" });
+      expect(sheet.html).not.toContain("e.com");
+      expect(sheet.blockedRemote).toBe(1);
+    }
+  });
+
+  it("block mode keeps the declarations before a remote one", () => {
+    const out = sanitizeEmailHtml(`<p style="color:red; background:url(https://x.ca/a.png)">x</p>`, { remoteImages: "block" });
+    expect(out.html).toBe(`<p style="color:red;">x</p>`);
+    expect(out.blockedRemote).toBe(1);
+  });
+
+  it("block mode drops every @import, local or remote", () => {
+    const out = sanitizeEmailHtml(`<style>@import "fonts.css";.a{color:red}</style>`, { remoteImages: "block" });
+    expect(out.html).toBe(`<style>.a{color:red}</style>`);
+    expect(out.blockedRemote).toBe(1);
+  });
+
+  it("block mode drops a <style> it cannot parse", () => {
+    const out = sanitizeEmailHtml(`<style>.a{color:red}.b{content:"x}</style>`, { remoteImages: "block" });
+    expect(out.html).toBe("<style></style>");
+    expect(out.blockedRemote).toBe(1);
+  });
+
+  it("show mode still loads a normal remote img", () => {
+    const out = sanitizeEmailHtml(`<img src="https://x.ca/a.png">`, { remoteImages: "allow" });
+    expect(out.html).toBe(`<img src="https://x.ca/a.png">`);
+    expect(out.blockedRemote).toBe(0);
+  });
+
+  it("keeps data:image/ in block mode", () => {
+    const out = sanitizeEmailHtml(`<img src="data:image/gif;base64,R0lGOD">`, { remoteImages: "block" });
+    expect(out.html).toBe(`<img src="data:image/gif;base64,R0lGOD">`);
+    expect(out.blockedRemote).toBe(0);
+  });
+
+  it("keeps only raster data: image sources, dropping svg and other data types", () => {
+    for (const src of ["data:image/svg+xml;base64,PHN2Zz4=", "data:image/svg+xml,%3Csvg%3E", "data:text/html,x"]) {
+      const out = sanitizeEmailHtml(`<img src="${src}">`, { remoteImages: "allow" });
+      expect(out.html, src).toBe("<img>");
+    }
+    const webp = sanitizeEmailHtml(`<img src="data:image/webp;base64,UklG">`, { remoteImages: "allow" });
+    expect(webp.html).toBe(`<img src="data:image/webp;base64,UklG">`);
+  });
+
+  it("drops cid: sources in both modes", () => {
+    for (const remoteImages of ["allow", "block"] as const) {
+      const out = sanitizeEmailHtml(`<img src="cid:logo@x"><p>x</p>`, { remoteImages });
+      expect(out.html).toBe("<img><p>x</p>");
+      expect(out.removed).toEqual(["unsafe src on <img>"]);
+    }
+  });
+
+  it("block mode judges remote URLs with the tab, LF, CR and line continuations browsers strip", () => {
+    const inputs = [
+      '<style>a{background:url("h\\\nttps:e.com/a")}</style>',
+      '<style>a{background:url("/\t/e.com/a")}</style>',
+      '<style>a{background:url("ht\ttp:e.com/a")}</style>',
+      '<style>a{background:url("/\\9 /e.com/a")}</style>',
+      `<div style="background:url('/&#10;/e.com/a')">x</div>`,
+      `<div style="background:url('/&#9;/e.com/a')">x</div>`,
+      `<div style="background:url('ht&#10;tp:e.com/a')">x</div>`,
+      `<img srcset="h&#116;tps:e.com/a 1x">`,
+    ];
+    for (const input of inputs) {
+      const out = sanitizeEmailHtml(input, { remoteImages: "block" });
+      expect(out.html).not.toContain("e.com");
+      expect(out.blockedRemote).toBeGreaterThan(0);
+    }
+  });
+
+  it("block mode drops a style rule whose selector holds a remote URL", () => {
+    const out = sanitizeEmailHtml(`<style>a[data-x="https://e.com/a"]{color:red}.b{color:blue}</style>`, { remoteImages: "block" });
+    expect(out.html).toBe("<style>.b{color:blue}</style>");
+    expect(out.blockedRemote).toBe(1);
+  });
+
+  it("block mode does not let an unescaped newline in a CSS string hide a remote url()", () => {
+    const out = sanitizeEmailHtml(`<style>a[x="\n]{} b{background:url(//e.com/a)} c[y="]{}</style>`, { remoteImages: "block" });
+    expect(out.html).not.toContain("e.com");
+    expect(out.blockedRemote).toBeGreaterThan(0);
+  });
+
+  it.each(["allow", "block"] as const)("drops SVG animation elements that set href at render time (%s)", (remoteImages) => {
+    for (const input of [
+      `<svg><image width=10 height=10><set attributeName="href" to="https://e.com/a.png"/></image></svg>`,
+      `<svg><image><animate attributeName="xlink:href" values="//e.com/a.png"/></image></svg>`,
+      `<svg><a><animateMotion attributeName="href" values="javascript:alert(1)"/><rect/></a></svg>`,
+      `<svg><image><animateTransform attributeName="href" values="https://e.com/a.png"/></image></svg>`,
+    ]) {
+      const out = sanitizeEmailHtml(input, { remoteImages });
+      expect(out.html).not.toMatch(/e\.com|javascript|<(set|animate)/i);
+      expect(out.html).toContain("<svg");
+    }
+  });
+});

@@ -10,6 +10,7 @@ const COPY = new Map<string, string>([
   ["cross-origin write", "This request was blocked. Reload the page and try again."],
   ["unauthorized", "Your session has ended. Sign in again."],
   ["invalid input", "Some details are missing or not valid. Check the form and try again."],
+  ["invalid cursor", "This page link is out of date. Open Messages again."],
   ["invalid slug", "Use lowercase letters, numbers and hyphens for the slug."],
   ["slug taken", "That slug is already used in this workspace."],
   ["invalid domain", "Enter a domain like example.com."],
@@ -18,6 +19,7 @@ const COPY = new Map<string, string>([
   ["unknown region", "That sending region is not available."],
   ["address must use one of your domains", "Add the domain first, then create addresses on it."],
   ["address already exists", "That address is already set up."],
+  ["already has access", "That person or team already has access to this address."],
   ["domain claimed", "That domain is already used by another workspace."],
   ["domain registered", "That domain is already registered and cannot be added here."],
   ["domain not verified", "Verify the domain's DNS records before using it for a mailbox address."],
@@ -26,6 +28,13 @@ const COPY = new Map<string, string>([
   ["this invite is for another email", "This invite was sent to a different email address."],
   ["self-serve workspaces have one app", "This workspace already has its app."],
   ["team not found", "That team no longer exists."],
+  ["recipient opted out", "This address opted out of mail, so it can't be removed here."],
+  ["cannot replay", "This letter is missing its app or address, so it can't be retried. You can still delete it."],
+  ["address removed", "The address this letter came to was removed, so it can't be retried. You can still delete it."],
+  ["raw letter missing", "The original letter is no longer stored, so it can't be retried. You can still delete it."],
+  ["delivery not failed", "Only failed deliveries can be retried."],
+  ["webhook disabled", "Turn this webhook on before retrying its deliveries."],
+  ["webhooks unavailable", "Webhooks are unavailable right now. Try again later."],
 ]);
 
 // The server's fixed copy is mapped to plain words; anything unknown (a network failure, a 500) gets the fallback, never the raw text.

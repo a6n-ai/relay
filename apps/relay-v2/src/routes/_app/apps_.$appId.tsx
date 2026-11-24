@@ -3,7 +3,7 @@ import { Button } from "@foundry/ui/button";
 import { Input } from "@foundry/ui/input";
 import { Label } from "@foundry/ui/label";
 import { toast } from "@foundry/ui/toast";
-import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
 import { ConfirmDialog } from "../../components/confirm-dialog";
 import { CreateDialog } from "../../components/create-dialog";
@@ -51,11 +51,16 @@ function AppPage() {
       <ViewHeader
         title={app.name}
         actions={
-          canWrite ? (
-            <CreateDialog trigger="Create key" title="New API key">
-              {(done) => <NewKeyForm appId={app.id} done={done} />}
-            </CreateDialog>
-          ) : undefined
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" render={<Link to="/apps/$appId/webhooks" params={{ appId: app.id }} />}>
+              Webhooks
+            </Button>
+            {canWrite ? (
+              <CreateDialog trigger="Create key" title="New API key">
+                {(done, lock) => <NewKeyForm appId={app.id} done={done} lock={lock} />}
+              </CreateDialog>
+            ) : null}
+          </div>
         }
       />
       <ResourceTable
@@ -87,7 +92,7 @@ function AppPage() {
   );
 }
 
-function NewKeyForm({ appId, done }: { appId: string; done: () => void }) {
+function NewKeyForm({ appId, done, lock }: { appId: string; done: () => void; lock: (locked: boolean) => void }) {
   const router = useRouter();
   const [name, setName] = useState("");
   const [created, setCreated] = useState<string | null>(null);
@@ -101,6 +106,7 @@ function NewKeyForm({ appId, done }: { appId: string; done: () => void }) {
     try {
       const key = await createKeyFn({ data: { appId, name } });
       setCreated(key.secret);
+      lock(true);
       toast.success("Key created");
       await router.invalidate();
     } catch (err) {

@@ -1,7 +1,7 @@
 import { useMatch } from "@tanstack/react-router";
 import type { Shell } from "../console/shell";
 
-export type DeniedReason = "no-workspace" | "suspended" | "not-allowed";
+export type DeniedReason = "no-workspace" | "suspended" | "not-allowed" | "not-found";
 
 const COPY: Record<DeniedReason, { title: string; body: string }> = {
   "no-workspace": {
@@ -15,6 +15,10 @@ const COPY: Record<DeniedReason, { title: string; body: string }> = {
   "not-allowed": {
     title: "Not available to your role",
     body: "Ask a workspace owner or admin if you need access to this page.",
+  },
+  "not-found": {
+    title: "Message not found",
+    body: "This message doesn't exist or isn't shared with you.",
   },
 };
 
