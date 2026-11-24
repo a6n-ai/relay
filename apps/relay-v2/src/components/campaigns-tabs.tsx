@@ -8,6 +8,7 @@ type Tab = "campaigns" | "templates" | "automations";
 const TABS: { key: Tab; label: string; need: Record<string, string[]> }[] = [
   { key: "campaigns", label: "Campaigns", need: { campaign: ["read"] } },
   { key: "templates", label: "Templates", need: { template: ["read"] } },
+  { key: "automations", label: "Automations", need: { campaign: ["read"] } },
 ];
 
 export function CampaignsTabs({ active, appId }: { active: Tab; appId?: string }) {
@@ -26,7 +27,7 @@ export function CampaignsTabs({ active, appId }: { active: Tab; appId?: string }
         return (
           <Link
             key={tab.key}
-            to={tab.key === "campaigns" ? "/campaigns" : "/campaigns/templates"}
+            to={tab.key === "campaigns" ? "/campaigns" : tab.key === "templates" ? "/campaigns/templates" : "/campaigns/automations"}
             search={{ appId }}
             className={className}
             aria-current={current}

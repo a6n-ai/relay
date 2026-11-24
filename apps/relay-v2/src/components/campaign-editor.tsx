@@ -2,6 +2,7 @@ import { Button } from "@foundry/ui/button";
 import { Checkbox } from "@foundry/ui/checkbox";
 import { Input } from "@foundry/ui/input";
 import { Label } from "@foundry/ui/label";
+import { RadioGroup, RadioGroupItem } from "@foundry/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@foundry/ui/select";
 import { toast } from "@foundry/ui/toast";
 import { useBlocker, useRouter, useNavigate } from "@tanstack/react-router";
@@ -29,7 +30,15 @@ import { useCan } from "./use-can";
 
 export type CampaignOptions = { senders: string[]; lists: ListView[]; postalAddress: string | null };
 
-export function CampaignEditor({ campaign, options }: { campaign: CampaignView; options: CampaignOptions }) {
+export function CampaignEditor({
+  campaign,
+  options,
+  hookReady,
+}: {
+  campaign: CampaignView;
+  options: CampaignOptions;
+  hookReady: boolean;
+}) {
   const router = useRouter();
   const navigate = useNavigate();
   const canWrite = useCan({ campaign: ["write"] });
@@ -40,13 +49,22 @@ export function CampaignEditor({ campaign, options }: { campaign: CampaignView; 
   const [html, setHtml] = useState(campaign.html);
   const [text, setText] = useState(campaign.text);
   const [listIds, setListIds] = useState(campaign.listIds);
+  const [audienceKind, setAudienceKind] = useState(campaign.audienceKind);
+  const [audienceQuery, setAudienceQuery] = useState(campaign.audienceQuery ?? "");
   const [audience, setAudience] = useState<{ sendable: number; suppressed: number; lapsed: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [address, setAddress] = useState(options.postalAddress ?? "");
   const dirty = isDirty(
-    { from: campaign.fromEmail ?? "", subject: campaign.subject, html: campaign.html, text: campaign.text },
-    { from, subject, html, text },
+    {
+      from: campaign.fromEmail ?? "",
+      subject: campaign.subject,
+      html: campaign.html,
+      text: campaign.text,
+      audienceKind: campaign.audienceKind,
+      audienceQuery: campaign.audienceQuery,
+    },
+    { from, subject, html, text, audienceKind, audienceQuery: audienceQuery.trim() || null },
   );
   const leaving = useRef(false);
   const blocker = useBlocker({
@@ -76,7 +94,7 @@ export function CampaignEditor({ campaign, options }: { campaign: CampaignView; 
       text: campaign.text,
       listIds: campaign.listIds,
       audienceKind: campaign.audienceKind,
-      hookReady: false,
+      hookReady,
     },
     options.postalAddress,
   );
@@ -87,7 +105,18 @@ export function CampaignEditor({ campaign, options }: { campaign: CampaignView; 
     setError(null);
     try {
       await updateCampaignFn({
-        data: { id: campaign.id, patch: { fromEmail: from || null, subject, html, text, listIds } },
+        data: {
+          id: campaign.id,
+          patch: {
+            fromEmail: from || null,
+            subject,
+            html,
+            text,
+            listIds,
+            audienceKind,
+            audienceQuery: audienceQuery.trim() || null,
+          },
+        },
       });
       toast.success("Campaign saved");
       await router.invalidate();
@@ -191,23 +220,53 @@ export function CampaignEditor({ campaign, options }: { campaign: CampaignView; 
         </Select>
 
         <fieldset className="grid gap-2">
-          <legend className="text-sm font-medium">Lists</legend>
-          {options.lists.length === 0 ? <p className="text-sm text-muted-foreground">No lists in this app yet.</p> : null}
-          {options.lists.map((l) => (
-            <Label key={l.id} className="flex items-center gap-2 font-normal">
-              <Checkbox
-                checked={listIds.includes(l.id)}
-                disabled={!canWrite}
-                onCheckedChange={(on) => toggleList(l.id, on === true)}
-              />
-              {l.name}
+          <legend className="text-sm font-medium">Audience</legend>
+          <RadioGroup
+            value={audienceKind}
+            onValueChange={(v) => setAudienceKind(v as "lists" | "hook")}
+            aria-label="Audience"
+            className="grid gap-2"
+          >
+            <Label htmlFor="audience-lists" className="flex items-center gap-2 font-normal">
+              <RadioGroupItem id="audience-lists" value="lists" disabled={!canWrite} />
+              Lists
             </Label>
-          ))}
-          {audience ? (
-            <p className="text-sm text-muted-foreground tabular-nums">
-              {audience.sendable} will receive this ({audience.suppressed} suppressed, {audience.lapsed} lapsed)
-            </p>
-          ) : null}
+            <Label htmlFor="audience-hook" className="flex items-center gap-2 font-normal">
+              <RadioGroupItem id="audience-hook" value="hook" disabled={!canWrite || !hookReady} />
+              App audience
+            </Label>
+          </RadioGroup>
+          {audienceKind === "hook" ? (
+            <>
+              <Label htmlFor="campaign-audience-query">Audience filter</Label>
+              <Input
+                id="campaign-audience-query"
+                value={audienceQuery}
+                disabled={!canWrite}
+                onChange={(e) => setAudienceQuery(e.target.value)}
+              />
+              <p className="text-sm text-muted-foreground">Counted when it sends</p>
+            </>
+          ) : (
+            <>
+              {options.lists.length === 0 ? <p className="text-sm text-muted-foreground">No lists in this app yet.</p> : null}
+              {options.lists.map((l) => (
+                <Label key={l.id} className="flex items-center gap-2 font-normal">
+                  <Checkbox
+                    checked={listIds.includes(l.id)}
+                    disabled={!canWrite}
+                    onCheckedChange={(on) => toggleList(l.id, on === true)}
+                  />
+                  {l.name}
+                </Label>
+              ))}
+              {audience ? (
+                <p className="text-sm text-muted-foreground tabular-nums">
+                  {audience.sendable} will receive this ({audience.suppressed} suppressed, {audience.lapsed} lapsed)
+                </p>
+              ) : null}
+            </>
+          )}
         </fieldset>
 
         <ContentFields

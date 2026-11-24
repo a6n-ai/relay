@@ -1,3 +1,4 @@
+import { Badge } from "@foundry/ui/badge";
 import { Button } from "@foundry/ui/button";
 import { Input } from "@foundry/ui/input";
 import { Label } from "@foundry/ui/label";
@@ -120,6 +121,11 @@ function ListDetailPage() {
               </CreateDialog>
             ) : null}
             {canImport ? (
+              <Button variant="outline" size="sm" render={<a href={`/lists/${listId}/export`} download />}>
+                Export CSV
+              </Button>
+            ) : null}
+            {canImport ? (
               <CreateDialog trigger="Import CSV" title="Import contacts">
                 {(done) => <ImportForm listId={listId} done={done} />}
               </CreateDialog>
@@ -132,7 +138,19 @@ function ListDetailPage() {
             { header: "Name", cell: (m) => [m.firstName, m.lastName].filter(Boolean).join(" ") },
             { header: "Source", cell: (m) => (m.source === "import" ? "Import" : "Manual") },
             { header: "Added", cell: (m) => <span className="text-xs tabular-nums">{formatWhen(m.createdAt)}</span> },
-            { header: "Status", cell: (m) => <StatusBadge status={m.state} /> },
+            {
+              header: "Status",
+              cell: (m) => (
+                <div className="flex flex-wrap gap-1">
+                  <StatusBadge status={m.state} />
+                  {m.optedOut.map((domain) => (
+                    <Badge key={domain} variant="outline">
+                      Opted out: {domain}
+                    </Badge>
+                  ))}
+                </div>
+              ),
+            },
             {
               header: "",
               cell: (m) =>

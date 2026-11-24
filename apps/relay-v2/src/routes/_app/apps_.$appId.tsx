@@ -2,6 +2,7 @@ import { Badge } from "@foundry/ui/badge";
 import { Button } from "@foundry/ui/button";
 import { Input } from "@foundry/ui/input";
 import { Label } from "@foundry/ui/label";
+import { Switch } from "@foundry/ui/switch";
 import { toast } from "@foundry/ui/toast";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
@@ -14,10 +15,21 @@ import { ResourceTable } from "../../components/resource-table";
 import { SecretOnce } from "../../components/secret-once";
 import { useCan } from "../../components/use-can";
 import { ViewHeader } from "../../components/view-header";
-import { createKeyFn, fetchAppDetail, revokeKeyFn } from "../../console/apps.fns";
+import {
+  createKeyFn,
+  deleteAudienceHookFn,
+  fetchAppDetail,
+  fetchAudienceHook,
+  revokeKeyFn,
+  setAudienceHookFn,
+} from "../../console/apps.fns";
 
 export const Route = createFileRoute("/_app/apps_/$appId")({
-  loader: ({ params }) => fetchAppDetail({ data: { appId: params.appId } }),
+  loader: async ({ params }) => {
+    const data = await fetchAppDetail({ data: { appId: params.appId } });
+    if (!data) return null;
+    return { ...data, hook: await fetchAudienceHook({ data: { appId: params.appId } }) };
+  },
   component: AppPage,
 });
 
@@ -34,7 +46,7 @@ function AppPage() {
       </>
     );
   }
-  const { app, keys } = data;
+  const { app, keys, hook } = data;
 
   async function revoke(id: string) {
     try {
@@ -88,7 +100,86 @@ function AppPage() {
         rowKey={(k) => k.id}
         empty="No keys yet. Create one to start sending from this app."
       />
+      <AudiencePanel appId={app.id} hook={hook} canWrite={canWrite} />
     </>
+  );
+}
+
+type AudienceHook = Awaited<ReturnType<typeof fetchAudienceHook>>;
+
+function AudiencePanel({ appId, hook, canWrite }: { appId: string; hook: AudienceHook; canWrite: boolean }) {
+  const router = useRouter();
+  const [url, setUrl] = useState(hook?.url ?? "");
+  const [enabled, setEnabled] = useState(hook?.enabled ?? true);
+  const [secret, setSecret] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
+
+  async function save(event: FormEvent) {
+    event.preventDefault();
+    setPending(true);
+    setError(null);
+    try {
+      const result = await setAudienceHookFn({ data: { appId, url, enabled } });
+      setSecret(result.secret);
+      toast.success("App audience saved");
+      await router.invalidate();
+    } catch (err) {
+      setError(errorText(err, "Could not save the App audience."));
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function remove() {
+    try {
+      await deleteAudienceHookFn({ data: { appId } });
+      toast.success("App audience removed");
+      await router.invalidate();
+    } catch (err) {
+      toast.error(errorText(err, "Could not remove the App audience."));
+    }
+  }
+
+  return (
+    <section className="grid max-w-2xl gap-3 p-4">
+      <h2 className="text-sm font-medium">App audience</h2>
+      <p className="text-sm text-muted-foreground">
+        Relay calls this URL for the people a campaign reaches. Campaigns pick it under Audience.
+      </p>
+      {hook?.kind === "binding" ? (
+        <p className="text-sm">Connected by Relay</p>
+      ) : (
+        <form onSubmit={save} className="grid gap-3">
+          <Label htmlFor="audience-url">Audience URL</Label>
+          <Input id="audience-url" type="url" required value={url} disabled={!canWrite} onChange={(e) => setUrl(e.target.value)} />
+          <Label className="flex items-center gap-2 font-normal">
+            <Switch checked={enabled} onCheckedChange={setEnabled} disabled={!canWrite} />
+            Enabled
+          </Label>
+          {secret ? <SecretOnce secret={secret} label="Your App audience secret" onDone={() => setSecret(null)} /> : null}
+          <FormError message={error} />
+          {canWrite ? (
+            <div className="flex justify-end">
+              <Button type="submit" disabled={pending || !url.trim()}>
+                Save
+              </Button>
+            </div>
+          ) : null}
+        </form>
+      )}
+      {canWrite && hook && hook.kind !== "binding" ? (
+        <div>
+          <ConfirmDialog
+            trigger="Remove"
+            title="Remove the App audience?"
+            description="Campaigns that use it can't reach their audience until you connect one again."
+            confirmLabel="Remove"
+            onConfirm={remove}
+          />
+        </div>
+      ) : null}
+    </section>
   );
 }
 

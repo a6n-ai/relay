@@ -25,6 +25,7 @@ import { Route as InviteIdRouteImport } from './routes/invite.$id'
 import { Route as UTokenRouteImport } from './routes/u.$token'
 import { Route as AppAppsAppIdRouteImport } from './routes/_app/apps_.$appId'
 import { Route as AppCampaignsCampaignIdRouteImport } from './routes/_app/campaigns_.$campaignId'
+import { Route as AppCampaignsAutomationsRouteImport } from './routes/_app/campaigns_.automations'
 import { Route as AppCampaignsTemplatesRouteImport } from './routes/_app/campaigns_.templates'
 import { Route as AppListsListIdRouteImport } from './routes/_app/lists_.$listId'
 import { Route as AppMessagesMessageIdRouteImport } from './routes/_app/messages_.$messageId'
@@ -123,6 +124,11 @@ const AppAppsAppIdRoute = AppAppsAppIdRouteImport.update({
 const AppCampaignsCampaignIdRoute = AppCampaignsCampaignIdRouteImport.update({
   id: '/campaigns_/$campaignId',
   path: '/campaigns/$campaignId',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppCampaignsAutomationsRoute = AppCampaignsAutomationsRouteImport.update({
+  id: '/campaigns_/automations',
+  path: '/campaigns/automations',
   getParentRoute: () => AppRoute,
 } as any)
 const AppCampaignsTemplatesRoute = AppCampaignsTemplatesRouteImport.update({
@@ -246,6 +252,7 @@ export interface FileRoutesByFullPath {
   '/u/$token': typeof UTokenRoute
   '/apps/$appId': typeof AppAppsAppIdRoute
   '/campaigns/$campaignId': typeof AppCampaignsCampaignIdRoute
+  '/campaigns/automations': typeof AppCampaignsAutomationsRoute
   '/campaigns/templates': typeof AppCampaignsTemplatesRoute
   '/lists/$listId': typeof AppListsListIdRoute
   '/messages/$messageId': typeof AppMessagesMessageIdRoute
@@ -283,6 +290,7 @@ export interface FileRoutesByTo {
   '/': typeof AppIndexRoute
   '/apps/$appId': typeof AppAppsAppIdRoute
   '/campaigns/$campaignId': typeof AppCampaignsCampaignIdRoute
+  '/campaigns/automations': typeof AppCampaignsAutomationsRoute
   '/campaigns/templates': typeof AppCampaignsTemplatesRoute
   '/lists/$listId': typeof AppListsListIdRoute
   '/messages/$messageId': typeof AppMessagesMessageIdRoute
@@ -322,6 +330,7 @@ export interface FileRoutesById {
   '/_app/': typeof AppIndexRoute
   '/_app/apps_/$appId': typeof AppAppsAppIdRoute
   '/_app/campaigns_/$campaignId': typeof AppCampaignsCampaignIdRoute
+  '/_app/campaigns_/automations': typeof AppCampaignsAutomationsRoute
   '/_app/campaigns_/templates': typeof AppCampaignsTemplatesRoute
   '/_app/lists_/$listId': typeof AppListsListIdRoute
   '/_app/messages_/$messageId': typeof AppMessagesMessageIdRoute
@@ -361,6 +370,7 @@ export interface FileRouteTypes {
     | '/u/$token'
     | '/apps/$appId'
     | '/campaigns/$campaignId'
+    | '/campaigns/automations'
     | '/campaigns/templates'
     | '/lists/$listId'
     | '/messages/$messageId'
@@ -398,6 +408,7 @@ export interface FileRouteTypes {
     | '/'
     | '/apps/$appId'
     | '/campaigns/$campaignId'
+    | '/campaigns/automations'
     | '/campaigns/templates'
     | '/lists/$listId'
     | '/messages/$messageId'
@@ -436,6 +447,7 @@ export interface FileRouteTypes {
     | '/_app/'
     | '/_app/apps_/$appId'
     | '/_app/campaigns_/$campaignId'
+    | '/_app/campaigns_/automations'
     | '/_app/campaigns_/templates'
     | '/_app/lists_/$listId'
     | '/_app/messages_/$messageId'
@@ -588,6 +600,13 @@ declare module '@tanstack/react-router' {
       path: '/campaigns/$campaignId'
       fullPath: '/campaigns/$campaignId'
       preLoaderRoute: typeof AppCampaignsCampaignIdRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/campaigns_/automations': {
+      id: '/_app/campaigns_/automations'
+      path: '/campaigns/automations'
+      fullPath: '/campaigns/automations'
+      preLoaderRoute: typeof AppCampaignsAutomationsRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/campaigns_/templates': {
@@ -744,6 +763,7 @@ interface AppRouteChildren {
   AppIndexRoute: typeof AppIndexRoute
   AppAppsAppIdRoute: typeof AppAppsAppIdRoute
   AppCampaignsCampaignIdRoute: typeof AppCampaignsCampaignIdRoute
+  AppCampaignsAutomationsRoute: typeof AppCampaignsAutomationsRoute
   AppCampaignsTemplatesRoute: typeof AppCampaignsTemplatesRoute
   AppListsListIdRoute: typeof AppListsListIdRoute
   AppMessagesMessageIdRoute: typeof AppMessagesMessageIdRoute
@@ -766,6 +786,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppIndexRoute: AppIndexRoute,
   AppAppsAppIdRoute: AppAppsAppIdRoute,
   AppCampaignsCampaignIdRoute: AppCampaignsCampaignIdRoute,
+  AppCampaignsAutomationsRoute: AppCampaignsAutomationsRoute,
   AppCampaignsTemplatesRoute: AppCampaignsTemplatesRoute,
   AppListsListIdRoute: AppListsListIdRoute,
   AppMessagesMessageIdRoute: AppMessagesMessageIdRoute,

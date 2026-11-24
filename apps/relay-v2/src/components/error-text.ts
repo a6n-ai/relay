@@ -61,6 +61,11 @@ const COPY = new Map<string, string>([
   ["template not found", "That template no longer exists. Refresh and try again."],
   ["template disabled", "This template is turned off, so it can't be sent."],
   ["unsubscribe only on marketing", "This template has an unsubscribe link, so it can only send as marketing mail."],
+  ["automation not ready", "This automation isn't ready. Check its list, template, From address and postal address."],
+  ["audience_failed", "Your app's audience could not be read."],
+  ["unknown binding", "That app audience connection is not available."],
+  ["audience hook unavailable", "The app audience service is unavailable right now. Try again later."],
+  ["hook managed by platform admin", "Relay manages this app audience, so it can't be changed here."],
 ]);
 
 // Paused campaigns store a code on the row, not an Error, so the report maps it through the same COPY.
