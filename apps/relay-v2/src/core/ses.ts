@@ -31,6 +31,7 @@ export type SesSendRequest = {
   html: string | null;
   text: string;
   tags?: { ws: string; msg: string };
+  headers?: { name: string; value: string }[];
 };
 
 export type SesTransport = { send(req: SesSendRequest): Promise<{ sesMessageId: string }> };
@@ -50,7 +51,8 @@ function formatFrom(name: string | null, address: string): string {
 }
 
 export function sendEmailBody(req: SesSendRequest) {
-  if ([req.from, req.fromName, req.to, req.subject].some((v) => v && /[\r\n]/.test(v))) {
+  const headerText = (req.headers ?? []).flatMap((h) => [h.name, h.value]);
+  if ([req.from, req.fromName, req.to, req.subject, ...headerText].some((v) => v && /[\r\n]/.test(v))) {
     throw new Error("header contains a line break");
   }
   return {
@@ -72,6 +74,7 @@ export function sendEmailBody(req: SesSendRequest) {
           Text: { Data: req.text, Charset: "UTF-8" },
           ...(req.html !== null ? { Html: { Data: req.html, Charset: "UTF-8" } } : {}),
         },
+        ...(req.headers ? { Headers: req.headers.map((h) => ({ Name: h.name, Value: h.value })) } : {}),
       },
     },
   };

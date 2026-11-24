@@ -46,6 +46,7 @@ declare global {
       SYSTEM_SES_REGION?: string;
       SES_TRANSPORT?: "memory";
       WEBHOOK_SECRET_KEY?: string;
+      UNSUBSCRIBE_SECRET?: string;
     }
   }
 }

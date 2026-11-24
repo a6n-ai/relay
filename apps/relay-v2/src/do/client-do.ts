@@ -1,10 +1,13 @@
 import { DurableObject } from "cloudflare:workers";
 import { and, eq, gte, inArray, isNull, lt, ne, or, sql, type SQLWrapper } from "drizzle-orm";
 import { drizzle, type DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
+import { domainOf } from "../core/campaigns";
+import { fillUnsubscribe } from "../core/merge";
 import type { SesSendRequest } from "../core/ses";
 import { DEFAULT_MONTHLY_QUOTA, LIMITS_TTL_MS, loadWorkspaceLimits, SENDER_RETRY_MS, type WorkspaceLimits } from "../core/limits";
 import { sendInputSchema, type SendInput, type Stream, type SuppressionReason } from "../core/send-input";
 import type { SesEventJob } from "../core/ses-events";
+import { listUnsubscribeHeaders, unsubscribeToken, unsubscribeUrl } from "../core/unsubscribe";
 import { recordDoState } from "../core/workspace-profile";
 import { utcDay } from "../core/usage";
 import { decryptSecret, encryptSecret, KEY_ERROR, newWebhookSecret, signBody } from "../core/webhook-crypto";
@@ -150,7 +153,7 @@ export class ClientDO extends DurableObject<Env> {
     const sender = limits.senders[data.from];
     if (!sender) throw new Error("sender_not_verified");
     const id = newId("msg");
-    const preSuppressed = this.suppressed(data.to, data.stream);
+    const preSuppressed = this.suppressed(data.to, data.stream, data.from);
     // shortcut: an R2 object orphaned by a crash between the put and the insert is never swept, add a sweeper when storage cost shows up.
     const htmlKey = preSuppressed ? null : `ws/${workspaceId}/msg/${id}.html`;
     if (htmlKey) await this.env.MAIL.put(htmlKey, data.html);
@@ -175,7 +178,7 @@ export class ClientDO extends DurableObject<Env> {
           .get();
         if (limits.monthlyQuota > 0 && (used?.n ?? 0) >= limits.monthlyQuota) throw new Error("quota_exceeded");
         // Re-checked here: an unsubscribe can land during the R2 put above.
-        suppressed = this.suppressed(data.to, data.stream);
+        suppressed = this.suppressed(data.to, data.stream, data.from);
         this.db
           .insert(schema.message)
           .values({
@@ -602,6 +605,7 @@ export class ClientDO extends DurableObject<Env> {
     const queued = this.db
       .select({
         fromEmail: schema.message.fromEmail,
+        stream: schema.message.stream,
         status: schema.message.status,
         sesMessageId: schema.message.sesMessageId,
         claimedUntil: schema.message.claimedUntil,
@@ -619,6 +623,9 @@ export class ClientDO extends DurableObject<Env> {
     // Only a row about to be sent needs limits. Read before the transaction. With no snapshot and no D1, the job retries: queued mail is never failed for an outage.
     const limits = await this.limits(workspaceId, { forSender: queued.fromEmail ?? undefined });
     if (limits.fetchedAt === 0) return { kind: "busy", retryInSeconds: 60 };
+    // Minted before the claim transaction: a missing secret throws here, so attempts never moves.
+    const url = queued.stream === "marketing" ? unsubscribeUrl(this.env.BETTER_AUTH_URL, await unsubscribeToken(this.env.UNSUBSCRIBE_SECRET, workspaceId, messageId)) : null;
+    const fill = (s: string) => (url ? fillUnsubscribe(s, url) : s);
     const claimed = this.ctx.storage.transactionSync(():
       | SendClaim
       | { kind: "claimed"; attempt: number; row: typeof schema.message.$inferSelect; region: string }
@@ -633,7 +640,7 @@ export class ClientDO extends DurableObject<Env> {
         return { kind: "busy", retryInSeconds: Math.ceil((row.claimedUntil - now) / 1000) };
       }
       // Re-checked at claim time: a bounce or complaint can land while the row waits in the queue.
-      if (this.suppressed(row.toEmail ?? "", row.stream as Stream)) {
+      if (this.suppressed(row.toEmail ?? "", row.stream as Stream, row.fromEmail)) {
         this.db
           .update(schema.message)
           .set({ status: "suppressed", htmlKey: null, claimedUntil: null, updatedAt: now })
@@ -705,9 +712,10 @@ export class ClientDO extends DurableObject<Env> {
         fromName: row.fromName,
         to: row.toEmail ?? "",
         subject: row.subject ?? "",
-        html: object ? await object.text() : null,
-        text: row.text ?? "",
+        html: object ? fill(await object.text()) : null,
+        text: fill(row.text ?? ""),
         tags: { ws: workspaceId, msg: messageId },
+        ...(url ? { headers: listUnsubscribeHeaders(url) } : {}),
       },
     };
   }
@@ -849,6 +857,37 @@ export class ClientDO extends DurableObject<Env> {
     return this.suppressed(email.trim().toLowerCase(), stream);
   }
 
+  // Opts out of marketing mail from the message's sending domain only. The domain comes from the stored message, never the request.
+  async unsubscribe(workspaceId: string, messageId: string, now = Date.now()): Promise<void> {
+    await this.ready(workspaceId);
+    this.ctx.storage.transactionSync(() => {
+      const msg = this.db
+        .select({
+          toEmail: schema.message.toEmail,
+          fromEmail: schema.message.fromEmail,
+          campaignId: schema.message.campaignId,
+          unsubscribedAt: schema.message.unsubscribedAt,
+        })
+        .from(schema.message)
+        .where(eq(schema.message.id, messageId))
+        .get();
+      if (!msg?.toEmail || !msg.fromEmail) return;
+      this.db
+        .insert(schema.marketingOptout)
+        .values({ email: msg.toEmail, domain: domainOf(msg.fromEmail), createdAt: now })
+        .onConflictDoNothing()
+        .run();
+      if (msg.unsubscribedAt !== null) return;
+      this.db.update(schema.message).set({ unsubscribedAt: now }).where(eq(schema.message.id, messageId)).run();
+      if (msg.campaignId) {
+        this.db
+          .update(schema.campaign)
+          .set({ unsubscribed: sql`${schema.campaign.unsubscribed} + 1`, updatedAt: now })
+          .where(eq(schema.campaign.id, msg.campaignId))
+          .run();
+      }
+    });
+  }
   async listSuppressions(workspaceId: string, q: { prefix?: string; cursor?: string }): Promise<{ rows: SuppressionView[]; nextCursor: string | null }> {
     await this.ready(workspaceId);
     return listSuppressionRows(this.db, { prefix: q.prefix?.trim().toLowerCase(), cursor: q.cursor });
@@ -1020,7 +1059,19 @@ export class ClientDO extends DurableObject<Env> {
     else if (bound !== workspaceId) throw new Error("workspace mismatch");
   }
 
-  private suppressed(email: string, stream: Stream): boolean {
+  // Marketing mail is also refused when the recipient opted out of this sending domain. Other streams ignore the domain.
+  private suppressed(email: string, stream: Stream, from: string | null = null): boolean {
+    if (
+      stream === "marketing" &&
+      from !== null &&
+      this.db
+        .select({ email: schema.marketingOptout.email })
+        .from(schema.marketingOptout)
+        .where(and(eq(schema.marketingOptout.email, email), eq(schema.marketingOptout.domain, domainOf(from))))
+        .get() !== undefined
+    ) {
+      return true;
+    }
     return (
       this.db
         .select({ email: schema.suppression.email })

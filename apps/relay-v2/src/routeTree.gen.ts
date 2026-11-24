@@ -20,6 +20,7 @@ import { Route as AppMembersRouteImport } from './routes/_app/members'
 import { Route as AppMessagesRouteImport } from './routes/_app/messages'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as InviteIdRouteImport } from './routes/invite.$id'
+import { Route as UTokenRouteImport } from './routes/u.$token'
 import { Route as AppAppsAppIdRouteImport } from './routes/_app/apps_.$appId'
 import { Route as AppMessagesMessageIdRouteImport } from './routes/_app/messages_.$messageId'
 import { Route as AppMessagesFailuresRouteImport } from './routes/_app/messages_.failures'
@@ -90,6 +91,11 @@ const ApiHealthRoute = ApiHealthRouteImport.update({
 const InviteIdRoute = InviteIdRouteImport.update({
   id: '/invite/$id',
   path: '/invite/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const UTokenRoute = UTokenRouteImport.update({
+  id: '/u/$token',
+  path: '/u/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppAppsAppIdRoute = AppAppsAppIdRouteImport.update({
@@ -192,6 +198,7 @@ export interface FileRoutesByFullPath {
   '/messages': typeof AppMessagesRoute
   '/api/health': typeof ApiHealthRoute
   '/invite/$id': typeof InviteIdRoute
+  '/u/$token': typeof UTokenRoute
   '/apps/$appId': typeof AppAppsAppIdRoute
   '/messages/$messageId': typeof AppMessagesMessageIdRoute
   '/messages/failures': typeof AppMessagesFailuresRoute
@@ -220,6 +227,7 @@ export interface FileRoutesByTo {
   '/messages': typeof AppMessagesRoute
   '/api/health': typeof ApiHealthRoute
   '/invite/$id': typeof InviteIdRoute
+  '/u/$token': typeof UTokenRoute
   '/': typeof AppIndexRoute
   '/apps/$appId': typeof AppAppsAppIdRoute
   '/messages/$messageId': typeof AppMessagesMessageIdRoute
@@ -251,6 +259,7 @@ export interface FileRoutesById {
   '/_app/messages': typeof AppMessagesRoute
   '/api/health': typeof ApiHealthRoute
   '/invite/$id': typeof InviteIdRoute
+  '/u/$token': typeof UTokenRoute
   '/_app/': typeof AppIndexRoute
   '/_app/apps_/$appId': typeof AppAppsAppIdRoute
   '/_app/messages_/$messageId': typeof AppMessagesMessageIdRoute
@@ -283,6 +292,7 @@ export interface FileRouteTypes {
     | '/messages'
     | '/api/health'
     | '/invite/$id'
+    | '/u/$token'
     | '/apps/$appId'
     | '/messages/$messageId'
     | '/messages/failures'
@@ -311,6 +321,7 @@ export interface FileRouteTypes {
     | '/messages'
     | '/api/health'
     | '/invite/$id'
+    | '/u/$token'
     | '/'
     | '/apps/$appId'
     | '/messages/$messageId'
@@ -341,6 +352,7 @@ export interface FileRouteTypes {
     | '/_app/messages'
     | '/api/health'
     | '/invite/$id'
+    | '/u/$token'
     | '/_app/'
     | '/_app/apps_/$appId'
     | '/_app/messages_/$messageId'
@@ -367,6 +379,7 @@ export interface RootRouteChildren {
   SignInRoute: typeof SignInRoute
   ApiHealthRoute: typeof ApiHealthRoute
   InviteIdRoute: typeof InviteIdRoute
+  UTokenRoute: typeof UTokenRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiDevOtpRoute: typeof ApiDevOtpRoute
   ApiInternalDoSweepRoute: typeof ApiInternalDoSweepRoute
@@ -454,6 +467,13 @@ declare module '@tanstack/react-router' {
       path: '/invite/$id'
       fullPath: '/invite/$id'
       preLoaderRoute: typeof InviteIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/u/$token': {
+      id: '/u/$token'
+      path: '/u/$token'
+      fullPath: '/u/$token'
+      preLoaderRoute: typeof UTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_app/apps_/$appId': {
@@ -642,6 +662,7 @@ const rootRouteChildren: RootRouteChildren = {
   SignInRoute: SignInRoute,
   ApiHealthRoute: ApiHealthRoute,
   InviteIdRoute: InviteIdRoute,
+  UTokenRoute: UTokenRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiDevOtpRoute: ApiDevOtpRoute,
   ApiInternalDoSweepRoute: ApiInternalDoSweepRoute,

@@ -64,7 +64,7 @@ async function seedWorkspace(workspaceId: string, sesRegion = "us-east-1") {
 }
 
 // Sends through the DO; the SEND spy captures the job instead of letting the consumer run it.
-async function queue(stub: Awaited<ReturnType<typeof seedWorkspace>>, workspaceId: string, input = base) {
+async function queue(stub: Awaited<ReturnType<typeof seedWorkspace>>, workspaceId: string, input: Omit<typeof base, "stream"> & { stream: "transactional" | "marketing" } = base) {
   const { messageId } = await stub.send(workspaceId, input);
   return { workspaceId, messageId } satisfies SendJob;
 }
@@ -428,5 +428,40 @@ describe("handleSendBatch", () => {
     expect(memorySesTransport.sent).toHaveLength(1);
     vi.restoreAllMocks();
     expect(await stub.getMessage(ws, job.messageId)).toMatchObject({ status: "sent" });
+  });
+});
+
+describe("unsubscribe link and headers", () => {
+  it("adds the signed link and List-Unsubscribe headers to marketing mail only", async () => {
+    const ws = "wsp_send_unsub";
+    const stub = await seedWorkspace(ws);
+    const marketing = await queue(stub, ws, { ...base, stream: "marketing", html: '<a href="{{unsubscribe_url}}">Stop</a>', text: "Stop: {{unsubscribe_url}}" });
+    const transactional = await queue(stub, ws, { ...base, html: '<a href="{{unsubscribe_url}}">Stop</a>' });
+    await deliver(marketing, transactional);
+
+    const [mail, order] = memorySesTransport.sent;
+    expect(mail?.html).toContain(`/u/${ws}.${marketing.messageId}.`);
+    expect(mail?.text).not.toContain("{{unsubscribe_url}}");
+    expect(mail?.headers).toEqual([
+      { name: "List-Unsubscribe", value: expect.stringMatching(/^<http:\/\/localhost\/u\/.+>$/) },
+      { name: "List-Unsubscribe-Post", value: "List-Unsubscribe=One-Click" },
+    ]);
+    expect(order?.html).toContain("{{unsubscribe_url}}");
+    expect(order?.headers).toBeUndefined();
+  });
+
+  it("retries a marketing job without spending an attempt when the secret is missing", async () => {
+    const ws = "wsp_send_nokey";
+    const stub = await seedWorkspace(ws);
+    const job = await queue(stub, ws, { ...base, stream: "marketing" });
+    const saved = env.UNSUBSCRIBE_SECRET;
+    Object.assign(env, { UNSUBSCRIBE_SECRET: undefined });
+    try {
+      const { outcomes } = await deliver(job);
+      expect(outcomes).toEqual([{ kind: "retry", delaySeconds: 30 }]);
+    } finally {
+      Object.assign(env, { UNSUBSCRIBE_SECRET: saved });
+    }
+    expect(await runInDurableObject(stub, (_i, state) => state.storage.sql.exec("SELECT attempts FROM message WHERE id = ?", job.messageId).one())).toEqual({ attempts: 0 });
   });
 });
