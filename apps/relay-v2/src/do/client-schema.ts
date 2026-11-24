@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { check, index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { check, index, integer, primaryKey, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 import { newId } from "../lib/ids";
 
 // Mirrors CLIENT_MIGRATIONS in migrations.ts; change both together.
@@ -207,7 +207,6 @@ export const contactListMember = sqliteTable(
     lastName: text("last_name"),
     source: text("source").notNull(),
     consentAt: integer("consent_at").notNull(),
-    unsubscribedAt: integer("unsubscribed_at"),
     createdAt: integer("created_at").notNull(),
   },
   (t) => [
@@ -217,6 +216,16 @@ export const contactListMember = sqliteTable(
     index("contact_list_member_list_created").on(t.listId, t.createdAt, t.id),
     index("contact_list_member_email").on(t.email),
   ],
+);
+
+export const marketingOptout = sqliteTable(
+  "marketing_optout",
+  {
+    email: text("email").notNull(),
+    domain: text("domain").notNull(),
+    createdAt: integer("created_at").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.email, t.domain] })],
 );
 
 export const campaign = sqliteTable(

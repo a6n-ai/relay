@@ -169,13 +169,14 @@ CREATE INDEX contact_list_app_created ON contact_list (app_id, created_at, id);
 CREATE TABLE contact_list_member (
   id TEXT PRIMARY KEY NOT NULL, list_id TEXT NOT NULL, app_id TEXT NOT NULL, email TEXT NOT NULL,
   first_name TEXT, last_name TEXT, source TEXT NOT NULL, consent_at INTEGER NOT NULL,
-  unsubscribed_at INTEGER, created_at INTEGER NOT NULL,
+  created_at INTEGER NOT NULL,
   CONSTRAINT member_email_lower CHECK (email = lower(trim(email))),
   CONSTRAINT member_source CHECK (source IN ('manual', 'import'))
 );
 CREATE UNIQUE INDEX contact_list_member_list_email ON contact_list_member (list_id, email);
 CREATE INDEX contact_list_member_list_created ON contact_list_member (list_id, created_at, id);
 CREATE INDEX contact_list_member_email ON contact_list_member (email);
+CREATE TABLE marketing_optout (email TEXT NOT NULL, domain TEXT NOT NULL, created_at INTEGER NOT NULL, PRIMARY KEY (email, domain));
 CREATE TABLE campaign (
   id TEXT PRIMARY KEY NOT NULL, app_id TEXT NOT NULL, name TEXT NOT NULL,
   stream TEXT NOT NULL DEFAULT 'marketing', status TEXT NOT NULL DEFAULT 'draft',

@@ -17,6 +17,7 @@ import {
 const READ = { permission: { list: ["read"] } };
 const WRITE = { permission: { list: ["write"] }, write: true };
 
+// Null means the role cannot see lists or their members: the page shows a denied state instead of an error.
 export const fetchLists = createServerFn({ method: "GET" })
   .validator(validate(z.object({ appId: id })))
   .handler(async ({ data }) => {
@@ -29,7 +30,6 @@ export const fetchLists = createServerFn({ method: "GET" })
     }
   });
 
-// Null means the role cannot see lists: the page shows a denied state instead of an error.
 export const fetchListMembers = createServerFn({ method: "GET" })
   .validator(validate(z.object({ listId: id, cursor: z.string().max(254).optional() })))
   .handler(async ({ data }) => {

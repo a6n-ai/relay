@@ -345,6 +345,7 @@ export class ClientDO extends DurableObject<Env> {
     return this.ctx.storage.transactionSync(() => createListRow(this.ctx.storage.sql, appId, input));
   }
 
+  // shortcut: unpaged and counts every member in one join; paginate and count per page once lists grow past a screen.
   async listLists(workspaceId: string, appId?: string): Promise<ListView[]> {
     await this.ready(workspaceId);
     return listListRows(this.ctx.storage.sql, appId);
@@ -362,12 +363,12 @@ export class ClientDO extends DurableObject<Env> {
 
   async listMembers(workspaceId: string, listId: string, cursor?: string): Promise<{ rows: MemberView[]; nextCursor: string | null } | null> {
     await this.ready(workspaceId);
-    return listMemberRows(this.ctx.storage.sql, listId, cursor);
+    return listMemberRows(this.ctx.storage.sql, listId, (email) => this.suppressed(email, "marketing"), cursor);
   }
 
   async addMember(workspaceId: string, listId: string, input: MemberInput): Promise<"added" | "existing" | "suppressed" | "missing"> {
     await this.ready(workspaceId);
-    return this.ctx.storage.transactionSync(() => addMemberRow(this.ctx.storage.sql, listId, input));
+    return this.ctx.storage.transactionSync(() => addMemberRow(this.ctx.storage.sql, listId, input, (email) => this.suppressed(email, "marketing")));
   }
 
   async removeMember(workspaceId: string, listId: string, memberId: string): Promise<boolean> {

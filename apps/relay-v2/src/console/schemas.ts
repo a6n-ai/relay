@@ -27,5 +27,5 @@ export const memberInput = z.object({
   email: z.string().trim().toLowerCase().max(254).email(),
   firstName: z.string().trim().max(80).optional(),
   lastName: z.string().trim().max(80).optional(),
-  consentAt: z.number().int().positive().optional(),
+  consentAt: z.number().int().positive().refine((at) => at <= Date.now(), "consentAt is in the future").optional(),
 });

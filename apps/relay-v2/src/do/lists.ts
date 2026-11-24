@@ -2,7 +2,7 @@ import { newId } from "../lib/ids";
 import { decodeCursor, encodeCursor } from "./console-reads";
 
 export type ConsentSource = "purchase" | "express_optin" | "event_signup" | "import_other";
-export type MemberState = "subscribed" | "unsubscribed" | "suppressed";
+export type MemberState = "subscribed" | "suppressed";
 
 export type ListInput = { name: string; consentSource: ConsentSource; consentNote?: string };
 export type MemberInput = { email: string; firstName?: string; lastName?: string; consentAt?: number };
@@ -100,14 +100,12 @@ type MemberRow = {
   source: "manual" | "import";
   consentAt: number;
   createdAt: number;
-  unsubscribedAt: number | null;
-  suppressedEmail: string | null;
 };
 
-// Unsubscribe wins over suppression. The join uses the marketing rule: a transactional-only suppression leaves the member subscribed.
 export function listMemberRows(
   sql: SqlStorage,
   listId: string,
+  isSuppressed: (email: string) => boolean,
   cursor?: string,
 ): { rows: MemberView[]; nextCursor: string | null } | null {
   const after = cursor === undefined ? null : decodeCursor(cursor);
@@ -118,10 +116,8 @@ export function listMemberRows(
   const fetched = sql
     .exec<MemberRow>(
       `SELECT m.id, m.email, m.first_name AS firstName, m.last_name AS lastName, m.source,
-              m.consent_at AS consentAt, m.created_at AS createdAt, m.unsubscribed_at AS unsubscribedAt,
-              s.email AS suppressedEmail
+              m.consent_at AS consentAt, m.created_at AS createdAt
        FROM contact_list_member m
-       LEFT JOIN suppression s ON s.email = m.email AND (s.stream IS NULL OR s.stream = 'marketing')
        WHERE m.list_id = ? ${keyset}
        ORDER BY m.created_at DESC, m.id DESC LIMIT ?`,
       listId,
@@ -138,22 +134,26 @@ export function listMemberRows(
     lastName: r.lastName,
     source: r.source,
     consentAt: r.consentAt,
-    state: r.unsubscribedAt !== null ? "unsubscribed" : r.suppressedEmail !== null ? "suppressed" : "subscribed",
+    state: isSuppressed(r.email) ? "suppressed" : "subscribed",
     createdAt: r.createdAt,
   }));
   return { rows, nextCursor: fetched.length > PAGE && last ? encodeCursor(last.createdAt, last.id) : null };
 }
 
-export function addMemberRow(sql: SqlStorage, listId: string, input: MemberInput): "added" | "existing" | "suppressed" | "missing" {
+export function addMemberRow(
+  sql: SqlStorage,
+  listId: string,
+  input: MemberInput,
+  isSuppressed: (email: string) => boolean,
+): "added" | "existing" | "suppressed" | "missing" {
   const list = sql.exec<{ app_id: string }>("SELECT app_id FROM contact_list WHERE id = ?", listId).toArray()[0];
   if (!list) return "missing";
   const email = input.email.trim().toLowerCase();
-  if (sql.exec("SELECT email FROM suppression WHERE email = ? AND (stream IS NULL OR stream = 'marketing')", email).toArray().length > 0)
-    return "suppressed";
+  if (isSuppressed(email)) return "suppressed";
   if (sql.exec("SELECT id FROM contact_list_member WHERE list_id = ? AND email = ?", listId, email).toArray().length > 0) return "existing";
   const now = Date.now();
   sql.exec(
-    "INSERT INTO contact_list_member (id, list_id, app_id, email, first_name, last_name, source, consent_at, unsubscribed_at, created_at) VALUES (?, ?, ?, ?, ?, ?, 'manual', ?, NULL, ?)",
+    "INSERT INTO contact_list_member (id, list_id, app_id, email, first_name, last_name, source, consent_at, created_at) VALUES (?, ?, ?, ?, ?, ?, 'manual', ?, ?)",
     newId("clm"),
     listId,
     list.app_id,
