@@ -41,6 +41,8 @@ export const campaignPatch = z.object({
   html: z.string().max(500_000).optional(),
   text: z.string().max(500_000).optional(),
   listIds: z.array(id).max(50).optional(),
+  audienceKind: z.enum(["lists", "hook"]).optional(),
+  audienceQuery: z.string().max(1000).nullable().optional(),
 });
 export const templateInput = z.object({
   name: z.string().trim().min(1).max(120),

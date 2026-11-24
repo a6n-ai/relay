@@ -124,7 +124,9 @@ export async function setAudienceHookFor(
 export async function getAudienceHookFor(env: Env, actor: ConsoleActor, appId: string) {
   if (!allows(actor.roles, AUDIENCE_READ)) throw new ConsoleError(403, "forbidden");
   await getApp(env, actor, appId);
-  return clientFor(env, actor.workspaceId).getAudienceHook(actor.workspaceId, appId);
+  const hook = await clientFor(env, actor.workspaceId).getAudienceHook(actor.workspaceId, appId);
+  // Explicit fields: a spread of the RPC result would carry its Symbol.dispose member into the serialized loader data.
+  return hook && { kind: hook.kind, url: hook.url, binding: hook.binding, enabled: hook.enabled };
 }
 
 export async function deleteAudienceHookFor(env: Env, actor: ConsoleActor, appId: string): Promise<void> {

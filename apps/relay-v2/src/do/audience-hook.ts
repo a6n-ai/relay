@@ -78,11 +78,11 @@ export function deleteAudienceHookRow(sql: SqlStorage, appId: string): boolean {
   return true;
 }
 
-// Only the campaign's `c` is the hook cursor; the `p` page counter stays in the Workflow's own step names.
-export function hookCursorOf(raw: string | null): string | null {
-  if (!raw) return null;
-  const parsed = JSON.parse(raw) as { c?: unknown };
-  return typeof parsed.c === "string" ? parsed.c : null;
+// campaign.cursor for a hook run: `p` pages ingested so far, `c` the hook's next-page cursor.
+export function parseHookCursor(raw: string | null): { p: number; c: string | null } {
+  if (!raw) return { p: 0, c: null };
+  const parsed = JSON.parse(raw) as { p?: unknown; c?: unknown };
+  return { p: typeof parsed.p === "number" ? parsed.p : 0, c: typeof parsed.c === "string" ? parsed.c : null };
 }
 
 export async function audienceCallFor(
@@ -107,7 +107,7 @@ export async function audienceCallFor(
     appId: campaign.appId,
     campaignId,
     audience: campaign.audienceQuery,
-    cursor: hookCursorOf(campaign.cursor),
+    cursor: parseHookCursor(campaign.cursor).c,
     limit: HOOK_PAGE_LIMIT,
   };
   if (hook.kind === "binding") {

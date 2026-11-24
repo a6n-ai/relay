@@ -283,3 +283,147 @@ describe("campaign run", () => {
     expect(step.sleepUntil).toHaveBeenCalledWith("wait", new Date(at));
   });
 });
+
+const DAY = 86_400_000;
+const at0 = 1_700_000_000_000;
+const people = (from: number, to: number, extra: Record<string, unknown> = {}) =>
+  Array.from({ length: to - from }, (_, i) => ({ email: `u${from + i}@x.com`, firstName: "Ann", consent: "express" as const, consentAt: at0, ...extra }));
+
+function bindHook(resolve: (req: { cursor: string | null }) => unknown) {
+  const resolveAudience = vi.fn(async (req: { cursor: string | null }) => resolve(req));
+  (env as unknown as { TIFFIN_AUDIENCE?: unknown }).TIFFIN_AUDIENCE = { resolveAudience };
+  return resolveAudience;
+}
+
+async function hookReady(stub: Stub, ws: string, subject = BODY.subject) {
+  await stub.setAudienceHook(ws, "app_1", { kind: "binding", binding: "TIFFIN_AUDIENCE" });
+  const c = (await stub.createCampaign(ws, "app_1", "H")) as { id: string };
+  await stub.updateCampaign(ws, c.id, { ...BODY, subject, fromEmail: "relay@a6n.ai", audienceKind: "hook", audienceQuery: "all" });
+  const scheduled = await stub.scheduleCampaign(ws, c.id, 0, "1 Main St");
+  if (typeof scheduled !== "object" || !("runSeq" in scheduled)) throw new Error("not scheduled");
+  return { id: c.id, runSeq: scheduled.runSeq };
+}
+
+const messageCount = (stub: Stub, ws: string, id: string) =>
+  rowsOf<{ n: number }>(stub, "SELECT COUNT(*) AS n FROM message WHERE campaign_id = ?", id).then((r) => r[0].n);
+
+describe("hook-audience campaign runs", () => {
+  afterEach(() => {
+    delete (env as unknown as { TIFFIN_AUDIENCE?: unknown }).TIFFIN_AUDIENCE;
+  });
+
+  it("pages 1,230 recipients in 500, 500 and 230, with no sendBatch over 100", async () => {
+    const { ws, stub } = await setup("hookpages");
+    const { id, runSeq } = await hookReady(stub, ws);
+    bindHook((req) =>
+      req.cursor === null
+        ? { recipients: people(0, 500), nextCursor: "a", invalid: 0 }
+        : req.cursor === "a"
+          ? { recipients: people(500, 1000), nextCursor: "b" }
+          : { recipients: people(1000, 1230), nextCursor: null },
+    );
+    const { asStep, step } = fakeStep();
+    expect(await runCampaign(env, { workspaceId: ws, campaignId: id, runSeq, at: 0 }, asStep)).toBe("done");
+    expect(step.do.mock.calls.map((c) => c[0])).toEqual(["start", "page-0", "ingest-0", "page-1", "ingest-1", "page-2", "ingest-2"]);
+    expect((step.sleep.mock.calls as unknown[][]).map((c) => c[0])).toEqual(["pace-0", "pace-1"]);
+    expect(Math.max(...(sendBatch.mock.calls as unknown[][]).map((c) => (c[0] as unknown[]).length))).toBeLessThanOrEqual(100);
+    expect(await messageCount(stub, ws, id)).toBe(1230);
+    expect(await stub.getCampaign(ws, id)).toMatchObject({ status: "sent", recipients: 1230 });
+  }, 60_000);
+
+  it("keeps one message for an email on two pages, and the counters match the rows", async () => {
+    const { ws, stub } = await setup("hookdupe");
+    const { id, runSeq } = await hookReady(stub, ws);
+    bindHook((req) => (req.cursor === null ? { recipients: people(0, 3), nextCursor: "a" } : { recipients: people(0, 2), nextCursor: null }));
+    expect(await runCampaign(env, { workspaceId: ws, campaignId: id, runSeq, at: 0 }, fakeStep().asStep)).toBe("done");
+    expect(await messageCount(stub, ws, id)).toBe(3);
+    const drift = await stub.recountCampaign(ws, id);
+    expect(drift?.before).toEqual(drift?.after);
+  });
+
+  it("ingesting a page twice adds no rows and keeps the cursor on the next page", async () => {
+    const { ws, stub } = await setup("hookreplay");
+    const { id, runSeq } = await hookReady(stub, ws);
+    await stub.startCampaign(ws, id, runSeq);
+    await stub.campaignHookPage(ws, id, runSeq, 0, { recipients: people(0, 2), nextCursor: "a", invalid: 0 });
+    await stub.campaignHookPage(ws, id, runSeq, 1, { recipients: people(2, 4), nextCursor: "b", invalid: 0 });
+    const before = await messageCount(stub, ws, id);
+    await stub.campaignHookPage(ws, id, runSeq, 1, { recipients: people(2, 4), nextCursor: "b", invalid: 0 });
+    expect(await messageCount(stub, ws, id)).toBe(before);
+    const [c] = await rowsOf<{ cursor: string }>(stub, "SELECT cursor FROM campaign WHERE id = ?", id);
+    expect(JSON.parse(c.cursor)).toEqual({ p: 2, c: "b" });
+  });
+
+  it("a pause between pages resumes from the same cursor with no duplicates", async () => {
+    const { ws, stub } = await setup("hookresume");
+    const { id, runSeq } = await hookReady(stub, ws);
+    const resolve = bindHook((req) => (req.cursor === null ? { recipients: people(0, 2), nextCursor: "a" } : { recipients: people(2, 4), nextCursor: null }));
+    await stub.startCampaign(ws, id, runSeq);
+    await stub.campaignHookPage(ws, id, runSeq, 0, { recipients: people(0, 2), nextCursor: "a", invalid: 0 });
+    await stub.pauseCampaign(ws, id, null, runSeq);
+    const resumed = await stub.resumeCampaign(ws, id);
+    if (typeof resumed === "string") throw new Error("not resumed");
+    expect(await runCampaign(env, { workspaceId: ws, campaignId: id, runSeq: resumed.runSeq, at: 0 }, fakeStep().asStep)).toBe("done");
+    expect(resolve.mock.calls.map((c) => c[0].cursor)).toContain("a");
+    expect(await messageCount(stub, ws, id)).toBe(4);
+  });
+
+  it("suppresses implied consent older than 730 days and queues one at 729", async () => {
+    const { ws, stub } = await setup("hooklapse");
+    const { id, runSeq } = await hookReady(stub, ws);
+    const now = Date.now();
+    await stub.startCampaign(ws, id, runSeq);
+    await stub.campaignHookPage(
+      ws,
+      id,
+      runSeq,
+      0,
+      {
+        recipients: [
+          { email: "old@x.com", consent: "implied", consentAt: now - 731 * DAY },
+          { email: "new@x.com", consent: "implied", consentAt: now - 729 * DAY },
+        ],
+        nextCursor: null,
+        invalid: 0,
+      },
+      now,
+    );
+    const rows = await rowsOf<{ to_email: string; status: string; error: string | null }>(
+      stub,
+      "SELECT to_email, status, error FROM message WHERE campaign_id = ? ORDER BY to_email",
+      id,
+    );
+    expect(rows).toEqual([
+      { to_email: "new@x.com", status: "queued", error: null },
+      { to_email: "old@x.com", status: "suppressed", error: "consent_lapsed" },
+    ]);
+  });
+
+  it("suppresses a bounced recipient", async () => {
+    const { ws, stub } = await setup("hookbounce");
+    const { id, runSeq } = await hookReady(stub, ws);
+    await stub.addSuppression(ws, "b@x.com", "bounce");
+    await stub.startCampaign(ws, id, runSeq);
+    await stub.campaignHookPage(ws, id, runSeq, 0, { recipients: people(0, 1, { email: "b@x.com" }), nextCursor: null, invalid: 0 });
+    const [row] = await rowsOf<{ status: string }>(stub, "SELECT status FROM message WHERE campaign_id = ?", id);
+    expect(row.status).toBe("suppressed");
+  });
+
+  it("renders {{data.plan}} per recipient in the subject", async () => {
+    const { ws, stub } = await setup("hookdata");
+    const { id, runSeq } = await hookReady(stub, ws, "Plan {{data.plan}}");
+    await stub.startCampaign(ws, id, runSeq);
+    await stub.campaignHookPage(ws, id, runSeq, 0, { recipients: [{ email: "p@x.com", consent: "express", consentAt: at0, data: { plan: "pro" } }], nextCursor: null, invalid: 0 });
+    const [row] = await rowsOf<{ subject: string }>(stub, "SELECT subject FROM message WHERE campaign_id = ?", id);
+    expect(row.subject).toBe("Plan pro");
+  });
+
+  it("pauses with audience_failed when the hook returns a bad page", async () => {
+    const { ws, stub } = await setup("hookbad");
+    const { id, runSeq } = await hookReady(stub, ws);
+    bindHook(() => ({ nope: true }));
+    expect(await runCampaign(env, { workspaceId: ws, campaignId: id, runSeq, at: 0 }, fakeStep().asStep)).toBe("stopped");
+    const [c] = await rowsOf<{ status: string; error: string }>(stub, "SELECT status, error FROM campaign WHERE id = ?", id);
+    expect(c).toEqual({ status: "paused", error: "audience_failed" });
+  });
+});

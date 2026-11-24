@@ -213,3 +213,14 @@ describe("campaign stats console", () => {
     expect(await campaignStatsFor(env, member, campaign.id)).toMatchObject({ total: 0, queued: 0 });
   });
 });
+
+describe("hook-audience campaigns console", () => {
+  it("refuses to schedule a hook campaign with no hook, and {{data.*}} in a lists campaign", async () => {
+    const { owner } = await workspaceFor("cmp-hook@example.com", "Cmp Hook Co");
+    const { id: appId } = await addApp(env, owner, { name: "Web", slug: "web" });
+    const campaign = await createCampaignFor(env, owner, appId, "Hooked");
+    await expect(updateCampaignFor(env, owner, campaign.id, { subject: "Hi {{data.plan}}" })).rejects.toMatchObject({ status: 400 });
+    await updateCampaignFor(env, owner, campaign.id, { audienceKind: "hook", audienceQuery: "all", subject: "Hi {{data.plan}}" });
+    await expect(scheduleCampaignFor(env, owner, campaign.id, Date.now())).rejects.toThrow("audience_hook_missing");
+  });
+});

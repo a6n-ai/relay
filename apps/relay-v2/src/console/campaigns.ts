@@ -102,8 +102,13 @@ export async function campaignStatsFor(env: Env, actor: ConsoleActor, id: string
 export async function createCampaignFor(env: Env, actor: ConsoleActor, appId: string, name: string, templateId?: string): Promise<CampaignView> {
   requireWrite(actor);
   await getApp(env, actor, appId);
-  const campaign = await clientFor(env, actor.workspaceId).createCampaign(actor.workspaceId, appId, name, templateId);
-  if (campaign === "missing") throw new ConsoleError(404, "not found");
+  let campaign: CampaignView;
+  try {
+    campaign = await clientFor(env, actor.workspaceId).createCampaign(actor.workspaceId, appId, name, templateId);
+  } catch (err) {
+    if (err instanceof Error && err.message === "template not found") throw new ConsoleError(404, "not found");
+    throw err;
+  }
   await writeAudit(env, {
     action: "campaign.create",
     actorUserId: actor.userId,
@@ -118,8 +123,11 @@ export async function createCampaignFor(env: Env, actor: ConsoleActor, appId: st
 export async function updateCampaignFor(env: Env, actor: ConsoleActor, id: string, patch: CampaignPatch): Promise<CampaignView> {
   requireWrite(actor);
   const current = await campaignOr404(env, actor, id);
+  if (patch.audienceQuery && patch.audienceQuery.length > 1000) throw new ConsoleError(400, "invalid input");
+  // {{data.*}} is only valid where a hook supplies the data.
+  const data = (patch.audienceKind ?? current.audienceKind) === "hook";
   for (const body of [patch.subject, patch.html, patch.text]) {
-    if (body !== undefined && unknownMergeFields(body).length > 0) throw new ConsoleError(400, "unknown merge field");
+    if (body !== undefined && unknownMergeFields(body, { data }).length > 0) throw new ConsoleError(400, "unknown merge field");
   }
   if (patch.fromEmail && !(await verifiedSenders(env, actor.workspaceId, current.appId)).includes(patch.fromEmail)) {
     throw new ConsoleError(400, "sender not verified");
@@ -140,9 +148,11 @@ export async function deleteCampaignFor(env: Env, actor: ConsoleActor, id: strin
   await writeAudit(env, { action: "campaign.delete", actorUserId: actor.userId, workspaceId: actor.workspaceId, target: id });
 }
 
-export async function previewAudienceFor(env: Env, actor: ConsoleActor, id: string): Promise<AudiencePreview> {
+// A hook audience is resolved at send time, so there is no count to preview.
+export async function previewAudienceFor(env: Env, actor: ConsoleActor, id: string): Promise<AudiencePreview | null> {
   requireRead(actor);
   const campaign = await campaignOr404(env, actor, id);
+  if (campaign.audienceKind === "hook") return null;
   return clientFor(env, actor.workspaceId).previewAudience(actor.workspaceId, campaign.appId, campaign.listIds, campaign.fromEmail);
 }
 
@@ -204,7 +214,7 @@ export async function scheduleCampaignFor(env: Env, actor: ConsoleActor, id: str
   const outcome = await client.scheduleCampaign(actor.workspaceId, id, at, profile.physicalAddress ?? null);
   if (outcome === "missing") throw new ConsoleError(404, "not found");
   if (outcome === "not_draft") throw new ConsoleError(409, "campaign not editable");
-  if ("problems" in outcome) throw new ConsoleError(409, "campaign not ready");
+  if ("problems" in outcome) throw new ConsoleError(409, `campaign not ready: ${outcome.problems.join(", ")}`);
   try {
     await env.CAMPAIGNS.create({
       id: `${id}-${outcome.runSeq}`,

@@ -15,6 +15,7 @@ export type CampaignView = {
   text: string;
   listIds: string[];
   audienceKind: "lists" | "hook";
+  audienceQuery: string | null;
   scheduledAt: number | null;
   runSeq: number;
   startedAt: number | null;
@@ -25,11 +26,11 @@ export type CampaignView = {
   updatedAt: number;
 };
 export type CampaignSummary = Omit<CampaignView, "html" | "text">;
-export type CampaignPatch = Partial<Pick<CampaignView, "name" | "fromEmail" | "subject" | "html" | "text" | "listIds">>;
+export type CampaignPatch = Partial<Pick<CampaignView, "name" | "fromEmail" | "subject" | "html" | "text" | "listIds" | "audienceKind" | "audienceQuery">>;
 export type AudiencePreview = { members: number; suppressed: number; lapsed: number; sendable: number };
 
 const PAGE = 50;
-const SUMMARY_COLUMNS = `id, app_id AS appId, name, status, from_email AS fromEmail, subject, list_ids AS listIds, audience_kind AS audienceKind,
+const SUMMARY_COLUMNS = `id, app_id AS appId, name, status, from_email AS fromEmail, subject, list_ids AS listIds, audience_kind AS audienceKind, audience_query AS audienceQuery,
   scheduled_at AS scheduledAt, run_seq AS runSeq, started_at AS startedAt, finished_at AS finishedAt, recipients, error,
   created_at AS createdAt, updated_at AS updatedAt`;
 const VIEW_COLUMNS = `${SUMMARY_COLUMNS}, html, text`;
@@ -158,21 +159,25 @@ export function updateCampaignRow(sql: SqlStorage, id: string, patch: CampaignPa
   const current = getCampaignRow(sql, id);
   if (!current) return "missing";
   if (current.status !== "draft") return "not_draft";
-  const listIds = patch.listIds ? [...new Set(patch.listIds)] : current.listIds;
-  if (patch.listIds) {
+  const audienceKind = patch.audienceKind ?? current.audienceKind;
+  // A hook audience names no lists, so switching to it clears them.
+  const listIds = audienceKind === "hook" ? [] : patch.listIds ? [...new Set(patch.listIds)] : current.listIds;
+  if (patch.listIds && audienceKind === "lists") {
     const owned = sql
       .exec<{ n: number }>("SELECT COUNT(*) AS n FROM contact_list WHERE app_id = ? AND id IN (SELECT value FROM json_each(?))", current.appId, JSON.stringify(listIds))
       .one().n;
     if (owned !== listIds.length) return "bad_list";
   }
   sql.exec(
-    "UPDATE campaign SET name = ?, from_email = ?, subject = ?, html = ?, text = ?, list_ids = ?, updated_at = ? WHERE id = ?",
+    "UPDATE campaign SET name = ?, from_email = ?, subject = ?, html = ?, text = ?, list_ids = ?, audience_kind = ?, audience_query = ?, updated_at = ? WHERE id = ?",
     patch.name ?? current.name,
     patch.fromEmail !== undefined ? patch.fromEmail : current.fromEmail,
     patch.subject ?? current.subject,
     patch.html ?? current.html,
     patch.text ?? current.text,
     JSON.stringify(listIds),
+    audienceKind,
+    patch.audienceQuery !== undefined ? patch.audienceQuery : current.audienceQuery,
     Date.now(),
     id,
   );

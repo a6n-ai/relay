@@ -22,7 +22,7 @@ const recipient = (email: string, extra: Record<string, unknown> = {}) => ({
   consentAt: 1_700_000_000_000,
   ...extra,
 });
-const httpsCall = (): HookCall => ({
+const httpsCall = (): Extract<HookCall, { kind: "https" }> => ({
   kind: "https",
   url: "https://hooks.example.com/audience",
   body: "{}",
