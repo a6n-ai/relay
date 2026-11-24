@@ -56,6 +56,14 @@
         "max_retries": 10,
         "dead_letter_queue": "relay-ses-events-dlq",
       },
+      // relay-inbound attaches only at Phase 7 cutover, after the old apps/relay Worker's consumer is removed.
+      {
+        "queue": "relay-inbound",
+        "max_batch_size": 10,
+        "max_batch_timeout": 5,
+        "max_retries": 10,
+        "dead_letter_queue": "relay-inbound-dlq",
+      },
     ],
   },
   "ratelimits": [{ "name": "API_LIMIT", "namespace_id": "1001", "simple": { "limit": 600, "period": 60 } }],

@@ -12,19 +12,28 @@ export async function bumpUsage(
   env: Env,
   workspaceId: string,
   day: string,
-  delta: { sent?: number; delivered?: number; bounced?: number },
+  delta: { sent?: number; delivered?: number; bounced?: number; inbound?: number },
 ): Promise<void> {
   const now = new Date();
   try {
     await coreDb(env)
       .insert(usageDaily)
-      .values({ workspaceId, day, sent: delta.sent ?? 0, delivered: delta.delivered ?? 0, bounced: delta.bounced ?? 0, updatedAt: now })
+      .values({
+        workspaceId,
+        day,
+        sent: delta.sent ?? 0,
+        delivered: delta.delivered ?? 0,
+        bounced: delta.bounced ?? 0,
+        inbound: delta.inbound ?? 0,
+        updatedAt: now,
+      })
       .onConflictDoUpdate({
         target: [usageDaily.workspaceId, usageDaily.day],
         set: {
           sent: sql`${usageDaily.sent} + excluded.sent`,
           delivered: sql`${usageDaily.delivered} + excluded.delivered`,
           bounced: sql`${usageDaily.bounced} + excluded.bounced`,
+          inbound: sql`${usageDaily.inbound} + excluded.inbound`,
           updatedAt: now,
         },
       });
