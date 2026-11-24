@@ -3,8 +3,10 @@ import { eq } from "drizzle-orm";
 import { beforeAll, describe, expect, it } from "vitest";
 import { requireActor } from "../src/console/actor";
 import { addApp } from "../src/console/apps";
+import { membersCsvHeader } from "../src/core/csv";
 import {
   addMemberFor,
+  exportMembersFor,
   createListFor,
   deleteListFor,
   importCsvFor,
@@ -121,5 +123,36 @@ describe("lists console", () => {
       status: 400,
       message: "missing email column",
     });
+  });
+});
+
+describe("list export", () => {
+  it("streams a CSV with a header, one line per member, and formula cells neutralised", async () => {
+    const { owner, workspaceId } = await workspaceFor("lst-export@example.com", "Lst Export Co");
+    const { id: appId } = await addApp(env, owner, { name: "Web", slug: "web" });
+    const list = await createListFor(env, owner, appId, { name: "VIP", consentSource: "express_optin" });
+    const csv = ["email,first_name", "cmd@x.com,=cmd", ...Array.from({ length: 2049 }, (_, i) => `m${String(i).padStart(4, "0")}@x.com,Ann`)];
+    await importCsvFor(env, owner, { listId: list.id, csv: csv.join("\n") });
+    const res = await exportMembersFor(env, owner, list.id);
+    expect(res.headers.get("content-type")).toBe("text/csv; charset=utf-8");
+    expect(res.headers.get("cache-control")).toBe("no-store");
+    const lines = (await res.text()).split("\n").filter(Boolean);
+    expect(lines).toHaveLength(2051);
+    expect(lines[0]).toBe(membersCsvHeader);
+    expect(lines.filter((l) => l.startsWith("cmd@x.com,'=cmd,"))).toHaveLength(1);
+    expect(await securityDb(env).select().from(securityAudit).where(eq(securityAudit.action, "list.export"))).not.toHaveLength(0);
+  });
+
+  it("refuses a member with 403 and another workspace's list with 404", async () => {
+    const a = await workspaceFor("lst-export-a@example.com", "Lst Export A Co");
+    const b = await workspaceFor("lst-export-b@example.com", "Lst Export B Co");
+    const { id: appA } = await addApp(env, a.owner, { name: "Web", slug: "web" });
+    const { id: appB } = await addApp(env, b.owner, { name: "Web", slug: "web" });
+    const own = await createListFor(env, a.owner, appA, { name: "Own", consentSource: "purchase" });
+    const foreign = await createListFor(env, b.owner, appB, { name: "Foreign", consentSource: "purchase" });
+    await expect(exportMembersFor(env, a.owner, foreign.id)).rejects.toMatchObject({ status: 404 });
+    const cookie = await addMember(a.workspaceId, "lst-export-member@example.com", "member");
+    const member = await requireActor(env, headersFor(cookie));
+    await expect(exportMembersFor(env, member, own.id)).rejects.toMatchObject({ status: 403 });
   });
 });

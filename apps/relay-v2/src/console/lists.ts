@@ -1,4 +1,4 @@
-import { parseContactsCsv } from "../core/csv";
+import { csvCell, membersCsvHeader, parseContactsCsv } from "../core/csv";
 import { clientFor } from "../core/messages";
 import type { ImportResult, ListInput, ListView, MemberInput, MemberView } from "../do/lists";
 import { decodeCursor } from "../do/console-reads";
@@ -124,4 +124,70 @@ export async function importCsvFor(
     data: counts,
   });
   return counts;
+}
+
+const memberCsvLine = (m: MemberView): string =>
+  [
+    m.email,
+    m.firstName ?? "",
+    m.lastName ?? "",
+    m.source,
+    new Date(m.consentAt).toISOString(),
+    new Date(m.createdAt).toISOString(),
+    m.state,
+    m.optedOut.join(";"),
+  ]
+    .map(csvCell)
+    .join(",") + "\n";
+
+// The first page is read before the stream starts, so a missing list is a 404 and not an empty file.
+export async function exportMembersFor(env: Env, actor: ConsoleActor, listId: string): Promise<Response> {
+  requireImport(actor);
+  const client = clientFor(env, actor.workspaceId);
+  let pending: { rows: MemberView[]; next: string | null } | null = await client.exportMembers(actor.workspaceId, listId, null);
+  if (!pending) throw new ConsoleError(404, "not found");
+  const encoder = new TextEncoder();
+  let headerSent = false;
+  let rowsOut = 0;
+  const stream = new ReadableStream<Uint8Array>({
+    async pull(controller) {
+      if (!headerSent) {
+        headerSent = true;
+        controller.enqueue(encoder.encode(`${membersCsvHeader}\n`));
+        return;
+      }
+      if (pending === null) {
+        await writeAudit(env, {
+          action: "list.export",
+          actorUserId: actor.userId,
+          workspaceId: actor.workspaceId,
+          target: listId,
+          data: { rows: rowsOut },
+        });
+        controller.close();
+        return;
+      }
+      const page: { rows: MemberView[]; next: string | null } = pending;
+      rowsOut += page.rows.length;
+      // Always enqueue, even an empty page, so the stream keeps pulling.
+      controller.enqueue(encoder.encode(page.rows.map(memberCsvLine).join("")));
+      if (page.next === null) {
+        pending = null;
+        return;
+      }
+      const following = await client.exportMembers(actor.workspaceId, listId, page.next);
+      if (!following) {
+        controller.error(new ConsoleError(404, "not found"));
+        return;
+      }
+      pending = following;
+    },
+  });
+  return new Response(stream, {
+    headers: {
+      "content-type": "text/csv; charset=utf-8",
+      "content-disposition": `attachment; filename="${listId}.csv"`,
+      "cache-control": "no-store",
+    },
+  });
 }

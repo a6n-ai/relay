@@ -64,6 +64,7 @@ import {
   deleteListRow,
   listListRows,
   listMemberRows,
+  exportMemberRows,
   IMPORT_CHUNK,
   importMemberRow,
   removeMemberRow,
@@ -1572,6 +1573,11 @@ export class ClientDO extends DurableObject<Env> {
       { send: (input) => this.send(workspaceId, input), postalAddress: limits.postalAddress },
       now,
     );
+  }
+
+  async exportMembers(workspaceId: string, listId: string, afterEmail: string | null): Promise<{ rows: MemberView[]; next: string | null } | null> {
+    await this.ready(workspaceId);
+    return exportMemberRows(this.ctx.storage.sql, listId, (email) => this.suppressed(email, "marketing"), afterEmail);
   }
 
   // Lowers the alarm only: the sweeper and automation runs share one alarm, and neither may push the other later.

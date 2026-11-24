@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseContactsCsv } from "../src/core/csv";
+import { csvCell, parseContactsCsv } from "../src/core/csv";
 
 describe("parseContactsCsv", () => {
   it("handles quoted fields, doubled quotes, dedupe and invalid rows", () => {

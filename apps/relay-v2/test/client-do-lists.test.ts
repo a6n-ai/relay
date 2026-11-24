@@ -136,3 +136,34 @@ describe("contact lists in the workspace DO", () => {
     expect(await stubFor(ws).importMembers(ws, "ctl_missing00000", [{ email: "a@x.com" }])).toBeNull();
   });
 });
+
+describe("member brand opt-outs and export pages", () => {
+  it("lists the brand domains a member opted out of, sorted, and none for the rest", async () => {
+    const ws = "ws_list_optout";
+    const stub = stubFor(ws);
+    const list = await stub.createList(ws, "app_1", { name: "L", consentSource: "purchase" });
+    await stub.addMember(ws, list.id, { email: "o@x.com" });
+    await stub.addMember(ws, list.id, { email: "p@x.com" });
+    await runInDurableObject(stub, (_instance, state) => {
+      state.storage.sql.exec("INSERT INTO marketing_optout (email, domain, created_at) VALUES ('o@x.com', 'other.ca', 1), ('o@x.com', 'brand.com', 1)");
+    });
+    const optedOut = Object.fromEntries((await stub.listMembers(ws, list.id))!.rows.map((r) => [r.email, r.optedOut]));
+    expect(optedOut).toEqual({ "o@x.com": ["brand.com", "other.ca"], "p@x.com": [] });
+  });
+
+  it("pages the export 1,000 at a time by email, and returns null for a missing list", async () => {
+    const ws = "ws_list_export";
+    const stub = stubFor(ws);
+    const list = await stub.createList(ws, "app_1", { name: "L", consentSource: "purchase" });
+    await stub.importMembers(ws, list.id, Array.from({ length: 2050 }, (_, i) => ({ email: `e${String(i).padStart(4, "0")}@x.com` })));
+    const first = await stub.exportMembers(ws, list.id, null);
+    expect(first!.rows).toHaveLength(1000);
+    expect(first!.next).toBe(first!.rows[999]!.email);
+    const second = await stub.exportMembers(ws, list.id, first!.next);
+    expect(second!.rows).toHaveLength(1000);
+    const third = await stub.exportMembers(ws, list.id, second!.next);
+    expect(third!.rows).toHaveLength(50);
+    expect(third!.next).toBeNull();
+    expect(await stub.exportMembers(ws, "ctl_missing", null)).toBeNull();
+  });
+});
