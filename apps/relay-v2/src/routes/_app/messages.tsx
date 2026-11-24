@@ -4,6 +4,7 @@ import { Label } from "@foundry/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@foundry/ui/select";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
+import { AppSelect } from "../../components/app-select";
 import { DeniedState, deniedReason } from "../../components/denied-state";
 import { formatWhen } from "../../components/event-timeline";
 import { MessagesTabs } from "../../components/messages-tabs";
@@ -101,19 +102,7 @@ function Filters({ search, apps }: { search: MessagesSearch; apps: { id: string;
     <form onSubmit={apply} className="grid gap-3 sm:grid-cols-[1fr_1fr_2fr_auto] sm:items-end">
       <div className="grid gap-1.5">
         <Label htmlFor="msg-app">App</Label>
-        <Select value={app} onValueChange={setApp}>
-          <SelectTrigger id="msg-app" className="w-full">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All apps</SelectItem>
-            {apps.map((a) => (
-              <SelectItem key={a.id} value={a.id}>
-                {a.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <AppSelect apps={apps} value={app} onValueChange={setApp} id="msg-app" allLabel="All apps" />
       </div>
       <div className="grid gap-1.5">
         <Label htmlFor="msg-status">Status</Label>

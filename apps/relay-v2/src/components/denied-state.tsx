@@ -17,8 +17,8 @@ const COPY: Record<DeniedReason, { title: string; body: string }> = {
     body: "Ask a workspace owner or admin if you need access to this page.",
   },
   "not-found": {
-    title: "Message not found",
-    body: "This message doesn't exist or isn't shared with you.",
+    title: "Not found",
+    body: "It doesn't exist or isn't shared with you.",
   },
 };
 
@@ -31,11 +31,11 @@ export function deniedReason(shell: Shell | undefined, message?: string): Denied
   return "not-allowed";
 }
 
-export function DeniedState({ reason }: { reason: DeniedReason }) {
+export function DeniedState({ reason, label }: { reason: DeniedReason; label?: string }) {
   const { title, body } = COPY[reason];
   return (
     <div role="status" className="mx-auto grid max-w-sm gap-2 p-6 text-center">
-      <h2 className="text-lg font-medium">{title}</h2>
+      <h2 className="text-lg font-medium">{label ?? title}</h2>
       <p className="text-sm text-muted-foreground">{body}</p>
     </div>
   );

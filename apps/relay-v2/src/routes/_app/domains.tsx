@@ -8,6 +8,7 @@ import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
 import { ConfirmDialog } from "../../components/confirm-dialog";
 import { CreateDialog } from "../../components/create-dialog";
+import { AppSelect } from "../../components/app-select";
 import { DeniedState, deniedReason } from "../../components/denied-state";
 import { DnsRecords } from "../../components/dns-records";
 import { errorText } from "../../components/error-text";
@@ -259,18 +260,13 @@ function NewAddressForm({
       <Label htmlFor="address-email">Address</Label>
       <Input id="address-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
       <Label htmlFor="address-app">App</Label>
-      <Select value={appId} onValueChange={setAppId}>
-        <SelectTrigger id="address-app" className="w-full">
-          <SelectValue placeholder="Choose an app" />
-        </SelectTrigger>
-        <SelectContent>
-          {apps.map((a) => (
-            <SelectItem key={a.id} value={a.id}>
-              {a.name}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      <AppSelect
+        apps={apps}
+        value={appId}
+        onValueChange={setAppId}
+        id="address-app"
+        placeholder="Choose an app"
+      />
       <Label htmlFor="address-kind">Use</Label>
       <Select value={kind} onValueChange={(v) => setKind(v as (typeof KINDS)[number]["value"])}>
         <SelectTrigger id="address-kind" className="w-full">

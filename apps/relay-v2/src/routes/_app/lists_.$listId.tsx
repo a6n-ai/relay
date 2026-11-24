@@ -40,7 +40,8 @@ export const Route = createFileRoute("/_app/lists_/$listId")({
     const lists = deps.appId ? await fetchLists({ data: { appId: deps.appId } }) : [];
     const members = await fetchListMembers({ data: { listId: params.listId, cursor: deps.cursor } });
     if (!lists || !members) return null;
-    return { list: lists.find((l) => l.id === params.listId), members };
+    if ("missing" in members) return { missing: true as const };
+    return { list: "missing" in lists ? undefined : lists.find((l) => l.id === params.listId), members };
   },
   component: ListDetailPage,
 });
@@ -62,11 +63,11 @@ function ListDetailPage() {
       </>
     );
   }
-  if (!page.list) {
+  if ("missing" in page || !page.list) {
     return (
       <>
         <ViewHeader title="List" />
-        <DeniedState reason="not-found" />
+        <DeniedState reason="not-found" label="List not found" />
       </>
     );
   }

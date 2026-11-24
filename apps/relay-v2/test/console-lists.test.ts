@@ -28,10 +28,21 @@ async function workspaceFor(email: string, name: string) {
   const workspaceId = await createWorkspace(cookie, name);
   await setActive(cookie, workspaceId);
   const owner = await requireActor(env, headersFor(cookie));
-  return { workspaceId, owner };
+  return { workspaceId, owner, cookie };
 }
 
 describe("lists console", () => {
+  it("renders the not-found state, not an error, for a list in another workspace", async () => {
+    const a = await workspaceFor("lst-ssr-a@example.com", "Lst SSR A Co");
+    const b = await workspaceFor("lst-ssr-b@example.com", "Lst SSR B Co");
+    const { id: appA } = await addApp(env, a.owner, { name: "Web", slug: "web" });
+    const { id: appB } = await addApp(env, b.owner, { name: "Web", slug: "web" });
+    const foreign = await createListFor(env, b.owner, appB, { name: "VIP", consentSource: "purchase" });
+    const res = await SELF.fetch(`${ORIGIN}/lists/${foreign.id}?appId=${appA}`, { headers: { cookie: a.cookie } });
+    expect(res.status).toBe(200);
+    expect(await res.text()).toContain("List not found");
+  });
+
   it("lets a member read lists and refuses a create with 403", async () => {
     const { owner, workspaceId } = await workspaceFor("lst-role@example.com", "Lst Role Co");
     const { id: appId } = await addApp(env, owner, { name: "Web", slug: "web" });

@@ -5,6 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "@foundry/ui/toast";
 import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
+import { AppSelect } from "../../components/app-select";
 import { CONSENT_LABEL } from "../../components/consent-labels";
 import { CreateDialog } from "../../components/create-dialog";
 import { DeniedState, deniedReason } from "../../components/denied-state";
@@ -30,6 +31,7 @@ export const Route = createFileRoute("/_app/lists")({
     const appId = deps.appId ?? apps[0]?.id;
     const lists = appId ? await fetchLists({ data: { appId } }) : [];
     if (!lists) return null;
+    if ("missing" in lists) return { missing: true as const };
     return { apps, appId, lists };
   },
   component: ListsPage,
@@ -50,6 +52,14 @@ function ListsPage() {
       </>
     );
   }
+  if ("missing" in page) {
+    return (
+      <>
+        <ViewHeader title="Lists" />
+        <DeniedState reason="not-found" label="App not found" />
+      </>
+    );
+  }
   const { apps, appId, lists } = page;
   return (
     <>
@@ -65,18 +75,12 @@ function ListsPage() {
       />
       <div className="grid gap-4 p-4">
         {apps.length > 0 ? (
-          <Select value={appId ?? ""} onValueChange={(value) => navigate({ search: { appId: value } })}>
-            <SelectTrigger aria-label="App" className="w-full sm:max-w-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {apps.map((a) => (
-                <SelectItem key={a.id} value={a.id}>
-                  {a.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <AppSelect
+            apps={apps}
+            value={appId ?? ""}
+            onValueChange={(value) => navigate({ search: { appId: value } })}
+            className="w-full sm:max-w-xs"
+          />
         ) : null}
         <ResourceTable
           columns={[
@@ -142,18 +146,7 @@ function NewListForm({
   return (
     <form onSubmit={submit} className="grid gap-3">
       <Label htmlFor="list-app">App</Label>
-      <Select value={app} onValueChange={setApp}>
-        <SelectTrigger id="list-app" className="w-full">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          {apps.map((a) => (
-            <SelectItem key={a.id} value={a.id}>
-              {a.name}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      <AppSelect apps={apps} value={app} onValueChange={setApp} id="list-app" />
       <Label htmlFor="list-name">Name</Label>
       <Input id="list-name" required value={name} onChange={(e) => setName(e.target.value)} />
       <Label htmlFor="list-consent">Consent</Label>

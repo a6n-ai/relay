@@ -10,7 +10,7 @@ const COPY = new Map<string, string>([
   ["cross-origin write", "This request was blocked. Reload the page and try again."],
   ["unauthorized", "Your session has ended. Sign in again."],
   ["invalid input", "Some details are missing or not valid. Check the form and try again."],
-  ["invalid cursor", "This page link is out of date. Open Messages again."],
+  ["invalid cursor", "This page link has expired. Reload the page."],
   ["invalid slug", "Use lowercase letters, numbers and hyphens for the slug."],
   ["slug taken", "That slug is already used in this workspace."],
   ["invalid domain", "Enter a domain like example.com."],

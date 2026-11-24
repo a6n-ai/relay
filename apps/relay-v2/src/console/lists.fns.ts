@@ -20,6 +20,7 @@ const WRITE = { permission: { list: ["write"] }, write: true };
 const IMPORT = { permission: { list: ["import"] }, write: true };
 
 // Null means the role cannot see lists or their members: the page shows a denied state instead of an error.
+// { missing: true } means the app or list does not exist or is not visible to this reader.
 export const fetchLists = createServerFn({ method: "GET" })
   .validator(validate(z.object({ appId: id })))
   .handler(async ({ data }) => {
@@ -28,6 +29,7 @@ export const fetchLists = createServerFn({ method: "GET" })
       return await listListsFor(env, actor, data.appId);
     } catch (err) {
       if (err instanceof ConsoleError && err.status === 403) return null;
+      if (err instanceof ConsoleError && err.status === 404) return { missing: true as const };
       toResponseError(err);
     }
   });
@@ -40,6 +42,7 @@ export const fetchListMembers = createServerFn({ method: "GET" })
       return await listMembersFor(env, actor, data.listId, data.cursor);
     } catch (err) {
       if (err instanceof ConsoleError && err.status === 403) return null;
+      if (err instanceof ConsoleError && err.status === 404) return { missing: true as const };
       toResponseError(err);
     }
   });
