@@ -15,8 +15,11 @@ import type { Env, InboundJob } from "../env";
 import { newId } from "../lib/ids";
 import {
   attachmentViews,
+  getInboundFailureRow,
+  listInboundFailureRows,
   listMessageRows,
   listSuppressionRows,
+  type FailureView,
   type SuppressionView,
   readMessageDetail,
   readMessageFile,
@@ -242,6 +245,37 @@ export class ClientDO extends DurableObject<Env> {
   async recordInboundFailure(workspaceId: string, job: InboundJob, error: string): Promise<void> {
     await this.ready(workspaceId);
     writeInboundFailure(this.inboundDeps(), workspaceId, job, error);
+  }
+  async listInboundFailures(workspaceId: string, inbound: "all" | string[]): Promise<FailureView[]> {
+    await this.ready(workspaceId);
+    return listInboundFailureRows(this.db, inbound);
+  }
+  // Server only: the console never returns rawKey or authResults.
+  async getInboundFailure(workspaceId: string, id: string) {
+    await this.ready(workspaceId);
+    return getInboundFailureRow(this.db, id);
+  }
+  // The raw letter is removed only when no message still points at it.
+  async deleteInboundFailure(workspaceId: string, id: string): Promise<boolean> {
+    await this.ready(workspaceId);
+    const removed = this.ctx.storage.transactionSync(() => {
+      const row = this.db
+        .select({ rawKey: schema.inboundFailure.rawKey })
+        .from(schema.inboundFailure)
+        .where(eq(schema.inboundFailure.id, id))
+        .get();
+      if (!row) return null;
+      this.db.delete(schema.inboundFailure).where(eq(schema.inboundFailure.id, id)).run();
+      const shared = this.db
+        .select({ id: schema.message.id })
+        .from(schema.message)
+        .where(eq(schema.message.rawKey, row.rawKey))
+        .get();
+      return { rawKey: row.rawKey, shared: shared !== undefined };
+    });
+    if (!removed) return false;
+    if (!removed.shared && removed.rawKey.startsWith(`ws/${workspaceId}/raw/`)) await this.env.MAIL.delete(removed.rawKey);
+    return true;
   }
 
   private inboundDeps(): InboundDeps {

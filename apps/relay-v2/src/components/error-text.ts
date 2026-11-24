@@ -29,6 +29,9 @@ const COPY = new Map<string, string>([
   ["self-serve workspaces have one app", "This workspace already has its app."],
   ["team not found", "That team no longer exists."],
   ["recipient opted out", "This address opted out of mail, so it can't be removed here."],
+  ["cannot replay", "This letter is missing its app or address, so it can't be retried. You can still delete it."],
+  ["address removed", "The address this letter came to was removed, so it can't be retried. You can still delete it."],
+  ["raw letter missing", "The original letter is no longer stored, so it can't be retried. You can still delete it."],
 ]);
 
 // The server's fixed copy is mapped to plain words; anything unknown (a network failure, a 500) gets the fallback, never the raw text.

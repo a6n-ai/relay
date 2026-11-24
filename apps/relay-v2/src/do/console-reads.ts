@@ -100,6 +100,63 @@ export function listSuppressionRows(
   return { rows: page, nextCursor };
 }
 
+export type FailureView = {
+  id: string;
+  appId: string | null;
+  addressId: string | null;
+  envelopeFrom: string | null;
+  envelopeTo: string;
+  error: string;
+  attempts: number;
+  receivedAt: number;
+  updatedAt: number;
+};
+
+// shortcut: 100 newest only, add a cursor if a workspace keeps more failures
+export function listInboundFailureRows(db: Db, inbound: "all" | string[]): FailureView[] {
+  const f = schema.inboundFailure;
+  return db
+    .select({
+      id: f.id,
+      appId: f.appId,
+      addressId: f.addressId,
+      envelopeFrom: f.envelopeFrom,
+      envelopeTo: f.envelopeTo,
+      error: f.error,
+      attempts: f.attempts,
+      receivedAt: f.receivedAt,
+      updatedAt: f.updatedAt,
+    })
+    .from(f)
+    .where(inbound === "all" ? undefined : sql`${f.addressId} IN (SELECT value FROM json_each(${JSON.stringify(inbound)}))`)
+    .orderBy(desc(f.receivedAt))
+    .limit(100)
+    .all();
+}
+
+export function getInboundFailureRow(db: Db, id: string): (FailureView & { rawKey: string; authResults: string | null }) | null {
+  const f = schema.inboundFailure;
+  const [row] = db
+    .select({
+      id: f.id,
+      rawKey: f.rawKey,
+      appId: f.appId,
+      addressId: f.addressId,
+      envelopeFrom: f.envelopeFrom,
+      envelopeTo: f.envelopeTo,
+      authResults: f.authResults,
+      error: f.error,
+      attempts: f.attempts,
+      receivedAt: f.receivedAt,
+      updatedAt: f.updatedAt,
+    })
+    .from(f)
+    .where(eq(f.id, id))
+    .limit(1)
+    .all();
+  return row ?? null;
+}
+
 export function listMessageRows(
   db: Db,
   q: MessageQuery,

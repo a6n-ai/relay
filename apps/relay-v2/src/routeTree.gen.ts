@@ -22,6 +22,7 @@ import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as InviteIdRouteImport } from './routes/invite.$id'
 import { Route as AppAppsAppIdRouteImport } from './routes/_app/apps_.$appId'
 import { Route as AppMessagesMessageIdRouteImport } from './routes/_app/messages_.$messageId'
+import { Route as AppMessagesFailuresRouteImport } from './routes/_app/messages_.failures'
 import { Route as AppMessagesSuppressionsRouteImport } from './routes/_app/messages_.suppressions'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiDevOtpRouteImport } from './routes/api/dev/otp'
@@ -97,6 +98,11 @@ const AppAppsAppIdRoute = AppAppsAppIdRouteImport.update({
 const AppMessagesMessageIdRoute = AppMessagesMessageIdRouteImport.update({
   id: '/messages_/$messageId',
   path: '/messages/$messageId',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppMessagesFailuresRoute = AppMessagesFailuresRouteImport.update({
+  id: '/messages_/failures',
+  path: '/messages/failures',
   getParentRoute: () => AppRoute,
 } as any)
 const AppMessagesSuppressionsRoute = AppMessagesSuppressionsRouteImport.update({
@@ -175,6 +181,7 @@ export interface FileRoutesByFullPath {
   '/invite/$id': typeof InviteIdRoute
   '/apps/$appId': typeof AppAppsAppIdRoute
   '/messages/$messageId': typeof AppMessagesMessageIdRoute
+  '/messages/failures': typeof AppMessagesFailuresRoute
   '/messages/suppressions': typeof AppMessagesSuppressionsRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/dev/otp': typeof ApiDevOtpRoute
@@ -201,6 +208,7 @@ export interface FileRoutesByTo {
   '/': typeof AppIndexRoute
   '/apps/$appId': typeof AppAppsAppIdRoute
   '/messages/$messageId': typeof AppMessagesMessageIdRoute
+  '/messages/failures': typeof AppMessagesFailuresRoute
   '/messages/suppressions': typeof AppMessagesSuppressionsRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/dev/otp': typeof ApiDevOtpRoute
@@ -229,6 +237,7 @@ export interface FileRoutesById {
   '/_app/': typeof AppIndexRoute
   '/_app/apps_/$appId': typeof AppAppsAppIdRoute
   '/_app/messages_/$messageId': typeof AppMessagesMessageIdRoute
+  '/_app/messages_/failures': typeof AppMessagesFailuresRoute
   '/_app/messages_/suppressions': typeof AppMessagesSuppressionsRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/dev/otp': typeof ApiDevOtpRoute
@@ -257,6 +266,7 @@ export interface FileRouteTypes {
     | '/invite/$id'
     | '/apps/$appId'
     | '/messages/$messageId'
+    | '/messages/failures'
     | '/messages/suppressions'
     | '/api/auth/$'
     | '/api/dev/otp'
@@ -283,6 +293,7 @@ export interface FileRouteTypes {
     | '/'
     | '/apps/$appId'
     | '/messages/$messageId'
+    | '/messages/failures'
     | '/messages/suppressions'
     | '/api/auth/$'
     | '/api/dev/otp'
@@ -310,6 +321,7 @@ export interface FileRouteTypes {
     | '/_app/'
     | '/_app/apps_/$appId'
     | '/_app/messages_/$messageId'
+    | '/_app/messages_/failures'
     | '/_app/messages_/suppressions'
     | '/api/auth/$'
     | '/api/dev/otp'
@@ -433,6 +445,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppMessagesMessageIdRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/messages_/failures': {
+      id: '/_app/messages_/failures'
+      path: '/messages/failures'
+      fullPath: '/messages/failures'
+      preLoaderRoute: typeof AppMessagesFailuresRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/messages_/suppressions': {
       id: '/_app/messages_/suppressions'
       path: '/messages/suppressions'
@@ -529,6 +548,7 @@ interface AppRouteChildren {
   AppIndexRoute: typeof AppIndexRoute
   AppAppsAppIdRoute: typeof AppAppsAppIdRoute
   AppMessagesMessageIdRoute: typeof AppMessagesMessageIdRoute
+  AppMessagesFailuresRoute: typeof AppMessagesFailuresRoute
   AppMessagesSuppressionsRoute: typeof AppMessagesSuppressionsRoute
   AppDomainsAddressesAddressIdRoute: typeof AppDomainsAddressesAddressIdRoute
 }
@@ -542,6 +562,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppIndexRoute: AppIndexRoute,
   AppAppsAppIdRoute: AppAppsAppIdRoute,
   AppMessagesMessageIdRoute: AppMessagesMessageIdRoute,
+  AppMessagesFailuresRoute: AppMessagesFailuresRoute,
   AppMessagesSuppressionsRoute: AppMessagesSuppressionsRoute,
   AppDomainsAddressesAddressIdRoute: AppDomainsAddressesAddressIdRoute,
 }
