@@ -30,6 +30,7 @@ declare global {
       SYSTEM_FROM_NAME?: string;
       SYSTEM_SES_REGION?: string;
       SES_TRANSPORT?: "memory";
+      WEBHOOK_SECRET_KEY?: string;
     }
   }
 }
