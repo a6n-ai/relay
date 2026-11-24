@@ -1,12 +1,13 @@
-import { asc, count, eq, gte, sql } from "drizzle-orm";
+import { and, asc, count, eq, gte, sql } from "drizzle-orm";
 import { INBOUND_GRACE_MS } from "../core/addresses";
+import { clientFor } from "../core/messages";
 import { refreshWorkspaceLimits } from "../core/limits";
 import { utcDay } from "../core/usage";
 import { ensureWorkspaceProfile, SELF_SERVE_QUOTA } from "../core/workspace-profile";
 import { coreDb } from "../db/core/client";
 import { usageDaily, workspaceProfile } from "../db/core/schema";
 import { securityDb } from "../db/security/client";
-import { member, workspace } from "../db/security/schema";
+import { app, member, workspace } from "../db/security/schema";
 import type { Env } from "../env";
 import { writeAudit } from "../lib/auth/audit";
 import { ConsoleError } from "./actor";
@@ -132,4 +133,22 @@ export async function setWorkspaceQuota(env: Env, admin: PlatformAdmin, workspac
     .where(eq(workspaceProfile.workspaceId, workspaceId));
   await writeAudit(env, { action: "workspace.quota", actorUserId: admin.userId, workspaceId, target: workspaceId, data: { quota } });
   await refreshWorkspaceLimits(env, workspaceId);
+}
+
+// Super admin only: a binding names a Worker on this deployment, which a tenant must never choose.
+export async function setAudienceBindingFor(
+  env: Env,
+  admin: PlatformAdmin,
+  workspaceId: string,
+  appId: string,
+  binding: string,
+): Promise<{ secret: string | null }> {
+  const [row] = await securityDb(env)
+    .select({ id: app.id })
+    .from(app)
+    .where(and(eq(app.id, appId), eq(app.workspaceId, workspaceId)));
+  if (!row) throw new ConsoleError(404, "not found");
+  const result = await clientFor(env, workspaceId).setAudienceHook(workspaceId, appId, { kind: "binding", binding });
+  await writeAudit(env, { action: "app.audience_hook.set", actorUserId: admin.userId, workspaceId, target: appId, data: { appId } });
+  return result;
 }

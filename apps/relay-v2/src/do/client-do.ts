@@ -87,6 +87,15 @@ import {
   type TemplateView,
 } from "./templates";
 import { deleteWebhookRow, failDeliveryRow, listWebhookRows, toWebhookView, updateWebhookRow, type WebhookRow } from "./webhooks";
+import {
+  audienceCallFor,
+  audienceHookView,
+  deleteAudienceHookRow,
+  setAudienceHookRow,
+  type AudienceHookInput,
+  type AudienceHookView,
+} from "./audience-hook";
+import type { HookCall } from "../core/audience-hook";
 
 export type AttachmentView = {
   id: string;
@@ -1521,5 +1530,21 @@ export class ClientDO extends DurableObject<Env> {
       text: renderMerge(tpl.text, values, "text"),
       hasUnsubscribe: hasMergeToken(tpl.html, "unsubscribe_url") || hasMergeToken(tpl.text, "unsubscribe_url"),
     };
+  }
+  async setAudienceHook(workspaceId: string, appId: string, input: AudienceHookInput): Promise<{ secret: string | null }> {
+    await this.ready(workspaceId);
+    return setAudienceHookRow(this.env, this.ctx.storage, workspaceId, appId, input);
+  }
+  async getAudienceHook(workspaceId: string, appId: string): Promise<AudienceHookView | null> {
+    await this.ready(workspaceId);
+    return audienceHookView(this.ctx.storage.sql, appId);
+  }
+  async deleteAudienceHook(workspaceId: string, appId: string): Promise<boolean> {
+    await this.ready(workspaceId);
+    return this.ctx.storage.transactionSync(() => deleteAudienceHookRow(this.ctx.storage.sql, appId));
+  }
+  async audienceCall(workspaceId: string, campaignId: string, runSeq: number): Promise<HookCall | "stale" | "no_hook"> {
+    await this.ready(workspaceId);
+    return audienceCallFor(this.env, this.ctx.storage, workspaceId, campaignId, runSeq);
   }
 }

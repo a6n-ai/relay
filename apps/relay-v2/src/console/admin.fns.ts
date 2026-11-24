@@ -3,10 +3,12 @@ import { getRequestHeaders } from "@tanstack/react-start/server";
 import { env } from "cloudflare:workers";
 import { z } from "zod";
 import { requirePlatformAdmin, toResponseError } from "./actor";
+import { AUDIENCE_BINDINGS } from "../core/audience-hook";
 import {
   listWorkspaces,
   MAX_INVITES_PER_DAY,
   MAX_MONTHLY_QUOTA,
+  setAudienceBindingFor,
   setWorkspaceInviteCap,
   setWorkspaceQuota,
   setWorkspaceStatus,
@@ -50,6 +52,17 @@ export const setWorkspaceInviteCapFn = createServerFn({ method: "POST" })
     try {
       const admin = await requirePlatformAdmin(env, getRequestHeaders(), { write: true });
       await setWorkspaceInviteCap(env, admin, data.workspaceId, data.cap);
+    } catch (err) {
+      toResponseError(err);
+    }
+  });
+
+export const setAudienceBindingFn = createServerFn({ method: "POST" })
+  .validator(validate(z.object({ workspaceId: z.string().min(1), appId: z.string().min(1), binding: z.enum(AUDIENCE_BINDINGS) })))
+  .handler(async ({ data }) => {
+    try {
+      const admin = await requirePlatformAdmin(env, getRequestHeaders(), { write: true });
+      return await setAudienceBindingFor(env, admin, data.workspaceId, data.appId, data.binding);
     } catch (err) {
       toResponseError(err);
     }

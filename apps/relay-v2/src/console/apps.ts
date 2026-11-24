@@ -1,10 +1,15 @@
 import { and, asc, count, desc, eq, sql } from "drizzle-orm";
 import { createApiKey, revokeApiKey } from "../core/api-keys";
+import { hookInputSchema } from "../core/audience-hook";
 import { createApp } from "../core/apps";
+import { clientFor } from "../core/messages";
+import { KEY_ERROR } from "../core/webhook-crypto";
 import { getWorkspaceProfile, SELF_SERVE_APP_CAP } from "../core/workspace-profile";
 import { securityDb } from "../db/security/client";
 import { apiKey, app } from "../db/security/schema";
 import type { Env } from "../env";
+import { writeAudit } from "../lib/auth/audit";
+import { allows } from "../lib/auth/permissions";
 import { ConsoleError, type ConsoleActor, uniqueViolation } from "./actor";
 
 const SLUG = /^[a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])?$/;
@@ -89,4 +94,42 @@ export async function createKey(
 
 export async function revokeKey(env: Env, actor: ConsoleActor, id: string): Promise<void> {
   if (!(await revokeApiKey(env, actor.workspaceId, id))) throw new ConsoleError(404, "not found");
+}
+
+const AUDIENCE_READ = { tenant: ["read"] };
+const AUDIENCE_WRITE = { tenant: ["write"] };
+
+// Https only: a binding names a Worker on this deployment, so only a super admin sets one (admin.ts).
+export async function setAudienceHookFor(
+  env: Env,
+  actor: ConsoleActor,
+  appId: string,
+  input: { url: string; secret?: string; enabled?: boolean },
+): Promise<{ secret: string | null }> {
+  if (!allows(actor.roles, AUDIENCE_WRITE)) throw new ConsoleError(403, "forbidden");
+  await getApp(env, actor, appId);
+  const parsed = hookInputSchema.safeParse(input);
+  if (!parsed.success) throw new ConsoleError(400, "invalid input");
+  let result: { secret: string | null };
+  try {
+    result = await clientFor(env, actor.workspaceId).setAudienceHook(actor.workspaceId, appId, { kind: "https", ...parsed.data });
+  } catch (err) {
+    if (err instanceof Error && err.message === KEY_ERROR) throw new ConsoleError(503, "audience hook unavailable");
+    throw err;
+  }
+  await writeAudit(env, { action: "app.audience_hook.set", actorUserId: actor.userId, workspaceId: actor.workspaceId, target: appId, data: { appId } });
+  return result;
+}
+
+export async function getAudienceHookFor(env: Env, actor: ConsoleActor, appId: string) {
+  if (!allows(actor.roles, AUDIENCE_READ)) throw new ConsoleError(403, "forbidden");
+  await getApp(env, actor, appId);
+  return clientFor(env, actor.workspaceId).getAudienceHook(actor.workspaceId, appId);
+}
+
+export async function deleteAudienceHookFor(env: Env, actor: ConsoleActor, appId: string): Promise<void> {
+  if (!allows(actor.roles, AUDIENCE_WRITE)) throw new ConsoleError(403, "forbidden");
+  await getApp(env, actor, appId);
+  if (!(await clientFor(env, actor.workspaceId).deleteAudienceHook(actor.workspaceId, appId))) throw new ConsoleError(404, "not found");
+  await writeAudit(env, { action: "app.audience_hook.delete", actorUserId: actor.userId, workspaceId: actor.workspaceId, target: appId, data: { appId } });
 }

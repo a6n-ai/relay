@@ -1,7 +1,7 @@
 import { env, SELF } from "cloudflare:test";
 import { beforeAll, describe, expect, it } from "vitest";
 import { requireActor, uniqueViolation } from "../src/console/actor";
-import { addApp, createKey, getApp, listApps, listKeys, revokeKey } from "../src/console/apps";
+import { addApp, createKey, getApp, listApps, listKeys, revokeKey, setAudienceHookFor } from "../src/console/apps";
 import { createApp } from "../src/core/apps";
 import { resolveApiKey } from "../src/core/api-keys";
 import { addMember, cookieFor, createWorkspace, ORIGIN, setActive } from "./console-helpers";
@@ -122,5 +122,19 @@ describe("console app slug index", { timeout: 60_000 }, () => {
     await createApp(env, { workspaceId, name: "Web", slug: "web" });
     const err = await createApp(env, { workspaceId, name: "Again", slug: "web" }).catch((e: unknown) => e);
     expect(uniqueViolation(err, "app.workspace_id, app.slug")).toBe(true);
+  });
+});
+
+describe("app audience hook", () => {
+  it("refuses a private or non-https hook URL with 400, and a member with 403", async () => {
+    const { cookie, workspaceId } = await workspaceFor("hook-url@example.com", "Hook Url Co");
+    const owner = await requireActor(env, headersFor(cookie));
+    const { id: appId } = await addApp(env, owner, { name: "Web", slug: "web" });
+    for (const url of ["https://169.254.169.254/x", "https://[::ffff:10.0.0.1]/", "http://x.com"]) {
+      await expect(setAudienceHookFor(env, owner, appId, { url })).rejects.toMatchObject({ status: 400 });
+    }
+    const memberCookie = await addMember(workspaceId, "hook-member@example.com", "member");
+    const member = await requireActor(env, headersFor(memberCookie));
+    await expect(setAudienceHookFor(env, member, appId, { url: "https://hooks.example.com/a" })).rejects.toMatchObject({ status: 403 });
   });
 });

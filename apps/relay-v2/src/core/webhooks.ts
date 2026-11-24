@@ -86,7 +86,7 @@ export function isPublicWebhookUrl(value: string): boolean {
   }
 }
 
-const httpsUrl = z.string().max(2048).refine(isPublicWebhookUrl, "url must be a public https URL without credentials");
+export const httpsUrl = z.string().max(2048).refine(isPublicWebhookUrl, "url must be a public https URL without credentials");
 
 export const webhookInputSchema = z.object({
   url: httpsUrl,

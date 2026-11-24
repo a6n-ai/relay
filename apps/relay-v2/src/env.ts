@@ -1,3 +1,4 @@
+import type { AudienceRequest } from "./core/audience-hook";
 import type { CampaignRunParams } from "./core/campaign-workflow";
 import type { SesEventJob } from "./core/ses-events";
 import type { ClientDO } from "./do/client-do";
@@ -49,6 +50,8 @@ declare global {
       SES_TRANSPORT?: "memory";
       WEBHOOK_SECRET_KEY?: string;
       UNSUBSCRIBE_SECRET?: string;
+      // Bound in Phase 6; optional so 5b deploys without the target Worker.
+      TIFFIN_AUDIENCE?: { resolveAudience(request: AudienceRequest): Promise<unknown> };
     }
   }
 }

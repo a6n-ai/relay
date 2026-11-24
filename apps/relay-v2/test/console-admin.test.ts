@@ -2,7 +2,7 @@ import { env, SELF } from "cloudflare:test";
 import { and, eq } from "drizzle-orm";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { requireActor, requirePlatformAdmin } from "../src/console/actor";
-import { listWorkspaces, setWorkspaceInviteCap, setWorkspaceQuota, setWorkspaceStatus } from "../src/console/admin";
+import { listWorkspaces, setAudienceBindingFor, setWorkspaceInviteCap, setWorkspaceQuota, setWorkspaceStatus } from "../src/console/admin";
 import { addApp, createKey } from "../src/console/apps";
 import { addAddress, addDomain, checkDomain } from "../src/console/domains";
 import { inviteMember } from "../src/console/members";
@@ -198,5 +198,17 @@ describe("console platform admin invite cap", { timeout: 60_000 }, () => {
     for (const cap of [0, 10_001, 1.5]) {
       await expect(setWorkspaceInviteCap(env, OPS, a.workspaceId, cap)).rejects.toMatchObject({ status: 400, message: "invalid input" });
     }
+  });
+});
+
+describe("audience binding (super admin)", () => {
+  it("refuses an unknown binding, and an app outside the workspace", async () => {
+    const a = await workspaceFor("bind-a@example.com", "Bind A Co");
+    const actor = await requireActor(env, headersFor(a.cookie), WRITE);
+    const { id: appId } = await addApp(env, actor, { name: "Web", slug: "web" });
+    const admin = { userId: actor.userId };
+    await expect(setAudienceBindingFor(env, admin, a.workspaceId, appId, "MAIL")).rejects.toThrow("unknown binding");
+    await expect(setAudienceBindingFor(env, admin, "ws_not_mine", appId, "TIFFIN_AUDIENCE")).rejects.toMatchObject({ status: 404 });
+    expect(await setAudienceBindingFor(env, admin, a.workspaceId, appId, "TIFFIN_AUDIENCE")).toEqual({ secret: null });
   });
 });
