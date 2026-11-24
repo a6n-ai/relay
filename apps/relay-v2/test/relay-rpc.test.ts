@@ -1,0 +1,63 @@
+import { createExecutionContext, env } from "cloudflare:test";
+import { beforeAll, describe, expect, it } from "vitest";
+import { createApiKey } from "../src/core/api-keys";
+import { securityDb } from "../src/db/security/client";
+import { app, member, user, workspace } from "../src/db/security/schema";
+import { RelayRpc } from "../src/rpc/relay-rpc";
+import { applyMigrations } from "./migrate";
+
+beforeAll(async () => {
+  await applyMigrations();
+});
+
+async function seed(slug: string) {
+  const db = securityDb(env);
+  const [ws] = await db.insert(workspace).values({ name: slug, slug }).returning();
+  const [owner] = await db.insert(user).values({ name: slug, email: `${slug}@owner.test` }).returning();
+  await db.insert(member).values({ organizationId: ws.id, userId: owner.id, role: "owner" });
+  const [app1] = await db.insert(app).values({ workspaceId: ws.id, name: "one", slug: "one" }).returning();
+  const [app2] = await db.insert(app).values({ workspaceId: ws.id, name: "two", slug: "two" }).returning();
+  const key1 = (await createApiKey(env, { workspaceId: ws.id, appId: app1.id, name: "k1" })).secret;
+  const key2 = (await createApiKey(env, { workspaceId: ws.id, appId: app2.id, name: "k2" })).secret;
+  return { rpc: new RelayRpc(createExecutionContext(), env), key1, key2 };
+}
+
+describe("RelayRpc scope", () => {
+  it("shows a list only to the app that created it", async () => {
+    const { rpc, key1, key2 } = await seed("rpc-lists");
+    const list = await rpc.createList(key1, { name: "Customers", consentSource: "express_optin" });
+    expect((await rpc.listLists(key1)).map((l) => l.id)).toContain(list.id);
+    expect((await rpc.listLists(key2)).map((l) => l.id)).not.toContain(list.id);
+  });
+
+  it("answers another app's ids as not found and changes nothing", async () => {
+    const { rpc, key1, key2 } = await seed("rpc-cross");
+    const list = await rpc.createList(key1, { name: "Mine", consentSource: "express_optin" });
+    const member = await rpc.addMember(key1, list.id, { email: "a@x.test" });
+    expect(member).toBe("added");
+    const campaign = await rpc.createCampaign(key1, { name: "Mine" });
+    const tpl = await rpc.createTemplate(key1, { name: "T", subject: "S", html: "<p>x</p>", text: "x" });
+    await expect(rpc.getCampaign(key2, campaign.id)).rejects.toThrow("not found");
+    await expect(rpc.updateTemplate(key2, tpl.id, { name: "Hijacked" })).rejects.toThrow("not found");
+    await expect(rpc.removeMember(key2, list.id, "clm_missing")).rejects.toThrow("not found");
+    expect((await rpc.getTemplate(key1, tpl.id)).name).toBe("T");
+  });
+
+  it("refuses a bad key as unauthorized", async () => {
+    const { rpc } = await seed("rpc-bad-key");
+    await expect(rpc.listLists("not-a-key")).rejects.toThrow("unauthorized");
+  });
+
+  it("lists only event templates as overrides", async () => {
+    const { rpc, key1 } = await seed("rpc-overrides");
+    await rpc.createTemplate(key1, { name: "Plain", subject: "S" });
+    await rpc.createTemplate(key1, { name: "Welcome", event: "welcome", subject: "Hi" });
+    const overrides = await rpc.templateOverrides(key1);
+    expect(overrides.map((o) => o.event)).toEqual(["welcome"]);
+  });
+
+  it("refuses a campaign id with a bad campaign input", async () => {
+    const { rpc, key1 } = await seed("rpc-input");
+    await expect(rpc.createCampaign(key1, { name: "" })).rejects.toThrow();
+  });
+});

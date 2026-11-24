@@ -2,7 +2,11 @@ import { NonRetryableError } from "cloudflare:workflows";
 import { z } from "zod";
 import type { Env } from "../env";
 import { mergeDataSchema } from "./send-input";
-import { signBody } from "./webhook-crypto";
+import { writeAudit } from "../lib/auth/audit";
+import type { KeyScope } from "./api-keys";
+import { ApiError } from "./api-error";
+import { clientFor } from "./messages";
+import { KEY_ERROR, signBody } from "./webhook-crypto";
 import { httpsUrl, isPublicWebhookUrl } from "./webhooks";
 
 export const AUDIENCE_BINDINGS = ["TIFFIN_AUDIENCE"] as const;
@@ -151,4 +155,37 @@ export async function fetchAudiencePage(env: Env, call: HookCall): Promise<Audie
   const page = parseAudiencePage(json);
   if (!page) throw new NonRetryableError(AUDIENCE_FAILED);
   return page;
+}
+
+// Keys set https hooks only. A binding names a Worker on this deployment, so a key never sets or removes one.
+async function guardBinding(env: Env, scope: KeyScope): Promise<void> {
+  const hook = await clientFor(env, scope.workspaceId).getAudienceHook(scope.workspaceId, scope.appId);
+  if (hook?.kind === "binding") throw new ApiError(403, "hook managed by platform admin");
+}
+
+export async function setAudienceHookForScope(env: Env, scope: KeyScope, input: unknown): Promise<{ secret: string | null }> {
+  const parsed = hookInputSchema.safeParse(input);
+  if (!parsed.success) throw new ApiError(400, "invalid input");
+  await guardBinding(env, scope);
+  let result: { secret: string | null };
+  try {
+    result = await clientFor(env, scope.workspaceId).setAudienceHook(scope.workspaceId, scope.appId, { kind: "https", ...parsed.data });
+  } catch (err) {
+    if (err instanceof Error && err.message === KEY_ERROR) throw new ApiError(503, "audience hook unavailable");
+    throw err;
+  }
+  await writeAudit(env, { action: "app.audience_hook.set", actorUserId: null, workspaceId: scope.workspaceId, target: scope.appId, data: { keyId: scope.keyId, appId: scope.appId } });
+  return result;
+}
+
+// Explicit fields: the secret is never read back, and a binding's name stays with the platform.
+export async function getAudienceHookForScope(env: Env, scope: KeyScope) {
+  const hook = await clientFor(env, scope.workspaceId).getAudienceHook(scope.workspaceId, scope.appId);
+  return hook && { kind: hook.kind, url: hook.url, enabled: hook.enabled };
+}
+
+export async function deleteAudienceHookForScope(env: Env, scope: KeyScope): Promise<void> {
+  await guardBinding(env, scope);
+  if (!(await clientFor(env, scope.workspaceId).deleteAudienceHook(scope.workspaceId, scope.appId))) throw new ApiError(404, "not found");
+  await writeAudit(env, { action: "app.audience_hook.delete", actorUserId: null, workspaceId: scope.workspaceId, target: scope.appId, data: { keyId: scope.keyId, appId: scope.appId } });
 }

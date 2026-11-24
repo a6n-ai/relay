@@ -1,10 +1,10 @@
 import { campaignProblems, type CampaignProblem } from "../core/campaign-problems";
 import { IMPLIED_CONSENT_MS } from "../core/campaigns";
-import { contactValues, renderMerge } from "../core/merge";
+import { contactValues } from "../core/merge";
 import type { SendInput } from "../core/send-input";
 import { newId } from "../lib/ids";
 import type { SendResult } from "./client-do";
-import { getTemplateRow, type TemplateView } from "./templates";
+import { getTemplateRow, type RenderedTemplate, type TemplateView } from "./templates";
 
 export type AutomationInput = { name: string; listId: string; templateId: string; fromEmail: string; delayHours: number };
 export type AutomationPatch = Partial<Omit<AutomationInput, "listId">>;
@@ -27,6 +27,7 @@ export type AutomationView = {
 
 export type AutomationDeps = {
   send: (input: SendInput) => Promise<SendResult>;
+  render: (appId: string, templateId: string, values: Record<string, string>) => Promise<RenderedTemplate | "missing" | "disabled">;
   refreshLimits: () => Promise<unknown>;
   postalAddress: string | null;
 };
@@ -191,24 +192,26 @@ export function nextAutomationAlarm(sql: SqlStorage, now: number, outcome: { mor
   return now + (outcome.blocked ? RETRY_MS : 1);
 }
 
-// Render and send one automation message. The send path owns suppression, sender and quota checks.
+// Render and send one automation message. Rendering is the template-send path (ClientDO.renderTemplate); the send path owns suppression, sender and quota checks.
 export async function sendTemplateForAutomation(
   deps: AutomationDeps,
   run: { automationId: string; appId: string; fromEmail: string; email: string; firstName: string | null; lastName: string | null },
   template: TemplateView,
 ): Promise<SendResult> {
   const values = contactValues({ email: run.email, firstName: run.firstName, lastName: run.lastName }, deps.postalAddress ?? "");
-  const subject = renderMerge(template.subject, values, "subject");
+  const rendered = await deps.render(run.appId, template.id, values);
+  if (rendered === "missing") throw new Error("template_missing");
+  if (rendered === "disabled") throw new Error("template_disabled");
   // Thrown before the send, so a blank subject skips one run instead of failing the whole pass.
-  if (subject.trim() === "") throw new Error("empty_subject");
+  if (rendered.subject.trim() === "") throw new Error("empty_subject");
   return deps.send({
     appId: run.appId,
     stream: "marketing",
     from: run.fromEmail,
     to: run.email,
-    subject,
-    html: renderMerge(template.html, values, "html"),
-    text: renderMerge(template.text, values, "text"),
+    subject: rendered.subject,
+    html: rendered.html,
+    text: rendered.text,
     event: "automation",
     idempotencyKey: `automation:${run.automationId}:${run.email}`,
   });
@@ -218,6 +221,8 @@ type Due = { automationId: string; email: string; appId: string; listId: string;
 
 // Refusals that clear once the workspace or queue recovers. Every other send error skips its run.
 const TRANSIENT_SEND_ERRORS = new Set(["workspace_suspended", "quota_exceeded", "limits unavailable", "queue_failed"]);
+// Refusals about this one run's content or sender. The run is skipped with this reason.
+const SKIP_SEND_ERRORS = new Set(["sender_not_verified", "empty_subject", "template_missing", "template_disabled"]);
 
 function markRun(sql: SqlStorage, run: Due, status: "sent" | "skipped", detail: { messageId?: string; error?: string }): void {
   sql.exec(
@@ -307,7 +312,7 @@ export async function runDueAutomationRows(
         console.error("automation send deferred", message);
         break;
       }
-      const skipError = message === "sender_not_verified" || message === "empty_subject" ? message : "invalid_input";
+      const skipError = SKIP_SEND_ERRORS.has(message) ? message : "invalid_input";
       markRun(sql, run, "skipped", { error: skipError });
       skipped += 1;
       continue;

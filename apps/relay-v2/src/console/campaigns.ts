@@ -38,7 +38,7 @@ function requireSend(actor: ConsoleActor): void {
 }
 
 // Instance ids carry the run, so a re-scheduled campaign never collides with a terminated instance.
-async function stopRun(env: Env, campaignId: string, runSeq: number): Promise<void> {
+export async function stopRun(env: Env, campaignId: string, runSeq: number): Promise<void> {
   try {
     const instance = await env.CAMPAIGNS.get(`${campaignId}-${runSeq}`);
     await instance.terminate();
@@ -209,26 +209,34 @@ export async function previewHtmlFor(
   };
 }
 
+// The one scheduling path: the console and the API both call it. The caller maps each refusal to its own error.
+export async function startCampaignRun(env: Env, workspaceId: string, id: string, at: number) {
+  const profile = await getWorkspaceProfile(env, workspaceId);
+  const client = clientFor(env, workspaceId);
+  const outcome = await client.scheduleCampaign(workspaceId, id, at, profile.physicalAddress ?? null);
+  if (outcome === "missing" || outcome === "not_draft" || "problems" in outcome) return outcome;
+  try {
+    await env.CAMPAIGNS.create({
+      id: `${id}-${outcome.runSeq}`,
+      params: { workspaceId, campaignId: id, runSeq: outcome.runSeq, at },
+    });
+  } catch {
+    await client.unscheduleCampaign(workspaceId, id);
+    return "could_not_schedule" as const;
+  }
+  return outcome;
+}
+
 export async function scheduleCampaignFor(env: Env, actor: ConsoleActor, id: string, at: number): Promise<{ runSeq: number }> {
   requireSend(actor);
   const now = Date.now();
   if (at < now - 60_000 || at > now + 365 * DAY_MS) throw new ConsoleError(400, "invalid schedule");
   await campaignOr404(env, actor, id);
-  const profile = await getWorkspaceProfile(env, actor.workspaceId);
-  const client = clientFor(env, actor.workspaceId);
-  const outcome = await client.scheduleCampaign(actor.workspaceId, id, at, profile.physicalAddress ?? null);
+  const outcome = await startCampaignRun(env, actor.workspaceId, id, at);
   if (outcome === "missing") throw new ConsoleError(404, "not found");
   if (outcome === "not_draft") throw new ConsoleError(409, "campaign not editable");
+  if (outcome === "could_not_schedule") throw new ConsoleError(503, "could not schedule");
   if ("problems" in outcome) throw new ConsoleError(409, `campaign not ready: ${outcome.problems.join(", ")}`);
-  try {
-    await env.CAMPAIGNS.create({
-      id: `${id}-${outcome.runSeq}`,
-      params: { workspaceId: actor.workspaceId, campaignId: id, runSeq: outcome.runSeq, at },
-    });
-  } catch {
-    await client.unscheduleCampaign(actor.workspaceId, id);
-    throw new ConsoleError(503, "could not schedule");
-  }
   await writeAudit(env, { action: "campaign.schedule", actorUserId: actor.userId, workspaceId: actor.workspaceId, target: id });
   return { runSeq: outcome.runSeq };
 }

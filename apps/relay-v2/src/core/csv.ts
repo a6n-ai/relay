@@ -1,4 +1,4 @@
-import { memberInput } from "../console/schemas";
+import { memberInput } from "./member-input";
 import type { MemberInput } from "../do/lists";
 
 export type ParsedContacts = { rows: MemberInput[]; invalid: number; duplicates: number };

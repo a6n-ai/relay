@@ -59,6 +59,16 @@ import {
 } from "./campaigns";
 import { CLIENT_MIGRATIONS, migrate } from "./migrations";
 import {
+  IMPORT_TX_ROWS,
+  importCampaignRow,
+  importInChunks,
+  importListRow,
+  importTemplateRow,
+  type ImportCampaignInput,
+  type ImportIds,
+  type ImportRow,
+} from "./imports";
+import {
   addMemberRow,
   createListRow,
   deleteListRow,
@@ -84,6 +94,7 @@ import {
   templateOverrideRows,
   updateTemplateRow,
   type TemplateInput,
+  type RenderedTemplate,
   type TemplateOverride,
   type TemplateView,
 } from "./templates";
@@ -1241,9 +1252,41 @@ export class ClientDO extends DurableObject<Env> {
       .run();
   }
 
-  async isSuppressed(workspaceId: string, email: string, stream: Stream): Promise<boolean> {
+  async isSuppressed(workspaceId: string, email: string, stream: Stream, from?: string): Promise<boolean> {
     await this.ready(workspaceId);
-    return this.suppressed(email.trim().toLowerCase(), stream);
+    return this.suppressed(email.trim().toLowerCase(), stream, from ?? null);
+  }
+
+  async importLists(workspaceId: string, appId: string, rows: ImportRow<ListInput>[]): Promise<ImportIds> {
+    await this.ready(workspaceId);
+    return importInChunks(this.ctx.storage, rows, (row) => importListRow(this.ctx.storage.sql, appId, row));
+  }
+
+  async importTemplates(workspaceId: string, appId: string, rows: ImportRow<TemplateInput>[]): Promise<ImportIds> {
+    await this.ready(workspaceId);
+    return importInChunks(this.ctx.storage, rows, (row) => importTemplateRow(this.ctx.storage.sql, appId, row));
+  }
+
+  async importCampaigns(workspaceId: string, appId: string, rows: ImportRow<ImportCampaignInput>[]): Promise<ImportIds> {
+    await this.ready(workspaceId);
+    return importInChunks(this.ctx.storage, rows, (row) => importCampaignRow(this.ctx.storage.sql, appId, row));
+  }
+
+  // Each row goes through writeSuppression, so the reason rank holds: a complaint is never narrowed to an unsubscribe.
+  async importSuppressions(workspaceId: string, rows: { email: string; reason: SuppressionReason; stream?: Stream }[]): Promise<ImportIds> {
+    await this.ready(workspaceId);
+    const total: ImportIds = { created: 0, existing: 0, ids: {} };
+    for (let start = 0; start < rows.length; start += IMPORT_TX_ROWS) {
+      this.ctx.storage.transactionSync(() => {
+        for (const row of rows.slice(start, start + IMPORT_TX_ROWS)) {
+          const key = row.email.trim().toLowerCase();
+          const had = this.db.select({ email: schema.suppression.email }).from(schema.suppression).where(eq(schema.suppression.email, key)).get() !== undefined;
+          this.writeSuppression(key, row.reason, row.stream);
+          total[had ? "existing" : "created"] += 1;
+        }
+      });
+    }
+    return total;
   }
 
   // Opts out of marketing mail from the message's sending domain only. The domain comes from the stored message, never the request.
@@ -1509,7 +1552,7 @@ export class ClientDO extends DurableObject<Env> {
     appId: string,
     templateId: string,
     values: Record<string, string>,
-  ): Promise<{ subject: string; html: string; text: string; hasUnsubscribe: boolean } | "missing" | "disabled"> {
+  ): Promise<RenderedTemplate | "missing" | "disabled"> {
     await this.ready(workspaceId);
     const tpl = getTemplateRow(this.ctx.storage.sql, templateId);
     if (!tpl || tpl.appId !== appId) return "missing";
@@ -1722,7 +1765,12 @@ export class ClientDO extends DurableObject<Env> {
     const limits = await this.limits(workspaceId);
     return runDueAutomationRows(
       this.ctx.storage.sql,
-      { send: (input) => this.send(workspaceId, input), refreshLimits: () => this.loadLimits(workspaceId), postalAddress: limits.postalAddress },
+      {
+        send: (input) => this.send(workspaceId, input),
+        render: (appId, templateId, values) => this.renderTemplate(workspaceId, appId, templateId, values),
+        refreshLimits: () => this.loadLimits(workspaceId),
+        postalAddress: limits.postalAddress,
+      },
       now,
     );
   }

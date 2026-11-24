@@ -17,6 +17,7 @@ export type TemplateView = {
 };
 export type TemplateInput = Partial<Omit<TemplateView, "id" | "appId" | "createdAt" | "updatedAt">> & { name: string };
 export type TemplateOverride = Pick<TemplateView, "event" | "locale" | "subject" | "intro" | "enabled">;
+export type RenderedTemplate = { subject: string; html: string; text: string; hasUnsubscribe: boolean };
 
 const PAGE = 50;
 const COLUMNS = `id, app_id AS appId, name, event, locale, subject, intro, html, text, enabled,
