@@ -14,7 +14,7 @@ export type MailboxReceivedData = {
 
 // Key order is the frozen contract; do not build this from DB rows.
 export function mailboxReceivedJson(d: MailboxReceivedData): string {
-  return JSON.stringify({
+  const data = {
     to: d.to,
     from: d.from,
     html: d.html,
@@ -26,7 +26,11 @@ export function mailboxReceivedJson(d: MailboxReceivedData): string {
     receivedAt: d.receivedAt,
     authResults: d.authResults,
     envelopeFrom: d.envelopeFrom,
-  });
+  };
+  // JSON.stringify drops undefined keys silently, which would freeze a body missing a field.
+  if (Object.values(data).some((v) => v === undefined)) throw new Error("mailbox.received field missing");
+  if (!Number.isSafeInteger(data.receivedAt)) throw new Error("mailbox.received receivedAt not a safe integer");
+  return JSON.stringify(data);
 }
 
 export function webhookBody(id: string, type: string, createdAt: number, dataJson: string): string {

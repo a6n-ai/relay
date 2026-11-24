@@ -156,6 +156,41 @@ describe("ClientDO ingestInbound", () => {
     expect(sendBatch).toHaveBeenCalledTimes(1);
   });
 
+  it("stores a letter with 12 attachments and 8 deliveries in one transaction", async () => {
+    const ws = "wsp_in_fanout";
+    const stub = stubFor(ws);
+    const sendBatch = vi.spyOn(env.WEBHOOKS, "sendBatch").mockResolvedValue(undefined as never);
+    for (let i = 0; i < 8; i++) await stub.createWebhook(ws, "app_A", { url, events: ["mailbox.received"] });
+    const attachments = Array.from({ length: 12 }, (_, i) => [
+      "--B",
+      `Content-Type: application/pdf; name="doc-${i}.pdf"`,
+      `Content-Disposition: attachment; filename="doc-${i}.pdf"`,
+      "Content-Transfer-Encoding: base64",
+      "",
+      "JVBERi0=",
+    ]).flat();
+    const letter = eml([
+      ...headers(),
+      'Content-Type: multipart/mixed; boundary="B"',
+      "",
+      "--B",
+      "Content-Type: text/plain; charset=utf-8",
+      "",
+      "Hello text",
+      ...attachments,
+      "--B--",
+    ]);
+    const job = await putLetter(ws, letter);
+
+    const result = (await stub.ingestInbound(ws, job)) as { outcome: string; messageId: string; deliveries: number };
+
+    expect(result).toEqual({ outcome: "inserted", messageId: expect.stringMatching(/^msg_/), deliveries: 8 });
+    expect(sendBatch).toHaveBeenCalledTimes(1);
+    expect(sendBatch.mock.calls[0][0]).toHaveLength(8);
+    expect(await rowsOf(stub, "SELECT id FROM attachment WHERE message_id = ?", result.messageId)).toHaveLength(12);
+    expect(await deliveriesOf(stub, result.messageId)).toHaveLength(8);
+  });
+
   it("drops the raw letter of a second copy with the same Message-ID", async () => {
     const ws = "wsp_in_copy";
     const stub = stubFor(ws);

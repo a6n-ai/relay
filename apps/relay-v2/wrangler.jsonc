@@ -38,7 +38,7 @@
     "producers": [
       { "binding": "SEND", "queue": "relay-send" },
       { "binding": "SES_EVENTS", "queue": "relay-ses-events" },
-      { "binding": "INBOUND", "queue": "relay-inbound" },
+      { "binding": "INBOUND", "queue": "relay-v2-inbound" },
       { "binding": "WEBHOOKS", "queue": "relay-webhooks" },
     ],
     "consumers": [
@@ -56,13 +56,13 @@
         "max_retries": 10,
         "dead_letter_queue": "relay-ses-events-dlq",
       },
-      // relay-inbound attaches only at Phase 7 cutover, after the old apps/relay Worker's consumer is removed.
+      // new queue; the old Worker's relay-inbound drains under its own consumer
       {
-        "queue": "relay-inbound",
+        "queue": "relay-v2-inbound",
         "max_batch_size": 10,
         "max_batch_timeout": 5,
         "max_retries": 10,
-        "dead_letter_queue": "relay-inbound-dlq",
+        "dead_letter_queue": "relay-v2-inbound-dlq",
       },
       {
         "queue": "relay-webhooks",

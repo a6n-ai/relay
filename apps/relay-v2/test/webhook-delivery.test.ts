@@ -163,7 +163,7 @@ describe("mailbox.received delivery", () => {
       env,
     );
     const inboundJob = inboundSend.mock.calls[0][0] as InboundJob;
-    const inbound = batchOf("relay-inbound", [inboundJob]);
+    const inbound = batchOf("relay-v2-inbound", [inboundJob]);
     await handleInboundBatch(inbound.batch, env);
 
     expect(sendBatch).toHaveBeenCalledTimes(1);

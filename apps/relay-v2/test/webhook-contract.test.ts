@@ -63,6 +63,40 @@ describe("mailbox.received contract", () => {
     expect(() => webhookBody("whd_1", "mailbox.received", 1.5, json)).toThrow();
   });
 
+  it("rejects a data field that is undefined instead of dropping it", () => {
+    const input = {
+      messageId: "msg_1",
+      envelopeTo: "a@b.ca",
+      envelopeFrom: "",
+      from: "x@y.ca",
+      fromName: undefined,
+      to: "a@b.ca",
+      subject: "",
+      text: "",
+      html: "",
+      receivedAt: 1,
+      authResults: null,
+    };
+    expect(() => mailboxReceivedJson(input as never)).toThrow("mailbox.received field missing");
+  });
+
+  it("rejects a receivedAt that is not a safe integer", () => {
+    const input = {
+      messageId: "msg_1",
+      envelopeTo: "a@b.ca",
+      envelopeFrom: "",
+      from: "x@y.ca",
+      fromName: null,
+      to: "a@b.ca",
+      subject: "",
+      text: "",
+      html: "",
+      receivedAt: Number.NaN,
+      authResults: null,
+    };
+    expect(() => mailboxReceivedJson(input)).toThrow("receivedAt not a safe integer");
+  });
+
   it("generates a 32-byte lowercase hex secret", () => {
     expect(newWebhookSecret()).toMatch(/^[0-9a-f]{64}$/);
   });

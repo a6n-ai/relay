@@ -33,7 +33,7 @@ function batchOf(bodies: unknown[], attempts = 1) {
       outcomes[i] = { kind: "retry", delaySeconds: opts?.delaySeconds };
     },
   }));
-  return { batch: { queue: "relay-inbound", messages } as never, outcomes };
+  return { batch: { queue: "relay-v2-inbound", messages } as never, outcomes };
 }
 
 const eml = (lines: string[]) => new TextEncoder().encode(lines.join("\r\n")).buffer as ArrayBuffer;
@@ -79,7 +79,7 @@ async function inboundFailures(workspaceId: string, rawKey: string): Promise<str
   return rows.map((row) => row.error as string);
 }
 
-describe("relay-inbound consumer", () => {
+describe("relay-v2-inbound consumer", () => {
   it("acks a stored letter, bumps usage once, and acks a redelivery without bumping again", async () => {
     const ws = "wsp_inb_ok";
     const job = await putLetter(ws);

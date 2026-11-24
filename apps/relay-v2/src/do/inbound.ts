@@ -71,10 +71,10 @@ async function putObject(env: Env, written: string[], key: string, body: string 
   await env.MAIL.put(key, body);
 }
 
-async function removeObjects(env: Env, keys: string[]): Promise<void> {
+async function removeObjects(env: Env, messageId: string, keys: string[]): Promise<void> {
   await Promise.all(
     keys.map((key) =>
-      env.MAIL.delete(key).catch((err: unknown) => console.error("inbound: failed to delete object", key, errorName(err))),
+      env.MAIL.delete(key).catch((err: unknown) => console.error("inbound: failed to delete object", messageId, errorName(err))),
     ),
   );
 }
@@ -231,38 +231,36 @@ export async function storeInbound(deps: InboundDeps, workspaceId: string, job: 
         return { duplicate: existing };
       }
 
-      if (attachments.length > 0) db.insert(schema.attachment).values(attachments).run();
+      // One row per statement: a multi-row VALUES list can exceed the DO SQLite limit of 100 bound parameters.
+      for (const row of attachments) db.insert(schema.attachment).values(row).run();
       const now = Date.now();
-      const deliveryIds =
-        webhooks.length > 0
-          ? db
-              .insert(schema.webhookDelivery)
-              .values(
-                webhooks.map((w) => ({
-                  webhookId: w.id,
-                  appId: job.appId,
-                  messageId,
-                  event: EVENT,
-                  payloadKey,
-                  nextAttemptAt: now,
-                  createdAt: now,
-                  updatedAt: now,
-                })),
-              )
-              .returning({ id: schema.webhookDelivery.id })
-              .all()
-              .map((row) => row.id)
-          : [];
+      const deliveryIds = webhooks.map(
+        (w) =>
+          db
+            .insert(schema.webhookDelivery)
+            .values({
+              webhookId: w.id,
+              appId: job.appId,
+              messageId,
+              event: EVENT,
+              payloadKey,
+              nextAttemptAt: now,
+              createdAt: now,
+              updatedAt: now,
+            })
+            .returning({ id: schema.webhookDelivery.id })
+            .get().id,
+      );
       db.delete(schema.inboundFailure).where(eq(schema.inboundFailure.rawKey, job.rawKey)).run();
       return { duplicate: null, messageId, deliveryIds };
     });
   } catch (err) {
-    await removeObjects(env, written);
+    await removeObjects(env, messageId, written);
     throw err;
   }
 
   if (stored.duplicate) {
-    await removeObjects(env, written);
+    await removeObjects(env, messageId, written);
     if (stored.duplicate.rawKey !== job.rawKey) await env.MAIL.delete(job.rawKey);
     return { outcome: "duplicate", messageId: stored.duplicate.id };
   }
