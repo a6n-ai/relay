@@ -1,4 +1,5 @@
 import { asc, count, eq, gte, sql } from "drizzle-orm";
+import { INBOUND_GRACE_MS } from "../core/addresses";
 import { refreshWorkspaceLimits } from "../core/limits";
 import { utcDay } from "../core/usage";
 import { ensureWorkspaceProfile, SELF_SERVE_QUOTA } from "../core/workspace-profile";
@@ -21,7 +22,7 @@ export async function listWorkspaces(env: Env, _admin: PlatformAdmin, now = Date
   const monthStart = utcDay(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1));
   const [rows, members, profiles, usage] = await Promise.all([
     securityDb(env)
-      .select({ id: workspace.id, name: workspace.name, slug: workspace.slug, status: workspace.status })
+      .select({ id: workspace.id, name: workspace.name, slug: workspace.slug, status: workspace.status, suspendedAt: workspace.suspendedAt })
       .from(workspace)
       .orderBy(asc(workspace.createdAt)),
     securityDb(env)
@@ -46,6 +47,8 @@ export async function listWorkspaces(env: Env, _admin: PlatformAdmin, now = Date
     name: ws.name,
     slug: ws.slug,
     status: ws.status,
+    suspendedAt: ws.suspendedAt?.getTime() ?? null,
+    inboundUntil: ws.status === "suspended" && ws.suspendedAt ? ws.suspendedAt.getTime() + INBOUND_GRACE_MS : null,
     // Without a row, show what ensureWorkspaceProfile would enforce (fail closed: self-serve, SELF_SERVE_QUOTA).
     quota: quotaBy.get(ws.id) ?? SELF_SERVE_QUOTA,
     selfServe: selfServeBy.get(ws.id) ?? true,
@@ -67,7 +70,7 @@ export async function setWorkspaceStatus(
 ): Promise<void> {
   const rows = await securityDb(env)
     .update(workspace)
-    .set({ status, updatedAt: new Date() })
+    .set({ status, suspendedAt: status === "suspended" ? new Date() : null, updatedAt: new Date() })
     .where(eq(workspace.id, workspaceId))
     .returning({ id: workspace.id });
   if (rows.length === 0) throw new ConsoleError(404, "not found");

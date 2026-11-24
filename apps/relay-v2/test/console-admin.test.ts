@@ -62,6 +62,19 @@ describe("console platform admin", { timeout: 60_000 }, () => {
     );
   });
 
+  it("lists when a suspended workspace was suspended and when its inbound mail stops, and nulls for an active one", async () => {
+    const active = await workspaceFor("adm-susp-list@example.com", "adm-susp-list-co");
+    const suspended = await workspaceFor("adm-susp-at@example.com", "adm-susp-at-co");
+    await setWorkspaceStatus(env, OPS, suspended.workspaceId, "suspended");
+
+    const rows = await listWorkspaces(env, OPS);
+    const activeRow = rows.find((r) => r.id === active.workspaceId);
+    const suspendedRow = rows.find((r) => r.id === suspended.workspaceId);
+    expect(activeRow).toMatchObject({ suspendedAt: null, inboundUntil: null });
+    expect(suspendedRow?.suspendedAt).toBeTypeOf("number");
+    expect(suspendedRow?.inboundUntil).toBe((suspendedRow?.suspendedAt ?? 0) + 7 * 24 * 60 * 60 * 1000);
+  });
+
   it("answers 404 to a workspace member who is not a platform admin", async () => {
     const host = await workspaceFor("adm-host@example.com", "adm-host-co");
     const plain = await addMember(host.workspaceId, "adm-plain@example.com", "owner");

@@ -86,7 +86,19 @@ function AdminPage() {
           {
             header: "Status",
             cell: (w) =>
-              w.status === "suspended" ? <Badge variant="danger">Suspended</Badge> : <Badge variant="success">Active</Badge>,
+              w.status === "suspended" ? (
+                <div>
+                  <Badge variant="danger">Suspended</Badge>
+                  {w.suspendedAt && w.inboundUntil && (
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      Suspended {new Date(w.suspendedAt).toLocaleDateString("en-CA")} · inbound until{" "}
+                      {new Date(w.inboundUntil).toLocaleDateString("en-CA")}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <Badge variant="success">Active</Badge>
+              ),
           },
           { header: "Members", cell: (w) => w.members },
           { header: "Sent this month", cell: (w) => w.sentThisMonth },

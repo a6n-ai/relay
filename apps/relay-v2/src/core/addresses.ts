@@ -67,6 +67,8 @@ export async function deleteAddress(env: Env, workspaceId: string, id: string): 
   return true;
 }
 
+export const INBOUND_GRACE_MS = 7 * 24 * 60 * 60 * 1000;
+
 export async function inboxForRecipient(
   env: Env,
   email: string,
