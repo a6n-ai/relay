@@ -6,7 +6,7 @@ import { admin } from "better-auth/plugins/admin";
 import { emailOTP } from "better-auth/plugins/email-otp";
 import { organization } from "better-auth/plugins/organization";
 import { and, eq, inArray, or, sql } from "drizzle-orm";
-import { countSelfServeOwned, ensureWorkspaceProfile, SELF_SERVE_WORKSPACE_CAP } from "../../core/workspace-profile";
+import { countSelfServeCreatedBy, ensureWorkspaceProfile, SELF_SERVE_WORKSPACE_CAP } from "../../core/workspace-profile";
 import { coreDb } from "../../db/core/client";
 import { address, sendingDomain } from "../../db/core/schema";
 import { securityDb } from "../../db/security/client";
@@ -300,8 +300,8 @@ export function createAuth(env: Env) {
         organizationHooks: {
           beforeCreateOrganization: async ({ user }) => {
             if (user.role === "admin") return;
-            // shortcut: cap is checked across two D1s without a lock, a race can exceed it by one; add a security-side counter if abuse shows up
-            if ((await countSelfServeOwned(env, user.id)) >= SELF_SERVE_WORKSPACE_CAP)
+            // N parallel creates can all pass this check. shortcut: parallel creates can exceed the cap, add an atomic counter if abuse appears
+            if ((await countSelfServeCreatedBy(env, user.id)) >= SELF_SERVE_WORKSPACE_CAP)
               throw new APIError("FORBIDDEN", { message: `You can create up to ${SELF_SERVE_WORKSPACE_CAP} workspaces` });
           },
           beforeDeleteOrganization: async ({ organization }) => {
@@ -327,7 +327,7 @@ export function createAuth(env: Env) {
           },
           afterCreateOrganization: async ({ organization, user }) => {
             try {
-              await ensureWorkspaceProfile(env, organization.id, { selfServe: user.role !== "admin" });
+              await ensureWorkspaceProfile(env, organization.id, { selfServe: user.role !== "admin", createdBy: user.id });
             } catch (error) {
               // Repair-on-read creates the missing profile later.
               console.error(`workspace profile failed: workspace.create: ${error instanceof Error ? error.message : String(error)}`);

@@ -12,6 +12,7 @@ export const workspaceProfile = sqliteTable("workspace_profile", {
   defaultSesRegion: text("default_ses_region").notNull().default("ap-south-1"),
   doSchemaVersion: integer("do_schema_version").notNull().default(0),
   doMigrateError: text("do_migrate_error"),
+  createdBy: text("created_by"),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 });

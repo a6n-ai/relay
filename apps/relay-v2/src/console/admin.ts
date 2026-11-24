@@ -1,7 +1,7 @@
 import { asc, count, eq, gte, sql } from "drizzle-orm";
-import { refreshWorkspaceLimits, DEFAULT_MONTHLY_QUOTA } from "../core/limits";
+import { refreshWorkspaceLimits } from "../core/limits";
 import { utcDay } from "../core/usage";
-import { ensureWorkspaceProfile } from "../core/workspace-profile";
+import { ensureWorkspaceProfile, SELF_SERVE_QUOTA } from "../core/workspace-profile";
 import { coreDb } from "../db/core/client";
 import { usageDaily, workspaceProfile } from "../db/core/schema";
 import { securityDb } from "../db/security/client";
@@ -46,8 +46,9 @@ export async function listWorkspaces(env: Env, _admin: PlatformAdmin, now = Date
     name: ws.name,
     slug: ws.slug,
     status: ws.status,
-    quota: quotaBy.get(ws.id) ?? DEFAULT_MONTHLY_QUOTA,
-    selfServe: selfServeBy.get(ws.id) ?? false,
+    // Without a row, show what ensureWorkspaceProfile would enforce (fail closed: self-serve, SELF_SERVE_QUOTA).
+    quota: quotaBy.get(ws.id) ?? SELF_SERVE_QUOTA,
+    selfServe: selfServeBy.get(ws.id) ?? true,
     sentThisMonth: sentBy.get(ws.id) ?? 0,
     members: membersBy.get(ws.id) ?? 0,
   }));

@@ -1,16 +1,16 @@
 import { env, runInDurableObject, SELF } from "cloudflare:test";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { beforeAll, describe, expect, it } from "vitest";
 import { setSelfServe } from "../src/console/admin";
 import { requireActor } from "../src/console/actor";
 import { addApp } from "../src/console/apps";
 import { createWorkspace as createWorkspaceFromConsole } from "../src/console/workspaces";
 import { type WorkspaceLimits } from "../src/core/limits";
-import { getWorkspaceProfile } from "../src/core/workspace-profile";
+import { getWorkspaceProfile, recordDoState } from "../src/core/workspace-profile";
 import { coreDb } from "../src/db/core/client";
 import { workspaceProfile } from "../src/db/core/schema";
 import { securityDb } from "../src/db/security/client";
-import { workspace } from "../src/db/security/schema";
+import { member, user, workspace } from "../src/db/security/schema";
 import { addMember, BASE, cookieFor, createWorkspace, json, ORIGIN, setActive } from "./console-helpers";
 import { applyMigrations } from "./migrate";
 
@@ -121,5 +121,37 @@ describe("self-serve workspaces", { timeout: 60_000 }, () => {
     const [ws] = await securityDb(env).insert(workspace).values({ name: "ss-repair", slug: "ss-repair" }).returning();
 
     await expect(getWorkspaceProfile(env, ws.id)).resolves.toMatchObject({ selfServe: true, monthlyMessageQuota: 100 });
+  });
+
+  it("keeps counting workspaces the user created after they add a second owner and leave", async () => {
+    const email = "ss-leave@example.com";
+    const cookie = await cookieFor(email, "user");
+    const first = await createWorkspace(cookie, "ss-leave-1");
+    await createWorkspace(cookie, "ss-leave-2");
+    await createWorkspace(cookie, "ss-leave-3");
+    await addMember(first, "ss-leave-co@example.com", "owner");
+
+    const left = await SELF.fetch(`${BASE}/organization/leave`, {
+      method: "POST",
+      headers: { ...json, cookie, origin: ORIGIN },
+      body: JSON.stringify({ organizationId: first }),
+    });
+    expect(left.status).toBe(200);
+    const [u] = await securityDb(env).select({ id: user.id }).from(user).where(eq(user.email, email));
+    expect(await securityDb(env).select().from(member).where(and(eq(member.organizationId, first), eq(member.userId, u.id)))).toHaveLength(0);
+
+    const fourth = await postCreate(cookie, "ss-leave-4");
+    expect(fourth.status).toBe(403);
+    expect(await fourth.json()).toMatchObject({ message: "You can create up to 3 workspaces" });
+  });
+
+  it("does not recreate a missing profile from a DO report, and repair stays self-serve", async () => {
+    const cookie = await cookieFor("ss-report@example.com", "user");
+    const id = await createWorkspace(cookie, "ss-report-co");
+    await coreDb(env).delete(workspaceProfile).where(eq(workspaceProfile.workspaceId, id));
+
+    await expect(recordDoState(env, id, { doSchemaVersion: 1 })).resolves.toBe(false);
+    expect(await profileOf(id)).toBeUndefined();
+    await expect(getWorkspaceProfile(env, id)).resolves.toMatchObject({ selfServe: true, monthlyMessageQuota: 100 });
   });
 });

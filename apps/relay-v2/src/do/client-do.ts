@@ -754,7 +754,7 @@ export class ClientDO extends DurableObject<Env> {
     const version = CLIENT_MIGRATIONS.length;
     if (this.ctx.storage.kv.get<number>("reported_version") === version) return;
     try {
-      // false: relay-security has no such workspace, so nothing is reported and KV stays unset.
+      // false: no profile row yet (or no workspace), so nothing is reported and KV stays unset for a retry.
       if (!(await recordDoState(this.env, workspaceId, { doSchemaVersion: version, doMigrateError: null }))) return;
     } catch (err) {
       console.error("ClientDO: failed to report schema version to D1", err);

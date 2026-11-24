@@ -43,6 +43,7 @@ export async function addApp(env: Env, actor: ConsoleActor, input: { name: strin
     .from(app)
     .where(and(eq(app.workspaceId, actor.workspaceId), eq(app.slug, input.slug)));
   if (taken) throw new ConsoleError(409, "slug taken");
+  // shortcut: parallel addApp calls can all pass this count and exceed the self-serve app cap, add an atomic check if abuse appears
   if ((await getWorkspaceProfile(env, actor.workspaceId)).selfServe) {
     const [{ n }] = await securityDb(env).select({ n: count() }).from(app).where(eq(app.workspaceId, actor.workspaceId));
     if (n >= SELF_SERVE_APP_CAP) throw new ConsoleError(403, "self-serve workspaces have one app");
