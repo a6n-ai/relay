@@ -6,6 +6,7 @@ export type SendJob =
   | { kind?: "send"; workspaceId: string; messageId: string }
   | { kind: "finalize"; workspaceId: string; messageId: string; sesMessageId: string };
 
+export type WebhookJob = { workspaceId: string; deliveryId: string };
 export type InboundJob = {
   workspaceId: string;
   appId: string;
@@ -28,6 +29,7 @@ declare global {
       SEND: Queue<SendJob>;
       SES_EVENTS: Queue<SesEventJob>;
       INBOUND: Queue<InboundJob>;
+      WEBHOOKS: Queue<WebhookJob>;
       API_LIMIT: RateLimit;
       BETTER_AUTH_SECRET: string;
       BETTER_AUTH_URL: string;

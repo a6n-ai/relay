@@ -1,5 +1,5 @@
 import { DurableObject } from "cloudflare:workers";
-import { and, eq, gte, inArray, isNull, lt, ne, or, sql, type SQLWrapper } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, isNull, lt, ne, or, sql, type SQLWrapper } from "drizzle-orm";
 import { drizzle, type DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
 import type { SesSendRequest } from "../core/ses";
 import { DEFAULT_MONTHLY_QUOTA, LIMITS_TTL_MS, loadWorkspaceLimits, SENDER_RETRY_MS, type WorkspaceLimits } from "../core/limits";
@@ -9,13 +9,23 @@ import { recordDoState } from "../core/workspace-profile";
 import { utcDay } from "../core/usage";
 import { encryptSecret, newWebhookSecret } from "../core/webhook-crypto";
 import type { WebhookInput, WebhookPatch, WebhookView } from "../core/webhooks";
-import type { Env } from "../env";
+import type { Env, InboundJob } from "../env";
 import { newId } from "../lib/ids";
+import { storeInbound, writeInboundFailure, type InboundDeps, type InboundResult } from "./inbound";
 import * as schema from "./client-schema";
 import { CLIENT_MIGRATIONS, migrate } from "./migrations";
 import { deleteWebhookRow, listWebhookRows, toWebhookView, updateWebhookRow, type WebhookRow } from "./webhooks";
 
-export type MessageView = typeof schema.message.$inferSelect & { html: string | null };
+export type AttachmentView = {
+  id: string;
+  filename: string;
+  contentType: string;
+  sizeBytes: number;
+  contentId: string | null;
+  position: number;
+};
+
+export type MessageView = typeof schema.message.$inferSelect & { html: string | null; attachments: AttachmentView[] };
 
 type SendResult = { messageId: string; status: "queued" | "sent" | "failed" | "suppressed"; duplicate: boolean };
 
@@ -179,7 +189,37 @@ export class ClientDO extends DurableObject<Env> {
     const row = this.db.select().from(schema.message).where(eq(schema.message.id, id)).get();
     if (!row) return null;
     const object = row.htmlKey ? await this.env.MAIL.get(row.htmlKey) : null;
-    return { ...row, html: object ? await object.text() : null };
+    const attachments = this.db
+      .select({
+        id: schema.attachment.id,
+        filename: schema.attachment.filename,
+        contentType: schema.attachment.contentType,
+        sizeBytes: schema.attachment.sizeBytes,
+        contentId: schema.attachment.contentId,
+        position: schema.attachment.position,
+      })
+      .from(schema.attachment)
+      .where(eq(schema.attachment.messageId, id))
+      .orderBy(asc(schema.attachment.position))
+      .all();
+    return { ...row, html: object ? await object.text() : null, attachments };
+  }
+
+  // The letter is already in R2 under job.rawKey. Idempotent on the raw key and on the app's Message-ID.
+  async ingestInbound(workspaceId: string, job: InboundJob): Promise<InboundResult> {
+    await this.ready(workspaceId);
+    // Set before any R2 write, so a crash after the puts still leaves an alarm to sweep.
+    if ((await this.ctx.storage.getAlarm()) === null) await this.ctx.storage.setAlarm(Date.now() + SWEEP_INTERVAL_MS);
+    return storeInbound(this.inboundDeps(), workspaceId, job);
+  }
+
+  async recordInboundFailure(workspaceId: string, job: InboundJob, error: string): Promise<void> {
+    await this.ready(workspaceId);
+    writeInboundFailure(this.inboundDeps(), workspaceId, job, error);
+  }
+
+  private inboundDeps(): InboundDeps {
+    return { storage: this.ctx.storage, db: this.db, env: this.env };
   }
 
   // The plaintext secret leaves here once; only its ciphertext is stored, bound to this webhook id by the AAD.

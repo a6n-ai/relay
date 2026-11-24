@@ -39,6 +39,7 @@
       { "binding": "SEND", "queue": "relay-send" },
       { "binding": "SES_EVENTS", "queue": "relay-ses-events" },
       { "binding": "INBOUND", "queue": "relay-inbound" },
+      { "binding": "WEBHOOKS", "queue": "relay-webhooks" },
     ],
     "consumers": [
       {
