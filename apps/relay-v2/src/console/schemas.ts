@@ -21,3 +21,11 @@ export const appId = z.string().min(1).max(64);
 export const displayName = z.string().trim().max(80).optional();
 export const role = z.enum(["owner", "admin", "member", "billing"]);
 export const inviteInput = z.object({ email: z.string().trim().toLowerCase().email(), role });
+export const consentSource = z.enum(["purchase", "express_optin", "event_signup", "import_other"]);
+export const listInput = z.object({ name, consentSource, consentNote: z.string().trim().max(500).optional() });
+export const memberInput = z.object({
+  email: z.string().trim().toLowerCase().max(254).email(),
+  firstName: z.string().trim().max(80).optional(),
+  lastName: z.string().trim().max(80).optional(),
+  consentAt: z.number().int().positive().optional(),
+});

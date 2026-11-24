@@ -34,6 +34,19 @@ import {
 import { storeInbound, writeInboundFailure, type InboundDeps, type InboundResult } from "./inbound";
 import * as schema from "./client-schema";
 import { CLIENT_MIGRATIONS, migrate } from "./migrations";
+import {
+  addMemberRow,
+  createListRow,
+  deleteListRow,
+  listListRows,
+  listMemberRows,
+  removeMemberRow,
+  updateListRow,
+  type ListInput,
+  type ListView,
+  type MemberInput,
+  type MemberView,
+} from "./lists";
 import { maskEmails } from "../core/mask-emails";
 import { deleteWebhookRow, failDeliveryRow, listWebhookRows, toWebhookView, updateWebhookRow, type WebhookRow } from "./webhooks";
 
@@ -325,6 +338,41 @@ export class ClientDO extends DurableObject<Env> {
   async deleteWebhook(workspaceId: string, appId: string, id: string): Promise<boolean> {
     await this.ready(workspaceId);
     return this.ctx.storage.transactionSync(() => deleteWebhookRow(this.db, appId, id));
+  }
+
+  async createList(workspaceId: string, appId: string, input: ListInput): Promise<ListView> {
+    await this.ready(workspaceId);
+    return this.ctx.storage.transactionSync(() => createListRow(this.ctx.storage.sql, appId, input));
+  }
+
+  async listLists(workspaceId: string, appId?: string): Promise<ListView[]> {
+    await this.ready(workspaceId);
+    return listListRows(this.ctx.storage.sql, appId);
+  }
+
+  async updateList(workspaceId: string, id: string, patch: Partial<ListInput>): Promise<ListView | null> {
+    await this.ready(workspaceId);
+    return this.ctx.storage.transactionSync(() => updateListRow(this.ctx.storage.sql, id, patch));
+  }
+
+  async deleteList(workspaceId: string, id: string): Promise<"deleted" | "missing" | "in_use"> {
+    await this.ready(workspaceId);
+    return this.ctx.storage.transactionSync(() => deleteListRow(this.ctx.storage.sql, id));
+  }
+
+  async listMembers(workspaceId: string, listId: string, cursor?: string): Promise<{ rows: MemberView[]; nextCursor: string | null } | null> {
+    await this.ready(workspaceId);
+    return listMemberRows(this.ctx.storage.sql, listId, cursor);
+  }
+
+  async addMember(workspaceId: string, listId: string, input: MemberInput): Promise<"added" | "existing" | "suppressed" | "missing"> {
+    await this.ready(workspaceId);
+    return this.ctx.storage.transactionSync(() => addMemberRow(this.ctx.storage.sql, listId, input));
+  }
+
+  async removeMember(workspaceId: string, listId: string, memberId: string): Promise<boolean> {
+    await this.ready(workspaceId);
+    return this.ctx.storage.transactionSync(() => removeMemberRow(this.ctx.storage.sql, listId, memberId));
   }
 
   async listWebhookDeliveries(

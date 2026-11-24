@@ -38,6 +38,8 @@ export const message = sqliteTable(
     rfcReferences: text("rfc_references"),
     envelopeFrom: text("envelope_from"),
     authResults: text("auth_results"),
+    unsubscribedAt: integer("unsubscribed_at"),
+    mergeData: text("merge_data"),
   },
   (t) => [
     check("message_channel", sql`${t.channel} = 'email'`),
@@ -175,3 +177,85 @@ export const inboundFailure = sqliteTable("inbound_failure", {
   createdAt: integer("created_at").notNull(),
   updatedAt: integer("updated_at").notNull(),
 });
+
+// Mirrors migration 6 in migrations.ts; the SQL there is what runs.
+export const contactList = sqliteTable(
+  "contact_list",
+  {
+    id: text("id").primaryKey().$defaultFn(() => newId("ctl")),
+    appId: text("app_id").notNull(),
+    name: text("name").notNull(),
+    consentSource: text("consent_source").notNull(),
+    consentNote: text("consent_note"),
+    createdAt: integer("created_at").notNull(),
+    updatedAt: integer("updated_at").notNull(),
+  },
+  (t) => [
+    check("contact_list_consent", sql`${t.consentSource} IN ('purchase', 'express_optin', 'event_signup', 'import_other')`),
+    index("contact_list_app_created").on(t.appId, t.createdAt, t.id),
+  ],
+);
+
+export const contactListMember = sqliteTable(
+  "contact_list_member",
+  {
+    id: text("id").primaryKey().$defaultFn(() => newId("clm")),
+    listId: text("list_id").notNull(),
+    appId: text("app_id").notNull(),
+    email: text("email").notNull(),
+    firstName: text("first_name"),
+    lastName: text("last_name"),
+    source: text("source").notNull(),
+    consentAt: integer("consent_at").notNull(),
+    unsubscribedAt: integer("unsubscribed_at"),
+    createdAt: integer("created_at").notNull(),
+  },
+  (t) => [
+    check("member_email_lower", sql`${t.email} = lower(trim(${t.email}))`),
+    check("member_source", sql`${t.source} IN ('manual', 'import')`),
+    uniqueIndex("contact_list_member_list_email").on(t.listId, t.email),
+    index("contact_list_member_list_created").on(t.listId, t.createdAt, t.id),
+    index("contact_list_member_email").on(t.email),
+  ],
+);
+
+export const campaign = sqliteTable(
+  "campaign",
+  {
+    id: text("id").primaryKey().$defaultFn(() => newId("cmp")),
+    appId: text("app_id").notNull(),
+    name: text("name").notNull(),
+    stream: text("stream").notNull().default("marketing"),
+    status: text("status").notNull().default("draft"),
+    fromEmail: text("from_email"),
+    subject: text("subject").notNull().default(""),
+    html: text("html").notNull().default(""),
+    text: text("text").notNull().default(""),
+    listIds: text("list_ids").notNull().default("[]"),
+    scheduledAt: integer("scheduled_at"),
+    runSeq: integer("run_seq").notNull().default(0),
+    cursor: text("cursor"),
+    recipients: integer("recipients").notNull().default(0),
+    error: text("error"),
+    postalAddress: text("postal_address"),
+    queued: integer("queued").notNull().default(0),
+    sent: integer("sent").notNull().default(0),
+    failed: integer("failed").notNull().default(0),
+    suppressed: integer("suppressed").notNull().default(0),
+    delivered: integer("delivered").notNull().default(0),
+    opened: integer("opened").notNull().default(0),
+    clicked: integer("clicked").notNull().default(0),
+    bounced: integer("bounced").notNull().default(0),
+    complained: integer("complained").notNull().default(0),
+    unsubscribed: integer("unsubscribed").notNull().default(0),
+    startedAt: integer("started_at"),
+    finishedAt: integer("finished_at"),
+    createdAt: integer("created_at").notNull(),
+    updatedAt: integer("updated_at").notNull(),
+  },
+  (t) => [
+    check("campaign_stream", sql`${t.stream} IN ('transactional', 'tracked', 'marketing')`),
+    check("campaign_status", sql`${t.status} IN ('draft', 'scheduled', 'sending', 'paused', 'sent', 'cancelled')`),
+    index("campaign_created").on(t.createdAt, t.id),
+  ],
+);
