@@ -2,12 +2,13 @@ import { env, SELF } from "cloudflare:test";
 import { and, eq } from "drizzle-orm";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { requireActor, requirePlatformAdmin } from "../src/console/actor";
-import { listWorkspaces, setWorkspaceQuota, setWorkspaceStatus } from "../src/console/admin";
+import { listWorkspaces, setWorkspaceInviteCap, setWorkspaceQuota, setWorkspaceStatus } from "../src/console/admin";
 import { addApp, createKey } from "../src/console/apps";
 import { addAddress, addDomain, checkDomain } from "../src/console/domains";
+import { inviteMember } from "../src/console/members";
 import { memorySesIdentity } from "../src/core/ses-identity";
 import { securityDb } from "../src/db/security/client";
-import { securityAudit } from "../src/db/security/schema";
+import { invitation, securityAudit, user } from "../src/db/security/schema";
 import { addMember, cookieFor, createWorkspace, ORIGIN, setActive } from "./console-helpers";
 import { applyMigrations } from "./migrate";
 
@@ -137,5 +138,52 @@ describe("console platform admin", { timeout: 60_000 }, () => {
     const res = await SELF.fetch(`${ORIGIN}/admin`, { redirect: "manual", headers: { cookie: plain } });
     expect([302, 307]).toContain(res.status);
     expect(res.headers.get("location")).toBe("/no-workspace");
+  });
+});
+
+describe("console platform admin invite cap", { timeout: 60_000 }, () => {
+  const INVITE = { permission: { invitation: ["create"] }, write: true };
+
+  async function seedInvites(workspaceId: string, inviterId: string, count: number) {
+    for (let i = 0; i < count; i++) {
+      await securityDb(env).insert(invitation).values({
+        organizationId: workspaceId,
+        email: `seed-cap-${workspaceId}-${i}@x.test`,
+        role: "member",
+        status: "pending",
+        expiresAt: new Date(Date.now() + 2 * 86_400_000),
+        inviterId,
+      });
+    }
+  }
+
+  it("lets a platform admin raise one workspace's daily invite cap and writes the audit row", async () => {
+    const a = await workspaceFor("adm-invite-cap@example.com", "adm-invite-cap-co");
+    const [owner] = await securityDb(env).select({ id: user.id }).from(user).where(eq(user.email, "adm-invite-cap@example.com"));
+    await seedInvites(a.workspaceId, owner.id, 20);
+    const actor = await requireActor(env, headersFor(a.cookie), INVITE);
+
+    await expect(
+      inviteMember(env, actor, headersFor(a.cookie), { email: "cap-default@x.test", role: "member" }),
+    ).rejects.toMatchObject({ status: 429, message: "invite limit reached" });
+
+    await setWorkspaceInviteCap(env, OPS, a.workspaceId, 25);
+    expect((await listWorkspaces(env, OPS)).find((r) => r.id === a.workspaceId)?.invitesPerDay).toBe(25);
+    await expect(
+      inviteMember(env, actor, headersFor(a.cookie), { email: "cap-raised@x.test", role: "member" }),
+    ).resolves.toEqual({ id: expect.any(String) });
+
+    const [audit] = await securityDb(env)
+      .select({ action: securityAudit.action, target: securityAudit.target })
+      .from(securityAudit)
+      .where(and(eq(securityAudit.action, "workspace.invite_cap"), eq(securityAudit.workspaceId, a.workspaceId)));
+    expect(audit).toEqual({ action: "workspace.invite_cap", target: a.workspaceId });
+  });
+
+  it("refuses a cap outside 1 to 10000 with a fixed 400", async () => {
+    const a = await workspaceFor("adm-bad-invite-cap@example.com", "adm-bad-invite-cap-co");
+    for (const cap of [0, 10_001, 1.5]) {
+      await expect(setWorkspaceInviteCap(env, OPS, a.workspaceId, cap)).rejects.toMatchObject({ status: 400, message: "invalid input" });
+    }
   });
 });
