@@ -10,7 +10,7 @@ const COPY = new Map<string, string>([
   ["cross-origin write", "This request was blocked. Reload the page and try again."],
   ["unauthorized", "Your session has ended. Sign in again."],
   ["invalid input", "Some details are missing or not valid. Check the form and try again."],
-  ["invalid cursor", "This page link is out of date. Open Messages again."],
+  ["invalid cursor", "This page link has expired. Reload the page."],
   ["invalid slug", "Use lowercase letters, numbers and hyphens for the slug."],
   ["slug taken", "That slug is already used in this workspace."],
   ["invalid domain", "Enter a domain like example.com."],
@@ -35,7 +35,33 @@ const COPY = new Map<string, string>([
   ["delivery not failed", "Only failed deliveries can be retried."],
   ["webhook disabled", "Turn this webhook on before retrying its deliveries."],
   ["webhooks unavailable", "Webhooks are unavailable right now. Try again later."],
+  ["missing email column", "The CSV needs an email column in its first row."],
+  ["too many rows", "Import at most 10,000 contacts at a time."],
+  ["list in use", "This list is in use, so it can't be deleted."],
+  ["address suppressed", "This address is suppressed, so it can't be added to a list."],
+  ["campaign not editable", "Only draft campaigns can be changed. This one has already been scheduled or sent."],
+  ["campaign not ready", "Finish the checklist before scheduling this campaign."],
+  ["unknown merge field", "The body uses a merge field that doesn't exist. Check the merge field list."],
+  ["sender not verified", "Choose a From address on a verified domain."],
+  ["invalid schedule", "Pick a time within the next year, not in the past."],
+  ["could not schedule", "The campaign could not be scheduled. Try again in a moment."],
+  ["campaign not scheduled", "This campaign is no longer scheduled. Refresh to see its current status."],
+  ["campaign not sending", "This campaign is no longer sending. Refresh to see its current status."],
+  ["campaign not paused", "This campaign is no longer paused. Refresh to see its current status."],
+  ["campaign not cancellable", "This campaign can no longer be cancelled. Refresh to see its current status."],
+  ["could not resume", "The campaign could not be resumed. Try again in a moment."],
+  ["quota_exceeded", "This workspace has used its monthly send limit. Try again next month."],
+  ["sender_not_verified", "Choose a From address on a verified domain."],
+  ["workspace_suspended", "This workspace is suspended, so sending is paused."],
+  ["unknown list", "That list no longer exists. Refresh and try again."],
+  ["too_many_recipients", "This campaign has more recipients than one send allows."],
+  ["run_failed", "Sending hit an error and stopped. Resume to try again."],
 ]);
+
+// Paused campaigns store a code on the row, not an Error, so the report maps it through the same COPY.
+export const reasonText = (code: string | null): string | null => (code ? (COPY.get(code) ?? FALLBACK) : null);
+
+export const isNotFound = (err: unknown): boolean => err instanceof Error && err.message === "not found";
 
 // The server's fixed copy is mapped to plain words; anything unknown (a network failure, a 500) gets the fallback, never the raw text.
 export function errorText(err: unknown, fallback = FALLBACK): string {

@@ -1,3 +1,4 @@
+import type { CampaignRunParams } from "./core/campaign-workflow";
 import type { SesEventJob } from "./core/ses-events";
 import type { ClientDO } from "./do/client-do";
 
@@ -30,6 +31,7 @@ declare global {
       SES_EVENTS: Queue<SesEventJob>;
       INBOUND: Queue<InboundJob>;
       WEBHOOKS: Queue<WebhookJob>;
+      CAMPAIGNS: Workflow<CampaignRunParams>;
       API_LIMIT: RateLimit;
       BETTER_AUTH_SECRET: string;
       BETTER_AUTH_URL: string;
@@ -46,6 +48,7 @@ declare global {
       SYSTEM_SES_REGION?: string;
       SES_TRANSPORT?: "memory";
       WEBHOOK_SECRET_KEY?: string;
+      UNSUBSCRIBE_SECRET?: string;
     }
   }
 }

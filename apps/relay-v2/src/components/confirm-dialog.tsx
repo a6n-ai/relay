@@ -10,22 +10,27 @@ import {
 } from "@foundry/ui/alert-dialog";
 import { Button } from "@foundry/ui/button";
 
+// Pass open and onOpenChange to drive it from outside (a router blocker); omit trigger then.
 export function ConfirmDialog({
   trigger,
   title,
   description,
   confirmLabel,
   onConfirm,
+  open,
+  onOpenChange,
 }: {
-  trigger: string;
+  trigger?: string;
   title: string;
   description: string;
   confirmLabel: string;
   onConfirm: () => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
   return (
-    <AlertDialog>
-      <AlertDialogTrigger render={<Button variant="outline" size="sm" />}>{trigger}</AlertDialogTrigger>
+    <AlertDialog open={open} onOpenChange={onOpenChange}>
+      {trigger !== undefined ? <AlertDialogTrigger render={<Button variant="outline" size="sm" />}>{trigger}</AlertDialogTrigger> : null}
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>{title}</AlertDialogTitle>

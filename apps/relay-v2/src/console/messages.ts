@@ -28,7 +28,7 @@ export async function messageAccess(env: Env, actor: ConsoleActor): Promise<Mess
 }
 
 // Plain queries, no subquery: the member row, then the user's teams in this workspace, then the grants that name either.
-async function grantedAddressIds(env: Env, actor: ConsoleActor): Promise<string[]> {
+export async function grantedAddressIds(env: Env, actor: ConsoleActor): Promise<string[]> {
   const db = securityDb(env);
   const [self] = await db
     .select({ id: member.id })
@@ -121,7 +121,7 @@ async function inlineCidImages(
     if (!att || !INLINE_TYPES.has(att.contentType)) continue;
     if (att.sizeBytes > INLINE_MAX_BYTES || fetched + att.sizeBytes > INLINE_BUDGET_BYTES) continue;
     const file = await clientFor(env, actor.workspaceId).getMessageFile(actor.workspaceId, messageId, att.id, access);
-    if (!file || !file.key.startsWith(`ws/${actor.workspaceId}/`)) continue;
+    if (!file || !("key" in file) || !file.key.startsWith(`ws/${actor.workspaceId}/`)) continue;
     const object = await env.MAIL.get(file.key);
     if (!object) continue;
     if (object.size > INLINE_MAX_BYTES || fetched + object.size > INLINE_BUDGET_BYTES) {
@@ -157,7 +157,12 @@ export async function messageFileFor(
 ): Promise<Response> {
   const access = await messageAccess(env, actor);
   const file = await clientFor(env, actor.workspaceId).getMessageFile(actor.workspaceId, id, part, access);
-  if (!file || !file.key.startsWith(`ws/${actor.workspaceId}/`)) throw new ConsoleError(404, "not found");
+  if (!file) throw new ConsoleError(404, "not found");
+  if ("body" in file) {
+    const bytes = new TextEncoder().encode(file.body);
+    return downloadResponse(new Blob([bytes]).stream(), bytes.byteLength, file.name);
+  }
+  if (!file.key.startsWith(`ws/${actor.workspaceId}/`)) throw new ConsoleError(404, "not found");
   if (view && file.contentType !== null) {
     // A zero-byte object makes R2 reject the range read; that falls through to the download like any non-preview.
     const head = await env.MAIL.get(file.key, { range: { offset: 0, length: PREVIEW_HEAD_BYTES } }).catch(() => null);

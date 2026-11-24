@@ -16,7 +16,9 @@ import type { LucideIcon } from "lucide-react";
 import AppWindow from "lucide-react/icons/app-window";
 import Globe from "lucide-react/icons/globe";
 import LayoutDashboard from "lucide-react/icons/layout-dashboard";
+import List from "lucide-react/icons/list";
 import Mail from "lucide-react/icons/mail";
+import Megaphone from "lucide-react/icons/megaphone";
 import Shield from "lucide-react/icons/shield";
 import Users from "lucide-react/icons/users";
 import type { ReactNode } from "react";
@@ -32,6 +34,8 @@ const NAV: NavItem[] = [
   { to: "/", label: "Overview", icon: LayoutDashboard },
   { to: "/apps", label: "Apps", icon: AppWindow },
   { to: "/messages", label: "Messages", icon: Mail, need: { log: ["read"] } },
+  { to: "/campaigns", label: "Campaigns", icon: Megaphone, need: { campaign: ["read"] } },
+  { to: "/lists", label: "Lists", icon: List, need: { list: ["read"] } },
   { to: "/domains", label: "Domains", icon: Globe, need: { sending: ["read"] } },
   { to: "/members", label: "Members", icon: Users },
 ];

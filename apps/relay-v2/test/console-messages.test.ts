@@ -655,3 +655,55 @@ describe("parseMessagesSearch", () => {
     ).toEqual({ dir: "in", app: "app_1", status: "failed", email: "a@b.co", cursor: "1700.msg_abcdefghijkl" });
   });
 });
+
+describe("campaign message content", () => {
+  const HTML = '<p>Hi {{contact.first_name}}</p><p>{{postal_address}}</p><a href="{{unsubscribe_url}}">Stop</a>';
+  const TEXT = "Hi {{contact.first_name}} {{postal_address}} {{unsubscribe_url}}";
+
+  // A campaign message as the Workflow writes it. A null campaignId or a campaign that was never inserted is a gone campaign.
+  async function campaignLetter(t: Tenant, id: string, campaignId: string, campaignExists: boolean) {
+    await runInDurableObject(clientFor(env, t.workspaceId), (_instance, state) => {
+      if (campaignExists)
+        state.storage.sql.exec(
+          "INSERT INTO campaign (id, app_id, name, status, from_email, subject, html, text, postal_address, created_at, updated_at) VALUES (?, ?, 'C', 'sent', 'relay@a6n.ai', 'Hi', ?, ?, '1 Main St', 0, 0)",
+          campaignId,
+          t.appA,
+          HTML,
+          TEXT,
+        );
+      state.storage.sql.exec(
+        "INSERT INTO message (id, app_id, direction, stream, status, event, campaign_id, from_email, from_name, ses_region, to_email, subject, merge_data, attempts, opens, clicks, created_at, updated_at) VALUES (?, ?, 'out', 'marketing', 'sent', 'campaign', ?, 'relay@a6n.ai', 'A', 'us-east-1', 'ann@x.com', 'Hi', ?, 1, 0, 0, 0, 0)",
+        id,
+        t.appA,
+        campaignId,
+        JSON.stringify({ email: "ann@x.com", firstName: "<b>Ann</b>", lastName: null }),
+      );
+    });
+  }
+
+  it("renders the escaped HTML and the text on read, and downloads the same HTML", async () => {
+    const t = await tenant("camp-read");
+    await campaignLetter(t, "msg_camp_read", "cmp_read", true);
+
+    const view = await getMessageFor(env, t.owner, "msg_camp_read", { images: false });
+    expect(view.htmlSafe).toContain("Hi &lt;b&gt;Ann&lt;/b&gt;");
+    expect(view.htmlSafe).toContain("{{unsubscribe_url}}");
+    expect(view.text).toBe("Hi <b>Ann</b> 1 Main St {{unsubscribe_url}}");
+
+    const html = await SELF.fetch(`${ORIGIN}/api/console/messages/msg_camp_read/html`, { headers: { cookie: t.cookie } });
+    expect(html.status).toBe(200);
+    expect(html.headers.get("content-disposition")).toBe('attachment; filename="msg_camp_read.html"');
+    expect(await html.text()).toBe('<p>Hi &lt;b&gt;Ann&lt;/b&gt;</p><p>1 Main St</p><a href="{{unsubscribe_url}}">Stop</a>');
+  });
+
+  it("shows no content and a 404 download when the campaign row is gone", async () => {
+    const t = await tenant("camp-gone");
+    await campaignLetter(t, "msg_camp_gone_read", "cmp_missing", false);
+
+    const view = await getMessageFor(env, t.owner, "msg_camp_gone_read", { images: false });
+    expect(view.htmlSafe).toBeNull();
+    expect(view.text).toBeNull();
+    const html = await SELF.fetch(`${ORIGIN}/api/console/messages/msg_camp_gone_read/html`, { headers: { cookie: t.cookie } });
+    expect(html.status).toBe(404);
+  });
+});

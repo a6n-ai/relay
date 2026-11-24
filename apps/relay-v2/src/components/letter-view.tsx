@@ -18,7 +18,7 @@ export function LetterView({
   return (
     <div className="grid gap-2">
       {htmlSafe === null ? (
-        <pre className="rounded-lg border border-border p-4 text-sm break-words whitespace-pre-wrap">{text ?? ""}</pre>
+        <pre className="rounded-lg border border-border p-4 text-sm break-words whitespace-pre-wrap">{text ?? "Content no longer available"}</pre>
       ) : (
         <div className="h-[32rem] resize-y overflow-hidden rounded-lg border border-border">
           <iframe

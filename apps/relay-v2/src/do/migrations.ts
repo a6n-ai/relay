@@ -156,6 +156,43 @@ CREATE INDEX webhook_delivery_webhook_created ON webhook_delivery (webhook_id, c
 `
 ALTER TABLE webhook_delivery ADD COLUMN retried_at INTEGER;
 `,
+`
+ALTER TABLE message ADD COLUMN unsubscribed_at INTEGER;
+ALTER TABLE message ADD COLUMN merge_data TEXT;
+CREATE TABLE contact_list (
+  id TEXT PRIMARY KEY NOT NULL, app_id TEXT NOT NULL, name TEXT NOT NULL,
+  consent_source TEXT NOT NULL, consent_note TEXT,
+  created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL,
+  CONSTRAINT contact_list_consent CHECK (consent_source IN ('purchase', 'express_optin', 'event_signup', 'import_other'))
+);
+CREATE INDEX contact_list_app_created ON contact_list (app_id, created_at, id);
+CREATE TABLE contact_list_member (
+  id TEXT PRIMARY KEY NOT NULL, list_id TEXT NOT NULL, app_id TEXT NOT NULL, email TEXT NOT NULL,
+  first_name TEXT, last_name TEXT, source TEXT NOT NULL, consent_at INTEGER NOT NULL,
+  created_at INTEGER NOT NULL,
+  CONSTRAINT member_email_lower CHECK (email = lower(trim(email))),
+  CONSTRAINT member_source CHECK (source IN ('manual', 'import'))
+);
+CREATE UNIQUE INDEX contact_list_member_list_email ON contact_list_member (list_id, email);
+CREATE INDEX contact_list_member_list_created ON contact_list_member (list_id, created_at, id);
+CREATE INDEX contact_list_member_email ON contact_list_member (email);
+CREATE TABLE marketing_optout (email TEXT NOT NULL, domain TEXT NOT NULL, created_at INTEGER NOT NULL, PRIMARY KEY (email, domain));
+CREATE TABLE campaign (
+  id TEXT PRIMARY KEY NOT NULL, app_id TEXT NOT NULL, name TEXT NOT NULL,
+  stream TEXT NOT NULL DEFAULT 'marketing', status TEXT NOT NULL DEFAULT 'draft',
+  from_email TEXT, subject TEXT NOT NULL DEFAULT '', html TEXT NOT NULL DEFAULT '', text TEXT NOT NULL DEFAULT '',
+  list_ids TEXT NOT NULL DEFAULT '[]', scheduled_at INTEGER, run_seq INTEGER NOT NULL DEFAULT 0,
+  cursor TEXT, recipients INTEGER NOT NULL DEFAULT 0, error TEXT, postal_address TEXT,
+  queued INTEGER NOT NULL DEFAULT 0, sent INTEGER NOT NULL DEFAULT 0, failed INTEGER NOT NULL DEFAULT 0,
+  suppressed INTEGER NOT NULL DEFAULT 0, delivered INTEGER NOT NULL DEFAULT 0, opened INTEGER NOT NULL DEFAULT 0,
+  clicked INTEGER NOT NULL DEFAULT 0, bounced INTEGER NOT NULL DEFAULT 0, complained INTEGER NOT NULL DEFAULT 0,
+  unsubscribed INTEGER NOT NULL DEFAULT 0,
+  started_at INTEGER, finished_at INTEGER, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL,
+  CONSTRAINT campaign_stream CHECK (stream IN ('transactional', 'tracked', 'marketing')),
+  CONSTRAINT campaign_status CHECK (status IN ('draft', 'scheduled', 'sending', 'paused', 'sent', 'cancelled'))
+);
+CREATE INDEX campaign_created ON campaign (created_at, id);
+`,
 ];
 
 // PRAGMA user_version is rejected by DO SQL (SQLITE_AUTH), so the version lives in sync KV.

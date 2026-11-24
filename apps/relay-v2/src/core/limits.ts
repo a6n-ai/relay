@@ -14,6 +14,7 @@ export const SENDER_RETRY_MS = 60_000;
 
 export type WorkspaceLimits = {
   monthlyQuota: number;
+  postalAddress: string | null;
   status: "active" | "suspended";
   senders: Record<string, { name: string | null; sesRegion: string }>;
   fetchedAt: number;
@@ -24,7 +25,7 @@ export async function loadWorkspaceLimits(env: Env, workspaceId: string): Promis
   const [ws] = await securityDb(env).select({ status: workspace.status }).from(workspace).where(eq(workspace.id, workspaceId));
   if (ws) await ensureWorkspaceProfile(env, workspaceId);
   const [profile] = await coreDb(env)
-    .select({ quota: workspaceProfile.monthlyMessageQuota })
+    .select({ quota: workspaceProfile.monthlyMessageQuota, postalAddress: workspaceProfile.physicalAddress })
     .from(workspaceProfile)
     .where(eq(workspaceProfile.workspaceId, workspaceId));
   // Same workspace on both sides of the join: a domain in another workspace never verifies this address.
@@ -41,6 +42,7 @@ export async function loadWorkspaceLimits(env: Env, workspaceId: string): Promis
     .where(and(eq(address.workspaceId, workspaceId), eq(address.canSend, true), eq(sendingDomain.status, "verified")));
   return {
     monthlyQuota: profile?.quota ?? DEFAULT_MONTHLY_QUOTA,
+    postalAddress: profile?.postalAddress ?? null,
     status: ws?.status ?? "suspended",
     senders: Object.fromEntries(rows.map((r) => [r.email, { name: r.name, sesRegion: r.sesRegion }])),
     fetchedAt: Date.now(),

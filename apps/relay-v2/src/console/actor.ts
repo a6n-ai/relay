@@ -17,7 +17,7 @@ export type ConsoleActor = {
 
 export class ConsoleError extends Error {
   constructor(
-    readonly status: 400 | 401 | 403 | 404 | 409 | 429 | 503,
+    readonly status: 400 | 401 | 403 | 404 | 409 | 422 | 429 | 503,
     message: string,
   ) {
     super(message);

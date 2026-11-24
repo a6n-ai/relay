@@ -1,7 +1,10 @@
-import { createExecutionContext, env, SELF } from "cloudflare:test";
+import { createExecutionContext, env, runInDurableObject, SELF } from "cloudflare:test";
 import { eq } from "drizzle-orm";
-import { beforeAll, describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import { createApiKey, resolveApiKey, revokeApiKey } from "../src/core/api-keys";
+import { ensureWorkspaceProfile } from "../src/core/workspace-profile";
+import { coreDb } from "../src/db/core/client";
+import { address, sendingDomain } from "../src/db/core/schema";
 import { securityDb } from "../src/db/security/client";
 import { app, member, user, workspace } from "../src/db/security/schema";
 import { RelayRpc } from "../src/rpc/relay-rpc";
@@ -123,5 +126,34 @@ describe("API keys", () => {
     expect(res.status).toBe(404);
     const rows = await env.SECURITY_DB.prepare("SELECT COUNT(*) AS n FROM apikey WHERE reference_id = ?").bind(workspaceId).first<{ n: number }>();
     expect(rows?.n).toBe(0);
+  });
+
+  it("ignores campaignId on an API send: the mail queues as a normal send and no campaign counter moves", async () => {
+    const { workspaceId, appId } = await seedApp("keys-campaign");
+    const { secret } = await createApiKey(env, { workspaceId, appId, name: "web" });
+    const from = "relay@keys-campaign.test";
+    await coreDb(env).insert(sendingDomain).values({ workspaceId, domain: "keys-campaign.test", sesRegion: "ap-south-1", status: "verified" });
+    await coreDb(env).insert(address).values({ workspaceId, appId, email: from, kind: "sender", canSend: true });
+    await ensureWorkspaceProfile(env, workspaceId);
+    const stub = env.CLIENT.get(env.CLIENT.idFromName(workspaceId));
+    const campaign = await stub.createCampaign(workspaceId, appId, "C");
+    const enqueue = vi.spyOn(env.SEND, "send").mockResolvedValue(undefined as never);
+
+    const res = await SELF.fetch("https://relay.test/api/v1/messages", {
+      method: "POST",
+      headers: { authorization: `Bearer ${secret}`, "content-type": "application/json" },
+      body: JSON.stringify({ stream: "transactional", from, to: "a@x.com", subject: "hi", html: "<p>hi</p>", text: "hi", campaignId: campaign.id }),
+    });
+
+    expect(res.status).toBe(202);
+    const { messageId } = await res.json<{ messageId: string }>();
+    expect(enqueue).toHaveBeenCalledTimes(1);
+    expect(await stub.getMessage(workspaceId, messageId)).toMatchObject({ status: "queued" });
+    const linked = await runInDurableObject(stub, (_i, state) =>
+      state.storage.sql.exec<{ campaign_id: string | null }>("SELECT campaign_id FROM message WHERE id = ?", messageId).toArray(),
+    );
+    expect(linked).toEqual([{ campaign_id: null }]);
+    expect(await stub.campaignStats(workspaceId, campaign.id)).toMatchObject({ queued: 0, failed: 0, sent: 0 });
+    vi.restoreAllMocks();
   });
 });

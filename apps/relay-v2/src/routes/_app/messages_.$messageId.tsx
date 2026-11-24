@@ -37,7 +37,7 @@ function MessagePage() {
     return (
       <>
         <ViewHeader title="Message" />
-        <DeniedState reason="not-found" />
+        <DeniedState reason="not-found" label="Message not found" />
       </>
     );
   }

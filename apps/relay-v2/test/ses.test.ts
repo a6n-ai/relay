@@ -69,6 +69,20 @@ describe("sendEmailBody", () => {
       "header contains a line break",
     );
   });
+
+  it("sends custom headers as Content.Simple.Headers and refuses a line break in one", () => {
+    const headers = [
+      { name: "List-Unsubscribe", value: "<https://relay.test/u/x>" },
+      { name: "List-Unsubscribe-Post", value: "List-Unsubscribe=One-Click" },
+    ];
+    expect(sendEmailBody({ ...request, headers }).Content.Simple.Headers).toEqual([
+      { Name: "List-Unsubscribe", Value: "<https://relay.test/u/x>" },
+      { Name: "List-Unsubscribe-Post", Value: "List-Unsubscribe=One-Click" },
+    ]);
+    expect(() => sendEmailBody({ ...request, headers: [{ name: "X", value: "a\nBcc: x@evil.com" }] })).toThrow(
+      "header contains a line break",
+    );
+  });
 });
 
 describe("sesTransport", () => {

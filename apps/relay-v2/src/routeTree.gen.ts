@@ -15,12 +15,17 @@ import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AppAdminRouteImport } from './routes/_app/admin'
 import { Route as AppAppsRouteImport } from './routes/_app/apps'
+import { Route as AppCampaignsRouteImport } from './routes/_app/campaigns'
 import { Route as AppDomainsRouteImport } from './routes/_app/domains'
+import { Route as AppListsRouteImport } from './routes/_app/lists'
 import { Route as AppMembersRouteImport } from './routes/_app/members'
 import { Route as AppMessagesRouteImport } from './routes/_app/messages'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as InviteIdRouteImport } from './routes/invite.$id'
+import { Route as UTokenRouteImport } from './routes/u.$token'
 import { Route as AppAppsAppIdRouteImport } from './routes/_app/apps_.$appId'
+import { Route as AppCampaignsCampaignIdRouteImport } from './routes/_app/campaigns_.$campaignId'
+import { Route as AppListsListIdRouteImport } from './routes/_app/lists_.$listId'
 import { Route as AppMessagesMessageIdRouteImport } from './routes/_app/messages_.$messageId'
 import { Route as AppMessagesFailuresRouteImport } from './routes/_app/messages_.failures'
 import { Route as AppMessagesSuppressionsRouteImport } from './routes/_app/messages_.suppressions'
@@ -67,9 +72,19 @@ const AppAppsRoute = AppAppsRouteImport.update({
   path: '/apps',
   getParentRoute: () => AppRoute,
 } as any)
+const AppCampaignsRoute = AppCampaignsRouteImport.update({
+  id: '/campaigns',
+  path: '/campaigns',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppDomainsRoute = AppDomainsRouteImport.update({
   id: '/domains',
   path: '/domains',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppListsRoute = AppListsRouteImport.update({
+  id: '/lists',
+  path: '/lists',
   getParentRoute: () => AppRoute,
 } as any)
 const AppMembersRoute = AppMembersRouteImport.update({
@@ -92,9 +107,24 @@ const InviteIdRoute = InviteIdRouteImport.update({
   path: '/invite/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const UTokenRoute = UTokenRouteImport.update({
+  id: '/u/$token',
+  path: '/u/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AppAppsAppIdRoute = AppAppsAppIdRouteImport.update({
   id: '/apps_/$appId',
   path: '/apps/$appId',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppCampaignsCampaignIdRoute = AppCampaignsCampaignIdRouteImport.update({
+  id: '/campaigns_/$campaignId',
+  path: '/campaigns/$campaignId',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppListsListIdRoute = AppListsListIdRouteImport.update({
+  id: '/lists_/$listId',
+  path: '/lists/$listId',
   getParentRoute: () => AppRoute,
 } as any)
 const AppMessagesMessageIdRoute = AppMessagesMessageIdRouteImport.update({
@@ -187,12 +217,17 @@ export interface FileRoutesByFullPath {
   '/sign-in': typeof SignInRoute
   '/admin': typeof AppAdminRoute
   '/apps': typeof AppAppsRoute
+  '/campaigns': typeof AppCampaignsRoute
   '/domains': typeof AppDomainsRoute
+  '/lists': typeof AppListsRoute
   '/members': typeof AppMembersRoute
   '/messages': typeof AppMessagesRoute
   '/api/health': typeof ApiHealthRoute
   '/invite/$id': typeof InviteIdRoute
+  '/u/$token': typeof UTokenRoute
   '/apps/$appId': typeof AppAppsAppIdRoute
+  '/campaigns/$campaignId': typeof AppCampaignsCampaignIdRoute
+  '/lists/$listId': typeof AppListsListIdRoute
   '/messages/$messageId': typeof AppMessagesMessageIdRoute
   '/messages/failures': typeof AppMessagesFailuresRoute
   '/messages/suppressions': typeof AppMessagesSuppressionsRoute
@@ -215,13 +250,18 @@ export interface FileRoutesByTo {
   '/sign-in': typeof SignInRoute
   '/admin': typeof AppAdminRoute
   '/apps': typeof AppAppsRoute
+  '/campaigns': typeof AppCampaignsRoute
   '/domains': typeof AppDomainsRoute
+  '/lists': typeof AppListsRoute
   '/members': typeof AppMembersRoute
   '/messages': typeof AppMessagesRoute
   '/api/health': typeof ApiHealthRoute
   '/invite/$id': typeof InviteIdRoute
+  '/u/$token': typeof UTokenRoute
   '/': typeof AppIndexRoute
   '/apps/$appId': typeof AppAppsAppIdRoute
+  '/campaigns/$campaignId': typeof AppCampaignsCampaignIdRoute
+  '/lists/$listId': typeof AppListsListIdRoute
   '/messages/$messageId': typeof AppMessagesMessageIdRoute
   '/messages/failures': typeof AppMessagesFailuresRoute
   '/messages/suppressions': typeof AppMessagesSuppressionsRoute
@@ -246,13 +286,18 @@ export interface FileRoutesById {
   '/sign-in': typeof SignInRoute
   '/_app/admin': typeof AppAdminRoute
   '/_app/apps': typeof AppAppsRoute
+  '/_app/campaigns': typeof AppCampaignsRoute
   '/_app/domains': typeof AppDomainsRoute
+  '/_app/lists': typeof AppListsRoute
   '/_app/members': typeof AppMembersRoute
   '/_app/messages': typeof AppMessagesRoute
   '/api/health': typeof ApiHealthRoute
   '/invite/$id': typeof InviteIdRoute
+  '/u/$token': typeof UTokenRoute
   '/_app/': typeof AppIndexRoute
   '/_app/apps_/$appId': typeof AppAppsAppIdRoute
+  '/_app/campaigns_/$campaignId': typeof AppCampaignsCampaignIdRoute
+  '/_app/lists_/$listId': typeof AppListsListIdRoute
   '/_app/messages_/$messageId': typeof AppMessagesMessageIdRoute
   '/_app/messages_/failures': typeof AppMessagesFailuresRoute
   '/_app/messages_/suppressions': typeof AppMessagesSuppressionsRoute
@@ -278,12 +323,17 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/admin'
     | '/apps'
+    | '/campaigns'
     | '/domains'
+    | '/lists'
     | '/members'
     | '/messages'
     | '/api/health'
     | '/invite/$id'
+    | '/u/$token'
     | '/apps/$appId'
+    | '/campaigns/$campaignId'
+    | '/lists/$listId'
     | '/messages/$messageId'
     | '/messages/failures'
     | '/messages/suppressions'
@@ -306,13 +356,18 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/admin'
     | '/apps'
+    | '/campaigns'
     | '/domains'
+    | '/lists'
     | '/members'
     | '/messages'
     | '/api/health'
     | '/invite/$id'
+    | '/u/$token'
     | '/'
     | '/apps/$appId'
+    | '/campaigns/$campaignId'
+    | '/lists/$listId'
     | '/messages/$messageId'
     | '/messages/failures'
     | '/messages/suppressions'
@@ -336,13 +391,18 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/_app/admin'
     | '/_app/apps'
+    | '/_app/campaigns'
     | '/_app/domains'
+    | '/_app/lists'
     | '/_app/members'
     | '/_app/messages'
     | '/api/health'
     | '/invite/$id'
+    | '/u/$token'
     | '/_app/'
     | '/_app/apps_/$appId'
+    | '/_app/campaigns_/$campaignId'
+    | '/_app/lists_/$listId'
     | '/_app/messages_/$messageId'
     | '/_app/messages_/failures'
     | '/_app/messages_/suppressions'
@@ -367,6 +427,7 @@ export interface RootRouteChildren {
   SignInRoute: typeof SignInRoute
   ApiHealthRoute: typeof ApiHealthRoute
   InviteIdRoute: typeof InviteIdRoute
+  UTokenRoute: typeof UTokenRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiDevOtpRoute: typeof ApiDevOtpRoute
   ApiInternalDoSweepRoute: typeof ApiInternalDoSweepRoute
@@ -421,11 +482,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAppsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/campaigns': {
+      id: '/_app/campaigns'
+      path: '/campaigns'
+      fullPath: '/campaigns'
+      preLoaderRoute: typeof AppCampaignsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/domains': {
       id: '/_app/domains'
       path: '/domains'
       fullPath: '/domains'
       preLoaderRoute: typeof AppDomainsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/lists': {
+      id: '/_app/lists'
+      path: '/lists'
+      fullPath: '/lists'
+      preLoaderRoute: typeof AppListsRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/members': {
@@ -456,11 +531,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof InviteIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/u/$token': {
+      id: '/u/$token'
+      path: '/u/$token'
+      fullPath: '/u/$token'
+      preLoaderRoute: typeof UTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_app/apps_/$appId': {
       id: '/_app/apps_/$appId'
       path: '/apps/$appId'
       fullPath: '/apps/$appId'
       preLoaderRoute: typeof AppAppsAppIdRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/campaigns_/$campaignId': {
+      id: '/_app/campaigns_/$campaignId'
+      path: '/campaigns/$campaignId'
+      fullPath: '/campaigns/$campaignId'
+      preLoaderRoute: typeof AppCampaignsCampaignIdRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/lists_/$listId': {
+      id: '/_app/lists_/$listId'
+      path: '/lists/$listId'
+      fullPath: '/lists/$listId'
+      preLoaderRoute: typeof AppListsListIdRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/messages_/$messageId': {
@@ -581,11 +677,15 @@ declare module '@tanstack/react-router' {
 interface AppRouteChildren {
   AppAdminRoute: typeof AppAdminRoute
   AppAppsRoute: typeof AppAppsRoute
+  AppCampaignsRoute: typeof AppCampaignsRoute
   AppDomainsRoute: typeof AppDomainsRoute
+  AppListsRoute: typeof AppListsRoute
   AppMembersRoute: typeof AppMembersRoute
   AppMessagesRoute: typeof AppMessagesRoute
   AppIndexRoute: typeof AppIndexRoute
   AppAppsAppIdRoute: typeof AppAppsAppIdRoute
+  AppCampaignsCampaignIdRoute: typeof AppCampaignsCampaignIdRoute
+  AppListsListIdRoute: typeof AppListsListIdRoute
   AppMessagesMessageIdRoute: typeof AppMessagesMessageIdRoute
   AppMessagesFailuresRoute: typeof AppMessagesFailuresRoute
   AppMessagesSuppressionsRoute: typeof AppMessagesSuppressionsRoute
@@ -597,11 +697,15 @@ interface AppRouteChildren {
 const AppRouteChildren: AppRouteChildren = {
   AppAdminRoute: AppAdminRoute,
   AppAppsRoute: AppAppsRoute,
+  AppCampaignsRoute: AppCampaignsRoute,
   AppDomainsRoute: AppDomainsRoute,
+  AppListsRoute: AppListsRoute,
   AppMembersRoute: AppMembersRoute,
   AppMessagesRoute: AppMessagesRoute,
   AppIndexRoute: AppIndexRoute,
   AppAppsAppIdRoute: AppAppsAppIdRoute,
+  AppCampaignsCampaignIdRoute: AppCampaignsCampaignIdRoute,
+  AppListsListIdRoute: AppListsListIdRoute,
   AppMessagesMessageIdRoute: AppMessagesMessageIdRoute,
   AppMessagesFailuresRoute: AppMessagesFailuresRoute,
   AppMessagesSuppressionsRoute: AppMessagesSuppressionsRoute,
@@ -642,6 +746,7 @@ const rootRouteChildren: RootRouteChildren = {
   SignInRoute: SignInRoute,
   ApiHealthRoute: ApiHealthRoute,
   InviteIdRoute: InviteIdRoute,
+  UTokenRoute: UTokenRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiDevOtpRoute: ApiDevOtpRoute,
   ApiInternalDoSweepRoute: ApiInternalDoSweepRoute,

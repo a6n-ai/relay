@@ -24,6 +24,7 @@ export default defineConfig({
           SEED_SECRET: "test-seed-secret-7Hq2vLx9",
           INTERNAL_SECRET: "test-internal-secret-4Lm8pQw2",
           WEBHOOK_SECRET_KEY: "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=",
+          UNSUBSCRIBE_SECRET: "sJndhhCU1+8YgHoYt/G7fKwRvSbciKHC/P1iRnbIYmQ=",
         },
       },
     }),

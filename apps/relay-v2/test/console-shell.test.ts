@@ -1,12 +1,14 @@
 import { env, runInDurableObject, SELF } from "cloudflare:test";
 import { and, eq } from "drizzle-orm";
 import { beforeAll, describe, expect, it } from "vitest";
+import { PROBLEM_LABEL } from "../src/components/campaign-problems";
+import { reasonText } from "../src/components/error-text";
 import { clientFor } from "../src/core/messages";
 import { safeRedirect } from "../src/console/shell.fns";
 import { securityDb } from "../src/db/security/client";
 import { newId } from "../src/lib/ids";
 import { app, member, user, workspace } from "../src/db/security/schema";
-import { addMember, cookieFor, createWorkspace, ORIGIN, setActive } from "./console-helpers";
+import { addMember, cookieFor, createWorkspace, ORIGIN, setActive, signIn } from "./console-helpers";
 import { applyMigrations } from "./migrate";
 
 const db = securityDb(env);
@@ -132,6 +134,66 @@ describe("console shell", { timeout: 60_000 }, () => {
       expect(html, path).toContain("This workspace is suspended");
       expect(html, path).not.toContain("Something went wrong");
     }
+  });
+
+  it("shows the Lists nav item to an owner and hides it from billing", async () => {
+    const owner = await cookieFor("owner-lists-nav@example.com", "admin");
+    const wsId = await createWorkspace(owner, "Lists Nav Co");
+    await setActive(owner, wsId);
+    expect(await (await getPage("/", owner)).text()).toContain('href="/lists"');
+
+    await addMember(wsId, "billing-lists-nav@example.com", "billing");
+    const billing = await signIn("billing-lists-nav@example.com");
+    await setActive(billing, wsId);
+    const html = await (await getPage("/", billing)).text();
+    expect(html).not.toContain('href="/lists"');
+  });
+
+  it("shows the Campaigns nav item to an owner and hides it from billing", async () => {
+    const owner = await cookieFor("owner-campaigns-nav@example.com", "admin");
+    const wsId = await createWorkspace(owner, "Campaigns Nav Co");
+    await setActive(owner, wsId);
+    expect(await (await getPage("/", owner)).text()).toContain('href="/campaigns"');
+
+    await addMember(wsId, "billing-campaigns-nav@example.com", "billing");
+    const billing = await signIn("billing-campaigns-nav@example.com");
+    await setActive(billing, wsId);
+    expect(await (await getPage("/", billing)).text()).not.toContain('href="/campaigns"');
+  });
+
+  it("renders an empty campaigns list and a labelled not-found state for a missing campaign", async () => {
+    const owner = await cookieFor("owner-campaigns-page@example.com", "admin");
+    const wsId = await createWorkspace(owner, "Campaigns Page Co");
+    await setActive(owner, wsId);
+    const list = await getPage("/campaigns", owner);
+    expect(list.status).toBe(200);
+    expect(await list.text()).toContain("No campaigns yet");
+
+    const missing = await getPage("/campaigns/cmp_000000000000?appId=app_000000000000", owner);
+    expect(missing.status).toBe(404);
+    expect(await missing.text()).toContain("Campaign not found");
+  });
+
+  it("labels every campaign problem", () => {
+    expect(Object.keys(PROBLEM_LABEL).sort()).toEqual(
+      [
+        "audience_empty",
+        "from_missing",
+        "html_missing",
+        "postal_address_missing",
+        "subject_missing",
+        "text_missing",
+        "unsubscribe_missing",
+      ].sort(),
+    );
+  });
+});
+
+describe("campaign pause reasons", () => {
+  it("maps the stored pause codes to plain copy", () => {
+    expect(reasonText("too_many_recipients")).toBe("This campaign has more recipients than one send allows.");
+    expect(reasonText("run_failed")).toBe("Sending hit an error and stopped. Resume to try again.");
+    expect(reasonText(null)).toBeNull();
   });
 });
 

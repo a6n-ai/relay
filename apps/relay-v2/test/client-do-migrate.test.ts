@@ -41,7 +41,7 @@ describe("ClientDO migrations", () => {
     const stub = env.CLIENT.get(env.CLIENT.idFromName("migrate-upgrade"));
     const result = await runInDurableObject(stub, (_instance, state) => {
       const { storage } = state;
-      for (const table of ["inbound_failure", "webhook_delivery", "webhook", "attachment", "message_event", "message", "suppression", "audit_log"])
+      for (const table of ["campaign", "marketing_optout", "contact_list_member", "contact_list", "inbound_failure", "webhook_delivery", "webhook", "attachment", "message_event", "message", "suppression", "audit_log"])
         storage.sql.exec(`DROP TABLE IF EXISTS ${table}`);
       storage.kv.delete("schema_version");
       storage.transactionSync(() => {
@@ -63,7 +63,7 @@ describe("ClientDO migrations", () => {
     const stub = env.CLIENT.get(env.CLIENT.idFromName("migrate-upgrade-v2"));
     const result = await runInDurableObject(stub, (_instance, state) => {
       const { storage } = state;
-      for (const table of ["inbound_failure", "webhook_delivery", "webhook", "attachment", "message_event", "message", "suppression", "audit_log"])
+      for (const table of ["campaign", "marketing_optout", "contact_list_member", "contact_list", "inbound_failure", "webhook_delivery", "webhook", "attachment", "message_event", "message", "suppression", "audit_log"])
         storage.sql.exec(`DROP TABLE IF EXISTS ${table}`);
       storage.kv.delete("schema_version");
       storage.transactionSync(() => {
@@ -171,5 +171,46 @@ describe("ClientDO migrations", () => {
     expect(after.calls - before.calls).toBe(1);
     expect(after.count - before.count).toBe(CLIENT_MIGRATIONS.length);
     expect(after.version).toBe(CLIENT_MIGRATIONS.length);
+  });
+});
+
+describe("ClientDO migration 6 (contact lists and campaigns)", () => {
+  it("pins six scripts and creates the list, member, opt-out and campaign tables with the message columns", async () => {
+    expect(CLIENT_MIGRATIONS.length).toBe(6);
+    const stub = env.CLIENT.get(env.CLIENT.idFromName("migrate-six"));
+    const result = await runInDurableObject(stub, (_instance, state) => ({
+      version: state.storage.kv.get<number>("schema_version"),
+      tables: tables(state.storage.sql),
+      messageColumns: state.storage.sql.exec<{ name: string }>("PRAGMA table_info('message')").toArray().map((r) => r.name),
+      memberColumns: state.storage.sql.exec<{ name: string }>("PRAGMA table_info('contact_list_member')").toArray().map((r) => r.name),
+    }));
+    expect(result.version).toBe(6);
+    expect(result.tables).toEqual(expect.arrayContaining(["contact_list", "contact_list_member", "marketing_optout", "campaign"]));
+    expect(result.memberColumns).not.toContain("unsubscribed_at");
+    expect(result.messageColumns).toEqual(expect.arrayContaining(["unsubscribed_at", "merge_data"]));
+  });
+
+  it("upgrades a version-5 DO to 6 in place, keeping existing rows", async () => {
+    const stub = env.CLIENT.get(env.CLIENT.idFromName("migrate-five"));
+    const result = await runInDurableObject(stub, (_instance, state) => {
+      const { storage } = state;
+      for (const table of ["campaign", "marketing_optout", "contact_list_member", "contact_list"]) storage.sql.exec(`DROP TABLE IF EXISTS ${table}`);
+      storage.sql.exec("ALTER TABLE message DROP COLUMN unsubscribed_at");
+      storage.sql.exec("ALTER TABLE message DROP COLUMN merge_data");
+      storage.sql.exec("INSERT INTO suppression (email, reason, stream, created_at) VALUES ('keep@x.test', 'manual', NULL, 1)");
+      storage.kv.put("schema_version", 5);
+      const before = applied.count;
+      const version = migrate(storage);
+      return {
+        version,
+        delta: applied.count - before,
+        kept: storage.sql.exec<{ email: string }>("SELECT email FROM suppression").toArray().map((r) => r.email),
+        tables: tables(storage.sql),
+      };
+    });
+    expect(result.version).toBe(6);
+    expect(result.delta).toBe(1);
+    expect(result.kept).toEqual(["keep@x.test"]);
+    expect(result.tables).toEqual(expect.arrayContaining(["contact_list", "contact_list_member", "campaign"]));
   });
 });
