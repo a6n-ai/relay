@@ -16,12 +16,14 @@ import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AppAdminRouteImport } from './routes/_app/admin'
 import { Route as AppAppsRouteImport } from './routes/_app/apps'
 import { Route as AppDomainsRouteImport } from './routes/_app/domains'
+import { Route as AppListsRouteImport } from './routes/_app/lists'
 import { Route as AppMembersRouteImport } from './routes/_app/members'
 import { Route as AppMessagesRouteImport } from './routes/_app/messages'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as InviteIdRouteImport } from './routes/invite.$id'
 import { Route as UTokenRouteImport } from './routes/u.$token'
 import { Route as AppAppsAppIdRouteImport } from './routes/_app/apps_.$appId'
+import { Route as AppListsListIdRouteImport } from './routes/_app/lists_.$listId'
 import { Route as AppMessagesMessageIdRouteImport } from './routes/_app/messages_.$messageId'
 import { Route as AppMessagesFailuresRouteImport } from './routes/_app/messages_.failures'
 import { Route as AppMessagesSuppressionsRouteImport } from './routes/_app/messages_.suppressions'
@@ -73,6 +75,11 @@ const AppDomainsRoute = AppDomainsRouteImport.update({
   path: '/domains',
   getParentRoute: () => AppRoute,
 } as any)
+const AppListsRoute = AppListsRouteImport.update({
+  id: '/lists',
+  path: '/lists',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppMembersRoute = AppMembersRouteImport.update({
   id: '/members',
   path: '/members',
@@ -101,6 +108,11 @@ const UTokenRoute = UTokenRouteImport.update({
 const AppAppsAppIdRoute = AppAppsAppIdRouteImport.update({
   id: '/apps_/$appId',
   path: '/apps/$appId',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppListsListIdRoute = AppListsListIdRouteImport.update({
+  id: '/lists_/$listId',
+  path: '/lists/$listId',
   getParentRoute: () => AppRoute,
 } as any)
 const AppMessagesMessageIdRoute = AppMessagesMessageIdRouteImport.update({
@@ -194,12 +206,14 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AppAdminRoute
   '/apps': typeof AppAppsRoute
   '/domains': typeof AppDomainsRoute
+  '/lists': typeof AppListsRoute
   '/members': typeof AppMembersRoute
   '/messages': typeof AppMessagesRoute
   '/api/health': typeof ApiHealthRoute
   '/invite/$id': typeof InviteIdRoute
   '/u/$token': typeof UTokenRoute
   '/apps/$appId': typeof AppAppsAppIdRoute
+  '/lists/$listId': typeof AppListsListIdRoute
   '/messages/$messageId': typeof AppMessagesMessageIdRoute
   '/messages/failures': typeof AppMessagesFailuresRoute
   '/messages/suppressions': typeof AppMessagesSuppressionsRoute
@@ -223,6 +237,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AppAdminRoute
   '/apps': typeof AppAppsRoute
   '/domains': typeof AppDomainsRoute
+  '/lists': typeof AppListsRoute
   '/members': typeof AppMembersRoute
   '/messages': typeof AppMessagesRoute
   '/api/health': typeof ApiHealthRoute
@@ -230,6 +245,7 @@ export interface FileRoutesByTo {
   '/u/$token': typeof UTokenRoute
   '/': typeof AppIndexRoute
   '/apps/$appId': typeof AppAppsAppIdRoute
+  '/lists/$listId': typeof AppListsListIdRoute
   '/messages/$messageId': typeof AppMessagesMessageIdRoute
   '/messages/failures': typeof AppMessagesFailuresRoute
   '/messages/suppressions': typeof AppMessagesSuppressionsRoute
@@ -255,6 +271,7 @@ export interface FileRoutesById {
   '/_app/admin': typeof AppAdminRoute
   '/_app/apps': typeof AppAppsRoute
   '/_app/domains': typeof AppDomainsRoute
+  '/_app/lists': typeof AppListsRoute
   '/_app/members': typeof AppMembersRoute
   '/_app/messages': typeof AppMessagesRoute
   '/api/health': typeof ApiHealthRoute
@@ -262,6 +279,7 @@ export interface FileRoutesById {
   '/u/$token': typeof UTokenRoute
   '/_app/': typeof AppIndexRoute
   '/_app/apps_/$appId': typeof AppAppsAppIdRoute
+  '/_app/lists_/$listId': typeof AppListsListIdRoute
   '/_app/messages_/$messageId': typeof AppMessagesMessageIdRoute
   '/_app/messages_/failures': typeof AppMessagesFailuresRoute
   '/_app/messages_/suppressions': typeof AppMessagesSuppressionsRoute
@@ -288,12 +306,14 @@ export interface FileRouteTypes {
     | '/admin'
     | '/apps'
     | '/domains'
+    | '/lists'
     | '/members'
     | '/messages'
     | '/api/health'
     | '/invite/$id'
     | '/u/$token'
     | '/apps/$appId'
+    | '/lists/$listId'
     | '/messages/$messageId'
     | '/messages/failures'
     | '/messages/suppressions'
@@ -317,6 +337,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/apps'
     | '/domains'
+    | '/lists'
     | '/members'
     | '/messages'
     | '/api/health'
@@ -324,6 +345,7 @@ export interface FileRouteTypes {
     | '/u/$token'
     | '/'
     | '/apps/$appId'
+    | '/lists/$listId'
     | '/messages/$messageId'
     | '/messages/failures'
     | '/messages/suppressions'
@@ -348,6 +370,7 @@ export interface FileRouteTypes {
     | '/_app/admin'
     | '/_app/apps'
     | '/_app/domains'
+    | '/_app/lists'
     | '/_app/members'
     | '/_app/messages'
     | '/api/health'
@@ -355,6 +378,7 @@ export interface FileRouteTypes {
     | '/u/$token'
     | '/_app/'
     | '/_app/apps_/$appId'
+    | '/_app/lists_/$listId'
     | '/_app/messages_/$messageId'
     | '/_app/messages_/failures'
     | '/_app/messages_/suppressions'
@@ -441,6 +465,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppDomainsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/lists': {
+      id: '/_app/lists'
+      path: '/lists'
+      fullPath: '/lists'
+      preLoaderRoute: typeof AppListsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/members': {
       id: '/_app/members'
       path: '/members'
@@ -481,6 +512,13 @@ declare module '@tanstack/react-router' {
       path: '/apps/$appId'
       fullPath: '/apps/$appId'
       preLoaderRoute: typeof AppAppsAppIdRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/lists_/$listId': {
+      id: '/_app/lists_/$listId'
+      path: '/lists/$listId'
+      fullPath: '/lists/$listId'
+      preLoaderRoute: typeof AppListsListIdRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/messages_/$messageId': {
@@ -602,10 +640,12 @@ interface AppRouteChildren {
   AppAdminRoute: typeof AppAdminRoute
   AppAppsRoute: typeof AppAppsRoute
   AppDomainsRoute: typeof AppDomainsRoute
+  AppListsRoute: typeof AppListsRoute
   AppMembersRoute: typeof AppMembersRoute
   AppMessagesRoute: typeof AppMessagesRoute
   AppIndexRoute: typeof AppIndexRoute
   AppAppsAppIdRoute: typeof AppAppsAppIdRoute
+  AppListsListIdRoute: typeof AppListsListIdRoute
   AppMessagesMessageIdRoute: typeof AppMessagesMessageIdRoute
   AppMessagesFailuresRoute: typeof AppMessagesFailuresRoute
   AppMessagesSuppressionsRoute: typeof AppMessagesSuppressionsRoute
@@ -618,10 +658,12 @@ const AppRouteChildren: AppRouteChildren = {
   AppAdminRoute: AppAdminRoute,
   AppAppsRoute: AppAppsRoute,
   AppDomainsRoute: AppDomainsRoute,
+  AppListsRoute: AppListsRoute,
   AppMembersRoute: AppMembersRoute,
   AppMessagesRoute: AppMessagesRoute,
   AppIndexRoute: AppIndexRoute,
   AppAppsAppIdRoute: AppAppsAppIdRoute,
+  AppListsListIdRoute: AppListsListIdRoute,
   AppMessagesMessageIdRoute: AppMessagesMessageIdRoute,
   AppMessagesFailuresRoute: AppMessagesFailuresRoute,
   AppMessagesSuppressionsRoute: AppMessagesSuppressionsRoute,

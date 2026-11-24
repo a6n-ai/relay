@@ -6,7 +6,7 @@ import { safeRedirect } from "../src/console/shell.fns";
 import { securityDb } from "../src/db/security/client";
 import { newId } from "../src/lib/ids";
 import { app, member, user, workspace } from "../src/db/security/schema";
-import { addMember, cookieFor, createWorkspace, ORIGIN, setActive } from "./console-helpers";
+import { addMember, cookieFor, createWorkspace, ORIGIN, setActive, signIn } from "./console-helpers";
 import { applyMigrations } from "./migrate";
 
 const db = securityDb(env);
@@ -132,6 +132,19 @@ describe("console shell", { timeout: 60_000 }, () => {
       expect(html, path).toContain("This workspace is suspended");
       expect(html, path).not.toContain("Something went wrong");
     }
+  });
+
+  it("shows the Lists nav item to an owner and hides it from billing", async () => {
+    const owner = await cookieFor("owner-lists-nav@example.com", "admin");
+    const wsId = await createWorkspace(owner, "Lists Nav Co");
+    await setActive(owner, wsId);
+    expect(await (await getPage("/", owner)).text()).toContain('href="/lists"');
+
+    await addMember(wsId, "billing-lists-nav@example.com", "billing");
+    const billing = await signIn("billing-lists-nav@example.com");
+    await setActive(billing, wsId);
+    const html = await (await getPage("/", billing)).text();
+    expect(html).not.toContain('href="/lists"');
   });
 });
 
