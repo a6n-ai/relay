@@ -1,5 +1,6 @@
 import { env, SELF } from "cloudflare:test";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { campaignProblems } from "../src/core/campaign-problems";
 import { clientFor } from "../src/core/messages";
 import { requireActor } from "../src/console/actor";
 import { addApp } from "../src/console/apps";
@@ -222,5 +223,19 @@ describe("hook-audience campaigns console", () => {
     await expect(updateCampaignFor(env, owner, campaign.id, { subject: "Hi {{data.plan}}" })).rejects.toMatchObject({ status: 400 });
     await updateCampaignFor(env, owner, campaign.id, { audienceKind: "hook", audienceQuery: "all", subject: "Hi {{data.plan}}" });
     await expect(scheduleCampaignFor(env, owner, campaign.id, Date.now())).rejects.toThrow("audience_hook_missing");
+  });
+
+  it("refuses a hook-to-lists switch while the saved bodies use {{data.*}}", async () => {
+    const { owner } = await workspaceFor("cmp-switch@example.com", "Cmp Switch Co");
+    const { id: appId } = await addApp(env, owner, { name: "Web", slug: "web" });
+    const campaign = await createCampaignFor(env, owner, appId, "Switched");
+    await updateCampaignFor(env, owner, campaign.id, { audienceKind: "hook", audienceQuery: "all", html: "<p>{{data.plan}}</p>", text: "{{data.plan}}" });
+    await expect(updateCampaignFor(env, owner, campaign.id, { audienceKind: "lists" })).rejects.toMatchObject({ status: 409 });
+    expect(
+      campaignProblems(
+        { fromEmail: "a@x.com", subject: "s", html: "{{data.plan}}", text: "x", listIds: ["l"], audienceKind: "lists", hookReady: false },
+        "100 Main St",
+      ),
+    ).toContain("data_fields_need_hook");
   });
 });

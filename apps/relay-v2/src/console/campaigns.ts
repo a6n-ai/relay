@@ -1,4 +1,5 @@
 import { and, eq, sql } from "drizzle-orm";
+import { hasDataToken } from "../core/campaign-problems";
 import { refreshWorkspaceLimits } from "../core/limits";
 import { clientFor, SEND_REFUSAL_STATUS, sendRefusal } from "../core/messages";
 import { fillUnsubscribe, MERGE_SAMPLES, renderMerge, unknownMergeFields } from "../core/merge";
@@ -128,6 +129,10 @@ export async function updateCampaignFor(env: Env, actor: ConsoleActor, id: strin
   const data = (patch.audienceKind ?? current.audienceKind) === "hook";
   for (const body of [patch.subject, patch.html, patch.text]) {
     if (body !== undefined && unknownMergeFields(body, { data }).length > 0) throw new ConsoleError(400, "unknown merge field");
+  }
+  // A hook-to-lists switch keeps the saved bodies, so they are re-checked against the new audience.
+  if (patch.audienceKind === "lists" && current.audienceKind === "hook" && [current.html, current.text].some(hasDataToken)) {
+    throw new ConsoleError(409, "campaign not ready: data_fields_need_hook");
   }
   if (patch.fromEmail && !(await verifiedSenders(env, actor.workspaceId, current.appId)).includes(patch.fromEmail)) {
     throw new ConsoleError(400, "sender not verified");

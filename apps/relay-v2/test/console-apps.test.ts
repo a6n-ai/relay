@@ -1,8 +1,9 @@
 import { env, SELF } from "cloudflare:test";
 import { beforeAll, describe, expect, it } from "vitest";
 import { requireActor, uniqueViolation } from "../src/console/actor";
-import { addApp, createKey, getApp, listApps, listKeys, revokeKey, setAudienceHookFor } from "../src/console/apps";
+import { addApp, createKey, deleteAudienceHookFor, getApp, listApps, listKeys, revokeKey, setAudienceHookFor } from "../src/console/apps";
 import { createApp } from "../src/core/apps";
+import { clientFor } from "../src/core/messages";
 import { resolveApiKey } from "../src/core/api-keys";
 import { addMember, cookieFor, createWorkspace, ORIGIN, setActive } from "./console-helpers";
 import { applyMigrations } from "./migrate";
@@ -136,5 +137,19 @@ describe("app audience hook", () => {
     const memberCookie = await addMember(workspaceId, "hook-member@example.com", "member");
     const member = await requireActor(env, headersFor(memberCookie));
     await expect(setAudienceHookFor(env, member, appId, { url: "https://hooks.example.com/a" })).rejects.toMatchObject({ status: 403 });
+  });
+
+  it("keeps a super-admin binding hook from a tenant owner's save or delete", async () => {
+    const { cookie, workspaceId } = await workspaceFor("hook-binding@example.com", "Hook Binding Co");
+    const owner = await requireActor(env, headersFor(cookie));
+    const { id: appId } = await addApp(env, owner, { name: "Web", slug: "web" });
+    await clientFor(env, workspaceId).setAudienceHook(workspaceId, appId, { kind: "binding", binding: "TIFFIN_AUDIENCE" });
+    const tenantOwner = { ...owner, platformAdmin: false };
+    await expect(setAudienceHookFor(env, tenantOwner, appId, { url: "https://hooks.example.com/a" })).rejects.toMatchObject({
+      status: 403,
+      message: "hook managed by platform admin",
+    });
+    await expect(deleteAudienceHookFor(env, tenantOwner, appId)).rejects.toMatchObject({ status: 403 });
+    expect(await clientFor(env, workspaceId).getAudienceHook(workspaceId, appId)).toMatchObject({ kind: "binding" });
   });
 });

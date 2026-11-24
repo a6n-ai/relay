@@ -99,6 +99,13 @@ export async function revokeKey(env: Env, actor: ConsoleActor, id: string): Prom
 const AUDIENCE_READ = { tenant: ["read"] };
 const AUDIENCE_WRITE = { tenant: ["write"] };
 
+// A binding names a Worker on this deployment, so only a super admin sets or removes one (admin.ts).
+async function guardPlatformHook(env: Env, actor: ConsoleActor, appId: string): Promise<void> {
+  if (actor.platformAdmin) return;
+  const hook = await clientFor(env, actor.workspaceId).getAudienceHook(actor.workspaceId, appId);
+  if (hook?.kind === "binding") throw new ConsoleError(403, "hook managed by platform admin");
+}
+
 // Https only: a binding names a Worker on this deployment, so only a super admin sets one (admin.ts).
 export async function setAudienceHookFor(
   env: Env,
@@ -108,6 +115,7 @@ export async function setAudienceHookFor(
 ): Promise<{ secret: string | null }> {
   if (!allows(actor.roles, AUDIENCE_WRITE)) throw new ConsoleError(403, "forbidden");
   await getApp(env, actor, appId);
+  await guardPlatformHook(env, actor, appId);
   const parsed = hookInputSchema.safeParse(input);
   if (!parsed.success) throw new ConsoleError(400, "invalid input");
   let result: { secret: string | null };
@@ -132,6 +140,7 @@ export async function getAudienceHookFor(env: Env, actor: ConsoleActor, appId: s
 export async function deleteAudienceHookFor(env: Env, actor: ConsoleActor, appId: string): Promise<void> {
   if (!allows(actor.roles, AUDIENCE_WRITE)) throw new ConsoleError(403, "forbidden");
   await getApp(env, actor, appId);
+  await guardPlatformHook(env, actor, appId);
   if (!(await clientFor(env, actor.workspaceId).deleteAudienceHook(actor.workspaceId, appId))) throw new ConsoleError(404, "not found");
   await writeAudit(env, { action: "app.audience_hook.delete", actorUserId: actor.userId, workspaceId: actor.workspaceId, target: appId, data: { appId } });
 }

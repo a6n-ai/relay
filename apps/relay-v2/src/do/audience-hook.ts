@@ -105,10 +105,12 @@ export async function audienceCallFor(
   const request: AudienceRequest = {
     type: "audience.page",
     appId: campaign.appId,
+    workspaceId,
     campaignId,
     audience: campaign.audienceQuery,
     cursor: parseHookCursor(campaign.cursor).c,
     limit: HOOK_PAGE_LIMIT,
+    sentAt: Date.now(),
   };
   if (hook.kind === "binding") {
     if (!hook.binding || !(AUDIENCE_BINDINGS as readonly string[]).includes(hook.binding)) return "no_hook";
@@ -118,5 +120,6 @@ export async function audienceCallFor(
   if (!hook.url || !isPublicWebhookUrl(hook.url) || !hook.secretEnc) return "no_hook";
   const secret = await decryptSecret(env.WEBHOOK_SECRET_KEY, hook.secretEnc, aad(workspaceId, campaign.appId));
   const body = JSON.stringify(request);
-  return { kind: "https", url: hook.url, body, headers: webhookHeaders("audience.page", await signBody(secret, body)) };
+  const headers = { ...webhookHeaders("audience.page", await signBody(secret, body)), "x-relay-timestamp": String(request.sentAt) };
+  return { kind: "https", url: hook.url, body, headers };
 }
