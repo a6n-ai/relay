@@ -16,6 +16,8 @@ import { newId } from "../lib/ids";
 import {
   attachmentViews,
   listMessageRows,
+  listSuppressionRows,
+  type SuppressionView,
   readMessageDetail,
   readMessageFile,
   type MessageAccess,
@@ -644,6 +646,22 @@ export class ClientDO extends DurableObject<Env> {
     return this.suppressed(email.trim().toLowerCase(), stream);
   }
 
+  async listSuppressions(workspaceId: string, q: { prefix?: string; cursor?: string }): Promise<{ rows: SuppressionView[]; nextCursor: string | null }> {
+    await this.ready(workspaceId);
+    return listSuppressionRows(this.db, { prefix: q.prefix?.trim().toLowerCase(), cursor: q.cursor });
+  }
+  // Unsubscribe and complaint rows are kept: a recipient who opted out cannot be re-enabled from the console.
+  async removeSuppression(workspaceId: string, email: string): Promise<"removed" | "missing" | "opted_out"> {
+    await this.ready(workspaceId);
+    const key = email.trim().toLowerCase();
+    return this.ctx.storage.transactionSync(() => {
+      const row = this.db.select({ reason: schema.suppression.reason }).from(schema.suppression).where(eq(schema.suppression.email, key)).get();
+      if (!row) return "missing";
+      if (row.reason === "unsubscribe" || row.reason === "complaint") return "opted_out";
+      this.db.delete(schema.suppression).where(eq(schema.suppression.email, key)).run();
+      return "removed";
+    });
+  }
   async refreshLimits(workspaceId: string): Promise<WorkspaceLimits> {
     await this.ready(workspaceId);
     return this.loadLimits(workspaceId);

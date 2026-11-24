@@ -1,7 +1,8 @@
-import { and, asc, desc, eq, lt, ne, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, gt, lt, ne, or, sql, type SQL } from "drizzle-orm";
 import type { DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
 import { safeDownloadName } from "../core/download";
 import type { Env } from "../env";
+import type { Stream, SuppressionReason } from "../core/send-input";
 import type { AttachmentView, MessageView } from "./client-do";
 import * as schema from "./client-schema";
 
@@ -69,6 +70,34 @@ export function visibleTo(access: MessageAccess): SQL {
       ? sql`${m.direction} = 'in'`
       : sql`${m.direction} = 'in' AND ${m.addressId} IN (SELECT value FROM json_each(${JSON.stringify(access.inbound)}))`;
   return access.out ? sql`(${m.direction} = 'out' OR (${inbound}))` : sql`(${inbound})`;
+}
+
+export type SuppressionView = { email: string; reason: SuppressionReason; stream: Stream | null; createdAt: number };
+
+const SUPPRESSION_PAGE = 50;
+
+// Range, not LIKE: the primary key serves it and no wildcard in an address needs escaping. char(1114111) is the largest code point.
+export function listSuppressionRows(
+  db: Db,
+  q: { prefix?: string; cursor?: string },
+): { rows: SuppressionView[]; nextCursor: string | null } {
+  const s = schema.suppression;
+  const rows = db
+    .select({ email: s.email, reason: s.reason, stream: s.stream, createdAt: s.createdAt })
+    .from(s)
+    .where(
+      and(
+        q.prefix ? sql`${s.email} >= ${q.prefix} AND ${s.email} < (${q.prefix} || char(1114111))` : undefined,
+        q.cursor ? gt(s.email, q.cursor) : undefined,
+      ),
+    )
+    .orderBy(asc(s.email))
+    .limit(SUPPRESSION_PAGE + 1)
+    .all()
+    .map((r): SuppressionView => ({ ...r, reason: r.reason as SuppressionReason, stream: r.stream as Stream | null }));
+  const page = rows.slice(0, SUPPRESSION_PAGE);
+  const nextCursor = rows.length > SUPPRESSION_PAGE ? page[SUPPRESSION_PAGE - 1].email : null;
+  return { rows: page, nextCursor };
 }
 
 export function listMessageRows(

@@ -22,6 +22,7 @@ import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as InviteIdRouteImport } from './routes/invite.$id'
 import { Route as AppAppsAppIdRouteImport } from './routes/_app/apps_.$appId'
 import { Route as AppMessagesMessageIdRouteImport } from './routes/_app/messages_.$messageId'
+import { Route as AppMessagesSuppressionsRouteImport } from './routes/_app/messages_.suppressions'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiDevOtpRouteImport } from './routes/api/dev/otp'
 import { Route as ApiInternalDoSweepRouteImport } from './routes/api/internal/do-sweep'
@@ -98,6 +99,11 @@ const AppMessagesMessageIdRoute = AppMessagesMessageIdRouteImport.update({
   path: '/messages/$messageId',
   getParentRoute: () => AppRoute,
 } as any)
+const AppMessagesSuppressionsRoute = AppMessagesSuppressionsRouteImport.update({
+  id: '/messages_/suppressions',
+  path: '/messages/suppressions',
+  getParentRoute: () => AppRoute,
+} as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
@@ -169,6 +175,7 @@ export interface FileRoutesByFullPath {
   '/invite/$id': typeof InviteIdRoute
   '/apps/$appId': typeof AppAppsAppIdRoute
   '/messages/$messageId': typeof AppMessagesMessageIdRoute
+  '/messages/suppressions': typeof AppMessagesSuppressionsRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/dev/otp': typeof ApiDevOtpRoute
   '/api/internal/do-sweep': typeof ApiInternalDoSweepRoute
@@ -194,6 +201,7 @@ export interface FileRoutesByTo {
   '/': typeof AppIndexRoute
   '/apps/$appId': typeof AppAppsAppIdRoute
   '/messages/$messageId': typeof AppMessagesMessageIdRoute
+  '/messages/suppressions': typeof AppMessagesSuppressionsRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/dev/otp': typeof ApiDevOtpRoute
   '/api/internal/do-sweep': typeof ApiInternalDoSweepRoute
@@ -221,6 +229,7 @@ export interface FileRoutesById {
   '/_app/': typeof AppIndexRoute
   '/_app/apps_/$appId': typeof AppAppsAppIdRoute
   '/_app/messages_/$messageId': typeof AppMessagesMessageIdRoute
+  '/_app/messages_/suppressions': typeof AppMessagesSuppressionsRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/dev/otp': typeof ApiDevOtpRoute
   '/api/internal/do-sweep': typeof ApiInternalDoSweepRoute
@@ -248,6 +257,7 @@ export interface FileRouteTypes {
     | '/invite/$id'
     | '/apps/$appId'
     | '/messages/$messageId'
+    | '/messages/suppressions'
     | '/api/auth/$'
     | '/api/dev/otp'
     | '/api/internal/do-sweep'
@@ -273,6 +283,7 @@ export interface FileRouteTypes {
     | '/'
     | '/apps/$appId'
     | '/messages/$messageId'
+    | '/messages/suppressions'
     | '/api/auth/$'
     | '/api/dev/otp'
     | '/api/internal/do-sweep'
@@ -299,6 +310,7 @@ export interface FileRouteTypes {
     | '/_app/'
     | '/_app/apps_/$appId'
     | '/_app/messages_/$messageId'
+    | '/_app/messages_/suppressions'
     | '/api/auth/$'
     | '/api/dev/otp'
     | '/api/internal/do-sweep'
@@ -421,6 +433,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppMessagesMessageIdRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/messages_/suppressions': {
+      id: '/_app/messages_/suppressions'
+      path: '/messages/suppressions'
+      fullPath: '/messages/suppressions'
+      preLoaderRoute: typeof AppMessagesSuppressionsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/api/auth/$': {
       id: '/api/auth/$'
       path: '/api/auth/$'
@@ -510,6 +529,7 @@ interface AppRouteChildren {
   AppIndexRoute: typeof AppIndexRoute
   AppAppsAppIdRoute: typeof AppAppsAppIdRoute
   AppMessagesMessageIdRoute: typeof AppMessagesMessageIdRoute
+  AppMessagesSuppressionsRoute: typeof AppMessagesSuppressionsRoute
   AppDomainsAddressesAddressIdRoute: typeof AppDomainsAddressesAddressIdRoute
 }
 
@@ -522,6 +542,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppIndexRoute: AppIndexRoute,
   AppAppsAppIdRoute: AppAppsAppIdRoute,
   AppMessagesMessageIdRoute: AppMessagesMessageIdRoute,
+  AppMessagesSuppressionsRoute: AppMessagesSuppressionsRoute,
   AppDomainsAddressesAddressIdRoute: AppDomainsAddressesAddressIdRoute,
 }
 

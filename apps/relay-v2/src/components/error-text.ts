@@ -28,6 +28,7 @@ const COPY = new Map<string, string>([
   ["this invite is for another email", "This invite was sent to a different email address."],
   ["self-serve workspaces have one app", "This workspace already has its app."],
   ["team not found", "That team no longer exists."],
+  ["recipient opted out", "This address opted out of mail, so it can't be removed here."],
 ]);
 
 // The server's fixed copy is mapped to plain words; anything unknown (a network failure, a 500) gets the fallback, never the raw text.
