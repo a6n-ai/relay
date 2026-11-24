@@ -1,6 +1,7 @@
 import { and, asc, count, desc, eq, sql } from "drizzle-orm";
 import { createApiKey, revokeApiKey } from "../core/api-keys";
 import { createApp } from "../core/apps";
+import { getWorkspaceProfile, SELF_SERVE_APP_CAP } from "../core/workspace-profile";
 import { securityDb } from "../db/security/client";
 import { apiKey, app } from "../db/security/schema";
 import type { Env } from "../env";
@@ -42,6 +43,10 @@ export async function addApp(env: Env, actor: ConsoleActor, input: { name: strin
     .from(app)
     .where(and(eq(app.workspaceId, actor.workspaceId), eq(app.slug, input.slug)));
   if (taken) throw new ConsoleError(409, "slug taken");
+  if ((await getWorkspaceProfile(env, actor.workspaceId)).selfServe) {
+    const [{ n }] = await securityDb(env).select({ n: count() }).from(app).where(eq(app.workspaceId, actor.workspaceId));
+    if (n >= SELF_SERVE_APP_CAP) throw new ConsoleError(403, "self-serve workspaces have one app");
+  }
   return createApp(env, { workspaceId: actor.workspaceId, name: input.name, slug: input.slug });
 }
 

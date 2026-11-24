@@ -70,7 +70,7 @@ export async function requireActor(
   return { userId, platformAdmin, workspaceId: activeWorkspaceId, roles, workspaceStatus: row.status };
 }
 
-function assertSameOrigin(env: Env, headers: Headers): void {
+export function assertSameOrigin(env: Env, headers: Headers): void {
   const origin = headers.get("origin");
   if (origin !== null && origin !== new URL(env.BETTER_AUTH_URL).origin) {
     throw new ConsoleError(403, "cross-origin write");

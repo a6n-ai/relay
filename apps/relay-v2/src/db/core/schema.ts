@@ -8,6 +8,7 @@ export const workspaceProfile = sqliteTable("workspace_profile", {
   mailingCountry: text("mailing_country").notNull().default("CA"),
   physicalAddress: text("physical_address"),
   monthlyMessageQuota: integer("monthly_message_quota").notNull().default(10000),
+  selfServe: flag("self_serve").notNull().default(false),
   defaultSesRegion: text("default_ses_region").notNull().default("ap-south-1"),
   doSchemaVersion: integer("do_schema_version").notNull().default(0),
   doMigrateError: text("do_migrate_error"),

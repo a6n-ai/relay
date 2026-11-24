@@ -8,6 +8,13 @@
       "when": 1795458740416,
       "tag": "0000_brown_groot",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1795503182388,
+      "tag": "0001_abandoned_arachne",
+      "breakpoints": true
     }
   ]
 }

@@ -78,19 +78,19 @@ describe("better-auth on D1", () => {
     expect(m.role).toBe("owner");
   });
 
-  it("rejects organization/create from a signed-in non-admin and writes no workspace", async () => {
+  it("creates a self-serve workspace for a signed-in non-admin, capped at 100 sends a month", async () => {
     await insertUser("plain@example.com", "user");
     const cookie = await signIn("plain@example.com");
     const res = await SELF.fetch(`${BASE}/organization/create`, {
       method: "POST",
       headers: { ...json, cookie, origin: ORIGIN },
-      body: JSON.stringify({ name: "Blocked", slug: "blocked" }),
+      body: JSON.stringify({ name: "Selfserve", slug: "selfserve" }),
     });
-    expect(res.status).toBeGreaterThanOrEqual(400);
-    expect(res.status).toBeLessThan(500);
+    expect(res.status).toBe(200);
+    const org = (await res.json()) as { id: string };
 
-    const rows = await db.select().from(workspace).where(eq(workspace.slug, "blocked"));
-    expect(rows).toHaveLength(0);
+    const [profile] = await coreDb(env).select().from(workspaceProfile).where(eq(workspaceProfile.workspaceId, org.id));
+    expect(profile).toMatchObject({ selfServe: true, monthlyMessageQuota: 100 });
   });
 
   it("rejects organization/create without a session with 401", async () => {

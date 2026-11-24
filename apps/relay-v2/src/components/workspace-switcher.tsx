@@ -2,6 +2,8 @@ import { Button } from "@foundry/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@foundry/ui/dropdown-menu";
 import { useRouter } from "@tanstack/react-router";
 import { useState } from "react";
+import { CreateDialog } from "./create-dialog";
+import { NewWorkspaceForm } from "./new-workspace-form";
 
 export function WorkspaceSwitcher({
   active,
@@ -41,6 +43,7 @@ export function WorkspaceSwitcher({
           ))}
         </DropdownMenuContent>
       </DropdownMenu>
+      <CreateDialog trigger="New workspace" title="New workspace">{(done) => <NewWorkspaceForm done={done} />}</CreateDialog>
       {error ? <p role="alert" className="text-xs text-destructive">{error}</p> : null}
     </div>
   );

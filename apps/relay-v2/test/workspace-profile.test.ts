@@ -18,7 +18,7 @@ beforeEach(async () => {
 });
 
 describe("getWorkspaceProfile", () => {
-  it("recreates a deleted profile with defaults on read", async () => {
+  it("recreates a deleted profile as self-serve on read", async () => {
     const [ws] = await securityDb(env).insert(workspace).values({ name: "p", slug: "p" }).returning();
     await coreDb(env).insert(workspaceProfile).values({ workspaceId: ws.id, monthlyMessageQuota: 5 });
     await coreDb(env).delete(workspaceProfile).where(eq(workspaceProfile.workspaceId, ws.id));
@@ -27,7 +27,8 @@ describe("getWorkspaceProfile", () => {
     expect(profile).toMatchObject({
       workspaceId: ws.id,
       mailingCountry: "CA",
-      monthlyMessageQuota: 10000,
+      selfServe: true,
+      monthlyMessageQuota: 100,
       defaultSesRegion: "ap-south-1",
       doSchemaVersion: 0,
       doMigrateError: null,

@@ -29,7 +29,7 @@ export async function listWorkspaces(env: Env, _admin: PlatformAdmin, now = Date
       .from(member)
       .groupBy(member.organizationId),
     coreDb(env)
-      .select({ workspaceId: workspaceProfile.workspaceId, quota: workspaceProfile.monthlyMessageQuota })
+      .select({ workspaceId: workspaceProfile.workspaceId, quota: workspaceProfile.monthlyMessageQuota, selfServe: workspaceProfile.selfServe })
       .from(workspaceProfile),
     coreDb(env)
       .select({ workspaceId: usageDaily.workspaceId, sent: sql<number>`sum(${usageDaily.sent})` })
@@ -39,6 +39,7 @@ export async function listWorkspaces(env: Env, _admin: PlatformAdmin, now = Date
   ]);
   const membersBy = new Map(members.map((m) => [m.workspaceId, m.n]));
   const quotaBy = new Map(profiles.map((p) => [p.workspaceId, p.quota]));
+  const selfServeBy = new Map(profiles.map((p) => [p.workspaceId, p.selfServe]));
   const sentBy = new Map(usage.map((u) => [u.workspaceId, u.sent]));
   return rows.map((ws) => ({
     id: ws.id,
@@ -46,8 +47,7 @@ export async function listWorkspaces(env: Env, _admin: PlatformAdmin, now = Date
     slug: ws.slug,
     status: ws.status,
     quota: quotaBy.get(ws.id) ?? DEFAULT_MONTHLY_QUOTA,
-    // shortcut: always false until Task 8 adds the self-serve column, then read it here.
-    selfServe: false,
+    selfServe: selfServeBy.get(ws.id) ?? false,
     sentThisMonth: sentBy.get(ws.id) ?? 0,
     members: membersBy.get(ws.id) ?? 0,
   }));
@@ -76,6 +76,18 @@ export async function setWorkspaceStatus(
     workspaceId,
     target: workspaceId,
   });
+  await refreshWorkspaceLimits(env, workspaceId);
+}
+
+// Lifting self-serve keeps the quota; the admin changes it with setWorkspaceQuota.
+export async function setSelfServe(env: Env, admin: PlatformAdmin, workspaceId: string, selfServe: boolean): Promise<void> {
+  await requireWorkspace(env, workspaceId);
+  await ensureWorkspaceProfile(env, workspaceId, { selfServe });
+  await coreDb(env)
+    .update(workspaceProfile)
+    .set({ selfServe, updatedAt: new Date() })
+    .where(eq(workspaceProfile.workspaceId, workspaceId));
+  await writeAudit(env, { action: "workspace.self_serve", actorUserId: admin.userId, workspaceId, target: workspaceId, data: { selfServe } });
   await refreshWorkspaceLimits(env, workspaceId);
 }
 

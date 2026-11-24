@@ -6,7 +6,7 @@ import { admin } from "better-auth/plugins/admin";
 import { emailOTP } from "better-auth/plugins/email-otp";
 import { organization } from "better-auth/plugins/organization";
 import { and, eq, inArray, or, sql } from "drizzle-orm";
-import { ensureWorkspaceProfile } from "../../core/workspace-profile";
+import { countSelfServeOwned, ensureWorkspaceProfile, SELF_SERVE_WORKSPACE_CAP } from "../../core/workspace-profile";
 import { coreDb } from "../../db/core/client";
 import { address, sendingDomain } from "../../db/core/schema";
 import { securityDb } from "../../db/security/client";
@@ -289,8 +289,8 @@ export function createAuth(env: Env) {
         },
       }),
       organization({
-        // Workspaces are created by platform admins only; the creator becomes owner.
-        allowUserToCreateOrganization: async (user) => user.role === "admin",
+        // Any signed-in user may create a workspace; beforeCreateOrganization caps a plain user's self-serve ones. The creator becomes owner.
+        allowUserToCreateOrganization: true,
         ac: orgAc,
         roles: orgRoles,
         teams: { enabled: true, defaultTeam: { enabled: false }, allowRemovingAllTeams: true },
@@ -298,6 +298,12 @@ export function createAuth(env: Env) {
           await pickInviteMailer(env.INVITE_MAILER, env).send(email, { id, role });
         },
         organizationHooks: {
+          beforeCreateOrganization: async ({ user }) => {
+            if (user.role === "admin") return;
+            // shortcut: cap is checked across two D1s without a lock, a race can exceed it by one; add a security-side counter if abuse shows up
+            if ((await countSelfServeOwned(env, user.id)) >= SELF_SERVE_WORKSPACE_CAP)
+              throw new APIError("FORBIDDEN", { message: `You can create up to ${SELF_SERVE_WORKSPACE_CAP} workspaces` });
+          },
           beforeDeleteOrganization: async ({ organization }) => {
             const [hit] = await securityDb(env)
               .select({ id: app.id })
@@ -321,7 +327,7 @@ export function createAuth(env: Env) {
           },
           afterCreateOrganization: async ({ organization, user }) => {
             try {
-              await ensureWorkspaceProfile(env, organization.id);
+              await ensureWorkspaceProfile(env, organization.id, { selfServe: user.role !== "admin" });
             } catch (error) {
               // Repair-on-read creates the missing profile later.
               console.error(`workspace profile failed: workspace.create: ${error instanceof Error ? error.message : String(error)}`);
