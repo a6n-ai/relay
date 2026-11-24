@@ -1,6 +1,6 @@
 import { env, runInDurableObject, SELF } from "cloudflare:test";
 import { and, eq } from "drizzle-orm";
-import { beforeAll, describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import { requireActor } from "../src/console/actor";
 import { getMessageFor, listMessagesFor } from "../src/console/messages";
 import { createAddress, createAddressGrant } from "../src/core/addresses";
@@ -493,9 +493,13 @@ describe("inline images", () => {
     }));
     const html = five.map((_, i) => `<img src="cid:p${i}@x">`).join("");
     const letter = await storedLetter(t, addr, { html, attachments: five });
+    const get = vi.spyOn(env.MAIL, "get");
     const shown = await view(t, letter.id, true);
+    const imageReads = get.mock.calls.filter(([key]) => String(key).includes("/att/")).length;
+    get.mockRestore();
     expect((shown.htmlSafe ?? "").split("data:image/png;base64,").length - 1).toBe(4);
     expect(shown.htmlSafe).not.toContain("cid:");
+    expect(imageReads).toBe(4);
   });
 
   it("does not inline another letter's attachment for the same content-id", async () => {

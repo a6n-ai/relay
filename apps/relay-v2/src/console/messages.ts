@@ -104,14 +104,22 @@ async function inlineCidImages(
 ): Promise<string> {
   const byCid = new Map(attachments.flatMap((a) => (a.contentId ? [[a.contentId.replace(/^<|>$/g, "").trim(), a] as const] : [])));
   const images = new Map<string, { uri: string; size: number }>();
+  // The budget also caps what is fetched, so a letter full of images never reads more than INLINE_BUDGET_BYTES.
+  let fetched = 0;
   for (const cid of new Set([...html.matchAll(CID_SRC)].map((m) => m[3].trim()))) {
     const att = byCid.get(cid);
     if (!att || !INLINE_TYPES.has(att.contentType)) continue;
+    if (att.sizeBytes > INLINE_MAX_BYTES || fetched + att.sizeBytes > INLINE_BUDGET_BYTES) continue;
     const file = await clientFor(env, actor.workspaceId).getMessageFile(actor.workspaceId, messageId, att.id, access);
     if (!file || !file.key.startsWith(`ws/${actor.workspaceId}/`)) continue;
     const object = await env.MAIL.get(file.key);
-    if (!object || object.size > INLINE_MAX_BYTES) continue;
+    if (!object) continue;
+    if (object.size > INLINE_MAX_BYTES || fetched + object.size > INLINE_BUDGET_BYTES) {
+      await object.body.cancel();
+      continue;
+    }
     const bytes = new Uint8Array(await object.arrayBuffer());
+    fetched += bytes.byteLength;
     images.set(cid, { uri: `data:${att.contentType};base64,${base64(bytes)}`, size: bytes.byteLength });
   }
   let total = 0;
