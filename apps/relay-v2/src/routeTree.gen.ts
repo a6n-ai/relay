@@ -33,16 +33,31 @@ import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiDevOtpRouteImport } from './routes/api/dev/otp'
 import { Route as ApiInternalDoSweepRouteImport } from './routes/api/internal/do-sweep'
 import { Route as ApiInternalSeedRouteImport } from './routes/api/internal/seed'
+import { Route as ApiV1AudienceHookRouteImport } from './routes/api/v1/audience-hook'
+import { Route as ApiV1CampaignsRouteImport } from './routes/api/v1/campaigns'
+import { Route as ApiV1ListsRouteImport } from './routes/api/v1/lists'
 import { Route as ApiV1MessagesRouteImport } from './routes/api/v1/messages'
+import { Route as ApiV1TemplatesRouteImport } from './routes/api/v1/templates'
 import { Route as ApiV1WebhooksRouteImport } from './routes/api/v1/webhooks'
 import { Route as ApiWebhooksSesRouteImport } from './routes/api/webhooks/ses'
 import { Route as ListsListIdExportRouteImport } from './routes/lists.$listId.export'
 import { Route as AppAppsAppIdWebhooksRouteImport } from './routes/_app/apps_.$appId_.webhooks'
 import { Route as AppDomainsAddressesAddressIdRouteImport } from './routes/_app/domains_.addresses.$addressId'
+import { Route as ApiV1CampaignsIdRouteImport } from './routes/api/v1/campaigns.$id'
+import { Route as ApiV1ImportKindRouteImport } from './routes/api/v1/import.$kind'
+import { Route as ApiV1ListsIdRouteImport } from './routes/api/v1/lists.$id'
 import { Route as ApiV1MessagesIdRouteImport } from './routes/api/v1/messages.$id'
+import { Route as ApiV1TemplatesIdRouteImport } from './routes/api/v1/templates.$id'
+import { Route as ApiV1TemplatesSendRouteImport } from './routes/api/v1/templates.send'
 import { Route as ApiV1WebhooksIdRouteImport } from './routes/api/v1/webhooks.$id'
 import { Route as AppAppsAppIdWebhooksWebhookIdRouteImport } from './routes/_app/apps_.$appId_.webhooks_.$webhookId'
 import { Route as ApiConsoleMessagesIdPartRouteImport } from './routes/api/console/messages.$id.$part'
+import { Route as ApiV1CampaignsIdActionRouteImport } from './routes/api/v1/campaigns.$id.$action'
+import { Route as ApiV1CampaignsIdStatsRouteImport } from './routes/api/v1/campaigns.$id.stats'
+import { Route as ApiV1ListsIdExportRouteImport } from './routes/api/v1/lists.$id.export'
+import { Route as ApiV1ListsIdImportRouteImport } from './routes/api/v1/lists.$id.import'
+import { Route as ApiV1ListsIdMembersRouteImport } from './routes/api/v1/lists.$id.members'
+import { Route as ApiV1ListsIdMembersMemberIdRouteImport } from './routes/api/v1/lists.$id.members.$memberId'
 
 const AppRoute = AppRouteImport.update({
   id: '/_app',
@@ -163,9 +178,29 @@ const ApiInternalSeedRoute = ApiInternalSeedRouteImport.update({
   path: '/api/internal/seed',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiV1AudienceHookRoute = ApiV1AudienceHookRouteImport.update({
+  id: '/api/v1/audience-hook',
+  path: '/api/v1/audience-hook',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiV1CampaignsRoute = ApiV1CampaignsRouteImport.update({
+  id: '/api/v1/campaigns',
+  path: '/api/v1/campaigns',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiV1ListsRoute = ApiV1ListsRouteImport.update({
+  id: '/api/v1/lists',
+  path: '/api/v1/lists',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiV1MessagesRoute = ApiV1MessagesRouteImport.update({
   id: '/api/v1/messages',
   path: '/api/v1/messages',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiV1TemplatesRoute = ApiV1TemplatesRouteImport.update({
+  id: '/api/v1/templates',
+  path: '/api/v1/templates',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiV1WebhooksRoute = ApiV1WebhooksRouteImport.update({
@@ -194,10 +229,35 @@ const AppDomainsAddressesAddressIdRoute =
     path: '/domains/addresses/$addressId',
     getParentRoute: () => AppRoute,
   } as any)
+const ApiV1CampaignsIdRoute = ApiV1CampaignsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => ApiV1CampaignsRoute,
+} as any)
+const ApiV1ImportKindRoute = ApiV1ImportKindRouteImport.update({
+  id: '/api/v1/import/$kind',
+  path: '/api/v1/import/$kind',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiV1ListsIdRoute = ApiV1ListsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => ApiV1ListsRoute,
+} as any)
 const ApiV1MessagesIdRoute = ApiV1MessagesIdRouteImport.update({
   id: '/$id',
   path: '/$id',
   getParentRoute: () => ApiV1MessagesRoute,
+} as any)
+const ApiV1TemplatesIdRoute = ApiV1TemplatesIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => ApiV1TemplatesRoute,
+} as any)
+const ApiV1TemplatesSendRoute = ApiV1TemplatesSendRouteImport.update({
+  id: '/send',
+  path: '/send',
+  getParentRoute: () => ApiV1TemplatesRoute,
 } as any)
 const ApiV1WebhooksIdRoute = ApiV1WebhooksIdRouteImport.update({
   id: '/$id',
@@ -215,6 +275,37 @@ const ApiConsoleMessagesIdPartRoute =
     id: '/api/console/messages/$id/$part',
     path: '/api/console/messages/$id/$part',
     getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiV1CampaignsIdActionRoute = ApiV1CampaignsIdActionRouteImport.update({
+  id: '/$action',
+  path: '/$action',
+  getParentRoute: () => ApiV1CampaignsIdRoute,
+} as any)
+const ApiV1CampaignsIdStatsRoute = ApiV1CampaignsIdStatsRouteImport.update({
+  id: '/stats',
+  path: '/stats',
+  getParentRoute: () => ApiV1CampaignsIdRoute,
+} as any)
+const ApiV1ListsIdExportRoute = ApiV1ListsIdExportRouteImport.update({
+  id: '/export',
+  path: '/export',
+  getParentRoute: () => ApiV1ListsIdRoute,
+} as any)
+const ApiV1ListsIdImportRoute = ApiV1ListsIdImportRouteImport.update({
+  id: '/import',
+  path: '/import',
+  getParentRoute: () => ApiV1ListsIdRoute,
+} as any)
+const ApiV1ListsIdMembersRoute = ApiV1ListsIdMembersRouteImport.update({
+  id: '/members',
+  path: '/members',
+  getParentRoute: () => ApiV1ListsIdRoute,
+} as any)
+const ApiV1ListsIdMembersMemberIdRoute =
+  ApiV1ListsIdMembersMemberIdRouteImport.update({
+    id: '/$memberId',
+    path: '/$memberId',
+    getParentRoute: () => ApiV1ListsIdMembersRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
@@ -241,16 +332,31 @@ export interface FileRoutesByFullPath {
   '/api/dev/otp': typeof ApiDevOtpRoute
   '/api/internal/do-sweep': typeof ApiInternalDoSweepRoute
   '/api/internal/seed': typeof ApiInternalSeedRoute
+  '/api/v1/audience-hook': typeof ApiV1AudienceHookRoute
+  '/api/v1/campaigns': typeof ApiV1CampaignsRouteWithChildren
+  '/api/v1/lists': typeof ApiV1ListsRouteWithChildren
   '/api/v1/messages': typeof ApiV1MessagesRouteWithChildren
+  '/api/v1/templates': typeof ApiV1TemplatesRouteWithChildren
   '/api/v1/webhooks': typeof ApiV1WebhooksRouteWithChildren
   '/api/webhooks/ses': typeof ApiWebhooksSesRoute
   '/lists/$listId/export': typeof ListsListIdExportRoute
   '/apps/$appId/webhooks': typeof AppAppsAppIdWebhooksRoute
   '/domains/addresses/$addressId': typeof AppDomainsAddressesAddressIdRoute
+  '/api/v1/campaigns/$id': typeof ApiV1CampaignsIdRouteWithChildren
+  '/api/v1/import/$kind': typeof ApiV1ImportKindRoute
+  '/api/v1/lists/$id': typeof ApiV1ListsIdRouteWithChildren
   '/api/v1/messages/$id': typeof ApiV1MessagesIdRoute
+  '/api/v1/templates/$id': typeof ApiV1TemplatesIdRoute
+  '/api/v1/templates/send': typeof ApiV1TemplatesSendRoute
   '/api/v1/webhooks/$id': typeof ApiV1WebhooksIdRoute
   '/apps/$appId/webhooks/$webhookId': typeof AppAppsAppIdWebhooksWebhookIdRoute
   '/api/console/messages/$id/$part': typeof ApiConsoleMessagesIdPartRoute
+  '/api/v1/campaigns/$id/$action': typeof ApiV1CampaignsIdActionRoute
+  '/api/v1/campaigns/$id/stats': typeof ApiV1CampaignsIdStatsRoute
+  '/api/v1/lists/$id/export': typeof ApiV1ListsIdExportRoute
+  '/api/v1/lists/$id/import': typeof ApiV1ListsIdImportRoute
+  '/api/v1/lists/$id/members': typeof ApiV1ListsIdMembersRouteWithChildren
+  '/api/v1/lists/$id/members/$memberId': typeof ApiV1ListsIdMembersMemberIdRoute
 }
 export interface FileRoutesByTo {
   '/no-workspace': typeof NoWorkspaceRoute
@@ -276,16 +382,31 @@ export interface FileRoutesByTo {
   '/api/dev/otp': typeof ApiDevOtpRoute
   '/api/internal/do-sweep': typeof ApiInternalDoSweepRoute
   '/api/internal/seed': typeof ApiInternalSeedRoute
+  '/api/v1/audience-hook': typeof ApiV1AudienceHookRoute
+  '/api/v1/campaigns': typeof ApiV1CampaignsRouteWithChildren
+  '/api/v1/lists': typeof ApiV1ListsRouteWithChildren
   '/api/v1/messages': typeof ApiV1MessagesRouteWithChildren
+  '/api/v1/templates': typeof ApiV1TemplatesRouteWithChildren
   '/api/v1/webhooks': typeof ApiV1WebhooksRouteWithChildren
   '/api/webhooks/ses': typeof ApiWebhooksSesRoute
   '/lists/$listId/export': typeof ListsListIdExportRoute
   '/apps/$appId/webhooks': typeof AppAppsAppIdWebhooksRoute
   '/domains/addresses/$addressId': typeof AppDomainsAddressesAddressIdRoute
+  '/api/v1/campaigns/$id': typeof ApiV1CampaignsIdRouteWithChildren
+  '/api/v1/import/$kind': typeof ApiV1ImportKindRoute
+  '/api/v1/lists/$id': typeof ApiV1ListsIdRouteWithChildren
   '/api/v1/messages/$id': typeof ApiV1MessagesIdRoute
+  '/api/v1/templates/$id': typeof ApiV1TemplatesIdRoute
+  '/api/v1/templates/send': typeof ApiV1TemplatesSendRoute
   '/api/v1/webhooks/$id': typeof ApiV1WebhooksIdRoute
   '/apps/$appId/webhooks/$webhookId': typeof AppAppsAppIdWebhooksWebhookIdRoute
   '/api/console/messages/$id/$part': typeof ApiConsoleMessagesIdPartRoute
+  '/api/v1/campaigns/$id/$action': typeof ApiV1CampaignsIdActionRoute
+  '/api/v1/campaigns/$id/stats': typeof ApiV1CampaignsIdStatsRoute
+  '/api/v1/lists/$id/export': typeof ApiV1ListsIdExportRoute
+  '/api/v1/lists/$id/import': typeof ApiV1ListsIdImportRoute
+  '/api/v1/lists/$id/members': typeof ApiV1ListsIdMembersRouteWithChildren
+  '/api/v1/lists/$id/members/$memberId': typeof ApiV1ListsIdMembersMemberIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -313,16 +434,31 @@ export interface FileRoutesById {
   '/api/dev/otp': typeof ApiDevOtpRoute
   '/api/internal/do-sweep': typeof ApiInternalDoSweepRoute
   '/api/internal/seed': typeof ApiInternalSeedRoute
+  '/api/v1/audience-hook': typeof ApiV1AudienceHookRoute
+  '/api/v1/campaigns': typeof ApiV1CampaignsRouteWithChildren
+  '/api/v1/lists': typeof ApiV1ListsRouteWithChildren
   '/api/v1/messages': typeof ApiV1MessagesRouteWithChildren
+  '/api/v1/templates': typeof ApiV1TemplatesRouteWithChildren
   '/api/v1/webhooks': typeof ApiV1WebhooksRouteWithChildren
   '/api/webhooks/ses': typeof ApiWebhooksSesRoute
   '/lists/$listId/export': typeof ListsListIdExportRoute
   '/_app/apps_/$appId_/webhooks': typeof AppAppsAppIdWebhooksRoute
   '/_app/domains_/addresses/$addressId': typeof AppDomainsAddressesAddressIdRoute
+  '/api/v1/campaigns/$id': typeof ApiV1CampaignsIdRouteWithChildren
+  '/api/v1/import/$kind': typeof ApiV1ImportKindRoute
+  '/api/v1/lists/$id': typeof ApiV1ListsIdRouteWithChildren
   '/api/v1/messages/$id': typeof ApiV1MessagesIdRoute
+  '/api/v1/templates/$id': typeof ApiV1TemplatesIdRoute
+  '/api/v1/templates/send': typeof ApiV1TemplatesSendRoute
   '/api/v1/webhooks/$id': typeof ApiV1WebhooksIdRoute
   '/_app/apps_/$appId_/webhooks_/$webhookId': typeof AppAppsAppIdWebhooksWebhookIdRoute
   '/api/console/messages/$id/$part': typeof ApiConsoleMessagesIdPartRoute
+  '/api/v1/campaigns/$id/$action': typeof ApiV1CampaignsIdActionRoute
+  '/api/v1/campaigns/$id/stats': typeof ApiV1CampaignsIdStatsRoute
+  '/api/v1/lists/$id/export': typeof ApiV1ListsIdExportRoute
+  '/api/v1/lists/$id/import': typeof ApiV1ListsIdImportRoute
+  '/api/v1/lists/$id/members': typeof ApiV1ListsIdMembersRouteWithChildren
+  '/api/v1/lists/$id/members/$memberId': typeof ApiV1ListsIdMembersMemberIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -350,16 +486,31 @@ export interface FileRouteTypes {
     | '/api/dev/otp'
     | '/api/internal/do-sweep'
     | '/api/internal/seed'
+    | '/api/v1/audience-hook'
+    | '/api/v1/campaigns'
+    | '/api/v1/lists'
     | '/api/v1/messages'
+    | '/api/v1/templates'
     | '/api/v1/webhooks'
     | '/api/webhooks/ses'
     | '/lists/$listId/export'
     | '/apps/$appId/webhooks'
     | '/domains/addresses/$addressId'
+    | '/api/v1/campaigns/$id'
+    | '/api/v1/import/$kind'
+    | '/api/v1/lists/$id'
     | '/api/v1/messages/$id'
+    | '/api/v1/templates/$id'
+    | '/api/v1/templates/send'
     | '/api/v1/webhooks/$id'
     | '/apps/$appId/webhooks/$webhookId'
     | '/api/console/messages/$id/$part'
+    | '/api/v1/campaigns/$id/$action'
+    | '/api/v1/campaigns/$id/stats'
+    | '/api/v1/lists/$id/export'
+    | '/api/v1/lists/$id/import'
+    | '/api/v1/lists/$id/members'
+    | '/api/v1/lists/$id/members/$memberId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/no-workspace'
@@ -385,16 +536,31 @@ export interface FileRouteTypes {
     | '/api/dev/otp'
     | '/api/internal/do-sweep'
     | '/api/internal/seed'
+    | '/api/v1/audience-hook'
+    | '/api/v1/campaigns'
+    | '/api/v1/lists'
     | '/api/v1/messages'
+    | '/api/v1/templates'
     | '/api/v1/webhooks'
     | '/api/webhooks/ses'
     | '/lists/$listId/export'
     | '/apps/$appId/webhooks'
     | '/domains/addresses/$addressId'
+    | '/api/v1/campaigns/$id'
+    | '/api/v1/import/$kind'
+    | '/api/v1/lists/$id'
     | '/api/v1/messages/$id'
+    | '/api/v1/templates/$id'
+    | '/api/v1/templates/send'
     | '/api/v1/webhooks/$id'
     | '/apps/$appId/webhooks/$webhookId'
     | '/api/console/messages/$id/$part'
+    | '/api/v1/campaigns/$id/$action'
+    | '/api/v1/campaigns/$id/stats'
+    | '/api/v1/lists/$id/export'
+    | '/api/v1/lists/$id/import'
+    | '/api/v1/lists/$id/members'
+    | '/api/v1/lists/$id/members/$memberId'
   id:
     | '__root__'
     | '/_app'
@@ -421,16 +587,31 @@ export interface FileRouteTypes {
     | '/api/dev/otp'
     | '/api/internal/do-sweep'
     | '/api/internal/seed'
+    | '/api/v1/audience-hook'
+    | '/api/v1/campaigns'
+    | '/api/v1/lists'
     | '/api/v1/messages'
+    | '/api/v1/templates'
     | '/api/v1/webhooks'
     | '/api/webhooks/ses'
     | '/lists/$listId/export'
     | '/_app/apps_/$appId_/webhooks'
     | '/_app/domains_/addresses/$addressId'
+    | '/api/v1/campaigns/$id'
+    | '/api/v1/import/$kind'
+    | '/api/v1/lists/$id'
     | '/api/v1/messages/$id'
+    | '/api/v1/templates/$id'
+    | '/api/v1/templates/send'
     | '/api/v1/webhooks/$id'
     | '/_app/apps_/$appId_/webhooks_/$webhookId'
     | '/api/console/messages/$id/$part'
+    | '/api/v1/campaigns/$id/$action'
+    | '/api/v1/campaigns/$id/stats'
+    | '/api/v1/lists/$id/export'
+    | '/api/v1/lists/$id/import'
+    | '/api/v1/lists/$id/members'
+    | '/api/v1/lists/$id/members/$memberId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -444,10 +625,15 @@ export interface RootRouteChildren {
   ApiDevOtpRoute: typeof ApiDevOtpRoute
   ApiInternalDoSweepRoute: typeof ApiInternalDoSweepRoute
   ApiInternalSeedRoute: typeof ApiInternalSeedRoute
+  ApiV1AudienceHookRoute: typeof ApiV1AudienceHookRoute
+  ApiV1CampaignsRoute: typeof ApiV1CampaignsRouteWithChildren
+  ApiV1ListsRoute: typeof ApiV1ListsRouteWithChildren
   ApiV1MessagesRoute: typeof ApiV1MessagesRouteWithChildren
+  ApiV1TemplatesRoute: typeof ApiV1TemplatesRouteWithChildren
   ApiV1WebhooksRoute: typeof ApiV1WebhooksRouteWithChildren
   ApiWebhooksSesRoute: typeof ApiWebhooksSesRoute
   ListsListIdExportRoute: typeof ListsListIdExportRoute
+  ApiV1ImportKindRoute: typeof ApiV1ImportKindRoute
   ApiConsoleMessagesIdPartRoute: typeof ApiConsoleMessagesIdPartRoute
 }
 
@@ -621,11 +807,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiInternalSeedRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/v1/audience-hook': {
+      id: '/api/v1/audience-hook'
+      path: '/api/v1/audience-hook'
+      fullPath: '/api/v1/audience-hook'
+      preLoaderRoute: typeof ApiV1AudienceHookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v1/campaigns': {
+      id: '/api/v1/campaigns'
+      path: '/api/v1/campaigns'
+      fullPath: '/api/v1/campaigns'
+      preLoaderRoute: typeof ApiV1CampaignsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v1/lists': {
+      id: '/api/v1/lists'
+      path: '/api/v1/lists'
+      fullPath: '/api/v1/lists'
+      preLoaderRoute: typeof ApiV1ListsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/v1/messages': {
       id: '/api/v1/messages'
       path: '/api/v1/messages'
       fullPath: '/api/v1/messages'
       preLoaderRoute: typeof ApiV1MessagesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v1/templates': {
+      id: '/api/v1/templates'
+      path: '/api/v1/templates'
+      fullPath: '/api/v1/templates'
+      preLoaderRoute: typeof ApiV1TemplatesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/v1/webhooks': {
@@ -663,12 +877,47 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppDomainsAddressesAddressIdRouteImport
       parentRoute: typeof AppRoute
     }
+    '/api/v1/campaigns/$id': {
+      id: '/api/v1/campaigns/$id'
+      path: '/$id'
+      fullPath: '/api/v1/campaigns/$id'
+      preLoaderRoute: typeof ApiV1CampaignsIdRouteImport
+      parentRoute: typeof ApiV1CampaignsRoute
+    }
+    '/api/v1/import/$kind': {
+      id: '/api/v1/import/$kind'
+      path: '/api/v1/import/$kind'
+      fullPath: '/api/v1/import/$kind'
+      preLoaderRoute: typeof ApiV1ImportKindRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v1/lists/$id': {
+      id: '/api/v1/lists/$id'
+      path: '/$id'
+      fullPath: '/api/v1/lists/$id'
+      preLoaderRoute: typeof ApiV1ListsIdRouteImport
+      parentRoute: typeof ApiV1ListsRoute
+    }
     '/api/v1/messages/$id': {
       id: '/api/v1/messages/$id'
       path: '/$id'
       fullPath: '/api/v1/messages/$id'
       preLoaderRoute: typeof ApiV1MessagesIdRouteImport
       parentRoute: typeof ApiV1MessagesRoute
+    }
+    '/api/v1/templates/$id': {
+      id: '/api/v1/templates/$id'
+      path: '/$id'
+      fullPath: '/api/v1/templates/$id'
+      preLoaderRoute: typeof ApiV1TemplatesIdRouteImport
+      parentRoute: typeof ApiV1TemplatesRoute
+    }
+    '/api/v1/templates/send': {
+      id: '/api/v1/templates/send'
+      path: '/send'
+      fullPath: '/api/v1/templates/send'
+      preLoaderRoute: typeof ApiV1TemplatesSendRouteImport
+      parentRoute: typeof ApiV1TemplatesRoute
     }
     '/api/v1/webhooks/$id': {
       id: '/api/v1/webhooks/$id'
@@ -690,6 +939,48 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/console/messages/$id/$part'
       preLoaderRoute: typeof ApiConsoleMessagesIdPartRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/api/v1/campaigns/$id/$action': {
+      id: '/api/v1/campaigns/$id/$action'
+      path: '/$action'
+      fullPath: '/api/v1/campaigns/$id/$action'
+      preLoaderRoute: typeof ApiV1CampaignsIdActionRouteImport
+      parentRoute: typeof ApiV1CampaignsIdRoute
+    }
+    '/api/v1/campaigns/$id/stats': {
+      id: '/api/v1/campaigns/$id/stats'
+      path: '/stats'
+      fullPath: '/api/v1/campaigns/$id/stats'
+      preLoaderRoute: typeof ApiV1CampaignsIdStatsRouteImport
+      parentRoute: typeof ApiV1CampaignsIdRoute
+    }
+    '/api/v1/lists/$id/export': {
+      id: '/api/v1/lists/$id/export'
+      path: '/export'
+      fullPath: '/api/v1/lists/$id/export'
+      preLoaderRoute: typeof ApiV1ListsIdExportRouteImport
+      parentRoute: typeof ApiV1ListsIdRoute
+    }
+    '/api/v1/lists/$id/import': {
+      id: '/api/v1/lists/$id/import'
+      path: '/import'
+      fullPath: '/api/v1/lists/$id/import'
+      preLoaderRoute: typeof ApiV1ListsIdImportRouteImport
+      parentRoute: typeof ApiV1ListsIdRoute
+    }
+    '/api/v1/lists/$id/members': {
+      id: '/api/v1/lists/$id/members'
+      path: '/members'
+      fullPath: '/api/v1/lists/$id/members'
+      preLoaderRoute: typeof ApiV1ListsIdMembersRouteImport
+      parentRoute: typeof ApiV1ListsIdRoute
+    }
+    '/api/v1/lists/$id/members/$memberId': {
+      id: '/api/v1/lists/$id/members/$memberId'
+      path: '/$memberId'
+      fullPath: '/api/v1/lists/$id/members/$memberId'
+      preLoaderRoute: typeof ApiV1ListsIdMembersMemberIdRouteImport
+      parentRoute: typeof ApiV1ListsIdMembersRoute
     }
   }
 }
@@ -736,6 +1027,70 @@ const AppRouteChildren: AppRouteChildren = {
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
+interface ApiV1CampaignsIdRouteChildren {
+  ApiV1CampaignsIdActionRoute: typeof ApiV1CampaignsIdActionRoute
+  ApiV1CampaignsIdStatsRoute: typeof ApiV1CampaignsIdStatsRoute
+}
+
+const ApiV1CampaignsIdRouteChildren: ApiV1CampaignsIdRouteChildren = {
+  ApiV1CampaignsIdActionRoute: ApiV1CampaignsIdActionRoute,
+  ApiV1CampaignsIdStatsRoute: ApiV1CampaignsIdStatsRoute,
+}
+
+const ApiV1CampaignsIdRouteWithChildren =
+  ApiV1CampaignsIdRoute._addFileChildren(ApiV1CampaignsIdRouteChildren)
+
+interface ApiV1CampaignsRouteChildren {
+  ApiV1CampaignsIdRoute: typeof ApiV1CampaignsIdRouteWithChildren
+}
+
+const ApiV1CampaignsRouteChildren: ApiV1CampaignsRouteChildren = {
+  ApiV1CampaignsIdRoute: ApiV1CampaignsIdRouteWithChildren,
+}
+
+const ApiV1CampaignsRouteWithChildren = ApiV1CampaignsRoute._addFileChildren(
+  ApiV1CampaignsRouteChildren,
+)
+
+interface ApiV1ListsIdMembersRouteChildren {
+  ApiV1ListsIdMembersMemberIdRoute: typeof ApiV1ListsIdMembersMemberIdRoute
+}
+
+const ApiV1ListsIdMembersRouteChildren: ApiV1ListsIdMembersRouteChildren = {
+  ApiV1ListsIdMembersMemberIdRoute: ApiV1ListsIdMembersMemberIdRoute,
+}
+
+const ApiV1ListsIdMembersRouteWithChildren =
+  ApiV1ListsIdMembersRoute._addFileChildren(ApiV1ListsIdMembersRouteChildren)
+
+interface ApiV1ListsIdRouteChildren {
+  ApiV1ListsIdExportRoute: typeof ApiV1ListsIdExportRoute
+  ApiV1ListsIdImportRoute: typeof ApiV1ListsIdImportRoute
+  ApiV1ListsIdMembersRoute: typeof ApiV1ListsIdMembersRouteWithChildren
+}
+
+const ApiV1ListsIdRouteChildren: ApiV1ListsIdRouteChildren = {
+  ApiV1ListsIdExportRoute: ApiV1ListsIdExportRoute,
+  ApiV1ListsIdImportRoute: ApiV1ListsIdImportRoute,
+  ApiV1ListsIdMembersRoute: ApiV1ListsIdMembersRouteWithChildren,
+}
+
+const ApiV1ListsIdRouteWithChildren = ApiV1ListsIdRoute._addFileChildren(
+  ApiV1ListsIdRouteChildren,
+)
+
+interface ApiV1ListsRouteChildren {
+  ApiV1ListsIdRoute: typeof ApiV1ListsIdRouteWithChildren
+}
+
+const ApiV1ListsRouteChildren: ApiV1ListsRouteChildren = {
+  ApiV1ListsIdRoute: ApiV1ListsIdRouteWithChildren,
+}
+
+const ApiV1ListsRouteWithChildren = ApiV1ListsRoute._addFileChildren(
+  ApiV1ListsRouteChildren,
+)
+
 interface ApiV1MessagesRouteChildren {
   ApiV1MessagesIdRoute: typeof ApiV1MessagesIdRoute
 }
@@ -746,6 +1101,20 @@ const ApiV1MessagesRouteChildren: ApiV1MessagesRouteChildren = {
 
 const ApiV1MessagesRouteWithChildren = ApiV1MessagesRoute._addFileChildren(
   ApiV1MessagesRouteChildren,
+)
+
+interface ApiV1TemplatesRouteChildren {
+  ApiV1TemplatesIdRoute: typeof ApiV1TemplatesIdRoute
+  ApiV1TemplatesSendRoute: typeof ApiV1TemplatesSendRoute
+}
+
+const ApiV1TemplatesRouteChildren: ApiV1TemplatesRouteChildren = {
+  ApiV1TemplatesIdRoute: ApiV1TemplatesIdRoute,
+  ApiV1TemplatesSendRoute: ApiV1TemplatesSendRoute,
+}
+
+const ApiV1TemplatesRouteWithChildren = ApiV1TemplatesRoute._addFileChildren(
+  ApiV1TemplatesRouteChildren,
 )
 
 interface ApiV1WebhooksRouteChildren {
@@ -771,10 +1140,15 @@ const rootRouteChildren: RootRouteChildren = {
   ApiDevOtpRoute: ApiDevOtpRoute,
   ApiInternalDoSweepRoute: ApiInternalDoSweepRoute,
   ApiInternalSeedRoute: ApiInternalSeedRoute,
+  ApiV1AudienceHookRoute: ApiV1AudienceHookRoute,
+  ApiV1CampaignsRoute: ApiV1CampaignsRouteWithChildren,
+  ApiV1ListsRoute: ApiV1ListsRouteWithChildren,
   ApiV1MessagesRoute: ApiV1MessagesRouteWithChildren,
+  ApiV1TemplatesRoute: ApiV1TemplatesRouteWithChildren,
   ApiV1WebhooksRoute: ApiV1WebhooksRouteWithChildren,
   ApiWebhooksSesRoute: ApiWebhooksSesRoute,
   ListsListIdExportRoute: ListsListIdExportRoute,
+  ApiV1ImportKindRoute: ApiV1ImportKindRoute,
   ApiConsoleMessagesIdPartRoute: ApiConsoleMessagesIdPartRoute,
 }
 export const routeTree = rootRouteImport
