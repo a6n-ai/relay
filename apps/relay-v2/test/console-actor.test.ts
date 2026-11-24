@@ -108,6 +108,7 @@ describe("requirePlatformAdmin", () => {
 
 describe("dev otp peek", () => {
   it("is 404 without DEV_OTP_PEEK", async () => {
+    delete env.DEV_OTP_PEEK;
     const res = await SELF.fetch(`${ORIGIN}/api/dev/otp?email=peek@example.com`);
     expect(res.status).toBe(404);
   });

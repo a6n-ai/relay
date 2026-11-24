@@ -44,7 +44,7 @@ export const inviteMemberFn = createServerFn({ method: "POST" })
   });
 
 export const cancelInviteFn = createServerFn({ method: "POST" })
-  .validator(z.object({ id }))
+  .validator(validate(z.object({ id })))
   .handler(async ({ data }) => {
     try {
       const headers = getRequestHeaders();
