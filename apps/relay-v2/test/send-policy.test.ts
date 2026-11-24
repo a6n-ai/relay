@@ -119,6 +119,40 @@ describe("send policy", () => {
     });
   });
 
+  it("does not count inbound rows toward the monthly quota", async () => {
+    await seedWorkspace("wsp_inq", 2);
+    await seedSender("wsp_inq", "tiffingrab.ca", from);
+    const stub = stubFor("wsp_inq");
+    const now = Date.now();
+    await runInDurableObject(stub, (_instance, state) => {
+      for (const id of ["msg_in_a", "msg_in_b"])
+        state.storage.sql.exec(
+          "INSERT INTO message (id, app_id, direction, stream, status, created_at, updated_at) VALUES (?, 'app_1', 'in', 'transactional', 'sent', ?, ?)",
+          id, now, now,
+        );
+    });
+
+    expect((await stub.send("wsp_inq", base)).status).toBe("queued");
+    expect((await stub.send("wsp_inq", base)).status).toBe("queued");
+    expect(await refusal(stub, "wsp_inq", base)).toBe("quota_exceeded");
+  });
+
+  it("counts outbound sent rows toward the monthly quota", async () => {
+    await seedWorkspace("wsp_outq", 2);
+    await seedSender("wsp_outq", "tiffingrab.ca", from);
+    const stub = stubFor("wsp_outq");
+    const now = Date.now();
+    await runInDurableObject(stub, (_instance, state) => {
+      for (const id of ["msg_out_a", "msg_out_b"])
+        state.storage.sql.exec(
+          "INSERT INTO message (id, app_id, direction, stream, status, created_at, updated_at) VALUES (?, 'app_1', 'out', 'transactional', 'sent', ?, ?)",
+          id, now, now,
+        );
+    });
+
+    expect(await refusal(stub, "wsp_outq", base)).toBe("quota_exceeded");
+  });
+
   it("does not count last month's rows toward the quota", async () => {
     await seedWorkspace("wsp_prev", 1);
     await seedSender("wsp_prev", "tiffingrab.ca", from);

@@ -106,7 +106,13 @@ export class ClientDO extends DurableObject<Env> {
         const used = this.db
           .select({ n: sql<number>`count(*)` })
           .from(schema.message)
-          .where(and(inArray(schema.message.status, ["queued", "sent"]), gte(schema.message.createdAt, monthStart)))
+          .where(
+            and(
+              eq(schema.message.direction, "out"),
+              inArray(schema.message.status, ["queued", "sent"]),
+              gte(schema.message.createdAt, monthStart),
+            ),
+          )
           .get();
         if (limits.monthlyQuota > 0 && (used?.n ?? 0) >= limits.monthlyQuota) throw new Error("quota_exceeded");
         // Re-checked here: an unsubscribe can land during the R2 put above.

@@ -76,6 +76,78 @@ CREATE TABLE message_event (
 );
 CREATE INDEX message_event_message ON message_event (message_id, occurred_at);
 `,
+`
+ALTER TABLE message ADD COLUMN address_id TEXT;
+ALTER TABLE message ADD COLUMN rfc_message_id TEXT;
+ALTER TABLE message ADD COLUMN in_reply_to TEXT;
+ALTER TABLE message ADD COLUMN rfc_references TEXT;
+ALTER TABLE message ADD COLUMN envelope_from TEXT;
+ALTER TABLE message ADD COLUMN auth_results TEXT;
+CREATE UNIQUE INDEX message_raw_key_unique ON message (raw_key);
+CREATE UNIQUE INDEX message_in_rfc_unique ON message (app_id, rfc_message_id) WHERE direction = 'in';
+CREATE INDEX message_address_created ON message (address_id, created_at);
+
+CREATE TABLE attachment (
+  id TEXT PRIMARY KEY NOT NULL,
+  message_id TEXT NOT NULL,
+  app_id TEXT NOT NULL,
+  position INTEGER NOT NULL,
+  filename TEXT NOT NULL,
+  content_type TEXT NOT NULL,
+  size_bytes INTEGER NOT NULL,
+  content_id TEXT,
+  r2_key TEXT NOT NULL,
+  created_at INTEGER NOT NULL
+);
+CREATE UNIQUE INDEX attachment_message_position ON attachment (message_id, position);
+
+CREATE TABLE webhook (
+  id TEXT PRIMARY KEY NOT NULL,
+  app_id TEXT NOT NULL,
+  url TEXT NOT NULL,
+  secret_enc TEXT NOT NULL,
+  events TEXT NOT NULL,
+  enabled INTEGER NOT NULL DEFAULT 1,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+CREATE INDEX webhook_app ON webhook (app_id);
+
+CREATE TABLE webhook_delivery (
+  id TEXT PRIMARY KEY NOT NULL,
+  webhook_id TEXT NOT NULL,
+  app_id TEXT NOT NULL,
+  message_id TEXT NOT NULL,
+  event TEXT NOT NULL,
+  payload_key TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending',
+  attempts INTEGER NOT NULL DEFAULT 0,
+  next_attempt_at INTEGER NOT NULL,
+  claimed_until INTEGER,
+  last_error TEXT,
+  response_status INTEGER,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  CONSTRAINT webhook_delivery_status CHECK (status IN ('pending', 'sent', 'failed'))
+);
+CREATE UNIQUE INDEX webhook_delivery_unique ON webhook_delivery (webhook_id, message_id, event);
+CREATE INDEX webhook_delivery_status ON webhook_delivery (status, updated_at);
+
+CREATE TABLE inbound_failure (
+  id TEXT PRIMARY KEY NOT NULL,
+  raw_key TEXT NOT NULL UNIQUE,
+  app_id TEXT,
+  address_id TEXT,
+  envelope_from TEXT,
+  envelope_to TEXT NOT NULL,
+  auth_results TEXT,
+  received_at INTEGER NOT NULL,
+  error TEXT NOT NULL,
+  attempts INTEGER NOT NULL DEFAULT 1,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+`,
 ];
 
 // PRAGMA user_version is rejected by DO SQL (SQLITE_AUTH), so the version lives in sync KV.
