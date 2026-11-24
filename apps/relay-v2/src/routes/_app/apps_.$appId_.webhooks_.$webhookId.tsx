@@ -46,7 +46,7 @@ function DeliveriesPage() {
     setLoadingOlder(true);
     try {
       const next = await fetchDeliveries({ data: { appId, webhookId, cursor: nextCursor } });
-      if (next) setOlder({ rows: [...rows, ...next.rows], nextCursor: next.nextCursor });
+      if (next) setOlder({ rows: [...(older?.rows ?? []), ...next.rows], nextCursor: next.nextCursor });
     } catch (err) {
       toast.error(errorText(err, "Could not load older deliveries."));
     } finally {

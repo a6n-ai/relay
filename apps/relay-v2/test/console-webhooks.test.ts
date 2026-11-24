@@ -78,6 +78,21 @@ describe("console webhooks: create, list, update, delete", { timeout: 60_000 }, 
     expect(listed).not.toHaveProperty("secretEnc");
   });
 
+  it("answers 503 webhooks unavailable when the secret key is unset", async () => {
+    const { owner } = await workspaceFor("hook-nokey@example.com", "Hook Nokey Co");
+    const { id: appId } = await addApp(env, owner, { name: "Web", slug: "web" });
+    const saved = env.WEBHOOK_SECRET_KEY;
+    env.WEBHOOK_SECRET_KEY = undefined;
+    try {
+      await expect(createWebhookFor(env, owner, appId, { url: HOOK_URL, events: ["mailbox.received"] })).rejects.toMatchObject({
+        status: 503,
+        message: "webhooks unavailable",
+      });
+    } finally {
+      env.WEBHOOK_SECRET_KEY = saved;
+    }
+  });
+
   it("refuses non-public, credentialed, non-https URLs and an empty event list", () => {
     const bad = [
       { url: "http://hooks.example", events: ["mailbox.received"] },
@@ -184,15 +199,50 @@ describe("console webhooks: delivery log and retry", { timeout: 60_000 }, () => 
     const { rows } = await listDeliveriesFor(env, owner, appId, webhook.id);
     const deliveryId = rows[0].id;
     await runInDurableObject(stub(workspaceId), (_i, state) => {
-      state.storage.sql.exec("UPDATE webhook_delivery SET status = 'failed', attempts = 6, last_error = 'HTTP 500' WHERE id = ?", deliveryId);
+      state.storage.sql.exec(
+        "UPDATE webhook_delivery SET status = 'failed', attempts = 6, last_error = 'HTTP 500', response_status = 500 WHERE id = ?",
+        deliveryId,
+      );
     });
 
     await expect(retryDeliveryFor(env, owner, appId, deliveryId)).resolves.toBeUndefined();
-    const [row] = await rowsOf(workspaceId, "SELECT status, attempts, claimed_until FROM webhook_delivery WHERE id = ?", deliveryId);
-    expect(row).toMatchObject({ status: "pending", attempts: 0, claimed_until: null });
+    const [row] = await rowsOf(
+      workspaceId,
+      "SELECT status, attempts, claimed_until, last_error, response_status FROM webhook_delivery WHERE id = ?",
+      deliveryId,
+    );
+    expect(row).toMatchObject({ status: "pending", attempts: 0, claimed_until: null, last_error: null, response_status: null });
     expect(sendSpy).toHaveBeenCalledWith({ workspaceId, deliveryId });
     const all = await rowsOf(workspaceId, "SELECT id FROM webhook_delivery WHERE webhook_id = ?", webhook.id);
     expect(all).toHaveLength(1);
+  });
+
+  it("expires a retried delivery 24h after the retry, not after its created_at", async () => {
+    const DAY = 86_400_000;
+    const { owner, workspaceId } = await workspaceFor("hook-expiry@example.com", "Hook Expiry Co");
+    const { id: appId } = await addApp(env, owner, { name: "Web", slug: "web" });
+    const { webhook } = await createWebhookFor(env, owner, appId, { url: HOOK_URL, events: ["mailbox.received"] });
+    await ingestLetter(workspaceId, appId, "in@hook-expiry.test");
+    const { rows } = await listDeliveriesFor(env, owner, appId, webhook.id);
+    const deliveryId = rows[0].id;
+    const now = Date.now();
+    await runInDurableObject(stub(workspaceId), (_i, state) => {
+      state.storage.sql.exec(
+        "UPDATE webhook_delivery SET status = 'failed', attempts = 6, last_error = 'HTTP 500', created_at = ? WHERE id = ?",
+        now - 3 * DAY,
+        deliveryId,
+      );
+    });
+
+    await expect(stub(workspaceId).retryWebhookDelivery(workspaceId, appId, deliveryId, now)).resolves.toBe("queued");
+    await runInDurableObject(stub(workspaceId), (inst) => inst.sweepQueued(now));
+    const [live] = await rowsOf(workspaceId, "SELECT status, last_error FROM webhook_delivery WHERE id = ?", deliveryId);
+    expect(live).toEqual({ status: "pending", last_error: null });
+    expect(sendSpy).toHaveBeenCalledWith({ workspaceId, deliveryId });
+
+    await runInDurableObject(stub(workspaceId), (inst) => inst.sweepQueued(now + DAY + 3_600_000));
+    const [expired] = await rowsOf(workspaceId, "SELECT status, last_error FROM webhook_delivery WHERE id = ?", deliveryId);
+    expect(expired).toEqual({ status: "failed", last_error: "expired" });
   });
 
   it("refuses a retry while the webhook is disabled with 409 webhook disabled", async () => {

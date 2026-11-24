@@ -149,6 +149,7 @@ export const webhookDelivery = sqliteTable(
     claimedUntil: integer("claimed_until"),
     lastError: text("last_error"),
     responseStatus: integer("response_status"),
+    retriedAt: integer("retried_at"),
     createdAt: integer("created_at").notNull(),
     updatedAt: integer("updated_at").notNull(),
   },

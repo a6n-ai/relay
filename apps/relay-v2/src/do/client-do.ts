@@ -363,7 +363,16 @@ export class ClientDO extends DurableObject<Env> {
       if (!hook || hook.enabled !== 1) return "webhook_disabled";
       this.db
         .update(schema.webhookDelivery)
-        .set({ status: "pending", attempts: 0, nextAttemptAt: now, claimedUntil: null, lastError: null, updatedAt: now })
+        .set({
+          status: "pending",
+          attempts: 0,
+          nextAttemptAt: now,
+          claimedUntil: null,
+          lastError: null,
+          responseStatus: null,
+          retriedAt: now,
+          updatedAt: now,
+        })
         .where(eq(schema.webhookDelivery.id, deliveryId))
         .run();
       return "queued";
@@ -791,7 +800,12 @@ export class ClientDO extends DurableObject<Env> {
       this.db
         .update(schema.webhookDelivery)
         .set({ status: "failed", lastError: "expired", claimedUntil: null, updatedAt: now })
-        .where(and(eq(schema.webhookDelivery.status, "pending"), lt(schema.webhookDelivery.createdAt, now - EXPIRE_MS)))
+        .where(
+          and(
+            eq(schema.webhookDelivery.status, "pending"),
+            sql`max(${schema.webhookDelivery.createdAt}, coalesce(${schema.webhookDelivery.retriedAt}, 0)) < ${now - EXPIRE_MS}`,
+          ),
+        )
         .run(),
     );
     const staleDeliveries = this.db
