@@ -9,7 +9,10 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
+import { Route as AppRouteImport } from './routes/_app'
+import { Route as NoWorkspaceRouteImport } from './routes/no-workspace'
+import { Route as SignInRouteImport } from './routes/sign-in'
+import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiDevOtpRouteImport } from './routes/api/dev/otp'
@@ -21,10 +24,24 @@ import { Route as ApiWebhooksSesRouteImport } from './routes/api/webhooks/ses'
 import { Route as ApiV1MessagesIdRouteImport } from './routes/api/v1/messages.$id'
 import { Route as ApiV1WebhooksIdRouteImport } from './routes/api/v1/webhooks.$id'
 
-const IndexRoute = IndexRouteImport.update({
+const AppRoute = AppRouteImport.update({
+  id: '/_app',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NoWorkspaceRoute = NoWorkspaceRouteImport.update({
+  id: '/no-workspace',
+  path: '/no-workspace',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SignInRoute = SignInRouteImport.update({
+  id: '/sign-in',
+  path: '/sign-in',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AppRoute,
 } as any)
 const ApiHealthRoute = ApiHealthRouteImport.update({
   id: '/api/health',
@@ -78,7 +95,9 @@ const ApiV1WebhooksIdRoute = ApiV1WebhooksIdRouteImport.update({
 } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
+  '/': typeof AppIndexRoute
+  '/no-workspace': typeof NoWorkspaceRoute
+  '/sign-in': typeof SignInRoute
   '/api/health': typeof ApiHealthRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/dev/otp': typeof ApiDevOtpRoute
@@ -91,8 +110,10 @@ export interface FileRoutesByFullPath {
   '/api/v1/webhooks/$id': typeof ApiV1WebhooksIdRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
+  '/no-workspace': typeof NoWorkspaceRoute
+  '/sign-in': typeof SignInRoute
   '/api/health': typeof ApiHealthRoute
+  '/': typeof AppIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/dev/otp': typeof ApiDevOtpRoute
   '/api/internal/do-sweep': typeof ApiInternalDoSweepRoute
@@ -105,8 +126,11 @@ export interface FileRoutesByTo {
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
+  '/_app': typeof AppRouteWithChildren
+  '/no-workspace': typeof NoWorkspaceRoute
+  '/sign-in': typeof SignInRoute
   '/api/health': typeof ApiHealthRoute
+  '/_app/': typeof AppIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/dev/otp': typeof ApiDevOtpRoute
   '/api/internal/do-sweep': typeof ApiInternalDoSweepRoute
@@ -121,6 +145,8 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/no-workspace'
+    | '/sign-in'
     | '/api/health'
     | '/api/auth/$'
     | '/api/dev/otp'
@@ -133,8 +159,10 @@ export interface FileRouteTypes {
     | '/api/v1/webhooks/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
-    | '/'
+    | '/no-workspace'
+    | '/sign-in'
     | '/api/health'
+    | '/'
     | '/api/auth/$'
     | '/api/dev/otp'
     | '/api/internal/do-sweep'
@@ -146,8 +174,11 @@ export interface FileRouteTypes {
     | '/api/v1/webhooks/$id'
   id:
     | '__root__'
-    | '/'
+    | '/_app'
+    | '/no-workspace'
+    | '/sign-in'
     | '/api/health'
+    | '/_app/'
     | '/api/auth/$'
     | '/api/dev/otp'
     | '/api/internal/do-sweep'
@@ -160,7 +191,9 @@ export interface FileRouteTypes {
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
+  AppRoute: typeof AppRouteWithChildren
+  NoWorkspaceRoute: typeof NoWorkspaceRoute
+  SignInRoute: typeof SignInRoute
   ApiHealthRoute: typeof ApiHealthRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiDevOtpRoute: typeof ApiDevOtpRoute
@@ -173,12 +206,33 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
+    '/_app': {
+      id: '/_app'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/no-workspace': {
+      id: '/no-workspace'
+      path: '/no-workspace'
+      fullPath: '/no-workspace'
+      preLoaderRoute: typeof NoWorkspaceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sign-in': {
+      id: '/sign-in'
+      path: '/sign-in'
+      fullPath: '/sign-in'
+      preLoaderRoute: typeof SignInRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_app/': {
+      id: '/_app/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AppIndexRouteImport
+      parentRoute: typeof AppRoute
     }
     '/api/health': {
       id: '/api/health'
@@ -253,6 +307,16 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AppRouteChildren {
+  AppIndexRoute: typeof AppIndexRoute
+}
+
+const AppRouteChildren: AppRouteChildren = {
+  AppIndexRoute: AppIndexRoute,
+}
+
+const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
+
 interface ApiV1MessagesRouteChildren {
   ApiV1MessagesIdRoute: typeof ApiV1MessagesIdRoute
 }
@@ -278,7 +342,9 @@ const ApiV1WebhooksRouteWithChildren = ApiV1WebhooksRoute._addFileChildren(
 )
 
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
+  AppRoute: AppRouteWithChildren,
+  NoWorkspaceRoute: NoWorkspaceRoute,
+  SignInRoute: SignInRoute,
   ApiHealthRoute: ApiHealthRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiDevOtpRoute: ApiDevOtpRoute,

@@ -39,6 +39,7 @@ export async function requireSession(
 }
 
 const isOrgRole = (role: string): role is OrgRole => role in orgRoles;
+export const parseRoles = (raw: string): OrgRole[] => raw.split(",").map((r) => r.trim()).filter(isOrgRole);
 
 export async function requireActor(
   env: Env,
@@ -55,7 +56,7 @@ export async function requireActor(
     .where(and(eq(member.userId, userId), eq(member.organizationId, activeWorkspaceId)));
   if (!row) throw new ConsoleError(403, "not a member");
 
-  const roles = row.role.split(",").map((r) => r.trim()).filter(isOrgRole);
+  const roles = parseRoles(row.role);
   const permission = need.permission;
   if (permission && !roles.some((r) => orgRoles[r].authorize(permission).success)) {
     throw new ConsoleError(403, "forbidden");
