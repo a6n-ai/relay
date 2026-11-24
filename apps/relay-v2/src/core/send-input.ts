@@ -22,3 +22,22 @@ export const sendInputSchema = z.object({
 });
 
 export type SendInput = z.input<typeof sendInputSchema>;
+
+export const mergeDataSchema = z
+  .record(z.string().regex(/^[a-z0-9_]{1,40}$/), z.string().max(200))
+  .refine((d) => Object.keys(d).length <= 10, "at most 10 data keys");
+
+const contactSchema = z.object({ firstName: z.string().max(200).optional(), lastName: z.string().max(200).optional() });
+
+export const templateSendSchema = z.object({
+  stream: streamSchema,
+  from: email,
+  to: email,
+  templateId: z.string().min(1),
+  contact: contactSchema.optional(),
+  data: mergeDataSchema.optional(),
+  event: z.string().min(1).optional(),
+  idempotencyKey: z.string().min(1).optional(),
+});
+
+export type TemplateSendInput = z.input<typeof templateSendSchema>;

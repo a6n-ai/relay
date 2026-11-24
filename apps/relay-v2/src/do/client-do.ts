@@ -3,7 +3,7 @@ import { and, eq, gte, inArray, isNull, lt, ne, or, sql, type SQLWrapper } from 
 import { drizzle, type DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
 import { brandDomain, campaignProblems, IMPLIED_CONSENT_MS, type CampaignProblem } from "../core/campaigns";
 import { CHUNK_SIZE, ENQUEUE_BATCH } from "../core/campaign-workflow";
-import { contactValues, fillUnsubscribe, MERGE_SAMPLES, renderMerge } from "../core/merge";
+import { contactValues, fillUnsubscribe, hasMergeToken, MERGE_SAMPLES, renderMerge } from "../core/merge";
 import { sesSendRate } from "../core/send-rate";
 import type { SesSendRequest } from "../core/ses";
 import { DEFAULT_MONTHLY_QUOTA, LIMITS_TTL_MS, loadWorkspaceLimits, SENDER_RETRY_MS, type WorkspaceLimits } from "../core/limits";
@@ -423,9 +423,9 @@ export class ClientDO extends DurableObject<Env> {
     await this.ready(workspaceId);
     return this.ctx.storage.transactionSync(() => removeMemberRow(this.ctx.storage.sql, listId, memberId));
   }
-  async createCampaign(workspaceId: string, appId: string, name: string): Promise<CampaignView> {
+  async createCampaign(workspaceId: string, appId: string, name: string, templateId?: string): Promise<CampaignView | "missing"> {
     await this.ready(workspaceId);
-    return this.ctx.storage.transactionSync(() => createCampaignRow(this.ctx.storage.sql, appId, name));
+    return this.ctx.storage.transactionSync(() => createCampaignRow(this.ctx.storage.sql, appId, name, templateId));
   }
   async listCampaigns(workspaceId: string, cursor?: string, appId?: string): Promise<{ rows: CampaignSummary[]; nextCursor: string | null }> {
     await this.ready(workspaceId);
@@ -1504,5 +1504,22 @@ export class ClientDO extends DurableObject<Env> {
       .where(and(eq(schema.message.appId, appId), eq(schema.message.idempotencyKey, key)))
       .get();
     return row ? { messageId: row.id, status: row.status as SendResult["status"], duplicate: true } : undefined;
+  }
+  async renderTemplate(
+    workspaceId: string,
+    appId: string,
+    templateId: string,
+    values: Record<string, string>,
+  ): Promise<{ subject: string; html: string; text: string; hasUnsubscribe: boolean } | "missing" | "disabled"> {
+    await this.ready(workspaceId);
+    const tpl = getTemplateRow(this.ctx.storage.sql, templateId);
+    if (!tpl || tpl.appId !== appId) return "missing";
+    if (!tpl.enabled) return "disabled";
+    return {
+      subject: renderMerge(tpl.subject, values, "subject"),
+      html: renderMerge(tpl.html, values, "html"),
+      text: renderMerge(tpl.text, values, "text"),
+      hasUnsubscribe: hasMergeToken(tpl.html, "unsubscribe_url") || hasMergeToken(tpl.text, "unsubscribe_url"),
+    };
   }
 }

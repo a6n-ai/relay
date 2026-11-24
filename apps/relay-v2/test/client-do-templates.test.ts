@@ -48,4 +48,35 @@ describe("template library in the workspace DO", () => {
     });
     expect(await stub.deleteTemplate(ws, tpl.id)).toBe("in_use");
   });
+
+  it("renders a template for its own app, and reports missing or disabled", async () => {
+    const ws = "ws_tpl_render";
+    const stub = stubFor(ws);
+    const tpl = (await stub.createTemplate(ws, "app_1", {
+      name: "R",
+      subject: "Hi {{contact.first_name}}",
+      html: "<p>{{contact.first_name}} {{unsubscribe_url}}</p>",
+      text: "x {{unsubscribe_url}}",
+    })) as { id: string };
+    const values = { "contact.first_name": "Ana" };
+    expect(await stub.renderTemplate(ws, "app_1", tpl.id, values)).toEqual({
+      subject: "Hi Ana",
+      html: "<p>Ana {{unsubscribe_url}}</p>",
+      text: "x {{unsubscribe_url}}",
+      hasUnsubscribe: true,
+    });
+    expect(await stub.renderTemplate(ws, "app_2", tpl.id, values)).toBe("missing");
+    await stub.updateTemplate(ws, tpl.id, { enabled: false });
+    expect(await stub.renderTemplate(ws, "app_1", tpl.id, values)).toBe("disabled");
+  });
+
+  it("copies a template into a campaign, which keeps it when the template changes", async () => {
+    const ws = "ws_tpl_campaign";
+    const stub = stubFor(ws);
+    const tpl = (await stub.createTemplate(ws, "app_1", { name: "C", subject: "Spring", html: "<p>a</p>", text: "a" })) as { id: string };
+    const campaign = (await stub.createCampaign(ws, "app_1", "Spring", tpl.id)) as { id: string };
+    await stub.updateTemplate(ws, tpl.id, { subject: "Changed", html: "<p>b</p>" });
+    expect(await stub.getCampaign(ws, campaign.id)).toMatchObject({ subject: "Spring", html: "<p>a</p>", text: "a" });
+    expect(await stub.createCampaign(ws, "app_2", "X", tpl.id)).toBe("missing");
+  });
 });

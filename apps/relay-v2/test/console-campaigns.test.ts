@@ -70,6 +70,20 @@ describe("campaigns console", () => {
     await expect(updateCampaignFor(env, a.owner, campaign.id, { name: "hijack" })).rejects.toMatchObject({ status: 404 });
   });
 
+  it("starts a campaign from a template, and 404s on a template the app does not own", async () => {
+    const { owner } = await workspaceFor("cmp-tpl@example.com", "Cmp Tpl Co");
+    const { id: appId } = await addApp(env, owner, { name: "Web", slug: "web" });
+    const tpl = (await clientFor(env, owner.workspaceId).createTemplate(owner.workspaceId, appId, {
+      name: "T",
+      subject: "Spring",
+      html: "<p>a</p>",
+      text: "a",
+    })) as { id: string };
+    const campaign = await createCampaignFor(env, owner, appId, "From template", tpl.id);
+    expect(campaign).toMatchObject({ subject: "Spring", html: "<p>a</p>", text: "a" });
+    await expect(createCampaignFor(env, owner, appId, "Missing", "tpl_nope")).rejects.toMatchObject({ status: 404 });
+  });
+
   it("renders a preview with no script element", async () => {
     const { owner } = await workspaceFor("cmp-preview@example.com", "Cmp Preview Co");
     const { id: appId } = await addApp(env, owner, { name: "Web", slug: "web" });

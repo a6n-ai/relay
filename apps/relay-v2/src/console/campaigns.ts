@@ -99,10 +99,11 @@ export async function campaignStatsFor(env: Env, actor: ConsoleActor, id: string
   return stats;
 }
 
-export async function createCampaignFor(env: Env, actor: ConsoleActor, appId: string, name: string): Promise<CampaignView> {
+export async function createCampaignFor(env: Env, actor: ConsoleActor, appId: string, name: string, templateId?: string): Promise<CampaignView> {
   requireWrite(actor);
   await getApp(env, actor, appId);
-  const campaign = await clientFor(env, actor.workspaceId).createCampaign(actor.workspaceId, appId, name);
+  const campaign = await clientFor(env, actor.workspaceId).createCampaign(actor.workspaceId, appId, name, templateId);
+  if (campaign === "missing") throw new ConsoleError(404, "not found");
   await writeAudit(env, {
     action: "campaign.create",
     actorUserId: actor.userId,

@@ -1,7 +1,16 @@
 import type { Env } from "../env";
-import type { SendInput } from "./send-input";
+import { loadWorkspaceLimits } from "./limits";
+import { contactValues } from "./merge";
+import { templateSendSchema, type SendInput, type TemplateSendInput } from "./send-input";
 
 export type Scope = { workspaceId: string; appId: string };
+
+export class TemplateError extends Error {}
+export const TEMPLATE_ERROR_STATUS = {
+  "template not found": 404,
+  "template disabled": 409,
+  "unsubscribe only on marketing": 400,
+} as const;
 
 export function clientFor(env: Env, workspaceId: string) {
   return env.CLIENT.get(env.CLIENT.idFromName(workspaceId));
@@ -16,6 +25,29 @@ export function sendRefusal(err: unknown): SendRefusal | undefined {
 
 export function sendMessage(env: Env, scope: Scope, input: Omit<SendInput, "appId">) {
   return clientFor(env, scope.workspaceId).send(scope.workspaceId, { ...input, appId: scope.appId });
+}
+
+export async function sendTemplateMessage(env: Env, scope: Scope, input: TemplateSendInput) {
+  const data = templateSendSchema.parse(input);
+  const { postalAddress } = await loadWorkspaceLimits(env, scope.workspaceId);
+  const values = contactValues(
+    { email: data.to, firstName: data.contact?.firstName ?? null, lastName: data.contact?.lastName ?? null, data: data.data },
+    postalAddress ?? "",
+  );
+  const rendered = await clientFor(env, scope.workspaceId).renderTemplate(scope.workspaceId, scope.appId, data.templateId, values);
+  if (rendered === "missing") throw new TemplateError("template not found");
+  if (rendered === "disabled") throw new TemplateError("template disabled");
+  if (rendered.hasUnsubscribe && data.stream !== "marketing") throw new TemplateError("unsubscribe only on marketing");
+  return sendMessage(env, scope, {
+    stream: data.stream,
+    from: data.from,
+    to: data.to,
+    subject: rendered.subject,
+    html: rendered.html,
+    text: rendered.text,
+    event: data.event,
+    idempotencyKey: data.idempotencyKey,
+  });
 }
 
 export async function getMessageForScope(env: Env, scope: Scope, id: string) {

@@ -1,6 +1,7 @@
 import { brandDomain, IMPLIED_CONSENT_MS } from "../core/campaigns";
 import { newId } from "../lib/ids";
 import { decodeCursor, encodeCursor } from "./console-reads";
+import { getTemplateRow } from "./templates";
 
 export type CampaignStatus = "draft" | "scheduled" | "sending" | "paused" | "sent" | "cancelled";
 export type CampaignView = {
@@ -101,10 +102,24 @@ export function campaignStatsRow(sql: SqlStorage, id: string): CampaignStats | n
   return row ? statsOf(row) : null;
 }
 
-export function createCampaignRow(sql: SqlStorage, appId: string, name: string): CampaignView {
+// The template's content is copied, so a later template edit never changes a campaign.
+export function createCampaignRow(sql: SqlStorage, appId: string, name: string, templateId?: string): CampaignView | "missing" {
+  const tpl = templateId === undefined ? null : getTemplateRow(sql, templateId);
+  if (templateId !== undefined && tpl?.appId !== appId) return "missing";
   const id = newId("cmp");
   const now = Date.now();
-  sql.exec("INSERT INTO campaign (id, app_id, name, created_at, updated_at) VALUES (?, ?, ?, ?, ?)", id, appId, name, now, now);
+  sql.exec(
+    "INSERT INTO campaign (id, app_id, name, subject, html, text, template_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+    id,
+    appId,
+    name,
+    tpl?.subject ?? "",
+    tpl?.html ?? "",
+    tpl?.text ?? "",
+    tpl?.id ?? null,
+    now,
+    now,
+  );
   return getCampaignRow(sql, id)!;
 }
 

@@ -102,11 +102,11 @@ export const previewHtmlFn = createServerFn({ method: "GET" })
   });
 
 export const createCampaignFn = createServerFn({ method: "POST" })
-  .validator(validate(z.object({ appId: id, name })))
+  .validator(validate(z.object({ appId: id, name, templateId: id.optional() })))
   .handler(async ({ data }) => {
     try {
       const actor = await requireActor(env, getRequestHeaders(), WRITE);
-      return await createCampaignFor(env, actor, data.appId, data.name);
+      return await createCampaignFor(env, actor, data.appId, data.name, data.templateId);
     } catch (err) {
       toResponseError(err);
     }

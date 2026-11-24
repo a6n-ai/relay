@@ -1,5 +1,6 @@
 import { env, runInDurableObject } from "cloudflare:test";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi, type MockInstance } from "vitest";
+import { sendTemplateMessage } from "../src/core/messages";
 import { securityDb } from "../src/db/security/client";
 import { workspace } from "../src/db/security/schema";
 import { applyMigrations, seedVerifiedSender } from "./migrate";
@@ -284,5 +285,47 @@ describe("ClientDO send", () => {
 
     await stub.addSuppression(ws, "r@x.com", "complaint");
     expect(await reason()).toBe("complaint");
+  });
+});
+
+describe("template sends", () => {
+  async function template(ws: string, fields: { subject?: string; html?: string; text?: string; enabled?: boolean }) {
+    const stub = await seededStub(ws);
+    const tpl = (await stub.createTemplate(ws, "app_1", { name: "T", ...fields })) as { id: string };
+    return { stub, id: tpl.id };
+  }
+  const send = (ws: string, templateId: string, extra: Record<string, unknown> = {}) =>
+    sendTemplateMessage(env, { workspaceId: ws, appId: "app_1" }, { stream: "transactional", from: "Relay@A6n.ai", to: "a@x.com", templateId, ...extra });
+
+  it("renders the template with the contact name escaped", async () => {
+    const ws = "wsp_tpl_render_send";
+    const { id } = await template(ws, { subject: "Hello {{contact.first_name}}", html: "<p>{{contact.first_name}}</p>", text: "{{contact.first_name}}" });
+    const sent = await send(ws, id, { contact: { firstName: "<i>" } });
+    expect(sent).toMatchObject({ status: "queued" });
+    expect(await (await env.MAIL.get(`ws/${ws}/msg/${sent.messageId}.html`))?.text()).toBe("<p>&lt;i&gt;</p>");
+  });
+
+  it("refuses an unsubscribe link outside the marketing stream", async () => {
+    const ws = "wsp_tpl_unsub_send";
+    const { id } = await template(ws, { subject: "S", html: "<a>{{unsubscribe_url}}</a>", text: "{{unsubscribe_url}}" });
+    await expect(send(ws, id)).rejects.toThrow("unsubscribe only on marketing");
+  });
+
+  it("refuses a disabled template, and another app's template as not found", async () => {
+    const ws = "wsp_tpl_disabled_send";
+    const { stub, id } = await template(ws, { subject: "S", html: "<p>x</p>", text: "x", enabled: false });
+    await expect(send(ws, id)).rejects.toThrow("template disabled");
+    await stub.updateTemplate(ws, id, { enabled: true });
+    await expect(sendTemplateMessage(env, { workspaceId: ws, appId: "app_2" }, { stream: "transactional", from: "Relay@A6n.ai", to: "a@x.com", templateId: id })).rejects.toThrow(
+      "template not found",
+    );
+  });
+
+  it("sends one message for the same idempotency key", async () => {
+    const ws = "wsp_tpl_idem_send";
+    const { id } = await template(ws, { subject: "S", html: "<p>x</p>", text: "x" });
+    const first = await send(ws, id, { idempotencyKey: "tpl-once" });
+    const second = await send(ws, id, { idempotencyKey: "tpl-once" });
+    expect(second).toMatchObject({ messageId: first.messageId, duplicate: true });
   });
 });
