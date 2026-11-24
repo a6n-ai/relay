@@ -15,6 +15,7 @@ import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AppAdminRouteImport } from './routes/_app/admin'
 import { Route as AppAppsRouteImport } from './routes/_app/apps'
+import { Route as AppCampaignsRouteImport } from './routes/_app/campaigns'
 import { Route as AppDomainsRouteImport } from './routes/_app/domains'
 import { Route as AppListsRouteImport } from './routes/_app/lists'
 import { Route as AppMembersRouteImport } from './routes/_app/members'
@@ -23,6 +24,7 @@ import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as InviteIdRouteImport } from './routes/invite.$id'
 import { Route as UTokenRouteImport } from './routes/u.$token'
 import { Route as AppAppsAppIdRouteImport } from './routes/_app/apps_.$appId'
+import { Route as AppCampaignsCampaignIdRouteImport } from './routes/_app/campaigns_.$campaignId'
 import { Route as AppListsListIdRouteImport } from './routes/_app/lists_.$listId'
 import { Route as AppMessagesMessageIdRouteImport } from './routes/_app/messages_.$messageId'
 import { Route as AppMessagesFailuresRouteImport } from './routes/_app/messages_.failures'
@@ -70,6 +72,11 @@ const AppAppsRoute = AppAppsRouteImport.update({
   path: '/apps',
   getParentRoute: () => AppRoute,
 } as any)
+const AppCampaignsRoute = AppCampaignsRouteImport.update({
+  id: '/campaigns',
+  path: '/campaigns',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppDomainsRoute = AppDomainsRouteImport.update({
   id: '/domains',
   path: '/domains',
@@ -108,6 +115,11 @@ const UTokenRoute = UTokenRouteImport.update({
 const AppAppsAppIdRoute = AppAppsAppIdRouteImport.update({
   id: '/apps_/$appId',
   path: '/apps/$appId',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppCampaignsCampaignIdRoute = AppCampaignsCampaignIdRouteImport.update({
+  id: '/campaigns_/$campaignId',
+  path: '/campaigns/$campaignId',
   getParentRoute: () => AppRoute,
 } as any)
 const AppListsListIdRoute = AppListsListIdRouteImport.update({
@@ -205,6 +217,7 @@ export interface FileRoutesByFullPath {
   '/sign-in': typeof SignInRoute
   '/admin': typeof AppAdminRoute
   '/apps': typeof AppAppsRoute
+  '/campaigns': typeof AppCampaignsRoute
   '/domains': typeof AppDomainsRoute
   '/lists': typeof AppListsRoute
   '/members': typeof AppMembersRoute
@@ -213,6 +226,7 @@ export interface FileRoutesByFullPath {
   '/invite/$id': typeof InviteIdRoute
   '/u/$token': typeof UTokenRoute
   '/apps/$appId': typeof AppAppsAppIdRoute
+  '/campaigns/$campaignId': typeof AppCampaignsCampaignIdRoute
   '/lists/$listId': typeof AppListsListIdRoute
   '/messages/$messageId': typeof AppMessagesMessageIdRoute
   '/messages/failures': typeof AppMessagesFailuresRoute
@@ -236,6 +250,7 @@ export interface FileRoutesByTo {
   '/sign-in': typeof SignInRoute
   '/admin': typeof AppAdminRoute
   '/apps': typeof AppAppsRoute
+  '/campaigns': typeof AppCampaignsRoute
   '/domains': typeof AppDomainsRoute
   '/lists': typeof AppListsRoute
   '/members': typeof AppMembersRoute
@@ -245,6 +260,7 @@ export interface FileRoutesByTo {
   '/u/$token': typeof UTokenRoute
   '/': typeof AppIndexRoute
   '/apps/$appId': typeof AppAppsAppIdRoute
+  '/campaigns/$campaignId': typeof AppCampaignsCampaignIdRoute
   '/lists/$listId': typeof AppListsListIdRoute
   '/messages/$messageId': typeof AppMessagesMessageIdRoute
   '/messages/failures': typeof AppMessagesFailuresRoute
@@ -270,6 +286,7 @@ export interface FileRoutesById {
   '/sign-in': typeof SignInRoute
   '/_app/admin': typeof AppAdminRoute
   '/_app/apps': typeof AppAppsRoute
+  '/_app/campaigns': typeof AppCampaignsRoute
   '/_app/domains': typeof AppDomainsRoute
   '/_app/lists': typeof AppListsRoute
   '/_app/members': typeof AppMembersRoute
@@ -279,6 +296,7 @@ export interface FileRoutesById {
   '/u/$token': typeof UTokenRoute
   '/_app/': typeof AppIndexRoute
   '/_app/apps_/$appId': typeof AppAppsAppIdRoute
+  '/_app/campaigns_/$campaignId': typeof AppCampaignsCampaignIdRoute
   '/_app/lists_/$listId': typeof AppListsListIdRoute
   '/_app/messages_/$messageId': typeof AppMessagesMessageIdRoute
   '/_app/messages_/failures': typeof AppMessagesFailuresRoute
@@ -305,6 +323,7 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/admin'
     | '/apps'
+    | '/campaigns'
     | '/domains'
     | '/lists'
     | '/members'
@@ -313,6 +332,7 @@ export interface FileRouteTypes {
     | '/invite/$id'
     | '/u/$token'
     | '/apps/$appId'
+    | '/campaigns/$campaignId'
     | '/lists/$listId'
     | '/messages/$messageId'
     | '/messages/failures'
@@ -336,6 +356,7 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/admin'
     | '/apps'
+    | '/campaigns'
     | '/domains'
     | '/lists'
     | '/members'
@@ -345,6 +366,7 @@ export interface FileRouteTypes {
     | '/u/$token'
     | '/'
     | '/apps/$appId'
+    | '/campaigns/$campaignId'
     | '/lists/$listId'
     | '/messages/$messageId'
     | '/messages/failures'
@@ -369,6 +391,7 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/_app/admin'
     | '/_app/apps'
+    | '/_app/campaigns'
     | '/_app/domains'
     | '/_app/lists'
     | '/_app/members'
@@ -378,6 +401,7 @@ export interface FileRouteTypes {
     | '/u/$token'
     | '/_app/'
     | '/_app/apps_/$appId'
+    | '/_app/campaigns_/$campaignId'
     | '/_app/lists_/$listId'
     | '/_app/messages_/$messageId'
     | '/_app/messages_/failures'
@@ -458,6 +482,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAppsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/campaigns': {
+      id: '/_app/campaigns'
+      path: '/campaigns'
+      fullPath: '/campaigns'
+      preLoaderRoute: typeof AppCampaignsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/domains': {
       id: '/_app/domains'
       path: '/domains'
@@ -512,6 +543,13 @@ declare module '@tanstack/react-router' {
       path: '/apps/$appId'
       fullPath: '/apps/$appId'
       preLoaderRoute: typeof AppAppsAppIdRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/campaigns_/$campaignId': {
+      id: '/_app/campaigns_/$campaignId'
+      path: '/campaigns/$campaignId'
+      fullPath: '/campaigns/$campaignId'
+      preLoaderRoute: typeof AppCampaignsCampaignIdRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/lists_/$listId': {
@@ -639,12 +677,14 @@ declare module '@tanstack/react-router' {
 interface AppRouteChildren {
   AppAdminRoute: typeof AppAdminRoute
   AppAppsRoute: typeof AppAppsRoute
+  AppCampaignsRoute: typeof AppCampaignsRoute
   AppDomainsRoute: typeof AppDomainsRoute
   AppListsRoute: typeof AppListsRoute
   AppMembersRoute: typeof AppMembersRoute
   AppMessagesRoute: typeof AppMessagesRoute
   AppIndexRoute: typeof AppIndexRoute
   AppAppsAppIdRoute: typeof AppAppsAppIdRoute
+  AppCampaignsCampaignIdRoute: typeof AppCampaignsCampaignIdRoute
   AppListsListIdRoute: typeof AppListsListIdRoute
   AppMessagesMessageIdRoute: typeof AppMessagesMessageIdRoute
   AppMessagesFailuresRoute: typeof AppMessagesFailuresRoute
@@ -657,12 +697,14 @@ interface AppRouteChildren {
 const AppRouteChildren: AppRouteChildren = {
   AppAdminRoute: AppAdminRoute,
   AppAppsRoute: AppAppsRoute,
+  AppCampaignsRoute: AppCampaignsRoute,
   AppDomainsRoute: AppDomainsRoute,
   AppListsRoute: AppListsRoute,
   AppMembersRoute: AppMembersRoute,
   AppMessagesRoute: AppMessagesRoute,
   AppIndexRoute: AppIndexRoute,
   AppAppsAppIdRoute: AppAppsAppIdRoute,
+  AppCampaignsCampaignIdRoute: AppCampaignsCampaignIdRoute,
   AppListsListIdRoute: AppListsListIdRoute,
   AppMessagesMessageIdRoute: AppMessagesMessageIdRoute,
   AppMessagesFailuresRoute: AppMessagesFailuresRoute,
