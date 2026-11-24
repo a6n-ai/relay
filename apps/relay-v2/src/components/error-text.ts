@@ -56,6 +56,11 @@ const COPY = new Map<string, string>([
   ["unknown list", "That list no longer exists. Refresh and try again."],
   ["too_many_recipients", "This campaign has more recipients than one send allows."],
   ["run_failed", "Sending hit an error and stopped. Resume to try again."],
+  ["template event taken", "Another template already handles this event in this locale."],
+  ["template in use", "An automation uses this template, so it can't be deleted."],
+  ["template not found", "That template no longer exists. Refresh and try again."],
+  ["template disabled", "This template is turned off, so it can't be sent."],
+  ["unsubscribe only on marketing", "This template has an unsubscribe link, so it can only send as marketing mail."],
 ]);
 
 // Paused campaigns store a code on the row, not an Error, so the report maps it through the same COPY.
