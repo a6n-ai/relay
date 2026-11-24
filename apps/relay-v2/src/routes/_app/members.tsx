@@ -9,8 +9,13 @@ import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
 import { ConfirmDialog } from "../../components/confirm-dialog";
 import { CreateDialog } from "../../components/create-dialog";
+import { DeniedState, deniedReason } from "../../components/denied-state";
+import { errorText } from "../../components/error-text";
+import { FormError } from "../../components/form-error";
 import { ResourceTable } from "../../components/resource-table";
 import { type MemberRole, ROLE_LABEL, RoleSelect } from "../../components/role-select";
+import { runAction } from "../../components/run-action";
+import { useCan } from "../../components/use-can";
 import { ViewHeader } from "../../components/view-header";
 import {
   cancelInviteFn,
@@ -22,7 +27,6 @@ import {
   removeMemberFn,
   setTeamMemberFn,
 } from "../../console/members.fns";
-import { allows } from "../../lib/auth/permissions";
 
 export const Route = createFileRoute("/_app/members")({
   loader: () => fetchPeople(),
@@ -38,26 +42,26 @@ function MembersPage() {
   const router = useRouter();
   const roles = shell.active?.roles ?? [];
   const suspended = shell.active?.status === "suspended";
-  const can = (need: Record<string, string[]>) => !suspended && allows(roles, need);
   const ownerActor = roles.includes("owner");
-  const canManage = can({ member: ["update"] });
-  const canRemove = can({ member: ["delete"] });
-  const canInvite = can({ invitation: ["create"] });
-  const canCancel = can({ invitation: ["cancel"] });
-  const canCreateTeam = can({ team: ["create"] });
-  const canEditTeam = can({ team: ["update"] });
-  const canDeleteTeam = can({ team: ["delete"] });
-  const namesById = new Map(people.members.map((m) => [m.id, m.name]));
+  const canManage = useCan({ member: ["update"] });
+  const canRemove = useCan({ member: ["delete"] });
+  const canInvite = useCan({ invitation: ["create"] });
+  const canCancel = useCan({ invitation: ["cancel"] });
+  const canCreateTeam = useCan({ team: ["create"] });
+  const canEditTeam = useCan({ team: ["update"] });
+  const canDeleteTeam = useCan({ team: ["delete"] });
 
-  async function run(action: () => Promise<unknown>, success: string) {
-    try {
-      await action();
-      toast.success(success);
-      await router.invalidate();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Something went wrong");
-    }
+  const run = (action: () => Promise<unknown>, success: string) => runAction(action, success, () => router.invalidate());
+
+  if (!people) {
+    return (
+      <>
+        <ViewHeader title="Members" />
+        <DeniedState reason={deniedReason(shell)} />
+      </>
+    );
   }
+  const namesById = new Map(people.members.map((m) => [m.id, m.name]));
 
   return (
     <>
@@ -248,7 +252,7 @@ function InviteForm({ done, canGrantOwner }: { done: () => void; canGrantOwner: 
       done();
       await router.invalidate();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not send the invite.");
+      setError(errorText(err, "Could not send the invite."));
     } finally {
       setPending(false);
     }
@@ -260,11 +264,7 @@ function InviteForm({ done, canGrantOwner }: { done: () => void; canGrantOwner: 
       <Input id="invite-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
       <Label htmlFor="invite-role">Role</Label>
       <RoleSelect id="invite-role" value={role} onChange={setRole} canGrantOwner={canGrantOwner} />
-      {error ? (
-        <p role="alert" className="text-sm text-destructive">
-          {error}
-        </p>
-      ) : null}
+      <FormError message={error} />
       <div className="flex justify-end">
         <Button type="submit" disabled={pending}>
           Send invite
@@ -290,7 +290,7 @@ function NewTeamForm({ done }: { done: () => void }) {
       done();
       await router.invalidate();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not create the team.");
+      setError(errorText(err, "Could not create the team."));
     } finally {
       setPending(false);
     }
@@ -300,11 +300,7 @@ function NewTeamForm({ done }: { done: () => void }) {
     <form onSubmit={submit} className="grid gap-3">
       <Label htmlFor="team-name">Name</Label>
       <Input id="team-name" required maxLength={80} value={name} onChange={(e) => setName(e.target.value)} />
-      {error ? (
-        <p role="alert" className="text-sm text-destructive">
-          {error}
-        </p>
-      ) : null}
+      <FormError message={error} />
       <div className="flex justify-end">
         <Button type="submit" disabled={pending}>
           Create team

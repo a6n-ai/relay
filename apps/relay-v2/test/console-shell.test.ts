@@ -114,6 +114,23 @@ describe("console shell", { timeout: 60_000 }, () => {
     expect(html).toContain("Only Suspended Co");
     expect(html).toContain("Workspace suspended");
   });
+
+  it("shows the suspended state, not the default error, on every page for an all-suspended user", async () => {
+    const admin = await cookieFor("all-suspended-admin@example.com", "admin");
+    const wsId = await createWorkspace(admin, "All Suspended Co");
+    const cookie = await cookieFor("all-suspended-shell@example.com", "user");
+    const userId = await userIdOf("all-suspended-shell@example.com");
+    await db.insert(member).values({ organizationId: wsId, userId, role: "member" });
+    await db.update(workspace).set({ status: "suspended" }).where(eq(workspace.id, wsId));
+
+    for (const path of ["/", "/apps", "/apps/app_missing", "/members"]) {
+      const res = await getPage(path, cookie);
+      expect(res.status, path).toBe(200);
+      const html = await res.text();
+      expect(html, path).toContain("This workspace is suspended");
+      expect(html, path).not.toContain("Something went wrong");
+    }
+  });
 });
 
 describe("safeRedirect", () => {

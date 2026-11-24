@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeaders } from "@tanstack/react-start/server";
 import { env } from "cloudflare:workers";
 import { z } from "zod";
-import { requireActor, toResponseError } from "./actor";
+import { ConsoleError, requireActor, toResponseError } from "./actor";
 import {
   acceptInvite,
   cancelInvite,
@@ -15,22 +15,24 @@ import {
   removeMember,
   setTeamMember,
 } from "./members";
-import { id, inviteInput, role } from "./schemas";
+import { id, inviteInput, name, role, validate } from "./schemas";
 
 const READ = {};
 const perm = (need: Record<string, string[]>) => ({ permission: need, write: true });
 
+// Null means no workspace or a suspended one: the page shows a denied state with a 200, not an error status.
 export const fetchPeople = createServerFn({ method: "GET" }).handler(async () => {
   try {
     const actor = await requireActor(env, getRequestHeaders(), READ);
     return await listPeople(env, actor);
   } catch (err) {
+    if (err instanceof ConsoleError && err.status === 403) return null;
     toResponseError(err);
   }
 });
 
 export const inviteMemberFn = createServerFn({ method: "POST" })
-  .validator(inviteInput)
+  .validator(validate(inviteInput))
   .handler(async ({ data }) => {
     try {
       const headers = getRequestHeaders();
@@ -54,7 +56,7 @@ export const cancelInviteFn = createServerFn({ method: "POST" })
   });
 
 export const changeRoleFn = createServerFn({ method: "POST" })
-  .validator(z.object({ memberId: id, role }))
+  .validator(validate(z.object({ memberId: id, role })))
   .handler(async ({ data }) => {
     try {
       const headers = getRequestHeaders();
@@ -66,7 +68,7 @@ export const changeRoleFn = createServerFn({ method: "POST" })
   });
 
 export const removeMemberFn = createServerFn({ method: "POST" })
-  .validator(z.object({ memberId: id }))
+  .validator(validate(z.object({ memberId: id })))
   .handler(async ({ data }) => {
     try {
       const headers = getRequestHeaders();
@@ -78,7 +80,7 @@ export const removeMemberFn = createServerFn({ method: "POST" })
   });
 
 export const createTeamFn = createServerFn({ method: "POST" })
-  .validator(z.object({ name: z.string().trim().min(1).max(80) }))
+  .validator(validate(z.object({ name })))
   .handler(async ({ data }) => {
     try {
       const headers = getRequestHeaders();
@@ -90,7 +92,7 @@ export const createTeamFn = createServerFn({ method: "POST" })
   });
 
 export const deleteTeamFn = createServerFn({ method: "POST" })
-  .validator(z.object({ teamId: id }))
+  .validator(validate(z.object({ teamId: id })))
   .handler(async ({ data }) => {
     try {
       const headers = getRequestHeaders();
@@ -102,7 +104,7 @@ export const deleteTeamFn = createServerFn({ method: "POST" })
   });
 
 export const setTeamMemberFn = createServerFn({ method: "POST" })
-  .validator(z.object({ teamId: id, memberId: id, on: z.boolean() }))
+  .validator(validate(z.object({ teamId: id, memberId: id, on: z.boolean() })))
   .handler(async ({ data }) => {
     try {
       const headers = getRequestHeaders();
@@ -114,7 +116,7 @@ export const setTeamMemberFn = createServerFn({ method: "POST" })
   });
 
 export const getInviteFn = createServerFn({ method: "GET" })
-  .validator(z.object({ id }))
+  .validator(validate(z.object({ id })))
   .handler(async ({ data }) => {
     try {
       return await getInvite(env, getRequestHeaders(), data.id);
@@ -124,7 +126,7 @@ export const getInviteFn = createServerFn({ method: "GET" })
   });
 
 export const acceptInviteFn = createServerFn({ method: "POST" })
-  .validator(z.object({ id }))
+  .validator(validate(z.object({ id })))
   .handler(async ({ data }) => {
     try {
       await acceptInvite(env, getRequestHeaders(), data.id);

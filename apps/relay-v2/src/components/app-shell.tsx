@@ -40,6 +40,7 @@ export function AppShell({ shell, children }: { shell: Shell; children: ReactNod
   const roles = shell.active?.roles ?? [];
   const visible = NAV.filter((item) => !item.need || allows(roles, item.need));
   const items = shell.platformAdmin ? [...visible, ADMIN_NAV] : visible;
+  const isCurrent = (to: string) => (to === "/" ? pathname === "/" : pathname === to || pathname.startsWith(`${to}/`));
   return (
     <SidebarProvider>
       <Sidebar>
@@ -53,8 +54,8 @@ export function AppShell({ shell, children }: { shell: Shell; children: ReactNod
                 {items.map((item) => (
                   <SidebarMenuItem key={item.to}>
                     <SidebarMenuButton
-                      isActive={pathname === item.to}
-                      render={<Link to={item.to} aria-current={pathname === item.to ? "page" : undefined} />}
+                      isActive={isCurrent(item.to)}
+                      render={<Link to={item.to} aria-current={isCurrent(item.to) ? "page" : undefined} />}
                     >
                       <item.icon />
                       {item.label}

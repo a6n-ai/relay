@@ -3,6 +3,8 @@ import { createFileRoute, redirect, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { getShell } from "../console/shell.fns";
 import { acceptInviteFn, getInviteFn } from "../console/members.fns";
+import { errorText } from "../components/error-text";
+import { FormError } from "../components/form-error";
 import { ROLE_LABEL, type MemberRole } from "../components/role-select";
 import { SignOutButton } from "../components/sign-out-button";
 
@@ -29,7 +31,7 @@ function InvitePage() {
       await acceptInviteFn({ data: { id } });
       await router.navigate({ to: "/" });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not accept the invite.");
+      setError(errorText(err, "Could not accept the invite."));
     } finally {
       setPending(false);
     }
@@ -59,11 +61,7 @@ function InvitePage() {
           </Button>
         </>
       )}
-      {error ? (
-        <p role="alert" className="text-sm text-destructive">
-          {error}
-        </p>
-      ) : null}
+      <FormError message={error} />
     </main>
   );
 }

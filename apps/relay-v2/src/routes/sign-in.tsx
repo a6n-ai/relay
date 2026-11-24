@@ -4,6 +4,7 @@ import { InputOTP, InputOTPGroup, InputOTPSlot } from "@foundry/ui/input-otp";
 import { Label } from "@foundry/ui/label";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
+import { FormError } from "../components/form-error";
 import { safeRedirect } from "../console/shell.fns";
 
 export const Route = createFileRoute("/sign-in")({
@@ -93,11 +94,7 @@ function SignIn() {
           </Button>
         </form>
       )}
-      {error ? (
-        <p role="alert" className="text-sm text-destructive">
-          {error}
-        </p>
-      ) : null}
+      <FormError message={error} />
     </main>
   );
 }

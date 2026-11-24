@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@foundry/ui/card";
 import { createFileRoute } from "@tanstack/react-router";
+import { DeniedState, deniedReason } from "../../components/denied-state";
 import { MeterBar } from "../../components/meter-bar";
 import { StatTile } from "../../components/stat-tile";
 import { ViewHeader } from "../../components/view-header";
@@ -14,11 +15,12 @@ const fmt = (n: number) => n.toLocaleString("en-CA");
 
 function Overview() {
   const overview = Route.useLoaderData();
+  const { shell } = Route.useRouteContext();
   if (!overview) {
     return (
       <>
         <ViewHeader title="Overview" />
-        <p className="p-4 text-sm text-muted-foreground">Usage is shown to workspace owners, admins and billing.</p>
+        <DeniedState reason={deniedReason(shell)} />
       </>
     );
   }
@@ -41,7 +43,7 @@ function Overview() {
           </CardHeader>
           <CardContent className="grid gap-2">
             {quota === 0 ? (
-              <p className="text-sm text-muted-foreground">Unlimited</p>
+              <p className="text-sm tabular-nums">{fmt(sent)} sent, unlimited</p>
             ) : (
               <div className="flex items-center gap-3">
                 <MeterBar percent={(sent / quota) * 100} />

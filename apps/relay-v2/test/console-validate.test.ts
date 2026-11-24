@@ -1,0 +1,33 @@
+import { describe, expect, it, vi } from "vitest";
+import { z } from "zod";
+
+// The server fns cannot be called over HTTP under vitest (TSS_SERVER_FN_BASE is unset there), so the 400 is checked at the validator.
+const setResponseStatus = vi.hoisted(() => vi.fn());
+vi.mock("@tanstack/react-start/server", () => ({ setResponseStatus }));
+
+import { validate, slug } from "../src/console/schemas";
+import { errorText } from "../src/components/error-text";
+
+describe("validate", () => {
+  it("returns the parsed value for a good body", () => {
+    expect(validate(z.object({ name: z.string().trim().min(1) }))({ name: "  Acme  " })).toEqual({ name: "Acme" });
+  });
+
+  it("throws 'invalid input' with status 400 for a bad body, and never the issue JSON", () => {
+    setResponseStatus.mockClear();
+    const check = validate(z.object({ slug }));
+    expect(() => check({ slug: "Acme Co" })).toThrow(new Error("invalid input"));
+    expect(setResponseStatus).toHaveBeenCalledWith(400);
+  });
+});
+
+describe("errorText", () => {
+  it("maps a known server message to plain copy", () => {
+    expect(errorText(new Error("forbidden"))).toBe("Your role can't do this in this workspace.");
+  });
+
+  it("falls back for an unknown message or a prototype key, never the raw text", () => {
+    expect(errorText(new Error("constructor"))).toBe("Something went wrong. Try again.");
+    expect(errorText(new Error("forbidden-ish"), "Could not save.")).toBe("Could not save.");
+  });
+});

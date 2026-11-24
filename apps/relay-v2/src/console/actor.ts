@@ -38,7 +38,7 @@ export async function requireSession(
   };
 }
 
-const isOrgRole = (role: string): role is OrgRole => role in orgRoles;
+const isOrgRole = (role: string): role is OrgRole => Object.hasOwn(orgRoles, role);
 export const parseRoles = (raw: string): OrgRole[] => raw.split(",").map((r) => r.trim()).filter(isOrgRole);
 
 export async function requireActor(
@@ -68,6 +68,14 @@ export async function requireActor(
   }
 
   return { userId, platformAdmin, workspaceId: activeWorkspaceId, roles, workspaceStatus: row.status };
+}
+
+// D1 names the violated index in the message; drizzle may wrap the error, so the cause chain is walked too.
+export function uniqueViolation(err: unknown, column: string): boolean {
+  for (let e: unknown = err; e instanceof Error; e = e.cause) {
+    if (e.message.includes(`UNIQUE constraint failed: ${column}`)) return true;
+  }
+  return false;
 }
 
 export function assertSameOrigin(env: Env, headers: Headers): void {

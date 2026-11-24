@@ -8,9 +8,13 @@ import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
 import { ConfirmDialog } from "../../components/confirm-dialog";
 import { CreateDialog } from "../../components/create-dialog";
+import { DeniedState, deniedReason } from "../../components/denied-state";
 import { DnsRecords } from "../../components/dns-records";
+import { errorText } from "../../components/error-text";
+import { FormError } from "../../components/form-error";
 import { ResourceTable } from "../../components/resource-table";
 import { StatusBadge } from "../../components/status-badge";
+import { useCan } from "../../components/use-can";
 import { ViewHeader } from "../../components/view-header";
 import { fetchApps } from "../../console/apps.fns";
 import {
@@ -22,14 +26,13 @@ import {
   removeAddressFn,
   updateAddressFn,
 } from "../../console/domains.fns";
-import { allows } from "../../lib/auth/permissions";
 
 export const Route = createFileRoute("/_app/domains")({
   loader: async () => {
     const domains = await fetchDomains();
     if (!domains) return null;
     const [addresses, apps] = await Promise.all([fetchAddresses(), fetchApps()]);
-    return { domains, addresses, apps };
+    return { domains, addresses, apps: apps ?? [] };
   },
   component: DomainsPage,
 });
@@ -44,16 +47,16 @@ function DomainsPage() {
   const data = Route.useLoaderData();
   const { shell } = Route.useRouteContext();
   const router = useRouter();
+  const canWrite = useCan({ sending: ["write"] });
   if (!data) {
     return (
       <>
         <ViewHeader title="Domains" />
-        <p className="p-4 text-sm text-muted-foreground">Your role is not allowed to view sending domains in this workspace.</p>
+        <DeniedState reason={deniedReason(shell)} />
       </>
     );
   }
   const { domains, addresses, apps } = data;
-  const canWrite = allows(shell.active?.roles ?? [], { sending: ["write"] });
 
   async function check(id: string) {
     try {
@@ -61,8 +64,8 @@ function DomainsPage() {
       if (status === "verified") toast.success("Domain verified");
       else toast("Not verified yet", { description: "DNS can take a while to update." });
       await router.invalidate();
-    } catch {
-      toast.error("Could not check the domain");
+    } catch (err) {
+      toast.error(errorText(err, "Could not check the domain"));
     }
   }
 
@@ -70,8 +73,8 @@ function DomainsPage() {
     try {
       await updateAddressFn({ data: { id, canSend } });
       await router.invalidate();
-    } catch {
-      toast.error("Could not update the address");
+    } catch (err) {
+      toast.error(errorText(err, "Could not update the address"));
     }
   }
 
@@ -80,8 +83,8 @@ function DomainsPage() {
       await removeAddressFn({ data: { id } });
       toast.success("Address removed");
       await router.invalidate();
-    } catch {
-      toast.error("Could not remove the address");
+    } catch (err) {
+      toast.error(errorText(err, "Could not remove the address"));
     }
   }
 
@@ -179,7 +182,7 @@ function NewDomainForm({ done }: { done: () => void }) {
       done();
       await router.invalidate();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not add the domain.");
+      setError(errorText(err, "Could not add the domain."));
     } finally {
       setPending(false);
     }
@@ -199,11 +202,7 @@ function NewDomainForm({ done }: { done: () => void }) {
       <p id="domain-hint" className="text-xs text-muted-foreground">
         Add the DNS records it shows, then press Check now.
       </p>
-      {error ? (
-        <p role="alert" className="text-sm text-destructive">
-          {error}
-        </p>
-      ) : null}
+      <FormError message={error} />
       <div className="flex justify-end">
         <Button type="submit" disabled={pending}>
           Add domain
@@ -238,7 +237,7 @@ function NewAddressForm({
       done();
       await router.invalidate();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not add the address.");
+      setError(errorText(err, "Could not add the address."));
     } finally {
       setPending(false);
     }
@@ -278,11 +277,7 @@ function NewAddressForm({
       </Select>
       <Label htmlFor="address-name">Name (optional)</Label>
       <Input id="address-name" maxLength={80} value={name} onChange={(e) => setName(e.target.value)} />
-      {error ? (
-        <p role="alert" className="text-sm text-destructive">
-          {error}
-        </p>
-      ) : null}
+      <FormError message={error} />
       <div className="flex justify-end">
         <Button type="submit" disabled={pending || !appId}>
           Add address

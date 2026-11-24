@@ -5,7 +5,11 @@ import { toast } from "@foundry/ui/toast";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
 import { CreateDialog } from "../../components/create-dialog";
+import { DeniedState, deniedReason } from "../../components/denied-state";
+import { errorText } from "../../components/error-text";
+import { FormError } from "../../components/form-error";
 import { ResourceTable } from "../../components/resource-table";
+import { useCan } from "../../components/use-can";
 import { ViewHeader } from "../../components/view-header";
 import { createAppFn, fetchApps } from "../../console/apps.fns";
 
@@ -16,11 +20,27 @@ export const Route = createFileRoute("/_app/apps")({
 
 function AppsPage() {
   const apps = Route.useLoaderData();
+  const { shell } = Route.useRouteContext();
+  const canWrite = useCan({ tenant: ["write"] });
+  if (!apps) {
+    return (
+      <>
+        <ViewHeader title="Apps" />
+        <DeniedState reason={deniedReason(shell)} />
+      </>
+    );
+  }
   return (
     <>
       <ViewHeader
         title="Apps"
-        actions={<CreateDialog trigger="New app" title="New app">{(done) => <NewAppForm done={done} />}</CreateDialog>}
+        actions={
+          canWrite ? (
+            <CreateDialog trigger="New app" title="New app">
+              {(done) => <NewAppForm done={done} />}
+            </CreateDialog>
+          ) : undefined
+        }
       />
       <ResourceTable
         columns={[
@@ -60,7 +80,7 @@ function NewAppForm({ done }: { done: () => void }) {
       done();
       await router.invalidate();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not create the app.");
+      setError(errorText(err, "Could not create the app."));
     } finally {
       setPending(false);
     }
@@ -81,11 +101,7 @@ function NewAppForm({ done }: { done: () => void }) {
       <p id="app-slug-hint" className="text-xs text-muted-foreground">
         Lowercase letters, numbers and hyphens.
       </p>
-      {error ? (
-        <p role="alert" className="text-sm text-destructive">
-          {error}
-        </p>
-      ) : null}
+      <FormError message={error} />
       <div className="flex justify-end">
         <Button type="submit" disabled={pending}>
           Create app

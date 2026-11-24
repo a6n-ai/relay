@@ -1,4 +1,4 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { CreateDialog } from "../components/create-dialog";
 import { NewWorkspaceForm } from "../components/new-workspace-form";
 import { SignOutButton } from "../components/sign-out-button";
@@ -9,11 +9,13 @@ export const Route = createFileRoute("/no-workspace")({
     const shell = await getShell();
     if (!shell) throw redirect({ to: "/sign-in", search: { redirect: location.href } });
     if (shell.active) throw redirect({ to: "/" });
+    return { shell };
   },
   component: NoWorkspace,
 });
 
 function NoWorkspace() {
+  const { shell } = Route.useRouteContext();
   return (
     <main className="mx-auto flex min-h-svh max-w-sm flex-col justify-center gap-4 p-6">
       <h1 className="text-lg font-medium">No workspace yet</h1>
@@ -21,6 +23,13 @@ function NoWorkspace() {
       <div>
         <CreateDialog trigger="New workspace" title="New workspace">{(done) => <NewWorkspaceForm done={done} />}</CreateDialog>
       </div>
+      {shell.platformAdmin ? (
+        <div>
+          <Link to="/admin" className="text-sm underline">
+            Open platform admin
+          </Link>
+        </div>
+      ) : null}
       <div>
         <SignOutButton />
       </div>

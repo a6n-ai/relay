@@ -4,7 +4,7 @@ import { securityDb } from "../db/security/client";
 import { invitation, member, team, teamMember, user, workspace } from "../db/security/schema";
 import type { Env } from "../env";
 import { createAuth } from "../lib/auth";
-import { ConsoleError, type ConsoleActor, type OrgRole, parseRoles, requireSession } from "./actor";
+import { assertSameOrigin, ConsoleError, type ConsoleActor, type OrgRole, parseRoles, requireSession } from "./actor";
 
 const DAY_MS = 86_400_000;
 const INVITES_PER_DAY = 20;
@@ -202,6 +202,7 @@ export async function getInvite(env: Env, headers: Headers, id: string) {
 }
 
 export async function acceptInvite(env: Env, headers: Headers, id: string): Promise<void> {
+  assertSameOrigin(env, headers);
   const { userId } = await requireSession(env, headers);
   const [row] = await securityDb(env)
     .select({ email: invitation.email, status: invitation.status, expiresAt: invitation.expiresAt })

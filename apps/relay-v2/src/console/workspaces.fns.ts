@@ -4,10 +4,10 @@ import { env } from "cloudflare:workers";
 import { z } from "zod";
 import { toResponseError } from "./actor";
 import { createWorkspace } from "./workspaces";
-import { name, slug } from "./schemas";
+import { name, slug, validate } from "./schemas";
 
 export const createWorkspaceFn = createServerFn({ method: "POST" })
-  .validator(z.object({ name, slug }))
+  .validator(validate(z.object({ name, slug })))
   .handler(async ({ data }) => {
     try {
       return await createWorkspace(env, getRequestHeaders(), data);

@@ -23,7 +23,7 @@ export async function loadShell(env: Env, headers: Headers, setCookies: string[]
     .from(member)
     .innerJoin(workspace, eq(workspace.id, member.organizationId))
     .where(eq(member.userId, userId))
-    .orderBy(asc(member.createdAt));
+    .orderBy(asc(member.createdAt), asc(member.id));
 
   let current = memberships.find((m) => m.id === activeWorkspaceId) ?? null;
   if (!current && memberships.length > 0) {

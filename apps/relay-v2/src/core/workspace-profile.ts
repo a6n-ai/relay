@@ -8,6 +8,7 @@ import type { Env } from "../env";
 export const SELF_SERVE_WORKSPACE_CAP = 3;
 export const SELF_SERVE_QUOTA = 100;
 export const SELF_SERVE_APP_CAP = 1;
+export const SELF_SERVE_DOMAIN_CAP = 1;
 
 // Only an explicit selfServe: false gets the column defaults. A missing init (repair-on-read) fails closed as self-serve.
 export async function ensureWorkspaceProfile(

@@ -7,8 +7,12 @@ import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
 import { ConfirmDialog } from "../../components/confirm-dialog";
 import { CreateDialog } from "../../components/create-dialog";
+import { DeniedState, deniedReason } from "../../components/denied-state";
+import { errorText } from "../../components/error-text";
+import { FormError } from "../../components/form-error";
 import { ResourceTable } from "../../components/resource-table";
 import { SecretOnce } from "../../components/secret-once";
+import { useCan } from "../../components/use-can";
 import { ViewHeader } from "../../components/view-header";
 import { createKeyFn, fetchAppDetail, revokeKeyFn } from "../../console/apps.fns";
 
@@ -18,16 +22,27 @@ export const Route = createFileRoute("/_app/apps_/$appId")({
 });
 
 function AppPage() {
-  const { app, keys } = Route.useLoaderData();
+  const data = Route.useLoaderData();
+  const { shell } = Route.useRouteContext();
   const router = useRouter();
+  const canWrite = useCan({ tenant: ["write"] });
+  if (!data) {
+    return (
+      <>
+        <ViewHeader title="App" />
+        <DeniedState reason={deniedReason(shell)} />
+      </>
+    );
+  }
+  const { app, keys } = data;
 
   async function revoke(id: string) {
     try {
       await revokeKeyFn({ data: { id } });
       toast.success("Key revoked");
       await router.invalidate();
-    } catch {
-      toast.error("Could not revoke the key");
+    } catch (err) {
+      toast.error(errorText(err, "Could not revoke the key"));
     }
   }
 
@@ -36,9 +51,11 @@ function AppPage() {
       <ViewHeader
         title={app.name}
         actions={
-          <CreateDialog trigger="Create key" title="New API key">
-            {(done) => <NewKeyForm appId={app.id} done={done} />}
-          </CreateDialog>
+          canWrite ? (
+            <CreateDialog trigger="Create key" title="New API key">
+              {(done) => <NewKeyForm appId={app.id} done={done} />}
+            </CreateDialog>
+          ) : undefined
         }
       />
       <ResourceTable
@@ -51,7 +68,7 @@ function AppPage() {
           {
             header: "",
             cell: (k) =>
-              k.enabled ? (
+              k.enabled && canWrite ? (
                 <ConfirmDialog
                   trigger="Revoke"
                   title="Revoke this key?"
@@ -87,7 +104,7 @@ function NewKeyForm({ appId, done }: { appId: string; done: () => void }) {
       toast.success("Key created");
       await router.invalidate();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not create the key.");
+      setError(errorText(err, "Could not create the key."));
     } finally {
       setPending(false);
     }
@@ -99,11 +116,7 @@ function NewKeyForm({ appId, done }: { appId: string; done: () => void }) {
     <form onSubmit={submit} className="grid gap-3">
       <Label htmlFor="key-name">Name</Label>
       <Input id="key-name" required maxLength={80} value={name} onChange={(e) => setName(e.target.value)} />
-      {error ? (
-        <p role="alert" className="text-sm text-destructive">
-          {error}
-        </p>
-      ) : null}
+      <FormError message={error} />
       <div className="flex justify-end">
         <Button type="submit" disabled={pending}>
           Create key

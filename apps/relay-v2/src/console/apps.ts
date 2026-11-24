@@ -5,7 +5,7 @@ import { getWorkspaceProfile, SELF_SERVE_APP_CAP } from "../core/workspace-profi
 import { securityDb } from "../db/security/client";
 import { apiKey, app } from "../db/security/schema";
 import type { Env } from "../env";
-import { ConsoleError, type ConsoleActor } from "./actor";
+import { ConsoleError, type ConsoleActor, uniqueViolation } from "./actor";
 
 const SLUG = /^[a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])?$/;
 
@@ -48,7 +48,12 @@ export async function addApp(env: Env, actor: ConsoleActor, input: { name: strin
     const [{ n }] = await securityDb(env).select({ n: count() }).from(app).where(eq(app.workspaceId, actor.workspaceId));
     if (n >= SELF_SERVE_APP_CAP) throw new ConsoleError(403, "self-serve workspaces have one app");
   }
-  return createApp(env, { workspaceId: actor.workspaceId, name: input.name, slug: input.slug });
+  try {
+    return await createApp(env, { workspaceId: actor.workspaceId, name: input.name, slug: input.slug });
+  } catch (err) {
+    if (uniqueViolation(err, "app.workspace_id, app.slug")) throw new ConsoleError(409, "slug taken");
+    throw err;
+  }
 }
 
 // The secret is never stored or listed: listKeys selects only the metadata columns the screen shows.

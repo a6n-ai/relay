@@ -12,7 +12,7 @@ import {
   removeAddress,
   updateAddress,
 } from "./domains";
-import { displayName, id } from "./schemas";
+import { displayName, id, validate } from "./schemas";
 
 const READ = { permission: { sending: ["read"] } };
 const WRITE = { permission: { sending: ["write"] }, write: true };
@@ -38,7 +38,7 @@ export const fetchAddresses = createServerFn({ method: "GET" }).handler(async ()
 });
 
 export const addDomainFn = createServerFn({ method: "POST" })
-  .validator(z.object({ domain: z.string().min(1).max(253) }))
+  .validator(validate(z.object({ domain: z.string().min(1).max(253) })))
   .handler(async ({ data }) => {
     try {
       const actor = await requireActor(env, getRequestHeaders(), WRITE);
@@ -49,7 +49,7 @@ export const addDomainFn = createServerFn({ method: "POST" })
   });
 
 export const checkDomainFn = createServerFn({ method: "POST" })
-  .validator(z.object({ id }))
+  .validator(validate(z.object({ id })))
   .handler(async ({ data }) => {
     try {
       const actor = await requireActor(env, getRequestHeaders(), WRITE);
@@ -61,13 +61,15 @@ export const checkDomainFn = createServerFn({ method: "POST" })
 
 export const addAddressFn = createServerFn({ method: "POST" })
   .validator(
-    z.object({
-      appId: id,
-      email: z.string().trim().min(3).max(254),
-      kind: z.enum(["inbox", "sender", "both"]),
-      displayName,
-      canSend: z.boolean().optional(),
-    }),
+    validate(
+      z.object({
+        appId: id,
+        email: z.string().trim().min(3).max(254),
+        kind: z.enum(["inbox", "sender", "both"]),
+        displayName,
+        canSend: z.boolean().optional(),
+      }),
+    ),
   )
   .handler(async ({ data }) => {
     try {
@@ -79,7 +81,7 @@ export const addAddressFn = createServerFn({ method: "POST" })
   });
 
 export const updateAddressFn = createServerFn({ method: "POST" })
-  .validator(z.object({ id, displayName, canSend: z.boolean().optional() }))
+  .validator(validate(z.object({ id, displayName, canSend: z.boolean().optional() })))
   .handler(async ({ data }) => {
     try {
       const actor = await requireActor(env, getRequestHeaders(), WRITE);
@@ -91,7 +93,7 @@ export const updateAddressFn = createServerFn({ method: "POST" })
   });
 
 export const removeAddressFn = createServerFn({ method: "POST" })
-  .validator(z.object({ id }))
+  .validator(validate(z.object({ id })))
   .handler(async ({ data }) => {
     try {
       const actor = await requireActor(env, getRequestHeaders(), WRITE);

@@ -7,6 +7,7 @@ import { createFileRoute, notFound, useRouter } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
 import { ConfirmDialog } from "../../components/confirm-dialog";
 import { ResourceTable } from "../../components/resource-table";
+import { runAction } from "../../components/run-action";
 import { ViewHeader } from "../../components/view-header";
 import { fetchWorkspaces, setWorkspaceQuotaFn, setWorkspaceStatusFn } from "../../console/admin.fns";
 
@@ -60,16 +61,7 @@ function QuotaForm({ workspaceId, quota, onSave }: { workspaceId: string; quota:
 function AdminPage() {
   const workspaces = Route.useLoaderData();
   const router = useRouter();
-
-  async function run(action: () => Promise<unknown>, success: string) {
-    try {
-      await action();
-      toast.success(success);
-      await router.invalidate();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Something went wrong");
-    }
-  }
+  const run = (action: () => Promise<unknown>, success: string) => runAction(action, success, () => router.invalidate());
 
   return (
     <>

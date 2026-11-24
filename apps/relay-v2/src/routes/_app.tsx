@@ -1,6 +1,7 @@
 import { Toaster } from "@foundry/ui/toast";
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { AppShell } from "../components/app-shell";
+import { AppError } from "../components/denied-state";
 import { getShell } from "../console/shell.fns";
 
 export const Route = createFileRoute("/_app")({
@@ -13,6 +14,7 @@ export const Route = createFileRoute("/_app")({
     return { shell };
   },
   component: AppLayout,
+  errorComponent: AppError,
 });
 
 function AppLayout() {

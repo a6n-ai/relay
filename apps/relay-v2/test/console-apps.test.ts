@@ -1,7 +1,8 @@
 import { env, SELF } from "cloudflare:test";
 import { beforeAll, describe, expect, it } from "vitest";
-import { requireActor } from "../src/console/actor";
+import { requireActor, uniqueViolation } from "../src/console/actor";
 import { addApp, createKey, getApp, listApps, listKeys, revokeKey } from "../src/console/apps";
+import { createApp } from "../src/core/apps";
 import { resolveApiKey } from "../src/core/api-keys";
 import { addMember, cookieFor, createWorkspace, ORIGIN, setActive } from "./console-helpers";
 import { applyMigrations } from "./migrate";
@@ -112,5 +113,14 @@ describe("console apps and API keys", { timeout: 60_000 }, () => {
     const html = await res.text();
     expect(html).toContain("Checkout key");
     expect(html).not.toContain(key.secret);
+  });
+});
+
+describe("console app slug index", { timeout: 60_000 }, () => {
+  it("names the workspace and slug index in the violation addApp maps to 409", async () => {
+    const { workspaceId } = await workspaceFor("apps-unique@example.com", "Apps Unique Co");
+    await createApp(env, { workspaceId, name: "Web", slug: "web" });
+    const err = await createApp(env, { workspaceId, name: "Again", slug: "web" }).catch((e: unknown) => e);
+    expect(uniqueViolation(err, "app.workspace_id, app.slug")).toBe(true);
   });
 });

@@ -220,3 +220,28 @@ describe("console members, teams and invites", { timeout: 60_000 }, () => {
     expect(await res.text()).toContain("This workspace is suspended");
   });
 });
+
+describe("accepting an invite", { timeout: 60_000 }, () => {
+  it("refuses a cross-origin accept", async () => {
+    const owner = await workspaceFor("mem-origin-owner@example.com", "Mem Origin Co");
+    const actor = await requireActor(env, headersFor(owner.cookie), INVITE);
+    const { id } = await inviteMember(env, actor, headersFor(owner.cookie), { email: "origin-invitee@x.test", role: "member" });
+    const cookie = await signIn("origin-invitee@x.test");
+    await expect(acceptInvite(env, new Headers({ cookie, origin: "https://evil.example" }), id)).rejects.toMatchObject({
+      status: 403,
+      message: "cross-origin write",
+    });
+  });
+
+  it("refuses to accept into a suspended workspace", async () => {
+    const owner = await workspaceFor("mem-accept-susp-owner@example.com", "Mem Accept Susp Co");
+    const actor = await requireActor(env, headersFor(owner.cookie), INVITE);
+    const { id } = await inviteMember(env, actor, headersFor(owner.cookie), { email: "susp-invitee@x.test", role: "member" });
+    await db.update(workspace).set({ status: "suspended" }).where(eq(workspace.id, owner.workspaceId));
+    const cookie = await signIn("susp-invitee@x.test");
+    await expect(acceptInvite(env, headersFor(cookie), id)).rejects.toMatchObject({
+      status: 403,
+      message: "workspace suspended",
+    });
+  });
+});

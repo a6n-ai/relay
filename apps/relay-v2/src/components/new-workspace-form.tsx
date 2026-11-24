@@ -5,6 +5,8 @@ import { toast } from "@foundry/ui/toast";
 import { useRouter } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
 import { createWorkspaceFn } from "../console/workspaces.fns";
+import { errorText } from "./error-text";
+import { FormError } from "./form-error";
 
 export function NewWorkspaceForm({ done }: { done: () => void }) {
   const router = useRouter();
@@ -24,7 +26,7 @@ export function NewWorkspaceForm({ done }: { done: () => void }) {
       await router.invalidate();
       await router.navigate({ to: "/apps" });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not create the workspace.");
+      setError(errorText(err, "Could not create the workspace."));
     } finally {
       setPending(false);
     }
@@ -45,11 +47,7 @@ export function NewWorkspaceForm({ done }: { done: () => void }) {
       <p id="workspace-slug-hint" className="text-xs text-muted-foreground">
         Lowercase letters, numbers and hyphens.
       </p>
-      {error ? (
-        <p role="alert" className="text-sm text-destructive">
-          {error}
-        </p>
-      ) : null}
+      <FormError message={error} />
       <div className="flex justify-end">
         <Button type="submit" disabled={pending}>
           Create workspace

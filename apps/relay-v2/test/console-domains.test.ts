@@ -282,7 +282,7 @@ describe("console sending domains and addresses", { timeout: 60_000 }, () => {
     const res = await SELF.fetch(`${ORIGIN}/domains`, { redirect: "manual", headers: { cookie: billing } });
     expect(res.status).toBe(200);
     const html = await res.text();
-    expect(html).toContain("not allowed to view sending domains");
+    expect(html).toContain("Not available to your role");
     expect(html).not.toContain('href="/domains"');
   });
 
@@ -306,5 +306,24 @@ describe("console sending domains and addresses", { timeout: 60_000 }, () => {
     expect(html).not.toContain("Add address");
     expect(html).not.toContain("Check now");
     expect(html).not.toContain('role="switch"');
+  });
+});
+
+describe("self-serve sending domain cap", { timeout: 60_000 }, () => {
+  it("caps a self-serve workspace at one sending domain and leaves a platform-made workspace alone", async () => {
+    const cookie = await cookieFor("dom-cap-self@example.com", "user");
+    const selfServe = await createWorkspace(cookie, "Dom Cap Self Co");
+    await setActive(cookie, selfServe);
+    const actor = await requireActor(env, headersFor(cookie), WRITE);
+    await addDomain(env, actor, { domain: "dom-cap-one.test" });
+    await expect(addDomain(env, actor, { domain: "dom-cap-two.test" })).rejects.toMatchObject({
+      status: 409,
+      message: "domain limit reached",
+    });
+
+    const admin = await workspaceFor("dom-cap-admin@example.com", "Dom Cap Admin Co");
+    const adminActor = await requireActor(env, headersFor(admin.cookie), WRITE);
+    await addDomain(env, adminActor, { domain: "dom-cap-a.test" });
+    await addDomain(env, adminActor, { domain: "dom-cap-b.test" });
   });
 });

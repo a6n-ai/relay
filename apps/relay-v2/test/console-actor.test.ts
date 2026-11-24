@@ -1,7 +1,7 @@
 import { env, SELF } from "cloudflare:test";
 import { and, eq } from "drizzle-orm";
 import { beforeAll, describe, expect, it } from "vitest";
-import { requireActor, requirePlatformAdmin } from "../src/console/actor";
+import { parseRoles, requireActor, requirePlatformAdmin } from "../src/console/actor";
 import { securityDb } from "../src/db/security/client";
 import { member, session, user, workspace } from "../src/db/security/schema";
 import { applyMigrations } from "./migrate";
@@ -123,5 +123,11 @@ describe("dev otp peek", () => {
     } finally {
       delete env.DEV_OTP_PEEK;
     }
+  });
+});
+
+describe("parseRoles", () => {
+  it("keeps only real role names, so an inherited key is not a role", () => {
+    expect(parseRoles("constructor,member, toString ,owner")).toEqual(["member", "owner"]);
   });
 });

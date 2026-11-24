@@ -1,6 +1,19 @@
+import { setResponseStatus } from "@tanstack/react-start/server";
 import { z } from "zod";
 
 // Only .validator() calls use these. Top-level zod consts in .fns.ts survive the client compile and pull zod into the entry chunk.
+// A failed parse is a 400 with a fixed message; the issue JSON would otherwise reach the form as a raw 500.
+export const validate =
+  <T extends z.ZodType>(schema: T) =>
+  (raw: unknown): z.output<T> => {
+    const parsed = schema.safeParse(raw);
+    if (!parsed.success) {
+      setResponseStatus(400);
+      throw new Error("invalid input");
+    }
+    return parsed.data;
+  };
+
 export const id = z.string().min(1);
 export const name = z.string().trim().min(1).max(80);
 export const slug = z.string().regex(/^[a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])?$/);
