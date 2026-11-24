@@ -3,11 +3,12 @@ import { and, asc, count, desc, eq, gte } from "drizzle-orm";
 import { securityDb } from "../db/security/client";
 import { invitation, member, team, teamMember, user, workspace } from "../db/security/schema";
 import type { Env } from "../env";
+import { getWorkspaceProfile } from "../core/workspace-profile";
 import { createAuth } from "../lib/auth";
 import { assertSameOrigin, ConsoleError, type ConsoleActor, type OrgRole, parseRoles, requireSession } from "./actor";
 
 const DAY_MS = 86_400_000;
-const INVITES_PER_DAY = 20;
+export const INVITES_PER_DAY = 20;
 
 // better-auth refusals keep their message; only a 403 or 404 keeps its status, every other refusal is a 400.
 async function authCall<T>(call: () => Promise<T>): Promise<T> {
@@ -81,14 +82,15 @@ export async function inviteMember(
   input: { email: string; role: OrgRole },
 ): Promise<{ id: string }> {
   if (input.role === "owner" && !actor.roles.includes("owner")) throw new ConsoleError(403, "forbidden");
-  if ((await invitesInWindow(env, actor.workspaceId)) >= INVITES_PER_DAY) throw new ConsoleError(429, "invite limit reached");
+  const cap = (await getWorkspaceProfile(env, actor.workspaceId)).invitesPerDay ?? INVITES_PER_DAY;
+  if ((await invitesInWindow(env, actor.workspaceId)) >= cap) throw new ConsoleError(429, "invite limit reached");
 
   const email = input.email.trim().toLowerCase();
   const cancel = (invitationId: string) =>
     authCall(() => createAuth(env).api.cancelInvitation({ headers, body: { invitationId } }));
   const { id } = await authCall(() => createAuth(env).api.createInvitation({ headers, body: { email, role: input.role } }));
   // Concurrent requests can all pass the count above. Recounting after the insert keeps live invites at or under the cap.
-  if ((await invitesInWindow(env, actor.workspaceId)) > INVITES_PER_DAY) {
+  if ((await invitesInWindow(env, actor.workspaceId)) > cap) {
     await cancel(id);
     throw new ConsoleError(429, "invite limit reached");
   }

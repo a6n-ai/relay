@@ -9,7 +9,7 @@ import { ConfirmDialog } from "../../components/confirm-dialog";
 import { ResourceTable } from "../../components/resource-table";
 import { runAction } from "../../components/run-action";
 import { ViewHeader } from "../../components/view-header";
-import { fetchWorkspaces, setWorkspaceQuotaFn, setWorkspaceStatusFn } from "../../console/admin.fns";
+import { fetchWorkspaces, setWorkspaceInviteCapFn, setWorkspaceQuotaFn, setWorkspaceStatusFn } from "../../console/admin.fns";
 
 export const Route = createFileRoute("/_app/admin")({
   loader: async () => {
@@ -23,15 +23,31 @@ export const Route = createFileRoute("/_app/admin")({
   component: AdminPage,
 });
 
-function QuotaForm({ workspaceId, quota, onSave }: { workspaceId: string; quota: number; onSave: (quota: number) => void }) {
-  const [value, setValue] = useState(String(quota));
+function NumberForm({
+  id,
+  label,
+  value: initial,
+  min,
+  max,
+  error,
+  onSave,
+}: {
+  id: string;
+  label: string;
+  value: number;
+  min: number;
+  max?: number;
+  error: string;
+  onSave: (value: number) => void;
+}) {
+  const [value, setValue] = useState(String(initial));
 
   function submit(e: FormEvent) {
     e.preventDefault();
     const next = Number(value);
     // Number("") is 0, which would silently make the workspace unlimited.
-    if (value.trim() === "" || !Number.isInteger(next) || next < 0) {
-      toast.error("Quota must be a whole number, 0 or more");
+    if (value.trim() === "" || !Number.isInteger(next) || next < min || (max !== undefined && next > max)) {
+      toast.error(error);
       return;
     }
     onSave(next);
@@ -39,13 +55,14 @@ function QuotaForm({ workspaceId, quota, onSave }: { workspaceId: string; quota:
 
   return (
     <form onSubmit={submit} className="flex items-center gap-2">
-      <Label htmlFor={`quota-${workspaceId}`} className="sr-only">
-        Monthly quota
+      <Label htmlFor={id} className="sr-only">
+        {label}
       </Label>
       <Input
-        id={`quota-${workspaceId}`}
+        id={id}
         type="number"
-        min={0}
+        min={min}
+        max={max}
         step={1}
         value={value}
         onChange={(e) => setValue(e.target.value)}
@@ -86,19 +103,51 @@ function AdminPage() {
           {
             header: "Status",
             cell: (w) =>
-              w.status === "suspended" ? <Badge variant="danger">Suspended</Badge> : <Badge variant="success">Active</Badge>,
+              w.status === "suspended" ? (
+                <div>
+                  <Badge variant="danger">Suspended</Badge>
+                  {w.suspendedAt && w.inboundUntil && (
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      Suspended {new Date(w.suspendedAt).toLocaleDateString("en-CA")} · inbound until{" "}
+                      {new Date(w.inboundUntil).toLocaleDateString("en-CA")}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <Badge variant="success">Active</Badge>
+              ),
           },
           { header: "Members", cell: (w) => w.members },
           { header: "Sent this month", cell: (w) => w.sentThisMonth },
           {
             header: "Monthly quota (0 is unlimited)",
             cell: (w) => (
-              <QuotaForm
+              <NumberForm
                 key={`${w.id}-${w.quota}`}
-                workspaceId={w.id}
-                quota={w.quota}
+                id={`quota-${w.id}`}
+                label="Monthly quota"
+                value={w.quota}
+                min={0}
+                error="Quota must be a whole number, 0 or more"
                 onSave={(quota) =>
                   run(() => setWorkspaceQuotaFn({ data: { workspaceId: w.id, quota } }), "Quota saved")
+                }
+              />
+            ),
+          },
+          {
+            header: "Invites/day",
+            cell: (w) => (
+              <NumberForm
+                key={`${w.id}-${w.invitesPerDay}`}
+                id={`invites-${w.id}`}
+                label="Invites per day"
+                value={w.invitesPerDay}
+                min={1}
+                max={10000}
+                error="Invites per day must be a whole number from 1 to 10000"
+                onSave={(cap) =>
+                  run(() => setWorkspaceInviteCapFn({ data: { workspaceId: w.id, cap } }), "Invites per day saved")
                 }
               />
             ),

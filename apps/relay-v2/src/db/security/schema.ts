@@ -69,6 +69,7 @@ export const workspace = sqliteTable("workspace", {
   logo: text("logo"),
   metadata: text("metadata"),
   status: text("status", { enum: ["active", "suspended"] }).notNull().default("active"),
+  suspendedAt: timestamp("suspended_at"),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 });

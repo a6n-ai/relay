@@ -3,7 +3,14 @@ import { getRequestHeaders } from "@tanstack/react-start/server";
 import { env } from "cloudflare:workers";
 import { z } from "zod";
 import { requirePlatformAdmin, toResponseError } from "./actor";
-import { listWorkspaces, MAX_MONTHLY_QUOTA, setWorkspaceQuota, setWorkspaceStatus } from "./admin";
+import {
+  listWorkspaces,
+  MAX_INVITES_PER_DAY,
+  MAX_MONTHLY_QUOTA,
+  setWorkspaceInviteCap,
+  setWorkspaceQuota,
+  setWorkspaceStatus,
+} from "./admin";
 import { validate } from "./schemas";
 
 export const fetchWorkspaces = createServerFn({ method: "GET" }).handler(async () => {
@@ -32,6 +39,17 @@ export const setWorkspaceQuotaFn = createServerFn({ method: "POST" })
     try {
       const admin = await requirePlatformAdmin(env, getRequestHeaders(), { write: true });
       await setWorkspaceQuota(env, admin, data.workspaceId, data.quota);
+    } catch (err) {
+      toResponseError(err);
+    }
+  });
+
+export const setWorkspaceInviteCapFn = createServerFn({ method: "POST" })
+  .validator(validate(z.object({ workspaceId: z.string().min(1), cap: z.number().int().min(1).max(MAX_INVITES_PER_DAY) })))
+  .handler(async ({ data }) => {
+    try {
+      const admin = await requirePlatformAdmin(env, getRequestHeaders(), { write: true });
+      await setWorkspaceInviteCap(env, admin, data.workspaceId, data.cap);
     } catch (err) {
       toResponseError(err);
     }

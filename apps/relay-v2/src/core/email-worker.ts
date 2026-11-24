@@ -1,7 +1,21 @@
+import { eq } from "drizzle-orm";
+import { INBOUND_GRACE_MS, inboxForRecipient } from "./addresses";
+import { securityDb } from "../db/security/client";
+import { workspace } from "../db/security/schema";
 import type { Env, InboundJob } from "../env";
-import { inboxForRecipient } from "./addresses";
 
 export const MAX_INBOUND_BYTES = 26_214_400;
+
+// Fails closed: a missing workspace row is treated as not accepting mail.
+async function acceptsInbound(env: Env, workspaceId: string, now: number): Promise<boolean> {
+  const [ws] = await securityDb(env)
+    .select({ status: workspace.status, suspendedAt: workspace.suspendedAt })
+    .from(workspace)
+    .where(eq(workspace.id, workspaceId));
+  if (!ws) return false;
+  if (ws.status !== "suspended") return true;
+  return ws.suspendedAt !== null && now - ws.suspendedAt.getTime() <= INBOUND_GRACE_MS;
+}
 
 // Rejects happen at SMTP time, so nothing is written to R2 or queued for a letter we refuse.
 export async function receiveEmail(message: ForwardableEmailMessage, env: Env): Promise<void> {
@@ -16,8 +30,10 @@ export async function receiveEmail(message: ForwardableEmailMessage, env: Env): 
   }
   const envelopeTo = message.to.trim().toLowerCase();
   let inbox: Awaited<ReturnType<typeof inboxForRecipient>>;
+  let accepting: boolean;
   try {
     inbox = await inboxForRecipient(env, envelopeTo);
+    accepting = inbox ? await acceptsInbound(env, inbox.workspaceId, Date.now()) : true;
   } catch (err) {
     console.error("address lookup failed", (err as Error).name);
     message.setReject("Mailbox unavailable");
@@ -25,6 +41,10 @@ export async function receiveEmail(message: ForwardableEmailMessage, env: Env): 
   }
   if (!inbox) {
     message.setReject("No such mailbox");
+    return;
+  }
+  if (!accepting) {
+    message.setReject("Mailbox unavailable");
     return;
   }
 

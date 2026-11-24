@@ -2,12 +2,13 @@ import { env, SELF } from "cloudflare:test";
 import { and, eq } from "drizzle-orm";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { requireActor, requirePlatformAdmin } from "../src/console/actor";
-import { listWorkspaces, setWorkspaceQuota, setWorkspaceStatus } from "../src/console/admin";
+import { listWorkspaces, setWorkspaceInviteCap, setWorkspaceQuota, setWorkspaceStatus } from "../src/console/admin";
 import { addApp, createKey } from "../src/console/apps";
 import { addAddress, addDomain, checkDomain } from "../src/console/domains";
+import { inviteMember } from "../src/console/members";
 import { memorySesIdentity } from "../src/core/ses-identity";
 import { securityDb } from "../src/db/security/client";
-import { securityAudit } from "../src/db/security/schema";
+import { invitation, securityAudit, user, workspace } from "../src/db/security/schema";
 import { addMember, cookieFor, createWorkspace, ORIGIN, setActive } from "./console-helpers";
 import { applyMigrations } from "./migrate";
 
@@ -60,6 +61,32 @@ describe("console platform admin", { timeout: 60_000 }, () => {
     expect(rows).toContainEqual(
       expect.objectContaining({ id: a.workspaceId, slug: "adm-list-co", status: "active", quota: 10000, members: 1, sentThisMonth: 0 }),
     );
+  });
+
+  it("lists when a suspended workspace was suspended and when its inbound mail stops, and nulls for an active one", async () => {
+    const active = await workspaceFor("adm-susp-list@example.com", "adm-susp-list-co");
+    const suspended = await workspaceFor("adm-susp-at@example.com", "adm-susp-at-co");
+    await setWorkspaceStatus(env, OPS, suspended.workspaceId, "suspended");
+
+    const rows = await listWorkspaces(env, OPS);
+    const activeRow = rows.find((r) => r.id === active.workspaceId);
+    const suspendedRow = rows.find((r) => r.id === suspended.workspaceId);
+    expect(activeRow).toMatchObject({ suspendedAt: null, inboundUntil: null });
+    expect(suspendedRow?.suspendedAt).toBeTypeOf("number");
+    expect(suspendedRow?.inboundUntil).toBe((suspendedRow?.suspendedAt ?? 0) + 7 * 24 * 60 * 60 * 1000);
+  });
+
+  it("keeps the first suspended_at when a suspended workspace is suspended again", async () => {
+    const a = await workspaceFor("adm-resusp@example.com", "adm-resusp-co");
+    await setWorkspaceStatus(env, OPS, a.workspaceId, "suspended");
+    const first = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
+    await securityDb(env).update(workspace).set({ suspendedAt: first }).where(eq(workspace.id, a.workspaceId));
+    await setWorkspaceStatus(env, OPS, a.workspaceId, "suspended");
+    const [row] = await securityDb(env).select({ at: workspace.suspendedAt }).from(workspace).where(eq(workspace.id, a.workspaceId));
+    expect(row?.at?.getTime()).toBe(first.getTime());
+    await setWorkspaceStatus(env, OPS, a.workspaceId, "active");
+    const [after] = await securityDb(env).select({ at: workspace.suspendedAt }).from(workspace).where(eq(workspace.id, a.workspaceId));
+    expect(after?.at).toBeNull();
   });
 
   it("answers 404 to a workspace member who is not a platform admin", async () => {
@@ -124,5 +151,52 @@ describe("console platform admin", { timeout: 60_000 }, () => {
     const res = await SELF.fetch(`${ORIGIN}/admin`, { redirect: "manual", headers: { cookie: plain } });
     expect([302, 307]).toContain(res.status);
     expect(res.headers.get("location")).toBe("/no-workspace");
+  });
+});
+
+describe("console platform admin invite cap", { timeout: 60_000 }, () => {
+  const INVITE = { permission: { invitation: ["create"] }, write: true };
+
+  async function seedInvites(workspaceId: string, inviterId: string, count: number) {
+    for (let i = 0; i < count; i++) {
+      await securityDb(env).insert(invitation).values({
+        organizationId: workspaceId,
+        email: `seed-cap-${workspaceId}-${i}@x.test`,
+        role: "member",
+        status: "pending",
+        expiresAt: new Date(Date.now() + 2 * 86_400_000),
+        inviterId,
+      });
+    }
+  }
+
+  it("lets a platform admin raise one workspace's daily invite cap and writes the audit row", async () => {
+    const a = await workspaceFor("adm-invite-cap@example.com", "adm-invite-cap-co");
+    const [owner] = await securityDb(env).select({ id: user.id }).from(user).where(eq(user.email, "adm-invite-cap@example.com"));
+    await seedInvites(a.workspaceId, owner.id, 20);
+    const actor = await requireActor(env, headersFor(a.cookie), INVITE);
+
+    await expect(
+      inviteMember(env, actor, headersFor(a.cookie), { email: "cap-default@x.test", role: "member" }),
+    ).rejects.toMatchObject({ status: 429, message: "invite limit reached" });
+
+    await setWorkspaceInviteCap(env, OPS, a.workspaceId, 25);
+    expect((await listWorkspaces(env, OPS)).find((r) => r.id === a.workspaceId)?.invitesPerDay).toBe(25);
+    await expect(
+      inviteMember(env, actor, headersFor(a.cookie), { email: "cap-raised@x.test", role: "member" }),
+    ).resolves.toEqual({ id: expect.any(String) });
+
+    const [audit] = await securityDb(env)
+      .select({ action: securityAudit.action, target: securityAudit.target })
+      .from(securityAudit)
+      .where(and(eq(securityAudit.action, "workspace.invite_cap"), eq(securityAudit.workspaceId, a.workspaceId)));
+    expect(audit).toEqual({ action: "workspace.invite_cap", target: a.workspaceId });
+  });
+
+  it("refuses a cap outside 1 to 10000 with a fixed 400", async () => {
+    const a = await workspaceFor("adm-bad-invite-cap@example.com", "adm-bad-invite-cap-co");
+    for (const cap of [0, 10_001, 1.5]) {
+      await expect(setWorkspaceInviteCap(env, OPS, a.workspaceId, cap)).rejects.toMatchObject({ status: 400, message: "invalid input" });
+    }
   });
 });
