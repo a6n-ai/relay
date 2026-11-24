@@ -208,6 +208,40 @@ describe("campaign run", () => {
     expect(sendBatch).not.toHaveBeenCalled();
   });
 
+  it("pauses with run_failed when a step always throws, and a stale run cannot pause it", async () => {
+    const { ws, stub } = await setup("runfail");
+    const list = await listWith(stub, ws, range(0, 3));
+    const { id, runSeq } = await readyCampaign(stub, ws, [list]);
+    expect(await stub.startCampaign(ws, id, runSeq)).toBe("go");
+    const failing = {
+      do: vi.fn((name: string, _config: unknown, fn: () => Promise<unknown>) => (name === "fail" ? fn() : Promise.reject(new Error("boom")))),
+      sleep: vi.fn(async () => {}),
+      sleepUntil: vi.fn(async () => {}),
+    } as unknown as CampaignStep;
+
+    expect(await runCampaign(env, { workspaceId: ws, campaignId: id, runSeq: runSeq - 1, at: 0 }, failing)).toBe("stopped");
+    expect(await stub.getCampaign(ws, id)).toMatchObject({ status: "sending" });
+
+    expect(await runCampaign(env, { workspaceId: ws, campaignId: id, runSeq, at: 0 }, failing)).toBe("stopped");
+    expect(await stub.getCampaign(ws, id)).toMatchObject({ status: "paused", error: "run_failed" });
+  });
+
+  it("fails a campaign row whose campaign has no content instead of sending it", async () => {
+    const { ws, stub } = await setup("nocontent");
+    const empty = await stub.createCampaign(ws, "app_1", "Empty");
+    await runInDurableObject(stub, (_instance, state) =>
+      state.storage.sql.exec(
+        "INSERT INTO message (id, app_id, direction, stream, status, event, campaign_id, from_email, from_name, ses_region, to_email, subject, attempts, opens, clicks, created_at, updated_at) VALUES ('msg_nocontent', 'app_1', 'out', 'marketing', 'queued', 'campaign', ?, 'relay@a6n.ai', 'A', 'us-east-1', 'u0@x.com', 'S', 0, 0, 0, 0, 0)",
+        empty.id,
+      ),
+    );
+
+    expect(await stub.claimSend(ws, "msg_nocontent")).toEqual({ kind: "skip", reason: "failed" });
+    expect(sendOne).not.toHaveBeenCalled();
+    const [row] = await rowsOf<{ status: string; error: string }>(stub, "SELECT status, error FROM message WHERE id = ?", "msg_nocontent");
+    expect(row).toMatchObject({ status: "failed", error: "campaign content missing" });
+  });
+
   it("pauses on quota with quota_exceeded, and cancel fails the unclaimed rows", async () => {
     const { ws, stub } = await setup("quota", 50);
     const list = await listWith(stub, ws, range(0, 260));

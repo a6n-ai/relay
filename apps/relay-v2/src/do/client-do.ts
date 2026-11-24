@@ -597,12 +597,12 @@ export class ClientDO extends DurableObject<Env> {
     }
     return { state: "more", enqueued, paceMs: Math.ceil(enqueued / rate) * 1000 };
   }
-  async pauseCampaign(workspaceId: string, id: string, error: string | null = null): Promise<"paused" | "missing" | "not_sending"> {
+  async pauseCampaign(workspaceId: string, id: string, error: string | null = null, runSeq?: number): Promise<"paused" | "missing" | "not_sending"> {
     await this.ready(workspaceId);
     return this.ctx.storage.transactionSync((): "paused" | "missing" | "not_sending" => {
       const head = this.campaignHead(id);
       if (!head) return "missing";
-      if (head.status !== "sending") return "not_sending";
+      if (head.status !== "sending" || (runSeq !== undefined && head.runSeq !== runSeq)) return "not_sending";
       this.ctx.storage.sql.exec(
         "UPDATE campaign SET status = 'paused', error = ?, updated_at = ? WHERE id = ? AND status = 'sending' AND run_seq = ?",
         error,
@@ -899,6 +899,17 @@ export class ClientDO extends DurableObject<Env> {
           .where(eq(schema.message.id, messageId))
           .run();
         return { kind: "refused", htmlKey: row.htmlKey };
+      }
+      if (row.campaignId) {
+        const content = getCampaignRow(this.ctx.storage.sql, row.campaignId);
+        if (!content?.html && !content?.text) {
+          this.db
+            .update(schema.message)
+            .set({ status: "failed", error: "campaign content missing", claimedUntil: null, updatedAt: now })
+            .where(eq(schema.message.id, messageId))
+            .run();
+          return { kind: "skip", reason: "failed" };
+        }
       }
       const region = row.sesRegion;
       if (!region) {

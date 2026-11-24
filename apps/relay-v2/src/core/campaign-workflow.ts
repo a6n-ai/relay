@@ -13,19 +13,25 @@ const STEP_RETRY = { retries: { limit: 5, delay: "30 seconds", backoff: "exponen
 
 export async function runCampaign(env: Env, p: CampaignRunParams, step: CampaignStep): Promise<"done" | "stopped"> {
   const stub = clientFor(env, p.workspaceId);
-  if (p.at > Date.now()) await step.sleepUntil("wait", new Date(p.at));
-  const started = await step.do("start", STEP_RETRY, () => stub.startCampaign(p.workspaceId, p.campaignId, p.runSeq));
-  if (started === "stale") return "stopped";
-  for (let n = 0; n < MAX_CHUNKS; n++) {
-    const r = await step.do(`chunk-${n}`, STEP_RETRY, () =>
-      stub.campaignChunk(p.workspaceId, p.campaignId, p.runSeq).then(({ state, enqueued, paceMs }) => ({ state, enqueued, paceMs })),
-    );
-    if (r.state === "done") return "done";
-    if (r.state === "stopped") return "stopped";
-    if (r.paceMs > 0) await step.sleep(`pace-${n}`, r.paceMs);
+  try {
+    if (p.at > Date.now()) await step.sleepUntil("wait", new Date(p.at));
+    const started = await step.do("start", STEP_RETRY, () => stub.startCampaign(p.workspaceId, p.campaignId, p.runSeq));
+    if (started === "stale") return "stopped";
+    for (let n = 0; n < MAX_CHUNKS; n++) {
+      const r = await step.do(`chunk-${n}`, STEP_RETRY, () =>
+        stub.campaignChunk(p.workspaceId, p.campaignId, p.runSeq).then(({ state, enqueued, paceMs }) => ({ state, enqueued, paceMs })),
+      );
+      if (r.state === "done") return "done";
+      if (r.state === "stopped") return "stopped";
+      if (r.paceMs > 0) await step.sleep(`pace-${n}`, r.paceMs);
+    }
+    await step.do("too-many", STEP_RETRY, () => stub.pauseCampaign(p.workspaceId, p.campaignId, "too_many_recipients", p.runSeq));
+    return "stopped";
+  } catch {
+    // A step that exhausted its retries would leave the campaign sending forever; pause it so the operator sees why.
+    await step.do("fail", STEP_RETRY, () => stub.pauseCampaign(p.workspaceId, p.campaignId, "run_failed", p.runSeq));
+    return "stopped";
   }
-  await step.do("too-many", STEP_RETRY, () => stub.pauseCampaign(p.workspaceId, p.campaignId, "too_many_recipients"));
-  return "stopped";
 }
 
 export class CampaignWorkflow extends WorkflowEntrypoint<Env, CampaignRunParams> {
