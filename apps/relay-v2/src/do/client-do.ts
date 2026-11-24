@@ -15,7 +15,9 @@ import type { Env, InboundJob } from "../env";
 import { newId } from "../lib/ids";
 import {
   attachmentViews,
+  type DeliveryView,
   getInboundFailureRow,
+  listDeliveryRows,
   listInboundFailureRows,
   listMessageRows,
   listSuppressionRows,
@@ -325,6 +327,56 @@ export class ClientDO extends DurableObject<Env> {
   async deleteWebhook(workspaceId: string, appId: string, id: string): Promise<boolean> {
     await this.ready(workspaceId);
     return this.ctx.storage.transactionSync(() => deleteWebhookRow(this.db, appId, id));
+  }
+
+  async listWebhookDeliveries(
+    workspaceId: string,
+    appId: string,
+    webhookId: string,
+    cursor?: string,
+  ): Promise<{ rows: DeliveryView[]; nextCursor: string | null }> {
+    await this.ready(workspaceId);
+    return listDeliveryRows(this.db, { appId, webhookId, cursor });
+  }
+
+  // Only a failed row can be retried. Failed rows hold no lease, so no send is in flight to race.
+  async retryWebhookDelivery(
+    workspaceId: string,
+    appId: string,
+    deliveryId: string,
+    now = Date.now(),
+  ): Promise<"queued" | "missing" | "not_failed" | "webhook_disabled"> {
+    await this.ready(workspaceId);
+    const outcome = this.ctx.storage.transactionSync((): "queued" | "missing" | "not_failed" | "webhook_disabled" => {
+      const row = this.db
+        .select()
+        .from(schema.webhookDelivery)
+        .where(and(eq(schema.webhookDelivery.id, deliveryId), eq(schema.webhookDelivery.appId, appId)))
+        .get();
+      if (!row) return "missing";
+      if (row.status !== "failed") return "not_failed";
+      const hook = this.db
+        .select({ enabled: schema.webhook.enabled })
+        .from(schema.webhook)
+        .where(and(eq(schema.webhook.id, row.webhookId), eq(schema.webhook.appId, appId)))
+        .get();
+      if (!hook || hook.enabled !== 1) return "webhook_disabled";
+      this.db
+        .update(schema.webhookDelivery)
+        .set({ status: "pending", attempts: 0, nextAttemptAt: now, claimedUntil: null, lastError: null, updatedAt: now })
+        .where(eq(schema.webhookDelivery.id, deliveryId))
+        .run();
+      return "queued";
+    });
+    if (outcome !== "queued") return outcome;
+    // Armed so the sweep covers a failed enqueue below, as ingestInbound does.
+    if ((await this.ctx.storage.getAlarm()) === null) await this.ctx.storage.setAlarm(now + SWEEP_INTERVAL_MS);
+    try {
+      await this.env.WEBHOOKS.send({ workspaceId, deliveryId });
+    } catch (err) {
+      console.error("ClientDO: webhook retry enqueue failed", deliveryId, err instanceof Error ? err.name : "unknown");
+    }
+    return outcome;
   }
 
   // The secret is decrypted here and only its HMAC signature leaves, inside the returned headers.

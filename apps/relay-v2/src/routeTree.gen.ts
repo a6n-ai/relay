@@ -31,9 +31,11 @@ import { Route as ApiInternalSeedRouteImport } from './routes/api/internal/seed'
 import { Route as ApiV1MessagesRouteImport } from './routes/api/v1/messages'
 import { Route as ApiV1WebhooksRouteImport } from './routes/api/v1/webhooks'
 import { Route as ApiWebhooksSesRouteImport } from './routes/api/webhooks/ses'
+import { Route as AppAppsAppIdWebhooksRouteImport } from './routes/_app/apps_.$appId_.webhooks'
 import { Route as AppDomainsAddressesAddressIdRouteImport } from './routes/_app/domains_.addresses.$addressId'
 import { Route as ApiV1MessagesIdRouteImport } from './routes/api/v1/messages.$id'
 import { Route as ApiV1WebhooksIdRouteImport } from './routes/api/v1/webhooks.$id'
+import { Route as AppAppsAppIdWebhooksWebhookIdRouteImport } from './routes/_app/apps_.$appId_.webhooks_.$webhookId'
 import { Route as ApiConsoleMessagesIdPartRouteImport } from './routes/api/console/messages.$id.$part'
 
 const AppRoute = AppRouteImport.update({
@@ -145,6 +147,11 @@ const ApiWebhooksSesRoute = ApiWebhooksSesRouteImport.update({
   path: '/api/webhooks/ses',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppAppsAppIdWebhooksRoute = AppAppsAppIdWebhooksRouteImport.update({
+  id: '/apps_/$appId_/webhooks',
+  path: '/apps/$appId/webhooks',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppDomainsAddressesAddressIdRoute =
   AppDomainsAddressesAddressIdRouteImport.update({
     id: '/domains_/addresses/$addressId',
@@ -161,6 +168,12 @@ const ApiV1WebhooksIdRoute = ApiV1WebhooksIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => ApiV1WebhooksRoute,
 } as any)
+const AppAppsAppIdWebhooksWebhookIdRoute =
+  AppAppsAppIdWebhooksWebhookIdRouteImport.update({
+    id: '/apps_/$appId_/webhooks_/$webhookId',
+    path: '/apps/$appId/webhooks/$webhookId',
+    getParentRoute: () => AppRoute,
+  } as any)
 const ApiConsoleMessagesIdPartRoute =
   ApiConsoleMessagesIdPartRouteImport.update({
     id: '/api/console/messages/$id/$part',
@@ -190,9 +203,11 @@ export interface FileRoutesByFullPath {
   '/api/v1/messages': typeof ApiV1MessagesRouteWithChildren
   '/api/v1/webhooks': typeof ApiV1WebhooksRouteWithChildren
   '/api/webhooks/ses': typeof ApiWebhooksSesRoute
+  '/apps/$appId/webhooks': typeof AppAppsAppIdWebhooksRoute
   '/domains/addresses/$addressId': typeof AppDomainsAddressesAddressIdRoute
   '/api/v1/messages/$id': typeof ApiV1MessagesIdRoute
   '/api/v1/webhooks/$id': typeof ApiV1WebhooksIdRoute
+  '/apps/$appId/webhooks/$webhookId': typeof AppAppsAppIdWebhooksWebhookIdRoute
   '/api/console/messages/$id/$part': typeof ApiConsoleMessagesIdPartRoute
 }
 export interface FileRoutesByTo {
@@ -217,9 +232,11 @@ export interface FileRoutesByTo {
   '/api/v1/messages': typeof ApiV1MessagesRouteWithChildren
   '/api/v1/webhooks': typeof ApiV1WebhooksRouteWithChildren
   '/api/webhooks/ses': typeof ApiWebhooksSesRoute
+  '/apps/$appId/webhooks': typeof AppAppsAppIdWebhooksRoute
   '/domains/addresses/$addressId': typeof AppDomainsAddressesAddressIdRoute
   '/api/v1/messages/$id': typeof ApiV1MessagesIdRoute
   '/api/v1/webhooks/$id': typeof ApiV1WebhooksIdRoute
+  '/apps/$appId/webhooks/$webhookId': typeof AppAppsAppIdWebhooksWebhookIdRoute
   '/api/console/messages/$id/$part': typeof ApiConsoleMessagesIdPartRoute
 }
 export interface FileRoutesById {
@@ -246,9 +263,11 @@ export interface FileRoutesById {
   '/api/v1/messages': typeof ApiV1MessagesRouteWithChildren
   '/api/v1/webhooks': typeof ApiV1WebhooksRouteWithChildren
   '/api/webhooks/ses': typeof ApiWebhooksSesRoute
+  '/_app/apps_/$appId_/webhooks': typeof AppAppsAppIdWebhooksRoute
   '/_app/domains_/addresses/$addressId': typeof AppDomainsAddressesAddressIdRoute
   '/api/v1/messages/$id': typeof ApiV1MessagesIdRoute
   '/api/v1/webhooks/$id': typeof ApiV1WebhooksIdRoute
+  '/_app/apps_/$appId_/webhooks_/$webhookId': typeof AppAppsAppIdWebhooksWebhookIdRoute
   '/api/console/messages/$id/$part': typeof ApiConsoleMessagesIdPartRoute
 }
 export interface FileRouteTypes {
@@ -275,9 +294,11 @@ export interface FileRouteTypes {
     | '/api/v1/messages'
     | '/api/v1/webhooks'
     | '/api/webhooks/ses'
+    | '/apps/$appId/webhooks'
     | '/domains/addresses/$addressId'
     | '/api/v1/messages/$id'
     | '/api/v1/webhooks/$id'
+    | '/apps/$appId/webhooks/$webhookId'
     | '/api/console/messages/$id/$part'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -302,9 +323,11 @@ export interface FileRouteTypes {
     | '/api/v1/messages'
     | '/api/v1/webhooks'
     | '/api/webhooks/ses'
+    | '/apps/$appId/webhooks'
     | '/domains/addresses/$addressId'
     | '/api/v1/messages/$id'
     | '/api/v1/webhooks/$id'
+    | '/apps/$appId/webhooks/$webhookId'
     | '/api/console/messages/$id/$part'
   id:
     | '__root__'
@@ -330,9 +353,11 @@ export interface FileRouteTypes {
     | '/api/v1/messages'
     | '/api/v1/webhooks'
     | '/api/webhooks/ses'
+    | '/_app/apps_/$appId_/webhooks'
     | '/_app/domains_/addresses/$addressId'
     | '/api/v1/messages/$id'
     | '/api/v1/webhooks/$id'
+    | '/_app/apps_/$appId_/webhooks_/$webhookId'
     | '/api/console/messages/$id/$part'
   fileRoutesById: FileRoutesById
 }
@@ -508,6 +533,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiWebhooksSesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_app/apps_/$appId_/webhooks': {
+      id: '/_app/apps_/$appId_/webhooks'
+      path: '/apps/$appId/webhooks'
+      fullPath: '/apps/$appId/webhooks'
+      preLoaderRoute: typeof AppAppsAppIdWebhooksRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/domains_/addresses/$addressId': {
       id: '/_app/domains_/addresses/$addressId'
       path: '/domains/addresses/$addressId'
@@ -528,6 +560,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/v1/webhooks/$id'
       preLoaderRoute: typeof ApiV1WebhooksIdRouteImport
       parentRoute: typeof ApiV1WebhooksRoute
+    }
+    '/_app/apps_/$appId_/webhooks_/$webhookId': {
+      id: '/_app/apps_/$appId_/webhooks_/$webhookId'
+      path: '/apps/$appId/webhooks/$webhookId'
+      fullPath: '/apps/$appId/webhooks/$webhookId'
+      preLoaderRoute: typeof AppAppsAppIdWebhooksWebhookIdRouteImport
+      parentRoute: typeof AppRoute
     }
     '/api/console/messages/$id/$part': {
       id: '/api/console/messages/$id/$part'
@@ -550,7 +589,9 @@ interface AppRouteChildren {
   AppMessagesMessageIdRoute: typeof AppMessagesMessageIdRoute
   AppMessagesFailuresRoute: typeof AppMessagesFailuresRoute
   AppMessagesSuppressionsRoute: typeof AppMessagesSuppressionsRoute
+  AppAppsAppIdWebhooksRoute: typeof AppAppsAppIdWebhooksRoute
   AppDomainsAddressesAddressIdRoute: typeof AppDomainsAddressesAddressIdRoute
+  AppAppsAppIdWebhooksWebhookIdRoute: typeof AppAppsAppIdWebhooksWebhookIdRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
@@ -564,7 +605,9 @@ const AppRouteChildren: AppRouteChildren = {
   AppMessagesMessageIdRoute: AppMessagesMessageIdRoute,
   AppMessagesFailuresRoute: AppMessagesFailuresRoute,
   AppMessagesSuppressionsRoute: AppMessagesSuppressionsRoute,
+  AppAppsAppIdWebhooksRoute: AppAppsAppIdWebhooksRoute,
   AppDomainsAddressesAddressIdRoute: AppDomainsAddressesAddressIdRoute,
+  AppAppsAppIdWebhooksWebhookIdRoute: AppAppsAppIdWebhooksWebhookIdRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)

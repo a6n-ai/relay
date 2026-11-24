@@ -100,6 +100,60 @@ export function listSuppressionRows(
   return { rows: page, nextCursor };
 }
 
+// No payloadKey and no response body: the console shows status, attempts and the fixed reason only.
+export type DeliveryView = {
+  id: string;
+  messageId: string;
+  event: string;
+  status: "pending" | "sent" | "failed";
+  attempts: number;
+  responseStatus: number | null;
+  lastError: string | null;
+  nextAttemptAt: number;
+  createdAt: number;
+  updatedAt: number;
+};
+
+export function listDeliveryRows(
+  db: Db,
+  q: { appId: string; webhookId: string; cursor?: string },
+): { rows: DeliveryView[]; nextCursor: string | null } {
+  const d = schema.webhookDelivery;
+  const cursor = q.cursor === undefined ? undefined : decodeCursor(q.cursor);
+  if (q.cursor !== undefined && !cursor) throw new Error("invalid cursor");
+  const rows = db
+    .select({
+      id: d.id,
+      messageId: d.messageId,
+      event: d.event,
+      status: d.status,
+      attempts: d.attempts,
+      responseStatus: d.responseStatus,
+      lastError: d.lastError,
+      nextAttemptAt: d.nextAttemptAt,
+      createdAt: d.createdAt,
+      updatedAt: d.updatedAt,
+    })
+    .from(d)
+    .where(
+      and(
+        eq(d.appId, q.appId),
+        eq(d.webhookId, q.webhookId),
+        cursor
+          ? or(lt(d.createdAt, cursor.createdAt), and(eq(d.createdAt, cursor.createdAt), lt(d.id, cursor.id)))
+          : undefined,
+      ),
+    )
+    .orderBy(desc(d.createdAt), desc(d.id))
+    .limit(PAGE_SIZE + 1)
+    .all()
+    .map((r): DeliveryView => ({ ...r, status: r.status as DeliveryView["status"] }));
+  const page = rows.slice(0, PAGE_SIZE);
+  const last = page.at(-1);
+  const nextCursor = rows.length > PAGE_SIZE && last ? encodeCursor(last.createdAt, last.id) : null;
+  return { rows: page, nextCursor };
+}
+
 export type FailureView = {
   id: string;
   appId: string | null;

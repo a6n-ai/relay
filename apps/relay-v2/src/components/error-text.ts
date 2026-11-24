@@ -32,6 +32,9 @@ const COPY = new Map<string, string>([
   ["cannot replay", "This letter is missing its app or address, so it can't be retried. You can still delete it."],
   ["address removed", "The address this letter came to was removed, so it can't be retried. You can still delete it."],
   ["raw letter missing", "The original letter is no longer stored, so it can't be retried. You can still delete it."],
+  ["delivery not failed", "Only failed deliveries can be retried."],
+  ["webhook disabled", "Turn this webhook on before retrying its deliveries."],
+  ["webhooks unavailable", "Webhooks are unavailable right now. Try again later."],
 ]);
 
 // The server's fixed copy is mapped to plain words; anything unknown (a network failure, a 500) gets the fallback, never the raw text.
