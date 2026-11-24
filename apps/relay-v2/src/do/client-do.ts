@@ -208,7 +208,7 @@ export class ClientDO extends DurableObject<Env> {
   // The letter is already in R2 under job.rawKey. Idempotent on the raw key and on the app's Message-ID.
   async ingestInbound(workspaceId: string, job: InboundJob): Promise<InboundResult> {
     await this.ready(workspaceId);
-    // Set before any R2 write, so a crash after the puts still leaves an alarm to sweep.
+    // shortcut: pending deliveries are only re-enqueued once the Task 8 alarm sweep lands; the alarm is armed here so it can run then.
     if ((await this.ctx.storage.getAlarm()) === null) await this.ctx.storage.setAlarm(Date.now() + SWEEP_INTERVAL_MS);
     return storeInbound(this.inboundDeps(), workspaceId, job);
   }

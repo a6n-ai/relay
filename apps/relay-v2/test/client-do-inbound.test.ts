@@ -161,13 +161,48 @@ describe("ClientDO ingestInbound", () => {
     const stub = stubFor(ws);
     const first = (await stub.ingestInbound(ws, await putLetter(ws, invoiceLetter()))) as { messageId: string };
     const copy = await putLetter(ws, invoiceLetter());
+    await stub.recordInboundFailure(ws, copy, "Letter too large");
 
     const result = await stub.ingestInbound(ws, copy);
 
     expect(result).toEqual({ outcome: "duplicate", messageId: first.messageId });
     expect(await env.MAIL.get(copy.rawKey)).toBeNull();
+    expect(await rowsOf(stub, "SELECT id FROM inbound_failure WHERE raw_key = ?", copy.rawKey)).toHaveLength(0);
     expect(await env.MAIL.get(`ws/${ws}/msg/${first.messageId}.html`)).not.toBeNull();
     expect(await rowsOf(stub, "SELECT id FROM message")).toHaveLength(1);
+  });
+
+  it("keeps the raw letter when a second call for the same raw key passes the raw-key check before the first commits", async () => {
+    const ws = "wsp_in_race";
+    const stub = stubFor(ws);
+    const job = await putLetter(ws, invoiceLetter());
+    // Cross-request promise resolution breaks R2 I/O in workerd, so the parked call polls a plain flag on its own timer.
+    const realGet = env.MAIL.get;
+    let gets = 0;
+    let released = false;
+    const untilTrue = async (done: () => boolean) => {
+      while (!done()) await new Promise((resolve) => setTimeout(resolve, 5));
+    };
+    vi.spyOn(env.MAIL, "get").mockImplementation((async (key: string) => {
+      gets += 1;
+      if (gets !== 1) return realGet.call(env.MAIL, key);
+      const object = await realGet.call(env.MAIL, key);
+      await untilTrue(() => released);
+      return object;
+    }) as never);
+
+    // The first call is parked after its raw-key check and before its commit, so the second call's check misses too.
+    const first = stub.ingestInbound(ws, job);
+    const second = stub.ingestInbound(ws, job);
+    await untilTrue(() => gets >= 2);
+    const secondResult = (await second) as { outcome: string; messageId: string };
+    released = true;
+    const firstResult = (await first) as { outcome: string; messageId: string };
+
+    expect(secondResult.outcome).toBe("inserted");
+    expect(firstResult).toEqual({ outcome: "duplicate", messageId: secondResult.messageId });
+    expect(await rowsOf(stub, "SELECT id FROM message")).toHaveLength(1);
+    expect(await env.MAIL.get(job.rawKey)).not.toBeNull();
   });
 
   it("truncates stored text to 262144 characters and keeps the full text in the payload", async () => {

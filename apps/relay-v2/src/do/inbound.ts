@@ -115,7 +115,7 @@ export async function storeInbound(deps: InboundDeps, workspaceId: string, job: 
   }
 
   const sameMessage = db
-    .select({ id: schema.message.id })
+    .select({ id: schema.message.id, rawKey: schema.message.rawKey })
     .from(schema.message)
     .where(
       and(
@@ -126,6 +126,8 @@ export async function storeInbound(deps: InboundDeps, workspaceId: string, job: 
     )
     .get();
   if (sameMessage) {
+    if (sameMessage.rawKey === job.rawKey) return { outcome: "duplicate", messageId: sameMessage.id };
+    db.delete(schema.inboundFailure).where(eq(schema.inboundFailure.rawKey, job.rawKey)).run();
     await env.MAIL.delete(job.rawKey);
     return { outcome: "duplicate", messageId: sameMessage.id };
   }
@@ -225,6 +227,7 @@ export async function storeInbound(deps: InboundDeps, workspaceId: string, job: 
           )
           .get();
         if (!existing) throw new Error("inbound insert conflict without a matching message");
+        if (existing.rawKey !== job.rawKey) db.delete(schema.inboundFailure).where(eq(schema.inboundFailure.rawKey, job.rawKey)).run();
         return { duplicate: existing };
       }
 
@@ -268,7 +271,7 @@ export async function storeInbound(deps: InboundDeps, workspaceId: string, job: 
     try {
       await env.WEBHOOKS.sendBatch(stored.deliveryIds.map((deliveryId) => ({ body: { workspaceId, deliveryId } })));
     } catch (err) {
-      // The alarm sweep re-enqueues pending deliveries, so a failed enqueue is not lost.
+      // shortcut: a failed enqueue is not retried until the Task 8 alarm sweep lands, then it re-enqueues pending deliveries.
       console.error("inbound: webhook enqueue failed", stored.messageId, stored.deliveryIds.join(","), errorName(err));
     }
   }
