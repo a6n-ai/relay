@@ -117,9 +117,10 @@ export type DeliveryView = {
 
 export function listDeliveryRows(
   db: Db,
-  q: { appId: string; webhookId: string; cursor?: string },
+  q: { appId: string; webhookId: string; cursor?: string; visible: "all" | string[] },
 ): { rows: DeliveryView[]; nextCursor: string | null } {
   const d = schema.webhookDelivery;
+  const m = schema.message;
   const cursor = q.cursor === undefined ? undefined : decodeCursor(q.cursor);
   if (q.cursor !== undefined && !cursor) throw new Error("invalid cursor");
   const rows = db
@@ -136,10 +137,13 @@ export function listDeliveryRows(
       updatedAt: d.updatedAt,
     })
     .from(d)
+    .leftJoin(m, eq(m.id, d.messageId))
     .where(
       and(
         eq(d.appId, q.appId),
         eq(d.webhookId, q.webhookId),
+        // Outbound-only deliveries have no address, so the restricted filter drops them.
+        q.visible === "all" ? undefined : sql`${m.addressId} IN (SELECT value FROM json_each(${JSON.stringify(q.visible)}))`,
         cursor
           ? or(lt(d.createdAt, cursor.createdAt), and(eq(d.createdAt, cursor.createdAt), lt(d.id, cursor.id)))
           : undefined,

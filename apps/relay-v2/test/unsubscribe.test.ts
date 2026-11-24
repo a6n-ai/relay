@@ -1,5 +1,6 @@
 import { env, runInDurableObject, SELF } from "cloudflare:test";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi, type MockInstance } from "vitest";
+import { brandDomain } from "../src/core/campaigns";
 import { readUnsubscribeToken, unsubscribeToken } from "../src/core/unsubscribe";
 import { coreDb } from "../src/db/core/client";
 import { address, sendingDomain } from "../src/db/core/schema";
@@ -72,6 +73,15 @@ describe("unsubscribe tokens", () => {
   });
 });
 
+describe("brand opt-out key", () => {
+  it("is the registrable domain, so subdomains share it and sibling brands do not", () => {
+    expect(brandDomain("news@news.brand.com")).toBe("brand.com");
+    expect(brandDomain("shop@shop.brand.co.uk")).toBe(brandDomain("hi@brand.co.uk"));
+    expect(brandDomain("x@brand-a.com")).not.toBe(brandDomain("x@brand-b.com"));
+    expect(brandDomain("x@localhost")).toBe("localhost");
+  });
+});
+
 describe("unsubscribe endpoint", () => {
   it("GET shows one confirm button and writes nothing", async () => {
     const ws = "wsp_unsub_get";
@@ -84,6 +94,20 @@ describe("unsubscribe endpoint", () => {
     expect(html).toContain("Unsubscribe from these emails?");
     expect(res.headers.get("cache-control")).toBe("no-store");
     expect(await sql(ws, "SELECT COUNT(*) AS n FROM marketing_optout")).toEqual([{ n: 0 }]);
+  });
+
+  it("one-click POST from a subdomain opts out of its whole brand, transactional still sends", async () => {
+    const ws = "wsp_unsub_brand";
+    const stub = await seed(ws);
+    for (const domain of ["news.brand.com", "offers.brand.com"]) {
+      await coreDb(env).insert(sendingDomain).values({ workspaceId: ws, domain, sesRegion: "ap-south-1", status: "verified" });
+      await coreDb(env).insert(address).values({ workspaceId: ws, appId: "app_1", email: `relay@${domain}`, kind: "sender", canSend: true });
+    }
+    const { messageId } = await stub.send(ws, { ...marketing, from: "relay@news.brand.com" });
+    expect((await SELF.fetch(url(await unsubscribeToken(SECRET, ws, messageId)), POST)).status).toBe(200);
+    expect(await sql(ws, "SELECT domain FROM marketing_optout")).toEqual([{ domain: "brand.com" }]);
+    expect((await stub.send(ws, { ...marketing, from: "relay@offers.brand.com" })).status).toBe("suppressed");
+    expect((await stub.send(ws, { ...marketing, from: "relay@offers.brand.com", stream: "transactional" })).status).toBe("queued");
   });
 
   it("one-click POST opts out of marketing from the sending domain only", async () => {

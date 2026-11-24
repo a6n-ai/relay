@@ -1,3 +1,4 @@
+import { getDomain } from "tldts";
 import { hasMergeToken } from "./merge";
 
 export type CampaignProblem =
@@ -12,8 +13,10 @@ export type CampaignProblem =
 // Purchase-sourced contacts count as consented for this long (CASL implied consent).
 export const IMPLIED_CONSENT_MS = 730 * 86_400_000;
 
-export function domainOf(email: string): string {
-  return email.slice(email.lastIndexOf("@") + 1).toLowerCase();
+// Opt-outs are per brand: news.brand.com and shop.brand.co.uk key to their registrable domain.
+export function brandDomain(email: string): string {
+  const host = email.slice(email.lastIndexOf("@") + 1).toLowerCase();
+  return getDomain(host, { allowPrivateDomains: false }) ?? host;
 }
 
 export function campaignProblems(

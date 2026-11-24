@@ -28,7 +28,7 @@ export async function messageAccess(env: Env, actor: ConsoleActor): Promise<Mess
 }
 
 // Plain queries, no subquery: the member row, then the user's teams in this workspace, then the grants that name either.
-async function grantedAddressIds(env: Env, actor: ConsoleActor): Promise<string[]> {
+export async function grantedAddressIds(env: Env, actor: ConsoleActor): Promise<string[]> {
   const db = securityDb(env);
   const [self] = await db
     .select({ id: member.id })

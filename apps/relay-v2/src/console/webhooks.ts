@@ -12,8 +12,10 @@ import {
 import { decodeCursor } from "../do/console-reads";
 import type { Env } from "../env";
 import { writeAudit } from "../lib/auth/audit";
+import { allows } from "../lib/auth/permissions";
 import { ConsoleError, type ConsoleActor } from "./actor";
 import { getApp } from "./apps";
+import { grantedAddressIds } from "./messages";
 
 const scopeOf = (actor: ConsoleActor, appId: string) => ({ workspaceId: actor.workspaceId, appId });
 
@@ -27,7 +29,8 @@ export async function listDeliveriesFor(env: Env, actor: ConsoleActor, appId: st
   if (cursor !== undefined && !decodeCursor(cursor)) throw new ConsoleError(400, "invalid cursor");
   const webhook = (await listWebhooksForScope(env, scopeOf(actor, appId))).find((w) => w.id === webhookId);
   if (!webhook) throw new ConsoleError(404, "not found");
-  const page = await clientFor(env, actor.workspaceId).listWebhookDeliveries(actor.workspaceId, appId, webhookId, cursor);
+  const visible = allows(actor.roles, { webhook: ["log_all"] }) ? "all" : await grantedAddressIds(env, actor);
+  const page = await clientFor(env, actor.workspaceId).listWebhookDeliveries(actor.workspaceId, appId, webhookId, visible, cursor);
   // Explicit fields: a spread of the RPC result would carry its Symbol.dispose member into the serialized loader data.
   return { webhook, rows: page.rows, nextCursor: page.nextCursor };
 }

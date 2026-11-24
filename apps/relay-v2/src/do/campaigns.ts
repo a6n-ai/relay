@@ -1,4 +1,4 @@
-import { domainOf, IMPLIED_CONSENT_MS } from "../core/campaigns";
+import { brandDomain, IMPLIED_CONSENT_MS } from "../core/campaigns";
 import { newId } from "../lib/ids";
 import { decodeCursor, encodeCursor } from "./console-reads";
 
@@ -193,7 +193,7 @@ export function previewAudienceRows(
   const optedOut = new Set(
     fromEmail === null
       ? []
-      : sql.exec<{ email: string }>("SELECT email FROM marketing_optout WHERE domain = ?", domainOf(fromEmail)).toArray().map((r) => r.email),
+      : sql.exec<{ email: string }>("SELECT email FROM marketing_optout WHERE domain = ?", brandDomain(fromEmail)).toArray().map((r) => r.email),
   );
   const suppressed = eligible.filter((r) => isSuppressed(r.email) || optedOut.has(r.email)).length;
   return {

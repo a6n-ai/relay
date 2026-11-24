@@ -1,5 +1,5 @@
 import { env, runInDurableObject, SELF } from "cloudflare:test";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { beforeAll, beforeEach, describe, expect, it, vi, type MockInstance } from "vitest";
 import { requireActor, type ConsoleActor } from "../src/console/actor";
 import { addApp } from "../src/console/apps";
@@ -11,12 +11,14 @@ import {
   retryDeliveryFor,
   updateWebhookFor,
 } from "../src/console/webhooks";
-import { createAddress } from "../src/core/addresses";
+import { createAddress, createAddressGrant } from "../src/core/addresses";
 import { createApp } from "../src/core/apps";
 import { clientFor } from "../src/core/messages";
 import { webhookInputSchema, webhookPatchSchema } from "../src/core/webhooks";
+import { coreDb } from "../src/db/core/client";
+import { address } from "../src/db/core/schema";
 import { securityDb } from "../src/db/security/client";
-import { workspace } from "../src/db/security/schema";
+import { member, user, workspace } from "../src/db/security/schema";
 import type { InboundJob } from "../src/env";
 import { addMember, cookieFor, createWorkspace, headersFor, ORIGIN, setActive } from "./console-helpers";
 import { applyMigrations } from "./migrate";
@@ -40,7 +42,7 @@ async function workspaceFor(email: string, name: string) {
 async function ingestLetter(workspaceId: string, appId: string, email: string): Promise<string> {
   const { id: addressId } = await createAddress(env, { workspaceId, appId, email, kind: "inbox" });
   const rawKey = `ws/${workspaceId}/raw/2026/11/${crypto.randomUUID()}.eml`;
-  const letter = ["From: cust@example.com", `To: ${email}`, "Subject: Hi", "Message-ID: <hook@x>", "", "Hello"].join("\r\n");
+  const letter = ["From: cust@example.com", `To: ${email}`, "Subject: Hi", `Message-ID: <${crypto.randomUUID()}@hook.test>`, "", "Hello"].join("\r\n");
   await env.MAIL.put(rawKey, new TextEncoder().encode(letter).buffer as ArrayBuffer);
   const job: InboundJob = {
     workspaceId,
@@ -54,6 +56,15 @@ async function ingestLetter(workspaceId: string, appId: string, email: string): 
   };
   const { messageId } = (await stub(workspaceId).ingestInbound(workspaceId, job)) as { messageId: string };
   return messageId;
+}
+
+async function memberIdOf(workspaceId: string, email: string): Promise<string> {
+  const [row] = await securityDb(env)
+    .select({ id: member.id })
+    .from(member)
+    .innerJoin(user, eq(user.id, member.userId))
+    .where(and(eq(member.organizationId, workspaceId), eq(user.email, email)));
+  return row.id;
 }
 
 const rowsOf = (workspaceId: string, sql: string, ...args: (string | number)[]) =>
@@ -177,6 +188,23 @@ describe("console webhooks: delivery log and retry", { timeout: 60_000 }, () => 
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({ messageId, status: "pending", attempts: 0 });
     expect(rows[0]).not.toHaveProperty("payloadKey");
+  });
+
+  it("shows a member only deliveries for their granted addresses, and every delivery to log_all", async () => {
+    const { owner, workspaceId } = await workspaceFor("hook-grant@example.com", "Hook Grant Co");
+    const { id: appId } = await addApp(env, owner, { name: "Web", slug: "web" });
+    const { webhook } = await createWebhookFor(env, owner, appId, { url: HOOK_URL, events: ["mailbox.received"] });
+    const messageA = await ingestLetter(workspaceId, appId, "a@hook-grant.test");
+    const messageB = await ingestLetter(workspaceId, appId, "b@hook-grant.test");
+    const [{ id: addressA }] = await coreDb(env).select({ id: address.id }).from(address).where(eq(address.email, "a@hook-grant.test"));
+    const granted = await addMember(workspaceId, "hook-grant-m@example.com", "member");
+    await createAddressGrant(env, { workspaceId, addressId: addressA, memberId: await memberIdOf(workspaceId, "hook-grant-m@example.com") });
+    const none = await addMember(workspaceId, "hook-grant-none@example.com", "member");
+    const grantedActor = await requireActor(env, headersFor(granted), { permission: { webhook: ["read"] } });
+    const noneActor = await requireActor(env, headersFor(none), { permission: { webhook: ["read"] } });
+    expect((await listDeliveriesFor(env, grantedActor, appId, webhook.id)).rows.map((r) => r.messageId)).toEqual([messageA]);
+    expect((await listDeliveriesFor(env, noneActor, appId, webhook.id)).rows).toEqual([]);
+    expect((await listDeliveriesFor(env, owner, appId, webhook.id)).rows.map((r) => r.messageId).sort()).toEqual([messageA, messageB].sort());
   });
 
   it("refuses a retry of a pending delivery with 409 delivery not failed", async () => {
@@ -305,7 +333,7 @@ describe("console webhooks: delivery log and retry", { timeout: 60_000 }, () => 
     });
     expect(memberDetail.status).toBe(200);
     const memberHtml = await memberDetail.text();
-    expect(memberHtml).toContain(messageId);
+    expect(memberHtml).not.toContain(messageId);
     expect(memberHtml).not.toContain("Retry");
   });
 });

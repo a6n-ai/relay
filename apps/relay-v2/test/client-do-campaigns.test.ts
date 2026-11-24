@@ -73,6 +73,18 @@ describe("campaign drafts in the workspace DO", () => {
     expect(await stub.previewAudience(ws, "app_1", [list.id], "news@b.test")).toMatchObject({ suppressed: 0, sendable: 1 });
   });
 
+  it("counts a subdomain's opt-out against its whole brand", async () => {
+    const ws = "ws_camp_brand";
+    const stub = stubFor(ws);
+    const list = await stub.createList(ws, "app_1", { name: "B", consentSource: "express_optin" });
+    await stub.addMember(ws, list.id, { email: "o@x.com" });
+    await runInDurableObject(stub, (_instance, state) => {
+      state.storage.sql.exec("INSERT INTO marketing_optout (email, domain, created_at) VALUES ('o@x.com', 'brand.co.uk', 1)");
+    });
+    expect(await stub.previewAudience(ws, "app_1", [list.id], "news@shop.brand.co.uk")).toMatchObject({ suppressed: 1, sendable: 0 });
+    expect(await stub.previewAudience(ws, "app_1", [list.id], "news@brand-b.co.uk")).toMatchObject({ suppressed: 0, sendable: 1 });
+  });
+
   it("applies the 730-day rule to purchase lists only", async () => {
     const ws = "ws_camp_lapse";
     const stub = stubFor(ws);

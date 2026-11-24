@@ -1,7 +1,7 @@
 import { DurableObject } from "cloudflare:workers";
 import { and, eq, gte, inArray, isNull, lt, ne, or, sql, type SQLWrapper } from "drizzle-orm";
 import { drizzle, type DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
-import { campaignProblems, domainOf, IMPLIED_CONSENT_MS, type CampaignProblem } from "../core/campaigns";
+import { brandDomain, campaignProblems, IMPLIED_CONSENT_MS, type CampaignProblem } from "../core/campaigns";
 import { CHUNK_SIZE, ENQUEUE_BATCH } from "../core/campaign-workflow";
 import { contactValues, fillUnsubscribe, MERGE_SAMPLES, renderMerge } from "../core/merge";
 import { sesSendRate } from "../core/send-rate";
@@ -745,10 +745,11 @@ export class ClientDO extends DurableObject<Env> {
     workspaceId: string,
     appId: string,
     webhookId: string,
+    visible: "all" | string[],
     cursor?: string,
   ): Promise<{ rows: DeliveryView[]; nextCursor: string | null }> {
     await this.ready(workspaceId);
-    return listDeliveryRows(this.db, { appId, webhookId, cursor });
+    return listDeliveryRows(this.db, { appId, webhookId, cursor, visible });
   }
 
   // Only a failed row can be retried. Failed rows hold no lease, so no send is in flight to race.
@@ -1236,7 +1237,7 @@ export class ClientDO extends DurableObject<Env> {
       if (!msg?.toEmail || !msg.fromEmail) return;
       this.db
         .insert(schema.marketingOptout)
-        .values({ email: msg.toEmail, domain: domainOf(msg.fromEmail), createdAt: now })
+        .values({ email: msg.toEmail, domain: brandDomain(msg.fromEmail), createdAt: now })
         .onConflictDoNothing()
         .run();
       if (msg.unsubscribedAt !== null) return;
@@ -1426,7 +1427,7 @@ export class ClientDO extends DurableObject<Env> {
       this.db
         .select({ email: schema.marketingOptout.email })
         .from(schema.marketingOptout)
-        .where(and(eq(schema.marketingOptout.email, email), eq(schema.marketingOptout.domain, domainOf(from))))
+        .where(and(eq(schema.marketingOptout.email, email), eq(schema.marketingOptout.domain, brandDomain(from))))
         .get() !== undefined
     ) {
       return true;

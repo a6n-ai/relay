@@ -41,7 +41,7 @@ export const appStatement = {
   campaign: ["read", "write", "send"],
   list: ["read", "write", "import"],
   template: ["read", "write"],
-  webhook: ["read", "write"],
+  webhook: ["read", "write", "log_all"],
   log: ["read"],
   settings: ["read", "write"],
   workspace: ["usage", "limits"],
