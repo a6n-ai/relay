@@ -1,18 +1,19 @@
-import { z } from "zod";
+import { memberInput } from "../console/schemas";
 import type { MemberInput } from "../do/lists";
 
 export type ParsedContacts = { rows: MemberInput[]; invalid: number; duplicates: number };
 
-const MAX_ROWS = 10_000;
+const MAX_RECORDS = 10_001; // header + 10,000 data rows
+const CONSENT_DATE = /^\d{4}-\d{2}-\d{2}/;
 
-// Same rule as send-input.ts (z.email()), without a zod schema so this file stays cheap to import anywhere.
-function isEmail(email: string): boolean {
-  return email.length <= 254 && z.regexes.email.test(email);
-}
-
-// RFC 4180: quoted fields, "" escapes, CRLF or LF. Blank lines are dropped.
+// RFC 4180: quoted fields, "" escapes, CRLF or LF. Blank lines are dropped. An unterminated quote runs to end of file.
 function records(text: string): string[][] {
   const out: string[][] = [];
+  const push = (r: string[]) => {
+    if (r.length === 1 && r[0].trim() === "") return;
+    if (out.length === MAX_RECORDS) throw new Error("too many rows");
+    out.push(r);
+  };
   let row: string[] = [];
   let field = "";
   let quoted = false;
@@ -31,16 +32,16 @@ function records(text: string): string[][] {
     } else if (c === "\n" || c === "\r") {
       if (c === "\r" && text[i + 1] === "\n") i++;
       row.push(field);
-      out.push(row);
+      push(row);
       row = [];
       field = "";
     } else field += c;
   }
   if (field !== "" || row.length > 0) {
     row.push(field);
-    out.push(row);
+    push(row);
   }
-  return out.filter((r) => !(r.length === 1 && r[0].trim() === ""));
+  return out;
 }
 
 export function parseContactsCsv(text: string): ParsedContacts {
@@ -49,7 +50,6 @@ export function parseContactsCsv(text: string): ParsedContacts {
   const at = (name: string) => columns.indexOf(name);
   const emailAt = at("email");
   if (emailAt < 0) throw new Error("missing email column");
-  if (body.length > MAX_ROWS) throw new Error("too many rows");
   const cell = (r: string[], i: number) => (i < 0 ? "" : (r[i] ?? "").trim());
   const firstAt = at("first_name");
   const lastAt = at("last_name");
@@ -61,17 +61,6 @@ export function parseContactsCsv(text: string): ParsedContacts {
   let invalid = 0;
   let duplicates = 0;
   for (const r of body) {
-    const email = cell(r, emailAt).toLowerCase();
-    if (!isEmail(email)) {
-      invalid += 1;
-      continue;
-    }
-    if (seen.has(email)) {
-      duplicates += 1;
-      continue;
-    }
-    seen.add(email);
-
     let firstName = cell(r, firstAt);
     let lastName = cell(r, lastAt);
     if (!firstName && !lastName && nameAt >= 0) {
@@ -83,12 +72,25 @@ export function parseContactsCsv(text: string): ParsedContacts {
         lastName = full.slice(space + 1).trim();
       }
     }
-    const member: MemberInput = { email };
-    if (firstName) member.firstName = firstName;
-    if (lastName) member.lastName = lastName;
-    const consent = Date.parse(cell(r, consentAt));
-    if (!Number.isNaN(consent)) member.consentAt = consent;
-    rows.push(member);
+    // NaN fails memberInput's z.number(), so an unparseable or out-of-range date makes the row invalid.
+    const consentText = cell(r, consentAt);
+    const consent = consentText === "" ? undefined : CONSENT_DATE.test(consentText) ? Date.parse(consentText) : NaN;
+    const parsed = memberInput.safeParse({
+      email: cell(r, emailAt).toLowerCase(),
+      firstName: firstName || undefined,
+      lastName: lastName || undefined,
+      consentAt: consent,
+    });
+    if (!parsed.success) {
+      invalid += 1;
+      continue;
+    }
+    if (seen.has(parsed.data.email)) {
+      duplicates += 1;
+      continue;
+    }
+    seen.add(parsed.data.email);
+    rows.push(parsed.data);
   }
   return { rows, invalid, duplicates };
 }
