@@ -41,6 +41,13 @@ async function workspaceFor(email: string, name: string, role: "user" | "admin" 
   return { cookie, workspaceId };
 }
 
+// Platform users cannot create workspaces, so a non-admin is an owner added to a workspace a platform admin made.
+async function plainOwnerIn(hostEmail: string, name: string, email: string) {
+  const host = await workspaceFor(hostEmail, name);
+  const cookie = await addMember(host.workspaceId, email, "owner");
+  return { cookie, workspaceId: host.workspaceId };
+}
+
 const stubFor = (workspaceId: string) => env.CLIENT.get(env.CLIENT.idFromName(workspaceId));
 const snapshot = (workspaceId: string) =>
   runInDurableObject(stubFor(workspaceId), (_instance, state) => state.storage.kv.get<WorkspaceLimits>("limits"));
@@ -64,7 +71,7 @@ describe("console sending domains and addresses", { timeout: 60_000 }, () => {
     const actorB = await requireActor(env, headersFor(b.cookie), WRITE);
     await expect(addDomain(env, actorB, { domain: "dom-add.test" })).rejects.toMatchObject({
       status: 409,
-      message: "domain already claimed",
+      message: "domain claimed",
     });
   });
 
@@ -80,15 +87,15 @@ describe("console sending domains and addresses", { timeout: 60_000 }, () => {
   });
 
   it("refuses a domain already verified in the shared SES account unless the actor is a platform admin", async () => {
-    memorySesIdentity.preset("shared-ses.test", { verified: true, dkimStatus: "SUCCESS", dkimTokens: [] });
-    memorySesIdentity.preset("shared-admin.test", { verified: true, dkimStatus: "SUCCESS", dkimTokens: [] });
+    memorySesIdentity.preset("ap-south-1", "shared-ses.test", { verified: true, dkimStatus: "SUCCESS", dkimTokens: [] });
+    memorySesIdentity.preset("ap-south-1", "shared-admin.test", { verified: true, dkimStatus: "SUCCESS", dkimTokens: [] });
 
     const host = await workspaceFor("dom-host@example.com", "Dom Host Co");
     const ownerCookie = await addMember(host.workspaceId, "dom-owner-plain@example.com", "owner");
     const memberActor = await requireActor(env, headersFor(ownerCookie), WRITE);
     await expect(addDomain(env, memberActor, { domain: "shared-ses.test" })).rejects.toMatchObject({
       status: 409,
-      message: "domain already registered",
+      message: "domain registered",
     });
     const rows = await coreDb(env).select().from(sendingDomain).where(eq(sendingDomain.domain, "shared-ses.test"));
     expect(rows).toHaveLength(0);
@@ -96,7 +103,56 @@ describe("console sending domains and addresses", { timeout: 60_000 }, () => {
     const adminActor = await requireActor(env, headersFor(host.cookie), WRITE);
     const { id } = await addDomain(env, adminActor, { domain: "shared-admin.test" });
     const [row] = await coreDb(env).select().from(sendingDomain).where(eq(sendingDomain.id, id));
-    expect(row).toMatchObject({ workspaceId: host.workspaceId, status: "pending" });
+    expect(row).toMatchObject({ workspaceId: host.workspaceId, status: "verified", dkimStatus: "success" });
+  });
+
+  it("refuses a non-admin domain squatted in another SES region, even when the default region is free", async () => {
+    memorySesIdentity.preset("us-east-1", "squat-east.test", { verified: false, dkimStatus: "PENDING", dkimTokens: [] });
+    const a = await plainOwnerIn("dom-squat-host@example.com", "Dom Squat Co", "dom-squat@example.com");
+    const actor = await requireActor(env, headersFor(a.cookie), WRITE);
+    await expect(addDomain(env, actor, { domain: "squat-east.test" })).rejects.toMatchObject({
+      status: 409,
+      message: "domain registered",
+    });
+    expect(await coreDb(env).select().from(sendingDomain).where(eq(sendingDomain.domain, "squat-east.test"))).toHaveLength(0);
+  });
+
+  it("refuses a non-admin parent or subdomain of a domain another workspace claimed, but not a label-suffix lookalike", async () => {
+    const owner = await workspaceFor("dom-parent@example.com", "Dom Parent Co");
+    const ownerActor = await requireActor(env, headersFor(owner.cookie), WRITE);
+    await addDomain(env, ownerActor, { domain: "parent-claim.test" });
+    await addDomain(env, ownerActor, { domain: "mail.child-claim.test" });
+
+    const other = await plainOwnerIn("dom-other-host@example.com", "Dom Other Co", "dom-other@example.com");
+    const otherActor = await requireActor(env, headersFor(other.cookie), WRITE);
+    await expect(addDomain(env, otherActor, { domain: "mail.parent-claim.test" })).rejects.toMatchObject({
+      status: 409,
+      message: "domain claimed",
+    });
+    await expect(addDomain(env, otherActor, { domain: "child-claim.test" })).rejects.toMatchObject({
+      status: 409,
+      message: "domain claimed",
+    });
+    await expect(addDomain(env, otherActor, { domain: "badparent-claim.test" })).resolves.toMatchObject({});
+  });
+
+  it("maps a sending_domain unique-index race to 409 instead of a 500", async () => {
+    const a = await workspaceFor("dom-race@example.com", "Dom Race Co");
+    const actor = await requireActor(env, headersFor(a.cookie), WRITE);
+    const rival = await workspaceFor("dom-rival@example.com", "Dom Rival Co");
+    await coreDb(env).insert(sendingDomain).values({ workspaceId: rival.workspaceId, domain: "race-win.test", sesRegion: "ap-south-1" });
+
+    // A platform admin skips the pre-check, so the insert itself is what meets the rival row.
+    await expect(addDomain(env, actor, { domain: "race-win.test" })).rejects.toMatchObject({ status: 409, message: "domain claimed" });
+  });
+
+  it("removes the pending row when SES create throws", async () => {
+    const a = await plainOwnerIn("dom-sesfail-host@example.com", "Dom SesFail Co", "dom-sesfail@example.com");
+    const actor = await requireActor(env, headersFor(a.cookie), WRITE);
+    vi.spyOn(memorySesIdentity, "create").mockRejectedValueOnce(new Error("ses unavailable"));
+
+    await expect(addDomain(env, actor, { domain: "ses-fail.test" })).rejects.toThrow("ses unavailable");
+    expect(await coreDb(env).select().from(sendingDomain).where(eq(sendingDomain.domain, "ses-fail.test"))).toHaveLength(0);
   });
 
   it("checks a domain against SES and refreshes the limits when its status changes", async () => {
@@ -105,9 +161,9 @@ describe("console sending domains and addresses", { timeout: 60_000 }, () => {
     const { id } = await addDomain(env, actor, { domain: "check-me.test" });
     const before = (await snapshot(a.workspaceId))!.fetchedAt;
 
-    memorySesIdentity.preset("check-me.test", { verified: true, dkimStatus: "SUCCESS", dkimTokens: [] });
+    memorySesIdentity.preset("ap-south-1", "check-me.test", { verified: true, dkimStatus: "SUCCESS", dkimTokens: [] });
     await new Promise((resolve) => setTimeout(resolve, 5));
-    await expect(checkDomain(env, actor, id)).resolves.toMatchObject({ status: "verified", dkimStatus: "SUCCESS" });
+    await expect(checkDomain(env, actor, id)).resolves.toMatchObject({ status: "verified", dkimStatus: "success" });
     expect((await snapshot(a.workspaceId))!.fetchedAt).toBeGreaterThan(before);
   });
 
@@ -119,7 +175,7 @@ describe("console sending domains and addresses", { timeout: 60_000 }, () => {
     const { id } = await addAddress(env, actor, { appId, email: "hi@mail-send.test", kind: "sender", canSend: true });
 
     expect((await snapshot(a.workspaceId))!.senders).not.toHaveProperty(["hi@mail-send.test"]);
-    memorySesIdentity.preset("mail-send.test", { verified: true, dkimStatus: "SUCCESS", dkimTokens: [] });
+    memorySesIdentity.preset("ap-south-1", "mail-send.test", { verified: true, dkimStatus: "SUCCESS", dkimTokens: [] });
     await checkDomain(env, actor, domainId);
     expect((await snapshot(a.workspaceId))!.senders).toHaveProperty(["hi@mail-send.test"]);
 
@@ -183,5 +239,72 @@ describe("console sending domains and addresses", { timeout: 60_000 }, () => {
     await expect(refreshWorkspaceLimits(env, "wsp_logs")).resolves.toBeUndefined();
     expect(errors).toHaveBeenCalledWith("refreshLimits failed", "wsp_logs");
     expect(JSON.stringify(errors.mock.calls)).not.toContain("@");
+  });
+
+  it("requires a verified domain for an inbox or both address, but lets a sender go out on a pending one", async () => {
+    const a = await plainOwnerIn("addr-verify-host@example.com", "Addr Verify Co", "addr-verify@example.com");
+    const actor = await requireActor(env, headersFor(a.cookie), WRITE);
+    const { id: appId } = await addApp(env, actor, { name: "Web", slug: "web" });
+    await addDomain(env, actor, { domain: "verify-gate.test" });
+
+    await expect(addAddress(env, actor, { appId, email: "in@verify-gate.test", kind: "inbox" })).rejects.toMatchObject({
+      status: 409,
+      message: "domain not verified",
+    });
+    await expect(addAddress(env, actor, { appId, email: "both@verify-gate.test", kind: "both" })).rejects.toMatchObject({
+      status: 409,
+      message: "domain not verified",
+    });
+    await expect(addAddress(env, actor, { appId, email: "out@verify-gate.test", kind: "sender" })).resolves.toMatchObject({});
+  });
+
+  it("maps an address unique-index race to 409 instead of a 500", async () => {
+    const a = await workspaceFor("addr-race@example.com", "Addr Race Co");
+    const actor = await requireActor(env, headersFor(a.cookie), WRITE);
+    const { id: appId } = await addApp(env, actor, { name: "Web", slug: "web" });
+    await addDomain(env, actor, { domain: "addr-race.test" });
+    await coreDb(env).insert(address).values({ workspaceId: a.workspaceId, appId, email: "taken@addr-race.test", kind: "sender" });
+
+    await expect(addAddress(env, actor, { appId, email: "taken@addr-race.test", kind: "sender" })).rejects.toMatchObject({
+      status: 409,
+      message: "address already exists",
+    });
+  });
+
+  it("hides Domains from the billing role and shows it a not-allowed message on a direct visit", async () => {
+    const owner = await workspaceFor("dom-nav-owner@example.com", "Dom Nav Co");
+    const billing = await addMember(owner.workspaceId, "dom-nav-billing@example.com", "billing");
+
+    const ownerPage = await SELF.fetch(`${ORIGIN}/domains`, { redirect: "manual", headers: { cookie: owner.cookie } });
+    expect(ownerPage.status).toBe(200);
+    expect(await ownerPage.text()).toContain('href="/domains"');
+
+    const res = await SELF.fetch(`${ORIGIN}/domains`, { redirect: "manual", headers: { cookie: billing } });
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).toContain("not allowed to view sending domains");
+    expect(html).not.toContain('href="/domains"');
+  });
+
+  it("shows a member the domains and addresses without add, check, switch or remove controls", async () => {
+    const owner = await workspaceFor("dom-ro-owner@example.com", "Dom Ro Co");
+    const ownerActor = await requireActor(env, headersFor(owner.cookie), WRITE);
+    const { id: appId } = await addApp(env, ownerActor, { name: "Web", slug: "web" });
+    await addDomain(env, ownerActor, { domain: "readonly-view.test" });
+    await addAddress(env, ownerActor, { appId, email: "hi@readonly-view.test", kind: "sender" });
+    const member = await addMember(owner.workspaceId, "dom-ro-member@example.com", "member");
+
+    const ownerHtml = await (await SELF.fetch(`${ORIGIN}/domains`, { redirect: "manual", headers: { cookie: owner.cookie } })).text();
+    expect(ownerHtml).toContain("Add domain");
+    expect(ownerHtml).toContain('role="switch"');
+
+    const res = await SELF.fetch(`${ORIGIN}/domains`, { redirect: "manual", headers: { cookie: member } });
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).toContain("hi@readonly-view.test");
+    expect(html).not.toContain("Add domain");
+    expect(html).not.toContain("Add address");
+    expect(html).not.toContain("Check now");
+    expect(html).not.toContain('role="switch"');
   });
 });

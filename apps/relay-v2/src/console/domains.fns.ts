@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeaders } from "@tanstack/react-start/server";
 import { env } from "cloudflare:workers";
 import { z } from "zod";
-import { requireActor, toResponseError } from "./actor";
+import { ConsoleError, requireActor, toResponseError } from "./actor";
 import {
   addAddress,
   addDomain,
@@ -19,11 +19,13 @@ const WRITE = { permission: { sending: ["write"] }, write: true };
 const id = z.string().min(1);
 const displayName = z.string().trim().max(80).optional();
 
+// Null means the role cannot read sending domains (billing): the page shows a denied state instead of an error.
 export const fetchDomains = createServerFn({ method: "GET" }).handler(async () => {
   try {
     const actor = await requireActor(env, getRequestHeaders(), READ);
     return await listDomains(env, actor);
   } catch (err) {
+    if (err instanceof ConsoleError && err.status === 403) return null;
     toResponseError(err);
   }
 });

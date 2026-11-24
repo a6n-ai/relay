@@ -4,7 +4,7 @@ import { securityDb } from "../db/security/client";
 import { member, workspace } from "../db/security/schema";
 import type { Env } from "../env";
 import { createAuth } from "../lib/auth";
-import { orgRoles } from "../lib/auth/permissions";
+import { allows, orgRoles } from "../lib/auth/permissions";
 
 export type OrgRole = "owner" | "admin" | "member" | "billing";
 export type ConsoleActor = {
@@ -58,7 +58,7 @@ export async function requireActor(
 
   const roles = parseRoles(row.role);
   const permission = need.permission;
-  if (permission && !roles.some((r) => orgRoles[r].authorize(permission).success)) {
+  if (permission && !allows(roles, permission)) {
     throw new ConsoleError(403, "forbidden");
   }
 

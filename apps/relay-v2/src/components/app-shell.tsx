@@ -20,6 +20,7 @@ import Shield from "lucide-react/icons/shield";
 import Users from "lucide-react/icons/users";
 import type { ReactNode } from "react";
 import type { Shell } from "../console/shell";
+import { allows } from "../lib/auth/permissions";
 import { SignOutButton } from "./sign-out-button";
 import { SuspendedBanner } from "./suspended-banner";
 import { WorkspaceSwitcher } from "./workspace-switcher";
@@ -29,14 +30,16 @@ export type NavItem = { to: string; label: string; icon: LucideIcon; need?: Reco
 const NAV: NavItem[] = [
   { to: "/", label: "Overview", icon: LayoutDashboard },
   { to: "/apps", label: "Apps", icon: AppWindow },
-  { to: "/domains", label: "Domains", icon: Globe },
+  { to: "/domains", label: "Domains", icon: Globe, need: { sending: ["read"] } },
   { to: "/members", label: "Members", icon: Users },
 ];
 const ADMIN_NAV: NavItem = { to: "/admin", label: "Admin", icon: Shield };
 
 export function AppShell({ shell, children }: { shell: Shell; children: ReactNode }) {
   const { pathname } = useLocation();
-  const items = shell.platformAdmin ? [...NAV, ADMIN_NAV] : NAV;
+  const roles = shell.active?.roles ?? [];
+  const visible = NAV.filter((item) => !item.need || allows(roles, item.need));
+  const items = shell.platformAdmin ? [...visible, ADMIN_NAV] : visible;
   return (
     <SidebarProvider>
       <Sidebar>

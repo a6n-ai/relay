@@ -22,10 +22,13 @@ import {
   removeAddressFn,
   updateAddressFn,
 } from "../../console/domains.fns";
+import { allows } from "../../lib/auth/permissions";
 
 export const Route = createFileRoute("/_app/domains")({
   loader: async () => {
-    const [domains, addresses, apps] = await Promise.all([fetchDomains(), fetchAddresses(), fetchApps()]);
+    const domains = await fetchDomains();
+    if (!domains) return null;
+    const [addresses, apps] = await Promise.all([fetchAddresses(), fetchApps()]);
     return { domains, addresses, apps };
   },
   component: DomainsPage,
@@ -38,8 +41,19 @@ const KINDS = [
 ] as const;
 
 function DomainsPage() {
-  const { domains, addresses, apps } = Route.useLoaderData();
+  const data = Route.useLoaderData();
+  const { shell } = Route.useRouteContext();
   const router = useRouter();
+  if (!data) {
+    return (
+      <>
+        <ViewHeader title="Domains" />
+        <p className="p-4 text-sm text-muted-foreground">Your role is not allowed to view sending domains in this workspace.</p>
+      </>
+    );
+  }
+  const { domains, addresses, apps } = data;
+  const canWrite = allows(shell.active?.roles ?? [], { sending: ["write"] });
 
   async function check(id: string) {
     try {
@@ -76,9 +90,11 @@ function DomainsPage() {
       <ViewHeader
         title="Domains"
         actions={
-          <CreateDialog trigger="Add domain" title="Add a sending domain">
-            {(done) => <NewDomainForm done={done} />}
-          </CreateDialog>
+          canWrite ? (
+            <CreateDialog trigger="Add domain" title="Add a sending domain">
+              {(done) => <NewDomainForm done={done} />}
+            </CreateDialog>
+          ) : undefined
         }
       />
       <ResourceTable
@@ -88,11 +104,12 @@ function DomainsPage() {
           { header: "DNS", cell: (d) => <DnsRecords records={d.records} /> },
           {
             header: "",
-            cell: (d) => (
-              <Button variant="outline" size="sm" onClick={() => check(d.id)}>
-                Check now
-              </Button>
-            ),
+            cell: (d) =>
+              canWrite ? (
+                <Button variant="outline" size="sm" onClick={() => check(d.id)}>
+                  Check now
+                </Button>
+              ) : null,
           },
         ]}
         rows={domains}
@@ -102,9 +119,11 @@ function DomainsPage() {
 
       <div className="flex h-11 items-center justify-between gap-2 border-b border-t px-4">
         <h2 className="text-sm font-medium">Addresses</h2>
-        <CreateDialog trigger="Add address" title="Add an address">
-          {(done) => <NewAddressForm apps={apps} done={done} />}
-        </CreateDialog>
+        {canWrite ? (
+          <CreateDialog trigger="Add address" title="Add an address">
+            {(done) => <NewAddressForm apps={apps} done={done} />}
+          </CreateDialog>
+        ) : null}
       </div>
       <ResourceTable
         columns={[
@@ -113,21 +132,27 @@ function DomainsPage() {
           { header: "Name", cell: (a) => a.displayName ?? "-" },
           {
             header: "Can send",
-            cell: (a) => (
-              <Switch checked={a.canSend} onCheckedChange={(v) => setCanSend(a.id, v)} aria-label={`Can send from ${a.email}`} />
-            ),
+            cell: (a) =>
+              canWrite ? (
+                <Switch checked={a.canSend} onCheckedChange={(v) => setCanSend(a.id, v)} aria-label={`Can send from ${a.email}`} />
+              ) : a.canSend ? (
+                "Yes"
+              ) : (
+                "No"
+              ),
           },
           {
             header: "",
-            cell: (a) => (
-              <ConfirmDialog
-                trigger="Remove"
-                title="Remove this address?"
-                description="Mail to it stops being received, and the app can no longer send from it."
-                confirmLabel="Remove address"
-                onConfirm={() => remove(a.id)}
-              />
-            ),
+            cell: (a) =>
+              canWrite ? (
+                <ConfirmDialog
+                  trigger="Remove"
+                  title="Remove this address?"
+                  description="Mail to it stops being received, and the app can no longer send from it."
+                  confirmLabel="Remove address"
+                  onConfirm={() => remove(a.id)}
+                />
+              ) : null,
           },
         ]}
         rows={addresses}

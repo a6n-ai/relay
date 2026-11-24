@@ -53,18 +53,19 @@ export function sesIdentityApi(env: Env, fetchImpl?: typeof fetch): SesIdentityA
 }
 
 const memoryIdentities = new Map<string, SesIdentity>();
+const memoryKey = (region: string, domain: string) => `${region}/${domain}`;
 
 // Tests preset an identity to stand in for one already in the shared SES account or verified by DNS.
-export const memorySesIdentity: SesIdentityApi & { preset(domain: string, identity: SesIdentity): void } = {
-  async create(_region, domain) {
-    if (memoryIdentities.has(domain)) return { alreadyExists: true };
-    memoryIdentities.set(domain, { verified: false, dkimStatus: "PENDING", dkimTokens: ["tok1", "tok2", "tok3"] });
+export const memorySesIdentity: SesIdentityApi & { preset(region: string, domain: string, identity: SesIdentity): void } = {
+  async create(region, domain) {
+    if (memoryIdentities.has(memoryKey(region, domain))) return { alreadyExists: true };
+    memoryIdentities.set(memoryKey(region, domain), { verified: false, dkimStatus: "PENDING", dkimTokens: ["tok1", "tok2", "tok3"] });
     return { alreadyExists: false };
   },
-  async get(_region, domain) {
-    return memoryIdentities.get(domain) ?? null;
+  async get(region, domain) {
+    return memoryIdentities.get(memoryKey(region, domain)) ?? null;
   },
-  preset(domain, identity) {
-    memoryIdentities.set(domain, identity);
+  preset(region, domain, identity) {
+    memoryIdentities.set(memoryKey(region, domain), identity);
   },
 };

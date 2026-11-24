@@ -72,3 +72,7 @@ export const orgRoles = {
     tenant: ["read"],
   }),
 };
+
+// Server guards and the client nav both use this, so a hidden link always matches a refused load.
+export const allows = (roles: (keyof typeof orgRoles)[], need: Record<string, string[]>): boolean =>
+  roles.some((r) => orgRoles[r].authorize(need).success);

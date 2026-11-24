@@ -1,4 +1,4 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, inArray, like, ne, or } from "drizzle-orm";
 import { createAddress, deleteAddress as deleteAddressRow, updateAddress as updateAddressRow } from "../core/addresses";
 import { refreshWorkspaceLimits } from "../core/limits";
 import { SES_CONFIG_SETS } from "../core/ses";
@@ -43,6 +43,30 @@ const statusOf = (identity: SesIdentity | null): DomainStatus => {
   return "pending";
 };
 
+// D1 names the violated index in the message; drizzle may wrap the error, so the cause chain is walked too.
+function uniqueViolation(err: unknown, column: string): boolean {
+  for (let e: unknown = err; e instanceof Error; e = e.cause) {
+    if (e.message.includes(`UNIQUE constraint failed: ${column}`)) return true;
+  }
+  return false;
+}
+
+// A domain claims its parents and subdomains too; the label boundary keeps badexample.com apart from example.com.
+async function claimedByAnother(env: Env, workspaceId: string, domain: string): Promise<boolean> {
+  const labels = domain.split(".");
+  const parents = labels.map((_, i) => labels.slice(i).join("."));
+  const [hit] = await coreDb(env)
+    .select({ id: sendingDomain.id })
+    .from(sendingDomain)
+    .where(
+      and(
+        ne(sendingDomain.workspaceId, workspaceId),
+        or(inArray(sendingDomain.domain, parents), like(sendingDomain.domain, `%.${domain}`)),
+      ),
+    );
+  return hit !== undefined;
+}
+
 const dkimRecords = (domain: string, identity: SesIdentity | null) =>
   (identity?.dkimTokens ?? []).map((token) => ({
     type: "CNAME" as const,
@@ -82,15 +106,43 @@ export async function addDomain(env: Env, actor: ConsoleActor, input: { domain: 
   if (!Object.hasOwn(SES_CONFIG_SETS, sesRegion)) throw new ConsoleError(400, "unknown region");
   if (sesRegion !== profile.defaultSesRegion && !actor.platformAdmin) throw new ConsoleError(403, "forbidden");
 
-  const [claimed] = await coreDb(env).select({ id: sendingDomain.id }).from(sendingDomain).where(eq(sendingDomain.domain, domain));
-  if (claimed) throw new ConsoleError(409, "domain already claimed");
-  const { alreadyExists } = await sesIdentityApi(env).create(sesRegion, domain);
-  if (alreadyExists && !actor.platformAdmin) throw new ConsoleError(409, "domain already registered");
+  const ses = sesIdentityApi(env);
+  if (!actor.platformAdmin) {
+    if (await claimedByAnother(env, actor.workspaceId, domain)) throw new ConsoleError(409, "domain claimed");
+    // An identity can sit in any region of the shared SES account, so a squat elsewhere is still a claim.
+    for (const region of Object.keys(SES_CONFIG_SETS)) {
+      if (await ses.get(region, domain)) throw new ConsoleError(409, "domain registered");
+    }
+  }
 
-  const [row] = await coreDb(env)
-    .insert(sendingDomain)
-    .values({ workspaceId: actor.workspaceId, domain, sesRegion })
-    .returning({ id: sendingDomain.id });
+  // The row goes in first so two concurrent claims meet the unique index, not two SES identities.
+  let row: { id: string };
+  try {
+    [row] = await coreDb(env)
+      .insert(sendingDomain)
+      .values({ workspaceId: actor.workspaceId, domain, sesRegion })
+      .returning({ id: sendingDomain.id });
+  } catch (err) {
+    if (uniqueViolation(err, "sending_domain.domain")) throw new ConsoleError(409, "domain claimed");
+    throw err;
+  }
+
+  const removeRow = () => coreDb(env).delete(sendingDomain).where(eq(sendingDomain.id, row.id));
+  let alreadyExists: boolean;
+  try {
+    ({ alreadyExists } = await ses.create(sesRegion, domain));
+  } catch (err) {
+    await removeRow();
+    throw err;
+  }
+  if (alreadyExists) {
+    if (!actor.platformAdmin) {
+      await removeRow();
+      throw new ConsoleError(409, "domain registered");
+    }
+    // Adopting an identity that already exists: read its real state now instead of waiting for Check now.
+    await checkDomain(env, actor, row.id);
+  }
   await refreshWorkspaceLimits(env, actor.workspaceId);
   return row;
 }
@@ -104,7 +156,7 @@ export async function checkDomain(env: Env, actor: ConsoleActor, id: string): Pr
 
   const identity = await sesIdentityApi(env).get(row.sesRegion, row.domain);
   const status = statusOf(identity);
-  const dkimStatus = identity?.dkimStatus ?? "NOT_STARTED";
+  const dkimStatus = (identity?.dkimStatus ?? "NOT_STARTED").toLowerCase();
   await coreDb(env).update(sendingDomain).set({ status, dkimStatus, updatedAt: new Date() }).where(eq(sendingDomain.id, id));
   if (status !== row.status) await refreshWorkspaceLimits(env, actor.workspaceId);
   return { status, dkimStatus };
@@ -138,14 +190,22 @@ export async function addAddress(
   await getApp(env, actor, input.appId);
   const email = normaliseEmail(input.email);
   const [owned] = await coreDb(env)
-    .select({ id: sendingDomain.id })
+    .select({ status: sendingDomain.status })
     .from(sendingDomain)
     .where(and(eq(sendingDomain.workspaceId, actor.workspaceId), eq(sendingDomain.domain, email.slice(email.indexOf("@") + 1))));
   if (!owned) throw new ConsoleError(400, "address must use one of your domains");
-  const [taken] = await coreDb(env).select({ id: address.id }).from(address).where(eq(address.email, email));
-  if (taken) throw new ConsoleError(409, "address already exists");
+  // A sender can go out before its domain verifies; anything received or read as a mailbox needs the domain verified.
+  if (!actor.platformAdmin && input.kind !== "sender" && owned.status !== "verified") {
+    throw new ConsoleError(409, "domain not verified");
+  }
 
-  const row = await createAddress(env, { ...input, workspaceId: actor.workspaceId, email });
+  let row: { id: string };
+  try {
+    row = await createAddress(env, { ...input, workspaceId: actor.workspaceId, email });
+  } catch (err) {
+    if (uniqueViolation(err, "address.email")) throw new ConsoleError(409, "address already exists");
+    throw err;
+  }
   await refreshWorkspaceLimits(env, actor.workspaceId);
   return row;
 }
