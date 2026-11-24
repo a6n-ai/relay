@@ -17,6 +17,7 @@ import {
   attachmentViews,
   listMessageRows,
   readMessageDetail,
+  readMessageFile,
   type MessageAccess,
   type MessageDetail,
   type MessageQuery,
@@ -215,6 +216,16 @@ export class ClientDO extends DurableObject<Env> {
   async getMessageDetail(workspaceId: string, id: string, access: MessageAccess): Promise<MessageDetail | null> {
     await this.ready(workspaceId);
     return readMessageDetail(this.db, this.env, id, access);
+  }
+
+  async getMessageFile(
+    workspaceId: string,
+    id: string,
+    part: string,
+    access: MessageAccess,
+  ): Promise<{ key: string; name: string } | null> {
+    await this.ready(workspaceId);
+    return readMessageFile(this.db, id, part, access);
   }
 
   // The letter is already in R2 under job.rawKey. Idempotent on the raw key and on the app's Message-ID.

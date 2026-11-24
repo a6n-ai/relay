@@ -1,4 +1,4 @@
-import { env, runInDurableObject } from "cloudflare:test";
+import { env, runInDurableObject, SELF } from "cloudflare:test";
 import { and, eq } from "drizzle-orm";
 import { beforeAll, describe, expect, it } from "vitest";
 import { requireActor } from "../src/console/actor";
@@ -9,7 +9,7 @@ import { securityDb } from "../src/db/security/client";
 import { addressGrant, app, member, team, teamMember, user } from "../src/db/security/schema";
 import { parseMessagesSearch } from "../src/components/messages-search";
 import { newId } from "../src/lib/ids";
-import { addMember, cookieFor, createWorkspace, headersFor, setActive } from "./console-helpers";
+import { addMember, cookieFor, createWorkspace, headersFor, ORIGIN, setActive } from "./console-helpers";
 import { applyMigrations } from "./migrate";
 
 beforeAll(async () => {
@@ -67,7 +67,7 @@ async function tenant(slug: string) {
   const [appA] = await db.insert(app).values({ workspaceId, name: "App A", slug: "a" }).returning();
   const [appB] = await db.insert(app).values({ workspaceId, name: "App B", slug: "b" }).returning();
   const owner = await requireActor(env, headersFor(ownerCookie));
-  return { workspaceId, appA: appA.id, appB: appB.id, owner };
+  return { workspaceId, appA: appA.id, appB: appB.id, owner, cookie: ownerCookie };
 }
 
 async function inbox(workspaceId: string, appId: string, email: string): Promise<string> {
@@ -83,7 +83,7 @@ async function memberOf(workspaceId: string, email: string, role: "member" | "bi
     .select({ id: member.id })
     .from(member)
     .where(and(eq(member.organizationId, workspaceId), eq(member.userId, u.id)));
-  return { actor, userId: u.id, memberId: m.id };
+  return { actor, userId: u.id, memberId: m.id, cookie };
 }
 
 describe("message reads", () => {
@@ -269,6 +269,166 @@ describe("letter HTML", () => {
     const shown = await getMessageFor(env, t.owner, id, { images: true });
     expect(shown.htmlSafe).toContain("track.example");
     expect(shown.htmlSafe).not.toContain("<script");
+  });
+});
+
+type Tenant = Awaited<ReturnType<typeof tenant>>;
+
+// An inbound letter with R2 objects for its raw source, html and attachments; attachment keys follow inbound.ts.
+async function storedLetter(
+  t: Tenant,
+  addressId: string,
+  opts: { html?: string; attachments?: { filename: string; body: string; contentId?: string }[] } = {},
+) {
+  const [id] = await seed(t.workspaceId, [
+    { appId: t.appA, direction: "in", addressId, rfcMessageId: `${newId("msg")}@x`, createdAt: 1 },
+  ]);
+  const ws = t.workspaceId;
+  const htmlKey = `ws/${ws}/msg/${id}.html`;
+  const rawKey = `ws/${ws}/raw/2026/11/${id}.eml`;
+  await env.MAIL.put(htmlKey, opts.html ?? "<p>Hello</p>");
+  await env.MAIL.put(rawKey, "From: x@example.com\r\n\r\nbody");
+  const files = (opts.attachments ?? []).map((f, position) => ({
+    ...f,
+    id: newId("att"),
+    position,
+    key: `ws/${ws}/att/${id}/${position}-${f.filename}`,
+  }));
+  for (const f of files) await env.MAIL.put(f.key, f.body);
+  await runInDurableObject(clientFor(env, ws), (_instance, state) => {
+    state.storage.sql.exec("UPDATE message SET html_key = ?, raw_key = ? WHERE id = ?", htmlKey, rawKey, id);
+    for (const f of files) {
+      state.storage.sql.exec(
+        "INSERT INTO attachment (id, message_id, app_id, position, filename, content_type, size_bytes, content_id, r2_key, created_at) VALUES (?, ?, ?, ?, ?, 'application/pdf', ?, ?, ?, 1)",
+        f.id,
+        id,
+        t.appA,
+        f.position,
+        f.filename,
+        f.body.length,
+        f.contentId ?? null,
+        f.key,
+      );
+    }
+  });
+  return { id, htmlKey, rawKey, attIds: files.map((f) => f.id), attKeys: files.map((f) => f.key) };
+}
+
+describe("downloads", () => {
+  const PDF = "%PDF-1.4 stored bytes";
+
+  it("streams an attachment, the html and the raw letter as sandboxed octet streams", async () => {
+    const t = await tenant("dl-owner");
+    const addr = await inbox(t.workspaceId, t.appA, "in@dl.test");
+    const letter = await storedLetter(t, addr, { attachments: [{ filename: "invoice.pdf", body: PDF }] });
+
+    const att = await SELF.fetch(`${ORIGIN}/api/console/messages/${letter.id}/${letter.attIds[0]}`, {
+      headers: { cookie: t.cookie },
+    });
+    expect(att.status).toBe(200);
+    expect(att.headers.get("content-type")).toBe("application/octet-stream");
+    expect(att.headers.get("content-disposition")).toBe('attachment; filename="invoice.pdf"');
+    expect(att.headers.get("content-security-policy")).toContain("sandbox");
+    expect(att.headers.get("x-content-type-options")).toBe("nosniff");
+    expect(att.headers.get("cache-control")).toBe("private, no-store");
+    expect(att.headers.get("content-length")).toBe(String(PDF.length));
+    expect(await att.text()).toBe(PDF);
+
+    const html = await SELF.fetch(`${ORIGIN}/api/console/messages/${letter.id}/html`, { headers: { cookie: t.cookie } });
+    expect(html.status).toBe(200);
+    expect(html.headers.get("content-disposition")).toBe(`attachment; filename="${letter.id}.html"`);
+    expect(await html.text()).toBe("<p>Hello</p>");
+
+    const raw = await SELF.fetch(`${ORIGIN}/api/console/messages/${letter.id}/raw`, { headers: { cookie: t.cookie } });
+    expect(raw.status).toBe(200);
+    expect(raw.headers.get("content-disposition")).toBe(`attachment; filename="${letter.id}.eml"`);
+    expect(await raw.text()).toBe("From: x@example.com\r\n\r\nbody");
+  });
+
+  it("sanitises a hostile attachment filename before it reaches the header", async () => {
+    const t = await tenant("dl-hostile");
+    const addr = await inbox(t.workspaceId, t.appA, "in@hostile.test");
+    const letter = await storedLetter(t, addr, { attachments: [{ filename: 'a"b‮.pdf', body: PDF }] });
+    const res = await SELF.fetch(`${ORIGIN}/api/console/messages/${letter.id}/${letter.attIds[0]}`, {
+      headers: { cookie: t.cookie },
+    });
+    expect(res.headers.get("content-disposition")).toBe('attachment; filename="ab.pdf"');
+  });
+
+  it("has no raw route for an outbound letter", async () => {
+    const t = await tenant("dl-out");
+    const [outId] = await seed(t.workspaceId, [{ appId: t.appA, direction: "out", toEmail: "c@example.com", createdAt: 1 }]);
+    const res = await SELF.fetch(`${ORIGIN}/api/console/messages/${outId}/raw`, { headers: { cookie: t.cookie } });
+    expect(res.status).toBe(404);
+  });
+
+  it("404s for a member with no grant, and serves once a grant exists", async () => {
+    const t = await tenant("dl-grant");
+    const addr = await inbox(t.workspaceId, t.appA, "in@dl-grant.test");
+    const letter = await storedLetter(t, addr, { attachments: [{ filename: "a.pdf", body: PDF }] });
+    const paths = [`/${letter.id}/html`, `/${letter.id}/raw`, `/${letter.id}/${letter.attIds[0]}`];
+    const m = await memberOf(t.workspaceId, "dl-member@example.com", "member");
+
+    for (const path of paths) {
+      const res = await SELF.fetch(`${ORIGIN}/api/console/messages${path}`, { headers: { cookie: m.cookie } });
+      expect(res.status, path).toBe(404);
+    }
+
+    await createAddressGrant(env, { workspaceId: t.workspaceId, addressId: addr, memberId: m.memberId });
+    for (const path of paths) {
+      const res = await SELF.fetch(`${ORIGIN}/api/console/messages${path}`, { headers: { cookie: m.cookie } });
+      expect(res.status, path).toBe(200);
+    }
+  });
+
+  it("404s for another workspace's letter, and for an attachment of a different letter", async () => {
+    const t = await tenant("dl-iso");
+    const addr = await inbox(t.workspaceId, t.appA, "in@dl-iso.test");
+    const letter = await storedLetter(t, addr, { attachments: [{ filename: "a.pdf", body: PDF }] });
+    const other = await storedLetter(t, addr, { attachments: [{ filename: "b.pdf", body: PDF }] });
+    const otherTenant = await tenant("dl-iso-other");
+
+    const foreign = await SELF.fetch(`${ORIGIN}/api/console/messages/${letter.id}/${letter.attIds[0]}`, {
+      headers: { cookie: otherTenant.cookie },
+    });
+    expect(foreign.status).toBe(404);
+
+    const mismatched = await SELF.fetch(`${ORIGIN}/api/console/messages/${letter.id}/${other.attIds[0]}`, {
+      headers: { cookie: t.cookie },
+    });
+    expect(mismatched.status).toBe(404);
+  });
+
+  it("answers 401 without a session", async () => {
+    const t = await tenant("dl-anon");
+    const addr = await inbox(t.workspaceId, t.appA, "in@dl-anon.test");
+    const letter = await storedLetter(t, addr);
+    const res = await SELF.fetch(`${ORIGIN}/api/console/messages/${letter.id}/html`);
+    expect(res.status).toBe(401);
+  });
+
+  it("404s, not 500, when the stored object has been deleted", async () => {
+    const t = await tenant("dl-gone");
+    const addr = await inbox(t.workspaceId, t.appA, "in@dl-gone.test");
+    const letter = await storedLetter(t, addr, { attachments: [{ filename: "a.pdf", body: PDF }] });
+    await env.MAIL.delete(letter.attKeys[0]);
+    const res = await SELF.fetch(`${ORIGIN}/api/console/messages/${letter.id}/${letter.attIds[0]}`, {
+      headers: { cookie: t.cookie },
+    });
+    expect(res.status).toBe(404);
+  });
+
+  it("rewrites inline cid images to this route before sanitising, so they render when images are shown", async () => {
+    const t = await tenant("dl-cid");
+    const addr = await inbox(t.workspaceId, t.appA, "in@dl-cid.test");
+    const letter = await storedLetter(t, addr, {
+      html: '<p>Logo</p><img src="cid:logo@x"><img src="cid:missing@x">',
+      attachments: [{ filename: "logo.png", body: "png", contentId: "<logo@x>" }],
+    });
+    const view = await getMessageFor(env, t.owner, letter.id, { images: false });
+    expect(view.htmlSafe).toContain(`src="/api/console/messages/${letter.id}/${letter.attIds[0]}"`);
+    expect(view.htmlSafe).not.toContain("cid:logo");
+    expect(view.htmlSafe).not.toContain("cid:missing");
   });
 });
 

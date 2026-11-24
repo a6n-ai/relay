@@ -5,7 +5,7 @@ const FRAME_HEAD =
 const CSP_BLOCK =
   "default-src 'none'; img-src data: cid:; style-src 'unsafe-inline'; font-src data:; media-src 'none'; frame-src 'none'; form-action 'none'";
 const CSP_SHOW =
-  "default-src 'none'; img-src data: https:; style-src 'unsafe-inline' https:; font-src data: https:; media-src 'none'; frame-src 'none'; form-action 'none'";
+  "default-src 'none'; img-src data: https: 'self'; style-src 'unsafe-inline' https:; font-src data: https:; media-src 'none'; frame-src 'none'; form-action 'none'";
 
 export function letterSrcDoc(htmlSafe: string, blockRemote: boolean): string {
   const csp = blockRemote ? CSP_BLOCK : CSP_SHOW;

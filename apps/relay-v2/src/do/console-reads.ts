@@ -1,5 +1,6 @@
 import { and, asc, desc, eq, lt, ne, or, sql, type SQL } from "drizzle-orm";
 import type { DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
+import { safeDownloadName } from "../core/download";
 import type { Env } from "../env";
 import type { AttachmentView, MessageView } from "./client-do";
 import * as schema from "./client-schema";
@@ -162,6 +163,29 @@ function threadOf(
     .limit(THREAD_LIMIT)
     .all()
     .map((r): ThreadItem => ({ ...r, direction: r.direction as "in" | "out" }));
+}
+
+// The R2 key comes only from the stored row; the URL names just the part.
+export function readMessageFile(
+  db: Db,
+  id: string,
+  part: string,
+  access: MessageAccess,
+): { key: string; name: string } | null {
+  const row = db
+    .select({ direction: schema.message.direction, htmlKey: schema.message.htmlKey, rawKey: schema.message.rawKey })
+    .from(schema.message)
+    .where(and(eq(schema.message.id, id), visibleTo(access)))
+    .get();
+  if (!row) return null;
+  if (part === "html") return row.htmlKey ? { key: row.htmlKey, name: `${id}.html` } : null;
+  if (part === "raw") return row.direction === "in" && row.rawKey ? { key: row.rawKey, name: `${id}.eml` } : null;
+  const file = db
+    .select({ r2Key: schema.attachment.r2Key, filename: schema.attachment.filename, position: schema.attachment.position })
+    .from(schema.attachment)
+    .where(and(eq(schema.attachment.id, part), eq(schema.attachment.messageId, id)))
+    .get();
+  return file ? { key: file.r2Key, name: safeDownloadName(file.filename, `attachment-${file.position}`) } : null;
 }
 
 export async function readMessageDetail(db: Db, env: Env, id: string, access: MessageAccess): Promise<MessageDetail | null> {

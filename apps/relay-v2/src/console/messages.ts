@@ -1,6 +1,8 @@
 import { and, eq, inArray, or } from "drizzle-orm";
 import { sanitizeEmailHtml } from "../core/sanitize-html";
 import { clientFor } from "../core/messages";
+import { downloadResponse } from "../core/download";
+import type { AttachmentView } from "../do/client-do";
 import { decodeCursor, type MessageAccess, type MessageDetail, type MessageQuery, type MessageStatus } from "../do/console-reads";
 import { securityDb } from "../db/security/client";
 import { addressGrant, member, team, teamMember } from "../db/security/schema";
@@ -74,7 +76,8 @@ export async function getMessageFor(
   const view = await clientFor(env, actor.workspaceId).getMessageDetail(actor.workspaceId, id, access);
   if (!view) throw new ConsoleError(404, "not found");
   const { html, htmlKey, rawKey, claimedUntil, idempotencyKey, ...rest } = view;
-  const safe = html === null ? null : sanitizeEmailHtml(html, { remoteImages: opts.images ? "allow" : "block" });
+  const linked = html === null ? null : linkInlineImages(html, rest.id, rest.attachments);
+  const safe = linked === null ? null : sanitizeEmailHtml(linked, { remoteImages: opts.images ? "allow" : "block" });
   return {
     ...rest,
     status: rest.status as MessageStatus,
@@ -82,4 +85,22 @@ export async function getMessageFor(
     blockedRemote: safe?.blockedRemote ?? 0,
     hasRaw: rawKey !== null,
   };
+}
+
+// Runs before sanitising, which drops cid: URLs. Only known attachment ids are written in, so the letter cannot pick a URL.
+function linkInlineImages(html: string, messageId: string, attachments: AttachmentView[]): string {
+  const byCid = new Map(attachments.flatMap((a) => (a.contentId ? [[a.contentId.replace(/^<|>$/g, "").trim(), a.id]] : [])));
+  return html.replace(/(\ssrc\s*=\s*)(["'])cid:([^"']*)\2/gi, (whole, lead: string, quote: string, cid: string) => {
+    const attId = byCid.get(cid.trim());
+    return attId ? `${lead}${quote}/api/console/messages/${messageId}/${attId}${quote}` : whole;
+  });
+}
+
+export async function messageFileFor(env: Env, actor: ConsoleActor, id: string, part: string): Promise<Response> {
+  const access = await messageAccess(env, actor);
+  const file = await clientFor(env, actor.workspaceId).getMessageFile(actor.workspaceId, id, part, access);
+  if (!file || !file.key.startsWith(`ws/${actor.workspaceId}/`)) throw new ConsoleError(404, "not found");
+  const object = await env.MAIL.get(file.key);
+  if (!object) throw new ConsoleError(404, "not found");
+  return downloadResponse(object.body, object.size, file.name);
 }

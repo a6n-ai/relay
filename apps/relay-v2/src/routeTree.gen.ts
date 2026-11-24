@@ -31,6 +31,7 @@ import { Route as ApiV1WebhooksRouteImport } from './routes/api/v1/webhooks'
 import { Route as ApiWebhooksSesRouteImport } from './routes/api/webhooks/ses'
 import { Route as ApiV1MessagesIdRouteImport } from './routes/api/v1/messages.$id'
 import { Route as ApiV1WebhooksIdRouteImport } from './routes/api/v1/webhooks.$id'
+import { Route as ApiConsoleMessagesIdPartRouteImport } from './routes/api/console/messages.$id.$part'
 
 const AppRoute = AppRouteImport.update({
   id: '/_app',
@@ -141,6 +142,12 @@ const ApiV1WebhooksIdRoute = ApiV1WebhooksIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => ApiV1WebhooksRoute,
 } as any)
+const ApiConsoleMessagesIdPartRoute =
+  ApiConsoleMessagesIdPartRouteImport.update({
+    id: '/api/console/messages/$id/$part',
+    path: '/api/console/messages/$id/$part',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
@@ -164,6 +171,7 @@ export interface FileRoutesByFullPath {
   '/api/webhooks/ses': typeof ApiWebhooksSesRoute
   '/api/v1/messages/$id': typeof ApiV1MessagesIdRoute
   '/api/v1/webhooks/$id': typeof ApiV1WebhooksIdRoute
+  '/api/console/messages/$id/$part': typeof ApiConsoleMessagesIdPartRoute
 }
 export interface FileRoutesByTo {
   '/no-workspace': typeof NoWorkspaceRoute
@@ -187,6 +195,7 @@ export interface FileRoutesByTo {
   '/api/webhooks/ses': typeof ApiWebhooksSesRoute
   '/api/v1/messages/$id': typeof ApiV1MessagesIdRoute
   '/api/v1/webhooks/$id': typeof ApiV1WebhooksIdRoute
+  '/api/console/messages/$id/$part': typeof ApiConsoleMessagesIdPartRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -212,6 +221,7 @@ export interface FileRoutesById {
   '/api/webhooks/ses': typeof ApiWebhooksSesRoute
   '/api/v1/messages/$id': typeof ApiV1MessagesIdRoute
   '/api/v1/webhooks/$id': typeof ApiV1WebhooksIdRoute
+  '/api/console/messages/$id/$part': typeof ApiConsoleMessagesIdPartRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -237,6 +247,7 @@ export interface FileRouteTypes {
     | '/api/webhooks/ses'
     | '/api/v1/messages/$id'
     | '/api/v1/webhooks/$id'
+    | '/api/console/messages/$id/$part'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/no-workspace'
@@ -260,6 +271,7 @@ export interface FileRouteTypes {
     | '/api/webhooks/ses'
     | '/api/v1/messages/$id'
     | '/api/v1/webhooks/$id'
+    | '/api/console/messages/$id/$part'
   id:
     | '__root__'
     | '/_app'
@@ -284,6 +296,7 @@ export interface FileRouteTypes {
     | '/api/webhooks/ses'
     | '/api/v1/messages/$id'
     | '/api/v1/webhooks/$id'
+    | '/api/console/messages/$id/$part'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -299,6 +312,7 @@ export interface RootRouteChildren {
   ApiV1MessagesRoute: typeof ApiV1MessagesRouteWithChildren
   ApiV1WebhooksRoute: typeof ApiV1WebhooksRouteWithChildren
   ApiWebhooksSesRoute: typeof ApiWebhooksSesRoute
+  ApiConsoleMessagesIdPartRoute: typeof ApiConsoleMessagesIdPartRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -457,6 +471,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiV1WebhooksIdRouteImport
       parentRoute: typeof ApiV1WebhooksRoute
     }
+    '/api/console/messages/$id/$part': {
+      id: '/api/console/messages/$id/$part'
+      path: '/api/console/messages/$id/$part'
+      fullPath: '/api/console/messages/$id/$part'
+      preLoaderRoute: typeof ApiConsoleMessagesIdPartRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -521,6 +542,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiV1MessagesRoute: ApiV1MessagesRouteWithChildren,
   ApiV1WebhooksRoute: ApiV1WebhooksRouteWithChildren,
   ApiWebhooksSesRoute: ApiWebhooksSesRoute,
+  ApiConsoleMessagesIdPartRoute: ApiConsoleMessagesIdPartRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
