@@ -135,6 +135,7 @@ export function previewAudienceRows(
     )
     .one().n;
   const eligible = sql.exec<{ email: string }>(recipientQuery(), appId, ids, now - IMPLIED_CONSENT_MS).toArray();
+  // shortcut: one suppression lookup per eligible email; replace with a join if previews of very large lists hit DO CPU limits.
   const optedOut = new Set(
     fromEmail === null
       ? []

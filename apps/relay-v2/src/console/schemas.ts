@@ -33,7 +33,11 @@ export const postalAddress = z.string().trim().min(1).max(300);
 export const campaignPatch = z.object({
   name: name.optional(),
   fromEmail: z.string().trim().toLowerCase().max(254).email().nullable().optional(),
-  subject: z.string().max(300).optional(),
+  subject: z
+    .string()
+    .max(300)
+    .refine((s) => !/[\r\n]/.test(s), "subject must not contain line breaks")
+    .optional(),
   html: z.string().max(500_000).optional(),
   text: z.string().max(500_000).optional(),
   listIds: z.array(id).max(50).optional(),

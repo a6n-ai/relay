@@ -968,7 +968,7 @@ export class ClientDO extends DurableObject<Env> {
     const cached = this.ctx.storage.kv.get<WorkspaceLimits>("limits");
     const age = cached ? Date.now() - cached.fetchedAt : Infinity;
     const senderMiss = forSender !== undefined && !cached?.senders[forSender];
-    if (cached && age < LIMITS_TTL_MS && !(senderMiss && age > SENDER_RETRY_MS)) return cached;
+    if (cached && age < LIMITS_TTL_MS && !(senderMiss && age > SENDER_RETRY_MS)) return { ...cached, postalAddress: cached.postalAddress ?? null };
     try {
       return await this.loadLimits(workspaceId);
     } catch (err) {

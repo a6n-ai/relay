@@ -5,7 +5,7 @@ import { z } from "zod";
 const setResponseStatus = vi.hoisted(() => vi.fn());
 vi.mock("@tanstack/react-start/server", () => ({ setResponseStatus }));
 
-import { memberInput, validate, slug } from "../src/console/schemas";
+import { campaignPatch, memberInput, validate, slug } from "../src/console/schemas";
 import { errorText } from "../src/components/error-text";
 
 describe("validate", () => {
@@ -28,6 +28,12 @@ describe("memberInput consentAt", () => {
     expect(() => check({ email: "a@x.test", consentAt: Date.now() + 86_400_000 })).toThrow(new Error("invalid input"));
     expect(setResponseStatus).toHaveBeenCalledWith(400);
     expect(check({ email: "a@x.test", consentAt: Date.now() - 1000 }).consentAt).toBeLessThan(Date.now());
+  });
+
+  it("refuses a campaign subject with a line break", () => {
+    const check = validate(campaignPatch);
+    expect(() => check({ subject: "Hi\r\nBcc: x@y.z" })).toThrow(new Error("invalid input"));
+    expect(check({ subject: "Hi" })).toEqual({ subject: "Hi" });
   });
 });
 

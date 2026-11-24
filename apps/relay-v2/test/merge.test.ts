@@ -14,6 +14,10 @@ describe("merge fields", () => {
     expect(renderMerge("{{contact.first_name}}", values, "subject")).toBe("BobBcc: x@y.z");
   });
 
+  it("treats inherited object keys as unknown fields", () => {
+    expect(renderMerge("{{constructor}} {{__proto__}}", MERGE_SAMPLES, "text")).toBe("{{constructor}} {{__proto__}}");
+  });
+
   it("renders in one pass, so a value is never expanded", () => {
     const values = { ...MERGE_SAMPLES, "contact.first_name": "{{contact.email}}" };
     expect(renderMerge("{{contact.first_name}}", values, "text")).toBe("{{contact.email}}");

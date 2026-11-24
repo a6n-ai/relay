@@ -28,7 +28,7 @@ export function hasMergeToken(template: string, name: string): boolean {
 // One pass over the template, so a value that contains a token is never expanded.
 export function renderMerge(template: string, values: MergeValues, mode: "html" | "text" | "subject"): string {
   return template.replace(TOKEN_RE, (token, name: string) => {
-    if (name === UNSUBSCRIBE || !(name in values)) return token;
+    if (name === UNSUBSCRIBE || !Object.hasOwn(values, name)) return token;
     const value = values[name as keyof MergeValues];
     if (mode === "html") return value.replace(/[&<>"']/g, (c) => HTML_ESCAPES[c]!);
     if (mode === "subject") return value.replace(/[\r\n]/g, "");
