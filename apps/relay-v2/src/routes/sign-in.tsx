@@ -50,7 +50,7 @@ function SignIn() {
     setPending(false);
     if (res.status === 429) return setError(TOO_MANY);
     if (!res.ok) return setError("That code is not right. Try again.");
-    await router.navigate({ to: safeRedirect(redirect) });
+    await router.navigate({ href: safeRedirect(redirect) });
   }
 
   return (

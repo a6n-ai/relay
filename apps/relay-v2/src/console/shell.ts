@@ -12,7 +12,8 @@ export type Shell = {
   workspaces: { id: string; name: string }[];
 };
 
-// A stale active workspace (removed member, or none yet) moves to the first membership; its set-cookie goes to setCookies.
+// A stale active workspace (removed member, or none yet) moves to the first active membership; its set-cookie goes to setCookies.
+// set-active refuses suspended workspaces, so when every membership is suspended the first one is shown without switching.
 export async function loadShell(env: Env, headers: Headers, setCookies: string[] = []): Promise<Shell> {
   const { userId, platformAdmin, activeWorkspaceId } = await requireSession(env, headers);
   const db = securityDb(env);
@@ -26,13 +27,16 @@ export async function loadShell(env: Env, headers: Headers, setCookies: string[]
 
   let current = memberships.find((m) => m.id === activeWorkspaceId) ?? null;
   if (!current && memberships.length > 0) {
-    current = memberships[0];
-    const { headers: authHeaders } = await createAuth(env).api.setActiveOrganization({
-      headers,
-      body: { organizationId: current.id },
-      returnHeaders: true,
-    });
-    setCookies.push(...authHeaders.getSetCookie());
+    const active = memberships.find((m) => m.status === "active");
+    current = active ?? memberships[0];
+    if (active) {
+      const { headers: authHeaders } = await createAuth(env).api.setActiveOrganization({
+        headers,
+        body: { organizationId: active.id },
+        returnHeaders: true,
+      });
+      setCookies.push(...authHeaders.getSetCookie());
+    }
   }
 
   return {

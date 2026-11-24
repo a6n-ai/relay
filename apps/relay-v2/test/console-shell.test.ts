@@ -82,6 +82,38 @@ describe("console shell", { timeout: 60_000 }, () => {
     expect(res.status).toBe(200);
     expect(await res.text()).toContain("Workspace suspended");
   });
+
+  it("skips a suspended first membership when no active workspace is set", async () => {
+    const admin = await cookieFor("suspended-first-admin@example.com", "admin");
+    const suspendedId = await createWorkspace(admin, "Suspended First Co");
+    const activeId = await createWorkspace(admin, "Active Second Co");
+    const cookie = await cookieFor("suspended-first-shell@example.com", "user");
+    const userId = await userIdOf("suspended-first-shell@example.com");
+    await db.insert(member).values([
+      { organizationId: suspendedId, userId, role: "member" },
+      { organizationId: activeId, userId, role: "member" },
+    ]);
+    await db.update(workspace).set({ status: "suspended" }).where(eq(workspace.id, suspendedId));
+
+    const res = await getPage("/", cookie);
+    expect(res.status).toBe(200);
+    expect(await res.text()).toContain("Active Second Co");
+  });
+
+  it("renders the suspended state when every membership is suspended and none is active", async () => {
+    const admin = await cookieFor("only-suspended-admin@example.com", "admin");
+    const wsId = await createWorkspace(admin, "Only Suspended Co");
+    const cookie = await cookieFor("only-suspended-shell@example.com", "user");
+    const userId = await userIdOf("only-suspended-shell@example.com");
+    await db.insert(member).values({ organizationId: wsId, userId, role: "member" });
+    await db.update(workspace).set({ status: "suspended" }).where(eq(workspace.id, wsId));
+
+    const res = await getPage("/", cookie);
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).toContain("Only Suspended Co");
+    expect(html).toContain("Workspace suspended");
+  });
 });
 
 describe("safeRedirect", () => {
