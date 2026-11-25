@@ -3,6 +3,7 @@ import { Label } from "@foundry/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@foundry/ui/select";
 import { toast } from "@foundry/ui/toast";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { UsersIcon } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { ConfirmDialog } from "../../components/confirm-dialog";
 import { CreateDialog } from "../../components/create-dialog";
@@ -11,11 +12,15 @@ import { errorText } from "../../components/error-text";
 import { FormError } from "../../components/form-error";
 import { ResourceTable } from "../../components/resource-table";
 import { useCan } from "../../components/use-can";
-import { ViewHeader } from "../../components/view-header";
+import { EmptyState } from "../../components/page/empty-state";
+import { TableSkeleton } from "../../components/page/table-skeleton";
+import { Toolbar } from "../../components/page/toolbar";
+import { PageHeader } from "../../components/shell/page-header";
 import { addGrantFn, fetchAddressAccess, removeGrantFn } from "../../console/grants.fns";
 
 export const Route = createFileRoute("/_app/domains_/addresses/$addressId")({
   loader: ({ params }) => fetchAddressAccess({ data: { addressId: params.addressId } }),
+  pendingComponent: () => <TableSkeleton columns={2} />,
   component: AddressAccessPage,
 });
 
@@ -24,10 +29,12 @@ function AddressAccessPage() {
   const { shell } = Route.useRouteContext();
   const router = useRouter();
   const canManage = useCan({ mailbox: ["manage"] });
+  const [adding, setAdding] = useState(false);
+  const [removing, setRemoving] = useState<string | null>(null);
   if (!data) {
     return (
       <>
-        <ViewHeader title="Access" />
+        <PageHeader crumbs={[{ label: "Domains", to: "/domains" }, { label: "Access" }]} />
         <DeniedState reason={deniedReason(shell)} />
       </>
     );
@@ -51,37 +58,43 @@ function AddressAccessPage() {
 
   return (
     <>
-      <ViewHeader
-        title={address.email}
-        actions={
-          canManage ? (
-            <CreateDialog trigger="Add access" title="Give access to this address">
-              {(done) => <NewGrantForm addressId={address.id} options={options} done={done} />}
-            </CreateDialog>
-          ) : undefined
-        }
-      />
+      <PageHeader crumbs={[{ label: "Domains", to: "/domains" }, { label: address.email }]} />
+      <Toolbar>
+        {canManage ? (
+          <CreateDialog trigger="Add access" title="Give access to this address" open={adding} onOpenChange={setAdding}>
+            {(done) => <NewGrantForm addressId={address.id} options={options} done={done} />}
+          </CreateDialog>
+        ) : null}
+      </Toolbar>
       <ResourceTable
         columns={[
           { header: "Who", cell: (g) => g.label },
           { header: "Type", cell: (g) => (g.kind === "team" ? "Team" : "Member") },
-          {
-            header: "",
-            cell: (g) =>
-              canManage ? (
-                <ConfirmDialog
-                  trigger="Remove"
-                  title="Remove this access?"
-                  description="This person or team can no longer read mail sent to this address."
-                  confirmLabel="Remove access"
-                  onConfirm={() => remove(g.id)}
-                />
-              ) : null,
-          },
         ]}
         rows={grants}
         rowKey={(g) => g.id}
-        empty="Only owners and admins can read this address. Share it with a member or team below."
+        menu={(g) => [{ label: "Remove", hidden: !canManage, destructive: true, onSelect: () => setRemoving(g.id) }]}
+        empty={
+          <EmptyState
+            icon={UsersIcon}
+            title="Owners and admins can read this address. Share it with a member or team."
+            action={
+              canManage ? (
+                <Button size="sm" className="rounded-full" onClick={() => setAdding(true)}>
+                  Add access
+                </Button>
+              ) : undefined
+            }
+          />
+        }
+      />
+      <ConfirmDialog
+        open={removing !== null}
+        onOpenChange={(o) => !o && setRemoving(null)}
+        title="Remove this access?"
+        description="This person or team can no longer read mail sent to this address."
+        confirmLabel="Remove access"
+        onConfirm={() => removing && remove(removing)}
       />
     </>
   );
