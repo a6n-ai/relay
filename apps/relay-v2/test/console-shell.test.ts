@@ -4,11 +4,12 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { PROBLEM_LABEL } from "../src/components/campaign-problems";
 import { reasonText } from "../src/components/error-text";
 import { clientFor } from "../src/core/messages";
+import { loadShell } from "../src/console/shell";
 import { safeRedirect } from "../src/console/shell.fns";
 import { securityDb } from "../src/db/security/client";
 import { newId } from "../src/lib/ids";
 import { app, member, user, workspace } from "../src/db/security/schema";
-import { addMember, cookieFor, createWorkspace, ORIGIN, setActive, signIn } from "./console-helpers";
+import { addMember, cookieFor, createWorkspace, headersFor, ORIGIN, setActive, signIn } from "./console-helpers";
 import { applyMigrations } from "./migrate";
 
 const db = securityDb(env);
@@ -188,6 +189,43 @@ describe("console shell", { timeout: 60_000 }, () => {
         "unsubscribe_missing",
       ].sort(),
     );
+  });
+});
+
+describe("shell apps", { timeout: 60_000 }, () => {
+  it("lists the active workspace's apps in creation order", async () => {
+    const owner = await cookieFor("apps-shell-owner@example.com", "admin");
+    const wsId = await createWorkspace(owner, "Apps Shell Co");
+    await setActive(owner, wsId);
+    await db.insert(app).values([
+      { workspaceId: wsId, name: "Later App", slug: "later", createdAt: new Date(2000) },
+      { workspaceId: wsId, name: "Earlier App", slug: "earlier", createdAt: new Date(1000) },
+    ]);
+
+    const shell = await loadShell(env, headersFor(owner));
+    expect(shell.apps.map((a) => a.name)).toEqual(["Earlier App", "Later App"]);
+    expect(Object.keys(shell.apps[0]).sort()).toEqual(["id", "name"]);
+  });
+
+  it("never lists another workspace's apps", async () => {
+    const owner = await cookieFor("apps-shell-other-owner@example.com", "admin");
+    const wsId = await createWorkspace(owner, "Apps Shell Mine");
+    const otherId = await createWorkspace(owner, "Apps Shell Other");
+    await setActive(owner, wsId);
+    await db.insert(app).values([
+      { workspaceId: wsId, name: "Mine App", slug: "mine" },
+      { workspaceId: otherId, name: "Foreign App", slug: "foreign" },
+    ]);
+
+    const shell = await loadShell(env, headersFor(owner));
+    expect(shell.apps.map((a) => a.name)).toEqual(["Mine App"]);
+  });
+
+  it("gives a user with no workspace an empty apps list", async () => {
+    const lone = await cookieFor("apps-shell-lone@example.com", "user");
+    const shell = await loadShell(env, headersFor(lone));
+    expect(shell.active).toBeNull();
+    expect(shell.apps).toEqual([]);
   });
 });
 
