@@ -25,7 +25,8 @@ import { ContentFields, type LetterPreview } from "./content-fields";
 import { errorText } from "./error-text";
 import { FormError } from "./form-error";
 import { ScheduleDialog } from "./schedule-dialog";
-import { StatusBadge } from "./status-badge";
+import { SettingsCard } from "./page/settings-card";
+import { Toolbar } from "./page/toolbar";
 import { useCan } from "./use-can";
 
 export type CampaignOptions = { senders: string[]; lists: ListView[]; postalAddress: string | null };
@@ -63,8 +64,9 @@ export function CampaignEditor({
       text: campaign.text,
       audienceKind: campaign.audienceKind,
       audienceQuery: campaign.audienceQuery,
+      listIds: campaign.listIds,
     },
-    { from, subject, html, text, audienceKind, audienceQuery: audienceQuery.trim() || null },
+    { from, subject, html, text, audienceKind, listIds, audienceQuery: audienceQuery.trim() || null },
   );
   const leaving = useRef(false);
   const blocker = useBlocker({
@@ -189,8 +191,18 @@ export function CampaignEditor({
     }
   }
 
+  const schedule = canSend ? (
+    problems.length === 0 ? (
+      <ScheduleDialog campaignId={campaign.id} beforeSubmit={saveFirst} onDone={() => router.invalidate()} />
+    ) : (
+      <Button size="sm" disabled>
+        Schedule…
+      </Button>
+    )
+  ) : null;
+
   return (
-    <div className="grid gap-6">
+    <>
       <ConfirmDialog
         open={blocked !== null}
         onOpenChange={(open) => !open && blocked?.reset()}
@@ -199,147 +211,145 @@ export function CampaignEditor({
         confirmLabel="Leave without saving"
         onConfirm={() => blocked?.proceed()}
       />
-      <div className="flex flex-wrap items-center gap-2">
-        <StatusBadge status={campaign.status} />
-        <span className="text-sm text-muted-foreground">{campaign.name}</span>
-      </div>
-
-      <form onSubmit={save} className="grid max-w-2xl gap-4">
-        <Label htmlFor="campaign-from">From</Label>
-        <Select value={from} onValueChange={(v) => setFrom(v ?? "")} disabled={!canWrite}>
-          <SelectTrigger id="campaign-from" aria-label="From" className="w-full">
-            <SelectValue placeholder="Choose a verified address" />
-          </SelectTrigger>
-          <SelectContent>
-            {options.senders.map((s) => (
-              <SelectItem key={s} value={s}>
-                {s}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <fieldset className="grid gap-2">
-          <legend className="text-sm font-medium">Audience</legend>
-          <RadioGroup
-            value={audienceKind}
-            onValueChange={(v) => setAudienceKind(v as "lists" | "hook")}
-            aria-label="Audience"
-            className="grid gap-2"
-          >
-            <Label htmlFor="audience-lists" className="flex items-center gap-2 font-normal">
-              <RadioGroupItem id="audience-lists" value="lists" disabled={!canWrite} />
-              Lists
-            </Label>
-            <Label htmlFor="audience-hook" className="flex items-center gap-2 font-normal">
-              <RadioGroupItem id="audience-hook" value="hook" disabled={!canWrite || !hookReady} />
-              App audience
-            </Label>
-          </RadioGroup>
-          {audienceKind === "hook" ? (
-            <>
-              <Label htmlFor="campaign-audience-query">Audience filter</Label>
-              <Input
-                id="campaign-audience-query"
-                value={audienceQuery}
-                disabled={!canWrite}
-                onChange={(e) => setAudienceQuery(e.target.value)}
-              />
-              <p className="text-sm text-muted-foreground">Counted when it sends</p>
-            </>
-          ) : (
-            <>
-              {options.lists.length === 0 ? <p className="text-sm text-muted-foreground">No lists in this app yet.</p> : null}
-              {options.lists.map((l) => (
-                <Label key={l.id} className="flex items-center gap-2 font-normal">
-                  <Checkbox
-                    checked={listIds.includes(l.id)}
-                    disabled={!canWrite}
-                    onCheckedChange={(on) => toggleList(l.id, on === true)}
-                  />
-                  {l.name}
-                </Label>
-              ))}
-              {audience ? (
-                <p className="text-sm text-muted-foreground tabular-nums">
-                  {audience.sendable} will receive this ({audience.suppressed} suppressed, {audience.lapsed} lapsed)
-                </p>
-              ) : null}
-            </>
-          )}
-        </fieldset>
-
-        <ContentFields
-          value={{ subject, html, text }}
-          onChange={(next) => {
-            setSubject(next.subject);
-            setHtml(next.html);
-            setText(next.text);
-          }}
-          dataFields={campaign.audienceKind === "hook"}
-          disabled={!canWrite}
-          onPreview={previewLetter}
-        />
-
-        <FormError message={error} />
+      <Toolbar>
         {canWrite ? (
-          <div className="flex justify-end">
-            <Button type="submit" disabled={pending}>
-              Save
-            </Button>
-          </div>
+          <Button type="submit" form="campaign-form" variant="outline" size="sm" disabled={pending || !dirty}>
+            Save
+          </Button>
         ) : null}
-      </form>
-
-      <div className="flex flex-wrap gap-2">
         {canWrite ? (
           <Button variant="outline" size="sm" onClick={sendTest}>
             Send test to me
           </Button>
         ) : null}
+        {schedule}
+      </Toolbar>
+
+      <form id="campaign-form" onSubmit={save} className="grid max-w-2xl gap-4 px-4 pb-4">
+        <SettingsCard title="Content">
+          <div className="grid gap-3">
+            <Label htmlFor="campaign-from">From</Label>
+            <Select value={from} onValueChange={(v) => setFrom(v ?? "")} disabled={!canWrite}>
+              <SelectTrigger id="campaign-from" aria-label="From" className="w-full">
+                <SelectValue placeholder="Choose a verified address" />
+              </SelectTrigger>
+              <SelectContent>
+                {options.senders.map((s) => (
+                  <SelectItem key={s} value={s}>
+                    {s}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <ContentFields
+              value={{ subject, html, text }}
+              onChange={(next) => {
+                setSubject(next.subject);
+                setHtml(next.html);
+                setText(next.text);
+              }}
+              dataFields={campaign.audienceKind === "hook"}
+              disabled={!canWrite}
+              onPreview={previewLetter}
+            />
+            <FormError message={error} />
+          </div>
+        </SettingsCard>
+
+        <SettingsCard title="Audience">
+          <fieldset className="grid gap-2">
+            <legend className="sr-only">Audience</legend>
+            <RadioGroup
+              value={audienceKind}
+              onValueChange={(v) => setAudienceKind(v as "lists" | "hook")}
+              aria-label="Audience"
+              className="grid gap-2"
+            >
+              <Label htmlFor="audience-lists" className="flex items-center gap-2 font-normal">
+                <RadioGroupItem id="audience-lists" value="lists" disabled={!canWrite} />
+                Lists
+              </Label>
+              <Label htmlFor="audience-hook" className="flex items-center gap-2 font-normal">
+                <RadioGroupItem id="audience-hook" value="hook" disabled={!canWrite || !hookReady} />
+                App audience
+              </Label>
+            </RadioGroup>
+            {audienceKind === "hook" ? (
+              <>
+                <Label htmlFor="campaign-audience-query">Audience filter</Label>
+                <Input
+                  id="campaign-audience-query"
+                  value={audienceQuery}
+                  disabled={!canWrite}
+                  onChange={(e) => setAudienceQuery(e.target.value)}
+                />
+                <p className="text-sm text-muted-foreground">Counted when it sends</p>
+              </>
+            ) : (
+              <>
+                {options.lists.length === 0 ? <p className="text-sm text-muted-foreground">No lists in this app yet.</p> : null}
+                {options.lists.map((l) => (
+                  <Label key={l.id} className="flex items-center gap-2 font-normal">
+                    <Checkbox
+                      checked={listIds.includes(l.id)}
+                      disabled={!canWrite}
+                      onCheckedChange={(on) => toggleList(l.id, on === true)}
+                    />
+                    {l.name}
+                  </Label>
+                ))}
+                {audience ? (
+                  <p className="text-sm text-muted-foreground tabular-nums">
+                    {audience.sendable} will receive this ({audience.suppressed} suppressed, {audience.lapsed} lapsed)
+                  </p>
+                ) : null}
+              </>
+            )}
+          </fieldset>
+        </SettingsCard>
+      </form>
+
+      <div className="grid max-w-2xl gap-4 px-4 pb-4">
+        <SettingsCard title="Before it can be sent">
+          {problems.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Ready to schedule.</p>
+          ) : (
+            <ul className="grid list-disc gap-1 pl-5 text-sm">
+              {problems.map((p) => (
+                <li key={p}>{PROBLEM_LABEL[p]}</li>
+              ))}
+            </ul>
+          )}
+          {problems.includes("postal_address_missing") && canSettings ? (
+            <form onSubmit={savePostalAddress} className="mt-3 grid gap-2">
+              <Label htmlFor="campaign-postal">Postal address</Label>
+              <Input id="campaign-postal" value={address} onChange={(e) => setAddress(e.target.value)} />
+              <div className="flex justify-end">
+                <Button type="submit" size="sm" disabled={!address.trim()}>
+                  Save address
+                </Button>
+              </div>
+            </form>
+          ) : null}
+        </SettingsCard>
+
         {canWrite ? (
-          <ConfirmDialog
-            trigger="Delete"
-            title="Delete this campaign?"
+          <SettingsCard
+            tone="danger"
+            title="Delete campaign"
             description="The draft and its body will be removed. This can't be undone."
-            confirmLabel="Delete"
-            onConfirm={remove}
+            action={
+              <ConfirmDialog
+                trigger="Delete"
+                title="Delete this campaign?"
+                description="The draft and its body will be removed. This can't be undone."
+                confirmLabel="Delete"
+                onConfirm={remove}
+              />
+            }
           />
         ) : null}
       </div>
-
-      <section className="grid max-w-2xl gap-3">
-        <h2 className="text-sm font-medium">Before it can be sent</h2>
-        {problems.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Ready to schedule.</p>
-        ) : (
-          <ul className="grid list-disc gap-1 pl-5 text-sm">
-            {problems.map((p) => (
-              <li key={p}>{PROBLEM_LABEL[p]}</li>
-            ))}
-          </ul>
-        )}
-        {problems.includes("postal_address_missing") && canSettings ? (
-          <form onSubmit={savePostalAddress} className="grid gap-2">
-            <Label htmlFor="campaign-postal">Postal address</Label>
-            <Input id="campaign-postal" value={address} onChange={(e) => setAddress(e.target.value)} />
-            <div className="flex justify-end">
-              <Button type="submit" size="sm" disabled={!address.trim()}>
-                Save address
-              </Button>
-            </div>
-          </form>
-        ) : null}
-        {canSend ? (
-          problems.length === 0 ? (
-            <ScheduleDialog campaignId={campaign.id} beforeSubmit={saveFirst} onDone={() => router.invalidate()} />
-          ) : (
-            <Button size="sm" disabled className="w-fit">
-              Schedule…
-            </Button>
-          )
-        ) : null}
-      </section>
-    </div>
+    </>
   );
 }

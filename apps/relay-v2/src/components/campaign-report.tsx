@@ -6,11 +6,11 @@ import type { AudiencePreview, CampaignStats, CampaignView } from "../do/campaig
 import { reasonText } from "./error-text";
 import { ConfirmDialog } from "./confirm-dialog";
 import { FormError } from "./form-error";
-import { formatWhen } from "./event-timeline";
+import { formatWhen } from "../lib/format-date";
 import { MeterBar } from "./meter-bar";
 import { runAction } from "./run-action";
 import { StatTile } from "./stat-tile";
-import { StatusBadge } from "./status-badge";
+import { Toolbar } from "./page/toolbar";
 import { useCan } from "./use-can";
 
 const LIVE = 10_000;
@@ -71,50 +71,44 @@ export function CampaignReport({ campaign, stats }: { campaign: CampaignView; st
     campaign.finishedAt !== null ? `Finished ${formatWhen(campaign.finishedAt)}` : null,
   ].filter((t): t is string => t !== null);
 
+  const canAct = canSend && (status === "scheduled" || status === "sending" || status === "paused");
   return (
-    <div className="grid gap-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <StatusBadge status={status} />
-        {times.map((t) => (
-          <span key={t} className="text-sm text-muted-foreground">
-            {t}
-          </span>
-        ))}
-      </div>
-      <FormError message={status === "paused" ? reasonText(campaign.error) : null} />
-      {status === "sending" && (
-        <div className="flex items-center gap-3">
-          <MeterBar percent={percent} />
-          <span className="text-xs tabular-nums text-muted-foreground">
-            {campaign.recipients} of {audience ? audience.sendable : "..."}
-          </span>
+    <>
+      <Toolbar>
+        {canAct && status === "scheduled" && (
+          <Button variant="outline" size="sm" onClick={() => void act(() => unscheduleCampaignFn({ data: { id } }), "Schedule removed")}>
+            Unschedule
+          </Button>
+        )}
+        {canAct && status === "sending" && (
+          <Button variant="outline" size="sm" onClick={() => void act(() => pauseCampaignFn({ data: { id } }), "Campaign paused")}>
+            Pause
+          </Button>
+        )}
+        {canAct && status === "paused" && (
+          <Button variant="outline" size="sm" onClick={() => void act(() => resumeCampaignFn({ data: { id } }), "Campaign resumed")}>
+            Resume
+          </Button>
+        )}
+        {canAct && cancel}
+      </Toolbar>
+      <div className="grid gap-4 px-4 pb-4">
+        {times.length > 0 && <p className="text-sm text-muted-foreground">{times.join(" · ")}</p>}
+        <FormError message={status === "paused" ? reasonText(campaign.error) : null} />
+        {status === "sending" && (
+          <div className="flex items-center gap-3">
+            <MeterBar percent={percent} />
+            <span className="text-xs tabular-nums text-muted-foreground">
+              {campaign.recipients} of {audience ? audience.sendable : "..."}
+            </span>
+          </div>
+        )}
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          {tiles.map(([label, value]) => (
+            <StatTile key={label} label={label} value={String(value)} />
+          ))}
         </div>
-      )}
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        {tiles.map(([label, value]) => (
-          <StatTile key={label} label={label} value={String(value)} />
-        ))}
       </div>
-      {canSend && (status === "scheduled" || status === "sending" || status === "paused") && (
-        <div className="flex flex-wrap gap-2">
-          {status === "scheduled" && (
-            <Button variant="outline" size="sm" onClick={() => void act(() => unscheduleCampaignFn({ data: { id } }), "Schedule removed")}>
-              Unschedule
-            </Button>
-          )}
-          {status === "sending" && (
-            <Button variant="outline" size="sm" onClick={() => void act(() => pauseCampaignFn({ data: { id } }), "Campaign paused")}>
-              Pause
-            </Button>
-          )}
-          {status === "paused" && (
-            <Button variant="outline" size="sm" onClick={() => void act(() => resumeCampaignFn({ data: { id } }), "Campaign resumed")}>
-              Resume
-            </Button>
-          )}
-          {cancel}
-        </div>
-      )}
-    </div>
+    </>
   );
 }
