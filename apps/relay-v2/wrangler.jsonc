@@ -54,7 +54,8 @@
       {
         "queue": "relay-send",
         "max_batch_size": 10,
-        "max_batch_timeout": 2,
+        // 0: one email starts the consumer at once; campaign messages still arrive together and batch.
+        "max_batch_timeout": 0,
         "max_retries": 10,
         "dead_letter_queue": "relay-send-dlq",
       },
