@@ -1,15 +1,14 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@foundry/ui/card";
-import { createFileRoute } from "@tanstack/react-router";
-import { DeniedState, deniedReason } from "../../components/denied-state";
-import { MeterBar } from "../../components/meter-bar";
-import { StatTile } from "../../components/stat-tile";
-import { PageHeader } from "../../components/shell/page-header";
-import { createItems } from "../../components/shell/nav";
 import { Button } from "@foundry/ui/button";
-import { Link } from "@tanstack/react-router";
+import { Card, CardContent, CardHeader, CardTitle } from "@foundry/ui/card";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import Globe from "lucide-react/icons/globe";
 import LayoutGrid from "lucide-react/icons/layout-grid";
 import UserPlus from "lucide-react/icons/user-plus";
+import { DeniedState, deniedReason } from "../../components/denied-state";
+import { MeterBar } from "../../components/meter-bar";
+import { createItems } from "../../components/shell/nav";
+import { PageHeader } from "../../components/shell/page-header";
+import { StatTile } from "../../components/stat-tile";
 import { fetchOverview } from "../../console/overview.fns";
 
 export const Route = createFileRoute("/_app/")({

@@ -21,7 +21,7 @@ import {
 import { Link, useLocation } from "@tanstack/react-router";
 import ChevronLeft from "lucide-react/icons/chevron-left";
 import ChevronRight from "lucide-react/icons/chevron-right";
-import { Fragment, type ReactNode, useState } from "react";
+import { Fragment, type ReactNode, useEffect, useState } from "react";
 import type { Shell } from "../console/shell";
 import { activeNav, type NavGroup, type NavItem, visibleNav } from "./shell/nav";
 import { UserMenu } from "./shell/user-menu";
@@ -33,6 +33,7 @@ type Active = { item: string; child?: string } | null;
 function ParentItem({ item, active }: { item: NavItem; active: Active }) {
   const current = active?.item === item.id;
   const [override, setOverride] = useState<boolean | null>(null);
+  useEffect(() => setOverride(null), [current]);
   const open = override ?? current;
   const first = item.children?.[0];
   return (
