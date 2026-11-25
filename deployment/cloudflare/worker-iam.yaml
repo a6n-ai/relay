@@ -55,7 +55,7 @@ Parameters:
     Type: String
     AllowedValues: ["true", "false"]
     Default: "false"
-    Description: Grant identity create/get/delete and sends from any identity in both SES regions, for customer self-serve domains. Leave false until self-serve goes live; the named identities above stay undeletable unless AllowDeleteSharedIdentities is true.
+    Description: Grant identity create/delete and sends from any identity in both SES regions, for customer self-serve domains. Leave false until self-serve goes live; the named identities above stay undeletable unless AllowDeleteSharedIdentities is true.
   EnableAwsLocation:
     Type: String
     AllowedValues: ["true", "false"]
@@ -137,13 +137,20 @@ Resources:
                   - "arn:aws:ses:${SesUsEastRegion}:${AWS::AccountId}:configuration-set/${Name}"
                   - Name: !Select [2, !Ref SesUsEastConfigurationSets]
             - !Ref AWS::NoValue
-          # Customer self-serve domains: identity create/get/delete in both regions, and sends from them (the
+          # Read-only and always on: the seed, "Check now" and the delete preview read identity state.
+          - Sid: SesIdentityRead
+            Effect: Allow
+            Action: ses:GetEmailIdentity
+            Resource:
+              - !Sub "arn:aws:ses:${ResourceRegion}:${AWS::AccountId}:identity/*"
+              - !Sub "arn:aws:ses:${SesUsEastRegion}:${AWS::AccountId}:identity/*"
+          # Customer self-serve domains: identity create/delete in both regions, and sends from them (the
           # configuration-set ARNs are authorized separately, so the sets stay restricted). Off by default.
           - !If
             - SelfServeIdentities
             - Sid: SesIdentityManage
               Effect: Allow
-              Action: [ses:CreateEmailIdentity, ses:GetEmailIdentity, ses:DeleteEmailIdentity]
+              Action: [ses:CreateEmailIdentity, ses:DeleteEmailIdentity]
               Resource:
                 - !Sub "arn:aws:ses:${ResourceRegion}:${AWS::AccountId}:identity/*"
                 - !Sub "arn:aws:ses:${SesUsEastRegion}:${AWS::AccountId}:identity/*"
