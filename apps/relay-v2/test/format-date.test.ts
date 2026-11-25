@@ -8,6 +8,11 @@ describe("formatDate", () => {
   it("renders en-CA YYYY-MM-DD HH:mm in the given zone", () => {
     expect(formatDate(Date.UTC(2026, 10, 15, 9, 5), "UTC")).toBe("2026-11-15 09:05");
   });
+
+  it("returns a dash for invalid input", () => {
+    expect(formatDate("nope")).toBe("—");
+    expect(formatDate(null as unknown as string)).toBe("—");
+  });
 });
 
 describe("formatWhen", () => {
@@ -22,6 +27,10 @@ describe("formatWhen", () => {
 
   it("uses the date past 7 days", () => {
     expect(formatWhen(ago(10 * 86_400_000), now, "UTC")).toBe("2026-11-15");
+  });
+
+  it("returns a dash for invalid input", () => {
+    expect(formatWhen("nope", now, "UTC")).toBe("—");
   });
 
   it("treats a future time as just now", () => {

@@ -3,6 +3,7 @@ const HOUR = 60 * MIN;
 const DAY = 24 * HOUR;
 
 function toMs(d: Date | number | string): number {
+  if (d == null) return NaN;
   return d instanceof Date ? d.getTime() : new Date(d).getTime();
 }
 
@@ -21,11 +22,13 @@ function parts(d: Date | number | string, tz?: string) {
 }
 
 export function formatDate(d: Date | number | string, tz?: string): string {
+  if (!Number.isFinite(toMs(d))) return "—";
   const p = parts(d, tz);
   return `${p.year}-${p.month}-${p.day} ${p.hour}:${p.minute}`;
 }
 
 export function formatWhen(d: Date | number | string, now = Date.now(), tz?: string): string {
+  if (!Number.isFinite(toMs(d))) return "—";
   const diff = now - toMs(d);
   if (diff < MIN) return "just now";
   if (diff < HOUR) return `${Math.floor(diff / MIN)}m ago`;

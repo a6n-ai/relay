@@ -9,7 +9,7 @@ export type Column<T> = { header: string; cell: (row: T) => ReactNode; numeric?:
 export function CellWhen({ when, text }: { when: string; text: string }) {
   return (
     <Tooltip>
-      <TooltipTrigger render={<span className="relative z-10 tabular-nums" />}>{text}</TooltipTrigger>
+      <TooltipTrigger render={<span className="tabular-nums" />}>{text}</TooltipTrigger>
       <TooltipContent>{when}</TooltipContent>
     </Tooltip>
   );
@@ -21,6 +21,7 @@ export function ResourceTable<T>({
   rowKey,
   empty,
   rowHref,
+  rowLabel,
   menu,
 }: {
   columns: Column<T>[];
@@ -28,6 +29,7 @@ export function ResourceTable<T>({
   rowKey: (row: T) => string;
   empty: ReactNode;
   rowHref?: (row: T) => LinkProps;
+  rowLabel?: (row: T) => string;
   menu?: (row: T) => RowAction[];
 }) {
   if (rows.length === 0) return typeof empty === "string" ? <p className="p-4 text-sm text-muted-foreground">{empty}</p> : <>{empty}</>;
@@ -47,20 +49,22 @@ export function ResourceTable<T>({
         {rows.map((row) => {
           const href = rowHref?.(row);
           return (
-            <TableRow key={rowKey(row)} className={href ? "relative hover:bg-muted/50" : undefined}>
+            <TableRow key={rowKey(row)} className={href ? "relative hover:bg-muted/50 [&_td>:not([data-row-link])]:relative [&_td>:not([data-row-link])]:z-10" : undefined}>
               {columns.map((c, i) => (
                 <TableCell key={c.header} className={c.numeric ? "text-right tabular-nums" : undefined}>
+                  {c.cell(row)}
                   {href && i === 0 ? (
-                    <Link {...href} className="outline-none after:absolute after:inset-0 focus-visible:after:ring-2 focus-visible:after:ring-ring/50">
-                      {c.cell(row)}
-                    </Link>
-                  ) : (
-                    c.cell(row)
-                  )}
+                    <Link
+                      {...href}
+                      data-row-link
+                      aria-label={rowLabel?.(row) ?? "Open"}
+                      className="absolute inset-0 outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                    />
+                  ) : null}
                 </TableCell>
               ))}
               {menu ? (
-                <TableCell className="relative z-10 w-10 text-right">
+                <TableCell className="w-10 text-right">
                   <RowMenu actions={menu(row)} label="Row actions" />
                 </TableCell>
               ) : null}
