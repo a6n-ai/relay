@@ -9,9 +9,23 @@ const tree = join(root, "src/routeTree.gen.ts");
 const committed = readFileSync(tree, "utf8");
 const FORBIDDEN = ["/api/dev/otp", "DEV_OTP_PEEK"];
 
+// The router ignores files by basename only, so the route ids must differ by exactly the dev OTP route.
+const routeIds = (text) => {
+  const block = text.match(/export interface FileRoutesById \{([\s\S]*?)\n\}/)?.[1] ?? "";
+  return new Set([...block.matchAll(/^\s*'([^']+)':/gm)].map((m) => m[1]));
+};
+
 try {
   execFileSync(join(root, "node_modules/.bin/vite"), ["build"], { cwd: root, stdio: "inherit", env: { ...process.env, NODE_OPTIONS: "--max-old-space-size=4096" } });
   const bad = [];
+  const prodIds = routeIds(readFileSync(tree, "utf8"));
+  const committedIds = routeIds(committed);
+  const missing = [...committedIds].filter((r) => !prodIds.has(r));
+  const extra = [...prodIds].filter((r) => !committedIds.has(r));
+  if (committedIds.size === 0) bad.push("could not read route ids from src/routeTree.gen.ts");
+  if (missing.join() !== "/api/dev/otp" || extra.length) {
+    bad.push(`route ids differ from the committed tree: missing [${missing}], extra [${extra}]; expected only /api/dev/otp missing`);
+  }
   for (const [name, text] of [["src/routeTree.gen.ts", readFileSync(tree, "utf8")]]) {
     for (const s of FORBIDDEN) if (text.includes(s)) bad.push(`${name}: ${s}`);
   }

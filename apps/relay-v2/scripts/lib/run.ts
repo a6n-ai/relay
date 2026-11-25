@@ -19,3 +19,8 @@ export function wranglerJson<T>(args: string[]): T {
   const out = wrangler([...args, "--json"], true);
   return JSON.parse(out.slice(out.indexOf("["))) as T;
 }
+
+export function build(): void {
+  const res = spawnSync("pnpm", ["exec", "vite", "build"], { cwd: APP_DIR, stdio: "inherit", env: { ...process.env, NODE_OPTIONS: "--max-old-space-size=4096" } });
+  if (res.status !== 0) throw new Error(`vite build exited with ${res.status}`);
+}
