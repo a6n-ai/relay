@@ -1,12 +1,12 @@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@foundry/ui/select";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { MailIcon } from "lucide-react";
-import { useEffect, useState } from "react";
 import { DeniedState, deniedReason } from "../../components/denied-state";
 import { type MessagesSearch, parseMessagesSearch } from "../../components/messages-search";
 import { EmptyState } from "../../components/page/empty-state";
 import { LoadMore } from "../../components/page/load-more";
 import { SearchInput, Toolbar } from "../../components/page/toolbar";
+import { useUrlFilter } from "../../components/page/use-url-filter";
 import { TableSkeleton } from "../../components/page/table-skeleton";
 import { ResourceTable } from "../../components/resource-table";
 import { PageHeader } from "../../components/shell/page-header";
@@ -32,16 +32,7 @@ function MessagesPage() {
   const navigate = useNavigate({ from: "/messages" });
   const label = search.dir === "in" ? "Received" : "Sent";
   const crumbs = [{ label: "Messages" }, { label }];
-  const [email, setEmail] = useState(search.email ?? "");
-
-  // The URL is the source of truth: follow it (sidebar, Back), push typed text 300 ms after typing stops.
-  useEffect(() => setEmail(search.email ?? ""), [search.email, search.dir]);
-  useEffect(() => {
-    const next = email.trim() || undefined;
-    if (next === search.email) return;
-    const t = setTimeout(() => navigate({ search: (s) => ({ ...s, email: next, cursor: undefined }), replace: true }), 300);
-    return () => clearTimeout(t);
-  }, [email, search.email, navigate]);
+  const [email, setEmail] = useUrlFilter("email", { resetCursor: true });
 
   if (!page) {
     return (
@@ -109,7 +100,13 @@ function MessagesPage() {
         rowLabel={() => "Open message"}
         empty={empty}
       />
-      <LoadMore hasMore={Boolean(page.nextCursor)} to="/messages" search={{ ...search, cursor: page.nextCursor }} />
+      <LoadMore
+        hasMore={Boolean(page.nextCursor)}
+        to="/messages"
+        search={{ ...search, cursor: page.nextCursor }}
+        resetTo={search.cursor ? "/messages" : undefined}
+        resetSearch={{ ...search, cursor: undefined }}
+      />
     </>
   );
 }

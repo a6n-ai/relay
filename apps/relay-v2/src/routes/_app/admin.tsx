@@ -12,6 +12,7 @@ import { ConfirmDialog } from "../../components/confirm-dialog";
 import { EmptyState } from "../../components/page/empty-state";
 import { SettingsCard } from "../../components/page/settings-card";
 import { SearchInput, Toolbar } from "../../components/page/toolbar";
+import { useUrlFilter } from "../../components/page/use-url-filter";
 import { TableSkeleton } from "../../components/page/table-skeleton";
 import { ResourceTable } from "../../components/resource-table";
 import { runAction } from "../../components/run-action";
@@ -21,11 +22,12 @@ import { SES_REGIONS } from "../../core/ses-regions";
 import { formatDate } from "../../lib/format-date";
 import { Hint } from "../../components/page/text";
 
-type AdminSearch = { ws?: string };
+type AdminSearch = { ws?: string; q?: string };
 
 export const Route = createFileRoute("/_app/admin")({
   validateSearch: (search: Record<string, unknown>): AdminSearch => ({
     ws: typeof search.ws === "string" && search.ws ? search.ws : undefined,
+    q: typeof search.q === "string" && search.q ? search.q : undefined,
   }),
   loader: async () => {
     try {
@@ -121,7 +123,7 @@ function ManageSheet({ w, run }: { w: Workspace; run: (action: () => Promise<unk
   const [region, setRegion] = useState(w.sesRegion ?? "");
   const suspend = w.status !== "suspended";
   return (
-    <div className="flex flex-col gap-4 overflow-y-auto px-4 pb-4">
+    <div className="grid min-h-0 flex-1 auto-rows-max gap-4 overflow-y-auto px-4 pb-4">
       <StatusCell w={w} />
       <SettingsCard
         title="Region"
@@ -207,7 +209,7 @@ function AdminPage() {
   const { ws } = Route.useSearch();
   const navigate = useNavigate({ from: "/admin" });
   const router = useRouter();
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useUrlFilter("q");
   const run = (action: () => Promise<unknown>, success: string) => runAction(action, success, () => router.invalidate());
   const q = query.trim().toLowerCase();
   const rows = q ? workspaces.filter((w) => w.name.toLowerCase().includes(q) || w.slug.toLowerCase().includes(q)) : workspaces;
@@ -220,7 +222,7 @@ function AdminPage() {
       <ResourceTable
         rows={rows}
         rowKey={(w) => w.id}
-        rowHref={(w) => ({ to: "/admin", search: { ws: w.id } })}
+        rowHref={(w) => ({ to: "/admin", search: (prev: Record<string, unknown>) => ({ ...prev, ws: w.id }) as never })}
         rowLabel={(w) => `Manage ${w.name}`}
         empty={
           <EmptyState
@@ -251,7 +253,7 @@ function AdminPage() {
         open={Boolean(selected)}
         modal={false}
         onOpenChange={(open) => {
-          if (!open) void navigate({ search: {} });
+          if (!open) void navigate({ search: (prev) => ({ ...prev, ws: undefined }) });
         }}
       >
         <SheetContent className="data-[side=right]:sm:max-w-lg">

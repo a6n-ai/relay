@@ -19,6 +19,7 @@ import { LoadMore } from "../../components/page/load-more";
 import { EmptyState } from "../../components/page/empty-state";
 import { RowMenu } from "../../components/page/row-menu";
 import { SearchInput, Toolbar } from "../../components/page/toolbar";
+import { useUrlFilter } from "../../components/page/use-url-filter";
 import { TableSkeleton } from "../../components/page/table-skeleton";
 import { PageHeader } from "../../components/shell/page-header";
 import { formatDate, formatWhen } from "../../lib/format-date";
@@ -34,7 +35,7 @@ import {
 import { FormBody, FormActions } from "../../components/page/form-parts";
 import { Hint } from "../../components/page/text";
 
-type ListSearch = { appId?: string; cursor?: string };
+type ListSearch = { appId?: string; cursor?: string; q?: string };
 
 const MAX_CSV_BYTES = 2_000_000;
 
@@ -43,8 +44,9 @@ export const Route = createFileRoute("/_app/lists_/$listId")({
   validateSearch: (search: Record<string, unknown>): ListSearch => ({
     appId: typeof search.appId === "string" && search.appId ? search.appId : undefined,
     cursor: typeof search.cursor === "string" && search.cursor ? search.cursor : undefined,
+    q: typeof search.q === "string" && search.q ? search.q : undefined,
   }),
-  loaderDeps: ({ search }) => search,
+  loaderDeps: ({ search }) => ({ appId: search.appId, cursor: search.cursor }),
   loader: async ({ deps, params }) => {
     const lists = deps.appId ? await fetchLists({ data: { appId: deps.appId } }) : [];
     const members = await fetchListMembers({ data: { listId: params.listId, cursor: deps.cursor } });
@@ -65,7 +67,7 @@ function ListDetailPage() {
   const navigate = useNavigate();
   const canWrite = useCan({ list: ["write"] });
   const canImport = useCan({ list: ["import"] });
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useUrlFilter("q");
   const [renaming, setRenaming] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [removing, setRemoving] = useState<string | null>(null);
@@ -223,7 +225,9 @@ function ListDetailPage() {
       <LoadMore
         hasMore={!!members.nextCursor}
         to={`/lists/${listId}`}
-        search={{ appId: search.appId, cursor: members.nextCursor }}
+        search={{ appId: search.appId, q: search.q, cursor: members.nextCursor }}
+        resetTo={search.cursor ? `/lists/${listId}` : undefined}
+        resetSearch={{ appId: search.appId, q: search.q }}
       />
     </>
   );

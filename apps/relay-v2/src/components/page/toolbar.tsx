@@ -18,12 +18,10 @@ export function SearchInput({
   value,
   onChange,
   placeholder = "Search",
-  onSubmit,
 }: {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
-  onSubmit?: () => void;
 }) {
   const ref = useRef<HTMLInputElement>(null);
   useEffect(() => {
@@ -48,9 +46,6 @@ export function SearchInput({
         placeholder={placeholder}
         aria-label={placeholder}
         onChange={(e) => onChange(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") onSubmit?.();
-        }}
       />
       <InputGroupAddon align="inline-end">
         <Kbd>/</Kbd>

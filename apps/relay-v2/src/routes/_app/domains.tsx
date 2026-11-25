@@ -5,7 +5,7 @@ import { Label } from "@foundry/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@foundry/ui/select";
 import { Switch } from "@foundry/ui/switch";
 import { toast } from "@foundry/ui/toast";
-import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { GlobeIcon } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { ConfirmDialog } from "../../components/confirm-dialog";
@@ -22,6 +22,7 @@ import { useCan } from "../../components/use-can";
 import { EmptyState } from "../../components/page/empty-state";
 import { TableSkeleton } from "../../components/page/table-skeleton";
 import { SearchInput, Toolbar } from "../../components/page/toolbar";
+import { useUrlFilter } from "../../components/page/use-url-filter";
 import { useNewParam } from "../../components/shell/create-menu";
 import { PageHeader } from "../../components/shell/page-header";
 import { fetchApps } from "../../console/apps.fns";
@@ -62,10 +63,9 @@ const KINDS = [
 
 function DomainsPage() {
   const data = Route.useLoaderData();
-  const { q } = Route.useSearch();
+  const [q, setQ] = useUrlFilter("q");
   const { shell } = Route.useRouteContext();
   const router = useRouter();
-  const navigate = useNavigate();
   const [newOpen, setNewOpen] = useNewParam();
   const canWrite = useCan({ sending: ["write"] });
   const canManageMail = useCan({ mailbox: ["manage"] });
@@ -84,7 +84,7 @@ function DomainsPage() {
     );
   }
   const { apps } = data;
-  const needle = (q ?? "").trim().toLowerCase();
+  const needle = q.trim().toLowerCase();
   const domains = needle ? data.domains.filter((d) => d.domain.toLowerCase().includes(needle)) : data.domains;
   const addresses = needle
     ? data.addresses.filter((a) => [a.email, a.appName, a.displayName ?? ""].some((v) => v.toLowerCase().includes(needle)))
@@ -146,8 +146,8 @@ function DomainsPage() {
       <Toolbar
         search={
           <SearchInput
-            value={q ?? ""}
-            onChange={(v) => void navigate({ to: ".", search: ((prev: Record<string, unknown>) => ({ ...prev, q: v || undefined })) as never, replace: true })}
+            value={q}
+            onChange={setQ}
             placeholder="Search domains and addresses"
           />
         }

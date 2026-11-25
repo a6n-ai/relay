@@ -3,7 +3,7 @@ import { Input } from "@foundry/ui/input";
 import { Label } from "@foundry/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@foundry/ui/select";
 import { toast } from "@foundry/ui/toast";
-import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
+import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
 import { ConfirmDialog } from "../../components/confirm-dialog";
 import { CreateDialog } from "../../components/create-dialog";
@@ -13,6 +13,7 @@ import { FormError } from "../../components/form-error";
 import { LoadMore } from "../../components/page/load-more";
 import { TableSkeleton } from "../../components/page/table-skeleton";
 import { SearchInput, Toolbar } from "../../components/page/toolbar";
+import { useUrlFilter } from "../../components/page/use-url-filter";
 import { PageHeader } from "../../components/shell/page-header";
 import { ResourceTable } from "../../components/resource-table";
 import { useCan } from "../../components/use-can";
@@ -70,7 +71,7 @@ function SuppressionsPage() {
   return (
     <>
       <PageHeader crumbs={crumbs} />
-      <Toolbar search={<PrefixSearch prefix={search.prefix} />}>
+      <Toolbar search={<PrefixSearch />}>
         {canWrite ? (
           <CreateDialog trigger="Suppress address" title="Suppress an address">
             {(done) => <AddForm done={done} />}
@@ -112,23 +113,15 @@ function SuppressionsPage() {
         to="/messages/suppressions"
         search={{ prefix: search.prefix, cursor: page.nextCursor }}
         resetTo={search.cursor ? "/messages/suppressions" : undefined}
+        resetSearch={{ prefix: search.prefix }}
       />
     </>
   );
 }
 
-// Applies on Enter by navigating, so the list reloads from the server with the new prefix and no cursor.
-function PrefixSearch({ prefix }: { prefix?: string }) {
-  const navigate = useNavigate({ from: "/messages/suppressions" });
-  const [value, setValue] = useState(prefix ?? "");
-  return (
-    <SearchInput
-      value={value}
-      onChange={setValue}
-      placeholder="Email starts with"
-      onSubmit={() => navigate({ to: "/messages/suppressions", search: { prefix: value.trim() || undefined } })}
-    />
-  );
+function PrefixSearch() {
+  const [value, setValue] = useUrlFilter("prefix", { resetCursor: true });
+  return <SearchInput value={value} onChange={setValue} placeholder="Email starts with" />;
 }
 
 function AddForm({ done }: { done: () => void }) {

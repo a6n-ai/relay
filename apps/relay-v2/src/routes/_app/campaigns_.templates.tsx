@@ -10,11 +10,11 @@ import { CreateDialog } from "../../components/create-dialog";
 import { DeniedState, deniedReason } from "../../components/denied-state";
 import { errorText, isNotFound } from "../../components/error-text";
 import { FormError } from "../../components/form-error";
-import { AppHint } from "../../components/page/app-hint";
 import { EmptyState } from "../../components/page/empty-state";
 import { LoadMore } from "../../components/page/load-more";
 import { TableSkeleton } from "../../components/page/table-skeleton";
 import { SearchInput, Toolbar } from "../../components/page/toolbar";
+import { useUrlFilter } from "../../components/page/use-url-filter";
 import { ResourceTable } from "../../components/resource-table";
 import { useNewParam } from "../../components/shell/create-menu";
 import { PageHeader } from "../../components/shell/page-header";
@@ -24,13 +24,14 @@ import { createTemplateFn, fetchTemplates } from "../../console/templates.fns";
 import { formatWhen } from "../../lib/format-date";
 import { FormBody, FormActions } from "../../components/page/form-parts";
 
-type TemplatesSearch = { appId?: string; cursor?: string; new?: 1 };
+type TemplatesSearch = { appId?: string; cursor?: string; new?: 1; q?: string };
 
 export const Route = createFileRoute("/_app/campaigns_/templates")({
   validateSearch: (search: Record<string, unknown>): TemplatesSearch => ({
     appId: typeof search.appId === "string" && search.appId ? search.appId : undefined,
     cursor: typeof search.cursor === "string" && search.cursor ? search.cursor : undefined,
     new: search.new === 1 || search.new === "1" ? 1 : undefined,
+    q: typeof search.q === "string" && search.q ? search.q : undefined,
   }),
   loaderDeps: ({ search }) => ({ appId: search.appId, cursor: search.cursor }),
   pendingComponent: () => <TableSkeleton columns={5} />,
@@ -56,7 +57,7 @@ function TemplatesPage() {
   const search = Route.useSearch();
   const canWrite = useCan({ template: ["write"] });
   const [open, setOpen] = useNewParam();
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useUrlFilter("q");
   const CRUMBS = [{ label: "Campaigns", to: "/campaigns", search: { appId: search.appId } }, { label: "Templates" }];
   if (!page) {
     return (
@@ -82,7 +83,6 @@ function TemplatesPage() {
   return (
     <>
       <PageHeader crumbs={CRUMBS} />
-      <AppHint show={!search.appId} name={apps.find((a) => a.id === appId)?.name} />
       <Toolbar search={<SearchInput value={query} onChange={setQuery} placeholder="Search templates" />}>{newButton}</Toolbar>
       {canCreate && appId ? (
         <CreateDialog title="New template" open={open} onOpenChange={setOpen}>
@@ -118,8 +118,9 @@ function TemplatesPage() {
       <LoadMore
         hasMore={Boolean(templates.nextCursor)}
         to="/campaigns/templates"
-        search={{ appId: search.appId, cursor: templates.nextCursor }}
+        search={{ appId: search.appId, q: search.q, cursor: templates.nextCursor }}
         resetTo={search.cursor ? "/campaigns/templates" : undefined}
+        resetSearch={{ appId: search.appId, q: search.q }}
       />
     </>
   );

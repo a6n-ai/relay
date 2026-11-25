@@ -1,10 +1,11 @@
-import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
+import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { Users } from "lucide-react";
 import { ConfirmDialog } from "../../components/confirm-dialog";
 import { DeniedState, deniedReason } from "../../components/denied-state";
 import { EmptyState } from "../../components/page/empty-state";
 import { SearchInput, Toolbar } from "../../components/page/toolbar";
+import { useUrlFilter } from "../../components/page/use-url-filter";
 import { TableSkeleton } from "../../components/page/table-skeleton";
 import { ResourceTable } from "../../components/resource-table";
 import { type MemberRole, ROLE_LABEL, RoleSelect } from "../../components/role-select";
@@ -27,9 +28,8 @@ export const Route = createFileRoute("/_app/settings_/members")({
 
 function MembersPage() {
   const people = Route.useLoaderData();
-  const { q } = Route.useSearch();
+  const [q, setQ] = useUrlFilter("q");
   const { shell } = Route.useRouteContext();
-  const navigate = useNavigate({ from: Route.fullPath });
   const router = useRouter();
   const suspended = shell.active?.status === "suspended";
   const ownerActor = (shell.active?.roles ?? []).includes("owner");
@@ -46,7 +46,7 @@ function MembersPage() {
       </>
     );
   }
-  const needle = (q ?? "").trim().toLowerCase();
+  const needle = q.trim().toLowerCase();
   const rows = needle ? people.members.filter((m) => `${m.name} ${m.email}`.toLowerCase().includes(needle)) : people.members;
 
   return (
@@ -56,9 +56,9 @@ function MembersPage() {
       <Toolbar
         search={
           <SearchInput
-            value={q ?? ""}
+            value={q}
             placeholder="Search members"
-            onChange={(v) => void navigate({ search: { q: v || undefined }, replace: true })}
+            onChange={setQ}
           />
         }
       />

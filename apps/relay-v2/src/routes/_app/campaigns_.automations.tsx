@@ -12,7 +12,6 @@ import { CreateDialog } from "../../components/create-dialog";
 import { DeniedState, deniedReason } from "../../components/denied-state";
 import { errorText } from "../../components/error-text";
 import { FormError } from "../../components/form-error";
-import { AppHint } from "../../components/page/app-hint";
 import { EmptyState } from "../../components/page/empty-state";
 import { TableSkeleton } from "../../components/page/table-skeleton";
 import { Toolbar } from "../../components/page/toolbar";
@@ -85,7 +84,6 @@ function AutomationsPage() {
   return (
     <>
       <PageHeader crumbs={CRUMBS} />
-      <AppHint show={!search.appId} name={apps.find((a) => a.id === appId)?.name} />
       <Toolbar>{newButton}</Toolbar>
       {canCreate && appId ? (
         <CreateDialog title="New automation" open={open} onOpenChange={setOpen}>

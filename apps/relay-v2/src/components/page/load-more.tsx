@@ -9,6 +9,7 @@ export function LoadMore({
   to,
   search,
   resetTo,
+  resetSearch,
 }: {
   hasMore: boolean;
   loading?: boolean;
@@ -16,6 +17,7 @@ export function LoadMore({
   to?: string;
   search?: Record<string, unknown>;
   resetTo?: string;
+  resetSearch?: Record<string, unknown>;
 }) {
   if (!hasMore && !resetTo) return null;
   const spinner = loading ? <Loader2Icon className="animate-spin" /> : null;
@@ -33,7 +35,7 @@ export function LoadMore({
         )
       ) : null}
       {resetTo ? (
-        <Button variant="ghost" size="sm" render={<Link to={resetTo as never} />}>
+        <Button variant="ghost" size="sm" render={<Link to={resetTo as never} search={resetSearch as never} />}>
           Back to newest
         </Button>
       ) : null}

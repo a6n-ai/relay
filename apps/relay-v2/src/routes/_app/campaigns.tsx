@@ -11,11 +11,11 @@ import { CreateDialog } from "../../components/create-dialog";
 import { DeniedState, deniedReason } from "../../components/denied-state";
 import { errorText, isNotFound } from "../../components/error-text";
 import { FormError } from "../../components/form-error";
-import { AppHint } from "../../components/page/app-hint";
 import { EmptyState } from "../../components/page/empty-state";
 import { LoadMore } from "../../components/page/load-more";
 import { TableSkeleton } from "../../components/page/table-skeleton";
 import { SearchInput, Toolbar } from "../../components/page/toolbar";
+import { useUrlFilter } from "../../components/page/use-url-filter";
 import { ResourceTable } from "../../components/resource-table";
 import { PageHeader } from "../../components/shell/page-header";
 import { useNewParam } from "../../components/shell/create-menu";
@@ -27,13 +27,15 @@ import { fetchTemplates } from "../../console/templates.fns";
 import { formatWhen } from "../../lib/format-date";
 import { FormBody, FormActions } from "../../components/page/form-parts";
 
-type CampaignsSearch = { appId?: string; cursor?: string; new?: 1 };
+type CampaignsSearch = { appId?: string; cursor?: string; new?: 1; q?: string; status?: string };
 
 export const Route = createFileRoute("/_app/campaigns")({
   validateSearch: (search: Record<string, unknown>): CampaignsSearch => ({
     appId: typeof search.appId === "string" && search.appId ? search.appId : undefined,
     cursor: typeof search.cursor === "string" && search.cursor ? search.cursor : undefined,
     new: search.new === 1 || search.new === "1" ? 1 : undefined,
+    q: typeof search.q === "string" && search.q ? search.q : undefined,
+    status: typeof search.status === "string" && search.status ? search.status : undefined,
   }),
   loaderDeps: ({ search }) => ({ appId: search.appId, cursor: search.cursor }),
   pendingComponent: () => <TableSkeleton columns={5} />,
@@ -63,8 +65,9 @@ function CampaignsPage() {
   const search = Route.useSearch();
   const canWrite = useCan({ campaign: ["write"] });
   const [open, setOpen] = useNewParam();
-  const [query, setQuery] = useState("");
-  const [status, setStatus] = useState("all");
+  const [query, setQuery] = useUrlFilter("q");
+  const navigate = useNavigate({ from: "/campaigns" });
+  const status = search.status ?? "all";
   if (!page) {
     return (
       <>
@@ -95,12 +98,11 @@ function CampaignsPage() {
   return (
     <>
       <PageHeader crumbs={CRUMBS} />
-      <AppHint show={!search.appId} name={apps.find((a) => a.id === appId)?.name} />
       <Toolbar
         search={<SearchInput value={query} onChange={setQuery} placeholder="Search campaigns" />}
         filters={
           statuses.length > 1 ? (
-            <Select value={status} onValueChange={(v) => setStatus(v ?? "all")}>
+            <Select value={status} onValueChange={(v) => navigate({ search: (s) => ({ ...s, status: !v || v === "all" ? undefined : v, cursor: undefined }), replace: true })}>
               <SelectTrigger aria-label="Status" className="w-36">
                 <SelectValue />
               </SelectTrigger>
@@ -150,8 +152,9 @@ function CampaignsPage() {
       <LoadMore
         hasMore={Boolean(campaigns.nextCursor)}
         to="/campaigns"
-        search={{ appId: search.appId, cursor: campaigns.nextCursor }}
+        search={{ appId: search.appId, q: search.q, status: search.status, cursor: campaigns.nextCursor }}
         resetTo={search.cursor ? "/campaigns" : undefined}
+        resetSearch={{ appId: search.appId, q: search.q, status: search.status }}
       />
     </>
   );

@@ -11,6 +11,7 @@ import { errorText } from "../../components/error-text";
 import { FormError } from "../../components/form-error";
 import { EmptyState } from "../../components/page/empty-state";
 import { SearchInput, Toolbar } from "../../components/page/toolbar";
+import { useUrlFilter } from "../../components/page/use-url-filter";
 import { TableSkeleton } from "../../components/page/table-skeleton";
 import { ResourceTable } from "../../components/resource-table";
 import { useNewParam } from "../../components/shell/create-menu";
@@ -21,8 +22,9 @@ import { FormBody, FormActions } from "../../components/page/form-parts";
 import { Hint } from "../../components/page/text";
 
 export const Route = createFileRoute("/_app/apps")({
-  validateSearch: (search: Record<string, unknown>): { new?: 1 } => ({
+  validateSearch: (search: Record<string, unknown>): { new?: 1; q?: string } => ({
     new: search.new === 1 || search.new === "1" ? 1 : undefined,
+    q: typeof search.q === "string" && search.q ? search.q : undefined,
   }),
   loader: () => fetchApps(),
   pendingComponent: () => <TableSkeleton columns={3} />,
@@ -34,7 +36,7 @@ function AppsPage() {
   const { shell } = Route.useRouteContext();
   const canWrite = useCan({ tenant: ["write"] });
   const [open, setOpen] = useNewParam();
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useUrlFilter("q");
   const crumbs = [{ label: "Apps" }];
   if (!apps) {
     return (
