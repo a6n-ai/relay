@@ -25,6 +25,7 @@ import {
   setAppDefaultSendersFn,
   setAudienceHookFn,
 } from "../../console/apps.fns";
+import { setAudienceBindingFn } from "../../console/admin.fns";
 
 export const Route = createFileRoute("/_app/apps_/$appId")({
   loader: async ({ params }) => {
@@ -103,7 +104,12 @@ function AppPage() {
         empty="No keys yet. Create one to start sending from this app."
       />
       <DefaultSendersPanel appId={app.id} senders={senders} canWrite={canWrite} />
-      <AudiencePanel appId={app.id} hook={hook} canWrite={canWrite} />
+      <AudiencePanel
+        appId={app.id}
+        hook={hook}
+        canWrite={canWrite}
+        bindWorkspaceId={shell.platformAdmin ? (shell.active?.id ?? null) : null}
+      />
     </>
   );
 }
@@ -183,7 +189,17 @@ function DefaultSendersPanel({ appId, senders, canWrite }: { appId: string; send
 
 type AudienceHook = Awaited<ReturnType<typeof fetchAudienceHook>>;
 
-function AudiencePanel({ appId, hook, canWrite }: { appId: string; hook: AudienceHook; canWrite: boolean }) {
+function AudiencePanel({
+  appId,
+  hook,
+  canWrite,
+  bindWorkspaceId,
+}: {
+  appId: string;
+  hook: AudienceHook;
+  canWrite: boolean;
+  bindWorkspaceId: string | null;
+}) {
   const router = useRouter();
   const [url, setUrl] = useState(hook?.url ?? "");
   const [enabled, setEnabled] = useState(hook?.enabled ?? true);
@@ -217,6 +233,17 @@ function AudiencePanel({ appId, hook, canWrite }: { appId: string; hook: Audienc
     }
   }
 
+  async function connectTiffin() {
+    if (!bindWorkspaceId) return;
+    try {
+      await setAudienceBindingFn({ data: { workspaceId: bindWorkspaceId, appId, binding: "TIFFIN_AUDIENCE" } });
+      toast.success("App audience connected");
+      await router.invalidate();
+    } catch (err) {
+      toast.error(errorText(err, "Could not connect the App audience."));
+    }
+  }
+
   return (
     <section className="grid max-w-2xl gap-3 p-4">
       <h2 className="text-sm font-medium">App audience</h2>
@@ -244,6 +271,17 @@ function AudiencePanel({ appId, hook, canWrite }: { appId: string; hook: Audienc
           ) : null}
         </form>
       )}
+      {bindWorkspaceId && hook?.kind !== "binding" ? (
+        <div>
+          <ConfirmDialog
+            trigger="Connect TiffinGrab"
+            title="Connect TiffinGrab's audience?"
+            description="Campaigns in this app will reach TiffinGrab's customers. This replaces any Audience URL."
+            confirmLabel="Connect"
+            onConfirm={connectTiffin}
+          />
+        </div>
+      ) : null}
       {canWrite && hook && hook.kind !== "binding" ? (
         <div>
           <ConfirmDialog
