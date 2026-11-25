@@ -10,7 +10,7 @@ import {
   MAX_MONTHLY_QUOTA,
   setAudienceBindingFor,
   setWorkspaceInviteCap,
-  setWorkspaceQuota,
+  setWorkspaceQuota, setWorkspaceRegion,
   setWorkspaceStatus,
 } from "./admin";
 import { validate } from "./schemas";
@@ -30,6 +30,17 @@ export const setWorkspaceStatusFn = createServerFn({ method: "POST" })
     try {
       const admin = await requirePlatformAdmin(env, getRequestHeaders(), { write: true });
       await setWorkspaceStatus(env, admin, data.workspaceId, data.status);
+    } catch (err) {
+      toResponseError(err);
+    }
+  });
+
+export const setWorkspaceRegionFn = createServerFn({ method: "POST" })
+  .validator(validate(z.object({ workspaceId: z.string().min(1), region: z.string().min(1).max(40) })))
+  .handler(async ({ data }) => {
+    try {
+      const admin = await requirePlatformAdmin(env, getRequestHeaders(), { write: true });
+      await setWorkspaceRegion(env, admin, data.workspaceId, data.region);
     } catch (err) {
       toResponseError(err);
     }

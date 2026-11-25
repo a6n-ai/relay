@@ -1,3 +1,4 @@
+import { SES_CONFIG_SETS } from "../core/ses";
 import { and, asc, count, eq, gte, sql } from "drizzle-orm";
 import { INBOUND_GRACE_MS } from "../core/addresses";
 import { clientFor } from "../core/messages";
@@ -38,6 +39,7 @@ export async function listWorkspaces(env: Env, _admin: PlatformAdmin, now = Date
         quota: workspaceProfile.monthlyMessageQuota,
         selfServe: workspaceProfile.selfServe,
         invitesPerDay: workspaceProfile.invitesPerDay,
+        sesRegion: workspaceProfile.defaultSesRegion,
       })
       .from(workspaceProfile),
     coreDb(env)
@@ -50,6 +52,7 @@ export async function listWorkspaces(env: Env, _admin: PlatformAdmin, now = Date
   const quotaBy = new Map(profiles.map((p) => [p.workspaceId, p.quota]));
   const selfServeBy = new Map(profiles.map((p) => [p.workspaceId, p.selfServe]));
   const invitesBy = new Map(profiles.map((p) => [p.workspaceId, p.invitesPerDay]));
+  const regionBy = new Map(profiles.map((p) => [p.workspaceId, p.sesRegion]));
   const sentBy = new Map(usage.map((u) => [u.workspaceId, u.sent]));
   return rows.map((ws) => ({
     id: ws.id,
@@ -62,6 +65,7 @@ export async function listWorkspaces(env: Env, _admin: PlatformAdmin, now = Date
     quota: quotaBy.get(ws.id) ?? SELF_SERVE_QUOTA,
     selfServe: selfServeBy.get(ws.id) ?? true,
     invitesPerDay: invitesBy.get(ws.id) ?? INVITES_PER_DAY,
+    sesRegion: regionBy.get(ws.id) ?? null,
     sentThisMonth: sentBy.get(ws.id) ?? 0,
     members: membersBy.get(ws.id) ?? 0,
   }));
@@ -120,6 +124,18 @@ export async function setWorkspaceInviteCap(env: Env, admin: PlatformAdmin, work
     .set({ invitesPerDay: cap, updatedAt: new Date() })
     .where(eq(workspaceProfile.workspaceId, workspaceId));
   await writeAudit(env, { action: "workspace.invite_cap", actorUserId: admin.userId, workspaceId, target: workspaceId, data: { cap } });
+}
+
+// The region new sending domains in this workspace use. Existing domains keep the region they were added with.
+export async function setWorkspaceRegion(env: Env, admin: PlatformAdmin, workspaceId: string, region: string): Promise<void> {
+  if (!Object.hasOwn(SES_CONFIG_SETS, region)) throw new ConsoleError(400, "unknown region");
+  await requireWorkspace(env, workspaceId);
+  await ensureWorkspaceProfile(env, workspaceId);
+  await coreDb(env)
+    .update(workspaceProfile)
+    .set({ defaultSesRegion: region, updatedAt: new Date() })
+    .where(eq(workspaceProfile.workspaceId, workspaceId));
+  await writeAudit(env, { action: "workspace.ses_region", actorUserId: admin.userId, workspaceId, target: workspaceId, data: { region } });
 }
 
 // quota 0 means unlimited, matching ClientDO.

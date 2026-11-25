@@ -84,7 +84,7 @@ export function DomainDeleteDialog({ id, domain }: { id: string; domain: string 
           </p>
         ) : null}
         {preview?.protected ? (
-          <p>This domain is protected. Sign-in codes and this workspace's mail stop when it is deleted.</p>
+          <p>This domain is protected. Mail sent from this domain stops when it is deleted.</p>
         ) : null}
         <Label className="flex items-center gap-2 font-normal">
           <Checkbox checked={deleteHistory} onCheckedChange={(on) => setDeleteHistory(on === true)} />

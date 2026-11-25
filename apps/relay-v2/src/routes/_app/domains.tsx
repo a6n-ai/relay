@@ -136,7 +136,7 @@ function DomainsPage() {
                 {d.protected ? (
                   <>
                     <Badge variant="warning">Protected</Badge>
-                    <span className="text-xs text-muted-foreground">Sign-in codes and this workspace's mail stop if it is released or deleted.</span>
+                    <span className="text-xs text-muted-foreground">Mail sent from this domain stops if it is released or deleted.</span>
                   </>
                 ) : null}
               </div>

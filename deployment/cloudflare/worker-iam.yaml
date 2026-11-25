@@ -43,6 +43,10 @@ Parameters:
     Type: String
     Default: ""
     Description: Optional verified SES identity in SesUsEastRegion, for example tiffingrab.ca
+  SesUsEastExtraIdentity:
+    Type: String
+    Default: ""
+    Description: Optional second verified SES identity in SesUsEastRegion, for example notify.tiffingrab.ca (TiffinGrab's transactional sender)
   SesUsEastConfigurationSets:
     Type: CommaDelimitedList
     Default: ""
@@ -65,7 +69,7 @@ Parameters:
     Type: String
     AllowedValues: ["true", "false"]
     Default: "false"
-    Description: "true drops the Deny on deleting the named SES identities (SesIdentity, SesExtraIdentity, SesUsEastIdentity) so Relay can release a domain it created. Sends are unaffected either way. Leave false unless the owner has chosen to allow deletes."
+    Description: "true drops the Deny on deleting the named SES identities (SesIdentity, SesExtraIdentity, SesUsEastIdentity, SesUsEastExtraIdentity) so Relay can release a domain it created. Sends are unaffected either way. Leave false unless the owner has chosen to allow deletes."
 
 Conditions:
   AwsLocation: !Equals [!Ref EnableAwsLocation, "true"]
@@ -77,6 +81,7 @@ Conditions:
   S3Files: !Not [!Equals [!Ref FilesBucketName, ""]]
   AdditionalConfigSet: !Not [!Equals [!Ref SesAdditionalConfigurationSet, ""]]
   UsEastIdentity: !Not [!Equals [!Ref SesUsEastIdentity, ""]]
+  UsEastExtraIdentity: !Not [!Equals [!Ref SesUsEastExtraIdentity, ""]]
   UsEastConfigSets: !Not [!Equals [!Join ["", !Ref SesUsEastConfigurationSets], ""]]
   UsEast: !And [!Condition UsEastIdentity, !Condition UsEastConfigSets]
 
@@ -127,6 +132,10 @@ Resources:
               Action: [ses:SendEmail, ses:SendRawEmail]
               Resource:
                 - !Sub "arn:aws:ses:${SesUsEastRegion}:${AWS::AccountId}:identity/${SesUsEastIdentity}"
+                - !If
+                  - UsEastExtraIdentity
+                  - !Sub "arn:aws:ses:${SesUsEastRegion}:${AWS::AccountId}:identity/${SesUsEastExtraIdentity}"
+                  - !Ref AWS::NoValue
                 - !Sub
                   - "arn:aws:ses:${SesUsEastRegion}:${AWS::AccountId}:configuration-set/${Name}"
                   - Name: !Select [0, !Ref SesUsEastConfigurationSets]
@@ -189,6 +198,10 @@ Resources:
                 - !If
                   - UsEastIdentity
                   - !Sub "arn:aws:ses:${ResourceRegion}:${AWS::AccountId}:identity/${SesUsEastIdentity}"
+                  - !Ref AWS::NoValue
+                - !If
+                  - UsEastExtraIdentity
+                  - !Sub "arn:aws:ses:${SesUsEastRegion}:${AWS::AccountId}:identity/${SesUsEastExtraIdentity}"
                   - !Ref AWS::NoValue
             - !Ref AWS::NoValue
           # Campaign Delivered/Opened/Clicked come from SES's CloudWatch counts (Refresh results).

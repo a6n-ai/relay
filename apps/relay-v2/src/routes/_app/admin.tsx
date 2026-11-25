@@ -2,6 +2,7 @@ import { Badge } from "@foundry/ui/badge";
 import { Button } from "@foundry/ui/button";
 import { Input } from "@foundry/ui/input";
 import { Label } from "@foundry/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@foundry/ui/select";
 import { toast } from "@foundry/ui/toast";
 import { createFileRoute, notFound, useRouter } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
@@ -9,7 +10,8 @@ import { ConfirmDialog } from "../../components/confirm-dialog";
 import { ResourceTable } from "../../components/resource-table";
 import { runAction } from "../../components/run-action";
 import { ViewHeader } from "../../components/view-header";
-import { fetchWorkspaces, setWorkspaceInviteCapFn, setWorkspaceQuotaFn, setWorkspaceStatusFn } from "../../console/admin.fns";
+import { fetchWorkspaces, setWorkspaceInviteCapFn, setWorkspaceQuotaFn, setWorkspaceRegionFn, setWorkspaceStatusFn } from "../../console/admin.fns";
+import { SES_REGIONS } from "../../core/ses-regions";
 
 export const Route = createFileRoute("/_app/admin")({
   loader: async () => {
@@ -119,6 +121,30 @@ function AdminPage() {
           },
           { header: "Members", cell: (w) => w.members },
           { header: "Sent this month", cell: (w) => w.sentThisMonth },
+          {
+            header: "SES region",
+            cell: (w) => (
+              <Select
+                value={w.sesRegion ?? ""}
+                onValueChange={(region) =>
+                  region && region !== w.sesRegion
+                    ? run(() => setWorkspaceRegionFn({ data: { workspaceId: w.id, region } }), "Region saved")
+                    : undefined
+                }
+              >
+                <SelectTrigger aria-label={`SES region for ${w.name}`} className="h-8 w-36">
+                  <SelectValue placeholder="Default" />
+                </SelectTrigger>
+                <SelectContent>
+                  {SES_REGIONS.map((r) => (
+                    <SelectItem key={r} value={r}>
+                      {r}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ),
+          },
           {
             header: "Monthly quota (0 is unlimited)",
             cell: (w) => (
