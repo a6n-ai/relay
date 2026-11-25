@@ -13,9 +13,6 @@ import { NewWorkspaceForm } from "./new-workspace-form";
 
 type Active = { id: string; name: string; status: "active" | "suspended"; roles: OrgRole[] };
 
-// Typed string until the /settings routes exist, so the route tree does not reject it.
-const SETTINGS: string = "/settings";
-
 const capitalise = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 export function WorkspaceSwitcher({ active, workspaces }: { active: Active | null; workspaces: { id: string; name: string }[] }) {
@@ -64,7 +61,7 @@ export function WorkspaceSwitcher({ active, workspaces }: { active: Active | nul
             ))}
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => setCreating(true)}>New workspace</DropdownMenuItem>
-            <DropdownMenuItem render={<Link to={SETTINGS} />}>Workspace settings</DropdownMenuItem>
+            <DropdownMenuItem render={<Link to="/settings" />}>Workspace settings</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
         <CreateDialog title="New workspace" open={creating} onOpenChange={setCreating}>
