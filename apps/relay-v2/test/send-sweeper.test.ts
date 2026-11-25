@@ -278,3 +278,44 @@ describe("campaign counters in the sweeper", () => {
     expect(await stub.campaignStats(ws, c.id)).toMatchObject({ queued: 0, failed: 1, total: 1 });
   });
 });
+
+describe("attachment sweep", () => {
+  const DAY_MS = 86_400_000;
+  const attachments = [{ filename: "receipt.pdf", contentType: "application/pdf", content: btoa("pdf") }];
+
+  async function attachedMessage(stub: ReturnType<typeof stubFor>, ws: string, status: Status, ageDays: number) {
+    const { messageId } = await stub.send(ws, { ...base, attachments });
+    const old = Date.now() - ageDays * DAY_MS;
+    const r2Key = await runInDurableObject(stub, (instance) => {
+      instance.db.update(schema.message).set({ status, createdAt: old, updatedAt: old }).where(eq(schema.message.id, messageId)).run();
+      return instance.db.select({ r2Key: schema.attachment.r2Key }).from(schema.attachment).where(eq(schema.attachment.messageId, messageId)).get()!.r2Key;
+    });
+    return { messageId, r2Key };
+  }
+
+  it("drops R2 objects and rows of suppressed and failed messages older than 7 days", async () => {
+    const ws = "wsp_att_sweep";
+    const stub = await seededStub(ws);
+    const suppressed = await attachedMessage(stub, ws, "suppressed", 8);
+    const failed = await attachedMessage(stub, ws, "failed", 8);
+    expect(await env.MAIL.head(suppressed.r2Key)).not.toBeNull();
+
+    await runInDurableObject(stub, (instance) => instance.sweepQueued(Date.now()));
+
+    expect(await env.MAIL.head(suppressed.r2Key)).toBeNull();
+    expect(await env.MAIL.head(failed.r2Key)).toBeNull();
+    expect(await runInDurableObject(stub, (instance) => instance.db.select().from(schema.attachment).all())).toEqual([]);
+  });
+
+  it("keeps attachments of failed messages under 7 days and of sent messages of any age", async () => {
+    const ws = "wsp_att_keep";
+    const stub = await seededStub(ws);
+    const young = await attachedMessage(stub, ws, "failed", 6);
+    const sent = await attachedMessage(stub, ws, "sent", 30);
+
+    await runInDurableObject(stub, (instance) => instance.sweepQueued(Date.now()));
+
+    expect(await env.MAIL.head(young.r2Key)).not.toBeNull();
+    expect(await env.MAIL.head(sent.r2Key)).not.toBeNull();
+  });
+});

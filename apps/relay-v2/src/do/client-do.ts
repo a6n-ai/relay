@@ -159,6 +159,7 @@ const SWEEP_INTERVAL_MS = 600_000;
 // Longer than the largest retry backoff, so a row still waiting on a retry is never re-sent.
 const STALE_MS = 1_200_000;
 const EXPIRE_MS = 86_400_000;
+const ATTACHMENT_TTL_MS = 7 * 86_400_000;
 const SWEEP_BATCH = 500;
 const SWEEP_CHUNK = 100;
 
@@ -1454,6 +1455,31 @@ export class ClientDO extends DurableObject<Env> {
     await this.scheduleAlarmAt(nextAutomationAlarm(this.ctx.storage.sql, now, outcome));
   }
 
+  // Attachments of messages that will never send (suppressed, or failed with no retry left) are dropped from R2 after a week.
+  // shortcut: runs on the alarm sweep only, so a quiet workspace keeps its old objects until its next alarm. Upgrade: a daily alarm of its own.
+  private async sweepAttachments(now: number): Promise<number> {
+    const rows = this.db
+      .select({ id: schema.attachment.id, r2Key: schema.attachment.r2Key })
+      .from(schema.attachment)
+      .innerJoin(schema.message, eq(schema.attachment.messageId, schema.message.id))
+      .where(
+        and(
+          inArray(schema.message.status, ["suppressed", "failed"]),
+          lt(schema.message.createdAt, now - ATTACHMENT_TTL_MS),
+        ),
+      )
+      .limit(SWEEP_BATCH)
+      .all();
+    if (rows.length === 0) return 0;
+    // R2 first: if the row delete fails, the next sweep only re-deletes keys that are already gone.
+    await this.env.MAIL.delete(rows.map((row) => row.r2Key));
+    this.db
+      .delete(schema.attachment)
+      .where(inArray(schema.attachment.id, rows.map((row) => row.id)))
+      .run();
+    if (rows.length === SWEEP_BATCH) await this.ctx.storage.setAlarm(now + SWEEP_INTERVAL_MS);
+    return rows.length;
+  }
   // Workspace comes only from the KV binding. Unbound: nothing to sweep, and no reschedule.
   async sweepQueued(now = Date.now()): Promise<{ requeued: number; expired: number }> {
     const workspaceId = this.ctx.storage.kv.get<string>("workspace_id");
@@ -1499,6 +1525,7 @@ export class ClientDO extends DurableObject<Env> {
         )
         .run(),
     );
+    await this.sweepAttachments(now);
     const staleDeliveries = this.db
       .select({ id: schema.webhookDelivery.id })
       .from(schema.webhookDelivery)
