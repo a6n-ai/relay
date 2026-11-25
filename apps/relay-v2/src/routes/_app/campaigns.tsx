@@ -11,6 +11,7 @@ import { CreateDialog } from "../../components/create-dialog";
 import { DeniedState, deniedReason } from "../../components/denied-state";
 import { errorText, isNotFound } from "../../components/error-text";
 import { FormError } from "../../components/form-error";
+import { AppHint } from "../../components/page/app-hint";
 import { EmptyState } from "../../components/page/empty-state";
 import { LoadMore } from "../../components/page/load-more";
 import { TableSkeleton } from "../../components/page/table-skeleton";
@@ -93,6 +94,7 @@ function CampaignsPage() {
   return (
     <>
       <PageHeader crumbs={CRUMBS} />
+      <AppHint show={!search.appId} name={apps.find((a) => a.id === appId)?.name} />
       <Toolbar
         search={<SearchInput value={query} onChange={setQuery} placeholder="Search campaigns" />}
         filters={

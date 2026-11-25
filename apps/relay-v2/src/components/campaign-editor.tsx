@@ -64,8 +64,9 @@ export function CampaignEditor({
       text: campaign.text,
       audienceKind: campaign.audienceKind,
       audienceQuery: campaign.audienceQuery,
+      listIds: campaign.listIds,
     },
-    { from, subject, html, text, audienceKind, audienceQuery: audienceQuery.trim() || null },
+    { from, subject, html, text, audienceKind, listIds, audienceQuery: audienceQuery.trim() || null },
   );
   const leaving = useRef(false);
   const blocker = useBlocker({

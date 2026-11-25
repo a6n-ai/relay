@@ -12,6 +12,7 @@ import { CreateDialog } from "../../components/create-dialog";
 import { DeniedState, deniedReason } from "../../components/denied-state";
 import { errorText } from "../../components/error-text";
 import { FormError } from "../../components/form-error";
+import { AppHint } from "../../components/page/app-hint";
 import { EmptyState } from "../../components/page/empty-state";
 import { TableSkeleton } from "../../components/page/table-skeleton";
 import { Toolbar } from "../../components/page/toolbar";
@@ -52,7 +53,6 @@ export const Route = createFileRoute("/_app/campaigns_/automations")({
   component: AutomationsPage,
 });
 
-const CRUMBS = [{ label: "Campaigns", to: "/campaigns" }, { label: "Automations" }];
 
 function AutomationsPage() {
   const page = Route.useLoaderData();
@@ -61,6 +61,7 @@ function AutomationsPage() {
   const router = useRouter();
   const canSend = useCan({ campaign: ["send"] });
   const [open, setOpen] = useNewParam();
+  const CRUMBS = [{ label: "Campaigns", to: "/campaigns", search: { appId: search.appId } }, { label: "Automations" }];
   if (!page) {
     return (
       <>
@@ -83,6 +84,7 @@ function AutomationsPage() {
   return (
     <>
       <PageHeader crumbs={CRUMBS} />
+      <AppHint show={!search.appId} name={apps.find((a) => a.id === appId)?.name} />
       <Toolbar>{newButton}</Toolbar>
       {canCreate && appId ? (
         <CreateDialog title="New automation" open={open} onOpenChange={setOpen}>

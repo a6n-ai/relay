@@ -16,4 +16,15 @@ describe("isDirty", () => {
   ])("is dirty when %s changes", (_field, change) => {
     expect(isDirty(saved, { ...saved, ...change })).toBe(true);
   });
+
+  it("ignores list order", () => {
+    expect(isDirty({ ...saved, listIds: ["a", "b"] }, { ...saved, listIds: ["b", "a"] })).toBe(false);
+  });
+
+  it.each([
+    ["added", ["a", "b", "c"]],
+    ["removed", ["a"]],
+  ])("is dirty when a list is %s", (_k, listIds) => {
+    expect(isDirty({ ...saved, listIds: ["a", "b"] }, { ...saved, listIds })).toBe(true);
+  });
 });

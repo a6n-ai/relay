@@ -10,6 +10,7 @@ import { CreateDialog } from "../../components/create-dialog";
 import { DeniedState, deniedReason } from "../../components/denied-state";
 import { errorText, isNotFound } from "../../components/error-text";
 import { FormError } from "../../components/form-error";
+import { AppHint } from "../../components/page/app-hint";
 import { EmptyState } from "../../components/page/empty-state";
 import { LoadMore } from "../../components/page/load-more";
 import { TableSkeleton } from "../../components/page/table-skeleton";
@@ -47,7 +48,6 @@ export const Route = createFileRoute("/_app/campaigns_/templates")({
   component: TemplatesPage,
 });
 
-const CRUMBS = [{ label: "Campaigns", to: "/campaigns" }, { label: "Templates" }];
 
 function TemplatesPage() {
   const page = Route.useLoaderData();
@@ -56,6 +56,7 @@ function TemplatesPage() {
   const canWrite = useCan({ template: ["write"] });
   const [open, setOpen] = useNewParam();
   const [query, setQuery] = useState("");
+  const CRUMBS = [{ label: "Campaigns", to: "/campaigns", search: { appId: search.appId } }, { label: "Templates" }];
   if (!page) {
     return (
       <>
@@ -80,6 +81,7 @@ function TemplatesPage() {
   return (
     <>
       <PageHeader crumbs={CRUMBS} />
+      <AppHint show={!search.appId} name={apps.find((a) => a.id === appId)?.name} />
       <Toolbar search={<SearchInput value={query} onChange={setQuery} placeholder="Search templates" />}>{newButton}</Toolbar>
       {canCreate && appId ? (
         <CreateDialog title="New template" open={open} onOpenChange={setOpen}>
