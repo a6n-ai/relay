@@ -1,0 +1,59 @@
+import { Button } from "@foundry/ui/button";
+import { Input } from "@foundry/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@foundry/ui/popover";
+import { Link, useLocation, useRouteContext, useSearch } from "@tanstack/react-router";
+import Check from "lucide-react/icons/check";
+import ChevronsUpDown from "lucide-react/icons/chevrons-up-down";
+import { useState } from "react";
+import { scopeLabel, scopeSearch } from "./scope";
+
+const row =
+  "flex h-8 items-center justify-between gap-2 rounded-md px-2 text-sm transition-colors hover:bg-muted focus-visible:bg-muted outline-none";
+
+export function ScopeSwitcher() {
+  const { shell } = useRouteContext({ from: "/_app" });
+  const { appId } = useSearch({ strict: false }) as { appId?: string };
+  const pathname = useLocation({ select: (l) => l.pathname });
+  const [query, setQuery] = useState("");
+  const [open, setOpen] = useState(false);
+  const needle = query.trim().toLowerCase();
+  const apps = shell.apps.filter((a) => a.name.toLowerCase().includes(needle));
+  const current = shell.apps.some((a) => a.id === appId) ? appId : undefined;
+  const close = () => {
+    setOpen(false);
+    setQuery("");
+  };
+
+  const choice = (id: string | undefined, label: string) => (
+    <Link
+      key={id ?? "all"}
+      to={pathname as string}
+      search={((prev: Record<string, unknown>) => scopeSearch(prev, id)) as never}
+      className={row}
+      onClick={close}
+    >
+      <span className="truncate">{label}</span>
+      {current === id ? <Check aria-hidden className="size-4 shrink-0" /> : null}
+    </Link>
+  );
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger render={<Button variant="ghost" size="sm" aria-label="Switch app scope" className="max-w-48" />}>
+        <span className="truncate">{scopeLabel(shell.apps, current)}</span>
+        <ChevronsUpDown aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-64 gap-1.5 p-1.5">
+        <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Find app" aria-label="Find app" />
+        <div className="flex max-h-64 flex-col overflow-y-auto">
+          {"all apps".includes(needle) ? choice(undefined, "All apps") : null}
+          {apps.map((a) => choice(a.id, a.name))}
+        </div>
+        <div className="-mx-1.5 border-t" />
+        <Link to="/apps" search={{ new: 1 } as never} className={row} onClick={close}>
+          New app
+        </Link>
+      </PopoverContent>
+    </Popover>
+  );
+}
