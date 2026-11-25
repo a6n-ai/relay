@@ -2,7 +2,7 @@ import type { MessageStatus } from "../do/console-reads";
 
 export type MessagesSearch = {
   dir: "out" | "in";
-  app?: string;
+  appId?: string;
   status?: MessageStatus;
   email?: string;
   cursor?: string;
@@ -17,7 +17,7 @@ export function parseMessagesSearch(raw: Record<string, unknown>): MessagesSearc
   const status = STATUSES.find((s) => s === raw.status);
   return {
     dir: raw.dir === "in" ? "in" : "out",
-    app: text(raw.app),
+    appId: text(raw.appId),
     status,
     email: text(raw.email),
     cursor: text(raw.cursor),

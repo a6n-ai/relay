@@ -1,8 +1,11 @@
+import { Button } from "@foundry/ui/button";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { DeniedState, deniedReason } from "../../components/denied-state";
-import { EventTimeline, formatWhen, type TimelineItem } from "../../components/event-timeline";
+import { EventTimeline, type TimelineItem } from "../../components/event-timeline";
+import { formatWhen } from "../../lib/format-date";
 import { LetterView } from "../../components/letter-view";
-import { ViewHeader } from "../../components/view-header";
+import { Toolbar } from "../../components/page/toolbar";
+import { PageHeader } from "../../components/shell/page-header";
 import { StatusBadge } from "../../components/status-badge";
 import { fetchApps } from "../../console/apps.fns";
 import { previewHint } from "../../components/preview-hint";
@@ -28,7 +31,7 @@ function MessagePage() {
   if (!result) {
     return (
       <>
-        <ViewHeader title="Message" />
+        <PageHeader crumbs={[{ label: "Messages" }, { label: "Message" }]} />
         <DeniedState reason={deniedReason(shell)} />
       </>
     );
@@ -36,7 +39,7 @@ function MessagePage() {
   if ("missing" in result) {
     return (
       <>
-        <ViewHeader title="Message" />
+        <PageHeader crumbs={[{ label: "Messages" }, { label: "Message" }]} />
         <DeniedState reason="not-found" label="Message not found" />
       </>
     );
@@ -51,96 +54,109 @@ function MessagePage() {
     ...(m.status === "failed" ? [{ label: "Failed", at: m.updatedAt, detail: m.error }] : []),
   ];
 
+  const hasHtml = m.htmlSafe !== null;
+  const hasRaw = m.direction === "in" && m.hasRaw;
+
   return (
     <>
-      <ViewHeader title={m.subject || "(no subject)"} />
-      <div className="grid gap-6 p-4">
-        <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
-          <dt className="text-muted-foreground">From</dt>
-          <dd className="break-all">{m.fromEmail ?? "-"}</dd>
-          <dt className="text-muted-foreground">To</dt>
-          <dd className="break-all">{m.toEmail ?? "-"}</dd>
-          <dt className="text-muted-foreground">App</dt>
-          <dd>{appName}</dd>
-          <dt className="text-muted-foreground">Status</dt>
-          <dd>
-            <StatusBadge status={m.status} direction={m.direction} />
-          </dd>
-        </dl>
-
-        <section aria-label="Timeline">
-          <EventTimeline items={timeline} />
-        </section>
-
-        {m.htmlSafe === null && !m.text ? (
-          <p className="text-sm text-muted-foreground">The body of imported mail was not kept.</p>
-        ) : (
-          <LetterView
-            htmlSafe={m.htmlSafe}
-            text={m.text}
-            blockedRemote={m.blockedRemote}
-            images={images === true}
-            onShowImages={() => navigate({ search: { images: true } })}
-          />
-        )}
-
-        {m.attachments.length > 0 ? (
-          <section aria-label="Attachments" className="grid gap-2">
-            <h2 className="text-sm font-medium">Attachments</h2>
-            <ul className="grid gap-1 text-sm">
-              {m.attachments.map((a) => (
-                <li key={a.id}>
-                  <a href={`/api/console/messages/${m.id}/${a.id}`} className="hover:underline">
-                    {a.filename}
-                  </a>{" "}
-                  <span className="text-xs text-muted-foreground">{kb(a.sizeBytes)}</span>
-                  {previewHint(a.contentType, a.filename) ? (
-                    <>
-                      {" "}
-                      <a
-                        href={`/api/console/messages/${m.id}/${a.id}?view=1`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="hover:underline"
-                      >
-                        Open
-                      </a>
-                    </>
-                  ) : null}
-                </li>
-              ))}
-            </ul>
-          </section>
-        ) : null}
-
-        <nav aria-label="Downloads" className="flex flex-wrap gap-4 text-sm">
-          {m.htmlSafe === null ? null : (
-            <a href={`/api/console/messages/${m.id}/html`} className="hover:underline">
+      <PageHeader
+        crumbs={[
+          { label: "Messages" },
+          { label: m.direction === "in" ? "Received" : "Sent", to: "/messages", search: { dir: m.direction } },
+          { label: m.subject || "(no subject)" },
+        ]}
+      />
+      {hasHtml || hasRaw ? (
+        <Toolbar>
+          {hasHtml ? (
+            <Button variant="outline" size="sm" className="rounded-full" render={<a href={`/api/console/messages/${m.id}/html`} />}>
               Download HTML
-            </a>
-          )}
-          {m.direction === "in" && m.hasRaw ? (
-            <a href={`/api/console/messages/${m.id}/raw`} className="hover:underline">
-              Download original
-            </a>
+            </Button>
           ) : null}
-        </nav>
-
-        {m.thread.length > 0 ? (
-          <section aria-label="Thread" className="grid gap-2">
-            <h2 className="text-sm font-medium">In this thread</h2>
-            <ul className="grid gap-1 text-sm">
-              {m.thread.map((t) => (
-                <li key={t.id}>
-                  <Link to="/messages/$messageId" params={{ messageId: t.id }} className="hover:underline">
-                    {t.subject || "(no subject)"}
-                  </Link>{" "}
-                  <span className="text-xs text-muted-foreground">{formatWhen(t.createdAt)}</span>
-                </li>
-              ))}
-            </ul>
+          {hasRaw ? (
+            <Button variant="outline" size="sm" className="rounded-full" render={<a href={`/api/console/messages/${m.id}/raw`} />}>
+              Download original
+            </Button>
+          ) : null}
+        </Toolbar>
+      ) : null}
+      <div className="grid gap-6 p-4 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
+        <aside aria-label="Details" className="grid gap-6 lg:col-start-2 lg:row-start-1">
+          <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
+            <dt className="text-muted-foreground">From</dt>
+            <dd className="break-all">{m.fromEmail ?? "—"}</dd>
+            <dt className="text-muted-foreground">To</dt>
+            <dd className="break-all">{m.toEmail ?? "—"}</dd>
+            <dt className="text-muted-foreground">App</dt>
+            <dd>{appName}</dd>
+            <dt className="text-muted-foreground">Status</dt>
+            <dd>
+              <StatusBadge status={m.status} direction={m.direction} />
+            </dd>
+          </dl>
+          <section aria-label="Timeline">
+            <EventTimeline items={timeline} />
           </section>
-        ) : null}
+        </aside>
+
+        <div className="grid min-w-0 gap-6 lg:col-start-1 lg:row-start-1">
+          {m.htmlSafe === null && !m.text ? (
+            <p className="text-sm text-muted-foreground">The body of imported mail was not kept.</p>
+          ) : (
+            <LetterView
+              htmlSafe={m.htmlSafe}
+              text={m.text}
+              blockedRemote={m.blockedRemote}
+              images={images === true}
+              onShowImages={() => navigate({ search: { images: true } })}
+            />
+          )}
+
+          {m.attachments.length > 0 ? (
+            <section aria-label="Attachments" className="grid gap-2">
+              <h2 className="text-sm font-medium">Attachments</h2>
+              <ul className="grid gap-1 text-sm">
+                {m.attachments.map((a) => (
+                  <li key={a.id}>
+                    <a href={`/api/console/messages/${m.id}/${a.id}`} className="hover:underline">
+                      {a.filename}
+                    </a>{" "}
+                    <span className="text-xs text-muted-foreground">{kb(a.sizeBytes)}</span>
+                    {previewHint(a.contentType, a.filename) ? (
+                      <>
+                        {" "}
+                        <a
+                          href={`/api/console/messages/${m.id}/${a.id}?view=1`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="hover:underline"
+                        >
+                          Open
+                        </a>
+                      </>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
+
+          {m.thread.length > 0 ? (
+            <section aria-label="Thread" className="grid gap-2">
+              <h2 className="text-sm font-medium">In this thread</h2>
+              <ul className="grid gap-1 text-sm">
+                {m.thread.map((t) => (
+                  <li key={t.id}>
+                    <Link to="/messages/$messageId" params={{ messageId: t.id }} className="hover:underline">
+                      {t.subject || "(no subject)"}
+                    </Link>{" "}
+                    <span className="text-xs text-muted-foreground">{formatWhen(t.createdAt)}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
+        </div>
       </div>
     </>
   );
