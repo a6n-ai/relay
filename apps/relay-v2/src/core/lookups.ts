@@ -6,7 +6,8 @@ import type { KeyScope } from "./api-keys";
 import { clientFor } from "./messages";
 
 const keysSchema = z.array(z.string().min(1).max(200)).min(1).max(100);
-const emailsSchema = z.array(z.string().trim().toLowerCase().max(254).email()).min(1).max(100);
+const emailSchema = z.string().trim().toLowerCase().max(254).email();
+const emailsSchema = z.array(emailSchema).min(1).max(100);
 const suppressSchema = z.object({
   email: z.string().trim().toLowerCase().max(254).email(),
   reason: z.enum(["unsubscribe", "manual"]),
@@ -24,11 +25,10 @@ export function messagesByKeysForScope(env: Env, scope: KeyScope, input: unknown
   return clientFor(env, scope.workspaceId).messagesByKeys(scope.workspaceId, scope.appId, keys);
 }
 
-// shortcut: apps store no default From, so there is no sending brand to check and brandOptOut stays false, upgrade when apps store one.
-export async function suppressionStatusForScope(env: Env, scope: KeyScope, input: unknown) {
+export async function suppressionStatusForScope(env: Env, scope: KeyScope, input: unknown, from?: unknown) {
   const emails = parseInput(emailsSchema, input);
-  const rows = await clientFor(env, scope.workspaceId).suppressionRows(scope.workspaceId, emails);
-  return rows.map((row) => ({ ...row, brandOptOut: false }));
+  const sender = from === undefined ? undefined : parseInput(emailSchema, from);
+  return clientFor(env, scope.workspaceId).suppressionRows(scope.workspaceId, emails, sender);
 }
 
 export async function suppressForScope(env: Env, scope: KeyScope, input: unknown): Promise<{ created: boolean }> {

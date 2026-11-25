@@ -205,8 +205,8 @@ export class RelayRpc extends WorkerEntrypoint<Env> {
     return withScope(this.env, apiKey, (s) => messagesByKeysForScope(this.env, s, keys));
   }
 
-  async suppressionStatus(apiKey: string, emails: unknown) {
-    return withScope(this.env, apiKey, (s) => suppressionStatusForScope(this.env, s, emails));
+  async suppressionStatus(apiKey: string, emails: unknown, from?: unknown) {
+    return withScope(this.env, apiKey, (s) => suppressionStatusForScope(this.env, s, emails, from));
   }
 
   async suppress(apiKey: string, input: unknown) {

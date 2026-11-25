@@ -1145,13 +1145,27 @@ export class ClientDO extends DurableObject<Env> {
     return messagesByKeyRows(this.db, appId, keys);
   }
 
-  async suppressionRows(workspaceId: string, emails: string[]): Promise<{ email: string; stream: Stream | null; reason: SuppressionReason }[]> {
+  async suppressionRows(
+    workspaceId: string,
+    emails: string[],
+    from?: string,
+  ): Promise<{ email: string; stream: Stream | null; reason: SuppressionReason; brandOptOut: boolean }[]> {
     await this.ready(workspaceId);
-    return this.db
+    const rows = this.db
       .select({ email: schema.suppression.email, stream: schema.suppression.stream, reason: schema.suppression.reason })
       .from(schema.suppression)
       .where(sql`${schema.suppression.email} IN (SELECT value FROM json_each(${JSON.stringify(emails)}))`)
       .all() as { email: string; stream: Stream | null; reason: SuppressionReason }[];
+    if (from === undefined) return rows.map((row) => ({ ...row, brandOptOut: false }));
+    const optedOut = new Set(
+      this.db
+        .select({ email: schema.marketingOptout.email })
+        .from(schema.marketingOptout)
+        .where(and(eq(schema.marketingOptout.domain, brandDomain(from)), sql`${schema.marketingOptout.email} IN (SELECT value FROM json_each(${JSON.stringify(emails)}))`))
+        .all()
+        .map((r) => r.email),
+    );
+    return rows.map((row) => ({ ...row, brandOptOut: optedOut.has(row.email) }));
   }
 
   // One transactionSync per event. A replayed, foreign or unknown event changes nothing and counts as ignored.
