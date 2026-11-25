@@ -91,6 +91,16 @@ describe("sesEventSettings", () => {
     expect(puts(s.reqs)).toHaveLength(0);
   });
 
+  it("ignores Relay's relay-ses-events destination: read and write touch only the app's SNS destination", async () => {
+    const relay = { ...sns(["SEND", "DELIVERY"]), Name: "relay-ses-events" };
+    const g = setup([{ EventDestinations: [sns(["BOUNCE"]), relay] }]);
+    expect(await g.provider.getRouting(stream)).toEqual({ webhook: ["bounce"], counts: null });
+    const s = setup([{ EventDestinations: [relay, sns(["BOUNCE"])] }, {}]);
+    await s.provider.setRouting(stream, { webhook: ["delivery"] });
+    expect(puts(s.reqs)).toHaveLength(1);
+    expect(puts(s.reqs)[0].url).toMatch(/\/sns$/);
+  });
+
   it("setRouting forces bounce and complaint into webhook", async () => {
     const { provider, reqs } = setup([{ EventDestinations: [sns([])] }, {}]);
     await provider.setRouting(stream, { webhook: ["delivery"] });

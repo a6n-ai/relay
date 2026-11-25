@@ -20,7 +20,7 @@ export async function handleSesEventBatch(batch: MessageBatch<SesEventJob>, env:
           workspaceId,
           messages.map((m) => m.body),
         );
-        await Promise.all(usage.map((u) => bumpUsage(env, workspaceId, u.day, { delivered: u.delivered, bounced: u.bounced })));
+        await Promise.all(usage.map((u) => bumpUsage(env, workspaceId, u.day, { sent: u.sent, delivered: u.delivered, bounced: u.bounced })));
         const failedIndexes = new Set(failed);
         messages.forEach((message, i) => (failedIndexes.has(i) ? message.retry({ delaySeconds: 30 }) : message.ack()));
       } catch (err) {

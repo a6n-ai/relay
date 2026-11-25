@@ -49,8 +49,11 @@ export function normalizeRouting(stream: EmailStream, r: Routing): Routing {
   return r.counts ? { webhook, counts: [...new Set(r.counts)] } : { webhook };
 }
 
+// Relay's own SES event feed sits beside the app's destinations on shared sets; it is never the one the app edits.
+export const RELAY_EVENTS_DESTINATION = "relay-ses-events";
+
 function pickDestination(dests: SesDestination[], kind: "sns" | "cloudwatch", configSet: string): SesDestination | undefined {
-  const matches = dests.filter((d) => (kind === "sns" ? d.SnsDestination : d.CloudWatchDestination));
+  const matches = dests.filter((d) => d.Name !== RELAY_EVENTS_DESTINATION && (kind === "sns" ? d.SnsDestination : d.CloudWatchDestination));
   if (matches.length > 1) {
     throw new Error(`Configuration set ${configSet} has ${matches.length} ${kind} destinations (${matches.map((d) => d.Name).join(", ")}); expected one`);
   }

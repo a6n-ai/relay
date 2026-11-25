@@ -146,7 +146,7 @@ export type SesEventResult = {
   applied: number;
   ignored: number;
   failed: number[];
-  usage: { day: string; delivered: number; bounced: number }[];
+  usage: { day: string; delivered: number; bounced: number; sent?: number }[];
 };
 
 export type SendClaim =
@@ -1214,9 +1214,9 @@ export class ClientDO extends DurableObject<Env> {
   async applySesEvents(workspaceId: string, events: SesEventJob[]): Promise<SesEventResult> {
     await this.ready(workspaceId);
     const result: SesEventResult = { applied: 0, ignored: 0, failed: [], usage: [] };
-    const days = new Map<string, { delivered: number; bounced: number }>();
+    const days = new Map<string, { delivered: number; bounced: number; sent: number }>();
     for (const [index, job] of events.entries()) {
-      let delta: { delivered: number; bounced: number } | null;
+      let delta: { delivered: number; bounced: number; sent: number } | null;
       try {
         delta = this.ctx.storage.transactionSync(() => this.applySesEvent(workspaceId, job));
       } catch (err) {
@@ -1231,17 +1231,20 @@ export class ClientDO extends DurableObject<Env> {
       }
       result.applied++;
       const day = utcDay(job.occurredAt);
-      const usage = days.get(day) ?? { delivered: 0, bounced: 0 };
+      const usage = days.get(day) ?? { delivered: 0, bounced: 0, sent: 0 };
+      usage.sent += delta.sent;
       usage.delivered += delta.delivered;
       usage.bounced += delta.bounced;
       days.set(day, usage);
     }
-    result.usage = [...days].filter(([, u]) => u.delivered || u.bounced).map(([day, u]) => ({ day, ...u }));
+    result.usage = [...days]
+      .filter(([, u]) => u.delivered || u.bounced || u.sent)
+      .map(([day, { sent, ...u }]) => ({ day, ...u, ...(sent ? { sent } : {}) }));
     return result;
   }
 
   // Returns the usage this event adds, or null when it is ignored. Must run inside transactionSync.
-  private applySesEvent(workspaceId: string, job: SesEventJob): { delivered: number; bounced: number } | null {
+  private applySesEvent(workspaceId: string, job: SesEventJob): { delivered: number; bounced: number; sent: number } | null {
     if (job.workspaceId !== workspaceId) return null;
     const row = this.db
       .select({
@@ -1285,23 +1288,22 @@ export class ClientDO extends DurableObject<Env> {
         )
         .limit(1)
         .get();
-    const usage = { delivered: 0, bounced: 0 };
+    const usage = { delivered: 0, bounced: 0, sent: 0 };
+    // Any of these proves SES accepted the message. When the send consumer lost its markSent, the first one to arrive
+    // marks the queued row sent (so the sweeper cannot re-send it) and counts it once. Rows the consumer already
+    // marked sent or failed are left alone.
+    if (!row.sesMessageId && row.status === "queued" && (job.type === "Send" || job.type === "Delivery" || job.type === "Bounce" || job.type === "Complaint")) {
+      const now = Date.now();
+      this.db
+        .update(schema.message)
+        .set({ sesMessageId: job.sesMessageId, status: "sent", sentAt: now, claimedUntil: null, error: null, updatedAt: now })
+        .where(and(eq(schema.message.id, job.messageId), eq(schema.message.status, "queued")))
+        .run();
+      bumpCampaign(this.ctx.storage.sql, row.campaignId, { sent: 1, queued: -1 });
+      usage.sent = 1;
+    }
     switch (job.type) {
       case "Send":
-        // Backfills the SES id when the send consumer lost its markSent; a row that already has one is left alone.
-        if (!row.sesMessageId) {
-          const now = Date.now();
-          const queued = row.status === "queued";
-          this.db
-            .update(schema.message)
-            .set({
-              sesMessageId: job.sesMessageId,
-              ...(queued ? { status: "sent" as const, sentAt: now, claimedUntil: null, error: null, updatedAt: now } : {}),
-            })
-            .where(eq(schema.message.id, job.messageId))
-            .run();
-          if (queued) bumpCampaign(this.ctx.storage.sql, row.campaignId, { sent: 1, queued: -1 });
-        }
         break;
       case "Open":
         this.db

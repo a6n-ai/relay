@@ -1,3 +1,3 @@
-// Keeps the first letter and the domain of each address, so a stored error or audit target never holds a full recipient.
+// Keeps the first letter of each local part; the domain is left as written, whatever its form (IP literal, IDN).
 export const maskEmails = (text: string) =>
-  text.replace(/([^\s@<>"(),;:]+)@([\w-]+(?:\.[\w-]+)*)/g, (_, local: string, domain: string) => `${local[0]}***@${domain}`).slice(0, 500);
+  text.replace(/([^\s@<>"(),;:]+)@/g, (_, local: string) => `${[...local][0]}***@`).slice(0, 500);

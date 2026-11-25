@@ -156,6 +156,29 @@ describe("applySesEvents", () => {
     expect(await stub.getMessage(ws, messageId)).toMatchObject({ status: "sent", sesMessageId: "ses-then-delivery" });
   });
 
+  it("marks a queued row sent from a Delivery that arrives before the Send event, and counts it once", async () => {
+    const ws = "wsp_delivery_first";
+    const stub = await seedWorkspace(ws);
+    const { messageId } = await stub.send(ws, base);
+    const first = await stub.applySesEvents(ws, [
+      event(ws, messageId, { type: "Delivery", sesMessageId: "ses-dfirst", recipients: ["guest@x.com"] }),
+    ]);
+    expect(first.usage).toEqual([{ day: DAY, delivered: 1, bounced: 0, sent: 1 }]);
+    expect(await stub.getMessage(ws, messageId)).toMatchObject({ status: "sent", sesMessageId: "ses-dfirst" });
+    const late = await stub.applySesEvents(ws, [event(ws, messageId, { type: "Send", sesMessageId: "ses-dfirst" })]);
+    expect(late.usage).toEqual([]);
+  });
+
+  it("leaves a failed row failed on a Delivery event", async () => {
+    const ws = "wsp_failed_row";
+    const stub = await seedWorkspace(ws);
+    const { messageId } = await stub.send(ws, base);
+    await runInDurableObject(stub, (_i, state) => state.storage.sql.exec("UPDATE message SET status = 'failed'"));
+    const result = await stub.applySesEvents(ws, [event(ws, messageId, { type: "Delivery", sesMessageId: "ses-f", recipients: ["guest@x.com"] })]);
+    expect(result.usage).toEqual([{ day: DAY, delivered: 1, bounced: 0 }]);
+    expect(await stub.getMessage(ws, messageId)).toMatchObject({ status: "failed", sesMessageId: null });
+  });
+
   it("counts two Opens with different SNS ids as two opens", async () => {
     const ws = "wsp_opens";
     const { stub, messageId } = await sentMessage(ws);
