@@ -91,6 +91,16 @@ describe("list automations in the workspace DO", () => {
     expect(await stub.setAutomationEnabled(ws, aut.id, true, null)).toEqual({ problems: ["postal_address_missing"] });
   });
 
+  it("refuses to enable a template with {{data.*}} fields, which a list can never fill", async () => {
+    const ws = "ws_aut_data";
+    const stub = await seededStub(ws);
+    const tpl = (await stub.createTemplate(ws, "app_1", { ...TEMPLATE, text: `${TEMPLATE.text} {{data.plan}}` })) as { id: string };
+    const list = await stub.createList(ws, "app_1", { name: "L", consentSource: "express_optin" });
+    const aut = await stub.createAutomation(ws, "app_1", { name: "W", listId: list.id, templateId: tpl.id, fromEmail: FROM, delayHours: 0 });
+    if (aut === "bad_list" || aut === "bad_template") throw new Error(aut);
+    expect(await stub.setAutomationEnabled(ws, aut.id, true, "1 Main St")).toEqual({ problems: ["data_fields_need_hook"] });
+  });
+
   it("refuses a list or template from another app", async () => {
     const ws = "ws_aut_foreign";
     const { stub, list, tpl } = await setup(ws);

@@ -67,7 +67,11 @@ export async function enableAutomationFor(env: Env, actor: ConsoleActor, id: str
   const profile = await getWorkspaceProfile(env, actor.workspaceId);
   const outcome = await clientFor(env, actor.workspaceId).setAutomationEnabled(actor.workspaceId, id, on, profile.physicalAddress ?? null);
   if (outcome === "missing") throw new ConsoleError(404, "not found");
-  if ("problems" in outcome) throw new ConsoleError(409, "automation not ready");
+  if ("problems" in outcome) {
+    // Automations send to lists, so {{data.*}} fields can never fill; say so instead of the generic checklist.
+    if (outcome.problems.includes("data_fields_need_hook")) throw new ConsoleError(409, "automation uses data fields");
+    throw new ConsoleError(409, "automation not ready");
+  }
   await writeAudit(env, {
     action: on ? "automation.enable" : "automation.disable",
     actorUserId: actor.userId,

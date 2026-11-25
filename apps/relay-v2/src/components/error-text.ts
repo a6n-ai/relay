@@ -62,6 +62,7 @@ const COPY = new Map<string, string>([
   ["template disabled", "This template is turned off, so it can't be sent."],
   ["unsubscribe only on marketing", "This template has an unsubscribe link, so it can only send as marketing mail."],
   ["automation not ready", "This automation isn't ready. Check its list, template, From address and postal address."],
+  ["automation uses data fields", "This template uses {{data.*}} fields, which only an app audience fills. Automations send to lists, so remove them."],
   ["audience_failed", "Your app's audience could not be read."],
   ["unknown binding", "That app audience connection is not available."],
   ["audience hook unavailable", "The app audience service is unavailable right now. Try again later."],
