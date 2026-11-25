@@ -1,0 +1,32 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  Relay SES event feed for one region. SES publishes configuration-set events to the
+  relay-ses-events SNS topic, which delivers them to the Relay webhook. Deploy one stack per
+  region with the region set on the deploy command. ap-south-1 is already covered by
+  deployment/cloudflare/ses.yaml; this stack serves us-east-1. Event destinations on
+  us-east-1 sets are owned by realm (deployment/email/ses-suppression.yaml), so they are not here.
+
+Parameters:
+  WebhookEndpoint:
+    Type: String
+    Default: https://relay.a6n.ai/api/webhooks/ses
+    Description: HTTPS endpoint SNS delivers events to. The route auto-confirms the subscription after verifying the SNS signature.
+
+Resources:
+  EventTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: relay-ses-events
+
+  # Raw message delivery stays off (the default): the webhook verifies the SNS envelope signature.
+  EventSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref EventTopic
+      Protocol: https
+      Endpoint: !Ref WebhookEndpoint
+
+Outputs:
+  EventTopicArn:
+    Description: Add to SES_EVENT_TOPIC_ARNS in apps/relay-v2 (comma list, one topic per region) and to the realm event destination.
+    Value: !Ref EventTopic

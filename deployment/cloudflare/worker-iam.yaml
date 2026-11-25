@@ -31,6 +31,22 @@ Parameters:
     Type: String
     Default: ""
     Description: Optional second SES configuration set (for example a transactional one)
+  SesAdditionalConfigurationSet:
+    Type: String
+    Default: ""
+    Description: Optional third SES configuration set in ResourceRegion (send only)
+  SesUsEastRegion:
+    Type: String
+    Default: us-east-1
+    Description: Second region for SES sends and identity management
+  SesUsEastIdentity:
+    Type: String
+    Default: ""
+    Description: Optional verified SES identity in SesUsEastRegion, for example tiffingrab.ca
+  SesUsEastConfigurationSets:
+    Type: CommaDelimitedList
+    Default: ""
+    Description: Optional. Exactly three configuration set names in SesUsEastRegion that the app sends through
   SesEventConfigSets:
     Type: CommaDelimitedList
     Default: ""
@@ -47,6 +63,10 @@ Conditions:
   ExtraIdentity: !Not [!Equals [!Ref SesExtraIdentity, ""]]
   SesEventSettings: !Not [!Equals [!Join ["", !Ref SesEventConfigSets], ""]]
   S3Files: !Not [!Equals [!Ref FilesBucketName, ""]]
+  AdditionalConfigSet: !Not [!Equals [!Ref SesAdditionalConfigurationSet, ""]]
+  UsEastIdentity: !Not [!Equals [!Ref SesUsEastIdentity, ""]]
+  UsEastConfigSets: !Not [!Equals [!Join ["", !Ref SesUsEastConfigurationSets], ""]]
+  UsEast: !And [!Condition UsEastIdentity, !Condition UsEastConfigSets]
 
 Resources:
   WorkerAccessPolicy:
@@ -84,6 +104,34 @@ Resources:
                 - ExtraConfigSet
                 - !Sub "arn:aws:ses:${ResourceRegion}:${AWS::AccountId}:configuration-set/${SesExtraConfigurationSet}"
                 - !Ref AWS::NoValue
+              - !If
+                - AdditionalConfigSet
+                - !Sub "arn:aws:ses:${ResourceRegion}:${AWS::AccountId}:configuration-set/${SesAdditionalConfigurationSet}"
+                - !Ref AWS::NoValue
+          - !If
+            - UsEast
+            - Sid: SesSendUsEast
+              Effect: Allow
+              Action: [ses:SendEmail, ses:SendRawEmail]
+              Resource:
+                - !Sub "arn:aws:ses:${SesUsEastRegion}:${AWS::AccountId}:identity/${SesUsEastIdentity}"
+                - !Sub
+                  - "arn:aws:ses:${SesUsEastRegion}:${AWS::AccountId}:configuration-set/${Name}"
+                  - Name: !Select [0, !Ref SesUsEastConfigurationSets]
+                - !Sub
+                  - "arn:aws:ses:${SesUsEastRegion}:${AWS::AccountId}:configuration-set/${Name}"
+                  - Name: !Select [1, !Ref SesUsEastConfigurationSets]
+                - !Sub
+                  - "arn:aws:ses:${SesUsEastRegion}:${AWS::AccountId}:configuration-set/${Name}"
+                  - Name: !Select [2, !Ref SesUsEastConfigurationSets]
+            - !Ref AWS::NoValue
+          # Identity create/get/delete for the console domain flow, in both regions.
+          - Sid: SesIdentityManage
+            Effect: Allow
+            Action: [ses:CreateEmailIdentity, ses:GetEmailIdentity, ses:DeleteEmailIdentity]
+            Resource:
+              - !Sub "arn:aws:ses:${ResourceRegion}:${AWS::AccountId}:identity/*"
+              - !Sub "arn:aws:ses:${SesUsEastRegion}:${AWS::AccountId}:identity/*"
           # Campaign Delivered/Opened/Clicked come from SES's CloudWatch counts (Refresh results).
           # GetMetricData has no resource-level scoping.
           - Sid: CampaignMetricsRead
