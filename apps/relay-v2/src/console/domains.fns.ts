@@ -3,6 +3,7 @@ import { getRequestHeaders } from "@tanstack/react-start/server";
 import { env } from "cloudflare:workers";
 import { z } from "zod";
 import { ConsoleError, requireActor, toResponseError } from "./actor";
+import { deleteDomain, domainDeletePreview as domainDeletePreviewFor } from "./domain-delete";
 import {
   addAddress,
   addDomain,
@@ -11,6 +12,7 @@ import {
   listDomains,
   releaseDomain,
   removeAddress,
+  setDomainProtected,
   updateAddress,
 } from "./domains";
 import { displayName, id, validate } from "./schemas";
@@ -66,6 +68,39 @@ export const releaseDomainFn = createServerFn({ method: "POST" })
     try {
       const actor = await requireActor(env, getRequestHeaders(), WRITE);
       await releaseDomain(env, actor, data.id);
+    } catch (err) {
+      toResponseError(err);
+    }
+  });
+
+export const setDomainProtectedFn = createServerFn({ method: "POST" })
+  .validator(validate(z.object({ id, protected: z.boolean() })))
+  .handler(async ({ data }) => {
+    try {
+      const actor = await requireActor(env, getRequestHeaders(), WRITE);
+      await setDomainProtected(env, actor, data.id, data.protected);
+    } catch (err) {
+      toResponseError(err);
+    }
+  });
+
+export const domainDeletePreview = createServerFn({ method: "POST" })
+  .validator(validate(z.object({ id })))
+  .handler(async ({ data }) => {
+    try {
+      const actor = await requireActor(env, getRequestHeaders(), READ);
+      return await domainDeletePreviewFor(env, actor, data.id);
+    } catch (err) {
+      toResponseError(err);
+    }
+  });
+
+export const deleteDomainFn = createServerFn({ method: "POST" })
+  .validator(validate(z.object({ id, confirm: z.string().trim().min(1).max(253), deleteHistory: z.boolean() })))
+  .handler(async ({ data }) => {
+    try {
+      const actor = await requireActor(env, getRequestHeaders(), WRITE);
+      return await deleteDomain(env, actor, data.id, { confirm: data.confirm, deleteHistory: data.deleteHistory });
     } catch (err) {
       toResponseError(err);
     }

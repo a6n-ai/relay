@@ -14,6 +14,7 @@ import { recordDoState } from "../core/workspace-profile";
 import { utcDay } from "../core/usage";
 import { decryptSecret, encryptSecret, KEY_ERROR, newWebhookSecret, signBody } from "../core/webhook-crypto";
 import { webhookBody, webhookHeaders } from "../core/mailbox-received";
+import { detachDomainSenders, deleteHistoryRows, domainUsage, historyBatch } from "./domain-cleanup";
 import { MAX_WEBHOOK_ATTEMPTS, webhookRetryDelaySeconds, type WebhookClaim, type WebhookOutcome } from "../core/webhook-consumer";
 import { isPublicWebhookUrl, type WebhookInput, type WebhookPatch, type WebhookView } from "../core/webhooks";
 import type { Env, InboundJob } from "../env";
@@ -1593,6 +1594,32 @@ export class ClientDO extends DurableObject<Env> {
     const snapshot = await loadWorkspaceLimits(this.env, workspaceId);
     this.ctx.storage.kv.put("limits", snapshot);
     return snapshot;
+  }
+
+  async domainUsage(workspaceId: string, domain: string) {
+    await this.ready(workspaceId);
+    return domainUsage(this.ctx.storage.sql, domain);
+  }
+
+  async detachDomain(workspaceId: string, domain: string) {
+    await this.ready(workspaceId);
+    return this.ctx.storage.transactionSync(() => detachDomainSenders(this.ctx.storage.sql, domain, Date.now()));
+  }
+
+  // Each batch commits its rows before its R2 objects go, so a failed object delete leaves an orphan, never a row with no object.
+  async deleteDomainHistory(workspaceId: string, domain: string): Promise<{ messages: number; objects: number }> {
+    await this.ready(workspaceId);
+    let messages = 0;
+    let objects = 0;
+    for (;;) {
+      const batch = historyBatch(this.ctx.storage.sql, domain);
+      if (batch.length === 0) return { messages, objects };
+      this.ctx.storage.transactionSync(() => deleteHistoryRows(this.ctx.storage.sql, batch.map((b) => b.id)));
+      const keys = batch.flatMap((b) => b.keys);
+      await this.dropObjects(keys);
+      messages += batch.length;
+      objects += keys.length;
+    }
   }
 
   private async ready(workspaceId: string): Promise<void> {

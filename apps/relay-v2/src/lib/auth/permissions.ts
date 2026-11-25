@@ -17,6 +17,7 @@ export const statement = {
   tenant: ["read", "write"],
   message: ["read", "write"],
   sending: ["read", "write"],
+  domain: ["delete_protected"],
 } as const;
 
 export const ac = createAccessControl(statement);
@@ -30,9 +31,13 @@ export const roles = {
     tenant: ["read", "write"],
     message: ["read", "write"],
     sending: ["read", "write"],
+    domain: ["delete_protected"],
   }),
   user: ac.newRole({}),
 };
+
+// Platform permission for deleting a protected sending domain; only the super admin role holds it.
+export const canDeleteProtectedDomain = (): boolean => roles.admin.authorize({ domain: ["delete_protected"] }).success;
 
 export const appStatement = {
   tenant: ["read", "write"],

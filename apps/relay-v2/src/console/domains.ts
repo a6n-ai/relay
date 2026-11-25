@@ -51,8 +51,8 @@ export async function readDomainState(env: Env, region: string, domain: string) 
 }
 
 // Only a row Relay created, never seen verified and still pending may be released along with its SES identity.
-const releasable = (d: { status: string; createdByRelay: boolean; verifiedAt: Date | null }) =>
-  d.status === "pending" && d.createdByRelay && d.verifiedAt === null;
+const releasable = (d: { status: string; createdByRelay: boolean; verifiedAt: Date | null; protected: boolean }) =>
+  d.status === "pending" && d.createdByRelay && d.verifiedAt === null && !d.protected;
 
 // A domain claims its parents and subdomains too; the label boundary keeps badexample.com apart from example.com.
 async function claimedByAnother(env: Env, workspaceId: string, domain: string): Promise<boolean> {
@@ -70,7 +70,7 @@ async function claimedByAnother(env: Env, workspaceId: string, domain: string): 
   return hit !== undefined;
 }
 
-const dkimRecords = (domain: string, identity: SesIdentity | null) =>
+export const dkimRecords = (domain: string, identity: SesIdentity | null) =>
   (identity?.dkimTokens ?? []).map((token) => ({
     type: "CNAME" as const,
     name: `${token}._domainkey.${domain}`,
@@ -96,6 +96,7 @@ export async function listDomains(env: Env, actor: ConsoleActor) {
         sesRegion: d.sesRegion,
         status: d.status,
         dkimStatus: d.dkimStatus,
+        protected: d.protected,
         releasable: releasable(d),
         records: dkimRecords(d.domain, identity),
       };
@@ -254,7 +255,15 @@ async function releasePendingRow(env: Env, row: DomainRow, actorUserId: string |
   if (identity?.verified) return false;
   const gone = await coreDb(env)
     .delete(sendingDomain)
-    .where(and(eq(sendingDomain.id, row.id), eq(sendingDomain.status, "pending"), eq(sendingDomain.createdByRelay, true), isNull(sendingDomain.verifiedAt)))
+    .where(
+      and(
+        eq(sendingDomain.id, row.id),
+        eq(sendingDomain.status, "pending"),
+        eq(sendingDomain.createdByRelay, true),
+        isNull(sendingDomain.verifiedAt),
+        eq(sendingDomain.protected, false),
+      ),
+    )
     .returning({ id: sendingDomain.id });
   if (gone.length === 0) return false;
   await ses.delete(row.sesRegion, row.domain).catch(() => console.error("ses identity delete failed", row.id));
@@ -273,6 +282,7 @@ export async function releaseStalePendingDomains(env: Env, now = Date.now()): Pr
         eq(sendingDomain.status, "pending"),
         eq(sendingDomain.createdByRelay, true),
         isNull(sendingDomain.verifiedAt),
+        eq(sendingDomain.protected, false),
         lt(sendingDomain.createdAt, new Date(now - PENDING_RELEASE_MS)),
       ),
     );
@@ -298,11 +308,36 @@ export async function releaseDomain(env: Env, actor: ConsoleActor, id: string): 
       status: sendingDomain.status,
       createdByRelay: sendingDomain.createdByRelay,
       verifiedAt: sendingDomain.verifiedAt,
+      protected: sendingDomain.protected,
     })
     .from(sendingDomain)
     .where(eq(sendingDomain.id, id));
   if (!row) throw new ConsoleError(404, "not found");
+  if (row.protected) throw new ConsoleError(409, "domain is protected");
   if (!releasable(row) || !(await releasePendingRow(env, row, actor.userId))) {
     throw new ConsoleError(409, "domain cannot be released");
   }
+}
+
+// Protection is the only guard on a live domain's rows: the sweep, release and delete paths all check it.
+export async function setDomainProtected(env: Env, actor: ConsoleActor, id: string, protectedNow: boolean): Promise<void> {
+  if (!actor.platformAdmin) throw new ConsoleError(403, "forbidden");
+  const [row] = await coreDb(env)
+    .update(sendingDomain)
+    .set({ protected: protectedNow, updatedAt: new Date() })
+    .where(eq(sendingDomain.id, id))
+    .returning({ workspaceId: sendingDomain.workspaceId });
+  if (!row) throw new ConsoleError(404, "not found");
+  await writeAudit(env, {
+    action: protectedNow ? "domain.protect" : "domain.unprotect",
+    actorUserId: actor.userId,
+    workspaceId: row.workspaceId,
+    target: id,
+  });
+}
+
+export async function domainRow(env: Env, id: string) {
+  const [row] = await coreDb(env).select().from(sendingDomain).where(eq(sendingDomain.id, id));
+  if (!row) throw new ConsoleError(404, "not found");
+  return row;
 }

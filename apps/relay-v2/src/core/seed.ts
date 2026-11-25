@@ -10,6 +10,9 @@ import { writeAudit } from "../lib/auth/audit";
 import { newId } from "../lib/ids";
 import { readDomainState } from "../console/domains";
 import { createApp } from "./apps";
+
+// Their mail is live (login codes, the a6n workspace's own sending), so a seed never leaves them releasable.
+const PROTECTED_SEED_DOMAINS = ["a6n.ai", "tiffingrab.ca"];
 import { createApiKey } from "./api-keys";
 
 export type SeedInput = {
@@ -104,6 +107,7 @@ export async function seed(env: Env, input: SeedInput): Promise<SeedResult> {
         sesRegion: domain.sesRegion,
         ...state,
         verifiedAt: state.status === "verified" ? new Date() : null,
+        protected: PROTECTED_SEED_DOMAINS.includes(domain.domain),
       });
   }
   const liveKey = await db

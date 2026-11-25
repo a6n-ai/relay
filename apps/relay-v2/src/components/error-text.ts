@@ -24,6 +24,8 @@ const COPY = new Map<string, string>([
   ["domain registered", "That domain is already registered and cannot be added here."],
   ["domain not verified", "Verify the domain's DNS records before using it for a mailbox address."],
   ["domain limit reached", "This workspace has reached its sending domain limit."],
+  ["domain is protected", "This domain is protected, so it can't be released or deleted here."],
+  ["domain name does not match", "Type the domain name exactly to confirm the delete."],
   ["invite limit reached", "This workspace has reached its daily invite limit. Try again tomorrow."],
   ["this invite is for another email", "This invite was sent to a different email address."],
   ["self-serve workspaces have one app", "This workspace already has its app."],

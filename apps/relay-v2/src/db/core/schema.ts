@@ -29,6 +29,8 @@ export const sendingDomain = sqliteTable("sending_domain", {
   createdByRelay: flag("created_by_relay").notNull().default(false),
   // Set the first time SES reports it verified and kept for good: a later DNS blip never makes the row releasable.
   verifiedAt: timestamp("verified_at"),
+  // A protected domain carries live mail (login codes, a workspace's own sending): no release, sweep or plain delete touches it.
+  protected: flag("protected").notNull().default(false),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 });

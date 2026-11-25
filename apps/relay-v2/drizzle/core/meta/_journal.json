@@ -29,6 +29,13 @@
       "when": 1795596269220,
       "tag": "0003_watery_hannibal_king",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1795596772547,
+      "tag": "0004_sending_domain_protected",
+      "breakpoints": true
     }
   ]
 }
