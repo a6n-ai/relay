@@ -9,9 +9,9 @@ describe("deployPlan", () => {
     expect(names).toEqual(["build", "migrate relay-security", "migrate relay-core", "deploy worker", "do-sweep"]);
   });
 
-  it("sweeps the host from RELAY_V2_URL, defaulting to relay.a6n.ai", () => {
-    expect(deployPlan(["d"], "https://relay-v2.acct.workers.dev/").at(-1)).toMatchObject({
-      url: "https://relay-v2.acct.workers.dev/api/internal/do-sweep",
+  it("sweeps the host from RELAY_URL, defaulting to relay.a6n.ai", () => {
+    expect(deployPlan(["d"], "https://relay.acct.workers.dev/").at(-1)).toMatchObject({
+      url: "https://relay.acct.workers.dev/api/internal/do-sweep",
     });
     expect(sweepUrl(undefined)).toBe("https://relay.a6n.ai/api/internal/do-sweep");
     expect(() => sweepUrl("http://relay.a6n.ai")).toThrow("https");

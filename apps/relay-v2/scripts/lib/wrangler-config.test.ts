@@ -3,7 +3,7 @@ import { missing, parseWranglerJsonc } from "./wrangler-config.ts";
 
 const FIXTURE = `{
   // comment with a "quote" and a , before }
-  "name": "relay-v2",
+  "name": "relay",
   /* block, with ,] inside */
   "d1_databases": [
     { "binding": "SECURITY_DB", "database_name": "relay-security", "database_id": "local-security", },
@@ -14,7 +14,7 @@ const FIXTURE = `{
     "producers": [{ "binding": "SEND", "queue": "relay-send" }],
     "consumers": [
       { "queue": "relay-send", "dead_letter_queue": "relay-send-dlq" },
-      { "queue": "relay-v2-inbound", "dead_letter_queue": "relay-v2-inbound-dlq" },
+      { "queue": "relay-inbound-mail", "dead_letter_queue": "relay-inbound-mail-dlq" },
     ],
   },
   "vars": { "URL": "https://relay.a6n.ai//not-a-comment" },
@@ -28,7 +28,7 @@ describe("parseWranglerJsonc", () => {
       { binding: "CORE_DB", name: "relay-core", id: "local-core" },
     ]);
     expect(res.r2).toEqual(["relay-mail"]);
-    expect(res.queues).toEqual(["relay-send", "relay-send-dlq", "relay-v2-inbound", "relay-v2-inbound-dlq"]);
+    expect(res.queues).toEqual(["relay-send", "relay-send-dlq", "relay-inbound-mail", "relay-inbound-mail-dlq"]);
   });
 });
 

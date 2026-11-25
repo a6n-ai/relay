@@ -28,7 +28,7 @@ export default {
       await handleSesEventBatch(batch as MessageBatch<SesEventJob>, env);
       return;
     }
-    if (batch.queue === "relay-v2-inbound") {
+    if (batch.queue === "relay-inbound-mail") {
       await handleInboundBatch(batch as MessageBatch<InboundJob>, env);
       return;
     }

@@ -6,10 +6,10 @@ export type DeployStep =
   | { name: string; kind: "wrangler"; args: string[] }
   | { name: string; kind: "sweep"; url: string };
 
-// RELAY_V2_URL points the sweep at the Worker just deployed (its workers.dev URL before the hostname swap).
+// RELAY_URL points the sweep at the Worker just deployed (its workers.dev URL before the hostname swap).
 export function sweepUrl(base: string | undefined): string {
   const origin = new URL(base?.trim() || DEFAULT_BASE_URL);
-  if (origin.protocol !== "https:") throw new Error("RELAY_V2_URL must be an https URL");
+  if (origin.protocol !== "https:") throw new Error("RELAY_URL must be an https URL");
   return `${origin.origin}/api/internal/do-sweep`;
 }
 

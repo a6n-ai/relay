@@ -12,7 +12,7 @@
   "build": { "command": "node cloudflare/prebundle.mjs" },
   "rules": [{ "type": "Data", "globs": ["**/*.bin"], "fallthrough": true }],
   "upload_source_maps": false,
-  "name": "relay",
+  "name": "relay-legacy", // retired 2026-11-25: the new Relay (apps/relay-v2) owns the Worker name "relay"
   "compatibility_date": "2026-09-01",
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
   "assets": { "binding": "ASSETS", "directory": ".open-next/assets", "run_worker_first": false },
@@ -21,8 +21,9 @@
   "placement": { "mode": "targeted", "region": "aws:ap-southeast-1" },
   "workers_dev": false,
   "preview_urls": false,
-  "routes": [{ "pattern": "relay.a6n.ai", "custom_domain": true }],
-  "services": [{ "binding": "WORKER_SELF_REFERENCE", "service": "relay" }],
+  // relay.a6n.ai now belongs to the new Relay; a manual deploy of this retired app must not take it back.
+  // "routes": [{ "pattern": "relay.a6n.ai", "custom_domain": true }],
+  "services": [{ "binding": "WORKER_SELF_REFERENCE", "service": "relay-legacy" }],
   // Workflows + the Queue drain the outbox. An omitted "triggers" key would keep any old cron.
   "triggers": { "crons": [] },
   // Deployment id, read by cloudflare/bootstrap.js so the wake chain restarts once per deploy.

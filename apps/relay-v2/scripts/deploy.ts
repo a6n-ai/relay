@@ -1,4 +1,4 @@
-// Builds, migrates both D1 databases, deploys the Worker, then runs the DO sweep (RELAY_V2_URL picks the sweep host). Dry-run unless --apply.
+// Builds, migrates both D1 databases, deploys the Worker, then runs the DO sweep (RELAY_URL picks the sweep host). Dry-run unless --apply.
 import { readFileSync } from "node:fs";
 import { build, wrangler, WRANGLER_CONFIG } from "./lib/run.ts";
 import { describeStep, deployPlan, runPlan } from "./lib/deploy-plan.ts";
@@ -6,7 +6,7 @@ import { parseWranglerJsonc } from "./lib/wrangler-config.ts";
 
 const apply = process.argv.includes("--apply");
 const d1Names = parseWranglerJsonc(readFileSync(WRANGLER_CONFIG, "utf8")).d1.map((d) => d.name);
-const steps = deployPlan(d1Names, process.env.RELAY_V2_URL);
+const steps = deployPlan(d1Names, process.env.RELAY_URL);
 
 if (!apply) {
   for (const step of steps) console.log(`plan: ${describeStep(step)}`);
