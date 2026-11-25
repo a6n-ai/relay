@@ -19,3 +19,22 @@ describe("themeBootScript", () => {
     expect(themeBootScript).toContain('"dark"');
   });
 });
+
+describe("themeBootScript unknown values", () => {
+  const run = (stored: string | null) => {
+    const classList = { toggle: (_: string, on: boolean) => (dark = on), add: () => (dark = true) };
+    let dark: boolean | null = null;
+    new Function("localStorage", "matchMedia", "document", themeBootScript)(
+      { getItem: () => stored },
+      () => ({ matches: false }),
+      { documentElement: { classList } },
+    );
+    return dark;
+  };
+
+  it("treats missing and unknown values as dark", () => {
+    expect(run(null)).toBe(true);
+    expect(run("bogus")).toBe(true);
+    expect(run("light")).toBe(false);
+  });
+});

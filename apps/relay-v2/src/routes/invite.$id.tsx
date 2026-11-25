@@ -3,6 +3,7 @@ import { createFileRoute, redirect, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { getShell } from "../console/shell.fns";
 import { acceptInviteFn, getInviteFn } from "../console/members.fns";
+import { AuthCard } from "../components/auth-card";
 import { errorText } from "../components/error-text";
 import { FormError } from "../components/form-error";
 import { ROLE_LABEL, type MemberRole } from "../components/role-select";
@@ -38,7 +39,7 @@ function InvitePage() {
   }
 
   return (
-    <main className="mx-auto flex min-h-svh max-w-sm flex-col justify-center gap-4 p-6">
+    <AuthCard>
       {!invite ? (
         <h1 className="text-lg font-medium">This invite was not found.</h1>
       ) : invite.state === "other-email" ? (
@@ -62,6 +63,6 @@ function InvitePage() {
         </>
       )}
       <FormError message={error} />
-    </main>
+    </AuthCard>
   );
 }

@@ -1,4 +1,5 @@
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
+import { AuthCard } from "../components/auth-card";
 import { CreateDialog } from "../components/create-dialog";
 import { NewWorkspaceForm } from "../components/new-workspace-form";
 import { SignOutButton } from "../components/sign-out-button";
@@ -17,8 +18,7 @@ export const Route = createFileRoute("/no-workspace")({
 function NoWorkspace() {
   const { shell } = Route.useRouteContext();
   return (
-    <main className="mx-auto flex min-h-svh max-w-sm flex-col justify-center gap-4 p-6">
-      <h1 className="text-lg font-medium">No workspace yet</h1>
+    <AuthCard title="No workspace yet">
       <p className="text-sm text-muted-foreground">Ask a workspace owner to add you to a workspace, or start your own.</p>
       <div>
         <CreateDialog trigger="New workspace" title="New workspace">{(done) => <NewWorkspaceForm done={done} />}</CreateDialog>
@@ -33,6 +33,6 @@ function NoWorkspace() {
       <div>
         <SignOutButton />
       </div>
-    </main>
+    </AuthCard>
   );
 }
