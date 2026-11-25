@@ -13,6 +13,7 @@ import { PageHeader } from "../../components/shell/page-header";
 import { runAction } from "../../components/run-action";
 import { StatusBadge } from "../../components/status-badge";
 import { useCan } from "../../components/use-can";
+import { deliveryActions } from "../../components/webhook-delivery-actions";
 import { WEBHOOK_EVENT_LABELS } from "../../components/webhook-events";
 import { fetchDeliveries, retryDeliveryFn } from "../../console/webhooks.fns";
 import type { DeliveryView } from "../../do/console-reads";
@@ -92,7 +93,7 @@ function DeliveriesPage() {
             {
               header: "Message",
               cell: (d) => (
-                <Link to="/messages/$messageId" params={{ messageId: d.messageId }} className="font-mono text-xs underline">
+                <Link to="/messages/$messageId" params={{ messageId: d.messageId }} className="font-mono text-xs hover:underline">
                   {d.messageId}
                 </Link>
               ),
@@ -104,21 +105,16 @@ function DeliveriesPage() {
           ]}
           rows={rows}
           rowKey={(d) => d.id}
-          menu={(d) => [
-            { label: "Open message", to: "/messages/$messageId", params: { messageId: d.messageId } },
-            {
-              label: "Retry",
-              hidden: !(canWrite && d.status === "failed"),
-              onSelect: () => {
-                setOlder(null);
-                void runAction(
-                  () => retryDeliveryFn({ data: { appId, id: d.id } }),
-                  "Retry queued",
-                  () => router.invalidate(),
-                );
-              },
-            },
-          ]}
+          menu={(d) =>
+            deliveryActions(d, canWrite, () => {
+              setOlder(null);
+              void runAction(
+                () => retryDeliveryFn({ data: { appId, id: d.id } }),
+                "Retry queued",
+                () => router.invalidate(),
+              );
+            })
+          }
           empty={
             <EmptyState
               icon={SendIcon}
