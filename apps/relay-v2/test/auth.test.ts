@@ -433,7 +433,7 @@ describe("security log and suspension", () => {
     const rows = await db
       .select()
       .from(securityAudit)
-      .where(and(eq(securityAudit.action, "sign_in.failure"), eq(securityAudit.target, "denied@example.com")));
+      .where(and(eq(securityAudit.action, "sign_in.failure"), eq(securityAudit.target, "d***@example.com")));
     expect(rows).toHaveLength(1);
   });
 
@@ -755,5 +755,14 @@ describe("audit coverage and best-effort writes", () => {
     expect(res.status).toBe(200);
     const [row] = await db.select().from(workspace).where(eq(workspace.id, orgId));
     expect(row.status).toBe("active");
+  });
+});
+
+describe("audit rows never hold a raw address", () => {
+  it("finds no unmasked email in any audit target or data written by the auth flows above", async () => {
+    const rows = await db.select().from(securityAudit);
+    expect(rows.length).toBeGreaterThan(0);
+    const raw = rows.filter((r) => /[^*]@/.test(r.target ?? "") || /[^*]@/.test(r.data ?? ""));
+    expect(raw.map((r) => r.action)).toEqual([]);
   });
 });

@@ -26,6 +26,7 @@ import {
 } from "../../db/security/schema";
 import type { Env } from "../../env";
 import { newId } from "../ids";
+import { maskEmails } from "../../core/mask-emails";
 import { writeAudit } from "./audit";
 import { pickInviteMailer } from "./invite-mailer";
 import { type OtpMailer, consoleOtpMailer, memoryOtpMailer } from "./otp-mailer";
@@ -230,7 +231,7 @@ export function createAuth(env: Env) {
         if (ctx.path === "/sign-in/email-otp") {
           if (isAPIError(result)) {
             const email = String(body.email ?? "").trim().toLowerCase();
-            await writeAudit(env, { action: "sign_in.failure", target: email, data: { status: result.statusCode }, ...meta });
+            await writeAudit(env, { action: "sign_in.failure", target: maskEmails(email), data: { status: result.statusCode }, ...meta });
           } else {
             const signedIn = (result as { user: { id: string } }).user;
             await writeAudit(env, { action: "sign_in.success", actorUserId: signedIn.id, target: signedIn.id, ...meta });
@@ -338,13 +339,13 @@ export function createAuth(env: Env) {
             await writeAudit(env, { action: "workspace.delete", actorUserId: user.id, workspaceId: organization.id, target: organization.id });
           },
           afterCreateInvitation: async ({ invitation, inviter, organization }) => {
-            await writeAudit(env, { action: "invite.create", actorUserId: inviter.id, workspaceId: organization.id, target: invitation.email, data: { role: invitation.role } });
+            await writeAudit(env, { action: "invite.create", actorUserId: inviter.id, workspaceId: organization.id, target: maskEmails(invitation.email), data: { role: invitation.role } });
           },
           afterAcceptInvitation: async ({ invitation, user, organization }) => {
-            await writeAudit(env, { action: "invite.accept", actorUserId: user.id, workspaceId: organization.id, target: invitation.email });
+            await writeAudit(env, { action: "invite.accept", actorUserId: user.id, workspaceId: organization.id, target: maskEmails(invitation.email) });
           },
           afterCancelInvitation: async ({ invitation, cancelledBy, organization }) => {
-            await writeAudit(env, { action: "invite.cancel", actorUserId: cancelledBy.id, workspaceId: organization.id, target: invitation.email });
+            await writeAudit(env, { action: "invite.cancel", actorUserId: cancelledBy.id, workspaceId: organization.id, target: maskEmails(invitation.email) });
           },
           afterAddMember: async ({ member, user, organization }) => {
             await writeAudit(env, { action: "member.add", workspaceId: organization.id, target: user.id, data: { role: member.role } });

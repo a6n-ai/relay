@@ -48,7 +48,7 @@ export const addSuppressionFn = createServerFn({ method: "POST" })
   });
 
 export const removeSuppressionFn = createServerFn({ method: "POST" })
-  .validator(validate(z.object({ email: z.string().trim().toLowerCase().max(254) })))
+  .validator(validate(z.object({ email: z.string().trim().toLowerCase().max(254).email() })))
   .handler(async ({ data }) => {
     try {
       const actor = await requireActor(env, getRequestHeaders(), WRITE);
