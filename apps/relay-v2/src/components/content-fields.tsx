@@ -7,7 +7,7 @@ import { useState } from "react";
 import { errorText } from "./error-text";
 import { LetterView } from "./letter-view";
 import { Hint, SectionTitle } from "./page/text";
-import { FormGroup } from "./page/form-parts";
+import { FormItem } from "@foundry/ui/form";
 
 export type ContentValue = { subject: string; html: string; text: string };
 export type LetterPreview = { htmlSafe: string; text: string; subject: string };
@@ -70,10 +70,10 @@ export function ContentFields({
         </Button>
       </div>
       {preview ? (
-        <FormGroup>
+        <FormItem>
           <SectionTitle as="p">{preview.subject}</SectionTitle>
           <LetterView htmlSafe={preview.htmlSafe} text={preview.text} blockedRemote={0} images={false} onShowImages={() => undefined} />
-        </FormGroup>
+        </FormItem>
       ) : null}
     </>
   );

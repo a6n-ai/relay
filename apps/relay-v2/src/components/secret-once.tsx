@@ -1,14 +1,14 @@
 import { Button } from "@foundry/ui/button";
 import { useState } from "react";
 import { FormError } from "./form-error";
-import { FormStack, FormActions } from "./page/form-parts";
+import { FormBody, FormActions } from "./page/form-parts";
 import { Hint, SectionTitle } from "./page/text";
 
 export function SecretOnce({ secret, label, onDone }: { secret: string; label: string; onDone: () => void }) {
   const [copied, setCopied] = useState(false);
   const [copyFailed, setCopyFailed] = useState(false);
   return (
-    <FormStack>
+    <FormBody as="div">
       <SectionTitle as="p">{label}</SectionTitle>
       <code className="break-all rounded-md bg-muted p-3 font-mono text-sm">{secret}</code>
       <Hint>Copy this now. It won't be shown again.</Hint>
@@ -29,6 +29,6 @@ export function SecretOnce({ secret, label, onDone }: { secret: string; label: s
         </Button>
         <Button onClick={onDone}>Done</Button>
       </FormActions>
-    </FormStack>
+    </FormBody>
   );
 }

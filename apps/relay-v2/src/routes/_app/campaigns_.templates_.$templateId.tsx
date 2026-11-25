@@ -17,7 +17,7 @@ import { PageHeader } from "../../components/shell/page-header";
 import { useCan } from "../../components/use-can";
 import { deleteTemplateFn, fetchTemplate, previewTemplateFn, updateTemplateFn } from "../../console/templates.fns";
 import type { TemplateView } from "../../do/templates";
-import { FormPanel, FormStack } from "../../components/page/form-parts";
+import { FormPanel, FormBody } from "../../components/page/form-parts";
 
 export const Route = createFileRoute("/_app/campaigns_/templates_/$templateId")({
   loader: ({ params }) =>
@@ -139,7 +139,7 @@ function TemplateForm({ template, canWrite }: { template: TemplateView; canWrite
       <FormPanel>
         <form id="template-form" onSubmit={save} className="grid gap-4">
           <SettingsCard title="Content">
-            <FormStack>
+            <FormBody as="div">
               <Label htmlFor="template-name-edit">Name</Label>
               <Input id="template-name-edit" value={name} disabled={!canWrite} onChange={(e) => setName(e.target.value)} />
               <ContentFields
@@ -153,19 +153,19 @@ function TemplateForm({ template, canWrite }: { template: TemplateView; canWrite
                 }}
               />
               <FormError message={error} />
-            </FormStack>
+            </FormBody>
           </SettingsCard>
 
           <SettingsCard
             title="Used by your app for"
             description="Your app sends this template when it reports this event in this locale."
           >
-            <FormStack>
+            <FormBody as="div">
               <Label htmlFor="template-event">Event key</Label>
               <Input id="template-event" value={event} disabled={!canWrite} onChange={(e) => setEvent(e.target.value)} />
               <Label htmlFor="template-locale">Locale</Label>
               <Input id="template-locale" value={locale} disabled={!canWrite} onChange={(e) => setLocale(e.target.value)} />
-            </FormStack>
+            </FormBody>
           </SettingsCard>
 
           <SettingsCard title="Intro">

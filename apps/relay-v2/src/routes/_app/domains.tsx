@@ -431,7 +431,7 @@ function EditAddressForm({
 
   return (
     <FormBody onSubmit={submit}>
-      <Mono>{address.email}</Mono>
+      <Mono className="block">{address.email}</Mono>
       <Label htmlFor="edit-address-name">Name</Label>
       <Input id="edit-address-name" maxLength={80} value={name} onChange={(e) => setName(e.target.value)} />
       <Label htmlFor="edit-address-reply-to">Reply-To</Label>

@@ -28,7 +28,7 @@ import { ScheduleDialog } from "./schedule-dialog";
 import { SettingsCard } from "./page/settings-card";
 import { Toolbar } from "./page/toolbar";
 import { useCan } from "./use-can";
-import { FormActions, FormPanel, FormStack } from "./page/form-parts";
+import { FormActions, FormPanel, FormBody } from "./page/form-parts";
 import { Hint } from "./page/text";
 
 export type CampaignOptions = { senders: string[]; lists: ListView[]; postalAddress: string | null };
@@ -229,7 +229,7 @@ export function CampaignEditor({
 
       <FormPanel as="form" id="campaign-form" onSubmit={save}>
         <SettingsCard title="Content">
-          <FormStack>
+          <FormBody as="div">
             <Label htmlFor="campaign-from">From</Label>
             <Select value={from} onValueChange={(v) => setFrom(v ?? "")} disabled={!canWrite}>
               <SelectTrigger id="campaign-from" aria-label="From">
@@ -255,7 +255,7 @@ export function CampaignEditor({
               onPreview={previewLetter}
             />
             <FormError message={error} />
-          </FormStack>
+          </FormBody>
         </SettingsCard>
 
         <SettingsCard title="Audience">

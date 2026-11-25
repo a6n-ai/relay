@@ -31,7 +31,7 @@ import {
   removeMemberFn,
   updateListFn,
 } from "../../console/lists.fns";
-import { FormBody, FormStack, FormActions } from "../../components/page/form-parts";
+import { FormBody, FormActions } from "../../components/page/form-parts";
 import { Hint } from "../../components/page/text";
 
 type ListSearch = { appId?: string; cursor?: string };
@@ -332,7 +332,7 @@ function ImportForm({ listId, done }: { listId: string; done: () => void }) {
   }
   if (result) {
     return (
-      <FormStack>
+      <FormBody as="div">
         <p className="text-sm tabular-nums">
           Added {result.added} · Already on list {result.existing} · Suppressed {result.suppressed} · Invalid{" "}
           {result.invalid} · Duplicates {result.duplicates}
@@ -340,7 +340,7 @@ function ImportForm({ listId, done }: { listId: string; done: () => void }) {
         <FormActions>
           <Button onClick={done}>Done</Button>
         </FormActions>
-      </FormStack>
+      </FormBody>
     );
   }
   return (
