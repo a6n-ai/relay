@@ -34,7 +34,7 @@ export const Route = createFileRoute("/_app/admin")({
       throw err;
     }
   },
-  pendingComponent: () => <TableSkeleton columns={5} />,
+  pendingComponent: () => <TableSkeleton columns={7} />,
   component: AdminPage,
 });
 
@@ -242,6 +242,8 @@ function AdminPage() {
           { header: "Members", numeric: true, cell: (w) => w.members },
           { header: "Sent this month", numeric: true, cell: (w) => w.sentThisMonth },
           { header: "Region", cell: (w) => w.sesRegion ?? "—" },
+          { header: "Quota", numeric: true, cell: (w) => w.quota },
+          { header: "Invites/day", numeric: true, cell: (w) => w.invitesPerDay },
         ]}
       />
       <Sheet
