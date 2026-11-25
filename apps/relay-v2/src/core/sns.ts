@@ -69,7 +69,8 @@ export function primeCertCache(url: string, pem: string): void {
 }
 
 async function fetchPem(url: string): Promise<string> {
-  const res = await fetch(url, { redirect: "error" });
+  // Workers fetch rejects redirect: "error"; "manual" returns the 3xx, which !res.ok refuses.
+  const res = await fetch(url, { redirect: "manual" });
   if (!res.ok) throw new Error(`cert fetch ${res.status}`);
   return res.text();
 }
@@ -80,9 +81,15 @@ export async function verifySnsMessage(
   fetchCert: (url: string) => Promise<string> = fetchPem,
 ): Promise<boolean> {
   try {
-    if (!isValidSnsCertUrl(msg.SigningCertURL, snsRegion(msg.TopicArn))) return false;
+    if (!isValidSnsCertUrl(msg.SigningCertURL, snsRegion(msg.TopicArn))) {
+      console.warn("sns verify: cert url rejected", new URL(msg.SigningCertURL).host);
+      return false;
+    }
     const alg = msg.SignatureVersion === "2" ? "RSA-SHA256" : msg.SignatureVersion === "1" ? "RSA-SHA1" : null;
-    if (!alg) return false;
+    if (!alg) {
+      console.warn("sns verify: unsupported SignatureVersion", msg.SignatureVersion);
+      return false;
+    }
     const key = new URL(msg.SigningCertURL).href;
     let pem = certs.get(key);
     if (!pem) {
@@ -91,8 +98,11 @@ export async function verifySnsMessage(
     }
     const verifier = createVerify(alg);
     verifier.update(snsStringToSign(msg));
-    return verifier.verify(pem, msg.Signature, "base64");
-  } catch {
+    const ok = verifier.verify(pem, msg.Signature, "base64");
+    if (!ok) console.warn("sns verify: signature mismatch", msg.Type, `v${msg.SignatureVersion}`);
+    return ok;
+  } catch (err) {
+    console.warn("sns verify: error", err instanceof Error ? err.message : "unknown");
     return false;
   }
 }

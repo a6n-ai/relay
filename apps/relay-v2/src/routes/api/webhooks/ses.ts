@@ -19,7 +19,7 @@ export const Route = createFileRoute("/api/webhooks/ses")({
 
         if (msg.Type === "SubscriptionConfirmation") {
           const url = msg.SubscribeURL ? snsHostUrl(msg.SubscribeURL, snsRegion(msg.TopicArn)) : null;
-          if (url && !(await fetch(url.href, { redirect: "error" })).ok) {
+          if (url && !(await fetch(url.href, { redirect: "manual" })).ok) {
             return Response.json({ error: "confirmation failed" }, { status: 502 });
           }
         }

@@ -88,6 +88,24 @@ describe("verifySnsMessage", () => {
   });
 });
 
+describe("verifySnsMessage default cert fetch", () => {
+  // The real fetch path: Workers throws on redirect: "error", which rejected every live SNS message.
+  it("fetches the cert with redirect: manual and verifies", async () => {
+    const url = "https://sns.ap-south-1.amazonaws.com/SimpleNotificationService-def456.pem";
+    const spy = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(certPem, { status: 200 }));
+    expect(await verifySnsMessage(signed({ SigningCertURL: url }, "1"))).toBe(true);
+    expect(spy).toHaveBeenCalledWith(url, { redirect: "manual" });
+    spy.mockRestore();
+  });
+
+  it("rejects when the cert URL answers with a redirect", async () => {
+    const url = "https://sns.ap-south-1.amazonaws.com/SimpleNotificationService-0a0b0c.pem";
+    const spy = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(null, { status: 302, headers: { location: "https://evil.test/x.pem" } }));
+    expect(await verifySnsMessage(signed({ SigningCertURL: url }))).toBe(false);
+    spy.mockRestore();
+  });
+});
+
 describe("isValidSnsCertUrl", () => {
   it("accepts the regional SNS host and cert path", () => {
     expect(isValidSnsCertUrl(CERT_URL, "ap-south-1")).toBe(true);
