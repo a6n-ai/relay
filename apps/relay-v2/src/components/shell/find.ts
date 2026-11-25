@@ -34,3 +34,7 @@ export function findEntries(shell: Shell): FindEntry[] {
 export function pushRecent(ids: string[], id: string, max = 5): string[] {
   return [id, ...ids.filter((i) => i !== id)].slice(0, max);
 }
+
+export function readRecent(raw: unknown): string[] {
+  return Array.isArray(raw) ? raw.filter((i): i is string => typeof i === "string") : [];
+}

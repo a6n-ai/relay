@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { OrgRole } from "../src/console/actor";
 import type { Shell } from "../src/console/shell";
-import { findEntries, pushRecent } from "../src/components/shell/find";
+import { findEntries, pushRecent, readRecent } from "../src/components/shell/find";
 
 const shell = (roles: OrgRole[], over: Partial<Shell> = {}): Shell => ({
   user: { id: "u", email: "u@x.co", name: "U" },
@@ -40,4 +40,13 @@ describe("pushRecent", () => {
     for (const id of "abcdef") ids = pushRecent(ids, id);
     expect(ids).toEqual(["f", "e", "d", "c", "b"]);
   });
+});
+
+describe("readRecent", () => {
+  it("non-array stored values read as empty", () => {
+    expect(readRecent({})).toEqual([]);
+    expect(readRecent("x")).toEqual([]);
+    expect(readRecent(null)).toEqual([]);
+  });
+  it("keeps only string entries", () => expect(readRecent(["a", 1, "b"])).toEqual(["a", "b"]));
 });

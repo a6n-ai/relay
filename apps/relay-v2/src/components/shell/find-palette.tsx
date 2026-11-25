@@ -6,7 +6,7 @@ import SearchIcon from "lucide-react/icons/search";
 import { useEffect, useMemo, useState } from "react";
 import type { Shell } from "../../console/shell";
 import { isTypingTarget } from "../page/keys";
-import { type FindEntry, findEntries, pushRecent } from "./find";
+import { type FindEntry, findEntries, pushRecent, readRecent } from "./find";
 
 const RECENT_KEY = "relay-find-recent";
 const GROUPS: FindEntry["group"][] = ["Pages", "Apps", "Actions"];
@@ -20,6 +20,7 @@ export function FindPalette({ shell }: { shell: Shell }) {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (e.repeat || e.isComposing) return;
       const cmdK = (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k";
       const bareF = e.key.toLowerCase() === "f" && !e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey;
       if (!cmdK && !bareF) return;
@@ -34,12 +35,12 @@ export function FindPalette({ shell }: { shell: Shell }) {
   useEffect(() => {
     if (open) {
       setQuery("");
-      setRecent(localStore.getJson<string[]>(RECENT_KEY, []));
+      setRecent(readRecent(localStore.getJson<unknown>(RECENT_KEY, [])));
     }
   }, [open]);
 
   const pick = (entry: FindEntry) => {
-    localStore.setJson(RECENT_KEY, pushRecent(localStore.getJson<string[]>(RECENT_KEY, []), entry.id));
+    localStore.setJson(RECENT_KEY, pushRecent(readRecent(localStore.getJson<unknown>(RECENT_KEY, [])), entry.id));
     setOpen(false);
     void navigate({ to: entry.to, search: entry.search } as never);
   };
