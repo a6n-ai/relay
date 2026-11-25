@@ -78,3 +78,24 @@ describe("RelayRpc scope", () => {
     await expect(rpc.createCampaign(key1, { name: "" })).rejects.toThrow();
   });
 });
+
+describe("RelayRpc app-audience campaigns", () => {
+  it("creates a hook-audience campaign with its console link, and refuses to schedule it with no hook", async () => {
+    const { rpc, key1, app1 } = await seed("rpc-audience");
+    const created = await rpc.createCampaign(key1, { name: "Hook", audienceKind: "hook", audienceQuery: "group:grp_1" });
+    expect(created).toMatchObject({
+      audienceKind: "hook",
+      audienceQuery: "group:grp_1",
+      consoleUrl: `http://localhost/campaigns/${created.id}?appId=${app1}`,
+    });
+    await expect(rpc.scheduleCampaign(key1, created.id, Date.now() + 3_600_000)).rejects.toThrow("audience_hook_missing");
+  });
+
+  it("switches a list campaign to a hook audience over RPC", async () => {
+    const { rpc, key1 } = await seed("rpc-audience-update");
+    const campaign = await rpc.createCampaign(key1, { name: "Switch" });
+    const updated = await rpc.updateCampaign(key1, campaign.id, { audienceKind: "hook", audienceQuery: "group:grp_2" });
+    expect(updated).toMatchObject({ audienceKind: "hook", audienceQuery: "group:grp_2" });
+    await expect(rpc.scheduleCampaign(key1, campaign.id, Date.now() + 3_600_000)).rejects.toThrow("audience_hook_missing");
+  });
+});

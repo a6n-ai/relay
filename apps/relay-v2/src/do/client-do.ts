@@ -472,9 +472,15 @@ export class ClientDO extends DurableObject<Env> {
     await this.ready(workspaceId);
     return this.ctx.storage.transactionSync(() => removeMemberRow(this.ctx.storage.sql, listId, memberId));
   }
-  async createCampaign(workspaceId: string, appId: string, name: string, templateId?: string): Promise<CampaignView | "template_missing"> {
+  async createCampaign(
+    workspaceId: string,
+    appId: string,
+    name: string,
+    templateId?: string,
+    audience?: { audienceKind: "lists" | "hook"; audienceQuery: string | null },
+  ): Promise<CampaignView | "template_missing"> {
     await this.ready(workspaceId);
-    const view = this.ctx.storage.transactionSync(() => createCampaignRow(this.ctx.storage.sql, appId, name, templateId));
+    const view = this.ctx.storage.transactionSync(() => createCampaignRow(this.ctx.storage.sql, appId, name, templateId, audience));
     return view === "missing" ? "template_missing" : view;
   }
   async listCampaigns(workspaceId: string, cursor?: string, appId?: string): Promise<{ rows: CampaignSummary[]; nextCursor: string | null }> {

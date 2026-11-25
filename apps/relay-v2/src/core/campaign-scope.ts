@@ -11,7 +11,18 @@ import { z } from "zod";
 
 const DAY_MS = 86_400_000;
 
-export const campaignCreateInput = z.object({ name: z.string().trim().min(1).max(80), templateId: z.string().min(1).max(64).optional() });
+export const campaignCreateInput = z.object({
+  name: z.string().trim().min(1).max(80),
+  templateId: z.string().min(1).max(64).optional(),
+  audienceKind: z.enum(["lists", "hook"]).optional(),
+  audienceQuery: z.string().max(1000).nullable().optional(),
+});
+
+// Lets TiffinGrab send staff straight to the editor for a campaign it created or changed.
+const withConsoleUrl = (env: Env, campaign: CampaignView) => ({
+  ...campaign,
+  consoleUrl: `${env.BETTER_AUTH_URL}/campaigns/${campaign.id}?appId=${campaign.appId}`,
+});
 
 const audit = (env: Env, scope: KeyScope, action: string, target: string) =>
   writeAudit(env, { action, actorUserId: null, workspaceId: scope.workspaceId, target, data: { keyId: scope.keyId } });
@@ -35,15 +46,16 @@ export async function getCampaignForScope(env: Env, scope: KeyScope, id: string)
   return ownedCampaign(env, scope, id);
 }
 
-export async function createCampaignForScope(env: Env, scope: KeyScope, input: z.infer<typeof campaignCreateInput>): Promise<CampaignView> {
-  const campaign = await clientFor(env, scope.workspaceId).createCampaign(scope.workspaceId, scope.appId, input.name, input.templateId);
+export async function createCampaignForScope(env: Env, scope: KeyScope, input: z.infer<typeof campaignCreateInput>) {
+  const audience = input.audienceKind ? { audienceKind: input.audienceKind, audienceQuery: input.audienceQuery ?? null } : undefined;
+  const campaign = await clientFor(env, scope.workspaceId).createCampaign(scope.workspaceId, scope.appId, input.name, input.templateId, audience);
   if (campaign === "template_missing") throw new ApiError(404, "not found");
   await audit(env, scope, "campaign.create", campaign.id);
-  return campaign;
+  return withConsoleUrl(env, campaign);
 }
 
 // Same checks as the console: merge fields, the hook data token, and a verified sender.
-export async function updateCampaignForScope(env: Env, scope: KeyScope, id: string, patch: CampaignPatch): Promise<CampaignView> {
+export async function updateCampaignForScope(env: Env, scope: KeyScope, id: string, patch: CampaignPatch) {
   const current = await ownedCampaign(env, scope, id);
   if (patch.audienceQuery && patch.audienceQuery.length > 1000) throw new ApiError(400, "invalid input");
   const data = (patch.audienceKind ?? current.audienceKind) === "hook";
@@ -61,7 +73,7 @@ export async function updateCampaignForScope(env: Env, scope: KeyScope, id: stri
   if (outcome === "not_draft") throw new ApiError(409, "campaign not editable");
   if (outcome === "bad_list") throw new ApiError(400, "unknown list");
   await audit(env, scope, "campaign.update", id);
-  return outcome;
+  return withConsoleUrl(env, outcome);
 }
 
 export async function deleteCampaignForScope(env: Env, scope: KeyScope, id: string): Promise<void> {
