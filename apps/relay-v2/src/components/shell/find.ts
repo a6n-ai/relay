@@ -1,0 +1,36 @@
+import type { Shell } from "../../console/shell";
+import { createItems, visibleNav } from "./nav";
+
+export type FindEntry = {
+  id: string;
+  group: "Pages" | "Apps" | "Actions";
+  label: string;
+  to: string;
+  search?: Record<string, string>;
+};
+
+export function findEntries(shell: Shell): FindEntry[] {
+  const roles = shell.active?.roles ?? [];
+  const pages = visibleNav(roles, shell.platformAdmin).flatMap((g) =>
+    g.items.flatMap((item): FindEntry[] =>
+      item.children
+        ? item.children.map((c) => ({
+            id: `page:${item.id}:${c.id}`,
+            group: "Pages",
+            label: c.label === item.label ? item.label : `${item.label} › ${c.label}`,
+            to: c.to,
+            search: c.search,
+          }))
+        : [{ id: `page:${item.id}`, group: "Pages", label: item.label, to: item.to, search: item.search }],
+    ),
+  );
+  const apps = shell.apps.map((a): FindEntry => ({ id: `app:${a.id}`, group: "Apps", label: a.name, to: `/apps/${a.id}` }));
+  const actions = createItems(roles, shell.active?.status === "suspended").map(
+    (c): FindEntry => ({ id: `new:${c.id}`, group: "Actions", label: `New ${c.label}`, to: c.to, search: { new: "1" } }),
+  );
+  return [...pages, ...apps, ...actions];
+}
+
+export function pushRecent(ids: string[], id: string, max = 5): string[] {
+  return [id, ...ids.filter((i) => i !== id)].slice(0, max);
+}
