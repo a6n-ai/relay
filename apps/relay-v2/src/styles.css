@@ -214,3 +214,9 @@
 :is(form, [role="dialog"]) [data-slot="select-trigger"] {
   width: 100%;
 }
+/* Foundry sets data-active="false" on idle items and its data-active: variants match any value, so idle items look active. */
+:is([data-slot="sidebar-menu-button"], [data-slot="sidebar-menu-sub-button"])[data-active="false"]:not(:hover, :focus-visible, [data-open]) {
+  background-color: transparent;
+  color: var(--sidebar-foreground);
+  font-weight: 400;
+}

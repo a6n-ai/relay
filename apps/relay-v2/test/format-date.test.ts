@@ -33,7 +33,11 @@ describe("formatWhen", () => {
     expect(formatWhen("nope", now, "UTC")).toBe("—");
   });
 
-  it("treats a future time as just now", () => {
-    expect(formatWhen(now + 5000, now, "UTC")).toBe("just now");
+  it("gives the absolute date and time for a future time", () => {
+    expect(formatWhen(now + 2 * 3_600_000, now, "UTC")).toBe("2026-11-25 14:00");
+  });
+
+  it("calls the last 30 seconds just now", () => {
+    expect(formatWhen(now - 30_000, now, "UTC")).toBe("just now");
   });
 });

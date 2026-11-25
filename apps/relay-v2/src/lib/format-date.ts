@@ -30,6 +30,7 @@ export function formatDate(d: Date | number | string, tz?: string): string {
 export function formatWhen(d: Date | number | string, now = Date.now(), tz?: string): string {
   if (!Number.isFinite(toMs(d))) return "—";
   const diff = now - toMs(d);
+  if (diff < 0) return formatDate(d, tz);
   if (diff < MIN) return "just now";
   if (diff < HOUR) return `${Math.floor(diff / MIN)}m ago`;
   if (diff < DAY) return `${Math.floor(diff / HOUR)}h ago`;

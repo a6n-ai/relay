@@ -15,6 +15,7 @@ export function SecretOnce({ secret, label, onDone }: { secret: string; label: s
       <FormError message={copyFailed ? "Copy failed, select the key" : null} />
       <FormActions>
         <Button
+          type="button"
           variant="outline"
           onClick={async () => {
             try {
@@ -27,7 +28,7 @@ export function SecretOnce({ secret, label, onDone }: { secret: string; label: s
         >
           {copied ? "Copied" : "Copy"}
         </Button>
-        <Button onClick={onDone}>Done</Button>
+        <Button type="button" onClick={onDone}>Done</Button>
       </FormActions>
     </FormBody>
   );

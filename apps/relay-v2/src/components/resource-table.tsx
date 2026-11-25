@@ -7,6 +7,10 @@ import { RowMenu, type RowAction } from "./page/row-menu";
 
 const KIND = { name: "font-medium", mono: "font-mono text-xs", url: "break-all font-mono text-xs", time: "text-xs tabular-nums" } as const;
 
+// Only real controls sit above the row's overlay link; text, names and badges fall through to it.
+const ROW_LINK =
+  "relative hover:bg-muted/50 [&_td_:is(a,button,input,select,textarea,label,[role=switch],[role=checkbox],[role=combobox],[role=menuitem]):not([data-row-link])]:relative [&_td_:is(a,button,input,select,textarea,label,[role=switch],[role=checkbox],[role=combobox],[role=menuitem]):not([data-row-link])]:z-10";
+
 export type Column<T> = { header: string; cell: (row: T) => ReactNode; numeric?: boolean; kind?: keyof typeof KIND };
 
 export function CellWhen({ when, text }: { when: string; text: string }) {
@@ -52,7 +56,7 @@ export function ResourceTable<T>({
         {rows.map((row) => {
           const href = rowHref?.(row);
           return (
-            <TableRow key={rowKey(row)} className={href ? "relative hover:bg-muted/50 [&_td>:not([data-row-link])]:relative [&_td>:not([data-row-link])]:z-10" : undefined}>
+            <TableRow key={rowKey(row)} className={href ? ROW_LINK : undefined}>
               {columns.map((c, i) => (
                 <TableCell key={c.header} className={c.numeric ? "text-right tabular-nums" : undefined}>
                   {c.kind ? <span className={KIND[c.kind]}>{c.cell(row)}</span> : c.cell(row)}
