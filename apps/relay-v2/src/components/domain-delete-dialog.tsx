@@ -3,7 +3,7 @@ import { Input } from "@foundry/ui/input";
 import { Label } from "@foundry/ui/label";
 import { toast } from "@foundry/ui/toast";
 import { useRouter } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { deleteDomainFn, domainDeletePreview } from "../console/domains.fns";
 import { ConfirmDialog } from "./confirm-dialog";
 import { DnsRecords } from "./dns-records";
@@ -12,28 +12,45 @@ import { errorText } from "./error-text";
 type Preview = Awaited<ReturnType<typeof domainDeletePreview>>;
 
 // Counts load on open, so the operator sees what the delete touches before typing the name.
-export function DomainDeleteDialog({ id, domain }: { id: string; domain: string }) {
+export function DomainDeleteDialog({
+  id,
+  domain,
+  open: controlledOpen,
+  onOpenChange,
+}: {
+  id: string;
+  domain: string;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+}) {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
+  const [innerOpen, setInnerOpen] = useState(false);
+  const open = controlledOpen ?? innerOpen;
+  const setOpen = onOpenChange ?? setInnerOpen;
   const [preview, setPreview] = useState<Preview | null>(null);
   const [typed, setTyped] = useState("");
   const [deleteHistory, setDeleteHistory] = useState(false);
 
-  async function onOpenChange(next: boolean) {
-    setOpen(next);
-    if (next) {
-      try {
-        setPreview(await domainDeletePreview({ data: { id } }));
-      } catch (err) {
-        setOpen(false);
-        toast.error(errorText(err, "Could not load the delete preview"));
-      }
+  useEffect(() => {
+    if (!open) {
+      setPreview(null);
+      setTyped("");
+      setDeleteHistory(false);
       return;
     }
-    setPreview(null);
-    setTyped("");
-    setDeleteHistory(false);
-  }
+    let live = true;
+    domainDeletePreview({ data: { id } }).then(
+      (p) => live && setPreview(p),
+      (err) => {
+        if (!live) return;
+        setOpen(false);
+        toast.error(errorText(err, "Could not load the delete preview"));
+      },
+    );
+    return () => {
+      live = false;
+    };
+  }, [open, id]);
 
   async function confirm() {
     try {
@@ -48,13 +65,13 @@ export function DomainDeleteDialog({ id, domain }: { id: string; domain: string 
 
   return (
     <ConfirmDialog
-      trigger="Delete"
+      trigger={controlledOpen === undefined ? "Delete" : undefined}
       title={`Delete ${domain}?`}
       description="Removes the domain, its addresses, their grants and inbound routing from Relay. Campaigns and automations sent from it are paused. Suppressions and audit records stay."
       confirmLabel="Delete domain"
       onConfirm={confirm}
       open={open}
-      onOpenChange={onOpenChange}
+      onOpenChange={setOpen}
       confirmDisabled={!preview || typed.trim() !== domain}
     >
       <div className="flex flex-col gap-3 text-sm">

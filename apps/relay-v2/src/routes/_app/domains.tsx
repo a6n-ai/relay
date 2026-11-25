@@ -5,7 +5,8 @@ import { Label } from "@foundry/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@foundry/ui/select";
 import { Switch } from "@foundry/ui/switch";
 import { toast } from "@foundry/ui/toast";
-import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
+import { GlobeIcon } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { ConfirmDialog } from "../../components/confirm-dialog";
 import { CreateDialog } from "../../components/create-dialog";
@@ -18,7 +19,11 @@ import { FormError } from "../../components/form-error";
 import { ResourceTable } from "../../components/resource-table";
 import { StatusBadge } from "../../components/status-badge";
 import { useCan } from "../../components/use-can";
-import { ViewHeader } from "../../components/view-header";
+import { EmptyState } from "../../components/page/empty-state";
+import { TableSkeleton } from "../../components/page/table-skeleton";
+import { SearchInput, Toolbar } from "../../components/page/toolbar";
+import { useNewParam } from "../../components/shell/create-menu";
+import { PageHeader } from "../../components/shell/page-header";
 import { fetchApps } from "../../console/apps.fns";
 import {
   addAddressFn,
@@ -33,12 +38,17 @@ import {
 } from "../../console/domains.fns";
 
 export const Route = createFileRoute("/_app/domains")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    new: search.new === 1 || search.new === "1" ? (1 as const) : undefined,
+    q: typeof search.q === "string" && search.q ? search.q : undefined,
+  }),
   loader: async () => {
     const domains = await fetchDomains();
     if (!domains) return null;
     const [addresses, apps] = await Promise.all([fetchAddresses(), fetchApps()]);
     return { domains, addresses, apps: apps ?? [] };
   },
+  pendingComponent: () => <TableSkeleton columns={3} />,
   component: DomainsPage,
 });
 
@@ -50,19 +60,33 @@ const KINDS = [
 
 function DomainsPage() {
   const data = Route.useLoaderData();
+  const { q } = Route.useSearch();
   const { shell } = Route.useRouteContext();
   const router = useRouter();
+  const navigate = useNavigate();
+  const [newOpen, setNewOpen] = useNewParam();
   const canWrite = useCan({ sending: ["write"] });
   const canManageMail = useCan({ mailbox: ["manage"] });
+  const [releasing, setReleasing] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<{ id: string; domain: string } | null>(null);
+  const [editing, setEditing] = useState<{ id: string; email: string; displayName: string | null; replyTo: string | null } | null>(null);
+  const [removing, setRemoving] = useState<string | null>(null);
+  const [addressOpen, setAddressOpen] = useState(false);
+  const crumbs = [{ label: "Domains" }];
   if (!data) {
     return (
       <>
-        <ViewHeader title="Domains" />
+        <PageHeader crumbs={crumbs} />
         <DeniedState reason={deniedReason(shell)} />
       </>
     );
   }
-  const { domains, addresses, apps } = data;
+  const { apps } = data;
+  const needle = (q ?? "").trim().toLowerCase();
+  const domains = needle ? data.domains.filter((d) => d.domain.toLowerCase().includes(needle)) : data.domains;
+  const addresses = needle
+    ? data.addresses.filter((a) => [a.email, a.appName, a.displayName ?? ""].some((v) => v.toLowerCase().includes(needle)))
+    : data.addresses;
 
   async function check(id: string) {
     try {
@@ -116,16 +140,34 @@ function DomainsPage() {
 
   return (
     <>
-      <ViewHeader
-        title="Domains"
-        actions={
-          canWrite ? (
-            <CreateDialog trigger="Add domain" title="Add a sending domain">
-              {(done) => <NewDomainForm done={done} />}
-            </CreateDialog>
-          ) : undefined
+      <PageHeader crumbs={crumbs} />
+      <Toolbar
+        search={
+          <SearchInput
+            value={q ?? ""}
+            onChange={(v) => void navigate({ to: ".", search: ((prev: Record<string, unknown>) => ({ ...prev, q: v || undefined })) as never, replace: true })}
+            placeholder="Search domains and addresses"
+          />
         }
-      />
+      >
+        {canWrite ? (
+          <Button variant="outline" size="sm" className="rounded-full" onClick={() => setAddressOpen(true)}>
+            Add address
+          </Button>
+        ) : null}
+        {canWrite ? (
+          <CreateDialog title="Add an address" open={addressOpen} onOpenChange={setAddressOpen}>
+            {(done) => <NewAddressForm apps={apps} done={done} />}
+          </CreateDialog>
+        ) : null}
+        {canWrite ? (
+          <CreateDialog trigger="Add domain" title="Add a sending domain" open={newOpen} onOpenChange={setNewOpen}>
+            {(done) => <NewDomainForm done={done} />}
+          </CreateDialog>
+        ) : null}
+      </Toolbar>
+
+      <h2 className="px-4 pb-2 text-sm font-medium">Domains</h2>
       <ResourceTable
         columns={[
           {
@@ -144,53 +186,51 @@ function DomainsPage() {
           },
           { header: "Status", cell: (d) => <StatusBadge status={d.status} /> },
           { header: "DNS", cell: (d) => <DnsRecords records={d.records} /> },
-          {
-            header: "",
-            cell: (d) => (
-              <>
-                {canWrite ? (
-                  <Button variant="outline" size="sm" onClick={() => check(d.id)}>
-                    Check now
-                  </Button>
-                ) : null}
-                {shell.platformAdmin && d.releasable ? (
-                  <ConfirmDialog
-                    trigger="Release"
-                    title="Release this domain?"
-                    description="The domain and its SES identity are deleted. If it is added again, the DNS records change and must be updated."
-                    confirmLabel="Release domain"
-                    onConfirm={() => release(d.id)}
-                  />
-                ) : null}
-                {shell.platformAdmin ? (
-                  <Button variant="outline" size="sm" onClick={() => setProtected(d.id, !d.protected)}>
-                    {d.protected ? "Unprotect" : "Protect"}
-                  </Button>
-                ) : null}
-                {shell.platformAdmin ? <DomainDeleteDialog id={d.id} domain={d.domain} /> : null}
-              </>
-            ),
-          },
         ]}
         rows={domains}
         rowKey={(d) => d.id}
-        empty="No sending domains yet. Add one to send from your own address."
+        menu={(d) => [
+          { label: "Check now", hidden: !canWrite, onSelect: () => void check(d.id) },
+          { label: d.protected ? "Unprotect" : "Protect", hidden: !shell.platformAdmin, onSelect: () => void setProtected(d.id, !d.protected) },
+          { label: "Release", hidden: !(shell.platformAdmin && d.releasable), onSelect: () => setReleasing(d.id) },
+          { label: "Delete", hidden: !shell.platformAdmin, destructive: true, onSelect: () => setDeleting({ id: d.id, domain: d.domain }) },
+        ]}
+        empty={
+          needle ? (
+            "No domains match your search."
+          ) : (
+            <EmptyState
+              icon={GlobeIcon}
+              title="Add a domain to send from your own address."
+              action={
+                canWrite ? (
+                  <Button size="sm" className="rounded-full" onClick={() => setNewOpen(true)}>
+                    Add domain
+                  </Button>
+                ) : undefined
+              }
+            />
+          )
+        }
       />
 
-      <div className="flex h-11 items-center justify-between gap-2 border-b border-t px-4">
-        <h2 className="text-sm font-medium">Addresses</h2>
-        {canWrite ? (
-          <CreateDialog trigger="Add address" title="Add an address">
-            {(done) => <NewAddressForm apps={apps} done={done} />}
-          </CreateDialog>
-        ) : null}
-      </div>
+      <h2 className="px-4 pb-2 pt-6 text-sm font-medium">Addresses</h2>
       <ResourceTable
         columns={[
-          { header: "Address", cell: (a) => <span className="font-mono text-xs">{a.email}</span> },
+          {
+            header: "Address",
+            cell: (a) =>
+              canManageMail && a.kind !== "sender" ? (
+                <Link to="/domains/addresses/$addressId" params={{ addressId: a.id }} className="font-mono text-xs hover:underline">
+                  {a.email}
+                </Link>
+              ) : (
+                <span className="font-mono text-xs">{a.email}</span>
+              ),
+          },
           { header: "App", cell: (a) => a.appName },
-          { header: "Name", cell: (a) => a.displayName ?? "-" },
-          { header: "Reply-To", cell: (a) => a.replyTo ?? "-" },
+          { header: "Name", cell: (a) => a.displayName ?? "—" },
+          { header: "Reply-To", cell: (a) => a.replyTo ?? "—" },
           {
             header: "Can send",
             cell: (a) =>
@@ -202,37 +242,39 @@ function DomainsPage() {
                 "No"
               ),
           },
-          {
-            header: "",
-            cell: (a) => (
-              <div className="flex justify-end gap-2">
-                {canManageMail && a.kind !== "sender" ? (
-                  <Button variant="outline" size="sm" render={<Link to="/domains/addresses/$addressId" params={{ addressId: a.id }} />}>
-                    Access
-                  </Button>
-                ) : null}
-                {canWrite ? (
-                  <CreateDialog trigger="Edit" title="Edit address">
-                    {(done) => <EditAddressForm address={a} done={done} />}
-                  </CreateDialog>
-                ) : null}
-                {canWrite ? (
-                  <ConfirmDialog
-                    trigger="Remove"
-                    title="Remove this address?"
-                    description="Mail to it stops being received, and the app can no longer send from it."
-                    confirmLabel="Remove address"
-                    onConfirm={() => remove(a.id)}
-                  />
-                ) : null}
-              </div>
-            ),
-          },
         ]}
         rows={addresses}
         rowKey={(a) => a.id}
-        empty="No addresses yet. Add one on a verified domain to send from it."
+        menu={(a) => [
+          { label: "Access", hidden: !(canManageMail && a.kind !== "sender"), to: "/domains/addresses/$addressId", params: { addressId: a.id } },
+          { label: "Edit", hidden: !canWrite, onSelect: () => setEditing(a) },
+          { label: "Remove", hidden: !canWrite, destructive: true, onSelect: () => setRemoving(a.id) },
+        ]}
+        empty={needle ? "No addresses match your search." : "No addresses yet. Add one on a verified domain to send from it."}
       />
+
+      <ConfirmDialog
+        open={releasing !== null}
+        onOpenChange={(o) => !o && setReleasing(null)}
+        title="Release this domain?"
+        description="The domain and its SES identity are deleted. If it is added again, the DNS records change and must be updated."
+        confirmLabel="Release domain"
+        onConfirm={() => releasing && release(releasing)}
+      />
+      {deleting ? <DomainDeleteDialog id={deleting.id} domain={deleting.domain} open onOpenChange={(o) => !o && setDeleting(null)} /> : null}
+      <ConfirmDialog
+        open={removing !== null}
+        onOpenChange={(o) => !o && setRemoving(null)}
+        title="Remove this address?"
+        description="Mail to it stops being received, and the app can no longer send from it."
+        confirmLabel="Remove address"
+        onConfirm={() => removing && remove(removing)}
+      />
+      {editing ? (
+        <CreateDialog open title="Edit address" onOpenChange={(o) => !o && setEditing(null)}>
+          {(done) => <EditAddressForm address={editing} done={done} />}
+        </CreateDialog>
+      ) : null}
     </>
   );
 }
