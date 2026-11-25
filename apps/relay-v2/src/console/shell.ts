@@ -1,6 +1,6 @@
 import { asc, eq } from "drizzle-orm";
 import { securityDb } from "../db/security/client";
-import { member, user, workspace } from "../db/security/schema";
+import { app, member, user, workspace } from "../db/security/schema";
 import type { Env } from "../env";
 import { createAuth } from "../lib/auth";
 import { type OrgRole, parseRoles, requireSession } from "./actor";
@@ -10,6 +10,7 @@ export type Shell = {
   platformAdmin: boolean;
   active: { id: string; name: string; status: "active" | "suspended"; roles: OrgRole[] } | null;
   workspaces: { id: string; name: string }[];
+  apps: { id: string; name: string }[];
 };
 
 // A stale active workspace (removed member, or none yet) moves to the first active membership; its set-cookie goes to setCookies.
@@ -39,10 +40,19 @@ export async function loadShell(env: Env, headers: Headers, setCookies: string[]
     }
   }
 
+  const apps = current
+    ? await db
+        .select({ id: app.id, name: app.name })
+        .from(app)
+        .where(eq(app.workspaceId, current.id))
+        .orderBy(asc(app.createdAt))
+    : [];
+
   return {
     user: u,
     platformAdmin,
     active: current && { id: current.id, name: current.name, status: current.status, roles: parseRoles(current.role) },
     workspaces: memberships.map(({ id, name }) => ({ id, name })),
+    apps,
   };
 }
