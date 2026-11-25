@@ -1,5 +1,5 @@
-# Relay (apps/relay-v2) on Cloudflare Workers, Worker name "relay". Push to main checks the app; the deploy job runs only when the
-# repo variable RELAY_DEPLOY is 1 (off until phase 7b), so merging this deploys nothing.
+# Relay (apps/relay-v2) on Cloudflare Workers, Worker name "relay". Push to main checks the app, then deploys it while the
+# repo variable RELAY_DEPLOY is 1 (on since 2026-11-25; set it to 0 to pause deploys).
 # Repo secrets: CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID, INTERNAL_SECRET (same value as the Worker secret).
 # Optional repo variable RELAY_URL: https origin the DO sweep calls (default https://relay.a6n.ai; use the workers.dev URL before the hostname swap).
 name: deploy-relay
