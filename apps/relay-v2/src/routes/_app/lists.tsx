@@ -3,7 +3,8 @@ import { Input } from "@foundry/ui/input";
 import { Label } from "@foundry/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@foundry/ui/select";
 import { toast } from "@foundry/ui/toast";
-import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
+import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { ListIcon } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { AppSelect } from "../../components/app-select";
 import { CONSENT_LABEL } from "../../components/consent-labels";
@@ -13,27 +14,37 @@ import { errorText } from "../../components/error-text";
 import { FormError } from "../../components/form-error";
 import { ResourceTable } from "../../components/resource-table";
 import { useCan } from "../../components/use-can";
-import { ViewHeader } from "../../components/view-header";
+import { EmptyState } from "../../components/page/empty-state";
+import { SearchInput, Toolbar } from "../../components/page/toolbar";
+import { TableSkeleton } from "../../components/page/table-skeleton";
+import { PageHeader } from "../../components/shell/page-header";
+import { useNewParam } from "../../components/shell/create-menu";
 import { fetchApps } from "../../console/apps.fns";
 import { createListFn, fetchLists } from "../../console/lists.fns";
 import type { ConsentSource } from "../../do/lists";
 
-type ListsSearch = { appId?: string };
+type ListsSearch = { appId?: string; new?: 1 };
 
 export const Route = createFileRoute("/_app/lists")({
   validateSearch: (search: Record<string, unknown>): ListsSearch => ({
     appId: typeof search.appId === "string" && search.appId ? search.appId : undefined,
+    new: search.new === 1 || search.new === "1" ? 1 : undefined,
   }),
-  loaderDeps: ({ search }) => search,
+  loaderDeps: ({ search }) => ({ appId: search.appId }),
   loader: async ({ deps }) => {
     const apps = await fetchApps();
     if (!apps) return null;
-    const appId = deps.appId ?? apps[0]?.id;
-    const lists = appId ? await fetchLists({ data: { appId } }) : [];
-    if (!lists) return null;
-    if ("missing" in lists) return { missing: true as const };
-    return { apps, appId, lists };
+    const scoped = deps.appId ? apps.filter((a) => a.id === deps.appId) : apps;
+    if (deps.appId && scoped.length === 0) return { missing: true as const };
+    const settled = await Promise.allSettled(scoped.map((a) => fetchLists({ data: { appId: a.id } })));
+    const rejected = settled.filter((r): r is PromiseRejectedResult => r.status === "rejected");
+    if (settled.length > 0 && rejected.length === settled.length) throw rejected[0].reason;
+    const results = settled.flatMap((r) => (r.status === "fulfilled" ? [r.value] : []));
+    if (results.some((r) => !r)) return null;
+    const lists = results.flatMap((r) => (r && !("missing" in r) ? r : []));
+    return { apps, appId: deps.appId, lists };
   },
+  pendingComponent: () => <TableSkeleton columns={4} />,
   component: ListsPage,
 });
 
@@ -42,12 +53,14 @@ const CONSENT_SOURCES = Object.keys(CONSENT_LABEL) as ConsentSource[];
 function ListsPage() {
   const page = Route.useLoaderData();
   const { shell } = Route.useRouteContext();
-  const navigate = useNavigate({ from: "/lists" });
   const canWrite = useCan({ list: ["write"] });
+  const [newOpen, setNewOpen] = useNewParam();
+  const [query, setQuery] = useState("");
+  const crumbs = [{ label: "Lists" }];
   if (!page) {
     return (
       <>
-        <ViewHeader title="Lists" />
+        <PageHeader crumbs={crumbs} />
         <DeniedState reason={deniedReason(shell)} />
       </>
     );
@@ -55,57 +68,54 @@ function ListsPage() {
   if ("missing" in page) {
     return (
       <>
-        <ViewHeader title="Lists" />
+        <PageHeader crumbs={crumbs} />
         <DeniedState reason="not-found" label="App not found" />
       </>
     );
   }
   const { apps, appId, lists } = page;
+  const defaultApp = appId ?? apps[0]?.id;
+  const canCreate = canWrite && !!defaultApp;
+  const q = query.trim().toLowerCase();
+  const shown = q ? lists.filter((l) => l.name.toLowerCase().includes(q)) : lists;
+  const newList = canCreate ? (
+    <CreateDialog title="New list" open={newOpen} onOpenChange={setNewOpen}>
+      {(done) => <NewListForm apps={apps} appId={defaultApp} done={done} />}
+    </CreateDialog>
+  ) : null;
   return (
     <>
-      <ViewHeader
-        title="Lists"
-        actions={
-          canWrite && appId ? (
-            <CreateDialog trigger="New list" title="New list">
-              {(done) => <NewListForm apps={apps} appId={appId} done={done} />}
-            </CreateDialog>
-          ) : undefined
+      <PageHeader crumbs={crumbs} />
+      <Toolbar search={<SearchInput value={query} onChange={setQuery} placeholder="Search lists" />}>
+        {canCreate ? <Button size="sm" className="rounded-full" onClick={() => setNewOpen(true)}>New list</Button> : null}
+      </Toolbar>
+      {newList}
+      <ResourceTable
+        columns={[
+          { header: "Name", cell: (l) => <span className="font-medium">{l.name}</span> },
+          { header: "App", cell: (l) => apps.find((a) => a.id === l.appId)?.name ?? "—" },
+          { header: "Contacts", cell: (l) => l.members, numeric: true },
+          { header: "Consent", cell: (l) => CONSENT_LABEL[l.consentSource] },
+        ]}
+        rows={shown}
+        rowKey={(l) => l.id}
+        rowHref={(l) => ({ to: "/lists/$listId", params: { listId: l.id }, search: { appId: l.appId } })}
+        rowLabel={() => "Open list"}
+        empty={
+          <EmptyState
+            icon={ListIcon}
+            title={q ? "No lists match" : "No lists yet"}
+            description={q ? undefined : "Lists hold the people a campaign sends to."}
+            action={
+              !q && canCreate ? (
+                <Button size="sm" className="rounded-full" onClick={() => setNewOpen(true)}>
+                  New list
+                </Button>
+              ) : undefined
+            }
+          />
         }
       />
-      <div className="grid gap-4 p-4">
-        {apps.length > 0 ? (
-          <AppSelect
-            apps={apps}
-            value={appId ?? ""}
-            onValueChange={(value) => navigate({ search: { appId: value } })}
-            className="w-full sm:max-w-xs"
-          />
-        ) : null}
-        <ResourceTable
-          columns={[
-            {
-              header: "Name",
-              cell: (l) => (
-                <Link
-                  to="/lists/$listId"
-                  params={{ listId: l.id }}
-                  search={{ appId: l.appId }}
-                  className="font-medium hover:underline"
-                >
-                  {l.name}
-                </Link>
-              ),
-            },
-            { header: "App", cell: (l) => apps.find((a) => a.id === l.appId)?.name ?? "" },
-            { header: "Contacts", cell: (l) => <span className="tabular-nums">{l.members}</span> },
-            { header: "Consent", cell: (l) => CONSENT_LABEL[l.consentSource] },
-          ]}
-          rows={lists}
-          rowKey={(l) => l.id}
-          empty="No lists yet"
-        />
-      </div>
     </>
   );
 }

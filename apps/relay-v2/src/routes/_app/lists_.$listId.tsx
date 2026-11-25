@@ -4,18 +4,24 @@ import { Input } from "@foundry/ui/input";
 import { Label } from "@foundry/ui/label";
 import { toast } from "@foundry/ui/toast";
 import { FileUpload, FileUploadDropzone, FileUploadTrigger } from "@foundry/ui/file-upload";
-import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
+import { UsersIcon } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { ConfirmDialog } from "../../components/confirm-dialog";
 import { CreateDialog } from "../../components/create-dialog";
 import { DeniedState, deniedReason } from "../../components/denied-state";
 import { errorText } from "../../components/error-text";
-import { formatWhen } from "../../components/event-timeline";
 import { FormError } from "../../components/form-error";
-import { ResourceTable } from "../../components/resource-table";
+import { CellWhen, ResourceTable } from "../../components/resource-table";
 import { StatusBadge } from "../../components/status-badge";
 import { useCan } from "../../components/use-can";
-import { ViewHeader } from "../../components/view-header";
+import { LoadMore } from "../../components/page/load-more";
+import { EmptyState } from "../../components/page/empty-state";
+import { RowMenu } from "../../components/page/row-menu";
+import { SearchInput, Toolbar } from "../../components/page/toolbar";
+import { TableSkeleton } from "../../components/page/table-skeleton";
+import { PageHeader } from "../../components/shell/page-header";
+import { formatDate, formatWhen } from "../../lib/format-date";
 import {
   addMemberFn,
   deleteListFn,
@@ -44,6 +50,7 @@ export const Route = createFileRoute("/_app/lists_/$listId")({
     if ("missing" in members) return { missing: true as const };
     return { list: "missing" in lists ? undefined : lists.find((l) => l.id === params.listId), members };
   },
+  pendingComponent: () => <TableSkeleton columns={5} />,
   component: ListDetailPage,
 });
 
@@ -56,10 +63,17 @@ function ListDetailPage() {
   const navigate = useNavigate();
   const canWrite = useCan({ list: ["write"] });
   const canImport = useCan({ list: ["import"] });
+  const [query, setQuery] = useState("");
+  const [renaming, setRenaming] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [removing, setRemoving] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const listsCrumb = { label: "Lists", to: "/lists", search: { appId: search.appId } };
   if (!page) {
     return (
       <>
-        <ViewHeader title="List" />
+        <PageHeader crumbs={[listsCrumb, { label: "List" }]} />
         <DeniedState reason={deniedReason(shell)} />
       </>
     );
@@ -67,7 +81,7 @@ function ListDetailPage() {
   if ("missing" in page || !page.list) {
     return (
       <>
-        <ViewHeader title="List" />
+        <PageHeader crumbs={[listsCrumb, { label: "List" }]} />
         <DeniedState reason="not-found" label="List not found" />
       </>
     );
@@ -91,104 +105,124 @@ function ListDetailPage() {
       toast.error(errorText(err, "Could not delete this list."));
     }
   }
-  return (
-    <>
-      <ViewHeader
-        title={list.name}
-        actions={
-          canWrite ? (
-            <div className="flex gap-2">
-              <CreateDialog trigger="Rename" title="Rename list">
-                {(done) => <RenameForm listId={listId} name={list.name} done={done} />}
-              </CreateDialog>
-              <ConfirmDialog
-                trigger="Delete"
-                title="Delete this list?"
-                description="The list and its contacts will be removed."
-                confirmLabel="Delete"
-                onConfirm={deleteList}
-              />
-            </div>
-          ) : undefined
-        }
-      />
-      <div className="grid gap-4 p-4">
-        {canWrite || canImport ? (
-          <div className="flex justify-end gap-2">
+  const q = query.trim().toLowerCase();
+  const shown = q
+    ? members.rows.filter((m) => `${m.email} ${m.firstName ?? ""} ${m.lastName ?? ""}`.toLowerCase().includes(q))
+    : members.rows;
+  const empty = (
+    <EmptyState
+      icon={UsersIcon}
+      title={q ? "No contacts match" : "No contacts on this list yet."}
+      action={
+        !q && (canWrite || canImport) ? (
+          <div className="flex gap-2">
             {canWrite ? (
-              <CreateDialog trigger="Add contact" title="Add contact">
-                {(done) => <AddContactForm listId={listId} done={done} />}
-              </CreateDialog>
-            ) : null}
-            {canImport ? (
-              <Button variant="outline" size="sm" render={<a href={`/lists/${listId}/export`} download />}>
-                Export CSV
+              <Button size="sm" className="rounded-full" onClick={() => setAdding(true)}>
+                Add contact
               </Button>
             ) : null}
             {canImport ? (
-              <CreateDialog trigger="Import CSV" title="Import contacts">
-                {(done) => <ImportForm listId={listId} done={done} />}
-              </CreateDialog>
+              <Button variant="outline" size="sm" className="rounded-full" onClick={() => setImporting(true)}>
+                Import CSV
+              </Button>
             ) : null}
           </div>
+        ) : undefined
+      }
+    />
+  );
+  return (
+    <>
+      <PageHeader crumbs={[listsCrumb, { label: list.name }]} />
+      <Toolbar search={<SearchInput value={query} onChange={setQuery} placeholder="Search contacts" />}>
+        {canImport ? (
+          <Button variant="outline" size="sm" className="rounded-full" render={<a href={`/lists/${listId}/export`} download />}>
+            Export CSV
+          </Button>
         ) : null}
-        <ResourceTable
-          columns={[
-            { header: "Email", cell: (m) => m.email },
-            { header: "Name", cell: (m) => [m.firstName, m.lastName].filter(Boolean).join(" ") },
-            { header: "Source", cell: (m) => (m.source === "import" ? "Import" : "Manual") },
-            { header: "Added", cell: (m) => <span className="text-xs tabular-nums">{formatWhen(m.createdAt)}</span> },
-            {
-              header: "Status",
-              cell: (m) => (
-                <div className="flex flex-wrap gap-1">
-                  <StatusBadge status={m.state} />
-                  {m.optedOut.map((domain) => (
-                    <Badge key={domain} variant="outline">
-                      Opted out: {domain}
-                    </Badge>
-                  ))}
-                </div>
-              ),
-            },
-            {
-              header: "",
-              cell: (m) =>
-                canWrite ? (
-                  <ConfirmDialog
-                    trigger="Remove"
-                    title="Remove this contact?"
-                    description="They leave this list. Mail to them is not affected."
-                    confirmLabel="Remove"
-                    onConfirm={() => remove(m.id)}
-                  />
-                ) : null,
-            },
-          ]}
-          rows={members.rows}
-          rowKey={(m) => m.id}
-          empty="No contacts on this list yet."
-        />
-        <nav aria-label="Pages" className="flex justify-between text-sm">
-          {search.cursor ? (
-            <Link to="/lists/$listId" params={{ listId }} search={{ appId: search.appId }} className="hover:underline">
-              Newest
-            </Link>
-          ) : (
-            <span />
-          )}
-          {members.nextCursor ? (
-            <Link
-              to="/lists/$listId"
-              params={{ listId }}
-              search={{ appId: search.appId, cursor: members.nextCursor }}
-              className="hover:underline"
-            >
-              Older
-            </Link>
-          ) : null}
-        </nav>
-      </div>
+        {canImport ? (
+          <Button variant="outline" size="sm" className="rounded-full" onClick={() => setImporting(true)}>
+            Import CSV
+          </Button>
+        ) : null}
+        {canWrite ? (
+          <Button size="sm" className="rounded-full" onClick={() => setAdding(true)}>
+            Add contact
+          </Button>
+        ) : null}
+        {canWrite ? (
+          <RowMenu
+            label="List actions"
+            actions={[
+              { label: "Rename", onSelect: () => setRenaming(true) },
+              { label: "Delete", destructive: true, onSelect: () => setDeleting(true) },
+            ]}
+          />
+        ) : null}
+      </Toolbar>
+      {canWrite ? (
+        <CreateDialog title="Add contact" open={adding} onOpenChange={setAdding}>
+          {(done) => <AddContactForm listId={listId} done={done} />}
+        </CreateDialog>
+      ) : null}
+      {canImport ? (
+        <CreateDialog title="Import contacts" open={importing} onOpenChange={setImporting}>
+          {(done) => <ImportForm listId={listId} done={done} />}
+        </CreateDialog>
+      ) : null}
+      <CreateDialog title="Rename list" open={renaming} onOpenChange={setRenaming}>
+        {(done) => <RenameForm listId={listId} name={list.name} done={done} />}
+      </CreateDialog>
+      <ConfirmDialog
+        title="Delete this list?"
+        description="The list and its contacts will be removed."
+        confirmLabel="Delete"
+        open={deleting}
+        onOpenChange={setDeleting}
+        onConfirm={deleteList}
+      />
+      <ConfirmDialog
+        title="Remove this contact?"
+        description="They leave this list. Mail to them is not affected."
+        confirmLabel="Remove"
+        open={removing !== null}
+        onOpenChange={(o) => {
+          if (!o) setRemoving(null);
+        }}
+        onConfirm={() => {
+          if (removing) void remove(removing);
+        }}
+      />
+      <ResourceTable
+        columns={[
+          { header: "Email", cell: (m) => m.email },
+          { header: "Name", cell: (m) => [m.firstName, m.lastName].filter(Boolean).join(" ") || "—" },
+          { header: "Source", cell: (m) => (m.source === "import" ? "Import" : "Manual") },
+          { header: "Added", cell: (m) => <CellWhen when={formatDate(m.createdAt)} text={formatWhen(m.createdAt)} /> },
+          {
+            header: "Status",
+            cell: (m) => (
+              <div className="flex flex-wrap gap-1">
+                <StatusBadge status={m.state} />
+                {m.optedOut.map((domain) => (
+                  <Badge key={domain} variant="outline">
+                    Opted out: {domain}
+                  </Badge>
+                ))}
+              </div>
+            ),
+          },
+        ]}
+        rows={shown}
+        rowKey={(m) => m.id}
+        menu={canWrite ? (m) => [{ label: "Remove", destructive: true, onSelect: () => setRemoving(m.id) }] : undefined}
+        empty={empty}
+      />
+      <LoadMore
+        hasMore={!!members.nextCursor}
+        to={`/lists/${listId}`}
+        search={{ appId: search.appId, cursor: members.nextCursor }}
+      />
     </>
   );
 }
