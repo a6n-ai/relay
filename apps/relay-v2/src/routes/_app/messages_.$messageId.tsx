@@ -72,13 +72,17 @@ function MessagePage() {
           <EventTimeline items={timeline} />
         </section>
 
-        <LetterView
-          htmlSafe={m.htmlSafe}
-          text={m.text}
-          blockedRemote={m.blockedRemote}
-          images={images === true}
-          onShowImages={() => navigate({ search: { images: true } })}
-        />
+        {m.htmlSafe === null && !m.text ? (
+          <p className="text-sm text-muted-foreground">The body of imported mail was not kept.</p>
+        ) : (
+          <LetterView
+            htmlSafe={m.htmlSafe}
+            text={m.text}
+            blockedRemote={m.blockedRemote}
+            images={images === true}
+            onShowImages={() => navigate({ search: { images: true } })}
+          />
+        )}
 
         {m.attachments.length > 0 ? (
           <section aria-label="Attachments" className="grid gap-2">

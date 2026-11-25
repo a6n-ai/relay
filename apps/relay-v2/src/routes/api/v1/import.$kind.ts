@@ -6,6 +6,8 @@ import {
   importCampaignsSchema,
   importListsForScope,
   importListsSchema,
+  importMessagesForScope,
+  importMessagesSchema,
   importSuppressionsForScope,
   importSuppressionsSchema,
   importTemplatesForScope,
@@ -24,6 +26,8 @@ export const Route = createFileRoute("/api/v1/import/$kind")({
             return data(await importTemplatesForScope(env, scope, z.object({ rows: importTemplatesSchema }).parse(body).rows));
           case "campaigns":
             return data(await importCampaignsForScope(env, scope, z.object({ rows: importCampaignsSchema }).parse(body).rows));
+          case "messages":
+            return data(await importMessagesForScope(env, scope, z.object({ rows: importMessagesSchema }).parse(body).rows));
           case "suppressions":
             return data(await importSuppressionsForScope(env, scope, z.object({ rows: importSuppressionsSchema }).parse(body).rows));
           default:

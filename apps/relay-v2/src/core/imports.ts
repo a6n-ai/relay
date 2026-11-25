@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { ImportIds, ImportCampaignInput, ImportRow } from "../do/imports";
+import type { ImportIds, ImportCampaignInput, ImportMessageRow, ImportRow } from "../do/imports";
 import type { ListInput } from "../do/lists";
 import type { TemplateInput } from "../do/templates";
 import type { Env } from "../env";
@@ -92,6 +92,33 @@ export const importSuppressionsSchema = z
   )
   .max(IMPORT_MAX_ROWS);
 
+const optionalMs = z.number().int().nullable();
+
+export const importMessagesSchema = z
+  .array(
+    z.object({
+      importRef: z.string().min(1).max(200),
+      toEmail: z.string().trim().toLowerCase().max(254).email(),
+      stream,
+      event: z.string().max(80).nullable(),
+      subject: z
+        .string()
+        .max(300)
+        .refine((s) => !/[\r\n]/.test(s), "subject must not contain line breaks"),
+      status: z.enum(["sent", "failed", "suppressed"]),
+      error: z.string().max(500).nullable(),
+      createdAt: z.number().int(),
+      sentAt: optionalMs,
+      sesMessageId: z.string().max(200).nullable(),
+      opens: count,
+      clicks: count,
+      deliveredAt: optionalMs,
+      bouncedAt: optionalMs,
+      complainedAt: optionalMs,
+    }),
+  )
+  .max(IMPORT_MAX_ROWS);
+
 // Each import takes at most 500 rows and returns the ids of its refs. A ref kept by another app is refused as a conflict.
 function checkedRows<T>(rows: T[]): T[] {
   if (rows.length > IMPORT_MAX_ROWS) throw new ApiError(400, "invalid input");
@@ -109,7 +136,7 @@ async function importing<T>(call: () => Promise<T>): Promise<T> {
   }
 }
 
-async function audited(env: Env, scope: KeyScope, action: string, result: ImportIds): Promise<ImportIds> {
+async function audited<T extends { created: number; existing: number }>(env: Env, scope: KeyScope, action: string, result: T): Promise<T> {
   await writeAudit(env, { action, actorUserId: null, workspaceId: scope.workspaceId, target: scope.appId, data: { keyId: scope.keyId, created: result.created, existing: result.existing } });
   return result;
 }
@@ -130,6 +157,11 @@ export async function importCampaignsForScope(env: Env, scope: KeyScope, rows: I
   const client = clientFor(env, scope.workspaceId);
   const result = await importing(() => client.importCampaigns(scope.workspaceId, scope.appId, checkedRows(rows)));
   return audited(env, scope, "campaign.import_ref", result);
+}
+
+export async function importMessagesForScope(env: Env, scope: KeyScope, rows: ImportMessageRow[]): Promise<{ created: number; existing: number }> {
+  const result = await clientFor(env, scope.workspaceId).importMessages(scope.workspaceId, scope.appId, checkedRows(rows));
+  return audited(env, scope, "message.import_ref", result);
 }
 
 export async function importSuppressionsForScope(

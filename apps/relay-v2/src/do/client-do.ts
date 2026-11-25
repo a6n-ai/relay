@@ -65,9 +65,11 @@ import {
   importCampaignRow,
   importInChunks,
   importListRow,
+  importMessageRow,
   importTemplateRow,
   type ImportCampaignInput,
   type ImportIds,
+  type ImportMessageRow,
   type ImportRow,
 } from "./imports";
 import {
@@ -1289,6 +1291,16 @@ export class ClientDO extends DurableObject<Env> {
   async importCampaigns(workspaceId: string, appId: string, rows: ImportRow<ImportCampaignInput>[]): Promise<ImportIds> {
     await this.ready(workspaceId);
     return importInChunks(this.ctx.storage, rows, (row) => importCampaignRow(this.ctx.storage.sql, appId, row));
+  }
+
+  // One transaction per call: a failed row rolls back the whole batch, and a repeat import creates nothing.
+  async importMessages(workspaceId: string, appId: string, rows: ImportMessageRow[]): Promise<{ created: number; existing: number }> {
+    await this.ready(workspaceId);
+    return this.ctx.storage.transactionSync(() => {
+      const total = { created: 0, existing: 0 };
+      for (const row of rows) total[importMessageRow(this.ctx.storage.sql, appId, row) ? "created" : "existing"] += 1;
+      return total;
+    });
   }
 
   // Each row goes through writeSuppression, so the reason rank holds: a complaint is never narrowed to an unsubscribe.

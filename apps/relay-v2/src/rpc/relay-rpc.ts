@@ -35,6 +35,8 @@ import {
   importListsForScope,
   importListsSchema,
   importSuppressionsForScope,
+  importMessagesForScope,
+  importMessagesSchema,
   importSuppressionsSchema,
   importTemplatesForScope,
   importTemplatesSchema,
@@ -222,6 +224,10 @@ export class RelayRpc extends WorkerEntrypoint<Env> {
 
   async importCampaigns(apiKey: string, rows: unknown) {
     return withScope(this.env, apiKey, (s) => importCampaignsForScope(this.env, s, importCampaignsSchema.parse(rows)));
+  }
+
+  async importMessages(apiKey: string, rows: unknown) {
+    return withScope(this.env, apiKey, (s) => importMessagesForScope(this.env, s, importMessagesSchema.parse(rows)));
   }
 
   async importSuppressions(apiKey: string, rows: unknown) {

@@ -144,3 +144,68 @@ export function importCampaignRow(sql: SqlStorage, appId: string, row: ImportRow
     .toArray();
   return inserted.length > 0 ? { id, created: true } : existingImport(sql, "campaign", appId, row.importRef);
 }
+
+export type ImportMessageRow = {
+  importRef: string;
+  toEmail: string;
+  stream: "transactional" | "tracked" | "marketing";
+  event: string | null;
+  subject: string;
+  status: "sent" | "failed" | "suppressed";
+  error: string | null;
+  createdAt: number;
+  sentAt: number | null;
+  sesMessageId: string | null;
+  opens: number;
+  clicks: number;
+  deliveredAt: number | null;
+  bouncedAt: number | null;
+  complainedAt: number | null;
+};
+
+// Stored finished and never queued, so a later send with the same key is a duplicate. Returns false when the ref already exists.
+export function importMessageRow(sql: SqlStorage, appId: string, row: ImportMessageRow): boolean {
+  const id = newId("msg");
+  const inserted = sql
+    .exec(
+      `INSERT INTO message (id, app_id, channel, direction, stream, status, idempotency_key, event, to_email, subject, error, ses_message_id, opens, clicks, created_at, updated_at, sent_at)
+       VALUES (?, ?, 'email', 'out', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (app_id, idempotency_key) DO NOTHING RETURNING id`,
+      id,
+      appId,
+      row.stream,
+      row.status,
+      row.importRef,
+      row.event,
+      row.toEmail,
+      row.subject,
+      row.error,
+      row.sesMessageId,
+      row.opens,
+      row.clicks,
+      row.createdAt,
+      row.createdAt,
+      row.sentAt,
+    )
+    .toArray();
+  if (inserted.length === 0) return false;
+  const now = Date.now();
+  const events: [string, number | null][] = [
+    ["Delivery", row.deliveredAt],
+    ["Bounce", row.bouncedAt],
+    ["Complaint", row.complainedAt],
+  ];
+  for (const [type, occurredAt] of events) {
+    if (occurredAt === null) continue;
+    sql.exec(
+      `INSERT INTO message_event (id, message_id, type, sns_message_id, recipient, detail, occurred_at, created_at) VALUES (?, ?, ?, ?, ?, NULL, ?, ?)`,
+      newId("mev"),
+      id,
+      type,
+      `import:${id}:${type}`,
+      row.toEmail,
+      occurredAt,
+      now,
+    );
+  }
+  return true;
+}
