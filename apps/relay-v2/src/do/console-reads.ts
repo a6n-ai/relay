@@ -397,3 +397,61 @@ export async function readMessageDetail(db: Db, env: Env, id: string, access: Me
     thread: threadOf(db, row, access),
   };
 }
+
+export type MessageByKey = {
+  key: string;
+  messageId: string;
+  status: MessageStatus;
+  sentAt: number | null;
+  deliveredAt: number | null;
+  bouncedAt: number | null;
+  complainedAt: number | null;
+  opens: number;
+  clicks: number;
+  error: string | null;
+};
+
+// Keys and ids go in as one JSON array so a 100-key lookup stays one bound parameter.
+export function messagesByKeyRows(db: Db, appId: string, keys: string[]): MessageByKey[] {
+  const rows = db
+    .select({
+      id: schema.message.id,
+      key: schema.message.idempotencyKey,
+      status: schema.message.status,
+      sentAt: schema.message.sentAt,
+      opens: schema.message.opens,
+      clicks: schema.message.clicks,
+      error: schema.message.error,
+    })
+    .from(schema.message)
+    .where(and(eq(schema.message.appId, appId), sql`${schema.message.idempotencyKey} IN (SELECT value FROM json_each(${JSON.stringify(keys)}))`))
+    .all();
+  if (rows.length === 0) return [];
+  const events = db
+    .select({ messageId: schema.messageEvent.messageId, type: schema.messageEvent.type, occurredAt: schema.messageEvent.occurredAt })
+    .from(schema.messageEvent)
+    .where(sql`${schema.messageEvent.messageId} IN (SELECT value FROM json_each(${JSON.stringify(rows.map((r) => r.id))}))`)
+    .orderBy(asc(schema.messageEvent.occurredAt), asc(schema.messageEvent.id))
+    .all();
+  const firstAt = new Map<string, Record<string, number>>();
+  for (const e of events) {
+    const seen = firstAt.get(e.messageId) ?? {};
+    seen[e.type] ??= e.occurredAt;
+    firstAt.set(e.messageId, seen);
+  }
+  return rows.map((r) => {
+    const at = firstAt.get(r.id) ?? {};
+    return {
+      key: r.key ?? "",
+      messageId: r.id,
+      status: r.status as MessageStatus,
+      sentAt: r.sentAt,
+      deliveredAt: at.Delivery ?? null,
+      bouncedAt: at.Bounce ?? null,
+      complainedAt: at.Complaint ?? null,
+      opens: r.opens,
+      clicks: r.clicks,
+      error: r.error,
+    };
+  });
+}

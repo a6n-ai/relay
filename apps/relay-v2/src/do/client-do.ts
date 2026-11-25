@@ -26,6 +26,8 @@ import {
   listInboundFailureRows,
   listMessageRows,
   listSuppressionRows,
+  messagesByKeyRows,
+  type MessageByKey,
   type FailureView,
   type SuppressionView,
   messageBody,
@@ -1120,9 +1122,28 @@ export class ClientDO extends DurableObject<Env> {
     });
   }
 
-  async addSuppression(workspaceId: string, email: string, reason: SuppressionReason, stream?: Stream): Promise<void> {
+  async addSuppression(workspaceId: string, email: string, reason: SuppressionReason, stream?: Stream): Promise<{ created: boolean }> {
     await this.ready(workspaceId);
-    this.ctx.storage.transactionSync(() => this.writeSuppression(email, reason, stream));
+    return this.ctx.storage.transactionSync(() => {
+      const key = email.trim().toLowerCase();
+      const had = this.db.select({ email: schema.suppression.email }).from(schema.suppression).where(eq(schema.suppression.email, key)).get() !== undefined;
+      this.writeSuppression(key, reason, stream);
+      return { created: !had };
+    });
+  }
+
+  async messagesByKeys(workspaceId: string, appId: string, keys: string[]): Promise<MessageByKey[]> {
+    await this.ready(workspaceId);
+    return messagesByKeyRows(this.db, appId, keys);
+  }
+
+  async suppressionRows(workspaceId: string, emails: string[]): Promise<{ email: string; stream: Stream | null; reason: SuppressionReason }[]> {
+    await this.ready(workspaceId);
+    return this.db
+      .select({ email: schema.suppression.email, stream: schema.suppression.stream, reason: schema.suppression.reason })
+      .from(schema.suppression)
+      .where(sql`${schema.suppression.email} IN (SELECT value FROM json_each(${JSON.stringify(emails)}))`)
+      .all() as { email: string; stream: Stream | null; reason: SuppressionReason }[];
   }
 
   // One transactionSync per event. A replayed, foreign or unknown event changes nothing and counts as ignored.

@@ -17,6 +17,7 @@ import {
   updateCampaignForScope,
 } from "../core/campaign-scope";
 import { memberInput } from "../core/member-input";
+import { messagesByKeysForScope, suppressForScope, suppressionStatusForScope } from "../core/lookups";
 import {
   addMemberForScope,
   createListForScope,
@@ -197,6 +198,18 @@ export class RelayRpc extends WorkerEntrypoint<Env> {
 
   async isSuppressed(apiKey: string, email: string, stream: string, from?: string) {
     return withScope(this.env, apiKey, (s) => isSuppressedForScope(this.env, s, email, streamName.parse(stream), from));
+  }
+
+  async messagesByKeys(apiKey: string, keys: unknown) {
+    return withScope(this.env, apiKey, (s) => messagesByKeysForScope(this.env, s, keys));
+  }
+
+  async suppressionStatus(apiKey: string, emails: unknown) {
+    return withScope(this.env, apiKey, (s) => suppressionStatusForScope(this.env, s, emails));
+  }
+
+  async suppress(apiKey: string, input: unknown) {
+    return withScope(this.env, apiKey, (s) => suppressForScope(this.env, s, input));
   }
 
   async importLists(apiKey: string, rows: unknown) {
