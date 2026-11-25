@@ -6,6 +6,8 @@
   "main": "src/server.ts",
   "observability": { "enabled": true },
   "workers_dev": false,
+  // enable at 7b step 6 (owner-confirmed cutover): this Worker takes relay.a6n.ai from the old Worker `relay`
+  // "routes": [{ "pattern": "relay.a6n.ai", "custom_domain": true }],
   "vars": {
     "BETTER_AUTH_URL": "https://relay.a6n.ai",
     "OTP_MAILER": "ses",
