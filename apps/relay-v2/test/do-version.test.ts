@@ -207,6 +207,6 @@ describe("POST /api/internal/do-sweep", () => {
       headers: { authorization: `Bearer ${env.INTERNAL_SECRET}` },
     });
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ total: 1, upToDate: 1, behind: [], failed: [] });
+    expect(await res.json()).toEqual({ total: 1, upToDate: 1, behind: [], failed: [], releasedDomains: 0 });
   });
 });

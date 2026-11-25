@@ -24,6 +24,7 @@ import {
   checkDomainFn,
   fetchAddresses,
   fetchDomains,
+  releaseDomainFn,
   removeAddressFn,
   updateAddressFn,
 } from "../../console/domains.fns";
@@ -71,6 +72,16 @@ function DomainsPage() {
     }
   }
 
+  async function release(id: string) {
+    try {
+      await releaseDomainFn({ data: { id } });
+      toast.success("Domain released");
+      await router.invalidate();
+    } catch (err) {
+      toast.error(errorText(err, "Could not release the domain"));
+    }
+  }
+
   async function setCanSend(id: string, canSend: boolean) {
     try {
       await updateAddressFn({ data: { id, canSend } });
@@ -109,12 +120,20 @@ function DomainsPage() {
           { header: "DNS", cell: (d) => <DnsRecords records={d.records} /> },
           {
             header: "",
-            cell: (d) =>
-              canWrite ? (
-                <Button variant="outline" size="sm" onClick={() => check(d.id)}>
-                  Check now
-                </Button>
-              ) : null,
+            cell: (d) => (
+              <>
+                {canWrite ? (
+                  <Button variant="outline" size="sm" onClick={() => check(d.id)}>
+                    Check now
+                  </Button>
+                ) : null}
+                {shell.platformAdmin && d.status === "pending" ? (
+                  <Button variant="outline" size="sm" onClick={() => release(d.id)}>
+                    Release
+                  </Button>
+                ) : null}
+              </>
+            ),
           },
         ]}
         rows={domains}

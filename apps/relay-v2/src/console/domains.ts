@@ -1,4 +1,4 @@
-import { and, asc, count, eq, inArray, like, ne, or } from "drizzle-orm";
+import { and, asc, count, eq, inArray, like, lt, ne, or } from "drizzle-orm";
 import { createAddress, deleteAddress as deleteAddressRow, updateAddress as updateAddressRow } from "../core/addresses";
 import { refreshWorkspaceLimits } from "../core/limits";
 import { SES_CONFIG_SETS } from "../core/ses";
@@ -9,6 +9,7 @@ import { address, sendingDomain } from "../db/core/schema";
 import { securityDb } from "../db/security/client";
 import { app } from "../db/security/schema";
 import type { Env } from "../env";
+import { writeAudit } from "../lib/auth/audit";
 import { type ConsoleActor, ConsoleError, uniqueViolation } from "./actor";
 import { getApp } from "./apps";
 
@@ -220,4 +221,49 @@ export async function updateAddress(
 export async function removeAddress(env: Env, actor: ConsoleActor, id: string): Promise<void> {
   if (!(await deleteAddressRow(env, actor.workspaceId, id))) throw new ConsoleError(404, "not found");
   await refreshWorkspaceLimits(env, actor.workspaceId);
+}
+
+const PENDING_RELEASE_MS = 14 * 24 * 60 * 60 * 1000;
+
+type DomainRow = { id: string; workspaceId: string; domain: string; sesRegion: string };
+
+// Returns false when the row is no longer pending or still has addresses, so nothing is orphaned.
+// The SES identity delete is best-effort: a leftover identity keeps the name taken (409) until removed by hand.
+async function releasePendingRow(env: Env, row: DomainRow, actorUserId: string | null): Promise<boolean> {
+  const [{ n }] = await coreDb(env).select({ n: count() }).from(address).where(like(address.email, `%@${row.domain}`));
+  if (n > 0) return false;
+  const gone = await coreDb(env)
+    .delete(sendingDomain)
+    .where(and(eq(sendingDomain.id, row.id), eq(sendingDomain.status, "pending")))
+    .returning({ id: sendingDomain.id });
+  if (gone.length === 0) return false;
+  await sesIdentityApi(env)
+    .delete(row.sesRegion, row.domain)
+    .catch(() => console.error("ses identity delete failed", row.id));
+  await writeAudit(env, { action: "domain.release", actorUserId, workspaceId: row.workspaceId, target: row.id });
+  await refreshWorkspaceLimits(env, row.workspaceId);
+  return true;
+}
+
+// Verified domains are never released here: only a row still pending past the cutoff goes.
+export async function releaseStalePendingDomains(env: Env, now = Date.now()): Promise<number> {
+  const stale = await coreDb(env)
+    .select({ id: sendingDomain.id, workspaceId: sendingDomain.workspaceId, domain: sendingDomain.domain, sesRegion: sendingDomain.sesRegion })
+    .from(sendingDomain)
+    .where(and(eq(sendingDomain.status, "pending"), lt(sendingDomain.createdAt, new Date(now - PENDING_RELEASE_MS))));
+  let released = 0;
+  for (const row of stale) if (await releasePendingRow(env, row, null)) released++;
+  return released;
+}
+
+export async function releaseDomain(env: Env, actor: ConsoleActor, id: string): Promise<void> {
+  if (!actor.platformAdmin) throw new ConsoleError(403, "forbidden");
+  const [row] = await coreDb(env)
+    .select({ id: sendingDomain.id, workspaceId: sendingDomain.workspaceId, domain: sendingDomain.domain, sesRegion: sendingDomain.sesRegion, status: sendingDomain.status })
+    .from(sendingDomain)
+    .where(eq(sendingDomain.id, id));
+  if (!row) throw new ConsoleError(404, "not found");
+  if (row.status !== "pending" || !(await releasePendingRow(env, row, actor.userId))) {
+    throw new ConsoleError(409, "domain cannot be released");
+  }
 }

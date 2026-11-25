@@ -9,6 +9,7 @@ import {
   checkDomain,
   listAddresses,
   listDomains,
+  releaseDomain,
   removeAddress,
   updateAddress,
 } from "./domains";
@@ -54,6 +55,17 @@ export const checkDomainFn = createServerFn({ method: "POST" })
     try {
       const actor = await requireActor(env, getRequestHeaders(), WRITE);
       return await checkDomain(env, actor, data.id);
+    } catch (err) {
+      toResponseError(err);
+    }
+  });
+
+export const releaseDomainFn = createServerFn({ method: "POST" })
+  .validator(validate(z.object({ id })))
+  .handler(async ({ data }) => {
+    try {
+      const actor = await requireActor(env, getRequestHeaders(), WRITE);
+      await releaseDomain(env, actor, data.id);
     } catch (err) {
       toResponseError(err);
     }

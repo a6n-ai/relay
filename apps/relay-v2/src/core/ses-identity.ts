@@ -11,6 +11,7 @@ export type SesIdentity = {
 export type SesIdentityApi = {
   create(region: string, domain: string): Promise<{ alreadyExists: boolean }>;
   get(region: string, domain: string): Promise<SesIdentity | null>;
+  delete(region: string, domain: string): Promise<void>;
 };
 
 type SesIdentityResponse = {
@@ -49,6 +50,13 @@ export function sesIdentityApi(env: Env, fetchImpl?: typeof fetch): SesIdentityA
         throw err;
       }
     },
+    async delete(region, domain) {
+      try {
+        await sesClient(region, env, fetchImpl).json(`${base(region)}/${encodePathSegment(domain)}`, { method: "DELETE", ...CALL });
+      } catch (err) {
+        if (!(err instanceof AwsError && err.status === 404)) throw err;
+      }
+    },
   };
 }
 
@@ -64,6 +72,9 @@ export const memorySesIdentity: SesIdentityApi & { preset(region: string, domain
   },
   async get(region, domain) {
     return memoryIdentities.get(memoryKey(region, domain)) ?? null;
+  },
+  async delete(region, domain) {
+    memoryIdentities.delete(memoryKey(region, domain));
   },
   preset(region, domain, identity) {
     memoryIdentities.set(memoryKey(region, domain), identity);
