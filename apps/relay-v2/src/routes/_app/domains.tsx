@@ -71,6 +71,7 @@ function DomainsPage() {
   const [deleting, setDeleting] = useState<{ id: string; domain: string } | null>(null);
   const [editing, setEditing] = useState<{ id: string; email: string; displayName: string | null; replyTo: string | null } | null>(null);
   const [removing, setRemoving] = useState<string | null>(null);
+  const [addressOpen, setAddressOpen] = useState(false);
   const crumbs = [{ label: "Domains" }];
   if (!data) {
     return (
@@ -150,7 +151,12 @@ function DomainsPage() {
         }
       >
         {canWrite ? (
-          <CreateDialog trigger="Add address" title="Add an address">
+          <Button variant="outline" size="sm" className="rounded-full" onClick={() => setAddressOpen(true)}>
+            Add address
+          </Button>
+        ) : null}
+        {canWrite ? (
+          <CreateDialog title="Add an address" open={addressOpen} onOpenChange={setAddressOpen}>
             {(done) => <NewAddressForm apps={apps} done={done} />}
           </CreateDialog>
         ) : null}
