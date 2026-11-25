@@ -1,0 +1,33 @@
+// Builds for production and fails if the dev-only OTP route reached the route tree or the server bundle.
+import { execFileSync } from "node:child_process";
+import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const root = fileURLToPath(new URL("..", import.meta.url));
+const tree = join(root, "src/routeTree.gen.ts");
+const committed = readFileSync(tree, "utf8");
+const FORBIDDEN = ["/api/dev/otp", "DEV_OTP_PEEK"];
+
+try {
+  execFileSync(join(root, "node_modules/.bin/vite"), ["build"], { cwd: root, stdio: "inherit", env: { ...process.env, NODE_OPTIONS: "--max-old-space-size=4096" } });
+  const bad = [];
+  for (const [name, text] of [["src/routeTree.gen.ts", readFileSync(tree, "utf8")]]) {
+    for (const s of FORBIDDEN) if (text.includes(s)) bad.push(`${name}: ${s}`);
+  }
+  const serverDir = join(root, "dist/server");
+  if (!existsSync(serverDir)) throw new Error("dist/server missing after build");
+  for (const f of readdirSync(serverDir, { recursive: true })) {
+    if (!/\.(js|map)$/.test(f)) continue;
+    const text = readFileSync(join(serverDir, f), "utf8");
+    for (const s of FORBIDDEN) if (text.includes(s)) bad.push(`dist/server/${f}: ${s}`);
+  }
+  if (bad.length) {
+    console.error(`dev OTP route in production build:\n${bad.join("\n")}`);
+    process.exitCode = 1;
+  } else {
+    console.log("ok: no dev OTP route in the production route tree or server bundle");
+  }
+} finally {
+  writeFileSync(tree, committed);
+}
