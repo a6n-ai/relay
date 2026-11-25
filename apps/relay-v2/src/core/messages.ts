@@ -1,8 +1,13 @@
+import { and, eq } from "drizzle-orm";
+import { coreDb } from "../db/core/client";
+import { address } from "../db/core/schema";
+import { securityDb } from "../db/security/client";
+import { app } from "../db/security/schema";
 import type { Env } from "../env";
 import { ApiError } from "./api-error";
 import { loadWorkspaceLimits } from "./limits";
 import { contactValues, hasMergeToken } from "./merge";
-import { templateSendSchema, type SendInput, type TemplateSendInput } from "./send-input";
+import { templateSendSchema, type SendInput, type Stream, type TemplateSendInput } from "./send-input";
 
 export type Scope = { workspaceId: string; appId: string };
 
@@ -24,12 +29,30 @@ export function sendRefusal(err: unknown): SendRefusal | undefined {
   return err instanceof Error && Object.hasOwn(SEND_REFUSAL_STATUS, err.message) ? (err.message as SendRefusal) : undefined;
 }
 
-export function sendMessage(env: Env, scope: Scope, input: Omit<SendInput, "appId">) {
+// The default is an address id in relay-core; whether it can send is checked by the client DO like any explicit from.
+async function defaultSender(env: Env, scope: Scope, stream: Stream): Promise<string> {
+  const [row] = await securityDb(env)
+    .select({ transactional: app.defaultTransactionalAddressId, marketing: app.defaultMarketingAddressId })
+    .from(app)
+    .where(and(eq(app.id, scope.appId), eq(app.workspaceId, scope.workspaceId)));
+  const addressId = stream === "marketing" ? row?.marketing : row?.transactional;
+  const [found] = addressId
+    ? await coreDb(env)
+        .select({ email: address.email })
+        .from(address)
+        .where(and(eq(address.id, addressId), eq(address.workspaceId, scope.workspaceId)))
+    : [];
+  if (!found) throw new ApiError(400, "no default sender");
+  return found.email;
+}
+
+export async function sendMessage(env: Env, scope: Scope, input: Omit<SendInput, "appId">) {
   // CASL: marketing mail must carry the opt-out in both bodies, or the recipient has no way to stop it.
   if (input.stream === "marketing" && !(hasMergeToken(input.html, "unsubscribe_url") && hasMergeToken(input.text, "unsubscribe_url"))) {
     throw new ApiError(400, "unsubscribe link required");
   }
-  return clientFor(env, scope.workspaceId).send(scope.workspaceId, { ...input, appId: scope.appId });
+  const from = input.from ?? (await defaultSender(env, scope, input.stream));
+  return clientFor(env, scope.workspaceId).send(scope.workspaceId, { ...input, from, appId: scope.appId });
 }
 
 export async function sendTemplateMessage(env: Env, scope: Scope, input: TemplateSendInput) {

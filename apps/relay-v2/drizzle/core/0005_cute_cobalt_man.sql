@@ -1,0 +1,1 @@
+ALTER TABLE `address` ADD `reply_to` text;

@@ -8,7 +8,7 @@ import type { Env } from "../env";
 // relay-core and relay-security cannot foreign-key each other, so these checks are the only guard on those ids.
 export async function createAddress(
   env: Env,
-  input: { workspaceId: string; appId: string; email: string; kind: "inbox" | "sender" | "both"; displayName?: string; canSend?: boolean },
+  input: { workspaceId: string; appId: string; email: string; kind: "inbox" | "sender" | "both"; displayName?: string; replyTo?: string | null; canSend?: boolean },
 ): Promise<{ id: string }> {
   const [owner] = await securityDb(env)
     .select({ id: app.id })
@@ -47,7 +47,7 @@ export async function updateAddress(
   env: Env,
   workspaceId: string,
   id: string,
-  patch: { displayName?: string | null; canSend?: boolean },
+  patch: { displayName?: string | null; replyTo?: string | null; canSend?: boolean },
 ): Promise<boolean> {
   const rows = await coreDb(env)
     .update(address)
@@ -55,6 +55,20 @@ export async function updateAddress(
     .where(and(eq(address.id, id), eq(address.workspaceId, workspaceId)))
     .returning({ id: address.id });
   return rows.length > 0;
+}
+
+// App defaults name addresses by id with no foreign key, so a deleted address must be unset by hand.
+export async function clearDefaultSenders(env: Env, workspaceId: string, addressIds: string[]): Promise<void> {
+  if (!addressIds.length) return;
+  const db = securityDb(env);
+  await db
+    .update(app)
+    .set({ defaultTransactionalAddressId: null, updatedAt: new Date() })
+    .where(and(eq(app.workspaceId, workspaceId), inArray(app.defaultTransactionalAddressId, addressIds)));
+  await db
+    .update(app)
+    .set({ defaultMarketingAddressId: null, updatedAt: new Date() })
+    .where(and(eq(app.workspaceId, workspaceId), inArray(app.defaultMarketingAddressId, addressIds)));
 }
 
 // Grants live in relay-security, so they go first: a failure leaves an address without grants, never a grant to a missing address.
@@ -65,6 +79,7 @@ export async function deleteAddress(env: Env, workspaceId: string, id: string): 
     .where(and(eq(address.id, id), eq(address.workspaceId, workspaceId)));
   if (!owned) return false;
   await securityDb(env).delete(addressGrant).where(and(eq(addressGrant.addressId, id), eq(addressGrant.workspaceId, workspaceId)));
+  await clearDefaultSenders(env, workspaceId, [id]);
   await coreDb(env).delete(address).where(eq(address.id, id));
   return true;
 }

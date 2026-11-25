@@ -120,6 +120,9 @@ export const app = sqliteTable(
     workspaceId: text("workspace_id").notNull().references(() => workspace.id),
     name: text("name").notNull(),
     slug: text("slug").notNull(),
+    // Ids of relay-core address rows: no cross-database FK, so addresses.ts clears them on delete.
+    defaultTransactionalAddressId: text("default_transactional_address_id"),
+    defaultMarketingAddressId: text("default_marketing_address_id"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },

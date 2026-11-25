@@ -16,7 +16,7 @@ export type WorkspaceLimits = {
   monthlyQuota: number;
   postalAddress: string | null;
   status: "active" | "suspended";
-  senders: Record<string, { name: string | null; sesRegion: string }>;
+  senders: Record<string, { name: string | null; replyTo?: string | null; sesRegion: string }>;
   fetchedAt: number;
 };
 
@@ -30,7 +30,7 @@ export async function loadWorkspaceLimits(env: Env, workspaceId: string): Promis
     .where(eq(workspaceProfile.workspaceId, workspaceId));
   // Same workspace on both sides of the join: a domain in another workspace never verifies this address.
   const rows = await coreDb(env)
-    .select({ email: address.email, name: address.displayName, sesRegion: sendingDomain.sesRegion })
+    .select({ email: address.email, name: address.displayName, replyTo: address.replyTo, sesRegion: sendingDomain.sesRegion })
     .from(address)
     .innerJoin(
       sendingDomain,
@@ -44,7 +44,7 @@ export async function loadWorkspaceLimits(env: Env, workspaceId: string): Promis
     monthlyQuota: profile?.quota ?? DEFAULT_MONTHLY_QUOTA,
     postalAddress: profile?.postalAddress ?? null,
     status: ws?.status ?? "suspended",
-    senders: Object.fromEntries(rows.map((r) => [r.email, { name: r.name, sesRegion: r.sesRegion }])),
+    senders: Object.fromEntries(rows.map((r) => [r.email, { name: r.name, replyTo: r.replyTo, sesRegion: r.sesRegion }])),
     fetchedAt: Date.now(),
   };
 }

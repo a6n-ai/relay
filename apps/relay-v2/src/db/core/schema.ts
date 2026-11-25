@@ -42,6 +42,7 @@ export const address = sqliteTable("address", {
   email: text("email").notNull().unique(),
   kind: text("kind", { enum: ["inbox", "sender", "both"] }).notNull(),
   displayName: text("display_name"),
+  replyTo: text("reply_to"),
   canSend: flag("can_send").notNull().default(false),
   createdAt: createdAt(),
   updatedAt: updatedAt(),

@@ -36,6 +36,13 @@
       "when": 1795596772547,
       "tag": "0004_sending_domain_protected",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1795618252816,
+      "tag": "0005_cute_cobalt_man",
+      "breakpoints": true
     }
   ]
 }

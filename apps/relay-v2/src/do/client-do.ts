@@ -7,7 +7,7 @@ import { contactValues, fillUnsubscribe, hasMergeToken, MERGE_SAMPLES, renderMer
 import { sesSendRate } from "../core/send-rate";
 import type { SesAttachment, SesSendRequest } from "../core/ses";
 import { DEFAULT_MONTHLY_QUOTA, LIMITS_TTL_MS, loadWorkspaceLimits, SENDER_RETRY_MS, type WorkspaceLimits } from "../core/limits";
-import { sendInputSchema, type SendInput, type Stream, type SuppressionReason } from "../core/send-input";
+import { resolvedSendSchema, type ResolvedSendInput, type Stream, type SuppressionReason } from "../core/send-input";
 import type { SesEventJob } from "../core/ses-events";
 import { listUnsubscribeHeaders, unsubscribeToken, unsubscribeUrl } from "../core/unsubscribe";
 import { recordDoState } from "../core/workspace-profile";
@@ -192,9 +192,9 @@ export class ClientDO extends DurableObject<Env> {
     return { version: CLIENT_MIGRATIONS.length };
   }
 
-  async send(workspaceId: string, input: SendInput): Promise<SendResult> {
+  async send(workspaceId: string, input: ResolvedSendInput): Promise<SendResult> {
     await this.ready(workspaceId);
-    const data = sendInputSchema.parse(input);
+    const data = resolvedSendSchema.parse(input);
     if (!data.idempotencyKey) return this.create(workspaceId, data);
 
     const key = `${data.appId}:${data.idempotencyKey}`;
@@ -209,7 +209,7 @@ export class ClientDO extends DurableObject<Env> {
     return created;
   }
 
-  private async create(workspaceId: string, data: SendInput): Promise<SendResult> {
+  private async create(workspaceId: string, data: ResolvedSendInput): Promise<SendResult> {
     const limits = await this.limits(workspaceId, { forSender: data.from });
     if (limits.status === "suspended") throw new Error("workspace_suspended");
     const sender = limits.senders[data.from];
@@ -254,7 +254,7 @@ export class ClientDO extends DurableObject<Env> {
             campaignId: data.campaignId ?? null,
             fromEmail: data.from,
             fromName: data.fromName ?? sender.name,
-            replyTo: data.replyTo ?? null,
+            replyTo: data.replyTo ?? sender.replyTo ?? null,
             sesRegion: sender.sesRegion,
             toEmail: data.to,
             subject: data.subject,

@@ -1,7 +1,7 @@
 import { campaignProblems, type CampaignProblem } from "../core/campaign-problems";
 import { IMPLIED_CONSENT_MS } from "../core/campaigns";
 import { contactValues } from "../core/merge";
-import type { SendInput } from "../core/send-input";
+import type { ResolvedSendInput } from "../core/send-input";
 import { newId } from "../lib/ids";
 import type { SendResult } from "./client-do";
 import { getTemplateRow, type RenderedTemplate, type TemplateView } from "./templates";
@@ -26,7 +26,7 @@ export type AutomationView = {
 };
 
 export type AutomationDeps = {
-  send: (input: SendInput) => Promise<SendResult>;
+  send: (input: ResolvedSendInput) => Promise<SendResult>;
   render: (appId: string, templateId: string, values: Record<string, string>) => Promise<RenderedTemplate | "missing" | "disabled">;
   refreshLimits: () => Promise<unknown>;
   postalAddress: string | null;

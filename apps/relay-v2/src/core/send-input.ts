@@ -28,7 +28,8 @@ const attachmentSchema = z.object({
 export const sendInputSchema = z.object({
   appId: z.string().min(1),
   stream: streamSchema,
-  from: email,
+  // Omitted: the app's default sender for the stream is used (core/messages.ts).
+  from: email.optional(),
   to: email,
   // The subject becomes a mail header: a line break would split it, so it is refused here, not at SES.
   subject: z.string().min(1).refine(noLineBreak, "subject must not contain line breaks"),
@@ -44,6 +45,10 @@ export const sendInputSchema = z.object({
 
 export type SendInput = z.input<typeof sendInputSchema>;
 
+// What the client DO receives: the sender is always resolved by then.
+export const resolvedSendSchema = sendInputSchema.extend({ from: email });
+export type ResolvedSendInput = z.input<typeof resolvedSendSchema>;
+
 export const mergeDataSchema = z
   .record(z.string().regex(/^[a-z0-9_]{1,40}$/), z.string().max(200))
   .refine((d) => Object.keys(d).length <= 10, "at most 10 data keys");
@@ -52,7 +57,7 @@ const contactSchema = z.object({ firstName: z.string().max(200).optional(), last
 
 export const templateSendSchema = z.object({
   stream: streamSchema,
-  from: email,
+  from: email.optional(),
   to: email,
   templateId: z.string().min(1),
   contact: contactSchema.optional(),

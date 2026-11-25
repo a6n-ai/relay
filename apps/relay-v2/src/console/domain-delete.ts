@@ -1,4 +1,5 @@
 import { and, eq, inArray, like } from "drizzle-orm";
+import { clearDefaultSenders } from "../core/addresses";
 import { refreshWorkspaceLimits } from "../core/limits";
 import { clientFor } from "../core/messages";
 import { sesIdentityApi } from "../core/ses-identity";
@@ -94,6 +95,7 @@ export async function deleteDomain(
   const history = input.deleteHistory ? await client.deleteDomainHistory(row.workspaceId, row.domain) : null;
   // Grants before addresses: a failure leaves an address without grants, never a grant to a missing address.
   for (const part of chunks(grantIds)) await securityDb(env).delete(addressGrant).where(inArray(addressGrant.id, part));
+  for (const part of chunks(addressIds)) await clearDefaultSenders(env, row.workspaceId, part);
   for (const part of chunks(addressIds)) await coreDb(env).delete(address).where(inArray(address.id, part));
   await coreDb(env).delete(sendingDomain).where(eq(sendingDomain.id, row.id));
 
