@@ -6,13 +6,22 @@ import { type ReactNode, useState } from "react";
 export function CreateDialog({
   trigger,
   title,
+  open: controlledOpen,
+  onOpenChange,
   children,
 }: {
-  trigger: string;
+  trigger?: string;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
   title: string;
   children: (done: () => void, lock: (locked: boolean) => void) => ReactNode;
 }) {
-  const [open, setOpen] = useState(false);
+  const [innerOpen, setInnerOpen] = useState(false);
+  const open = controlledOpen ?? innerOpen;
+  const setOpen = (next: boolean) => {
+    setInnerOpen(next);
+    onOpenChange?.(next);
+  };
   const [locked, setLocked] = useState(false);
   const done = () => {
     setLocked(false);
@@ -25,7 +34,7 @@ export function CreateDialog({
         if (next || !locked) setOpen(next);
       }}
     >
-      <DialogTrigger render={<Button size="sm" />}>{trigger}</DialogTrigger>
+      {trigger ? <DialogTrigger render={<Button size="sm" />}>{trigger}</DialogTrigger> : null}
       <DialogContent showCloseButton={!locked}>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>

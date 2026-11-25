@@ -1,3 +1,4 @@
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@foundry/ui/collapsible";
 import {
   Sidebar,
   SidebarContent,
@@ -7,75 +8,144 @@ import {
   SidebarHeader,
   SidebarInset,
   SidebarMenu,
+  SidebarMenuAction,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
   SidebarProvider,
+  SidebarRail,
+  SidebarSeparator,
 } from "@foundry/ui/sidebar";
 import { Link, useLocation } from "@tanstack/react-router";
-import type { LucideIcon } from "lucide-react";
-import AppWindow from "lucide-react/icons/app-window";
-import Globe from "lucide-react/icons/globe";
-import LayoutDashboard from "lucide-react/icons/layout-dashboard";
-import List from "lucide-react/icons/list";
-import Mail from "lucide-react/icons/mail";
-import Megaphone from "lucide-react/icons/megaphone";
-import Shield from "lucide-react/icons/shield";
-import Users from "lucide-react/icons/users";
-import type { ReactNode } from "react";
+import ChevronLeft from "lucide-react/icons/chevron-left";
+import ChevronRight from "lucide-react/icons/chevron-right";
+import { Fragment, type ReactNode, useState } from "react";
 import type { Shell } from "../console/shell";
-import { allows } from "../lib/auth/permissions";
-import { SignOutButton } from "./sign-out-button";
+import { activeNav, type NavGroup, type NavItem, visibleNav } from "./shell/nav";
+import { UserMenu } from "./shell/user-menu";
 import { SuspendedBanner } from "./suspended-banner";
 import { WorkspaceSwitcher } from "./workspace-switcher";
 
-export type NavItem = { to: string; label: string; icon: LucideIcon; need?: Record<string, string[]> };
+type Active = { item: string; child?: string } | null;
 
-const NAV: NavItem[] = [
-  { to: "/", label: "Overview", icon: LayoutDashboard },
-  { to: "/apps", label: "Apps", icon: AppWindow },
-  { to: "/messages", label: "Messages", icon: Mail, need: { log: ["read"] } },
-  { to: "/campaigns", label: "Campaigns", icon: Megaphone, need: { campaign: ["read"] } },
-  { to: "/lists", label: "Lists", icon: List, need: { list: ["read"] } },
-  { to: "/domains", label: "Domains", icon: Globe, need: { sending: ["read"] } },
-  { to: "/members", label: "Members", icon: Users },
-];
-const ADMIN_NAV: NavItem = { to: "/admin", label: "Admin", icon: Shield };
-
-export function AppShell({ shell, children }: { shell: Shell; children: ReactNode }) {
-  const { pathname } = useLocation();
-  const roles = shell.active?.roles ?? [];
-  const visible = NAV.filter((item) => !item.need || allows(roles, item.need));
-  const items = shell.platformAdmin ? [...visible, ADMIN_NAV] : visible;
-  const isCurrent = (to: string) => (to === "/" ? pathname === "/" : pathname === to || pathname.startsWith(`${to}/`));
+function ParentItem({ item, active }: { item: NavItem; active: Active }) {
+  const current = active?.item === item.id;
+  const [open, setOpen] = useState(current);
+  const first = item.children?.[0];
   return (
-    <SidebarProvider>
-      <Sidebar>
-        <SidebarHeader>
-          <WorkspaceSwitcher active={shell.active} workspaces={shell.workspaces} />
-        </SidebarHeader>
-        <SidebarContent>
+    <Collapsible open={open || current} onOpenChange={setOpen} render={<SidebarMenuItem />}>
+      <SidebarMenuButton
+        isActive={current}
+        tooltip={item.label}
+        render={<Link to={first?.to ?? item.to} search={first?.search} aria-current={current ? "page" : undefined} />}
+      >
+        <item.icon />
+        <span>{item.label}</span>
+      </SidebarMenuButton>
+      <CollapsibleTrigger render={<SidebarMenuAction aria-label={`Toggle ${item.label}`} />}>
+        <ChevronRight className={open || current ? "rotate-90" : undefined} />
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <SidebarMenuSub>
+          {item.children?.map((child) => (
+            <SidebarMenuSubItem key={child.id}>
+              <SidebarMenuSubButton
+                isActive={current && active?.child === child.id}
+                render={<Link to={child.to} search={child.search} />}
+              >
+                <span>{child.label}</span>
+              </SidebarMenuSubButton>
+            </SidebarMenuSubItem>
+          ))}
+        </SidebarMenuSub>
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
+
+function LeafItem({ item, active }: { item: NavItem; active: Active }) {
+  const current = active?.item === item.id;
+  return (
+    <SidebarMenuItem>
+      <SidebarMenuButton
+        isActive={current}
+        tooltip={item.label}
+        render={<Link to={item.to} search={item.search} aria-current={current ? "page" : undefined} />}
+      >
+        <item.icon />
+        <span>{item.label}</span>
+      </SidebarMenuButton>
+    </SidebarMenuItem>
+  );
+}
+
+function Groups({ groups, active }: { groups: NavGroup[]; active: Active }) {
+  return (
+    <>
+      {groups.map((group, i) => (
+        <Fragment key={group.id}>
+          {i > 0 ? <SidebarSeparator /> : null}
           <SidebarGroup>
             <SidebarGroupContent>
               <SidebarMenu>
-                {items.map((item) => (
-                  <SidebarMenuItem key={item.to}>
-                    <SidebarMenuButton
-                      isActive={isCurrent(item.to)}
-                      render={<Link to={item.to} aria-current={isCurrent(item.to) ? "page" : undefined} />}
-                    >
-                      <item.icon />
-                      {item.label}
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
+                {group.items.map((item) =>
+                  item.children ? <ParentItem key={item.id} item={item} active={active} /> : <LeafItem key={item.id} item={item} active={active} />,
+                )}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
+        </Fragment>
+      ))}
+    </>
+  );
+}
+
+function SettingsNav({ groups, active }: { groups: NavGroup[]; active: Active }) {
+  const settings = groups.flatMap((g) => g.items).find((i) => i.id === "settings");
+  return (
+    <SidebarGroup>
+      <SidebarGroupContent>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton render={<Link to="/" />}>
+              <ChevronLeft />
+              <span>Back</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          {settings?.children?.map((child) => (
+            <SidebarMenuItem key={child.id}>
+              <SidebarMenuButton isActive={active?.child === child.id} render={<Link to={child.to} search={child.search} />}>
+                <span>{child.label}</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          ))}
+        </SidebarMenu>
+      </SidebarGroupContent>
+    </SidebarGroup>
+  );
+}
+
+export function AppShell({ shell, find, children }: { shell: Shell; find?: ReactNode; children: ReactNode }) {
+  const { pathname, search } = useLocation();
+  const groups = visibleNav(shell.active?.roles ?? [], shell.platformAdmin);
+  const active = activeNav(pathname, search as Record<string, unknown>);
+  const inSettings = pathname === "/settings" || pathname.startsWith("/settings/");
+  return (
+    <SidebarProvider>
+      <Sidebar collapsible="icon">
+        <SidebarHeader>
+          <WorkspaceSwitcher active={shell.active} workspaces={shell.workspaces} />
+          {find}
+        </SidebarHeader>
+        <SidebarContent>
+          {inSettings ? <SettingsNav groups={groups} active={active} /> : <Groups groups={groups} active={active} />}
         </SidebarContent>
         <SidebarFooter>
-          <p className="truncate px-2 text-xs text-muted-foreground">{shell.user.email}</p>
-          <SignOutButton />
+          <UserMenu email={shell.user.email} name={shell.user.name} />
         </SidebarFooter>
+        <SidebarRail />
       </Sidebar>
       <SidebarInset>
         {shell.active?.status === "suspended" ? <SuspendedBanner /> : null}

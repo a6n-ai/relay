@@ -1,5 +1,7 @@
+import { InlineScript } from "@foundry/ui/inline-script";
 import { createRootRoute, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
 import type { ReactNode } from "react";
+import { themeBootScript } from "../components/shell/theme";
 import appCss from "../styles.css?url";
 
 export const Route = createRootRoute({
@@ -25,8 +27,9 @@ function RootComponent() {
 
 function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
   return (
-    <html className="dark">
+    <html suppressHydrationWarning>
       <head>
+        <InlineScript html={themeBootScript} />
         <HeadContent />
       </head>
       <body>
