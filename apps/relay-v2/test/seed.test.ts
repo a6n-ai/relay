@@ -153,4 +153,12 @@ describe("POST /api/internal/seed", () => {
     expect(body.appId).toMatch(/^app_/);
     expect(body.apiKey).toMatch(/^rk_/);
   });
+
+  it("seeds a6n.ai protected and a custom domain not", async () => {
+    await seed(env, { ...input, domain: { domain: "a6n.ai", sesRegion: "ap-south-1" } });
+    const [shared] = await coreDb(env).select().from(sendingDomain).where(eq(sendingDomain.domain, "a6n.ai"));
+    expect(shared.protected).toBe(true);
+    const [custom] = await coreDb(env).select().from(sendingDomain).where(eq(sendingDomain.domain, "seeded-live.test"));
+    expect(custom.protected).toBe(false);
+  });
 });

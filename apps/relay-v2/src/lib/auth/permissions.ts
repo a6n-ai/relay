@@ -37,7 +37,8 @@ export const roles = {
 };
 
 // Platform permission for deleting a protected sending domain; only the super admin role holds it.
-export const canDeleteProtectedDomain = (): boolean => roles.admin.authorize({ domain: ["delete_protected"] }).success;
+export const canDeleteProtectedDomain = (platformAdmin: boolean): boolean =>
+  (platformAdmin ? roles.admin : roles.user).authorize({ domain: ["delete_protected"] }).success;
 
 export const appStatement = {
   tenant: ["read", "write"],

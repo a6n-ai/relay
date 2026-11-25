@@ -76,8 +76,18 @@ describe("protected sending domains", { timeout: 60_000 }, () => {
   });
 
   it("grants domain:delete_protected to the super admin role only", async () => {
-    expect(canDeleteProtectedDomain()).toBe(true);
+    expect(canDeleteProtectedDomain(true)).toBe(true);
+    expect(canDeleteProtectedDomain(false)).toBe(false);
     expect(roles.user.authorize({ domain: ["delete_protected"] }).success).toBe(false);
     expect(allows(["owner", "admin", "member", "billing"], { domain: ["delete_protected"] })).toBe(false);
+  });
+
+  it("inserts adopted shared domains protected and a custom domain not, with no console toggle needed", async () => {
+    const { actor } = await adminActorFor("prot-adopt@example.com", "Prot Adopt Co");
+    memorySesIdentity.preset("ap-south-1", "tiffingrab.ca", { verified: true, dkimStatus: "SUCCESS", dkimTokens: ["t"] });
+    const tiffin = await addDomain(env, actor, { domain: "TiffinGrab.ca" });
+    const custom = await addDomain(env, actor, { domain: "prot-custom.test" });
+    expect(await domainRow(tiffin.id)).toMatchObject({ protected: true, createdByRelay: false });
+    expect(await domainRow(custom.id)).toMatchObject({ protected: false });
   });
 });

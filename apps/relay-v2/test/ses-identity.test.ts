@@ -40,4 +40,12 @@ describe("sesIdentityApi over SES v2", () => {
     const missing = json(404, { __type: "NotFoundException", message: "nope" });
     await expect(sesIdentityApi(credsEnv, missing as unknown as typeof fetch).get("ap-south-1", "gone.test")).resolves.toBeNull();
   });
+
+  it("treats a 404 on delete as success and surfaces a 500", async () => {
+    const gone = json(404, { __type: "NotFoundException", message: "nope" });
+    await expect(sesIdentityApi(credsEnv, gone as unknown as typeof fetch).delete("ap-south-1", "gone.test")).resolves.toBeUndefined();
+    expect(gone.mock.calls[0][0].method).toBe("DELETE");
+    const down = json(500, { __type: "InternalFailure", message: "down" });
+    await expect(sesIdentityApi(credsEnv, down as unknown as typeof fetch).delete("ap-south-1", "down.test")).rejects.toThrow();
+  });
 });

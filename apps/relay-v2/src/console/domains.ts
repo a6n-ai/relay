@@ -4,6 +4,7 @@ import { refreshWorkspaceLimits } from "../core/limits";
 import { SES_CONFIG_SETS } from "../core/ses";
 import { type SesIdentity, sesIdentityApi } from "../core/ses-identity";
 import { getWorkspaceProfile, SELF_SERVE_DOMAIN_CAP } from "../core/workspace-profile";
+import { isProtectedDomain } from "../core/protected-domains";
 import { coreDb } from "../db/core/client";
 import { address, sendingDomain } from "../db/core/schema";
 import { securityDb } from "../db/security/client";
@@ -130,7 +131,7 @@ export async function addDomain(env: Env, actor: ConsoleActor, input: { domain: 
   try {
     [row] = await coreDb(env)
       .insert(sendingDomain)
-      .values({ workspaceId: actor.workspaceId, domain, sesRegion })
+      .values({ workspaceId: actor.workspaceId, domain, sesRegion, protected: isProtectedDomain(env, domain) })
       .returning({ id: sendingDomain.id });
   } catch (err) {
     if (uniqueViolation(err, "sending_domain.domain")) throw new ConsoleError(409, "domain claimed");
@@ -140,7 +141,9 @@ export async function addDomain(env: Env, actor: ConsoleActor, input: { domain: 
   const removeRow = () => coreDb(env).delete(sendingDomain).where(eq(sendingDomain.id, row.id));
   let alreadyExists: boolean;
   try {
-    ({ alreadyExists } = await ses.create(sesRegion, domain));
+    // A platform admin adopting an identity needs only read access: Create is behind EnableSelfServeIdentities.
+    const existing = actor.platformAdmin ? await ses.get(sesRegion, domain) : null;
+    ({ alreadyExists } = existing ? { alreadyExists: true } : await ses.create(sesRegion, domain));
   } catch (err) {
     await removeRow();
     throw err;

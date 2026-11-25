@@ -14,7 +14,7 @@ import { recordDoState } from "../core/workspace-profile";
 import { utcDay } from "../core/usage";
 import { decryptSecret, encryptSecret, KEY_ERROR, newWebhookSecret, signBody } from "../core/webhook-crypto";
 import { webhookBody, webhookHeaders } from "../core/mailbox-received";
-import { detachDomainSenders, deleteHistoryRows, domainUsage, historyBatch } from "./domain-cleanup";
+import { deleteFailureRows, deleteHistoryRows, detachDomainSenders, domainUsage, failureBatch, historyBatch, rawKeyInUse } from "./domain-cleanup";
 import { MAX_WEBHOOK_ATTEMPTS, webhookRetryDelaySeconds, type WebhookClaim, type WebhookOutcome } from "../core/webhook-consumer";
 import { isPublicWebhookUrl, type WebhookInput, type WebhookPatch, type WebhookView } from "../core/webhooks";
 import type { Env, InboundJob } from "../env";
@@ -295,12 +295,13 @@ export class ClientDO extends DurableObject<Env> {
 
   // A failed delete must not replace the error that caused the rollback.
   private async dropObjects(keys: (string | null)[]): Promise<void> {
-    for (const key of keys) {
-      if (!key) continue;
+    const live = keys.filter((k): k is string => !!k);
+    for (let i = 0; i < live.length; i += 1000) {
+      const part = live.slice(i, i + 1000);
       try {
-        await this.env.MAIL.delete(key);
+        await this.env.MAIL.delete(part);
       } catch (err) {
-        console.error("ClientDO: failed to delete object", key, err);
+        console.error("ClientDO: failed to delete objects", part.length, err);
       }
     }
   }
@@ -1607,18 +1608,30 @@ export class ClientDO extends DurableObject<Env> {
   }
 
   // Each batch commits its rows before its R2 objects go, so a failed object delete leaves an orphan, never a row with no object.
+  // A raw letter goes only when no message or failed-inbound row still points at it, and only keys under this workspace's prefix.
   async deleteDomainHistory(workspaceId: string, domain: string): Promise<{ messages: number; objects: number }> {
     await this.ready(workspaceId);
+    const sql = this.ctx.storage.sql;
+    const prefix = `ws/${workspaceId}/`;
     let messages = 0;
     let objects = 0;
+    const drop = async (keys: string[], rawKeys: string[]) => {
+      const gone = [...keys, ...rawKeys.filter((k) => !rawKeyInUse(sql, k))].filter((k) => k.startsWith(prefix));
+      await this.dropObjects(gone);
+      objects += gone.length;
+    };
     for (;;) {
-      const batch = historyBatch(this.ctx.storage.sql, domain);
-      if (batch.length === 0) return { messages, objects };
-      this.ctx.storage.transactionSync(() => deleteHistoryRows(this.ctx.storage.sql, batch.map((b) => b.id)));
-      const keys = batch.flatMap((b) => b.keys);
-      await this.dropObjects(keys);
-      messages += batch.length;
-      objects += keys.length;
+      const batch = historyBatch(sql, domain);
+      if (batch.ids.length === 0) break;
+      this.ctx.storage.transactionSync(() => deleteHistoryRows(sql, batch.ids));
+      await drop(batch.keys, batch.rawKeys);
+      messages += batch.ids.length;
+    }
+    for (;;) {
+      const batch = failureBatch(sql, domain);
+      if (batch.ids.length === 0) return { messages, objects };
+      this.ctx.storage.transactionSync(() => deleteFailureRows(sql, batch.ids));
+      await drop([], batch.rawKeys);
     }
   }
 

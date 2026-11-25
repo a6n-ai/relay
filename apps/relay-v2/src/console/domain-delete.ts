@@ -80,7 +80,11 @@ export async function deleteDomain(
   if (!actor.platformAdmin) throw new ConsoleError(403, "forbidden");
   const row = await domainRow(env, id);
   if (input.confirm !== row.domain) throw new ConsoleError(400, "domain name does not match");
-  if (row.protected && !canDeleteProtectedDomain()) throw new ConsoleError(409, "domain is protected");
+  if (row.protected && !canDeleteProtectedDomain(actor.platformAdmin)) throw new ConsoleError(409, "domain is protected");
+
+  // SES goes first and an error aborts: the row stays so a retry works (a 404 counts as deleted), and no identity is orphaned.
+  const sesDelete = deletesSesIdentity(row);
+  if (sesDelete) await sesIdentityApi(env).delete(row.sesRegion, row.domain);
 
   const addressIds = (await addressesOf(env, row.workspaceId, row.domain)).map((a) => a.id);
   const grantIds = await grantIdsOf(env, row.workspaceId, addressIds);
@@ -93,12 +97,8 @@ export async function deleteDomain(
   for (const part of chunks(addressIds)) await coreDb(env).delete(address).where(inArray(address.id, part));
   await coreDb(env).delete(sendingDomain).where(eq(sendingDomain.id, row.id));
 
-  const sesDelete = deletesSesIdentity(row);
-  if (sesDelete) {
-    await sesIdentityApi(env)
-      .delete(row.sesRegion, row.domain)
-      .catch(() => console.error("ses identity delete failed", row.id));
-  }
+  await refreshWorkspaceLimits(env, row.workspaceId);
+  // The delete is done; a failed audit write must not make the console report failure.
   await writeAudit(env, {
     action: row.protected ? "domain.delete_protected" : "domain.delete",
     actorUserId: actor.userId,
@@ -111,7 +111,6 @@ export async function deleteDomain(
       automationIds: detached.automations,
       historyDeleted: history !== null,
     },
-  });
-  await refreshWorkspaceLimits(env, row.workspaceId);
+  }).catch((err) => console.error("domain delete audit failed", row.id, err));
   return { ownerCommand: sesDelete ? null : ownerCommand(row) };
 }
