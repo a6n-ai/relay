@@ -20,6 +20,7 @@ import { Route as AppDomainsRouteImport } from './routes/_app/domains'
 import { Route as AppListsRouteImport } from './routes/_app/lists'
 import { Route as AppMembersRouteImport } from './routes/_app/members'
 import { Route as AppMessagesRouteImport } from './routes/_app/messages'
+import { Route as AppSettingsRouteImport } from './routes/_app/settings'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as InviteIdRouteImport } from './routes/invite.$id'
 import { Route as UTokenRouteImport } from './routes/u.$token'
@@ -31,6 +32,9 @@ import { Route as AppListsListIdRouteImport } from './routes/_app/lists_.$listId
 import { Route as AppMessagesMessageIdRouteImport } from './routes/_app/messages_.$messageId'
 import { Route as AppMessagesFailuresRouteImport } from './routes/_app/messages_.failures'
 import { Route as AppMessagesSuppressionsRouteImport } from './routes/_app/messages_.suppressions'
+import { Route as AppSettingsInvitesRouteImport } from './routes/_app/settings_.invites'
+import { Route as AppSettingsMembersRouteImport } from './routes/_app/settings_.members'
+import { Route as AppSettingsTeamsRouteImport } from './routes/_app/settings_.teams'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiDevOtpRouteImport } from './routes/api/dev/otp'
 import { Route as ApiInternalDoSweepRouteImport } from './routes/api/internal/do-sweep'
@@ -116,6 +120,11 @@ const AppMessagesRoute = AppMessagesRouteImport.update({
   path: '/messages',
   getParentRoute: () => AppRoute,
 } as any)
+const AppSettingsRoute = AppSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AppRoute,
+} as any)
 const ApiHealthRoute = ApiHealthRouteImport.update({
   id: '/api/health',
   path: '/api/health',
@@ -169,6 +178,21 @@ const AppMessagesFailuresRoute = AppMessagesFailuresRouteImport.update({
 const AppMessagesSuppressionsRoute = AppMessagesSuppressionsRouteImport.update({
   id: '/messages_/suppressions',
   path: '/messages/suppressions',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSettingsInvitesRoute = AppSettingsInvitesRouteImport.update({
+  id: '/settings_/invites',
+  path: '/settings/invites',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSettingsMembersRoute = AppSettingsMembersRouteImport.update({
+  id: '/settings_/members',
+  path: '/settings/members',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSettingsTeamsRoute = AppSettingsTeamsRouteImport.update({
+  id: '/settings_/teams',
+  path: '/settings/teams',
   getParentRoute: () => AppRoute,
 } as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
@@ -338,6 +362,7 @@ export interface FileRoutesByFullPath {
   '/lists': typeof AppListsRoute
   '/members': typeof AppMembersRoute
   '/messages': typeof AppMessagesRoute
+  '/settings': typeof AppSettingsRoute
   '/api/health': typeof ApiHealthRoute
   '/invite/$id': typeof InviteIdRoute
   '/u/$token': typeof UTokenRoute
@@ -349,6 +374,9 @@ export interface FileRoutesByFullPath {
   '/messages/$messageId': typeof AppMessagesMessageIdRoute
   '/messages/failures': typeof AppMessagesFailuresRoute
   '/messages/suppressions': typeof AppMessagesSuppressionsRoute
+  '/settings/invites': typeof AppSettingsInvitesRoute
+  '/settings/members': typeof AppSettingsMembersRoute
+  '/settings/teams': typeof AppSettingsTeamsRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/dev/otp': typeof ApiDevOtpRoute
   '/api/internal/do-sweep': typeof ApiInternalDoSweepRoute
@@ -390,6 +418,7 @@ export interface FileRoutesByTo {
   '/lists': typeof AppListsRoute
   '/members': typeof AppMembersRoute
   '/messages': typeof AppMessagesRoute
+  '/settings': typeof AppSettingsRoute
   '/api/health': typeof ApiHealthRoute
   '/invite/$id': typeof InviteIdRoute
   '/u/$token': typeof UTokenRoute
@@ -402,6 +431,9 @@ export interface FileRoutesByTo {
   '/messages/$messageId': typeof AppMessagesMessageIdRoute
   '/messages/failures': typeof AppMessagesFailuresRoute
   '/messages/suppressions': typeof AppMessagesSuppressionsRoute
+  '/settings/invites': typeof AppSettingsInvitesRoute
+  '/settings/members': typeof AppSettingsMembersRoute
+  '/settings/teams': typeof AppSettingsTeamsRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/dev/otp': typeof ApiDevOtpRoute
   '/api/internal/do-sweep': typeof ApiInternalDoSweepRoute
@@ -445,6 +477,7 @@ export interface FileRoutesById {
   '/_app/lists': typeof AppListsRoute
   '/_app/members': typeof AppMembersRoute
   '/_app/messages': typeof AppMessagesRoute
+  '/_app/settings': typeof AppSettingsRoute
   '/api/health': typeof ApiHealthRoute
   '/invite/$id': typeof InviteIdRoute
   '/u/$token': typeof UTokenRoute
@@ -457,6 +490,9 @@ export interface FileRoutesById {
   '/_app/messages_/$messageId': typeof AppMessagesMessageIdRoute
   '/_app/messages_/failures': typeof AppMessagesFailuresRoute
   '/_app/messages_/suppressions': typeof AppMessagesSuppressionsRoute
+  '/_app/settings_/invites': typeof AppSettingsInvitesRoute
+  '/_app/settings_/members': typeof AppSettingsMembersRoute
+  '/_app/settings_/teams': typeof AppSettingsTeamsRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/dev/otp': typeof ApiDevOtpRoute
   '/api/internal/do-sweep': typeof ApiInternalDoSweepRoute
@@ -501,6 +537,7 @@ export interface FileRouteTypes {
     | '/lists'
     | '/members'
     | '/messages'
+    | '/settings'
     | '/api/health'
     | '/invite/$id'
     | '/u/$token'
@@ -512,6 +549,9 @@ export interface FileRouteTypes {
     | '/messages/$messageId'
     | '/messages/failures'
     | '/messages/suppressions'
+    | '/settings/invites'
+    | '/settings/members'
+    | '/settings/teams'
     | '/api/auth/$'
     | '/api/dev/otp'
     | '/api/internal/do-sweep'
@@ -553,6 +593,7 @@ export interface FileRouteTypes {
     | '/lists'
     | '/members'
     | '/messages'
+    | '/settings'
     | '/api/health'
     | '/invite/$id'
     | '/u/$token'
@@ -565,6 +606,9 @@ export interface FileRouteTypes {
     | '/messages/$messageId'
     | '/messages/failures'
     | '/messages/suppressions'
+    | '/settings/invites'
+    | '/settings/members'
+    | '/settings/teams'
     | '/api/auth/$'
     | '/api/dev/otp'
     | '/api/internal/do-sweep'
@@ -607,6 +651,7 @@ export interface FileRouteTypes {
     | '/_app/lists'
     | '/_app/members'
     | '/_app/messages'
+    | '/_app/settings'
     | '/api/health'
     | '/invite/$id'
     | '/u/$token'
@@ -619,6 +664,9 @@ export interface FileRouteTypes {
     | '/_app/messages_/$messageId'
     | '/_app/messages_/failures'
     | '/_app/messages_/suppressions'
+    | '/_app/settings_/invites'
+    | '/_app/settings_/members'
+    | '/_app/settings_/teams'
     | '/api/auth/$'
     | '/api/dev/otp'
     | '/api/internal/do-sweep'
@@ -753,6 +801,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppMessagesRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/settings': {
+      id: '/_app/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AppSettingsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/api/health': {
       id: '/api/health'
       path: '/api/health'
@@ -828,6 +883,27 @@ declare module '@tanstack/react-router' {
       path: '/messages/suppressions'
       fullPath: '/messages/suppressions'
       preLoaderRoute: typeof AppMessagesSuppressionsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/settings_/invites': {
+      id: '/_app/settings_/invites'
+      path: '/settings/invites'
+      fullPath: '/settings/invites'
+      preLoaderRoute: typeof AppSettingsInvitesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/settings_/members': {
+      id: '/_app/settings_/members'
+      path: '/settings/members'
+      fullPath: '/settings/members'
+      preLoaderRoute: typeof AppSettingsMembersRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/settings_/teams': {
+      id: '/_app/settings_/teams'
+      path: '/settings/teams'
+      fullPath: '/settings/teams'
+      preLoaderRoute: typeof AppSettingsTeamsRouteImport
       parentRoute: typeof AppRoute
     }
     '/api/auth/$': {
@@ -1051,6 +1127,7 @@ interface AppRouteChildren {
   AppListsRoute: typeof AppListsRoute
   AppMembersRoute: typeof AppMembersRoute
   AppMessagesRoute: typeof AppMessagesRoute
+  AppSettingsRoute: typeof AppSettingsRoute
   AppIndexRoute: typeof AppIndexRoute
   AppAppsAppIdRoute: typeof AppAppsAppIdRoute
   AppCampaignsCampaignIdRoute: typeof AppCampaignsCampaignIdRoute
@@ -1060,6 +1137,9 @@ interface AppRouteChildren {
   AppMessagesMessageIdRoute: typeof AppMessagesMessageIdRoute
   AppMessagesFailuresRoute: typeof AppMessagesFailuresRoute
   AppMessagesSuppressionsRoute: typeof AppMessagesSuppressionsRoute
+  AppSettingsInvitesRoute: typeof AppSettingsInvitesRoute
+  AppSettingsMembersRoute: typeof AppSettingsMembersRoute
+  AppSettingsTeamsRoute: typeof AppSettingsTeamsRoute
   AppAppsAppIdWebhooksRoute: typeof AppAppsAppIdWebhooksRoute
   AppCampaignsTemplatesTemplateIdRoute: typeof AppCampaignsTemplatesTemplateIdRoute
   AppDomainsAddressesAddressIdRoute: typeof AppDomainsAddressesAddressIdRoute
@@ -1074,6 +1154,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppListsRoute: AppListsRoute,
   AppMembersRoute: AppMembersRoute,
   AppMessagesRoute: AppMessagesRoute,
+  AppSettingsRoute: AppSettingsRoute,
   AppIndexRoute: AppIndexRoute,
   AppAppsAppIdRoute: AppAppsAppIdRoute,
   AppCampaignsCampaignIdRoute: AppCampaignsCampaignIdRoute,
@@ -1083,6 +1164,9 @@ const AppRouteChildren: AppRouteChildren = {
   AppMessagesMessageIdRoute: AppMessagesMessageIdRoute,
   AppMessagesFailuresRoute: AppMessagesFailuresRoute,
   AppMessagesSuppressionsRoute: AppMessagesSuppressionsRoute,
+  AppSettingsInvitesRoute: AppSettingsInvitesRoute,
+  AppSettingsMembersRoute: AppSettingsMembersRoute,
+  AppSettingsTeamsRoute: AppSettingsTeamsRoute,
   AppAppsAppIdWebhooksRoute: AppAppsAppIdWebhooksRoute,
   AppCampaignsTemplatesTemplateIdRoute: AppCampaignsTemplatesTemplateIdRoute,
   AppDomainsAddressesAddressIdRoute: AppDomainsAddressesAddressIdRoute,
