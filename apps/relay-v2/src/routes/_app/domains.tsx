@@ -190,6 +190,7 @@ function DomainsPage() {
           { header: "Address", cell: (a) => <span className="font-mono text-xs">{a.email}</span> },
           { header: "App", cell: (a) => a.appName },
           { header: "Name", cell: (a) => a.displayName ?? "-" },
+          { header: "Reply-To", cell: (a) => a.replyTo ?? "-" },
           {
             header: "Can send",
             cell: (a) =>
@@ -209,6 +210,11 @@ function DomainsPage() {
                   <Button variant="outline" size="sm" render={<Link to="/domains/addresses/$addressId" params={{ addressId: a.id }} />}>
                     Access
                   </Button>
+                ) : null}
+                {canWrite ? (
+                  <CreateDialog trigger="Edit" title="Edit address">
+                    {(done) => <EditAddressForm address={a} done={done} />}
+                  </CreateDialog>
                 ) : null}
                 {canWrite ? (
                   <ConfirmDialog
@@ -289,6 +295,7 @@ function NewAddressForm({
   const [appId, setAppId] = useState("");
   const [kind, setKind] = useState<(typeof KINDS)[number]["value"]>("sender");
   const [name, setName] = useState("");
+  const [replyTo, setReplyTo] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
@@ -297,7 +304,7 @@ function NewAddressForm({
     setPending(true);
     setError(null);
     try {
-      await addAddressFn({ data: { appId, email, kind, displayName: name || undefined } });
+      await addAddressFn({ data: { appId, email, kind, displayName: name || undefined, replyTo: replyTo || undefined } });
       toast.success("Address added", { description: email });
       done();
       await router.invalidate();
@@ -337,10 +344,58 @@ function NewAddressForm({
       </Select>
       <Label htmlFor="address-name">Name (optional)</Label>
       <Input id="address-name" maxLength={80} value={name} onChange={(e) => setName(e.target.value)} />
+      <Label htmlFor="address-reply-to">Reply-To (optional)</Label>
+      <Input id="address-reply-to" type="email" maxLength={254} value={replyTo} onChange={(e) => setReplyTo(e.target.value)} />
       <FormError message={error} />
       <div className="flex justify-end">
         <Button type="submit" disabled={pending || !appId}>
           Add address
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+function EditAddressForm({
+  address,
+  done,
+}: {
+  address: { id: string; email: string; displayName: string | null; replyTo: string | null };
+  done: () => void;
+}) {
+  const router = useRouter();
+  const [name, setName] = useState(address.displayName ?? "");
+  const [replyTo, setReplyTo] = useState(address.replyTo ?? "");
+  const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    setPending(true);
+    setError(null);
+    try {
+      await updateAddressFn({ data: { id: address.id, displayName: name.trim() || null, replyTo: replyTo.trim() || null } });
+      toast.success("Address updated", { description: address.email });
+      done();
+      await router.invalidate();
+    } catch (err) {
+      setError(errorText(err, "Could not update the address."));
+    } finally {
+      setPending(false);
+    }
+  }
+
+  return (
+    <form onSubmit={submit} className="grid gap-3">
+      <p className="font-mono text-xs">{address.email}</p>
+      <Label htmlFor="edit-address-name">Name</Label>
+      <Input id="edit-address-name" maxLength={80} value={name} onChange={(e) => setName(e.target.value)} />
+      <Label htmlFor="edit-address-reply-to">Reply-To</Label>
+      <Input id="edit-address-reply-to" type="email" maxLength={254} value={replyTo} onChange={(e) => setReplyTo(e.target.value)} />
+      <FormError message={error} />
+      <div className="flex justify-end">
+        <Button type="submit" disabled={pending}>
+          Save
         </Button>
       </div>
     </form>

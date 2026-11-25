@@ -2,6 +2,7 @@ import { Badge } from "@foundry/ui/badge";
 import { Button } from "@foundry/ui/button";
 import { Input } from "@foundry/ui/input";
 import { Label } from "@foundry/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@foundry/ui/select";
 import { Switch } from "@foundry/ui/switch";
 import { toast } from "@foundry/ui/toast";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
@@ -21,6 +22,7 @@ import {
   fetchAppDetail,
   fetchAudienceHook,
   revokeKeyFn,
+  setAppDefaultSendersFn,
   setAudienceHookFn,
 } from "../../console/apps.fns";
 
@@ -46,7 +48,7 @@ function AppPage() {
       </>
     );
   }
-  const { app, keys, hook } = data;
+  const { app, keys, hook, senders } = data;
 
   async function revoke(id: string) {
     try {
@@ -100,8 +102,82 @@ function AppPage() {
         rowKey={(k) => k.id}
         empty="No keys yet. Create one to start sending from this app."
       />
+      <DefaultSendersPanel appId={app.id} senders={senders} canWrite={canWrite} />
       <AudiencePanel appId={app.id} hook={hook} canWrite={canWrite} />
     </>
+  );
+}
+
+type DefaultSenders = NonNullable<Awaited<ReturnType<typeof fetchAppDetail>>>["senders"];
+
+const NONE = "none";
+
+function DefaultSendersPanel({ appId, senders, canWrite }: { appId: string; senders: DefaultSenders; canWrite: boolean }) {
+  const router = useRouter();
+  const known = new Set(senders.options.map((o) => o.id));
+  // A default whose address can no longer send is shown as None; saving then clears it.
+  const [transactional, setTransactional] = useState(senders.transactionalId && known.has(senders.transactionalId) ? senders.transactionalId : NONE);
+  const [marketing, setMarketing] = useState(senders.marketingId && known.has(senders.marketingId) ? senders.marketingId : NONE);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
+
+  async function save(event: FormEvent) {
+    event.preventDefault();
+    setPending(true);
+    setError(null);
+    try {
+      await setAppDefaultSendersFn({
+        data: { appId, transactionalId: transactional === NONE ? null : transactional, marketingId: marketing === NONE ? null : marketing },
+      });
+      toast.success("Default senders saved");
+      await router.invalidate();
+    } catch (err) {
+      setError(errorText(err, "Could not save the default senders."));
+    } finally {
+      setPending(false);
+    }
+  }
+
+  const choices = (
+    <>
+      <SelectItem value={NONE}>None</SelectItem>
+      {senders.options.map((o) => (
+        <SelectItem key={o.id} value={o.id}>
+          {o.email}
+        </SelectItem>
+      ))}
+    </>
+  );
+
+  return (
+    <section className="grid max-w-2xl gap-3 p-4">
+      <h2 className="text-sm font-medium">Default senders</h2>
+      <p className="text-sm text-muted-foreground">Used when a send leaves out From. Tracked mail uses the transactional sender.</p>
+      <form onSubmit={save} className="grid gap-3">
+        <Label htmlFor="default-transactional">Transactional</Label>
+        <Select value={transactional} onValueChange={(v) => setTransactional(v ?? NONE)} disabled={!canWrite}>
+          <SelectTrigger id="default-transactional" className="w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>{choices}</SelectContent>
+        </Select>
+        <Label htmlFor="default-marketing">Marketing</Label>
+        <Select value={marketing} onValueChange={(v) => setMarketing(v ?? NONE)} disabled={!canWrite}>
+          <SelectTrigger id="default-marketing" className="w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>{choices}</SelectContent>
+        </Select>
+        <FormError message={error} />
+        {canWrite ? (
+          <div className="flex justify-end">
+            <Button type="submit" disabled={pending}>
+              Save
+            </Button>
+          </div>
+        ) : null}
+      </form>
+    </section>
   );
 }
 

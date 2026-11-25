@@ -15,7 +15,7 @@ import {
   setDomainProtected,
   updateAddress,
 } from "./domains";
-import { displayName, id, validate } from "./schemas";
+import { displayName, id, replyTo, validate } from "./schemas";
 
 const READ = { permission: { sending: ["read"] } };
 const WRITE = { permission: { sending: ["write"] }, write: true };
@@ -114,6 +114,7 @@ export const addAddressFn = createServerFn({ method: "POST" })
         email: z.string().trim().min(3).max(254),
         kind: z.enum(["inbox", "sender", "both"]),
         displayName,
+        replyTo,
         canSend: z.boolean().optional(),
       }),
     ),
@@ -128,7 +129,7 @@ export const addAddressFn = createServerFn({ method: "POST" })
   });
 
 export const updateAddressFn = createServerFn({ method: "POST" })
-  .validator(validate(z.object({ id, displayName, canSend: z.boolean().optional() })))
+  .validator(validate(z.object({ id, displayName: displayName.nullable(), replyTo, canSend: z.boolean().optional() })))
   .handler(async ({ data }) => {
     try {
       const actor = await requireActor(env, getRequestHeaders(), WRITE);

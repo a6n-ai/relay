@@ -1,10 +1,12 @@
-import { and, asc, count, desc, eq, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, sql } from "drizzle-orm";
 import { createApiKey, revokeApiKey } from "../core/api-keys";
 import { hookInputSchema } from "../core/audience-hook";
 import { createApp } from "../core/apps";
 import { clientFor } from "../core/messages";
 import { KEY_ERROR } from "../core/webhook-crypto";
 import { getWorkspaceProfile, SELF_SERVE_APP_CAP } from "../core/workspace-profile";
+import { coreDb } from "../db/core/client";
+import { address } from "../db/core/schema";
 import { securityDb } from "../db/security/client";
 import { apiKey, app } from "../db/security/schema";
 import type { Env } from "../env";
@@ -143,4 +145,50 @@ export async function deleteAudienceHookFor(env: Env, actor: ConsoleActor, appId
   await guardPlatformHook(env, actor, appId);
   if (!(await clientFor(env, actor.workspaceId).deleteAudienceHook(actor.workspaceId, appId))) throw new ConsoleError(404, "not found");
   await writeAudit(env, { action: "app.audience_hook.delete", actorUserId: actor.userId, workspaceId: actor.workspaceId, target: appId, data: { appId } });
+}
+
+// Choices are the app's addresses that can send; the selected ids come from the app row and may be stale after an edit.
+export async function getDefaultSenders(env: Env, actor: ConsoleActor, appId: string) {
+  const [[row], options] = await Promise.all([
+    securityDb(env)
+      .select({ transactionalId: app.defaultTransactionalAddressId, marketingId: app.defaultMarketingAddressId })
+      .from(app)
+      .where(and(eq(app.id, appId), eq(app.workspaceId, actor.workspaceId))),
+    coreDb(env)
+      .select({ id: address.id, email: address.email })
+      .from(address)
+      .where(and(eq(address.workspaceId, actor.workspaceId), eq(address.appId, appId), eq(address.canSend, true)))
+      .orderBy(asc(address.email)),
+  ]);
+  if (!row) throw new ConsoleError(404, "not found");
+  return { ...row, options };
+}
+
+export async function setDefaultSendersFor(
+  env: Env,
+  actor: ConsoleActor,
+  appId: string,
+  input: { transactionalId: string | null; marketingId: string | null },
+): Promise<void> {
+  if (!allows(actor.roles, AUDIENCE_WRITE)) throw new ConsoleError(403, "forbidden");
+  await getApp(env, actor, appId);
+  const ids = [input.transactionalId, input.marketingId].filter((v): v is string => v !== null);
+  if (ids.length) {
+    const owned = await coreDb(env)
+      .select({ id: address.id })
+      .from(address)
+      .where(and(inArray(address.id, ids), eq(address.workspaceId, actor.workspaceId), eq(address.appId, appId), eq(address.canSend, true)));
+    if (owned.length !== new Set(ids).size) throw new ConsoleError(400, "sender not available");
+  }
+  await securityDb(env)
+    .update(app)
+    .set({ defaultTransactionalAddressId: input.transactionalId, defaultMarketingAddressId: input.marketingId, updatedAt: new Date() })
+    .where(and(eq(app.id, appId), eq(app.workspaceId, actor.workspaceId)));
+  await writeAudit(env, {
+    action: "app.default_senders",
+    actorUserId: actor.userId,
+    workspaceId: actor.workspaceId,
+    target: appId,
+    data: { appId, transactionalId: input.transactionalId, marketingId: input.marketingId },
+  });
 }

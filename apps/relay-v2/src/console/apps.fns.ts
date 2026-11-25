@@ -11,8 +11,10 @@ import {
   getAudienceHookFor,
   listApps,
   listKeys,
+  getDefaultSenders,
   revokeKey,
   setAudienceHookFor,
+  setDefaultSendersFor,
 } from "./apps";
 import { appId, id, name, slug, validate } from "./schemas";
 
@@ -35,8 +37,12 @@ export const fetchAppDetail = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     try {
       const actor = await requireActor(env, getRequestHeaders(), READ);
-      const [app, keys] = await Promise.all([getApp(env, actor, data.appId), listKeys(env, actor, data.appId)]);
-      return { app, keys };
+      const [app, keys, senders] = await Promise.all([
+        getApp(env, actor, data.appId),
+        listKeys(env, actor, data.appId),
+        getDefaultSenders(env, actor, data.appId),
+      ]);
+      return { app, keys, senders };
     } catch (err) {
       if (err instanceof ConsoleError && err.status === 403) return null;
       toResponseError(err);
@@ -107,6 +113,17 @@ export const deleteAudienceHookFn = createServerFn({ method: "POST" })
     try {
       const actor = await requireActor(env, getRequestHeaders(), WRITE);
       await deleteAudienceHookFor(env, actor, data.appId);
+    } catch (err) {
+      toResponseError(err);
+    }
+  });
+
+export const setAppDefaultSendersFn = createServerFn({ method: "POST" })
+  .validator(validate(z.object({ appId, transactionalId: id.nullable(), marketingId: id.nullable() })))
+  .handler(async ({ data }) => {
+    try {
+      const actor = await requireActor(env, getRequestHeaders(), WRITE);
+      await setDefaultSendersFor(env, actor, data.appId, data);
     } catch (err) {
       toResponseError(err);
     }

@@ -189,6 +189,7 @@ export async function listAddresses(env: Env, actor: ConsoleActor) {
         email: address.email,
         kind: address.kind,
         displayName: address.displayName,
+        replyTo: address.replyTo,
         canSend: address.canSend,
       })
       .from(address)
@@ -203,7 +204,7 @@ export async function listAddresses(env: Env, actor: ConsoleActor) {
 export async function addAddress(
   env: Env,
   actor: ConsoleActor,
-  input: { appId: string; email: string; kind: "inbox" | "sender" | "both"; displayName?: string; canSend?: boolean },
+  input: { appId: string; email: string; kind: "inbox" | "sender" | "both"; displayName?: string; replyTo?: string | null; canSend?: boolean },
 ): Promise<{ id: string }> {
   await getApp(env, actor, input.appId);
   const email = normaliseEmail(input.email);
@@ -232,7 +233,7 @@ export async function updateAddress(
   env: Env,
   actor: ConsoleActor,
   id: string,
-  patch: { displayName?: string | null; canSend?: boolean },
+  patch: { displayName?: string | null; replyTo?: string | null; canSend?: boolean },
 ): Promise<void> {
   if (!(await updateAddressRow(env, actor.workspaceId, id, patch))) throw new ConsoleError(404, "not found");
   await refreshWorkspaceLimits(env, actor.workspaceId);
