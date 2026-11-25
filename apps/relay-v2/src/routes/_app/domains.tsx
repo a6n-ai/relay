@@ -1,3 +1,4 @@
+import { Badge } from "@foundry/ui/badge";
 import { Button } from "@foundry/ui/button";
 import { Input } from "@foundry/ui/input";
 import { Label } from "@foundry/ui/label";
@@ -11,6 +12,7 @@ import { CreateDialog } from "../../components/create-dialog";
 import { AppSelect } from "../../components/app-select";
 import { DeniedState, deniedReason } from "../../components/denied-state";
 import { DnsRecords } from "../../components/dns-records";
+import { DomainDeleteDialog } from "../../components/domain-delete-dialog";
 import { errorText } from "../../components/error-text";
 import { FormError } from "../../components/form-error";
 import { ResourceTable } from "../../components/resource-table";
@@ -26,6 +28,7 @@ import {
   fetchDomains,
   releaseDomainFn,
   removeAddressFn,
+  setDomainProtectedFn,
   updateAddressFn,
 } from "../../console/domains.fns";
 
@@ -82,6 +85,16 @@ function DomainsPage() {
     }
   }
 
+  async function setProtected(id: string, protectedNow: boolean) {
+    try {
+      await setDomainProtectedFn({ data: { id, protected: protectedNow } });
+      toast.success(protectedNow ? "Domain protected" : "Domain unprotected");
+      await router.invalidate();
+    } catch (err) {
+      toast.error(errorText(err, "Could not change protection"));
+    }
+  }
+
   async function setCanSend(id: string, canSend: boolean) {
     try {
       await updateAddressFn({ data: { id, canSend } });
@@ -115,7 +128,20 @@ function DomainsPage() {
       />
       <ResourceTable
         columns={[
-          { header: "Domain", cell: (d) => <span className="font-mono text-xs">{d.domain}</span> },
+          {
+            header: "Domain",
+            cell: (d) => (
+              <div className="flex flex-col gap-1">
+                <span className="font-mono text-xs">{d.domain}</span>
+                {d.protected ? (
+                  <>
+                    <Badge variant="warning">Protected</Badge>
+                    <span className="text-xs text-muted-foreground">Sign-in codes and this workspace's mail stop if it is released or deleted.</span>
+                  </>
+                ) : null}
+              </div>
+            ),
+          },
           { header: "Status", cell: (d) => <StatusBadge status={d.status} /> },
           { header: "DNS", cell: (d) => <DnsRecords records={d.records} /> },
           {
@@ -136,6 +162,12 @@ function DomainsPage() {
                     onConfirm={() => release(d.id)}
                   />
                 ) : null}
+                {shell.platformAdmin ? (
+                  <Button variant="outline" size="sm" onClick={() => setProtected(d.id, !d.protected)}>
+                    {d.protected ? "Unprotect" : "Protect"}
+                  </Button>
+                ) : null}
+                {shell.platformAdmin ? <DomainDeleteDialog id={d.id} domain={d.domain} /> : null}
               </>
             ),
           },
