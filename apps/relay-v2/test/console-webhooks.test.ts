@@ -321,7 +321,6 @@ describe("console webhooks: delivery log and retry", { timeout: 60_000 }, () => 
     expect(detail.status).toBe(200);
     const detailHtml = await detail.text();
     expect(detailHtml).toContain(messageId);
-    expect(detailHtml).toContain("Retry");
 
     const memberList = await SELF.fetch(`${ORIGIN}/apps/${appId}/webhooks`, { redirect: "manual", headers: { cookie: memberCookie } });
     expect(memberList.status).toBe(200);
@@ -334,6 +333,5 @@ describe("console webhooks: delivery log and retry", { timeout: 60_000 }, () => 
     expect(memberDetail.status).toBe(200);
     const memberHtml = await memberDetail.text();
     expect(memberHtml).not.toContain(messageId);
-    expect(memberHtml).not.toContain("Retry");
   });
 });

@@ -5,24 +5,30 @@ import { Input } from "@foundry/ui/input";
 import { Label } from "@foundry/ui/label";
 import { Switch } from "@foundry/ui/switch";
 import { toast } from "@foundry/ui/toast";
-import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { WebhookIcon } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { ConfirmDialog } from "../../components/confirm-dialog";
 import { CreateDialog } from "../../components/create-dialog";
 import { DeniedState, deniedReason } from "../../components/denied-state";
 import { errorText } from "../../components/error-text";
 import { FormError } from "../../components/form-error";
-import { ResourceTable } from "../../components/resource-table";
+import { EmptyState } from "../../components/page/empty-state";
+import { TableSkeleton } from "../../components/page/table-skeleton";
+import { Toolbar } from "../../components/page/toolbar";
+import { CellWhen, ResourceTable } from "../../components/resource-table";
+import { PageHeader } from "../../components/shell/page-header";
 import { runAction } from "../../components/run-action";
 import { SecretOnce } from "../../components/secret-once";
 import { useCan } from "../../components/use-can";
-import { ViewHeader } from "../../components/view-header";
 import { WEBHOOK_EVENT_LABELS, WEBHOOK_EVENT_LIST } from "../../components/webhook-events";
 import { createWebhookFn, deleteWebhookFn, fetchWebhooks, updateWebhookFn } from "../../console/webhooks.fns";
 import type { WebhookEvent } from "../../core/webhooks";
+import { formatDate, formatWhen } from "../../lib/format-date";
 
 export const Route = createFileRoute("/_app/apps_/$appId_/webhooks")({
   loader: ({ params }) => fetchWebhooks({ data: { appId: params.appId } }),
+  pendingComponent: () => <TableSkeleton columns={4} />,
   component: WebhooksPage,
 });
 
@@ -32,10 +38,18 @@ function WebhooksPage() {
   const { shell } = Route.useRouteContext();
   const router = useRouter();
   const canWrite = useCan({ webhook: ["write"] });
+  const [createOpen, setCreateOpen] = useState(false);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const appName = shell.apps?.find((a) => a.id === appId)?.name ?? "App";
+  const crumbs = [
+    { label: "Apps", to: "/apps" },
+    { label: appName, to: "/apps/$appId", params: { appId } },
+    { label: "Webhooks" },
+  ];
   if (!webhooks) {
     return (
       <>
-        <ViewHeader title="Webhooks" />
+        <PageHeader crumbs={crumbs} />
         <DeniedState reason={deniedReason(shell)} />
       </>
     );
@@ -43,20 +57,18 @@ function WebhooksPage() {
 
   return (
     <>
-      <ViewHeader
-        title="Webhooks"
-        actions={
-          canWrite ? (
-            <CreateDialog trigger="New webhook" title="New webhook">
-              {(done, lock) => <NewWebhookForm appId={appId} done={done} lock={lock} />}
-            </CreateDialog>
-          ) : undefined
-        }
-      />
+      <PageHeader crumbs={crumbs} />
+      <Toolbar>
+        {canWrite ? (
+          <CreateDialog trigger="New webhook" title="New webhook" open={createOpen} onOpenChange={setCreateOpen}>
+            {(done, lock) => <NewWebhookForm appId={appId} done={done} lock={lock} />}
+          </CreateDialog>
+        ) : null}
+      </Toolbar>
       <ResourceTable
         columns={[
           { header: "URL", cell: (w) => <span className="break-all font-mono text-xs">{w.url}</span> },
-          { header: "Events", cell: (w) => w.events.map((e) => WEBHOOK_EVENT_LABELS[e]).join(", ") },
+          { header: "Events", cell: (w) => w.events.map((e) => WEBHOOK_EVENT_LABELS[e]).join(", ") || "—" },
           {
             header: "Enabled",
             cell: (w) =>
@@ -76,36 +88,41 @@ function WebhooksPage() {
                 <Badge variant={w.enabled ? "secondary" : "outline"}>{w.enabled ? "On" : "Off"}</Badge>
               ),
           },
-          { header: "Created", cell: (w) => new Date(w.createdAt).toLocaleDateString("en-CA") },
-          {
-            header: "",
-            cell: (w) => (
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" size="sm" render={<Link to="/apps/$appId/webhooks/$webhookId" params={{ appId, webhookId: w.id }} />}>
-                  Deliveries
-                </Button>
-                {canWrite ? (
-                  <ConfirmDialog
-                    trigger="Delete"
-                    title="Delete this webhook?"
-                    description="Letters stop being sent to this address right away. Deliveries still waiting are marked failed."
-                    confirmLabel="Delete webhook"
-                    onConfirm={() =>
-                      runAction(
-                        () => deleteWebhookFn({ data: { appId, id: w.id } }),
-                        "Webhook deleted",
-                        () => router.invalidate(),
-                      )
-                    }
-                  />
-                ) : null}
-              </div>
-            ),
-          },
+          { header: "Created", cell: (w) => <CellWhen when={formatDate(w.createdAt)} text={formatWhen(w.createdAt)} /> },
         ]}
         rows={webhooks}
         rowKey={(w) => w.id}
-        empty="No webhooks yet. Add one to get a copy of each new letter at your own address."
+        rowHref={(w) => ({ to: "/apps/$appId/webhooks/$webhookId", params: { appId, webhookId: w.id } })}
+        rowLabel={() => "Open deliveries"}
+        menu={(w) => [
+          { label: "Deliveries", to: "/apps/$appId/webhooks/$webhookId", params: { appId, webhookId: w.id } },
+          { label: "Delete", destructive: true, hidden: !canWrite, onSelect: () => setDeleteId(w.id) },
+        ]}
+        empty={
+          <EmptyState
+            icon={WebhookIcon}
+            title="No webhooks yet"
+            description="Relay calls your URL when mail is sent, delivered or received."
+            action={canWrite ? <Button size="sm" onClick={() => setCreateOpen(true)}>New webhook</Button> : undefined}
+          />
+        }
+      />
+      <ConfirmDialog
+        open={deleteId !== null}
+        onOpenChange={(o) => {
+          if (!o) setDeleteId(null);
+        }}
+        title="Delete this webhook?"
+        description="Messages stop being sent to this address right away. Deliveries still waiting are marked failed."
+        confirmLabel="Delete webhook"
+        onConfirm={() => {
+          if (deleteId)
+            void runAction(
+              () => deleteWebhookFn({ data: { appId, id: deleteId } }),
+              "Webhook deleted",
+              () => router.invalidate(),
+            );
+        }}
       />
     </>
   );

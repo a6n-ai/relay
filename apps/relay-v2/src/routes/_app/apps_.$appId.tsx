@@ -6,16 +6,21 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@foundry/ui/switch";
 import { toast } from "@foundry/ui/toast";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import { KeyRoundIcon } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { ConfirmDialog } from "../../components/confirm-dialog";
 import { CreateDialog } from "../../components/create-dialog";
 import { DeniedState, deniedReason } from "../../components/denied-state";
 import { errorText } from "../../components/error-text";
 import { FormError } from "../../components/form-error";
-import { ResourceTable } from "../../components/resource-table";
+import { EmptyState } from "../../components/page/empty-state";
+import { SettingsCard } from "../../components/page/settings-card";
+import { TableSkeleton } from "../../components/page/table-skeleton";
+import { Toolbar } from "../../components/page/toolbar";
+import { CellWhen, ResourceTable } from "../../components/resource-table";
+import { PageHeader } from "../../components/shell/page-header";
 import { SecretOnce } from "../../components/secret-once";
 import { useCan } from "../../components/use-can";
-import { ViewHeader } from "../../components/view-header";
 import {
   createKeyFn,
   deleteAudienceHookFn,
@@ -26,8 +31,10 @@ import {
   setAudienceHookFn,
 } from "../../console/apps.fns";
 import { setAudienceBindingFn } from "../../console/admin.fns";
+import { formatDate, formatWhen } from "../../lib/format-date";
 
 export const Route = createFileRoute("/_app/apps_/$appId")({
+  pendingComponent: () => <TableSkeleton columns={5} />,
   loader: async ({ params }) => {
     const data = await fetchAppDetail({ data: { appId: params.appId } });
     if (!data) return null;
@@ -41,10 +48,12 @@ function AppPage() {
   const { shell } = Route.useRouteContext();
   const router = useRouter();
   const canWrite = useCan({ tenant: ["write"] });
+  const [keyOpen, setKeyOpen] = useState(false);
+  const [revokeId, setRevokeId] = useState<string | null>(null);
   if (!data) {
     return (
       <>
-        <ViewHeader title="App" />
+        <PageHeader crumbs={[{ label: "Apps", to: "/apps" }, { label: "App" }]} />
         <DeniedState reason={deniedReason(shell)} />
       </>
     );
@@ -63,52 +72,62 @@ function AppPage() {
 
   return (
     <>
-      <ViewHeader
-        title={app.name}
-        actions={
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" render={<Link to="/apps/$appId/webhooks" params={{ appId: app.id }} />}>
-              Webhooks
-            </Button>
-            {canWrite ? (
-              <CreateDialog trigger="Create key" title="New API key">
-                {(done, lock) => <NewKeyForm appId={app.id} done={done} lock={lock} />}
-              </CreateDialog>
-            ) : null}
-          </div>
-        }
-      />
-      <ResourceTable
-        columns={[
-          { header: "Name", cell: (k) => k.name ?? "Unnamed" },
-          { header: "Key", cell: (k) => <span className="font-mono text-xs">{k.start ? `${k.start}…` : "-"}</span> },
-          { header: "Status", cell: (k) => <Badge variant={k.enabled ? "secondary" : "outline"}>{k.enabled ? "Active" : "Revoked"}</Badge> },
-          { header: "Created", cell: (k) => new Date(k.createdAt).toLocaleDateString("en-CA") },
-          { header: "Last used", cell: (k) => (k.lastRequest ? new Date(k.lastRequest).toLocaleDateString("en-CA") : "Never") },
-          {
-            header: "",
-            cell: (k) =>
-              k.enabled && canWrite ? (
-                <ConfirmDialog
-                  trigger="Revoke"
-                  title="Revoke this key?"
-                  description="Requests that use this key stop working right away."
-                  confirmLabel="Revoke key"
-                  onConfirm={() => revoke(k.id)}
-                />
-              ) : null,
-          },
-        ]}
-        rows={keys}
-        rowKey={(k) => k.id}
-        empty="No keys yet. Create one to start sending from this app."
-      />
-      <DefaultSendersPanel appId={app.id} senders={senders} canWrite={canWrite} />
-      <AudiencePanel
-        appId={app.id}
-        hook={hook}
-        canWrite={canWrite}
-        bindWorkspaceId={shell.platformAdmin ? (shell.active?.id ?? null) : null}
+      <PageHeader crumbs={[{ label: "Apps", to: "/apps" }, { label: app.name }]} />
+      <Toolbar>
+        <Button variant="outline" size="sm" render={<Link to="/apps/$appId/webhooks" params={{ appId: app.id }} />}>
+          Webhooks
+        </Button>
+        {canWrite ? (
+          <CreateDialog trigger="Create key" title="New API key" open={keyOpen} onOpenChange={setKeyOpen}>
+            {(done, lock) => <NewKeyForm appId={app.id} done={done} lock={lock} />}
+          </CreateDialog>
+        ) : null}
+      </Toolbar>
+      <div className="grid max-w-3xl gap-4 px-4 pb-8">
+        <SettingsCard title="API keys" description="Keys let this app send through Relay.">
+          <ResourceTable
+            columns={[
+              { header: "Name", cell: (k) => k.name ?? "Unnamed" },
+              { header: "Prefix", cell: (k) => <span className="font-mono text-xs">{k.start ? `${k.start}…` : "—"}</span> },
+              { header: "Status", cell: (k) => <Badge variant={k.enabled ? "secondary" : "outline"}>{k.enabled ? "Active" : "Revoked"}</Badge> },
+              { header: "Created", cell: (k) => <CellWhen when={formatDate(k.createdAt)} text={formatWhen(k.createdAt)} /> },
+              {
+                header: "Last used",
+                cell: (k) => (k.lastRequest ? <CellWhen when={formatDate(k.lastRequest)} text={formatWhen(k.lastRequest)} /> : "—"),
+              },
+            ]}
+            rows={keys}
+            rowKey={(k) => k.id}
+            menu={canWrite ? (k) => [{ label: "Revoke", destructive: true, hidden: !k.enabled, onSelect: () => setRevokeId(k.id) }] : undefined}
+            empty={
+              <EmptyState
+                icon={KeyRoundIcon}
+                title="No keys yet"
+                description="Create a key to start sending from this app."
+                action={canWrite ? <Button size="sm" onClick={() => setKeyOpen(true)}>Create key</Button> : undefined}
+              />
+            }
+          />
+        </SettingsCard>
+        <DefaultSendersPanel appId={app.id} senders={senders} canWrite={canWrite} />
+        <AudiencePanel
+          appId={app.id}
+          hook={hook}
+          canWrite={canWrite}
+          bindWorkspaceId={shell.platformAdmin ? (shell.active?.id ?? null) : null}
+        />
+      </div>
+      <ConfirmDialog
+        open={revokeId !== null}
+        onOpenChange={(o) => {
+          if (!o) setRevokeId(null);
+        }}
+        title="Revoke this key?"
+        description="Requests that use this key stop working right away."
+        confirmLabel="Revoke key"
+        onConfirm={() => {
+          if (revokeId) void revoke(revokeId);
+        }}
       />
     </>
   );
@@ -117,6 +136,10 @@ function AppPage() {
 type DefaultSenders = NonNullable<Awaited<ReturnType<typeof fetchAppDetail>>>["senders"];
 
 const NONE = "none";
+
+// The loader returns no display name for the audience binding, so the one platform-admin button names it here.
+const BINDING = "TIFFIN_AUDIENCE";
+const BINDING_NAME = "TiffinGrab";
 
 function DefaultSendersPanel({ appId, senders, canWrite }: { appId: string; senders: DefaultSenders; canWrite: boolean }) {
   const router = useRouter();
@@ -156,10 +179,18 @@ function DefaultSendersPanel({ appId, senders, canWrite }: { appId: string; send
   );
 
   return (
-    <section className="grid max-w-2xl gap-3 p-4">
-      <h2 className="text-sm font-medium">Default senders</h2>
-      <p className="text-sm text-muted-foreground">Used when a send leaves out From. Tracked mail uses the transactional sender.</p>
-      <form onSubmit={save} className="grid gap-3">
+    <SettingsCard
+      title="Default senders"
+      description="Used when a send leaves out From. Tracked mail uses the transactional sender."
+      action={
+        canWrite ? (
+          <Button type="submit" form="default-senders-form" size="sm" disabled={pending}>
+            Save
+          </Button>
+        ) : undefined
+      }
+    >
+      <form id="default-senders-form" onSubmit={save} className="grid gap-3">
         <Label htmlFor="default-transactional">Transactional</Label>
         <Select value={transactional} onValueChange={(v) => setTransactional(v ?? NONE)} disabled={!canWrite}>
           <SelectTrigger id="default-transactional" className="w-full">
@@ -175,15 +206,8 @@ function DefaultSendersPanel({ appId, senders, canWrite }: { appId: string; send
           <SelectContent>{choices}</SelectContent>
         </Select>
         <FormError message={error} />
-        {canWrite ? (
-          <div className="flex justify-end">
-            <Button type="submit" disabled={pending}>
-              Save
-            </Button>
-          </div>
-        ) : null}
       </form>
-    </section>
+    </SettingsCard>
   );
 }
 
@@ -233,10 +257,10 @@ function AudiencePanel({
     }
   }
 
-  async function connectTiffin() {
+  async function connectBinding() {
     if (!bindWorkspaceId) return;
     try {
-      await setAudienceBindingFn({ data: { workspaceId: bindWorkspaceId, appId, binding: "TIFFIN_AUDIENCE" } });
+      await setAudienceBindingFn({ data: { workspaceId: bindWorkspaceId, appId, binding: BINDING } });
       toast.success("App audience connected");
       await router.invalidate();
     } catch (err) {
@@ -244,16 +268,46 @@ function AudiencePanel({
     }
   }
 
+  const editable = canWrite && hook && hook.kind !== "binding";
+  const action =
+    hook?.kind === "binding" ? undefined : (
+      <div className="flex items-center gap-2">
+        {editable ? (
+          <ConfirmDialog
+            trigger="Remove"
+            title="Remove the App audience?"
+            description="Campaigns that use it can't reach their audience until you connect one again."
+            confirmLabel="Remove"
+            onConfirm={remove}
+          />
+        ) : null}
+        {bindWorkspaceId ? (
+          <ConfirmDialog
+            trigger={`Connect ${BINDING_NAME}`}
+            title="Connect this audience?"
+            description="Campaigns in this app will reach the connected app's customers. This replaces any Audience URL."
+            confirmLabel="Connect"
+            onConfirm={connectBinding}
+          />
+        ) : null}
+        {canWrite ? (
+          <Button type="submit" form="audience-form" size="sm" disabled={pending || !url.trim()}>
+            Save
+          </Button>
+        ) : null}
+      </div>
+    );
+
   return (
-    <section className="grid max-w-2xl gap-3 p-4">
-      <h2 className="text-sm font-medium">App audience</h2>
-      <p className="text-sm text-muted-foreground">
-        Relay calls this URL for the people a campaign reaches. Campaigns pick it under Audience.
-      </p>
+    <SettingsCard
+      title="App audience"
+      description="Relay calls this URL for the people a campaign reaches. Campaigns pick it under Audience."
+      action={action}
+    >
       {hook?.kind === "binding" ? (
         <p className="text-sm">Connected by Relay</p>
       ) : (
-        <form onSubmit={save} className="grid gap-3">
+        <form id="audience-form" onSubmit={save} className="grid gap-3">
           <Label htmlFor="audience-url">Audience URL</Label>
           <Input id="audience-url" type="url" required value={url} disabled={!canWrite} onChange={(e) => setUrl(e.target.value)} />
           <Label className="flex items-center gap-2 font-normal">
@@ -262,38 +316,9 @@ function AudiencePanel({
           </Label>
           {secret ? <SecretOnce secret={secret} label="Your App audience secret" onDone={() => setSecret(null)} /> : null}
           <FormError message={error} />
-          {canWrite ? (
-            <div className="flex justify-end">
-              <Button type="submit" disabled={pending || !url.trim()}>
-                Save
-              </Button>
-            </div>
-          ) : null}
         </form>
       )}
-      {bindWorkspaceId && hook?.kind !== "binding" ? (
-        <div>
-          <ConfirmDialog
-            trigger="Connect TiffinGrab"
-            title="Connect TiffinGrab's audience?"
-            description="Campaigns in this app will reach TiffinGrab's customers. This replaces any Audience URL."
-            confirmLabel="Connect"
-            onConfirm={connectTiffin}
-          />
-        </div>
-      ) : null}
-      {canWrite && hook && hook.kind !== "binding" ? (
-        <div>
-          <ConfirmDialog
-            trigger="Remove"
-            title="Remove the App audience?"
-            description="Campaigns that use it can't reach their audience until you connect one again."
-            confirmLabel="Remove"
-            onConfirm={remove}
-          />
-        </div>
-      ) : null}
-    </section>
+    </SettingsCard>
   );
 }
 
