@@ -3,18 +3,20 @@ import { Input } from "@foundry/ui/input";
 import { Label } from "@foundry/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@foundry/ui/select";
 import { toast } from "@foundry/ui/toast";
-import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
 import { ConfirmDialog } from "../../components/confirm-dialog";
 import { CreateDialog } from "../../components/create-dialog";
 import { DeniedState, deniedReason } from "../../components/denied-state";
 import { errorText } from "../../components/error-text";
-import { formatWhen } from "../../components/event-timeline";
 import { FormError } from "../../components/form-error";
-import { MessagesTabs } from "../../components/messages-tabs";
+import { LoadMore } from "../../components/page/load-more";
+import { TableSkeleton } from "../../components/page/table-skeleton";
+import { SearchInput, Toolbar } from "../../components/page/toolbar";
+import { PageHeader } from "../../components/shell/page-header";
 import { ResourceTable } from "../../components/resource-table";
 import { useCan } from "../../components/use-can";
-import { ViewHeader } from "../../components/view-header";
+import { formatWhen } from "../../lib/format-date";
 import { addSuppressionFn, fetchSuppressions, removeSuppressionFn } from "../../console/suppressions.fns";
 
 type SuppressionsSearch = { prefix?: string; cursor?: string };
@@ -26,6 +28,7 @@ export const Route = createFileRoute("/_app/messages_/suppressions")({
   }),
   loaderDeps: ({ search }) => search,
   loader: ({ deps }) => fetchSuppressions({ data: deps }),
+  pendingComponent: () => <TableSkeleton columns={4} />,
   component: SuppressionsPage,
 });
 
@@ -44,11 +47,12 @@ function SuppressionsPage() {
   const { shell } = Route.useRouteContext();
   const router = useRouter();
   const canWrite = useCan({ sending: ["write"] });
+  const [removing, setRemoving] = useState<string | null>(null);
+  const crumbs = [{ label: "Messages" }, { label: "Suppressions" }];
   if (!page) {
     return (
       <>
-        <ViewHeader title="Suppressions" />
-        <MessagesTabs active="suppressions" />
+        <PageHeader crumbs={crumbs} />
         <DeniedState reason={deniedReason(shell)} />
       </>
     );
@@ -64,90 +68,65 @@ function SuppressionsPage() {
   }
   return (
     <>
-      <ViewHeader
-        title="Suppressions"
-        actions={
-          canWrite ? (
-            <CreateDialog trigger="Add" title="Suppress an address">
-              {(done) => <AddForm done={done} />}
-            </CreateDialog>
-          ) : undefined
-        }
+      <PageHeader crumbs={crumbs} />
+      <Toolbar search={<PrefixSearch prefix={search.prefix} />}>
+        {canWrite ? (
+          <CreateDialog trigger="Suppress address" title="Suppress an address">
+            {(done) => <AddForm done={done} />}
+          </CreateDialog>
+        ) : null}
+      </Toolbar>
+      <ResourceTable
+        columns={[
+          { header: "Email", cell: (s) => s.email },
+          {
+            header: "Reason",
+            cell: (s) => (
+              <>
+                {REASON_LABEL[s.reason] ?? s.reason}
+                {OPTED_OUT.has(s.reason) ? <span className="ml-2 text-muted-foreground">Opted out</span> : null}
+              </>
+            ),
+          },
+          { header: "Stream", cell: (s) => (s.stream ? s.stream[0].toUpperCase() + s.stream.slice(1) : "All") },
+          { header: "Added", cell: (s) => <span className="text-xs tabular-nums">{formatWhen(s.createdAt)}</span> },
+        ]}
+        rows={page.rows}
+        rowKey={(s) => s.email}
+        empty="No suppressed addresses match."
+        menu={(s) => [{ label: "Remove", onSelect: () => setRemoving(s.email), destructive: true, hidden: !canWrite || OPTED_OUT.has(s.reason) }]}
       />
-      <MessagesTabs active="suppressions" />
-      <div className="grid gap-4 p-4">
-        <PrefixSearch prefix={search.prefix} />
-        <ResourceTable
-          columns={[
-            { header: "Email", cell: (s) => s.email },
-            { header: "Reason", cell: (s) => REASON_LABEL[s.reason] ?? s.reason },
-            {
-              header: "Stream",
-              cell: (s) => (s.stream ? s.stream[0].toUpperCase() + s.stream.slice(1) : "All"),
-            },
-            { header: "Added", cell: (s) => <span className="text-xs tabular-nums">{formatWhen(s.createdAt)}</span> },
-            {
-              header: "",
-              cell: (s) => {
-                if (OPTED_OUT.has(s.reason)) return <span className="text-muted-foreground">Opted out</span>;
-                if (!canWrite) return null;
-                return (
-                  <ConfirmDialog
-                    trigger="Remove"
-                    title="Remove this suppression?"
-                    description="Mail to this address can be sent again."
-                    confirmLabel="Remove"
-                    onConfirm={() => remove(s.email)}
-                  />
-                );
-              },
-            },
-          ]}
-          rows={page.rows}
-          rowKey={(s) => s.email}
-          empty="No suppressed addresses match."
-        />
-        <nav aria-label="Pages" className="flex justify-between text-sm">
-          {search.cursor ? (
-            <Link to="/messages/suppressions" search={{ prefix: search.prefix }} className="hover:underline">
-              First page
-            </Link>
-          ) : (
-            <span />
-          )}
-          {page.nextCursor ? (
-            <Link
-              to="/messages/suppressions"
-              search={{ prefix: search.prefix, cursor: page.nextCursor }}
-              className="hover:underline"
-            >
-              Next
-            </Link>
-          ) : null}
-        </nav>
-      </div>
+      <ConfirmDialog
+        open={removing !== null}
+        onOpenChange={(open) => {
+          if (!open) setRemoving(null);
+        }}
+        title="Remove this suppression?"
+        description="Mail to this address can be sent again."
+        confirmLabel="Remove"
+        onConfirm={() => removing && remove(removing)}
+      />
+      <LoadMore
+        hasMore={Boolean(page.nextCursor)}
+        to="/messages/suppressions"
+        search={{ prefix: search.prefix, cursor: page.nextCursor }}
+        resetTo={search.cursor ? "/messages/suppressions" : undefined}
+      />
     </>
   );
 }
 
-// Applies by navigating, so the list reloads from the server with the new prefix and no cursor.
+// Applies on Enter by navigating, so the list reloads from the server with the new prefix and no cursor.
 function PrefixSearch({ prefix }: { prefix?: string }) {
   const navigate = useNavigate({ from: "/messages/suppressions" });
   const [value, setValue] = useState(prefix ?? "");
-  function apply(event: FormEvent) {
-    event.preventDefault();
-    navigate({ to: "/messages/suppressions", search: { prefix: value.trim() || undefined } });
-  }
   return (
-    <form onSubmit={apply} className="grid gap-1.5 sm:max-w-sm">
-      <Label htmlFor="sup-prefix">Email starts with</Label>
-      <div className="flex gap-2">
-        <Input id="sup-prefix" value={value} onChange={(e) => setValue(e.target.value)} />
-        <Button type="submit" variant="outline">
-          Search
-        </Button>
-      </div>
-    </form>
+    <SearchInput
+      value={value}
+      onChange={setValue}
+      placeholder="Email starts with"
+      onSubmit={() => navigate({ to: "/messages/suppressions", search: { prefix: value.trim() || undefined } })}
+    />
   );
 }
 

@@ -1,18 +1,19 @@
-import { Button } from "@foundry/ui/button";
 import { toast } from "@foundry/ui/toast";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import { useState } from "react";
 import { ConfirmDialog } from "../../components/confirm-dialog";
 import { DeniedState, deniedReason } from "../../components/denied-state";
 import { errorText } from "../../components/error-text";
-import { formatWhen } from "../../components/event-timeline";
-import { MessagesTabs } from "../../components/messages-tabs";
+import { TableSkeleton } from "../../components/page/table-skeleton";
+import { PageHeader } from "../../components/shell/page-header";
+import { formatWhen } from "../../lib/format-date";
 import { ResourceTable } from "../../components/resource-table";
 import { useCan } from "../../components/use-can";
-import { ViewHeader } from "../../components/view-header";
 import { deleteFailureFn, fetchFailures, replayFailureFn } from "../../console/failures.fns";
 
 export const Route = createFileRoute("/_app/messages_/failures")({
   loader: () => fetchFailures(),
+  pendingComponent: () => <TableSkeleton columns={5} />,
   component: FailuresPage,
 });
 
@@ -21,12 +22,13 @@ function FailuresPage() {
   const { shell } = Route.useRouteContext();
   const router = useRouter();
   const canManage = useCan({ mailbox: ["manage"] });
+  const [deleting, setDeleting] = useState<string | null>(null);
+  const crumbs = [{ label: "Messages" }, { label: "Failed to receive" }];
 
   if (!page) {
     return (
       <>
-        <ViewHeader title="Failed to receive" />
-        <MessagesTabs active="failures" />
+        <PageHeader crumbs={crumbs} />
         <DeniedState reason={deniedReason(shell)} />
       </>
     );
@@ -50,58 +52,49 @@ function FailuresPage() {
       }
       await router.invalidate();
     } catch (err) {
-      toast.error(errorText(err, "Could not retry this letter."));
+      toast.error(errorText(err, "Could not retry this message."));
     }
   }
 
   async function remove(failureId: string) {
     try {
       await deleteFailureFn({ data: { id: failureId } });
-      toast.success("Letter deleted");
+      toast.success("Message deleted");
       await router.invalidate();
     } catch (err) {
-      toast.error(errorText(err, "Could not delete this letter."));
+      toast.error(errorText(err, "Could not delete this message."));
     }
   }
 
   return (
     <>
-      <ViewHeader title="Failed to receive" />
-      <MessagesTabs active="failures" />
-      <div className="p-4">
-        <ResourceTable
-          columns={[
-            { header: "Received", cell: (f) => <span className="text-xs tabular-nums">{formatWhen(f.receivedAt)}</span> },
-            { header: "From", cell: (f) => f.envelopeFrom ?? "Unknown" },
-            { header: "To", cell: (f) => f.envelopeTo },
-            { header: "Error", cell: (f) => f.error },
-            { header: "Attempts", cell: (f) => <span className="tabular-nums">{f.attempts}</span> },
-            {
-              header: "",
-              cell: (f) => {
-                if (!canManage) return null;
-                return (
-                  <div className="flex justify-end gap-2">
-                    <Button variant="outline" size="sm" onClick={() => retry(f.id)}>
-                      Retry
-                    </Button>
-                    <ConfirmDialog
-                      trigger="Delete"
-                      title="Delete this letter?"
-                      description="The letter is removed and will not be retried."
-                      confirmLabel="Delete"
-                      onConfirm={() => remove(f.id)}
-                    />
-                  </div>
-                );
-              },
-            },
-          ]}
-          rows={page.rows}
-          rowKey={(f) => f.id}
-          empty="Nothing failed to arrive."
-        />
-      </div>
+      <PageHeader crumbs={crumbs} />
+      <ResourceTable
+        columns={[
+          { header: "Received", cell: (f) => <span className="text-xs tabular-nums">{formatWhen(f.receivedAt)}</span> },
+          { header: "From", cell: (f) => f.envelopeFrom ?? "—" },
+          { header: "To", cell: (f) => f.envelopeTo },
+          { header: "Error", cell: (f) => f.error },
+          { header: "Attempts", numeric: true, cell: (f) => f.attempts },
+        ]}
+        rows={page.rows}
+        rowKey={(f) => f.id}
+        empty="Nothing failed to arrive."
+        menu={(f) => [
+          { label: "Retry", onSelect: () => retry(f.id), hidden: !canManage },
+          { label: "Delete", onSelect: () => setDeleting(f.id), destructive: true, hidden: !canManage },
+        ]}
+      />
+      <ConfirmDialog
+        open={deleting !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeleting(null);
+        }}
+        title="Delete this message?"
+        description="The message is removed and will not be retried."
+        confirmLabel="Delete"
+        onConfirm={() => deleting && remove(deleting)}
+      />
     </>
   );
 }

@@ -651,8 +651,12 @@ describe("parseMessagesSearch", () => {
 
   it("keeps the valid filters", () => {
     expect(
-      parseMessagesSearch({ dir: "in", app: "app_1", status: "failed", email: " a@b.co ", cursor: "1700.msg_abcdefghijkl" }),
-    ).toEqual({ dir: "in", app: "app_1", status: "failed", email: "a@b.co", cursor: "1700.msg_abcdefghijkl" });
+      parseMessagesSearch({ dir: "in", appId: "app_1", status: "failed", email: " a@b.co ", cursor: "1700.msg_abcdefghijkl" }),
+    ).toEqual({ dir: "in", appId: "app_1", status: "failed", email: "a@b.co", cursor: "1700.msg_abcdefghijkl" });
+  });
+
+  it("ignores the old app key", () => {
+    expect(parseMessagesSearch({ app: "app_1" })).toEqual({ dir: "out" });
   });
 });
 
