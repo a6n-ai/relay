@@ -3,6 +3,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Link, useNavigate, useRouteContext, useSearch } from "@tanstack/react-router";
 import Plus from "lucide-react/icons/plus";
 import { createItems } from "./nav";
+import { withNew } from "./scope";
 
 export function CreateMenu() {
   const { shell } = useRouteContext({ from: "/_app" });
@@ -15,7 +16,7 @@ export function CreateMenu() {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         {items.map((item) => (
-          <DropdownMenuItem key={item.id} render={<Link to={item.to as string} search={{ new: 1 } as never} />}>
+          <DropdownMenuItem key={item.id} render={<Link to={item.to as string} search={withNew as never} />}>
             {item.label}
           </DropdownMenuItem>
         ))}

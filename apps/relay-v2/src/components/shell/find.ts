@@ -11,7 +11,7 @@ export type FindEntry = {
 
 export function findEntries(shell: Shell): FindEntry[] {
   const roles = shell.active?.roles ?? [];
-  const pages = visibleNav(roles, shell.platformAdmin).flatMap((g) =>
+  const pages = visibleNav(roles, shell.platformAdmin, shell.active !== null).flatMap((g) =>
     g.items.flatMap((item): FindEntry[] =>
       item.children
         ? item.children.map((c) => ({

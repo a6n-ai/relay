@@ -77,7 +77,7 @@ export const NAV: NavGroup[] = [
   },
 ];
 
-export const APP_SCOPED: readonly string[] = ["/messages", "/campaigns", "/lists"];
+export const APP_SCOPED: readonly string[] = ["/messages", "/campaigns", "/campaigns/templates", "/campaigns/automations", "/lists"];
 
 const CREATE: CreateItem[] = [
   { id: "app", label: "App", to: "/apps", need: { tenant: ["write"] } },
@@ -91,9 +91,9 @@ const CREATE: CreateItem[] = [
 
 const permitted = (roles: OrgRole[], need?: Record<string, string[]>) => !need || allows(roles, need);
 
-export function visibleNav(roles: OrgRole[], platformAdmin: boolean): NavGroup[] {
+export function visibleNav(roles: OrgRole[], platformAdmin: boolean, hasWorkspace = true): NavGroup[] {
   return NAV.flatMap((group) => {
-    if (group.id === "platform" && !platformAdmin) return [];
+    if (group.id === "platform" ? !platformAdmin : !hasWorkspace) return [];
     const items = group.items.flatMap((item) => {
       if (!item.children) return permitted(roles, item.need) ? [item] : [];
       const children = item.children.filter((child) => permitted(roles, child.need));

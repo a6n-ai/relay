@@ -5,6 +5,10 @@ import { activeNav, APP_SCOPED, createItems, visibleNav } from "../src/component
 const ids = (groups: ReturnType<typeof visibleNav>) => groups.map((g) => g.id);
 
 describe("visibleNav", () => {
+  it("shows a platform admin with no workspace only Admin", () => {
+    expect(visibleNav([], true, false).flatMap((g) => g.items.map((i) => i.id))).toEqual(["admin"]);
+  });
+
   it("hides the platform group from a member", () => {
     expect(ids(visibleNav(["member"], false))).not.toContain("platform");
   });
@@ -46,8 +50,8 @@ describe("activeNav", () => {
 });
 
 describe("APP_SCOPED", () => {
-  it("lists the app-scoped path prefixes", () => {
-    expect([...APP_SCOPED]).toEqual(["/messages", "/campaigns", "/lists"]);
+  it("lists the five app-scoped pages", () => {
+    expect([...APP_SCOPED]).toEqual(["/messages", "/campaigns", "/campaigns/templates", "/campaigns/automations", "/lists"]);
   });
 });
 

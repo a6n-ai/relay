@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { Shell } from "../../console/shell";
 import { isTypingTarget } from "../page/keys";
 import { type FindEntry, findEntries, pushRecent, readRecent } from "./find";
+import { withNew } from "./scope";
 
 const RECENT_KEY = "relay-find-recent";
 const GROUPS: FindEntry["group"][] = ["Pages", "Apps", "Actions"];
@@ -42,7 +43,7 @@ export function FindPalette({ shell }: { shell: Shell }) {
   const pick = (entry: FindEntry) => {
     localStore.setJson(RECENT_KEY, pushRecent(readRecent(localStore.getJson<unknown>(RECENT_KEY, [])), entry.id));
     setOpen(false);
-    void navigate({ to: entry.to, search: entry.search } as never);
+    void navigate({ to: entry.to, search: entry.search?.new ? withNew : entry.search } as never);
   };
 
   const recentEntries = recent.flatMap((id) => entries.find((e) => e.id === id) ?? []);
@@ -82,7 +83,6 @@ export function FindPalette({ shell }: { shell: Shell }) {
                   {items.map((e) => (
                     <CommandItem key={e.id} value={`${e.label} ${e.id}`} onSelect={() => pick(e)}>
                       {e.label}
-                      
                     </CommandItem>
                   ))}
                 </CommandGroup>

@@ -5,7 +5,8 @@ import { Link, useLocation, useRouteContext, useSearch } from "@tanstack/react-r
 import Check from "lucide-react/icons/check";
 import ChevronsUpDown from "lucide-react/icons/chevrons-up-down";
 import { useState } from "react";
-import { scopeLabel, scopeSearch } from "./scope";
+import { createItems } from "./nav";
+import { effectiveApp, scopeLabel, scopeSearch, showsAllApps } from "./scope";
 
 const row =
   "flex h-8 items-center justify-between gap-2 rounded-md px-2 text-sm transition-colors hover:bg-muted focus-visible:bg-muted outline-none";
@@ -18,7 +19,8 @@ export function ScopeSwitcher() {
   const [open, setOpen] = useState(false);
   const needle = query.trim().toLowerCase();
   const apps = shell.apps.filter((a) => a.name.toLowerCase().includes(needle));
-  const current = shell.apps.some((a) => a.id === appId) ? appId : undefined;
+  const current = effectiveApp(shell.apps, appId, pathname);
+  const canCreateApp = createItems(shell.active?.roles ?? [], shell.active?.status === "suspended").some((i) => i.id === "app");
   const close = () => {
     setOpen(false);
     setQuery("");
@@ -46,13 +48,17 @@ export function ScopeSwitcher() {
       <PopoverContent align="start" className="w-64 gap-1.5 p-1.5">
         <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Find app" aria-label="Find app" />
         <div className="flex max-h-64 flex-col overflow-y-auto">
-          {"all apps".includes(needle) ? choice(undefined, "All apps") : null}
+          {showsAllApps(pathname) && "all apps".includes(needle) ? choice(undefined, "All apps") : null}
           {apps.map((a) => choice(a.id, a.name))}
         </div>
-        <div className="-mx-1.5 border-t" />
-        <Link to="/apps" search={{ new: 1 } as never} className={row} onClick={close}>
-          New app
-        </Link>
+        {canCreateApp ? (
+          <>
+            <div className="-mx-1.5 border-t" />
+            <Link to="/apps" search={{ new: 1 } as never} className={row} onClick={close}>
+              New app
+            </Link>
+          </>
+        ) : null}
       </PopoverContent>
     </Popover>
   );
