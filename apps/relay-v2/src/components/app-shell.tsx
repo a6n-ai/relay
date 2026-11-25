@@ -32,8 +32,9 @@ type Active = { item: string; child?: string } | null;
 
 function ParentItem({ item, active }: { item: NavItem; active: Active }) {
   const current = active?.item === item.id;
+  const pathname = useLocation().pathname;
   const [override, setOverride] = useState<boolean | null>(null);
-  useEffect(() => setOverride(null), [current]);
+  useEffect(() => setOverride(null), [current, pathname]);
   const open = override ?? current;
   const first = item.children?.[0];
   return (
