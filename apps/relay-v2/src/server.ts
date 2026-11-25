@@ -1,6 +1,7 @@
 import handler from "@tanstack/react-start/server-entry";
 import { receiveEmail } from "./core/email-worker";
 import { handleInboundBatch } from "./core/inbound-consumer";
+import { sweepAll } from "./core/sweep-all";
 import { handleSendBatch } from "./core/send-consumer";
 import { handleSesEventBatch } from "./core/ses-event-consumer";
 import type { SesEventJob } from "./core/ses-events";
@@ -14,6 +15,10 @@ export { RelayRpc } from "./rpc/relay-rpc";
 export default {
   fetch: handler.fetch,
   email: receiveEmail,
+  async scheduled(_controller: ScheduledController, env: Env) {
+    const result = await sweepAll(env);
+    console.log(`daily sweep: ${result.total} workspaces, ${result.behind.length} behind, ${result.failed.length} failed, ${result.releasedDomains} domains released`);
+  },
   async queue(batch: MessageBatch<unknown>, env: Env) {
     if (batch.queue === "relay-send") {
       await handleSendBatch(batch as MessageBatch<SendJob>, env);

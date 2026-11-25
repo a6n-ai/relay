@@ -8,6 +8,7 @@ import type { Env } from "../env";
 import { createAuth } from "../lib/auth";
 import { writeAudit } from "../lib/auth/audit";
 import { newId } from "../lib/ids";
+import { readDomainState } from "../console/domains";
 import { createApp } from "./apps";
 import { createApiKey } from "./api-keys";
 
@@ -92,7 +93,18 @@ export async function seed(env: Env, input: SeedInput): Promise<SeedResult> {
   const appId = existingApp?.id ?? (await createApp(env, { workspaceId, ...input.app })).id;
 
   if (domain && !existingDomain) {
-    await coreDb(env).insert(sendingDomain).values({ id: newId("dom"), workspaceId, domain: domain.domain, sesRegion: domain.sesRegion });
+    // The identity was not created by Relay, so the row records its real SES state and is never released with it.
+    const state = await readDomainState(env, domain.sesRegion, domain.domain);
+    await coreDb(env)
+      .insert(sendingDomain)
+      .values({
+        id: newId("dom"),
+        workspaceId,
+        domain: domain.domain,
+        sesRegion: domain.sesRegion,
+        ...state,
+        verifiedAt: state.status === "verified" ? new Date() : null,
+      });
   }
   const liveKey = await db
     .select({ id: apiKey.id })

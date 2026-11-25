@@ -1,8 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { env } from "cloudflare:workers";
-import { sweepWorkspaces } from "../../../core/do-sweep";
 import { guardInternal } from "../../../core/internal-guard";
-import { releaseStalePendingDomains } from "../../../console/domains";
+import { sweepAll } from "../../../core/sweep-all";
 
 export const Route = createFileRoute("/api/internal/do-sweep")({
   server: {
@@ -10,7 +9,7 @@ export const Route = createFileRoute("/api/internal/do-sweep")({
       POST: async ({ request }) => {
         const denied = guardInternal(request, env.INTERNAL_SECRET);
         if (denied) return denied;
-        return Response.json({ ...(await sweepWorkspaces(env)), releasedDomains: await releaseStalePendingDomains(env) });
+        return Response.json(await sweepAll(env));
       },
     },
   },

@@ -1,4 +1,4 @@
-import { and, asc, count, eq, inArray, like, lt, ne, or } from "drizzle-orm";
+import { and, asc, count, eq, inArray, isNull, like, lt, ne, or } from "drizzle-orm";
 import { createAddress, deleteAddress as deleteAddressRow, updateAddress as updateAddressRow } from "../core/addresses";
 import { refreshWorkspaceLimits } from "../core/limits";
 import { SES_CONFIG_SETS } from "../core/ses";
@@ -44,6 +44,16 @@ const statusOf = (identity: SesIdentity | null): DomainStatus => {
   return "pending";
 };
 
+// The real SES state of an identity, for rows that start from an identity Relay did not create (seed, adopt).
+export async function readDomainState(env: Env, region: string, domain: string) {
+  const identity = await sesIdentityApi(env).get(region, domain).catch(() => null);
+  return { status: statusOf(identity), dkimStatus: (identity?.dkimStatus ?? "NOT_STARTED").toLowerCase() };
+}
+
+// Only a row Relay created, never seen verified and still pending may be released along with its SES identity.
+const releasable = (d: { status: string; createdByRelay: boolean; verifiedAt: Date | null }) =>
+  d.status === "pending" && d.createdByRelay && d.verifiedAt === null;
+
 // A domain claims its parents and subdomains too; the label boundary keeps badexample.com apart from example.com.
 async function claimedByAnother(env: Env, workspaceId: string, domain: string): Promise<boolean> {
   const labels = domain.split(".");
@@ -86,6 +96,7 @@ export async function listDomains(env: Env, actor: ConsoleActor) {
         sesRegion: d.sesRegion,
         status: d.status,
         dkimStatus: d.dkimStatus,
+        releasable: releasable(d),
         records: dkimRecords(d.domain, identity),
       };
     }),
@@ -133,7 +144,9 @@ export async function addDomain(env: Env, actor: ConsoleActor, input: { domain: 
     await removeRow();
     throw err;
   }
-  if (alreadyExists) {
+  if (!alreadyExists) {
+    await coreDb(env).update(sendingDomain).set({ createdByRelay: true }).where(eq(sendingDomain.id, row.id));
+  } else {
     if (!actor.platformAdmin) {
       await removeRow();
       throw new ConsoleError(409, "domain registered");
@@ -155,7 +168,10 @@ export async function checkDomain(env: Env, actor: ConsoleActor, id: string): Pr
   const identity = await sesIdentityApi(env).get(row.sesRegion, row.domain);
   const status = statusOf(identity);
   const dkimStatus = (identity?.dkimStatus ?? "NOT_STARTED").toLowerCase();
-  await coreDb(env).update(sendingDomain).set({ status, dkimStatus, updatedAt: new Date() }).where(eq(sendingDomain.id, id));
+  await coreDb(env)
+    .update(sendingDomain)
+    .set({ status, dkimStatus, updatedAt: new Date(), ...(status === "verified" && !row.verifiedAt ? { verifiedAt: new Date() } : {}) })
+    .where(eq(sendingDomain.id, id));
   if (status !== row.status) await refreshWorkspaceLimits(env, actor.workspaceId);
   return { status, dkimStatus };
 }
@@ -227,43 +243,66 @@ const PENDING_RELEASE_MS = 14 * 24 * 60 * 60 * 1000;
 
 type DomainRow = { id: string; workspaceId: string; domain: string; sesRegion: string };
 
-// Returns false when the row is no longer pending or still has addresses, so nothing is orphaned.
+// Returns false when the row is not releasable, still has addresses, or SES now reports it verified, so nothing is orphaned.
 // The SES identity delete is best-effort: a leftover identity keeps the name taken (409) until removed by hand.
 async function releasePendingRow(env: Env, row: DomainRow, actorUserId: string | null): Promise<boolean> {
   const [{ n }] = await coreDb(env).select({ n: count() }).from(address).where(like(address.email, `%@${row.domain}`));
   if (n > 0) return false;
+  const ses = sesIdentityApi(env);
+  // A failed read counts as "do not delete": an identity we cannot see may be verified.
+  const identity = await ses.get(row.sesRegion, row.domain).catch(() => ({ verified: true }));
+  if (identity?.verified) return false;
   const gone = await coreDb(env)
     .delete(sendingDomain)
-    .where(and(eq(sendingDomain.id, row.id), eq(sendingDomain.status, "pending")))
+    .where(and(eq(sendingDomain.id, row.id), eq(sendingDomain.status, "pending"), eq(sendingDomain.createdByRelay, true), isNull(sendingDomain.verifiedAt)))
     .returning({ id: sendingDomain.id });
   if (gone.length === 0) return false;
-  await sesIdentityApi(env)
-    .delete(row.sesRegion, row.domain)
-    .catch(() => console.error("ses identity delete failed", row.id));
+  await ses.delete(row.sesRegion, row.domain).catch(() => console.error("ses identity delete failed", row.id));
   await writeAudit(env, { action: "domain.release", actorUserId, workspaceId: row.workspaceId, target: row.id });
   await refreshWorkspaceLimits(env, row.workspaceId);
   return true;
 }
 
-// Verified domains are never released here: only a row still pending past the cutoff goes.
+// Verified, seeded and adopted domains are never released here: only a row Relay created, never verified, still pending past the cutoff.
 export async function releaseStalePendingDomains(env: Env, now = Date.now()): Promise<number> {
   const stale = await coreDb(env)
     .select({ id: sendingDomain.id, workspaceId: sendingDomain.workspaceId, domain: sendingDomain.domain, sesRegion: sendingDomain.sesRegion })
     .from(sendingDomain)
-    .where(and(eq(sendingDomain.status, "pending"), lt(sendingDomain.createdAt, new Date(now - PENDING_RELEASE_MS))));
+    .where(
+      and(
+        eq(sendingDomain.status, "pending"),
+        eq(sendingDomain.createdByRelay, true),
+        isNull(sendingDomain.verifiedAt),
+        lt(sendingDomain.createdAt, new Date(now - PENDING_RELEASE_MS)),
+      ),
+    );
   let released = 0;
-  for (const row of stale) if (await releasePendingRow(env, row, null)) released++;
+  for (const row of stale) {
+    try {
+      if (await releasePendingRow(env, row, null)) released++;
+    } catch {
+      console.error("domain release failed", row.id);
+    }
+  }
   return released;
 }
 
 export async function releaseDomain(env: Env, actor: ConsoleActor, id: string): Promise<void> {
   if (!actor.platformAdmin) throw new ConsoleError(403, "forbidden");
   const [row] = await coreDb(env)
-    .select({ id: sendingDomain.id, workspaceId: sendingDomain.workspaceId, domain: sendingDomain.domain, sesRegion: sendingDomain.sesRegion, status: sendingDomain.status })
+    .select({
+      id: sendingDomain.id,
+      workspaceId: sendingDomain.workspaceId,
+      domain: sendingDomain.domain,
+      sesRegion: sendingDomain.sesRegion,
+      status: sendingDomain.status,
+      createdByRelay: sendingDomain.createdByRelay,
+      verifiedAt: sendingDomain.verifiedAt,
+    })
     .from(sendingDomain)
     .where(eq(sendingDomain.id, id));
   if (!row) throw new ConsoleError(404, "not found");
-  if (row.status !== "pending" || !(await releasePendingRow(env, row, actor.userId))) {
+  if (!releasable(row) || !(await releasePendingRow(env, row, actor.userId))) {
     throw new ConsoleError(409, "domain cannot be released");
   }
 }

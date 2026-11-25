@@ -4,6 +4,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { resolveApiKey } from "../src/core/api-keys";
 import { guardInternal } from "../src/core/internal-guard";
 import { seed } from "../src/core/seed";
+import { memorySesIdentity } from "../src/core/ses-identity";
 import { securityDb } from "../src/db/security/client";
 import { coreDb } from "../src/db/core/client";
 import { sendingDomain } from "../src/db/core/schema";
@@ -96,6 +97,14 @@ describe("seed", () => {
     expect((await seed(env, keyInput)).apiKey).toBe("");
   });
 
+  it("seeds the real SES status of an existing identity, never as Relay-created", async () => {
+    memorySesIdentity.preset("ap-south-1", "seeded-live.test", { verified: true, dkimStatus: "SUCCESS", dkimTokens: ["t"] });
+    await seed(env, { ...input, workspace: { name: "Live", slug: "live" }, domain: { domain: "seeded-live.test", sesRegion: "ap-south-1" } });
+    const [row] = await coreDb(env).select().from(sendingDomain).where(eq(sendingDomain.domain, "seeded-live.test"));
+    expect(row).toMatchObject({ status: "verified", dkimStatus: "success", createdByRelay: false });
+    expect(row.verifiedAt).toBeInstanceOf(Date);
+  });
+
   it("creates the sending domain once and refuses a domain owned by another workspace", async () => {
     const domainInput = { ...input, workspace: { name: "Dom", slug: "dom" }, domain: { domain: "Mail.Dom.test", sesRegion: "ca-central-1" } };
     const first = await seed(env, domainInput);
@@ -104,6 +113,7 @@ describe("seed", () => {
     const domains = await coreDb(env).select().from(sendingDomain).where(eq(sendingDomain.domain, "mail.dom.test"));
     expect(domains).toHaveLength(1);
     expect(domains[0].workspaceId).toBe(first.workspaceId);
+    expect(domains[0]).toMatchObject({ createdByRelay: false, status: "pending", verifiedAt: null });
 
     await expect(
       seed(env, { ...domainInput, workspace: { name: "Other", slug: "other" } }),

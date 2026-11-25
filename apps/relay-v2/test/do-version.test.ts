@@ -3,6 +3,8 @@ import { eq } from "drizzle-orm";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { guardInternal } from "../src/core/internal-guard";
 import { sweepWorkspaces } from "../src/core/do-sweep";
+import * as domains from "../src/console/domains";
+import { sweepAll } from "../src/core/sweep-all";
 import { CLIENT_MIGRATIONS } from "../src/do/migrations";
 import { coreDb } from "../src/db/core/client";
 import { ensureWorkspaceProfile } from "../src/core/workspace-profile";
@@ -208,5 +210,12 @@ describe("POST /api/internal/do-sweep", () => {
     });
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ total: 1, upToDate: 1, behind: [], failed: [], releasedDomains: 0 });
+  });
+});
+
+describe("sweepAll", () => {
+  it("still returns the sweep summary when the domain release throws", async () => {
+    vi.spyOn(domains, "releaseStalePendingDomains").mockRejectedValueOnce(new Error("d1 down"));
+    expect(await sweepAll(env)).toMatchObject({ releasedDomains: 0, failed: [] });
   });
 });

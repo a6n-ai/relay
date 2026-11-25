@@ -127,10 +127,14 @@ function DomainsPage() {
                     Check now
                   </Button>
                 ) : null}
-                {shell.platformAdmin && d.status === "pending" ? (
-                  <Button variant="outline" size="sm" onClick={() => release(d.id)}>
-                    Release
-                  </Button>
+                {shell.platformAdmin && d.releasable ? (
+                  <ConfirmDialog
+                    trigger="Release"
+                    title="Release this domain?"
+                    description="The domain and its SES identity are deleted. If it is added again, the DNS records change and must be updated."
+                    confirmLabel="Release domain"
+                    onConfirm={() => release(d.id)}
+                  />
                 ) : null}
               </>
             ),

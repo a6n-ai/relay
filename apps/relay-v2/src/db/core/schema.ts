@@ -1,6 +1,6 @@
 import { sql } from "drizzle-orm";
 import { check, integer, primaryKey, sqliteTable, text } from "drizzle-orm/sqlite-core";
-import { createdAt, flag, id, updatedAt } from "../columns";
+import { createdAt, flag, id, timestamp, updatedAt } from "../columns";
 
 // workspaceId and appId point at relay-security and are checked in code: D1 cannot foreign-key across databases.
 export const workspaceProfile = sqliteTable("workspace_profile", {
@@ -25,6 +25,10 @@ export const sendingDomain = sqliteTable("sending_domain", {
   sesRegion: text("ses_region").notNull(),
   status: text("status", { enum: ["pending", "verified", "failed"] }).notNull().default("pending"),
   dkimStatus: text("dkim_status").notNull().default("pending"),
+  // Only a row whose SES identity Relay itself created may be released with it; seeded and adopted rows never are.
+  createdByRelay: flag("created_by_relay").notNull().default(false),
+  // Set the first time SES reports it verified and kept for good: a later DNS blip never makes the row releasable.
+  verifiedAt: timestamp("verified_at"),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 });
