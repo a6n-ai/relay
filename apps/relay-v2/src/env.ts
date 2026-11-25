@@ -33,6 +33,7 @@ declare global {
       INBOUND: Queue<InboundJob>;
       WEBHOOKS: Queue<WebhookJob>;
       CAMPAIGNS: Workflow<CampaignRunParams>;
+      OPS: Workflow<import("./core/ops-workflow").OpsParams>;
       API_LIMIT: RateLimit;
       BETTER_AUTH_SECRET: string;
       BETTER_AUTH_URL: string;

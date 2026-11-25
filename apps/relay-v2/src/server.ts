@@ -9,6 +9,7 @@ import { handleWebhookBatch } from "./core/webhook-consumer";
 import type { Env, InboundJob, SendJob, WebhookJob } from "./env";
 
 export { CampaignWorkflow } from "./core/campaign-workflow";
+export { OpsWorkflow } from "./core/ops-workflow";
 export { ClientDO } from "./do/client-do";
 export { RelayRpc } from "./rpc/relay-rpc";
 

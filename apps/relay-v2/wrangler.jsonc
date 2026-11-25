@@ -33,7 +33,11 @@
       "migrations_dir": "drizzle/core",
     },
   ],
-  "workflows": [{ "name": "relay-campaign", "binding": "CAMPAIGNS", "class_name": "CampaignWorkflow" }],
+  "workflows": [
+    { "name": "relay-campaign", "binding": "CAMPAIGNS", "class_name": "CampaignWorkflow" },
+    // Operator jobs (seed, sweep): `wrangler workflows trigger relay-ops '{"op":"sweep"}'`.
+    { "name": "relay-ops", "binding": "OPS", "class_name": "OpsWorkflow" },
+  ],
   "durable_objects": {
     "bindings": [{ "name": "CLIENT", "class_name": "ClientDO" }],
   },
