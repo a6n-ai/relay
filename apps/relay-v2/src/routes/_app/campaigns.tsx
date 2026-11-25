@@ -3,36 +3,44 @@ import { Input } from "@foundry/ui/input";
 import { Label } from "@foundry/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@foundry/ui/select";
 import { toast } from "@foundry/ui/toast";
-import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import MegaphoneIcon from "lucide-react/icons/megaphone";
 import { type FormEvent, useState } from "react";
 import { AppSelect } from "../../components/app-select";
-import { CampaignsTabs } from "../../components/campaigns-tabs";
 import { CreateDialog } from "../../components/create-dialog";
 import { DeniedState, deniedReason } from "../../components/denied-state";
 import { errorText, isNotFound } from "../../components/error-text";
-import { formatWhen } from "../../components/event-timeline";
 import { FormError } from "../../components/form-error";
+import { EmptyState } from "../../components/page/empty-state";
+import { LoadMore } from "../../components/page/load-more";
+import { TableSkeleton } from "../../components/page/table-skeleton";
+import { SearchInput, Toolbar } from "../../components/page/toolbar";
 import { ResourceTable } from "../../components/resource-table";
+import { PageHeader } from "../../components/shell/page-header";
+import { useNewParam } from "../../components/shell/create-menu";
 import { StatusBadge } from "../../components/status-badge";
 import { useCan } from "../../components/use-can";
-import { ViewHeader } from "../../components/view-header";
 import { fetchApps } from "../../console/apps.fns";
 import { createCampaignFn, fetchCampaigns } from "../../console/campaigns.fns";
 import { fetchTemplates } from "../../console/templates.fns";
+import { formatWhen } from "../../lib/format-date";
 
-type CampaignsSearch = { appId?: string };
+type CampaignsSearch = { appId?: string; cursor?: string; new?: 1 };
 
 export const Route = createFileRoute("/_app/campaigns")({
   validateSearch: (search: Record<string, unknown>): CampaignsSearch => ({
     appId: typeof search.appId === "string" && search.appId ? search.appId : undefined,
+    cursor: typeof search.cursor === "string" && search.cursor ? search.cursor : undefined,
+    new: search.new === 1 || search.new === "1" ? 1 : undefined,
   }),
-  loaderDeps: ({ search }) => search,
+  loaderDeps: ({ search }) => ({ appId: search.appId, cursor: search.cursor }),
+  pendingComponent: () => <TableSkeleton columns={5} />,
   loader: async ({ deps }) => {
     const apps = await fetchApps();
     if (!apps) return null;
     const appId = deps.appId ?? apps[0]?.id;
     if (!appId) return { apps, appId, campaigns: { rows: [], nextCursor: null }, templates: [] };
-    const campaigns = await fetchCampaigns({ data: { appId } }).catch((err) => {
+    const campaigns = await fetchCampaigns({ data: { appId, cursor: deps.cursor } }).catch((err) => {
       if (isNotFound(err)) return { missing: true as const };
       throw err;
     });
@@ -45,15 +53,20 @@ export const Route = createFileRoute("/_app/campaigns")({
   component: CampaignsPage,
 });
 
+const CRUMBS = [{ label: "Campaigns" }];
+
 function CampaignsPage() {
   const page = Route.useLoaderData();
   const { shell } = Route.useRouteContext();
-  const navigate = useNavigate({ from: "/campaigns" });
+  const search = Route.useSearch();
   const canWrite = useCan({ campaign: ["write"] });
+  const [open, setOpen] = useNewParam();
+  const [query, setQuery] = useState("");
+  const [status, setStatus] = useState("all");
   if (!page) {
     return (
       <>
-        <ViewHeader title="Campaigns" />
+        <PageHeader crumbs={CRUMBS} />
         <DeniedState reason={deniedReason(shell)} />
       </>
     );
@@ -61,65 +74,82 @@ function CampaignsPage() {
   if ("missing" in page) {
     return (
       <>
-        <ViewHeader title="Campaigns" />
+        <PageHeader crumbs={CRUMBS} />
         <DeniedState reason="not-found" label="App not found" />
       </>
     );
   }
   const { apps, appId, campaigns, templates } = page;
+  const create =
+    canWrite && appId ? (
+      <CreateDialog title="New campaign" open={open} onOpenChange={setOpen}>
+        {(done) => <NewCampaignForm apps={apps} appId={appId} templates={templates} done={done} />}
+      </CreateDialog>
+    ) : null;
+  const newButton = canWrite && appId ? <Button size="sm" onClick={() => setOpen(true)}>New campaign</Button> : null;
+  const q = query.trim().toLowerCase();
+  const rows = campaigns.rows.filter((c) => (status === "all" || c.status === status) && (!q || c.name.toLowerCase().includes(q)));
+  const statuses = [...new Set(campaigns.rows.map((c) => c.status))];
   return (
     <>
-      <ViewHeader
-        title="Campaigns"
-        actions={
-          canWrite && appId ? (
-            <CreateDialog trigger="New campaign" title="New campaign">
-              {(done) => <NewCampaignForm apps={apps} appId={appId} templates={templates} done={done} />}
-            </CreateDialog>
+      <PageHeader crumbs={CRUMBS} />
+      <Toolbar
+        search={<SearchInput value={query} onChange={setQuery} placeholder="Search campaigns" />}
+        filters={
+          statuses.length > 1 ? (
+            <Select value={status} onValueChange={(v) => setStatus(v ?? "all")}>
+              <SelectTrigger aria-label="Status" className="w-36">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All statuses</SelectItem>
+                {statuses.map((s) => (
+                  <SelectItem key={s} value={s}>
+                    {s[0]?.toUpperCase()}
+                    {s.slice(1)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           ) : undefined
         }
+      >
+        {newButton}
+      </Toolbar>
+      {create}
+      <ResourceTable
+        columns={[
+          { header: "Name", cell: (c) => <span className="font-medium">{c.name}</span> },
+          { header: "Status", cell: (c) => <StatusBadge status={c.status} /> },
+          ...(search.appId ? [] : [{ header: "App", cell: (c: (typeof rows)[number]) => apps.find((a) => a.id === c.appId)?.name ?? "—" }]),
+          {
+            header: "Scheduled or sent",
+            cell: (c) => {
+              const at = c.finishedAt ?? c.scheduledAt;
+              return at ? formatWhen(at) : "—";
+            },
+          },
+          { header: "Recipients", numeric: true, cell: (c) => c.recipients },
+        ]}
+        rows={rows}
+        rowKey={(c) => c.id}
+        rowHref={(c) => ({ to: "/campaigns/$campaignId", params: { campaignId: c.id }, search: { appId: c.appId } })}
+        rowLabel={(c) => `Open ${c.name}`}
+        menu={(c) => [{ label: "Open", to: "/campaigns/$campaignId", params: { campaignId: c.id }, search: { appId: c.appId } }]}
+        empty={
+          campaigns.rows.length === 0 ? (
+            <EmptyState icon={MegaphoneIcon} title="No campaigns yet." action={newButton} />
+          ) : (
+            "No campaigns match."
+          )
+        }
       />
-      <CampaignsTabs active="campaigns" appId={appId} />
-      <div className="grid gap-4 p-4">
-        {apps.length > 0 ? (
-          <AppSelect
-            apps={apps}
-            value={appId ?? ""}
-            onValueChange={(value) => navigate({ search: { appId: value } })}
-            className="w-full sm:max-w-xs"
-          />
-        ) : null}
-        <ResourceTable
-          columns={[
-            {
-              header: "Name",
-              cell: (c) => (
-                <Link
-                  to="/campaigns/$campaignId"
-                  params={{ campaignId: c.id }}
-                  search={{ appId: c.appId }}
-                  className="font-medium hover:underline"
-                >
-                  {c.name}
-                </Link>
-              ),
-            },
-            { header: "Status", cell: (c) => <StatusBadge status={c.status} /> },
-            { header: "App", cell: (c) => apps.find((a) => a.id === c.appId)?.name ?? "" },
-            {
-              header: "Scheduled or sent",
-              cell: (c) => {
-                const at = c.finishedAt ?? c.scheduledAt;
-                return at ? formatWhen(at) : "Not scheduled";
-              },
-            },
-            { header: "Recipients", cell: (c) => <span className="tabular-nums">{c.recipients}</span> },
-          ]}
-          rows={campaigns.rows}
-          rowKey={(c) => c.id}
-          empty="No campaigns yet"
-        />
-      </div>
+      <LoadMore
+        hasMore={Boolean(campaigns.nextCursor)}
+        to="/campaigns"
+        search={{ appId: search.appId, cursor: campaigns.nextCursor }}
+        resetTo={search.cursor ? "/campaigns" : undefined}
+      />
     </>
   );
 }

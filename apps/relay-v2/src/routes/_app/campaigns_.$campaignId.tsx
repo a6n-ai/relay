@@ -1,9 +1,10 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { CampaignEditor } from "../../components/campaign-editor";
 import { CampaignReport } from "../../components/campaign-report";
 import { DeniedState, deniedReason } from "../../components/denied-state";
 import { isNotFound } from "../../components/error-text";
-import { ViewHeader } from "../../components/view-header";
+import { PageHeader } from "../../components/shell/page-header";
+import { StatusBadge } from "../../components/status-badge";
 import { fetchAudienceHook } from "../../console/apps.fns";
 import { fetchCampaign, fetchCampaignOptions, fetchCampaignStats } from "../../console/campaigns.fns";
 
@@ -42,7 +43,7 @@ function CampaignPage() {
   if (!page) {
     return (
       <>
-        <ViewHeader title="Campaign" />
+        <PageHeader crumbs={[{ label: "Campaigns", to: "/campaigns", search: { appId: search.appId } }, { label: "Campaign" }]} />
         <DeniedState reason={deniedReason(shell)} />
       </>
     );
@@ -50,7 +51,7 @@ function CampaignPage() {
   if ("missing" in page) {
     return (
       <>
-        <ViewHeader title="Campaign" />
+        <PageHeader crumbs={[{ label: "Campaigns", to: "/campaigns", search: { appId: search.appId } }, { label: "Campaign" }]} />
         <DeniedState reason="not-found" label="Campaign not found" />
       </>
     );
@@ -58,21 +59,15 @@ function CampaignPage() {
   const { campaign } = page;
   return (
     <>
-      <ViewHeader
-        title={campaign.name}
-        actions={
-          <Link to="/campaigns" search={{ appId: search.appId }} className="text-sm hover:underline">
-            All campaigns
-          </Link>
-        }
+      <PageHeader
+        crumbs={[{ label: "Campaigns", to: "/campaigns", search: { appId: search.appId } }, { label: campaign.name }]}
+        badge={<StatusBadge status={campaign.status} />}
       />
-      <div className="p-4">
-        {page.stats ? (
-          <CampaignReport campaign={campaign} stats={page.stats} />
-        ) : (
-          <CampaignEditor campaign={campaign} options={page.options} hookReady={page.hookReady} />
-        )}
-      </div>
+      {page.stats ? (
+        <CampaignReport campaign={campaign} stats={page.stats} />
+      ) : (
+        <CampaignEditor campaign={campaign} options={page.options} hookReady={page.hookReady} />
+      )}
     </>
   );
 }

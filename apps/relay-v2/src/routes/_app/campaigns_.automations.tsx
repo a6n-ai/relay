@@ -2,32 +2,38 @@ import { Button } from "@foundry/ui/button";
 import { Input } from "@foundry/ui/input";
 import { Label } from "@foundry/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@foundry/ui/select";
+import WorkflowIcon from "lucide-react/icons/workflow";
 import { Switch } from "@foundry/ui/switch";
 import { toast } from "@foundry/ui/toast";
-import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
+import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { type FormEvent, useEffect, useState } from "react";
 import { AppSelect } from "../../components/app-select";
-import { CampaignsTabs } from "../../components/campaigns-tabs";
 import { CreateDialog } from "../../components/create-dialog";
 import { DeniedState, deniedReason } from "../../components/denied-state";
 import { errorText } from "../../components/error-text";
 import { FormError } from "../../components/form-error";
+import { EmptyState } from "../../components/page/empty-state";
+import { TableSkeleton } from "../../components/page/table-skeleton";
+import { Toolbar } from "../../components/page/toolbar";
 import { ResourceTable } from "../../components/resource-table";
+import { useNewParam } from "../../components/shell/create-menu";
+import { PageHeader } from "../../components/shell/page-header";
 import { runAction } from "../../components/run-action";
 import { useCan } from "../../components/use-can";
-import { ViewHeader } from "../../components/view-header";
 import { fetchApps } from "../../console/apps.fns";
 import { createAutomationFn, enableAutomationFn, fetchAutomations } from "../../console/automations.fns";
 import { fetchCampaignOptions } from "../../console/campaigns.fns";
 import { fetchTemplates } from "../../console/templates.fns";
 
-type AutomationsSearch = { appId?: string };
+type AutomationsSearch = { appId?: string; new?: 1 };
 
 export const Route = createFileRoute("/_app/campaigns_/automations")({
   validateSearch: (search: Record<string, unknown>): AutomationsSearch => ({
     appId: typeof search.appId === "string" && search.appId ? search.appId : undefined,
+    new: search.new === 1 || search.new === "1" ? 1 : undefined,
   }),
-  loaderDeps: ({ search }) => search,
+  loaderDeps: ({ search }) => ({ appId: search.appId }),
+  pendingComponent: () => <TableSkeleton columns={7} />,
   loader: async ({ deps }) => {
     const apps = await fetchApps();
     if (!apps) return null;
@@ -46,16 +52,19 @@ export const Route = createFileRoute("/_app/campaigns_/automations")({
   component: AutomationsPage,
 });
 
+const CRUMBS = [{ label: "Campaigns", to: "/campaigns" }, { label: "Automations" }];
+
 function AutomationsPage() {
   const page = Route.useLoaderData();
   const { shell } = Route.useRouteContext();
-  const navigate = useNavigate({ from: "/campaigns/automations" });
+  const search = Route.useSearch();
   const router = useRouter();
   const canSend = useCan({ campaign: ["send"] });
+  const [open, setOpen] = useNewParam();
   if (!page) {
     return (
       <>
-        <ViewHeader title="Campaigns" />
+        <PageHeader crumbs={CRUMBS} />
         <DeniedState reason={deniedReason(shell)} />
       </>
     );
@@ -63,65 +72,61 @@ function AutomationsPage() {
   if ("missing" in page) {
     return (
       <>
-        <ViewHeader title="Campaigns" />
+        <PageHeader crumbs={CRUMBS} />
         <DeniedState reason="not-found" label="App not found" />
       </>
     );
   }
   const { apps, appId, automations, lists, templates } = page;
+  const canCreate = canSend && Boolean(appId);
+  const newButton = canCreate ? <Button size="sm" onClick={() => setOpen(true)}>New automation</Button> : null;
   return (
     <>
-      <ViewHeader
-        title="Campaigns"
-        actions={
-          canSend && appId ? (
-            <CreateDialog trigger="New automation" title="New automation">
-              {(done) => <NewAutomationForm apps={apps} appId={appId} done={done} />}
-            </CreateDialog>
-          ) : undefined
+      <PageHeader crumbs={CRUMBS} />
+      <Toolbar>{newButton}</Toolbar>
+      {canCreate && appId ? (
+        <CreateDialog title="New automation" open={open} onOpenChange={setOpen}>
+          {(done) => <NewAutomationForm apps={apps} appId={appId} done={done} />}
+        </CreateDialog>
+      ) : null}
+      <ResourceTable
+        columns={[
+          { header: "Name", cell: (a) => <span className="font-medium">{a.name}</span> },
+          ...(search.appId ? [] : [{ header: "App", cell: () => apps.find((a) => a.id === appId)?.name ?? "—" }]),
+          { header: "List", cell: (a) => lists.find((l) => l.id === a.listId)?.name ?? "—" },
+          { header: "Template", cell: (a) => templates.find((t) => t.id === a.templateId)?.name ?? "—" },
+          { header: "Delay", cell: (a) => (a.delayHours === 0 ? "Right away" : `After ${a.delayHours} hours`) },
+          { header: "Waiting", numeric: true, cell: (a) => a.pending },
+          { header: "Sent", numeric: true, cell: (a) => a.sent },
+          {
+            header: "Enabled",
+            cell: (a) => (
+              <Switch
+                checked={a.enabled}
+                disabled={!canSend}
+                aria-label={`Enabled for ${a.name}`}
+                onCheckedChange={(on) =>
+                  runAction(
+                    () => enableAutomationFn({ data: { id: a.id, on } }),
+                    on ? "Automation turned on" : "Automation turned off",
+                    () => router.invalidate(),
+                  )
+                }
+              />
+            ),
+          },
+        ]}
+        rows={automations}
+        rowKey={(a) => a.id}
+        empty={
+          <EmptyState
+            icon={WorkflowIcon}
+            title="No automations yet."
+            description="Send a template when someone joins a list."
+            action={newButton}
+          />
         }
       />
-      <CampaignsTabs active="automations" appId={appId} />
-      <div className="grid gap-4 p-4">
-        {apps.length > 0 ? (
-          <AppSelect
-            apps={apps}
-            value={appId ?? ""}
-            onValueChange={(value) => navigate({ search: { appId: value } })}
-            className="w-full sm:max-w-xs"
-          />
-        ) : null}
-        <ResourceTable
-          columns={[
-            { header: "Name", cell: (a) => a.name },
-            { header: "List", cell: (a) => lists.find((l) => l.id === a.listId)?.name ?? "Unknown list" },
-            { header: "Template", cell: (a) => templates.find((t) => t.id === a.templateId)?.name ?? "Unknown template" },
-            { header: "Delay", cell: (a) => (a.delayHours === 0 ? "Right away" : `After ${a.delayHours} hours`) },
-            { header: "Waiting", cell: (a) => <span className="tabular-nums">{a.pending}</span> },
-            { header: "Sent", cell: (a) => <span className="tabular-nums">{a.sent}</span> },
-            {
-              header: "Enabled",
-              cell: (a) => (
-                <Switch
-                  checked={a.enabled}
-                  disabled={!canSend}
-                  aria-label={`Enabled for ${a.name}`}
-                  onCheckedChange={(on) =>
-                    runAction(
-                      () => enableAutomationFn({ data: { id: a.id, on } }),
-                      on ? "Automation turned on" : "Automation turned off",
-                      () => router.invalidate(),
-                    )
-                  }
-                />
-              ),
-            },
-          ]}
-          rows={automations}
-          rowKey={(a) => a.id}
-          empty="No automations yet"
-        />
-      </div>
     </>
   );
 }

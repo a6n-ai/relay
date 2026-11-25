@@ -2,34 +2,42 @@ import { Badge } from "@foundry/ui/badge";
 import { Button } from "@foundry/ui/button";
 import { Input } from "@foundry/ui/input";
 import { Label } from "@foundry/ui/label";
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import FileTextIcon from "lucide-react/icons/file-text";
 import { type FormEvent, useState } from "react";
 import { AppSelect } from "../../components/app-select";
-import { CampaignsTabs } from "../../components/campaigns-tabs";
 import { CreateDialog } from "../../components/create-dialog";
 import { DeniedState, deniedReason } from "../../components/denied-state";
 import { errorText, isNotFound } from "../../components/error-text";
-import { formatWhen } from "../../components/event-timeline";
 import { FormError } from "../../components/form-error";
+import { EmptyState } from "../../components/page/empty-state";
+import { LoadMore } from "../../components/page/load-more";
+import { TableSkeleton } from "../../components/page/table-skeleton";
+import { SearchInput, Toolbar } from "../../components/page/toolbar";
 import { ResourceTable } from "../../components/resource-table";
+import { useNewParam } from "../../components/shell/create-menu";
+import { PageHeader } from "../../components/shell/page-header";
 import { useCan } from "../../components/use-can";
-import { ViewHeader } from "../../components/view-header";
 import { fetchApps } from "../../console/apps.fns";
 import { createTemplateFn, fetchTemplates } from "../../console/templates.fns";
+import { formatWhen } from "../../lib/format-date";
 
-type TemplatesSearch = { appId?: string };
+type TemplatesSearch = { appId?: string; cursor?: string; new?: 1 };
 
 export const Route = createFileRoute("/_app/campaigns_/templates")({
   validateSearch: (search: Record<string, unknown>): TemplatesSearch => ({
     appId: typeof search.appId === "string" && search.appId ? search.appId : undefined,
+    cursor: typeof search.cursor === "string" && search.cursor ? search.cursor : undefined,
+    new: search.new === 1 || search.new === "1" ? 1 : undefined,
   }),
-  loaderDeps: ({ search }) => search,
+  loaderDeps: ({ search }) => ({ appId: search.appId, cursor: search.cursor }),
+  pendingComponent: () => <TableSkeleton columns={5} />,
   loader: async ({ deps }) => {
     const apps = await fetchApps();
     if (!apps) return null;
     const appId = deps.appId ?? apps[0]?.id;
     if (!appId) return { apps, appId, templates: { rows: [], nextCursor: null } };
-    const templates = await fetchTemplates({ data: { appId } }).catch((err) => {
+    const templates = await fetchTemplates({ data: { appId, cursor: deps.cursor } }).catch((err) => {
       if (isNotFound(err)) return { missing: true as const };
       throw err;
     });
@@ -39,15 +47,19 @@ export const Route = createFileRoute("/_app/campaigns_/templates")({
   component: TemplatesPage,
 });
 
+const CRUMBS = [{ label: "Campaigns", to: "/campaigns" }, { label: "Templates" }];
+
 function TemplatesPage() {
   const page = Route.useLoaderData();
   const { shell } = Route.useRouteContext();
-  const navigate = useNavigate({ from: "/campaigns/templates" });
+  const search = Route.useSearch();
   const canWrite = useCan({ template: ["write"] });
+  const [open, setOpen] = useNewParam();
+  const [query, setQuery] = useState("");
   if (!page) {
     return (
       <>
-        <ViewHeader title="Campaigns" />
+        <PageHeader crumbs={CRUMBS} />
         <DeniedState reason={deniedReason(shell)} />
       </>
     );
@@ -55,59 +67,57 @@ function TemplatesPage() {
   if ("missing" in page) {
     return (
       <>
-        <ViewHeader title="Campaigns" />
+        <PageHeader crumbs={CRUMBS} />
         <DeniedState reason="not-found" label="App not found" />
       </>
     );
   }
   const { apps, appId, templates } = page;
+  const canCreate = canWrite && Boolean(appId);
+  const newButton = canCreate ? <Button size="sm" onClick={() => setOpen(true)}>New template</Button> : null;
+  const q = query.trim().toLowerCase();
+  const rows = templates.rows.filter((t) => !q || t.name.toLowerCase().includes(q));
   return (
     <>
-      <ViewHeader
-        title="Campaigns"
-        actions={
-          canWrite && appId ? (
-            <CreateDialog trigger="New template" title="New template">
-              {(done) => <NewTemplateForm apps={apps} appId={appId} done={done} />}
-            </CreateDialog>
-          ) : undefined
+      <PageHeader crumbs={CRUMBS} />
+      <Toolbar search={<SearchInput value={query} onChange={setQuery} placeholder="Search templates" />}>{newButton}</Toolbar>
+      {canCreate && appId ? (
+        <CreateDialog title="New template" open={open} onOpenChange={setOpen}>
+          {(done) => <NewTemplateForm apps={apps} appId={appId} done={done} />}
+        </CreateDialog>
+      ) : null}
+      <ResourceTable
+        columns={[
+          { header: "Name", cell: (t) => <span className="font-medium">{t.name}</span> },
+          ...(search.appId ? [] : [{ header: "App", cell: (t: (typeof rows)[number]) => apps.find((a) => a.id === t.appId)?.name ?? "—" }]),
+          { header: "Event", cell: (t) => t.event ?? "—" },
+          { header: "Enabled", cell: (t) => <Badge variant={t.enabled ? "secondary" : "outline"}>{t.enabled ? "On" : "Off"}</Badge> },
+          { header: "Updated", cell: (t) => <span className="tabular-nums">{formatWhen(t.updatedAt)}</span> },
+        ]}
+        rows={rows}
+        rowKey={(t) => t.id}
+        rowHref={(t) => ({ to: "/campaigns/templates/$templateId", params: { templateId: t.id }, search: { appId: t.appId } })}
+        rowLabel={(t) => `Open ${t.name}`}
+        menu={(t) => [{ label: "Open", to: "/campaigns/templates/$templateId", params: { templateId: t.id }, search: { appId: t.appId } }]}
+        empty={
+          templates.rows.length === 0 ? (
+            <EmptyState
+              icon={FileTextIcon}
+              title="No templates yet."
+              description="Templates are reusable email content."
+              action={newButton}
+            />
+          ) : (
+            "No templates match."
+          )
         }
       />
-      <CampaignsTabs active="templates" appId={appId} />
-      <div className="grid gap-4 p-4">
-        {apps.length > 0 ? (
-          <AppSelect
-            apps={apps}
-            value={appId ?? ""}
-            onValueChange={(value) => navigate({ search: { appId: value } })}
-            className="w-full sm:max-w-xs"
-          />
-        ) : null}
-        <ResourceTable
-          columns={[
-            {
-              header: "Name",
-              cell: (t) => (
-                <Link
-                  to="/campaigns/templates/$templateId"
-                  params={{ templateId: t.id }}
-                  search={{ appId: t.appId }}
-                  className="font-medium hover:underline"
-                >
-                  {t.name}
-                </Link>
-              ),
-            },
-            { header: "App", cell: (t) => apps.find((a) => a.id === t.appId)?.name ?? "" },
-            { header: "Event", cell: (t) => t.event ?? "None" },
-            { header: "Enabled", cell: (t) => <Badge variant={t.enabled ? "secondary" : "outline"}>{t.enabled ? "On" : "Off"}</Badge> },
-            { header: "Updated", cell: (t) => <span className="text-xs tabular-nums">{formatWhen(t.updatedAt)}</span> },
-          ]}
-          rows={templates.rows}
-          rowKey={(t) => t.id}
-          empty="No templates yet"
-        />
-      </div>
+      <LoadMore
+        hasMore={Boolean(templates.nextCursor)}
+        to="/campaigns/templates"
+        search={{ appId: search.appId, cursor: templates.nextCursor }}
+        resetTo={search.cursor ? "/campaigns/templates" : undefined}
+      />
     </>
   );
 }

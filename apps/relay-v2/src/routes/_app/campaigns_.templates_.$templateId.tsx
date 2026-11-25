@@ -4,15 +4,17 @@ import { Label } from "@foundry/ui/label";
 import { Switch } from "@foundry/ui/switch";
 import { Textarea } from "@foundry/ui/textarea";
 import { toast } from "@foundry/ui/toast";
-import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
 import { ConfirmDialog } from "../../components/confirm-dialog";
 import { ContentFields, type ContentValue } from "../../components/content-fields";
 import { DeniedState, deniedReason } from "../../components/denied-state";
 import { errorText, isNotFound } from "../../components/error-text";
 import { FormError } from "../../components/form-error";
+import { SettingsCard } from "../../components/page/settings-card";
+import { Toolbar } from "../../components/page/toolbar";
+import { PageHeader } from "../../components/shell/page-header";
 import { useCan } from "../../components/use-can";
-import { ViewHeader } from "../../components/view-header";
 import { deleteTemplateFn, fetchTemplate, previewTemplateFn, updateTemplateFn } from "../../console/templates.fns";
 import type { TemplateView } from "../../do/templates";
 
@@ -32,7 +34,7 @@ function TemplatePage() {
   if (!page) {
     return (
       <>
-        <ViewHeader title="Template" />
+        <PageHeader crumbs={[{ label: "Campaigns", to: "/campaigns" }, { label: "Templates", to: "/campaigns/templates" }, { label: "Template" }]} />
         <DeniedState reason={deniedReason(shell)} />
       </>
     );
@@ -40,24 +42,21 @@ function TemplatePage() {
   if ("missing" in page) {
     return (
       <>
-        <ViewHeader title="Template" />
+        <PageHeader crumbs={[{ label: "Campaigns", to: "/campaigns" }, { label: "Templates", to: "/campaigns/templates" }, { label: "Template" }]} />
         <DeniedState reason="not-found" label="Template not found" />
       </>
     );
   }
   return (
     <>
-      <ViewHeader
-        title={page.name}
-        actions={
-          <Link to="/campaigns/templates" search={{ appId: page.appId }} className="text-sm hover:underline">
-            All templates
-          </Link>
-        }
+      <PageHeader
+        crumbs={[
+          { label: "Campaigns", to: "/campaigns", search: { appId: page.appId } },
+          { label: "Templates", to: "/campaigns/templates", search: { appId: page.appId } },
+          { label: page.name },
+        ]}
       />
-      <div className="p-4">
-        <TemplateForm template={page} canWrite={canWrite} />
-      </div>
+      <TemplateForm template={page} canWrite={canWrite} />
     </>
   );
 }
@@ -116,65 +115,93 @@ function TemplateForm({ template, canWrite }: { template: TemplateView; canWrite
     }
   }
 
+  const dirty =
+    name !== template.name ||
+    event !== (template.event ?? "") ||
+    locale !== template.locale ||
+    intro !== (template.intro ?? "") ||
+    enabled !== template.enabled ||
+    content.subject !== template.subject ||
+    content.html !== template.html ||
+    content.text !== template.text;
+
   return (
-    <div className="grid max-w-2xl gap-4">
-      <form onSubmit={save} className="grid gap-4">
-        <Label htmlFor="template-name-edit">Name</Label>
-        <Input id="template-name-edit" value={name} disabled={!canWrite} onChange={(e) => setName(e.target.value)} />
-
-        <ContentFields
-          value={content}
-          onChange={setContent}
-          dataFields
-          disabled={!canWrite}
-          onPreview={async () => {
-            await persist();
-            return (await previewTemplateFn({ data: { id: template.id } })) ?? null;
-          }}
-        />
-
-        <fieldset className="grid gap-3">
-          <legend className="text-sm font-medium">Used by your app for</legend>
-          <Label htmlFor="template-event">Event key</Label>
-          <Input id="template-event" value={event} disabled={!canWrite} onChange={(e) => setEvent(e.target.value)} />
-          <Label htmlFor="template-locale">Locale</Label>
-          <Input id="template-locale" value={locale} disabled={!canWrite} onChange={(e) => setLocale(e.target.value)} />
-          <p className="text-xs text-muted-foreground">Your app sends this template when it reports this event in this locale.</p>
-        </fieldset>
-
-        <Label htmlFor="template-intro">Intro</Label>
-        <Textarea
-          id="template-intro"
-          rows={3}
-          value={intro}
-          disabled={!canWrite}
-          onChange={(e) => setIntro(e.target.value)}
-        />
-
-        <Label className="flex items-center gap-2 font-normal">
-          <Switch checked={enabled} onCheckedChange={setEnabled} disabled={!canWrite} />
-          Enabled
-        </Label>
-
-        <FormError message={error} />
-        {canWrite ? (
-          <div className="flex justify-end gap-2">
-            <Button type="submit" disabled={pending || !name.trim()}>
-              Save
-            </Button>
-          </div>
-        ) : null}
-      </form>
-
+    <>
       {canWrite ? (
-        <ConfirmDialog
-          trigger="Delete"
-          title="Delete this template?"
-          description="The template and its body will be removed. This can't be undone."
-          confirmLabel="Delete"
-          onConfirm={remove}
-        />
+        <Toolbar>
+          <Button type="submit" form="template-form" size="sm" disabled={pending || !dirty || !name.trim()}>
+            Save
+          </Button>
+        </Toolbar>
       ) : null}
-    </div>
+      <div className="grid max-w-2xl gap-4 px-4 pb-4">
+        <form id="template-form" onSubmit={save} className="grid gap-4">
+          <SettingsCard title="Content">
+            <div className="grid gap-3">
+              <Label htmlFor="template-name-edit">Name</Label>
+              <Input id="template-name-edit" value={name} disabled={!canWrite} onChange={(e) => setName(e.target.value)} />
+              <ContentFields
+                value={content}
+                onChange={setContent}
+                dataFields
+                disabled={!canWrite}
+                onPreview={async () => {
+                  await persist();
+                  return (await previewTemplateFn({ data: { id: template.id } })) ?? null;
+                }}
+              />
+              <FormError message={error} />
+            </div>
+          </SettingsCard>
+
+          <SettingsCard
+            title="Used by your app for"
+            description="Your app sends this template when it reports this event in this locale."
+          >
+            <div className="grid gap-3">
+              <Label htmlFor="template-event">Event key</Label>
+              <Input id="template-event" value={event} disabled={!canWrite} onChange={(e) => setEvent(e.target.value)} />
+              <Label htmlFor="template-locale">Locale</Label>
+              <Input id="template-locale" value={locale} disabled={!canWrite} onChange={(e) => setLocale(e.target.value)} />
+            </div>
+          </SettingsCard>
+
+          <SettingsCard title="Intro">
+            <Textarea
+              id="template-intro"
+              aria-label="Intro"
+              rows={3}
+              value={intro}
+              disabled={!canWrite}
+              onChange={(e) => setIntro(e.target.value)}
+            />
+          </SettingsCard>
+
+          <SettingsCard title="Enabled">
+            <Label className="flex items-center gap-2 font-normal">
+              <Switch checked={enabled} onCheckedChange={setEnabled} disabled={!canWrite} />
+              Enabled
+            </Label>
+          </SettingsCard>
+        </form>
+
+        {canWrite ? (
+          <SettingsCard
+            tone="danger"
+            title="Delete template"
+            description="The template and its body will be removed. This can't be undone."
+            action={
+              <ConfirmDialog
+                trigger="Delete"
+                title="Delete this template?"
+                description="The template and its body will be removed. This can't be undone."
+                confirmLabel="Delete"
+                onConfirm={remove}
+              />
+            }
+          />
+        ) : null}
+      </div>
+    </>
   );
 }
