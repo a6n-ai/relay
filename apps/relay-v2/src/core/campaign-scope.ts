@@ -36,13 +36,8 @@ export async function getCampaignForScope(env: Env, scope: KeyScope, id: string)
 }
 
 export async function createCampaignForScope(env: Env, scope: KeyScope, input: z.infer<typeof campaignCreateInput>): Promise<CampaignView> {
-  let campaign: CampaignView;
-  try {
-    campaign = await clientFor(env, scope.workspaceId).createCampaign(scope.workspaceId, scope.appId, input.name, input.templateId);
-  } catch (err) {
-    if (err instanceof Error && err.message === "template not found") throw new ApiError(404, "not found");
-    throw err;
-  }
+  const campaign = await clientFor(env, scope.workspaceId).createCampaign(scope.workspaceId, scope.appId, input.name, input.templateId);
+  if (campaign === "template_missing") throw new ApiError(404, "not found");
   await audit(env, scope, "campaign.create", campaign.id);
   return campaign;
 }

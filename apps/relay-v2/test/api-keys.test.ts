@@ -138,7 +138,7 @@ describe("API keys", () => {
     await coreDb(env).insert(address).values({ workspaceId, appId, email: from, kind: "sender", canSend: true });
     await ensureWorkspaceProfile(env, workspaceId);
     const stub = env.CLIENT.get(env.CLIENT.idFromName(workspaceId));
-    const campaign = await stub.createCampaign(workspaceId, appId, "C");
+    const campaign = ((await stub.createCampaign(workspaceId, appId, "C")) as { id: string });
     const enqueue = vi.spyOn(env.SEND, "send").mockResolvedValue(undefined as never);
 
     const res = await SELF.fetch("https://relay.test/api/v1/messages", {

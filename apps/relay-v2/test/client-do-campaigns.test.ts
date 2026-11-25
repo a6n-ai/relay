@@ -17,7 +17,7 @@ describe("campaign drafts in the workspace DO", () => {
   it("creates a draft, then updates its lists from the same app", async () => {
     const ws = "ws_camp_update";
     const stub = stubFor(ws);
-    const campaign = await stub.createCampaign(ws, "app_1", "Spring");
+    const campaign = ((await stub.createCampaign(ws, "app_1", "Spring")) as { id: string });
     const list = await stub.createList(ws, "app_1", { name: "L", consentSource: "express_optin" });
     const updated = await stub.updateCampaign(ws, campaign.id, { listIds: [list.id], subject: "Hi" });
     expect(updated).toMatchObject({ status: "draft", listIds: [list.id], subject: "Hi" });
@@ -26,7 +26,7 @@ describe("campaign drafts in the workspace DO", () => {
   it("refuses a list that belongs to another app with bad_list", async () => {
     const ws = "ws_camp_badlist";
     const stub = stubFor(ws);
-    const campaign = await stub.createCampaign(ws, "app_1", "C");
+    const campaign = ((await stub.createCampaign(ws, "app_1", "C")) as { id: string });
     const other = await stub.createList(ws, "app_2", { name: "Other", consentSource: "express_optin" });
     expect(await stub.updateCampaign(ws, campaign.id, { listIds: [other.id] })).toBe("bad_list");
   });
@@ -97,7 +97,7 @@ describe("campaign drafts in the workspace DO", () => {
   it("pages campaign summaries at 50", async () => {
     const ws = "ws_camp_page";
     const stub = stubFor(ws);
-    for (let i = 0; i < 51; i++) await stub.createCampaign(ws, "app_1", `C${i}`);
+    for (let i = 0; i < 51; i++) ((await stub.createCampaign(ws, "app_1", `C${i}`)) as { id: string });
     const first = await stub.listCampaigns(ws);
     expect(first.rows).toHaveLength(50);
     expect(first.rows[0]).not.toHaveProperty("html");
@@ -131,7 +131,7 @@ describe("campaign live counters", () => {
     const stub = stubFor(ws);
     const list = await stub.createList(ws, "app_1", { name: "L", consentSource: "express_optin" });
     for (const email of EMAILS) await stub.addMember(ws, list.id, { email });
-    const c = await stub.createCampaign(ws, "app_1", "C");
+    const c = ((await stub.createCampaign(ws, "app_1", "C")) as { id: string });
     await stub.updateCampaign(ws, c.id, { ...BODY, listIds: [list.id] });
     const scheduled = await stub.scheduleCampaign(ws, c.id, 0, "1 Main St");
     if (typeof scheduled !== "object" || !("runSeq" in scheduled)) throw new Error("not scheduled");

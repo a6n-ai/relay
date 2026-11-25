@@ -103,13 +103,8 @@ export async function campaignStatsFor(env: Env, actor: ConsoleActor, id: string
 export async function createCampaignFor(env: Env, actor: ConsoleActor, appId: string, name: string, templateId?: string): Promise<CampaignView> {
   requireWrite(actor);
   await getApp(env, actor, appId);
-  let campaign: CampaignView;
-  try {
-    campaign = await clientFor(env, actor.workspaceId).createCampaign(actor.workspaceId, appId, name, templateId);
-  } catch (err) {
-    if (err instanceof Error && err.message === "template not found") throw new ConsoleError(404, "not found");
-    throw err;
-  }
+  const campaign = await clientFor(env, actor.workspaceId).createCampaign(actor.workspaceId, appId, name, templateId);
+  if (campaign === "template_missing") throw new ConsoleError(404, "not found");
   await writeAudit(env, {
     action: "campaign.create",
     actorUserId: actor.userId,

@@ -252,7 +252,7 @@ describe("campaign counters in the sweeper", () => {
   it("moves an expired campaign row from queued to failed", async () => {
     const ws = "ws_sweep_campaign";
     const stub = await seededStub(ws);
-    const c = await stub.createCampaign(ws, "app_1", "C");
+    const c = ((await stub.createCampaign(ws, "app_1", "C")) as { id: string });
     await runInDurableObject(stub, (instance, state) => {
       state.storage.sql.exec("UPDATE campaign SET queued = 1 WHERE id = ?", c.id);
       instance.db

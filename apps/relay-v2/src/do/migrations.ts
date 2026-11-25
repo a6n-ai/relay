@@ -201,7 +201,7 @@ CREATE TABLE template (
   import_ref TEXT, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL
 );
 CREATE UNIQUE INDEX template_app_event ON template (app_id, event, locale) WHERE event IS NOT NULL;
-CREATE UNIQUE INDEX template_import_ref ON template (import_ref) WHERE import_ref IS NOT NULL;
+CREATE UNIQUE INDEX template_import_ref ON template (app_id, import_ref) WHERE import_ref IS NOT NULL;
 CREATE INDEX template_app_created ON template (app_id, created_at, id);
 CREATE TABLE automation (
   id TEXT PRIMARY KEY NOT NULL, app_id TEXT NOT NULL, name TEXT NOT NULL, list_id TEXT NOT NULL,
@@ -227,8 +227,8 @@ ALTER TABLE campaign ADD COLUMN audience_query TEXT;
 ALTER TABLE campaign ADD COLUMN template_id TEXT;
 ALTER TABLE campaign ADD COLUMN import_ref TEXT;
 ALTER TABLE contact_list ADD COLUMN import_ref TEXT;
-CREATE UNIQUE INDEX campaign_import_ref ON campaign (import_ref) WHERE import_ref IS NOT NULL;
-CREATE UNIQUE INDEX contact_list_import_ref ON contact_list (import_ref) WHERE import_ref IS NOT NULL;
+CREATE UNIQUE INDEX campaign_import_ref ON campaign (app_id, import_ref) WHERE import_ref IS NOT NULL;
+CREATE UNIQUE INDEX contact_list_import_ref ON contact_list (app_id, import_ref) WHERE import_ref IS NOT NULL;
 `,
 ];
 

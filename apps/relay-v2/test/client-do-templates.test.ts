@@ -77,6 +77,6 @@ describe("template library in the workspace DO", () => {
     const campaign = (await stub.createCampaign(ws, "app_1", "Spring", tpl.id)) as { id: string };
     await stub.updateTemplate(ws, tpl.id, { subject: "Changed", html: "<p>b</p>" });
     expect(await stub.getCampaign(ws, campaign.id)).toMatchObject({ subject: "Spring", html: "<p>a</p>", text: "a" });
-    await expect(stub.createCampaign(ws, "app_2", "X", tpl.id)).rejects.toThrow("template not found");
+    expect(await stub.createCampaign(ws, "app_2", "X", tpl.id)).toBe("template_missing");
   });
 });

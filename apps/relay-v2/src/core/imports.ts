@@ -35,7 +35,11 @@ export const importTemplatesSchema = z
       name,
       event: z.string().trim().min(1).max(80).nullable().optional(),
       locale: z.string().trim().min(2).max(35).optional(),
-      subject: z.string().max(300).optional(),
+      subject: z
+        .string()
+        .max(300)
+        .refine((s) => !/[\r\n]/.test(s), "subject must not contain line breaks")
+        .optional(),
       intro: z.string().max(2000).nullable().optional(),
       html: z.string().max(500_000).optional(),
       text: z.string().max(500_000).optional(),
@@ -51,7 +55,10 @@ export const importCampaignsSchema = z
       name: name.max(80),
       status: z.enum(["draft", "sent", "cancelled"]),
       fromEmail: z.string().trim().toLowerCase().max(254).email().nullable(),
-      subject: z.string().max(300),
+      subject: z
+        .string()
+        .max(300)
+        .refine((s) => !/[\r\n]/.test(s), "subject must not contain line breaks"),
       html: z.string().max(500_000),
       text: z.string().max(500_000),
       listIds: z.array(listId).max(50),

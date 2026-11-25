@@ -468,12 +468,10 @@ export class ClientDO extends DurableObject<Env> {
     await this.ready(workspaceId);
     return this.ctx.storage.transactionSync(() => removeMemberRow(this.ctx.storage.sql, listId, memberId));
   }
-  // A template of another app throws "template not found": a thrown error crosses RPC as a plain message, and callers map it.
-  async createCampaign(workspaceId: string, appId: string, name: string, templateId?: string): Promise<CampaignView> {
+  async createCampaign(workspaceId: string, appId: string, name: string, templateId?: string): Promise<CampaignView | "template_missing"> {
     await this.ready(workspaceId);
     const view = this.ctx.storage.transactionSync(() => createCampaignRow(this.ctx.storage.sql, appId, name, templateId));
-    if (view === "missing") throw new Error("template not found");
-    return view;
+    return view === "missing" ? "template_missing" : view;
   }
   async listCampaigns(workspaceId: string, cursor?: string, appId?: string): Promise<{ rows: CampaignSummary[]; nextCursor: string | null }> {
     await this.ready(workspaceId);
@@ -1641,6 +1639,8 @@ export class ClientDO extends DurableObject<Env> {
         { workspaceId, id, runSeq, appId: campaign.appId, fromEmail: campaign.fromEmail, subject: campaign.subject, postalAddress: campaign.postalAddress, cursor: "", limits, sender, rate, now, offset: enqueued },
         rows.slice(i, i + ENQUEUE_BATCH),
       );
+      // Counted per batch: a row already held by an earlier page or run is not new, and a stop mid-page keeps the rows made so far.
+      if (batch.created > 0) sql.exec("UPDATE campaign SET recipients = recipients + ?, updated_at = ? WHERE id = ? AND run_seq = ?", batch.created, now, id, runSeq);
       enqueued += batch.queued;
       if (batch.quotaHit) {
         this.ctx.storage.transactionSync(() => setPaused("quota_exceeded"));
@@ -1652,9 +1652,8 @@ export class ClientDO extends DurableObject<Env> {
       if (!live() || parseHookCursor(sql.exec<{ cursor: string | null }>("SELECT cursor FROM campaign WHERE id = ?", id).one().cursor).p !== n) return null;
       const last = page.nextCursor === null;
       sql.exec(
-        "UPDATE campaign SET cursor = ?, recipients = recipients + ?, updated_at = ? WHERE id = ? AND run_seq = ?",
+        "UPDATE campaign SET cursor = ?, updated_at = ? WHERE id = ? AND run_seq = ?",
         JSON.stringify({ p: n + 1, c: page.nextCursor }),
-        rows.length,
         now,
         id,
         runSeq,
@@ -1669,10 +1668,11 @@ export class ClientDO extends DurableObject<Env> {
   private async enqueueRecipients(
     ctx: EnqueueCtx,
     rows: EnqueueRow[],
-  ): Promise<{ handled: number; queued: number; lastEmail: string; quotaHit: boolean }> {
+  ): Promise<{ handled: number; created: number; queued: number; lastEmail: string; quotaHit: boolean }> {
     const sql = this.ctx.storage.sql;
     const queue: string[] = [];
     let handled = 0;
+    let created = 0;
     let lastEmail = ctx.cursor;
     let quotaHit = false;
     this.ctx.storage.transactionSync(() => {
@@ -1714,6 +1714,7 @@ export class ClientDO extends DurableObject<Env> {
               updatedAt: ctx.now,
             })
             .run();
+          created += 1;
           if (suppressed) bumpCampaign(sql, ctx.id, { suppressed: 1 });
           else {
             used += 1;
@@ -1727,7 +1728,7 @@ export class ClientDO extends DurableObject<Env> {
     });
     const jobs = queue.map((messageId, i) => ({ body: { workspaceId: ctx.workspaceId, messageId }, delaySeconds: Math.floor((ctx.offset + i) / ctx.rate) }));
     if (jobs.length > 0) await this.env.SEND.sendBatch(jobs);
-    return { handled, queued: queue.length, lastEmail, quotaHit };
+    return { handled, created, queued: queue.length, lastEmail, quotaHit };
   }
 
   async createAutomation(workspaceId: string, appId: string, input: AutomationInput): Promise<AutomationView | "bad_list" | "bad_template"> {

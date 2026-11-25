@@ -40,7 +40,7 @@ import {
   isSuppressedForScope,
 } from "../core/imports";
 import { getMessageForScope, sendMessage, sendTemplateMessage } from "../core/messages";
-import { sendInputSchema } from "../core/send-input";
+import { sendInputSchema, templateSendSchema } from "../core/send-input";
 import {
   createTemplateForScope,
   deleteTemplateForScope,
@@ -80,7 +80,7 @@ export class RelayRpc extends WorkerEntrypoint<Env> {
   }
 
   async sendTemplate(apiKey: string, input: unknown) {
-    return withScope(this.env, apiKey, (scope) => sendTemplateMessage(this.env, scope, input as Parameters<typeof sendTemplateMessage>[2]));
+    return withScope(this.env, apiKey, (scope) => sendTemplateMessage(this.env, scope, templateSendSchema.parse(input)));
   }
 
   async getMessage(apiKey: string, id: string) {

@@ -194,7 +194,7 @@ export const contactList = sqliteTable(
   (t) => [
     check("contact_list_consent", sql`${t.consentSource} IN ('purchase', 'express_optin', 'event_signup', 'import_other')`),
     index("contact_list_app_created").on(t.appId, t.createdAt, t.id),
-    uniqueIndex("contact_list_import_ref").on(t.importRef).where(sql`${t.importRef} IS NOT NULL`),
+    uniqueIndex("contact_list_import_ref").on(t.appId, t.importRef).where(sql`${t.importRef} IS NOT NULL`),
   ],
 );
 
@@ -272,7 +272,7 @@ export const campaign = sqliteTable(
     check("campaign_stream", sql`${t.stream} IN ('transactional', 'tracked', 'marketing')`),
     check("campaign_status", sql`${t.status} IN ('draft', 'scheduled', 'sending', 'paused', 'sent', 'cancelled')`),
     index("campaign_created").on(t.createdAt, t.id),
-    uniqueIndex("campaign_import_ref").on(t.importRef).where(sql`${t.importRef} IS NOT NULL`),
+    uniqueIndex("campaign_import_ref").on(t.appId, t.importRef).where(sql`${t.importRef} IS NOT NULL`),
   ],
 );
 
@@ -297,7 +297,7 @@ export const template = sqliteTable(
     uniqueIndex("template_app_event")
       .on(t.appId, t.event, t.locale)
       .where(sql`${t.event} IS NOT NULL`),
-    uniqueIndex("template_import_ref").on(t.importRef).where(sql`${t.importRef} IS NOT NULL`),
+    uniqueIndex("template_import_ref").on(t.appId, t.importRef).where(sql`${t.importRef} IS NOT NULL`),
     index("template_app_created").on(t.appId, t.createdAt, t.id),
   ],
 );

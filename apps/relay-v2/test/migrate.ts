@@ -12,13 +12,13 @@ export async function applyMigrations(): Promise<void> {
 
 // The workspace's security row must already exist. Storage persists across tests in a file, and domain and
 // email are unique, so a re-seed moves ownership to this workspace: each test sends from one workspace.
-export async function seedVerifiedSender(workspaceId: string): Promise<void> {
+export async function seedVerifiedSender(workspaceId: string, appId = "app_1"): Promise<void> {
   await coreDb(env)
     .insert(sendingDomain)
     .values({ workspaceId, domain: "a6n.ai", sesRegion: "ap-south-1", status: "verified" })
     .onConflictDoUpdate({ target: sendingDomain.domain, set: { workspaceId, sesRegion: "ap-south-1", status: "verified" } });
   await coreDb(env)
     .insert(address)
-    .values({ workspaceId, appId: "app_1", email: "relay@a6n.ai", kind: "sender", canSend: true })
-    .onConflictDoUpdate({ target: address.email, set: { workspaceId, canSend: true } });
+    .values({ workspaceId, appId, email: "relay@a6n.ai", kind: "sender", canSend: true })
+    .onConflictDoUpdate({ target: address.email, set: { workspaceId, appId, canSend: true } });
 }

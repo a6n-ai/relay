@@ -28,10 +28,10 @@ export function importInChunks<T>(
 
 type ImportTable = "contact_list" | "template" | "campaign";
 
-// Called after an insert that hit the unique import_ref index. A ref held by another app is refused, never returned.
+// Called after an insert that hit the (app_id, import_ref) unique index, so the app's own row is the one held.
 function existingImport(sql: SqlStorage, table: ImportTable, appId: string, ref: string): { id: string; created: false } {
-  const hit = sql.exec<{ id: string; appId: string }>(`SELECT id, app_id AS appId FROM ${table} WHERE import_ref = ?`, ref).toArray()[0];
-  if (!hit || hit.appId !== appId) throw new Error("import ref taken");
+  const hit = sql.exec<{ id: string }>(`SELECT id FROM ${table} WHERE app_id = ? AND import_ref = ?`, appId, ref).toArray()[0];
+  if (!hit) throw new Error("import ref taken");
   return { id: hit.id, created: false };
 }
 
@@ -41,7 +41,7 @@ export function importListRow(sql: SqlStorage, appId: string, row: ImportRow<Lis
   const inserted = sql
     .exec(
       `INSERT INTO contact_list (id, app_id, name, consent_source, consent_note, import_ref, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (import_ref) WHERE import_ref IS NOT NULL DO NOTHING RETURNING id`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (app_id, import_ref) WHERE import_ref IS NOT NULL DO NOTHING RETURNING id`,
       id,
       appId,
       row.name,
@@ -71,7 +71,7 @@ export function importTemplateRow(sql: SqlStorage, appId: string, row: ImportRow
   const inserted = sql
     .exec(
       `INSERT INTO template (id, app_id, name, event, locale, subject, intro, html, text, enabled, import_ref, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (import_ref) WHERE import_ref IS NOT NULL DO NOTHING RETURNING id`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (app_id, import_ref) WHERE import_ref IS NOT NULL DO NOTHING RETURNING id`,
       id,
       appId,
       row.name,
@@ -116,7 +116,7 @@ export function importCampaignRow(sql: SqlStorage, appId: string, row: ImportRow
     .exec(
       `INSERT INTO campaign (id, app_id, name, status, from_email, subject, html, text, list_ids, import_ref, recipients,
          queued, sent, failed, suppressed, delivered, opened, clicked, bounced, complained, unsubscribed, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (import_ref) WHERE import_ref IS NOT NULL DO NOTHING RETURNING id`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (app_id, import_ref) WHERE import_ref IS NOT NULL DO NOTHING RETURNING id`,
       id,
       appId,
       row.name,

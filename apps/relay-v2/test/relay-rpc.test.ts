@@ -4,7 +4,7 @@ import { createApiKey } from "../src/core/api-keys";
 import { securityDb } from "../src/db/security/client";
 import { app, member, user, workspace } from "../src/db/security/schema";
 import { RelayRpc } from "../src/rpc/relay-rpc";
-import { applyMigrations } from "./migrate";
+import { applyMigrations, seedVerifiedSender } from "./migrate";
 
 beforeAll(async () => {
   await applyMigrations();
@@ -19,7 +19,7 @@ async function seed(slug: string) {
   const [app2] = await db.insert(app).values({ workspaceId: ws.id, name: "two", slug: "two" }).returning();
   const key1 = (await createApiKey(env, { workspaceId: ws.id, appId: app1.id, name: "k1" })).secret;
   const key2 = (await createApiKey(env, { workspaceId: ws.id, appId: app2.id, name: "k2" })).secret;
-  return { rpc: new RelayRpc(createExecutionContext(), env), key1, key2 };
+  return { rpc: new RelayRpc(createExecutionContext(), env), key1, key2, ws: ws.id, app1: app1.id, app2: app2.id };
 }
 
 describe("RelayRpc scope", () => {
@@ -54,6 +54,23 @@ describe("RelayRpc scope", () => {
     await rpc.createTemplate(key1, { name: "Welcome", event: "welcome", subject: "Hi" });
     const overrides = await rpc.templateOverrides(key1);
     expect(overrides.map((o) => o.event)).toEqual(["welcome"]);
+  });
+
+  it("drops an app id and campaign id injected into a template send", async () => {
+    const { rpc, key1, key2, ws, app1, app2 } = await seed("rpc-send-strip");
+    await seedVerifiedSender(ws, app1);
+    const tpl = await rpc.createTemplate(key1, { name: "T", subject: "Hi", html: "<p>x</p>", text: "x" });
+    const sent = await rpc.sendTemplate(key1, {
+      stream: "transactional",
+      from: "Relay@A6n.ai",
+      to: "a@x.com",
+      templateId: tpl.id,
+      appId: app2,
+      campaignId: "cmp_injected",
+    });
+    expect(sent).toMatchObject({ status: "queued" });
+    expect(await rpc.getMessage(key1, sent.messageId)).not.toBeNull();
+    expect(await rpc.getMessage(key2, sent.messageId)).toBeNull();
   });
 
   it("refuses a campaign id with a bad campaign input", async () => {

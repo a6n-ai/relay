@@ -113,7 +113,7 @@ describe("unsubscribe endpoint", () => {
   it("one-click POST opts out of marketing from the sending domain only", async () => {
     const ws = "wsp_unsub_post";
     const stub = await seed(ws);
-    const campaign = await stub.createCampaign(ws, "app_1", "C");
+    const campaign = ((await stub.createCampaign(ws, "app_1", "C")) as { id: string });
     const first = await stub.send(ws, { ...marketing, campaignId: campaign.id });
     const path = url(await unsubscribeToken(SECRET, ws, first.messageId));
 

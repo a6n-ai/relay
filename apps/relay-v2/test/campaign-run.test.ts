@@ -52,7 +52,7 @@ async function listWith(stub: Stub, ws: string, emails: string[]): Promise<strin
 }
 
 async function readyCampaign(stub: Stub, ws: string, listIds: string[], at = 0) {
-  const c = await stub.createCampaign(ws, "app_1", "C");
+  const c = ((await stub.createCampaign(ws, "app_1", "C")) as { id: string });
   await stub.updateCampaign(ws, c.id, { ...BODY, fromEmail: "relay@a6n.ai", listIds });
   const scheduled = await stub.scheduleCampaign(ws, c.id, at, "1 Main St");
   if (typeof scheduled !== "object" || !("runSeq" in scheduled)) throw new Error("not scheduled");
@@ -228,7 +228,7 @@ describe("campaign run", () => {
 
   it("fails a campaign row whose campaign has no content instead of sending it", async () => {
     const { ws, stub } = await setup("nocontent");
-    const empty = await stub.createCampaign(ws, "app_1", "Empty");
+    const empty = ((await stub.createCampaign(ws, "app_1", "Empty")) as { id: string });
     await runInDurableObject(stub, (_instance, state) =>
       state.storage.sql.exec(
         "INSERT INTO message (id, app_id, direction, stream, status, event, campaign_id, from_email, from_name, ses_region, to_email, subject, attempts, opens, clicks, created_at, updated_at) VALUES ('msg_nocontent', 'app_1', 'out', 'marketing', 'queued', 'campaign', ?, 'relay@a6n.ai', 'A', 'us-east-1', 'u0@x.com', 'S', 0, 0, 0, 0, 0)",
@@ -266,7 +266,7 @@ describe("campaign run", () => {
   it("refuses to schedule without a postal address and keeps the draft", async () => {
     const { ws, stub } = await setup("nopostal");
     const list = await listWith(stub, ws, range(0, 3));
-    const c = await stub.createCampaign(ws, "app_1", "C");
+    const c = ((await stub.createCampaign(ws, "app_1", "C")) as { id: string });
     await stub.updateCampaign(ws, c.id, { ...BODY, fromEmail: "relay@a6n.ai", listIds: [list] });
     expect(await stub.scheduleCampaign(ws, c.id, 0, null)).toEqual({ problems: ["postal_address_missing"] });
     expect(await stub.getCampaign(ws, c.id)).toMatchObject({ status: "draft" });
@@ -337,6 +337,7 @@ describe("hook-audience campaign runs", () => {
     bindHook((req) => (req.cursor === null ? { recipients: people(0, 3), nextCursor: "a" } : { recipients: people(0, 2), nextCursor: null }));
     expect(await runCampaign(env, { workspaceId: ws, campaignId: id, runSeq, at: 0 }, fakeStep().asStep)).toBe("done");
     expect(await messageCount(stub, ws, id)).toBe(3);
+    expect(await stub.getCampaign(ws, id)).toMatchObject({ recipients: 3 });
     const drift = await stub.recountCampaign(ws, id);
     expect(drift?.before).toEqual(drift?.after);
   });
