@@ -142,7 +142,7 @@ describe("suppressions console", () => {
     });
   });
 
-  it("renders Add and Remove for an owner, and neither for a member", async () => {
+  it("renders Suppress address for an owner, and not for a member", async () => {
     const { cookie, workspaceId, owner } = await workspaceFor("sup-ssr@example.com", "Sup SSR Co");
     await addSuppressionFor(env, owner, { email: "ssr-manual@x.test" });
     await stub(workspaceId).addSuppression(workspaceId, "ssr-opt@x.test", "unsubscribe");
@@ -151,14 +151,12 @@ describe("suppressions console", () => {
     const ownerHtml = await ownerRes.text();
     expect(ownerHtml).toContain("ssr-manual@x.test");
     expect(ownerHtml).toContain("Opted out");
-    expect(ownerHtml).toContain(">Add<");
-    expect(ownerHtml).toContain(">Remove<");
+    expect(ownerHtml).toContain(">Suppress address<");
     const memberCookie = await addMember(workspaceId, "ssr-member@example.com", "member");
     const memberRes = await SELF.fetch(`${ORIGIN}/messages/suppressions`, { redirect: "manual", headers: { cookie: memberCookie } });
     expect(memberRes.status).toBe(200);
     const memberHtml = await memberRes.text();
     expect(memberHtml).toContain("ssr-manual@x.test");
-    expect(memberHtml).not.toContain(">Add<");
-    expect(memberHtml).not.toContain(">Remove<");
+    expect(memberHtml).not.toContain(">Suppress address<");
   });
 });

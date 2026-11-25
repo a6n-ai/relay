@@ -54,7 +54,7 @@ function MessagesPage() {
   const filtered = Boolean(search.status || search.email);
   const empty =
     page.restricted && search.dir === "in" ? (
-      <EmptyState icon={MailIcon} title="No addresses are shared with you yet" />
+      <EmptyState icon={MailIcon} title="No addresses are shared with you yet." />
     ) : filtered ? (
       <EmptyState icon={MailIcon} title="No messages match these filters" />
     ) : (

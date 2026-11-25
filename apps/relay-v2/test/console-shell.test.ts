@@ -128,11 +128,20 @@ describe("console shell", { timeout: 60_000 }, () => {
     await db.insert(member).values({ organizationId: wsId, userId, role: "member" });
     await db.update(workspace).set({ status: "suspended" }).where(eq(workspace.id, wsId));
 
-    for (const path of ["/", "/apps", "/apps/app_missing", "/members"]) {
+    const cases: [string, string][] = [
+      ["/", "This workspace is suspended"],
+      ["/apps", "This workspace is suspended"],
+      ["/apps/app_missing", "This workspace is suspended"],
+      ["/settings", "Workspace suspended"],
+      ["/settings/members", "Workspace suspended"],
+      ["/settings/invites", "Workspace suspended"],
+      ["/settings/teams", "Workspace suspended"],
+    ];
+    for (const [path, copy] of cases) {
       const res = await getPage(path, cookie);
       expect(res.status, path).toBe(200);
       const html = await res.text();
-      expect(html, path).toContain("This workspace is suspended");
+      expect(html, path).toContain(copy);
       expect(html, path).not.toContain("Something went wrong");
     }
   });
