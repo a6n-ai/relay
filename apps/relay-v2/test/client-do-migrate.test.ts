@@ -175,8 +175,8 @@ describe("ClientDO migrations", () => {
 });
 
 describe("ClientDO migration 6 (contact lists and campaigns)", () => {
-  it("pins seven scripts and creates the list, member, opt-out and campaign tables with the message columns", async () => {
-    expect(CLIENT_MIGRATIONS.length).toBe(7);
+  it("pins eight scripts and creates the list, member, opt-out and campaign tables with the message columns", async () => {
+    expect(CLIENT_MIGRATIONS.length).toBe(8);
     const stub = env.CLIENT.get(env.CLIENT.idFromName("migrate-six"));
     const result = await runInDurableObject(stub, (_instance, state) => ({
       version: state.storage.kv.get<number>("schema_version"),
@@ -197,6 +197,7 @@ describe("ClientDO migration 6 (contact lists and campaigns)", () => {
       for (const table of ["template", "automation_run", "automation", "audience_hook", "campaign", "marketing_optout", "contact_list_member", "contact_list"]) storage.sql.exec(`DROP TABLE IF EXISTS ${table}`);
       storage.sql.exec("ALTER TABLE message DROP COLUMN unsubscribed_at");
       storage.sql.exec("ALTER TABLE message DROP COLUMN merge_data");
+      storage.sql.exec("ALTER TABLE message DROP COLUMN reply_to");
       storage.sql.exec("INSERT INTO suppression (email, reason, stream, created_at) VALUES ('keep@x.test', 'manual', NULL, 1)");
       storage.kv.put("schema_version", 5);
       const before = applied.count;
@@ -209,7 +210,7 @@ describe("ClientDO migration 6 (contact lists and campaigns)", () => {
       };
     });
     expect(result.version).toBe(CLIENT_MIGRATIONS.length);
-    expect(result.delta).toBe(2);
+    expect(result.delta).toBe(3);
     expect(result.kept).toEqual(["keep@x.test"]);
     expect(result.tables).toEqual(expect.arrayContaining(["contact_list", "contact_list_member", "campaign"]));
   });
@@ -223,8 +224,8 @@ describe("ClientDO migration 7", () => {
       tables: tables(state.storage.sql),
       campaignCols: state.storage.sql.exec<{ name: string }>("PRAGMA table_info('campaign')").toArray().map((r) => r.name),
     }));
-    expect(CLIENT_MIGRATIONS.length).toBe(7);
-    expect(result.version).toBe(7);
+    expect(CLIENT_MIGRATIONS.length).toBe(8);
+    expect(result.version).toBe(CLIENT_MIGRATIONS.length);
     expect(result.tables).toEqual(expect.arrayContaining(["template", "automation", "automation_run", "audience_hook"]));
     expect(result.campaignCols).toContain("audience_kind");
   });
@@ -244,6 +245,7 @@ describe("ClientDO migration 7", () => {
       storage.sql.exec("ALTER TABLE campaign DROP COLUMN template_id");
       storage.sql.exec("ALTER TABLE campaign DROP COLUMN import_ref");
       storage.sql.exec("ALTER TABLE contact_list DROP COLUMN import_ref");
+      storage.sql.exec("ALTER TABLE message DROP COLUMN reply_to");
       storage.kv.put("schema_version", 6);
       storage.sql.exec("INSERT INTO campaign (id, app_id, name, created_at, updated_at) VALUES (?, ?, ?, ?, ?)", "cmp_old000000001", "app_1", "Old", 1, 1);
       const version = migrate(storage);
@@ -253,5 +255,26 @@ describe("ClientDO migration 7", () => {
     expect(result.version).toBe(CLIENT_MIGRATIONS.length);
     expect(result.audienceKind).toBe("lists");
     expect(result.tables).toEqual(expect.arrayContaining(["template", "automation"]));
+  });
+});
+
+describe("ClientDO migration 8", () => {
+  it("upgrades a version-7 DO by adding message.reply_to, keeping rows", async () => {
+    const stub = env.CLIENT.get(env.CLIENT.idFromName("migrate-v7-upgrade"));
+    const result = await runInDurableObject(stub, (_instance, state) => {
+      const { storage } = state;
+      storage.sql.exec("ALTER TABLE message DROP COLUMN reply_to");
+      storage.sql.exec("INSERT INTO suppression (email, reason, stream, created_at) VALUES ('keep8@x.test', 'manual', NULL, 1)");
+      storage.kv.put("schema_version", 7);
+      const version = migrate(storage);
+      return {
+        version,
+        cols: storage.sql.exec<{ name: string }>("PRAGMA table_info('message')").toArray().map((r) => r.name),
+        kept: storage.sql.exec<{ n: number }>("SELECT COUNT(*) AS n FROM suppression WHERE email = 'keep8@x.test'").one().n,
+      };
+    });
+    expect(result.version).toBe(CLIENT_MIGRATIONS.length);
+    expect(result.cols).toContain("reply_to");
+    expect(result.kept).toBe(1);
   });
 });
