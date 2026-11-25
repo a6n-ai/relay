@@ -78,8 +78,7 @@ const streamName = z.enum(["transactional", "tracked", "marketing"]);
 
 export class RelayRpc extends WorkerEntrypoint<Env> {
   async send(apiKey: string, input: unknown) {
-    const scope = await scopeOf(this.env, apiKey);
-    return sendMessage(this.env, scope, sendInputSchema.omit({ appId: true, campaignId: true }).parse(input));
+    return withScope(this.env, apiKey, (scope) => sendMessage(this.env, scope, sendInputSchema.omit({ appId: true, campaignId: true }).parse(input)));
   }
 
   async sendTemplate(apiKey: string, input: unknown) {
@@ -87,7 +86,7 @@ export class RelayRpc extends WorkerEntrypoint<Env> {
   }
 
   async getMessage(apiKey: string, id: string) {
-    return getMessageForScope(this.env, await scopeOf(this.env, apiKey), id);
+    return withScope(this.env, apiKey, (scope) => getMessageForScope(this.env, scope, id));
   }
 
   async listLists(apiKey: string) {

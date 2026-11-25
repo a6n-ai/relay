@@ -1,6 +1,8 @@
 import { createExecutionContext, env } from "cloudflare:test";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { createApiKey } from "../src/core/api-keys";
+import { coreDb } from "../src/db/core/client";
+import { workspaceProfile } from "../src/db/core/schema";
 import { securityDb } from "../src/db/security/client";
 import { app, member, user, workspace } from "../src/db/security/schema";
 import { RelayRpc } from "../src/rpc/relay-rpc";
@@ -18,7 +20,7 @@ async function seed(slug: string) {
   const [a] = await db.insert(app).values({ workspaceId: ws.id, name: "one", slug: "one" }).returning();
   const key = (await createApiKey(env, { workspaceId: ws.id, appId: a.id, name: "k" })).secret;
   await seedVerifiedSender(ws.id, a.id);
-  return { rpc: new RelayRpc(createExecutionContext(), env), key };
+  return { rpc: new RelayRpc(createExecutionContext(), env), key, workspaceId: ws.id };
 }
 
 const row = (ref: string, extra: Record<string, unknown> = {}) => ({
@@ -67,6 +69,22 @@ describe("message history import", () => {
     await rpc.importMessages(key, [row("o5", { status: "sent", deliveredAt: 1_700_000_002_000, bouncedAt: 1_700_000_003_000, opens: 3 })]);
     const [found] = await rpc.messagesByKeys(key, ["o5"]);
     expect(found).toMatchObject({ key: "o5", status: "sent", sentAt: 1_700_000_001_000, deliveredAt: 1_700_000_002_000, bouncedAt: 1_700_000_003_000, complainedAt: null, opens: 3 });
+  });
+
+  it("refuses an empty batch", async () => {
+    const { rpc, key } = await seed("imp-msg-empty");
+    await expect(rpc.importMessages(key, [])).rejects.toThrow();
+  });
+
+  it("leaves monthly quota usage unchanged by imported history, while a real send still counts", async () => {
+    const { rpc, key, workspaceId } = await seed("imp-msg-quota");
+    await coreDb(env).insert(workspaceProfile).values({ workspaceId, monthlyMessageQuota: 2 });
+    const now = Date.now();
+    await rpc.importMessages(key, [row("q1", { createdAt: now }), row("q2", { createdAt: now }), row("q3", { createdAt: now })]);
+    const sendInput = { stream: "transactional", from: "Relay@A6n.ai", to: "buyer@x.test", subject: "S", html: "<p>x</p>", text: "x" };
+    expect(await rpc.send(key, { ...sendInput, idempotencyKey: "live-1" })).toMatchObject({ status: "queued" });
+    expect(await rpc.send(key, { ...sendInput, idempotencyKey: "live-2" })).toMatchObject({ status: "queued" });
+    await expect(rpc.send(key, { ...sendInput, idempotencyKey: "live-3" })).rejects.toThrow("quota_exceeded");
   });
 
   it("refuses a line break in the subject and more than 500 rows", async () => {

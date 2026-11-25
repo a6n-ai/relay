@@ -99,3 +99,12 @@ describe("RelayRpc app-audience campaigns", () => {
     await expect(rpc.scheduleCampaign(key1, campaign.id, Date.now() + 3_600_000)).rejects.toThrow("audience_hook_missing");
   });
 });
+
+describe("RelayRpc send errors", () => {
+  it("reports a marketing send without an unsubscribe link as a plain error", async () => {
+    const { rpc, key1 } = await seed("rpc-unsub");
+    await expect(
+      rpc.send(key1, { stream: "marketing", from: "Relay@A6n.ai", to: "buyer@x.test", subject: "Sale", html: "<p>x</p>", text: "x" }),
+    ).rejects.toThrow("unsubscribe link required");
+  });
+});

@@ -117,6 +117,7 @@ export const importMessagesSchema = z
       complainedAt: optionalMs,
     }),
   )
+  .min(1)
   .max(IMPORT_MAX_ROWS);
 
 // Each import takes at most 500 rows and returns the ids of its refs. A ref kept by another app is refused as a conflict.

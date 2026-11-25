@@ -1,5 +1,5 @@
 import { DurableObject } from "cloudflare:workers";
-import { and, eq, gte, inArray, isNull, lt, ne, or, sql, type SQLWrapper } from "drizzle-orm";
+import { and, eq, gte, inArray, isNotNull, isNull, lt, ne, or, sql, type SQLWrapper } from "drizzle-orm";
 import { drizzle, type DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
 import { brandDomain, campaignProblems, IMPLIED_CONSENT_MS, type CampaignProblem } from "../core/campaigns";
 import { CHUNK_SIZE, ENQUEUE_BATCH } from "../core/campaign-workflow";
@@ -1566,7 +1566,13 @@ export class ClientDO extends DurableObject<Env> {
       .select({ n: sql<number>`count(*)` })
       .from(schema.message)
       .where(
-        and(eq(schema.message.direction, "out"), inArray(schema.message.status, ["queued", "sent"]), gte(schema.message.createdAt, monthStart)),
+        // Imported history has no from_email; only sends count against the quota.
+        and(
+          eq(schema.message.direction, "out"),
+          isNotNull(schema.message.fromEmail),
+          inArray(schema.message.status, ["queued", "sent"]),
+          gte(schema.message.createdAt, monthStart),
+        ),
       )
       .get();
     return used?.n ?? 0;
