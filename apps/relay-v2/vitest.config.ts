@@ -12,6 +12,8 @@ export default defineConfig({
       wrangler: { configPath: "./wrangler.jsonc" },
       miniflare: {
         d1Databases: ["SECURITY_DB", "CORE_DB"],
+        // The real target is the tiffin-grab Worker, which the test runtime does not run; tests inject their own fake.
+        serviceBindings: { TIFFIN_AUDIENCE: () => new Response("no audience in tests", { status: 503 }) },
         bindings: {
           TEST_SECURITY_MIGRATIONS: securityMigrations,
           TEST_CORE_MIGRATIONS: coreMigrations,

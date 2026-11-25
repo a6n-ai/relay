@@ -82,8 +82,7 @@
       },
     ],
   },
-  // TIFFIN_AUDIENCE (service tiffin-grab, entrypoint RelayAudience) is not enabled yet: with the target Worker missing,
-  // miniflare fails to start the test runtime. Enable after tiffin-grab deploys RelayAudience (Phase 6b Task 6).
-  // "services": [{ "binding": "TIFFIN_AUDIENCE", "service": "tiffin-grab", "entrypoint": "RelayAudience" }],
+  // TiffinGrab's audience entrypoint. Only a platform admin can point an app's audience hook at it.
+  "services": [{ "binding": "TIFFIN_AUDIENCE", "service": "tiffin-grab", "entrypoint": "RelayAudience" }],
   "ratelimits": [{ "name": "API_LIMIT", "namespace_id": "1001", "simple": { "limit": 600, "period": 60 } }],
 }
