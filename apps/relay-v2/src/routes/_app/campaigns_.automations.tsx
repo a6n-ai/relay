@@ -25,6 +25,7 @@ import { fetchApps } from "../../console/apps.fns";
 import { createAutomationFn, enableAutomationFn, fetchAutomations } from "../../console/automations.fns";
 import { fetchCampaignOptions } from "../../console/campaigns.fns";
 import { fetchTemplates } from "../../console/templates.fns";
+import { FormBody, FormActions } from "../../components/page/form-parts";
 
 type AutomationsSearch = { appId?: string; new?: 1 };
 
@@ -93,7 +94,7 @@ function AutomationsPage() {
       ) : null}
       <ResourceTable
         columns={[
-          { header: "Name", cell: (a) => <span className="font-medium">{a.name}</span> },
+          { header: "Name", kind: "name", cell: (a) => a.name },
           ...(search.appId ? [] : [{ header: "App", cell: () => apps.find((a) => a.id === appId)?.name ?? "—" }]),
           { header: "List", cell: (a) => lists.find((l) => l.id === a.listId)?.name ?? "—" },
           { header: "Template", cell: (a) => templates.find((t) => t.id === a.templateId)?.name ?? "—" },
@@ -192,7 +193,7 @@ function NewAutomationForm({
   }
 
   return (
-    <form onSubmit={submit} className="grid gap-3">
+    <FormBody onSubmit={submit}>
       <Label htmlFor="automation-app">App</Label>
       <AppSelect
         apps={apps}
@@ -209,7 +210,7 @@ function NewAutomationForm({
       <Input id="automation-name" required value={name} onChange={(e) => setName(e.target.value)} />
       <Label htmlFor="automation-list">List</Label>
       <Select value={listId} onValueChange={(v) => setListId(v ?? "")}>
-        <SelectTrigger id="automation-list" aria-label="List" className="w-full">
+        <SelectTrigger id="automation-list" aria-label="List">
           <SelectValue placeholder="Choose a list" />
         </SelectTrigger>
         <SelectContent>
@@ -222,7 +223,7 @@ function NewAutomationForm({
       </Select>
       <Label htmlFor="automation-template">Template</Label>
       <Select value={templateId} onValueChange={(v) => setTemplateId(v ?? "")}>
-        <SelectTrigger id="automation-template" aria-label="Template" className="w-full">
+        <SelectTrigger id="automation-template" aria-label="Template">
           <SelectValue placeholder="Choose a template" />
         </SelectTrigger>
         <SelectContent>
@@ -235,7 +236,7 @@ function NewAutomationForm({
       </Select>
       <Label htmlFor="automation-from">From</Label>
       <Select value={fromEmail} onValueChange={(v) => setFromEmail(v ?? "")}>
-        <SelectTrigger id="automation-from" aria-label="From" className="w-full">
+        <SelectTrigger id="automation-from" aria-label="From">
           <SelectValue placeholder="Choose a verified address" />
         </SelectTrigger>
         <SelectContent>
@@ -257,11 +258,11 @@ function NewAutomationForm({
         onChange={(e) => setDelay(e.target.value)}
       />
       <FormError message={error} />
-      <div className="flex justify-end">
+      <FormActions>
         <Button type="submit" disabled={pending || !name.trim() || !listId || !templateId || !fromEmail}>
           Create
         </Button>
-      </div>
-    </form>
+      </FormActions>
+    </FormBody>
   );
 }

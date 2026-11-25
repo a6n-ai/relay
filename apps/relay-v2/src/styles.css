@@ -206,3 +206,11 @@
   }
 }
 
+
+/* One rule per Foundry part, instead of a class on every call site. */
+[data-slot="button"]:not([data-slot="button-group"] > *) {
+  border-radius: 9999px;
+}
+:is(form, [role="dialog"]) [data-slot="select-trigger"] {
+  width: 100%;
+}

@@ -8,6 +8,7 @@ import { errorText } from "../error-text";
 import { FormError } from "../form-error";
 import { type MemberRole, RoleSelect } from "../role-select";
 import { inviteMemberFn } from "../../console/members.fns";
+import { FormBody, FormActions } from "../page/form-parts";
 
 export function InviteForm({ done, canGrantOwner }: { done: () => void; canGrantOwner: boolean }) {
   const router = useRouter();
@@ -33,17 +34,17 @@ export function InviteForm({ done, canGrantOwner }: { done: () => void; canGrant
   }
 
   return (
-    <form onSubmit={submit} className="grid gap-3">
+    <FormBody onSubmit={submit}>
       <Label htmlFor="invite-email">Email</Label>
       <Input id="invite-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
       <Label htmlFor="invite-role">Role</Label>
       <RoleSelect id="invite-role" value={role} onChange={setRole} canGrantOwner={canGrantOwner} />
       <FormError message={error} />
-      <div className="flex justify-end">
+      <FormActions>
         <Button type="submit" disabled={pending}>
           Send invite
         </Button>
-      </div>
-    </form>
+      </FormActions>
+    </FormBody>
   );
 }

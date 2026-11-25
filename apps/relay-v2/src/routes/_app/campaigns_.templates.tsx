@@ -22,6 +22,7 @@ import { useCan } from "../../components/use-can";
 import { fetchApps } from "../../console/apps.fns";
 import { createTemplateFn, fetchTemplates } from "../../console/templates.fns";
 import { formatWhen } from "../../lib/format-date";
+import { FormBody, FormActions } from "../../components/page/form-parts";
 
 type TemplatesSearch = { appId?: string; cursor?: string; new?: 1 };
 
@@ -90,7 +91,7 @@ function TemplatesPage() {
       ) : null}
       <ResourceTable
         columns={[
-          { header: "Name", cell: (t) => <span className="font-medium">{t.name}</span> },
+          { header: "Name", kind: "name", cell: (t) => t.name },
           ...(search.appId ? [] : [{ header: "App", cell: (t: (typeof rows)[number]) => apps.find((a) => a.id === t.appId)?.name ?? "—" }]),
           { header: "Event", cell: (t) => t.event ?? "—" },
           { header: "Enabled", cell: (t) => <Badge variant={t.enabled ? "secondary" : "outline"}>{t.enabled ? "On" : "Off"}</Badge> },
@@ -153,17 +154,17 @@ function NewTemplateForm({
     }
   }
   return (
-    <form onSubmit={submit} className="grid gap-3">
+    <FormBody onSubmit={submit}>
       <Label htmlFor="template-app">App</Label>
       <AppSelect apps={apps} value={app} onValueChange={setApp} id="template-app" />
       <Label htmlFor="template-name">Name</Label>
       <Input id="template-name" required value={name} onChange={(e) => setName(e.target.value)} />
       <FormError message={error} />
-      <div className="flex justify-end">
+      <FormActions>
         <Button type="submit" disabled={pending || !name.trim() || !app}>
           Create
         </Button>
-      </div>
-    </form>
+      </FormActions>
+    </FormBody>
   );
 }

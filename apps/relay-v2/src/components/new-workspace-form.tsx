@@ -7,6 +7,8 @@ import { type FormEvent, useState } from "react";
 import { createWorkspaceFn } from "../console/workspaces.fns";
 import { errorText } from "./error-text";
 import { FormError } from "./form-error";
+import { FormBody, FormActions } from "./page/form-parts";
+import { Hint } from "./page/text";
 
 export function NewWorkspaceForm({ done }: { done: () => void }) {
   const router = useRouter();
@@ -33,7 +35,7 @@ export function NewWorkspaceForm({ done }: { done: () => void }) {
   }
 
   return (
-    <form onSubmit={submit} className="grid gap-3">
+    <FormBody onSubmit={submit}>
       <Label htmlFor="workspace-name">Name</Label>
       <Input id="workspace-name" required maxLength={80} value={name} onChange={(e) => setName(e.target.value)} />
       <Label htmlFor="workspace-slug">Slug</Label>
@@ -44,15 +46,15 @@ export function NewWorkspaceForm({ done }: { done: () => void }) {
         onChange={(e) => setSlug(e.target.value)}
         aria-describedby="workspace-slug-hint"
       />
-      <p id="workspace-slug-hint" className="text-xs text-muted-foreground">
+      <Hint size="xs" id="workspace-slug-hint">
         Lowercase letters, numbers and hyphens.
-      </p>
+      </Hint>
       <FormError message={error} />
-      <div className="flex justify-end">
+      <FormActions>
         <Button type="submit" disabled={pending}>
           Create workspace
         </Button>
-      </div>
-    </form>
+      </FormActions>
+    </FormBody>
   );
 }

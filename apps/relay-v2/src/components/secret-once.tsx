@@ -1,17 +1,19 @@
 import { Button } from "@foundry/ui/button";
 import { useState } from "react";
 import { FormError } from "./form-error";
+import { FormStack, FormActions } from "./page/form-parts";
+import { Hint, SectionTitle } from "./page/text";
 
 export function SecretOnce({ secret, label, onDone }: { secret: string; label: string; onDone: () => void }) {
   const [copied, setCopied] = useState(false);
   const [copyFailed, setCopyFailed] = useState(false);
   return (
-    <div className="grid gap-3">
-      <p className="text-sm font-medium">{label}</p>
+    <FormStack>
+      <SectionTitle as="p">{label}</SectionTitle>
       <code className="break-all rounded-md bg-muted p-3 font-mono text-sm">{secret}</code>
-      <p className="text-sm text-muted-foreground">Copy this now. It won't be shown again.</p>
+      <Hint>Copy this now. It won't be shown again.</Hint>
       <FormError message={copyFailed ? "Copy failed, select the key" : null} />
-      <div className="flex justify-end gap-2">
+      <FormActions>
         <Button
           variant="outline"
           onClick={async () => {
@@ -26,7 +28,7 @@ export function SecretOnce({ secret, label, onDone }: { secret: string; label: s
           {copied ? "Copied" : "Copy"}
         </Button>
         <Button onClick={onDone}>Done</Button>
-      </div>
-    </div>
+      </FormActions>
+    </FormStack>
   );
 }

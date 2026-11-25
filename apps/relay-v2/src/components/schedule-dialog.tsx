@@ -8,6 +8,8 @@ import { scheduleCampaignFn } from "../console/campaigns.fns";
 import { CreateDialog } from "./create-dialog";
 import { errorText } from "./error-text";
 import { FormError } from "./form-error";
+import { FormBody, FormActions } from "./page/form-parts";
+import { Hint } from "./page/text";
 
 export function ScheduleDialog({
   campaignId,
@@ -74,13 +76,13 @@ function ScheduleForm({
     }
   }
   return (
-    <form onSubmit={submit} className="grid gap-3">
+    <FormBody onSubmit={submit}>
       <RadioGroup value={mode} onValueChange={(v) => setMode(v as "now" | "at")} aria-label="When to send">
-        <Label htmlFor="schedule-now" className="flex items-center gap-2">
+        <Label htmlFor="schedule-now">
           <RadioGroupItem id="schedule-now" value="now" />
           Send now
         </Label>
-        <Label htmlFor="schedule-at" className="flex items-center gap-2">
+        <Label htmlFor="schedule-at">
           <RadioGroupItem id="schedule-at" value="at" />
           At
         </Label>
@@ -93,13 +95,13 @@ function ScheduleForm({
         required={mode === "at"}
         onChange={(e) => setWhen(e.target.value)}
       />
-      <p className="text-xs text-muted-foreground">Times are in your time zone: {zone}.</p>
+      <Hint size="xs">Times are in your time zone: {zone}.</Hint>
       <FormError message={error} />
-      <div className="flex justify-end">
+      <FormActions>
         <Button type="submit" disabled={pending || (mode === "at" && !when)}>
           Schedule
         </Button>
-      </div>
-    </form>
+      </FormActions>
+    </FormBody>
   );
 }

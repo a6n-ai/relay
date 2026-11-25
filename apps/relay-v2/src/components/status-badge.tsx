@@ -13,6 +13,8 @@ const TONE = {
   sending: "info",
   paused: "warning",
   cancelled: "neutral",
+  accepted: "success",
+  expired: "neutral",
 } as const;
 const LABEL = {
   pending: "Pending",
@@ -27,6 +29,8 @@ const LABEL = {
   sending: "Sending",
   paused: "Paused",
   cancelled: "Cancelled",
+  accepted: "Accepted",
+  expired: "Expired",
 } as const;
 
 // Inbound rows are stored as "sent"; the operator sees what happened to them, which is receipt.

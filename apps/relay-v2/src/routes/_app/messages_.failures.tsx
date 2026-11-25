@@ -71,7 +71,7 @@ function FailuresPage() {
       <PageHeader crumbs={crumbs} />
       <ResourceTable
         columns={[
-          { header: "Received", cell: (f) => <span className="text-xs tabular-nums">{formatWhen(f.receivedAt)}</span> },
+          { header: "Received", kind: "time", cell: (f) => formatWhen(f.receivedAt) },
           { header: "From", cell: (f) => f.envelopeFrom ?? "—" },
           { header: "To", cell: (f) => f.envelopeTo },
           { header: "Error", cell: (f) => f.error },

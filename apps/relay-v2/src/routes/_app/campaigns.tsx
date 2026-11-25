@@ -25,6 +25,7 @@ import { fetchApps } from "../../console/apps.fns";
 import { createCampaignFn, fetchCampaigns } from "../../console/campaigns.fns";
 import { fetchTemplates } from "../../console/templates.fns";
 import { formatWhen } from "../../lib/format-date";
+import { FormBody, FormActions } from "../../components/page/form-parts";
 
 type CampaignsSearch = { appId?: string; cursor?: string; new?: 1 };
 
@@ -121,7 +122,7 @@ function CampaignsPage() {
       {create}
       <ResourceTable
         columns={[
-          { header: "Name", cell: (c) => <span className="font-medium">{c.name}</span> },
+          { header: "Name", kind: "name", cell: (c) => c.name },
           { header: "Status", cell: (c) => <StatusBadge status={c.status} /> },
           ...(search.appId ? [] : [{ header: "App", cell: (c: (typeof rows)[number]) => apps.find((a) => a.id === c.appId)?.name ?? "—" }]),
           {
@@ -192,7 +193,7 @@ function NewCampaignForm({
     }
   }
   return (
-    <form onSubmit={submit} className="grid gap-3">
+    <FormBody onSubmit={submit}>
       <Label htmlFor="campaign-app">App</Label>
       <AppSelect apps={apps} value={app} onValueChange={setApp} id="campaign-app" />
       <Label htmlFor="campaign-name">Name</Label>
@@ -201,7 +202,7 @@ function NewCampaignForm({
         <>
           <Label htmlFor="campaign-template">Start from</Label>
           <Select value={template} onValueChange={(v) => setTemplate(v ?? "blank")}>
-            <SelectTrigger id="campaign-template" aria-label="Start from" className="w-full">
+            <SelectTrigger id="campaign-template" aria-label="Start from">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -216,11 +217,11 @@ function NewCampaignForm({
         </>
       ) : null}
       <FormError message={error} />
-      <div className="flex justify-end">
+      <FormActions>
         <Button type="submit" disabled={pending || !name.trim() || !app}>
           Create
         </Button>
-      </div>
-    </form>
+      </FormActions>
+    </FormBody>
   );
 }

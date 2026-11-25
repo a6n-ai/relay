@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { SettingsCard } from "../../components/page/settings-card";
 import { PageHeader } from "../../components/shell/page-header";
+import { SectionTitle } from "../../components/page/text";
 
 export const Route = createFileRoute("/_app/settings")({
   component: GeneralPage,
@@ -22,7 +23,7 @@ function GeneralPage() {
           />
         ) : null}
         <SettingsCard title="Workspace name" description="The name shown in the workspace switcher.">
-          <p className="text-sm font-medium">{active?.name ?? "—"}</p>
+          <SectionTitle as="p">{active?.name ?? "—"}</SectionTitle>
         </SettingsCard>
       </div>
     </>

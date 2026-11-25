@@ -5,6 +5,7 @@ import { ConfirmDialog } from "../../components/confirm-dialog";
 import { DeniedState, deniedReason } from "../../components/denied-state";
 import { EmptyState } from "../../components/page/empty-state";
 import { SearchInput, Toolbar } from "../../components/page/toolbar";
+import { TableSkeleton } from "../../components/page/table-skeleton";
 import { ResourceTable } from "../../components/resource-table";
 import { type MemberRole, ROLE_LABEL, RoleSelect } from "../../components/role-select";
 import { runAction } from "../../components/run-action";
@@ -20,6 +21,7 @@ export const Route = createFileRoute("/_app/settings_/members")({
     q: typeof search.q === "string" && search.q ? search.q : undefined,
   }),
   loader: () => fetchPeople(),
+  pendingComponent: () => <TableSkeleton columns={3} />,
   component: MembersPage,
 });
 
@@ -63,7 +65,7 @@ function MembersPage() {
       <ResourceTable
         columns={[
           { header: "Name", cell: (m) => m.name },
-          { header: "Email", cell: (m) => <span className="font-mono text-xs">{m.email}</span> },
+          { header: "Email", kind: "mono", cell: (m) => m.email },
           {
             header: "Role",
             cell: (m) =>

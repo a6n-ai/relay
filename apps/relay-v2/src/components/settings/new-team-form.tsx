@@ -7,6 +7,7 @@ import { type FormEvent, useState } from "react";
 import { errorText } from "../error-text";
 import { FormError } from "../form-error";
 import { createTeamFn } from "../../console/members.fns";
+import { FormBody, FormActions } from "../page/form-parts";
 
 export function NewTeamForm({ done }: { done: () => void }) {
   const router = useRouter();
@@ -31,15 +32,15 @@ export function NewTeamForm({ done }: { done: () => void }) {
   }
 
   return (
-    <form onSubmit={submit} className="grid gap-3">
+    <FormBody onSubmit={submit}>
       <Label htmlFor="team-name">Name</Label>
       <Input id="team-name" required maxLength={80} value={name} onChange={(e) => setName(e.target.value)} />
       <FormError message={error} />
-      <div className="flex justify-end">
+      <FormActions>
         <Button type="submit" disabled={pending}>
           Create team
         </Button>
-      </div>
-    </form>
+      </FormActions>
+    </FormBody>
   );
 }

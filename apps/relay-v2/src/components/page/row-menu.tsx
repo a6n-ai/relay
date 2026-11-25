@@ -30,7 +30,7 @@ export function RowMenu({ actions, label }: { actions: RowAction[]; label: strin
   );
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" aria-label={label} className="rounded-full" />}>
+      <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" aria-label={label} />}>
         <MoreHorizontalIcon />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">

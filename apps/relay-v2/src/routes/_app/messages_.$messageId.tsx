@@ -10,6 +10,7 @@ import { StatusBadge } from "../../components/status-badge";
 import { fetchApps } from "../../console/apps.fns";
 import { previewHint } from "../../components/preview-hint";
 import { fetchMessage } from "../../console/messages.fns";
+import { Hint, SectionTitle } from "../../components/page/text";
 
 export const Route = createFileRoute("/_app/messages_/$messageId")({
   validateSearch: (search: Record<string, unknown>): { images?: boolean } => ({
@@ -69,12 +70,12 @@ function MessagePage() {
       {hasHtml || hasRaw ? (
         <Toolbar>
           {hasHtml ? (
-            <Button variant="outline" size="sm" className="rounded-full" render={<a href={`/api/console/messages/${m.id}/html`} />}>
+            <Button variant="outline" size="sm" render={<a href={`/api/console/messages/${m.id}/html`} />}>
               Download HTML
             </Button>
           ) : null}
           {hasRaw ? (
-            <Button variant="outline" size="sm" className="rounded-full" render={<a href={`/api/console/messages/${m.id}/raw`} />}>
+            <Button variant="outline" size="sm" render={<a href={`/api/console/messages/${m.id}/raw`} />}>
               Download original
             </Button>
           ) : null}
@@ -101,7 +102,7 @@ function MessagePage() {
 
         <div className="grid min-w-0 gap-6 lg:col-start-1 lg:row-start-1">
           {m.htmlSafe === null && !m.text ? (
-            <p className="text-sm text-muted-foreground">The body of imported mail was not kept.</p>
+            <Hint>The body of imported mail was not kept.</Hint>
           ) : (
             <LetterView
               htmlSafe={m.htmlSafe}
@@ -114,14 +115,14 @@ function MessagePage() {
 
           {m.attachments.length > 0 ? (
             <section aria-label="Attachments" className="grid gap-2">
-              <h2 className="text-sm font-medium">Attachments</h2>
+              <SectionTitle>Attachments</SectionTitle>
               <ul className="grid gap-1 text-sm">
                 {m.attachments.map((a) => (
                   <li key={a.id}>
                     <a href={`/api/console/messages/${m.id}/${a.id}`} className="hover:underline">
                       {a.filename}
                     </a>{" "}
-                    <span className="text-xs text-muted-foreground">{kb(a.sizeBytes)}</span>
+                    <Hint as="span" size="xs">{kb(a.sizeBytes)}</Hint>
                     {previewHint(a.contentType, a.filename) ? (
                       <>
                         {" "}
@@ -143,14 +144,14 @@ function MessagePage() {
 
           {m.thread.length > 0 ? (
             <section aria-label="Thread" className="grid gap-2">
-              <h2 className="text-sm font-medium">In this thread</h2>
+              <SectionTitle>In this thread</SectionTitle>
               <ul className="grid gap-1 text-sm">
                 {m.thread.map((t) => (
                   <li key={t.id}>
                     <Link to="/messages/$messageId" params={{ messageId: t.id }} className="hover:underline">
                       {t.subject || "(no subject)"}
                     </Link>{" "}
-                    <span className="text-xs text-muted-foreground">{formatWhen(t.createdAt)}</span>
+                    <Hint as="span" size="xs">{formatWhen(t.createdAt)}</Hint>
                   </li>
                 ))}
               </ul>

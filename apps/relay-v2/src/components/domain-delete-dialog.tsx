@@ -8,6 +8,7 @@ import { deleteDomainFn, domainDeletePreview } from "../console/domains.fns";
 import { ConfirmDialog } from "./confirm-dialog";
 import { DnsRecords } from "./dns-records";
 import { errorText } from "./error-text";
+import { Mono } from "./page/text";
 
 type Preview = Awaited<ReturnType<typeof domainDeletePreview>>;
 
@@ -97,13 +98,13 @@ export function DomainDeleteDialog({
         ) : null}
         {preview && !preview.sesDelete ? (
           <p className="text-muted-foreground">
-            Relay leaves the SES identity in place. Run this as the owner: <code className="font-mono text-xs">{preview.ownerCommand}</code>
+            Relay leaves the SES identity in place. Run this as the owner: <Mono>{preview.ownerCommand}</Mono>
           </p>
         ) : null}
         {preview?.protected ? (
           <p>This domain is protected. Mail sent from this domain stops when it is deleted.</p>
         ) : null}
-        <Label className="flex items-center gap-2 font-normal">
+        <Label className="font-normal">
           <Checkbox checked={deleteHistory} onCheckedChange={(on) => setDeleteHistory(on === true)} />
           Also delete mail history
         </Label>

@@ -4,6 +4,7 @@ import { CreateDialog } from "../components/create-dialog";
 import { NewWorkspaceForm } from "../components/new-workspace-form";
 import { SignOutButton } from "../components/sign-out-button";
 import { getShell } from "../console/shell.fns";
+import { Hint } from "../components/page/text";
 
 export const Route = createFileRoute("/no-workspace")({
   beforeLoad: async ({ location }) => {
@@ -19,7 +20,7 @@ function NoWorkspace() {
   const { shell } = Route.useRouteContext();
   return (
     <AuthCard title="No workspace yet">
-      <p className="text-sm text-muted-foreground">Ask a workspace owner to add you to a workspace, or start your own.</p>
+      <Hint>Ask a workspace owner to add you to a workspace, or start your own.</Hint>
       <div>
         <CreateDialog trigger="New workspace" title="New workspace">{(done) => <NewWorkspaceForm done={done} />}</CreateDialog>
       </div>

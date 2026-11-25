@@ -10,6 +10,7 @@ import { createItems } from "../../components/shell/nav";
 import { PageHeader } from "../../components/shell/page-header";
 import { StatTile } from "../../components/stat-tile";
 import { fetchOverview } from "../../console/overview.fns";
+import { Hint, SectionTitle } from "../../components/page/text";
 
 export const Route = createFileRoute("/_app/")({
   loader: () => fetchOverview(),
@@ -36,10 +37,10 @@ function GetStarted({ shell }: { shell: NonNullable<ReturnType<typeof Route.useR
           <div key={r.id} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
             <r.icon className="size-5 shrink-0 text-muted-foreground" aria-hidden="true" />
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium">{r.title}</p>
-              <p className="text-sm text-muted-foreground">{r.line}</p>
+              <SectionTitle as="p">{r.title}</SectionTitle>
+              <Hint>{r.line}</Hint>
             </div>
-            <Button size="sm" className="rounded-full" render={<Link to={r.to as string} search={{ new: 1 } as never} />}>
+            <Button size="sm" render={<Link to={r.to as string} search={{ new: 1 } as never} />}>
               {r.cta}
             </Button>
           </div>

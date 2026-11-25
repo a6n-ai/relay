@@ -1,5 +1,6 @@
 import { Button } from "@foundry/ui/button";
 import { letterSrcDoc } from "./letter-frame";
+import { FormGroup } from "./page/form-parts";
 
 // No allow-scripts and no allow-same-origin: the letter gets an opaque origin and runs nothing.
 export function LetterView({
@@ -16,7 +17,7 @@ export function LetterView({
   onShowImages: () => void;
 }) {
   return (
-    <div className="grid gap-2">
+    <FormGroup>
       {htmlSafe === null ? (
         <pre className="rounded-lg border border-border p-4 text-sm break-words whitespace-pre-wrap">{text ?? "Content no longer available"}</pre>
       ) : (
@@ -35,6 +36,6 @@ export function LetterView({
           Show images ({blockedRemote} blocked)
         </Button>
       ) : null}
-    </div>
+    </FormGroup>
   );
 }

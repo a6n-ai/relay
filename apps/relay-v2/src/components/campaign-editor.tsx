@@ -28,6 +28,8 @@ import { ScheduleDialog } from "./schedule-dialog";
 import { SettingsCard } from "./page/settings-card";
 import { Toolbar } from "./page/toolbar";
 import { useCan } from "./use-can";
+import { FormActions, FormPanel, FormStack } from "./page/form-parts";
+import { Hint } from "./page/text";
 
 export type CampaignOptions = { senders: string[]; lists: ListView[]; postalAddress: string | null };
 
@@ -225,12 +227,12 @@ export function CampaignEditor({
         {schedule}
       </Toolbar>
 
-      <form id="campaign-form" onSubmit={save} className="grid max-w-2xl gap-4 px-4 pb-4">
+      <FormPanel as="form" id="campaign-form" onSubmit={save}>
         <SettingsCard title="Content">
-          <div className="grid gap-3">
+          <FormStack>
             <Label htmlFor="campaign-from">From</Label>
             <Select value={from} onValueChange={(v) => setFrom(v ?? "")} disabled={!canWrite}>
-              <SelectTrigger id="campaign-from" aria-label="From" className="w-full">
+              <SelectTrigger id="campaign-from" aria-label="From">
                 <SelectValue placeholder="Choose a verified address" />
               </SelectTrigger>
               <SelectContent>
@@ -253,7 +255,7 @@ export function CampaignEditor({
               onPreview={previewLetter}
             />
             <FormError message={error} />
-          </div>
+          </FormStack>
         </SettingsCard>
 
         <SettingsCard title="Audience">
@@ -265,11 +267,11 @@ export function CampaignEditor({
               aria-label="Audience"
               className="grid gap-2"
             >
-              <Label htmlFor="audience-lists" className="flex items-center gap-2 font-normal">
+              <Label htmlFor="audience-lists" className="font-normal">
                 <RadioGroupItem id="audience-lists" value="lists" disabled={!canWrite} />
                 Lists
               </Label>
-              <Label htmlFor="audience-hook" className="flex items-center gap-2 font-normal">
+              <Label htmlFor="audience-hook" className="font-normal">
                 <RadioGroupItem id="audience-hook" value="hook" disabled={!canWrite || !hookReady} />
                 App audience
               </Label>
@@ -283,13 +285,13 @@ export function CampaignEditor({
                   disabled={!canWrite}
                   onChange={(e) => setAudienceQuery(e.target.value)}
                 />
-                <p className="text-sm text-muted-foreground">Counted when it sends</p>
+                <Hint>Counted when it sends</Hint>
               </>
             ) : (
               <>
-                {options.lists.length === 0 ? <p className="text-sm text-muted-foreground">No lists in this app yet.</p> : null}
+                {options.lists.length === 0 ? <Hint>No lists in this app yet.</Hint> : null}
                 {options.lists.map((l) => (
-                  <Label key={l.id} className="flex items-center gap-2 font-normal">
+                  <Label key={l.id} className="font-normal">
                     <Checkbox
                       checked={listIds.includes(l.id)}
                       disabled={!canWrite}
@@ -307,12 +309,12 @@ export function CampaignEditor({
             )}
           </fieldset>
         </SettingsCard>
-      </form>
+      </FormPanel>
 
-      <div className="grid max-w-2xl gap-4 px-4 pb-4">
+      <FormPanel>
         <SettingsCard title="Before it can be sent">
           {problems.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Ready to schedule.</p>
+            <Hint>Ready to schedule.</Hint>
           ) : (
             <ul className="grid list-disc gap-1 pl-5 text-sm">
               {problems.map((p) => (
@@ -324,11 +326,11 @@ export function CampaignEditor({
             <form onSubmit={savePostalAddress} className="mt-3 grid gap-2">
               <Label htmlFor="campaign-postal">Postal address</Label>
               <Input id="campaign-postal" value={address} onChange={(e) => setAddress(e.target.value)} />
-              <div className="flex justify-end">
+              <FormActions>
                 <Button type="submit" size="sm" disabled={!address.trim()}>
                   Save address
                 </Button>
-              </div>
+              </FormActions>
             </form>
           ) : null}
         </SettingsCard>
@@ -349,7 +351,7 @@ export function CampaignEditor({
             }
           />
         ) : null}
-      </div>
+      </FormPanel>
     </>
   );
 }

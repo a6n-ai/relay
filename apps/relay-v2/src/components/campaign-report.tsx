@@ -12,6 +12,7 @@ import { runAction } from "./run-action";
 import { StatTile } from "./stat-tile";
 import { Toolbar } from "./page/toolbar";
 import { useCan } from "./use-can";
+import { Hint } from "./page/text";
 
 const LIVE = 10_000;
 
@@ -93,7 +94,7 @@ export function CampaignReport({ campaign, stats }: { campaign: CampaignView; st
         {canAct && cancel}
       </Toolbar>
       <div className="grid gap-4 px-4 pb-4">
-        {times.length > 0 && <p className="text-sm text-muted-foreground">{times.join(" · ")}</p>}
+        {times.length > 0 && <Hint>{times.join(" · ")}</Hint>}
         <FormError message={status === "paused" ? reasonText(campaign.error) : null} />
         {status === "sending" && (
           <div className="flex items-center gap-3">

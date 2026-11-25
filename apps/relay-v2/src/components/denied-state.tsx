@@ -1,5 +1,6 @@
 import { useMatch } from "@tanstack/react-router";
 import type { Shell } from "../console/shell";
+import { Hint, Title } from "./page/text";
 
 export type DeniedReason = "no-workspace" | "suspended" | "not-allowed" | "not-found";
 
@@ -35,8 +36,8 @@ export function DeniedState({ reason, label }: { reason: DeniedReason; label?: s
   const { title, body } = COPY[reason];
   return (
     <div role="status" className="mx-auto grid max-w-sm gap-2 p-6 text-center">
-      <h2 className="text-lg font-medium">{label ?? title}</h2>
-      <p className="text-sm text-muted-foreground">{body}</p>
+      <Title as="h2">{label ?? title}</Title>
+      <Hint>{body}</Hint>
     </div>
   );
 }

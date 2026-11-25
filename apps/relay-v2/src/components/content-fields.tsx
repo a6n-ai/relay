@@ -6,6 +6,8 @@ import { toast } from "@foundry/ui/toast";
 import { useState } from "react";
 import { errorText } from "./error-text";
 import { LetterView } from "./letter-view";
+import { Hint, SectionTitle } from "./page/text";
+import { FormGroup } from "./page/form-parts";
 
 export type ContentValue = { subject: string; html: string; text: string };
 export type LetterPreview = { htmlSafe: string; text: string; subject: string };
@@ -57,21 +59,21 @@ export function ContentFields({
         disabled={disabled}
         onChange={(e) => onChange({ ...value, text: e.target.value })}
       />
-      <p className="text-xs text-muted-foreground">
+      <Hint size="xs">
         Merge fields: {"{{contact.name}}"}, {"{{contact.first_name}}"}, {"{{contact.email}}"}, {"{{unsubscribe_url}}"},{" "}
         {"{{postal_address}}"}
         {dataFields ? <>, {"{{data.<key>}}"}</> : null}
-      </p>
+      </Hint>
       <div>
         <Button type="button" variant="outline" size="sm" onClick={show}>
           Preview
         </Button>
       </div>
       {preview ? (
-        <div className="grid gap-2">
-          <p className="text-sm font-medium">{preview.subject}</p>
+        <FormGroup>
+          <SectionTitle as="p">{preview.subject}</SectionTitle>
           <LetterView htmlSafe={preview.htmlSafe} text={preview.text} blockedRemote={0} images={false} onShowImages={() => undefined} />
-        </div>
+        </FormGroup>
       ) : null}
     </>
   );

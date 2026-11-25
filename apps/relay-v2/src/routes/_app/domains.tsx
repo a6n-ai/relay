@@ -36,6 +36,8 @@ import {
   setDomainProtectedFn,
   updateAddressFn,
 } from "../../console/domains.fns";
+import { FormBody, FormActions } from "../../components/page/form-parts";
+import { Hint, Mono } from "../../components/page/text";
 
 export const Route = createFileRoute("/_app/domains")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -151,7 +153,7 @@ function DomainsPage() {
         }
       >
         {canWrite ? (
-          <Button variant="outline" size="sm" className="rounded-full" onClick={() => setAddressOpen(true)}>
+          <Button variant="outline" size="sm" onClick={() => setAddressOpen(true)}>
             Add address
           </Button>
         ) : null}
@@ -174,11 +176,11 @@ function DomainsPage() {
             header: "Domain",
             cell: (d) => (
               <div className="flex flex-col gap-1">
-                <span className="font-mono text-xs">{d.domain}</span>
+                <Mono>{d.domain}</Mono>
                 {d.protected ? (
                   <>
                     <Badge variant="warning">Protected</Badge>
-                    <span className="text-xs text-muted-foreground">Mail sent from this domain stops if it is released or deleted.</span>
+                    <Hint as="span" size="xs">Mail sent from this domain stops if it is released or deleted.</Hint>
                   </>
                 ) : null}
               </div>
@@ -204,7 +206,7 @@ function DomainsPage() {
               title="Add a domain to send from your own address."
               action={
                 canWrite ? (
-                  <Button size="sm" className="rounded-full" onClick={() => setNewOpen(true)}>
+                  <Button size="sm" onClick={() => setNewOpen(true)}>
                     Add domain
                   </Button>
                 ) : undefined
@@ -225,7 +227,7 @@ function DomainsPage() {
                   {a.email}
                 </Link>
               ) : (
-                <span className="font-mono text-xs">{a.email}</span>
+                <Mono>{a.email}</Mono>
               ),
           },
           { header: "App", cell: (a) => a.appName },
@@ -302,7 +304,7 @@ function NewDomainForm({ done }: { done: () => void }) {
   }
 
   return (
-    <form onSubmit={submit} className="grid gap-3">
+    <FormBody onSubmit={submit}>
       <Label htmlFor="domain-name">Domain</Label>
       <Input
         id="domain-name"
@@ -312,16 +314,16 @@ function NewDomainForm({ done }: { done: () => void }) {
         onChange={(e) => setDomain(e.target.value)}
         aria-describedby="domain-hint"
       />
-      <p id="domain-hint" className="text-xs text-muted-foreground">
+      <Hint size="xs" id="domain-hint">
         Add the DNS records it shows, then press Check now.
-      </p>
+      </Hint>
       <FormError message={error} />
-      <div className="flex justify-end">
+      <FormActions>
         <Button type="submit" disabled={pending}>
           Add domain
         </Button>
-      </div>
-    </form>
+      </FormActions>
+    </FormBody>
   );
 }
 
@@ -357,10 +359,10 @@ function NewAddressForm({
     }
   }
 
-  if (apps.length === 0) return <p className="text-sm text-muted-foreground">Create an app first. Addresses belong to an app.</p>;
+  if (apps.length === 0) return <Hint>Create an app first. Addresses belong to an app.</Hint>;
 
   return (
-    <form onSubmit={submit} className="grid gap-3">
+    <FormBody onSubmit={submit}>
       <Label htmlFor="address-email">Address</Label>
       <Input id="address-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
       <Label htmlFor="address-app">App</Label>
@@ -373,7 +375,7 @@ function NewAddressForm({
       />
       <Label htmlFor="address-kind">Use</Label>
       <Select value={kind} onValueChange={(v) => setKind(v as (typeof KINDS)[number]["value"])}>
-        <SelectTrigger id="address-kind" className="w-full">
+        <SelectTrigger id="address-kind">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -389,12 +391,12 @@ function NewAddressForm({
       <Label htmlFor="address-reply-to">Reply-To (optional)</Label>
       <Input id="address-reply-to" type="email" maxLength={254} value={replyTo} onChange={(e) => setReplyTo(e.target.value)} />
       <FormError message={error} />
-      <div className="flex justify-end">
+      <FormActions>
         <Button type="submit" disabled={pending || !appId}>
           Add address
         </Button>
-      </div>
-    </form>
+      </FormActions>
+    </FormBody>
   );
 }
 
@@ -428,18 +430,18 @@ function EditAddressForm({
   }
 
   return (
-    <form onSubmit={submit} className="grid gap-3">
-      <p className="font-mono text-xs">{address.email}</p>
+    <FormBody onSubmit={submit}>
+      <Mono>{address.email}</Mono>
       <Label htmlFor="edit-address-name">Name</Label>
       <Input id="edit-address-name" maxLength={80} value={name} onChange={(e) => setName(e.target.value)} />
       <Label htmlFor="edit-address-reply-to">Reply-To</Label>
       <Input id="edit-address-reply-to" type="email" maxLength={254} value={replyTo} onChange={(e) => setReplyTo(e.target.value)} />
       <FormError message={error} />
-      <div className="flex justify-end">
+      <FormActions>
         <Button type="submit" disabled={pending}>
           Save
         </Button>
-      </div>
-    </form>
+      </FormActions>
+    </FormBody>
   );
 }

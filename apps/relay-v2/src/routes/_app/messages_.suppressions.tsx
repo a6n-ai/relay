@@ -18,6 +18,7 @@ import { ResourceTable } from "../../components/resource-table";
 import { useCan } from "../../components/use-can";
 import { formatWhen } from "../../lib/format-date";
 import { addSuppressionFn, fetchSuppressions, removeSuppressionFn } from "../../console/suppressions.fns";
+import { FormBody, FormActions } from "../../components/page/form-parts";
 
 type SuppressionsSearch = { prefix?: string; cursor?: string };
 
@@ -89,7 +90,7 @@ function SuppressionsPage() {
             ),
           },
           { header: "Stream", cell: (s) => (s.stream ? s.stream[0].toUpperCase() + s.stream.slice(1) : "All") },
-          { header: "Added", cell: (s) => <span className="text-xs tabular-nums">{formatWhen(s.createdAt)}</span> },
+          { header: "Added", kind: "time", cell: (s) => formatWhen(s.createdAt) },
         ]}
         rows={page.rows}
         rowKey={(s) => s.email}
@@ -152,12 +153,12 @@ function AddForm({ done }: { done: () => void }) {
     }
   }
   return (
-    <form onSubmit={submit} className="grid gap-3">
+    <FormBody onSubmit={submit}>
       <Label htmlFor="sup-email">Email</Label>
       <Input id="sup-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
       <Label htmlFor="sup-stream">Stream</Label>
       <Select value={stream} onValueChange={(v) => setStream(v as "all" | (typeof STREAMS)[number])}>
-        <SelectTrigger id="sup-stream" className="w-full">
+        <SelectTrigger id="sup-stream">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -170,11 +171,11 @@ function AddForm({ done }: { done: () => void }) {
         </SelectContent>
       </Select>
       <FormError message={error} />
-      <div className="flex justify-end">
+      <FormActions>
         <Button type="submit" disabled={pending || !email.trim()}>
           Add
         </Button>
-      </div>
-    </form>
+      </FormActions>
+    </FormBody>
   );
 }

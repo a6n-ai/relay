@@ -5,6 +5,7 @@ import { ConfirmDialog } from "../../components/confirm-dialog";
 import { CreateDialog } from "../../components/create-dialog";
 import { DeniedState, deniedReason } from "../../components/denied-state";
 import { EmptyState } from "../../components/page/empty-state";
+import { TableSkeleton } from "../../components/page/table-skeleton";
 import { Toolbar } from "../../components/page/toolbar";
 import { ResourceTable } from "../../components/resource-table";
 import { runAction } from "../../components/run-action";
@@ -19,6 +20,7 @@ const crumbs = [{ label: "Settings", to: "/settings" }, { label: "Teams" }];
 
 export const Route = createFileRoute("/_app/settings_/teams")({
   loader: () => fetchPeople(),
+  pendingComponent: () => <TableSkeleton columns={2} />,
   component: TeamsPage,
 });
 

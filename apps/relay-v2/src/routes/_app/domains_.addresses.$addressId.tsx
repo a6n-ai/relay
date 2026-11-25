@@ -17,6 +17,8 @@ import { TableSkeleton } from "../../components/page/table-skeleton";
 import { Toolbar } from "../../components/page/toolbar";
 import { PageHeader } from "../../components/shell/page-header";
 import { addGrantFn, fetchAddressAccess, removeGrantFn } from "../../console/grants.fns";
+import { FormBody, FormActions } from "../../components/page/form-parts";
+import { Hint } from "../../components/page/text";
 
 export const Route = createFileRoute("/_app/domains_/addresses/$addressId")({
   loader: ({ params }) => fetchAddressAccess({ data: { addressId: params.addressId } }),
@@ -80,7 +82,7 @@ function AddressAccessPage() {
             title="Owners and admins can read this address. Share it with a member or team."
             action={
               canManage ? (
-                <Button size="sm" className="rounded-full" onClick={() => setAdding(true)}>
+                <Button size="sm" onClick={() => setAdding(true)}>
                   Add access
                 </Button>
               ) : undefined
@@ -131,13 +133,13 @@ function NewGrantForm({
     }
   }
 
-  if (options.length === 0) return <p className="text-sm text-muted-foreground">Everyone in this workspace already has access.</p>;
+  if (options.length === 0) return <Hint>Everyone in this workspace already has access.</Hint>;
 
   return (
-    <form onSubmit={submit} className="grid gap-3">
+    <FormBody onSubmit={submit}>
       <Label htmlFor="grant-who">Member or team</Label>
       <Select value={choice} onValueChange={setChoice}>
-        <SelectTrigger id="grant-who" className="w-full">
+        <SelectTrigger id="grant-who">
           <SelectValue placeholder="Choose who" />
         </SelectTrigger>
         <SelectContent>
@@ -149,11 +151,11 @@ function NewGrantForm({
         </SelectContent>
       </Select>
       <FormError message={error} />
-      <div className="flex justify-end">
+      <FormActions>
         <Button type="submit" disabled={pending || !choice}>
           Give access
         </Button>
-      </div>
-    </form>
+      </FormActions>
+    </FormBody>
   );
 }

@@ -7,6 +7,7 @@ import { type FormEvent, useState } from "react";
 import { AuthCard } from "../components/auth-card";
 import { FormError } from "../components/form-error";
 import { safeRedirect } from "../console/shell.fns";
+import { Hint } from "../components/page/text";
 
 export const Route = createFileRoute("/sign-in")({
   validateSearch: (search: Record<string, unknown>): { redirect?: string } =>
@@ -81,7 +82,7 @@ function SignIn() {
           }}
           className="flex flex-col gap-3"
         >
-          <p className="text-sm text-muted-foreground">Enter the 6-digit code we sent to {email}.</p>
+          <Hint>Enter the 6-digit code we sent to {email}.</Hint>
           <InputOTP maxLength={6} pattern="digits" value={otp} onChange={setOtp} onComplete={verify} aria-label="Sign-in code">
             <InputOTPGroup>
               {[0, 1, 2, 3, 4, 5].map((i) => (

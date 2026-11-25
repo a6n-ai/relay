@@ -17,6 +17,8 @@ import { useNewParam } from "../../components/shell/create-menu";
 import { PageHeader } from "../../components/shell/page-header";
 import { useCan } from "../../components/use-can";
 import { createAppFn, fetchApps } from "../../console/apps.fns";
+import { FormBody, FormActions } from "../../components/page/form-parts";
+import { Hint } from "../../components/page/text";
 
 export const Route = createFileRoute("/_app/apps")({
   validateSearch: (search: Record<string, unknown>): { new?: 1 } => ({
@@ -57,8 +59,8 @@ function AppsPage() {
       </Toolbar>
       <ResourceTable
         columns={[
-          { header: "Name", cell: (a) => <span className="font-medium">{a.name}</span> },
-          { header: "Slug", cell: (a) => <span className="font-mono text-xs">{a.slug}</span> },
+          { header: "Name", kind: "name", cell: (a) => a.name },
+          { header: "Slug", kind: "mono", cell: (a) => a.slug },
           { header: "Live keys", numeric: true, cell: (a) => a.keyCount },
         ]}
         rows={rows}
@@ -110,7 +112,7 @@ function NewAppForm({ done }: { done: () => void }) {
   }
 
   return (
-    <form onSubmit={submit} className="grid gap-3">
+    <FormBody onSubmit={submit}>
       <Label htmlFor="app-name">Name</Label>
       <Input id="app-name" required maxLength={80} value={name} onChange={(e) => setName(e.target.value)} />
       <Label htmlFor="app-slug">Slug</Label>
@@ -121,15 +123,15 @@ function NewAppForm({ done }: { done: () => void }) {
         onChange={(e) => setSlug(e.target.value)}
         aria-describedby="app-slug-hint"
       />
-      <p id="app-slug-hint" className="text-xs text-muted-foreground">
+      <Hint size="xs" id="app-slug-hint">
         Lowercase letters, numbers and hyphens.
-      </p>
+      </Hint>
       <FormError message={error} />
-      <div className="flex justify-end">
+      <FormActions>
         <Button type="submit" disabled={pending}>
           Create app
         </Button>
-      </div>
-    </form>
+      </FormActions>
+    </FormBody>
   );
 }

@@ -98,9 +98,9 @@ function MessagesPage() {
       />
       <ResourceTable
         columns={[
-          { header: "When", cell: (m) => <span className="text-xs tabular-nums">{formatWhen(m.createdAt)}</span> },
+          { header: "When", kind: "time", cell: (m) => formatWhen(m.createdAt) },
           { header: "From / To", cell: (m) => (m.direction === "out" ? m.toEmail : m.fromEmail) ?? "—" },
-          { header: "Subject", cell: (m) => <span className="font-medium">{m.subject || "(no subject)"}</span> },
+          { header: "Subject", kind: "name", cell: (m) => m.subject || "(no subject)" },
           { header: "Status", cell: (m) => <StatusBadge status={m.status} direction={m.direction} /> },
         ]}
         rows={page.rows}

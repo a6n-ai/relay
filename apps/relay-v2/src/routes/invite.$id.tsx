@@ -8,6 +8,7 @@ import { errorText } from "../components/error-text";
 import { FormError } from "../components/form-error";
 import { ROLE_LABEL, type MemberRole } from "../components/role-select";
 import { SignOutButton } from "../components/sign-out-button";
+import { Hint, Title } from "../components/page/text";
 
 export const Route = createFileRoute("/invite/$id")({
   beforeLoad: async ({ location }) => {
@@ -41,22 +42,22 @@ function InvitePage() {
   return (
     <AuthCard>
       {!invite ? (
-        <h1 className="text-lg font-medium">This invite was not found.</h1>
+        <Title>This invite was not found.</Title>
       ) : invite.state === "other-email" ? (
         <>
-          <h1 className="text-lg font-medium">This invite is for a different email address.</h1>
+          <Title>This invite is for a different email address.</Title>
           <SignOutButton />
         </>
       ) : invite.state === "suspended" ? (
-        <h1 className="text-lg font-medium">This workspace is suspended, so the invite cannot be accepted.</h1>
+        <Title>This workspace is suspended, so the invite cannot be accepted.</Title>
       ) : invite.status !== "pending" ? (
-        <h1 className="text-lg font-medium">This invite is {invite.status}.</h1>
+        <Title>This invite is {invite.status}.</Title>
       ) : (
         <>
-          <h1 className="text-lg font-medium">Join {invite.workspaceName}</h1>
-          <p className="text-sm text-muted-foreground">
+          <Title>Join {invite.workspaceName}</Title>
+          <Hint>
             You are invited as {ROLE_LABEL[invite.role as MemberRole] ?? invite.role} for {invite.email}.
-          </p>
+          </Hint>
           <Button onClick={accept} disabled={pending}>
             Accept invite
           </Button>

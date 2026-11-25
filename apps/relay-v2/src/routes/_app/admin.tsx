@@ -19,6 +19,7 @@ import { PageHeader } from "../../components/shell/page-header";
 import { fetchWorkspaces, setWorkspaceInviteCapFn, setWorkspaceQuotaFn, setWorkspaceRegionFn, setWorkspaceStatusFn } from "../../console/admin.fns";
 import { SES_REGIONS } from "../../core/ses-regions";
 import { formatDate } from "../../lib/format-date";
+import { Hint } from "../../components/page/text";
 
 type AdminSearch = { ws?: string };
 
@@ -234,7 +235,7 @@ function AdminPage() {
             cell: (w) => (
               <div>
                 <div>{w.name}</div>
-                <div className="text-xs text-muted-foreground">{w.slug}</div>
+                <Hint as="div" size="xs">{w.slug}</Hint>
               </div>
             ),
           },
@@ -242,7 +243,7 @@ function AdminPage() {
           { header: "Members", numeric: true, cell: (w) => w.members },
           { header: "Sent this month", numeric: true, cell: (w) => w.sentThisMonth },
           { header: "Region", cell: (w) => w.sesRegion ?? "—" },
-          { header: "Quota", numeric: true, cell: (w) => w.quota },
+          { header: "Quota", numeric: true, cell: (w) => (w.quota === 0 ? "Unlimited" : w.quota) },
           { header: "Invites/day", numeric: true, cell: (w) => w.invitesPerDay },
         ]}
       />

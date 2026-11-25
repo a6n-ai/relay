@@ -4,7 +4,7 @@ import { Label } from "@foundry/ui/label";
 import { Switch } from "@foundry/ui/switch";
 import { Textarea } from "@foundry/ui/textarea";
 import { toast } from "@foundry/ui/toast";
-import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useRouter, useSearch } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
 import { ConfirmDialog } from "../../components/confirm-dialog";
 import { ContentFields, type ContentValue } from "../../components/content-fields";
@@ -17,6 +17,7 @@ import { PageHeader } from "../../components/shell/page-header";
 import { useCan } from "../../components/use-can";
 import { deleteTemplateFn, fetchTemplate, previewTemplateFn, updateTemplateFn } from "../../console/templates.fns";
 import type { TemplateView } from "../../do/templates";
+import { FormPanel, FormStack } from "../../components/page/form-parts";
 
 export const Route = createFileRoute("/_app/campaigns_/templates_/$templateId")({
   loader: ({ params }) =>
@@ -27,14 +28,21 @@ export const Route = createFileRoute("/_app/campaigns_/templates_/$templateId")(
   component: TemplatePage,
 });
 
+const crumbs = (appId: string | undefined, label: string) => [
+  { label: "Campaigns", to: "/campaigns", search: { appId } },
+  { label: "Templates", to: "/campaigns/templates", search: { appId } },
+  { label },
+];
+
 function TemplatePage() {
+  const { appId } = useSearch({ strict: false }) as { appId?: string };
   const page = Route.useLoaderData();
   const { shell } = Route.useRouteContext();
   const canWrite = useCan({ template: ["write"] });
   if (!page) {
     return (
       <>
-        <PageHeader crumbs={[{ label: "Campaigns", to: "/campaigns" }, { label: "Templates", to: "/campaigns/templates" }, { label: "Template" }]} />
+        <PageHeader crumbs={crumbs(appId, "Template")} />
         <DeniedState reason={deniedReason(shell)} />
       </>
     );
@@ -42,20 +50,14 @@ function TemplatePage() {
   if ("missing" in page) {
     return (
       <>
-        <PageHeader crumbs={[{ label: "Campaigns", to: "/campaigns" }, { label: "Templates", to: "/campaigns/templates" }, { label: "Template" }]} />
+        <PageHeader crumbs={crumbs(appId, "Template")} />
         <DeniedState reason="not-found" label="Template not found" />
       </>
     );
   }
   return (
     <>
-      <PageHeader
-        crumbs={[
-          { label: "Campaigns", to: "/campaigns", search: { appId: page.appId } },
-          { label: "Templates", to: "/campaigns/templates", search: { appId: page.appId } },
-          { label: page.name },
-        ]}
-      />
+      <PageHeader crumbs={crumbs(page.appId, page.name)} />
       <TemplateForm template={page} canWrite={canWrite} />
     </>
   );
@@ -134,10 +136,10 @@ function TemplateForm({ template, canWrite }: { template: TemplateView; canWrite
           </Button>
         </Toolbar>
       ) : null}
-      <div className="grid max-w-2xl gap-4 px-4 pb-4">
+      <FormPanel>
         <form id="template-form" onSubmit={save} className="grid gap-4">
           <SettingsCard title="Content">
-            <div className="grid gap-3">
+            <FormStack>
               <Label htmlFor="template-name-edit">Name</Label>
               <Input id="template-name-edit" value={name} disabled={!canWrite} onChange={(e) => setName(e.target.value)} />
               <ContentFields
@@ -151,19 +153,19 @@ function TemplateForm({ template, canWrite }: { template: TemplateView; canWrite
                 }}
               />
               <FormError message={error} />
-            </div>
+            </FormStack>
           </SettingsCard>
 
           <SettingsCard
             title="Used by your app for"
             description="Your app sends this template when it reports this event in this locale."
           >
-            <div className="grid gap-3">
+            <FormStack>
               <Label htmlFor="template-event">Event key</Label>
               <Input id="template-event" value={event} disabled={!canWrite} onChange={(e) => setEvent(e.target.value)} />
               <Label htmlFor="template-locale">Locale</Label>
               <Input id="template-locale" value={locale} disabled={!canWrite} onChange={(e) => setLocale(e.target.value)} />
-            </div>
+            </FormStack>
           </SettingsCard>
 
           <SettingsCard title="Intro">
@@ -178,7 +180,7 @@ function TemplateForm({ template, canWrite }: { template: TemplateView; canWrite
           </SettingsCard>
 
           <SettingsCard title="Enabled">
-            <Label className="flex items-center gap-2 font-normal">
+            <Label className="font-normal">
               <Switch checked={enabled} onCheckedChange={setEnabled} disabled={!canWrite} />
               Enabled
             </Label>
@@ -201,7 +203,7 @@ function TemplateForm({ template, canWrite }: { template: TemplateView; canWrite
             }
           />
         ) : null}
-      </div>
+      </FormPanel>
     </>
   );
 }

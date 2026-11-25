@@ -2,9 +2,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tooltip, TooltipContent, TooltipTrigger } from "@foundry/ui/tooltip";
 import { Link, type LinkProps } from "@tanstack/react-router";
 import type { ReactNode } from "react";
+import { Hint } from "./page/text";
 import { RowMenu, type RowAction } from "./page/row-menu";
 
-export type Column<T> = { header: string; cell: (row: T) => ReactNode; numeric?: boolean };
+const KIND = { name: "font-medium", mono: "font-mono text-xs", url: "break-all font-mono text-xs", time: "text-xs tabular-nums" } as const;
+
+export type Column<T> = { header: string; cell: (row: T) => ReactNode; numeric?: boolean; kind?: keyof typeof KIND };
 
 export function CellWhen({ when, text }: { when: string; text: string }) {
   return (
@@ -32,7 +35,7 @@ export function ResourceTable<T>({
   rowLabel?: (row: T) => string;
   menu?: (row: T) => RowAction[];
 }) {
-  if (rows.length === 0) return typeof empty === "string" ? <p className="p-4 text-sm text-muted-foreground">{empty}</p> : <>{empty}</>;
+  if (rows.length === 0) return typeof empty === "string" ? <Hint className="p-4">{empty}</Hint> : <>{empty}</>;
   return (
     <Table>
       <TableHeader>
@@ -52,7 +55,7 @@ export function ResourceTable<T>({
             <TableRow key={rowKey(row)} className={href ? "relative hover:bg-muted/50 [&_td>:not([data-row-link])]:relative [&_td>:not([data-row-link])]:z-10" : undefined}>
               {columns.map((c, i) => (
                 <TableCell key={c.header} className={c.numeric ? "text-right tabular-nums" : undefined}>
-                  {c.cell(row)}
+                  {c.kind ? <span className={KIND[c.kind]}>{c.cell(row)}</span> : c.cell(row)}
                   {href && i === 0 ? (
                     <Link
                       {...href}

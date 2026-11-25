@@ -6,6 +6,7 @@ import { ConfirmDialog } from "../../components/confirm-dialog";
 import { CreateDialog } from "../../components/create-dialog";
 import { DeniedState, deniedReason } from "../../components/denied-state";
 import { EmptyState } from "../../components/page/empty-state";
+import { TableSkeleton } from "../../components/page/table-skeleton";
 import { Toolbar } from "../../components/page/toolbar";
 import { ResourceTable } from "../../components/resource-table";
 import { type MemberRole, ROLE_LABEL } from "../../components/role-select";
@@ -26,13 +27,14 @@ export const Route = createFileRoute("/_app/settings_/invites")({
     new: search.new === 1 || search.new === "1" ? 1 : undefined,
   }),
   loader: () => fetchPeople(),
+  pendingComponent: () => <TableSkeleton columns={4} />,
   component: InvitesPage,
 });
 
 function InviteStatus({ status }: { status: string }) {
   if (status === "pending") return <StatusBadge status="pending" />;
   if (status === "canceled") return <StatusBadge status="cancelled" />;
-  if (status === "accepted") return <Badge variant="success">Accepted</Badge>;
+  if (status === "accepted" || status === "expired") return <StatusBadge status={status} />;
   return <Badge variant="neutral">{status.charAt(0).toUpperCase() + status.slice(1)}</Badge>;
 }
 
@@ -70,7 +72,7 @@ function InvitesPage() {
       <Toolbar>{invite}</Toolbar>
       <ResourceTable
         columns={[
-          { header: "Email", cell: (i) => <span className="font-mono text-xs">{i.email}</span> },
+          { header: "Email", kind: "mono", cell: (i) => i.email },
           { header: "Role", cell: (i) => ROLE_LABEL[i.role as MemberRole] ?? i.role },
           { header: "Status", cell: (i) => <InviteStatus status={i.status} /> },
           { header: "Expires", cell: (i) => formatDate(i.expiresAt) },

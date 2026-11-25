@@ -25,6 +25,8 @@ import { WEBHOOK_EVENT_LABELS, WEBHOOK_EVENT_LIST } from "../../components/webho
 import { createWebhookFn, deleteWebhookFn, fetchWebhooks, updateWebhookFn } from "../../console/webhooks.fns";
 import type { WebhookEvent } from "../../core/webhooks";
 import { formatDate, formatWhen } from "../../lib/format-date";
+import { FormBody, FormActions } from "../../components/page/form-parts";
+import { Hint, SectionTitle } from "../../components/page/text";
 
 export const Route = createFileRoute("/_app/apps_/$appId_/webhooks")({
   loader: ({ params }) => fetchWebhooks({ data: { appId: params.appId } }),
@@ -67,7 +69,7 @@ function WebhooksPage() {
       </Toolbar>
       <ResourceTable
         columns={[
-          { header: "URL", cell: (w) => <span className="break-all font-mono text-xs">{w.url}</span> },
+          { header: "URL", kind: "url", cell: (w) => w.url },
           { header: "Events", cell: (w) => w.events.map((e) => WEBHOOK_EVENT_LABELS[e]).join(", ") || "—" },
           {
             header: "Enabled",
@@ -156,12 +158,12 @@ function NewWebhookForm({ appId, done, lock }: { appId: string; done: () => void
   if (created) return <SecretOnce secret={created} label="Signing secret" onDone={done} />;
 
   return (
-    <form onSubmit={submit} className="grid gap-3">
+    <FormBody onSubmit={submit}>
       <Label htmlFor="webhook-url">URL</Label>
       <Input id="webhook-url" type="url" required maxLength={2048} value={url} onChange={(e) => setUrl(e.target.value)} />
-      <p className="text-xs text-muted-foreground">Must be a public https:// address</p>
+      <Hint size="xs">Must be a public https:// address</Hint>
       <fieldset className="grid gap-2">
-        <legend className="text-sm font-medium">Events</legend>
+        <SectionTitle as="legend">Events</SectionTitle>
         {WEBHOOK_EVENT_LIST.map((ev) => (
           <label key={ev} className="flex items-center gap-2 text-sm">
             <Checkbox
@@ -173,11 +175,11 @@ function NewWebhookForm({ appId, done, lock }: { appId: string; done: () => void
         ))}
       </fieldset>
       <FormError message={error} />
-      <div className="flex justify-end">
+      <FormActions>
         <Button type="submit" disabled={pending || events.length === 0}>
           Create webhook
         </Button>
-      </div>
-    </form>
+      </FormActions>
+    </FormBody>
   );
 }

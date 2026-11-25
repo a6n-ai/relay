@@ -31,6 +31,8 @@ import {
   removeMemberFn,
   updateListFn,
 } from "../../console/lists.fns";
+import { FormBody, FormStack, FormActions } from "../../components/page/form-parts";
+import { Hint } from "../../components/page/text";
 
 type ListSearch = { appId?: string; cursor?: string };
 
@@ -116,14 +118,14 @@ function ListDetailPage() {
       action={
         !q && (canWrite || canImport) ? (
           <div className="flex gap-2">
-            {canWrite ? (
-              <Button size="sm" className="rounded-full" onClick={() => setAdding(true)}>
-                Add contact
+            {canImport ? (
+              <Button variant="outline" size="sm" onClick={() => setImporting(true)}>
+                Import CSV
               </Button>
             ) : null}
-            {canImport ? (
-              <Button variant="outline" size="sm" className="rounded-full" onClick={() => setImporting(true)}>
-                Import CSV
+            {canWrite ? (
+              <Button size="sm" onClick={() => setAdding(true)}>
+                Add contact
               </Button>
             ) : null}
           </div>
@@ -136,17 +138,17 @@ function ListDetailPage() {
       <PageHeader crumbs={[listsCrumb, { label: list.name }]} />
       <Toolbar search={<SearchInput value={query} onChange={setQuery} placeholder="Search contacts" />}>
         {canImport ? (
-          <Button variant="outline" size="sm" className="rounded-full" render={<a href={`/lists/${listId}/export`} download />}>
+          <Button variant="outline" size="sm" render={<a href={`/lists/${listId}/export`} download />}>
             Export CSV
           </Button>
         ) : null}
         {canImport ? (
-          <Button variant="outline" size="sm" className="rounded-full" onClick={() => setImporting(true)}>
+          <Button variant="outline" size="sm" onClick={() => setImporting(true)}>
             Import CSV
           </Button>
         ) : null}
         {canWrite ? (
-          <Button size="sm" className="rounded-full" onClick={() => setAdding(true)}>
+          <Button size="sm" onClick={() => setAdding(true)}>
             Add contact
           </Button>
         ) : null}
@@ -248,16 +250,16 @@ function RenameForm({ listId, name, done }: { listId: string; name: string; done
     }
   }
   return (
-    <form onSubmit={submit} className="grid gap-3">
+    <FormBody onSubmit={submit}>
       <Label htmlFor="list-rename">Name</Label>
       <Input id="list-rename" required value={value} onChange={(e) => setValue(e.target.value)} />
       <FormError message={error} />
-      <div className="flex justify-end">
+      <FormActions>
         <Button type="submit" disabled={pending || !value.trim()}>
           Save
         </Button>
-      </div>
-    </form>
+      </FormActions>
+    </FormBody>
   );
 }
 
@@ -289,7 +291,7 @@ function AddContactForm({ listId, done }: { listId: string; done: () => void }) 
     }
   }
   return (
-    <form onSubmit={submit} className="grid gap-3">
+    <FormBody onSubmit={submit}>
       <Label htmlFor="contact-email">Email</Label>
       <Input id="contact-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
       <Label htmlFor="contact-first">First name</Label>
@@ -297,12 +299,12 @@ function AddContactForm({ listId, done }: { listId: string; done: () => void }) 
       <Label htmlFor="contact-last">Last name</Label>
       <Input id="contact-last" value={lastName} onChange={(e) => setLastName(e.target.value)} />
       <FormError message={error} />
-      <div className="flex justify-end">
+      <FormActions>
         <Button type="submit" disabled={pending || !email.trim()}>
           Add
         </Button>
-      </div>
-    </form>
+      </FormActions>
+    </FormBody>
   );
 }
 
@@ -330,19 +332,19 @@ function ImportForm({ listId, done }: { listId: string; done: () => void }) {
   }
   if (result) {
     return (
-      <div className="grid gap-3">
+      <FormStack>
         <p className="text-sm tabular-nums">
           Added {result.added} · Already on list {result.existing} · Suppressed {result.suppressed} · Invalid{" "}
           {result.invalid} · Duplicates {result.duplicates}
         </p>
-        <div className="flex justify-end">
+        <FormActions>
           <Button onClick={done}>Done</Button>
-        </div>
-      </div>
+        </FormActions>
+      </FormStack>
     );
   }
   return (
-    <form onSubmit={submit} className="grid gap-3">
+    <FormBody onSubmit={submit}>
       <FileUpload
         accept=".csv,text/csv"
         maxFiles={1}
@@ -357,15 +359,15 @@ function ImportForm({ listId, done }: { listId: string; done: () => void }) {
           <FileUploadTrigger>Choose file</FileUploadTrigger>
         </FileUploadDropzone>
       </FileUpload>
-      <p className="text-xs text-muted-foreground">
+      <Hint size="xs">
         Columns: email, first_name, last_name, name, consent_at. The email column is required.
-      </p>
+      </Hint>
       <FormError message={error} />
-      <div className="flex justify-end">
+      <FormActions>
         <Button type="submit" disabled={pending || files.length === 0}>
           Import
         </Button>
-      </div>
-    </form>
+      </FormActions>
+    </FormBody>
   );
 }

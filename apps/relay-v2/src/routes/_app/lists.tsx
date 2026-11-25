@@ -22,6 +22,7 @@ import { useNewParam } from "../../components/shell/create-menu";
 import { fetchApps } from "../../console/apps.fns";
 import { createListFn, fetchLists } from "../../console/lists.fns";
 import type { ConsentSource } from "../../do/lists";
+import { FormBody, FormActions } from "../../components/page/form-parts";
 
 type ListsSearch = { appId?: string; new?: 1 };
 
@@ -87,12 +88,12 @@ function ListsPage() {
     <>
       <PageHeader crumbs={crumbs} />
       <Toolbar search={<SearchInput value={query} onChange={setQuery} placeholder="Search lists" />}>
-        {canCreate ? <Button size="sm" className="rounded-full" onClick={() => setNewOpen(true)}>New list</Button> : null}
+        {canCreate ? <Button size="sm" onClick={() => setNewOpen(true)}>New list</Button> : null}
       </Toolbar>
       {newList}
       <ResourceTable
         columns={[
-          { header: "Name", cell: (l) => <span className="font-medium">{l.name}</span> },
+          { header: "Name", kind: "name", cell: (l) => l.name },
           { header: "App", cell: (l) => apps.find((a) => a.id === l.appId)?.name ?? "—" },
           { header: "Contacts", cell: (l) => l.members, numeric: true },
           { header: "Consent", cell: (l) => CONSENT_LABEL[l.consentSource] },
@@ -108,7 +109,7 @@ function ListsPage() {
             description={q ? undefined : "Lists hold the people a campaign sends to."}
             action={
               !q && canCreate ? (
-                <Button size="sm" className="rounded-full" onClick={() => setNewOpen(true)}>
+                <Button size="sm" onClick={() => setNewOpen(true)}>
                   New list
                 </Button>
               ) : undefined
@@ -154,14 +155,14 @@ function NewListForm({
     }
   }
   return (
-    <form onSubmit={submit} className="grid gap-3">
+    <FormBody onSubmit={submit}>
       <Label htmlFor="list-app">App</Label>
       <AppSelect apps={apps} value={app} onValueChange={setApp} id="list-app" />
       <Label htmlFor="list-name">Name</Label>
       <Input id="list-name" required value={name} onChange={(e) => setName(e.target.value)} />
       <Label htmlFor="list-consent">Consent</Label>
       <Select value={consent} onValueChange={(v) => setConsent(v as ConsentSource)}>
-        <SelectTrigger id="list-consent" className="w-full">
+        <SelectTrigger id="list-consent">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -175,11 +176,11 @@ function NewListForm({
       <Label htmlFor="list-note">Note</Label>
       <Input id="list-note" value={note} onChange={(e) => setNote(e.target.value)} />
       <FormError message={error} />
-      <div className="flex justify-end">
+      <FormActions>
         <Button type="submit" disabled={pending || !name.trim() || !app}>
           Create
         </Button>
-      </div>
-    </form>
+      </FormActions>
+    </FormBody>
   );
 }

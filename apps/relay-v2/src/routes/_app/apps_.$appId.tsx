@@ -32,6 +32,7 @@ import {
 } from "../../console/apps.fns";
 import { setAudienceBindingFn } from "../../console/admin.fns";
 import { formatDate, formatWhen } from "../../lib/format-date";
+import { FormBody, FormActions } from "../../components/page/form-parts";
 
 export const Route = createFileRoute("/_app/apps_/$appId")({
   pendingComponent: () => <TableSkeleton columns={5} />,
@@ -88,7 +89,7 @@ function AppPage() {
           <ResourceTable
             columns={[
               { header: "Name", cell: (k) => k.name ?? "Unnamed" },
-              { header: "Prefix", cell: (k) => <span className="font-mono text-xs">{k.start ? `${k.start}…` : "—"}</span> },
+              { header: "Prefix", kind: "mono", cell: (k) => k.start ? `${k.start}…` : "—" },
               { header: "Status", cell: (k) => <Badge variant={k.enabled ? "secondary" : "outline"}>{k.enabled ? "Active" : "Revoked"}</Badge> },
               { header: "Created", cell: (k) => <CellWhen when={formatDate(k.createdAt)} text={formatWhen(k.createdAt)} /> },
               {
@@ -190,23 +191,23 @@ function DefaultSendersPanel({ appId, senders, canWrite }: { appId: string; send
         ) : undefined
       }
     >
-      <form id="default-senders-form" onSubmit={save} className="grid gap-3">
+      <FormBody id="default-senders-form" onSubmit={save}>
         <Label htmlFor="default-transactional">Transactional</Label>
         <Select value={transactional} onValueChange={(v) => setTransactional(v ?? NONE)} disabled={!canWrite}>
-          <SelectTrigger id="default-transactional" className="w-full">
+          <SelectTrigger id="default-transactional">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>{choices}</SelectContent>
         </Select>
         <Label htmlFor="default-marketing">Marketing</Label>
         <Select value={marketing} onValueChange={(v) => setMarketing(v ?? NONE)} disabled={!canWrite}>
-          <SelectTrigger id="default-marketing" className="w-full">
+          <SelectTrigger id="default-marketing">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>{choices}</SelectContent>
         </Select>
         <FormError message={error} />
-      </form>
+      </FormBody>
     </SettingsCard>
   );
 }
@@ -307,16 +308,16 @@ function AudiencePanel({
       {hook?.kind === "binding" ? (
         <p className="text-sm">Connected by Relay</p>
       ) : (
-        <form id="audience-form" onSubmit={save} className="grid gap-3">
+        <FormBody id="audience-form" onSubmit={save}>
           <Label htmlFor="audience-url">Audience URL</Label>
           <Input id="audience-url" type="url" required value={url} disabled={!canWrite} onChange={(e) => setUrl(e.target.value)} />
-          <Label className="flex items-center gap-2 font-normal">
+          <Label className="font-normal">
             <Switch checked={enabled} onCheckedChange={setEnabled} disabled={!canWrite} />
             Enabled
           </Label>
           {secret ? <SecretOnce secret={secret} label="Your App audience secret" onDone={() => setSecret(null)} /> : null}
           <FormError message={error} />
-        </form>
+        </FormBody>
       )}
     </SettingsCard>
   );
@@ -349,15 +350,15 @@ function NewKeyForm({ appId, done, lock }: { appId: string; done: () => void; lo
   if (created) return <SecretOnce secret={created} label="Your new API key" onDone={done} />;
 
   return (
-    <form onSubmit={submit} className="grid gap-3">
+    <FormBody onSubmit={submit}>
       <Label htmlFor="key-name">Name</Label>
       <Input id="key-name" required maxLength={80} value={name} onChange={(e) => setName(e.target.value)} />
       <FormError message={error} />
-      <div className="flex justify-end">
+      <FormActions>
         <Button type="submit" disabled={pending}>
           Create key
         </Button>
-      </div>
-    </form>
+      </FormActions>
+    </FormBody>
   );
 }
