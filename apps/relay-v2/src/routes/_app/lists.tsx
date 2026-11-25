@@ -36,7 +36,10 @@ export const Route = createFileRoute("/_app/lists")({
     if (!apps) return null;
     const scoped = deps.appId ? apps.filter((a) => a.id === deps.appId) : apps;
     if (deps.appId && scoped.length === 0) return { missing: true as const };
-    const results = await Promise.all(scoped.map((a) => fetchLists({ data: { appId: a.id } })));
+    const settled = await Promise.allSettled(scoped.map((a) => fetchLists({ data: { appId: a.id } })));
+    const rejected = settled.filter((r): r is PromiseRejectedResult => r.status === "rejected");
+    if (settled.length > 0 && rejected.length === settled.length) throw rejected[0].reason;
+    const results = settled.flatMap((r) => (r.status === "fulfilled" ? [r.value] : []));
     if (results.some((r) => !r)) return null;
     const lists = results.flatMap((r) => (r && !("missing" in r) ? r : []));
     return { apps, appId: deps.appId, lists };

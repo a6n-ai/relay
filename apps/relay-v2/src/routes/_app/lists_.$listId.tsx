@@ -67,6 +67,8 @@ function ListDetailPage() {
   const [renaming, setRenaming] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [removing, setRemoving] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
+  const [importing, setImporting] = useState(false);
   const listsCrumb = { label: "Lists", to: "/lists", search: { appId: search.appId } };
   if (!page) {
     return (
@@ -115,14 +117,14 @@ function ListDetailPage() {
         !q && (canWrite || canImport) ? (
           <div className="flex gap-2">
             {canWrite ? (
-              <CreateDialog trigger="Add contact" title="Add contact">
-                {(done) => <AddContactForm listId={listId} done={done} />}
-              </CreateDialog>
+              <Button size="sm" className="rounded-full" onClick={() => setAdding(true)}>
+                Add contact
+              </Button>
             ) : null}
             {canImport ? (
-              <CreateDialog trigger="Import CSV" title="Import contacts">
-                {(done) => <ImportForm listId={listId} done={done} />}
-              </CreateDialog>
+              <Button variant="outline" size="sm" className="rounded-full" onClick={() => setImporting(true)}>
+                Import CSV
+              </Button>
             ) : null}
           </div>
         ) : undefined
@@ -139,14 +141,14 @@ function ListDetailPage() {
           </Button>
         ) : null}
         {canImport ? (
-          <CreateDialog trigger="Import CSV" title="Import contacts">
-            {(done) => <ImportForm listId={listId} done={done} />}
-          </CreateDialog>
+          <Button variant="outline" size="sm" className="rounded-full" onClick={() => setImporting(true)}>
+            Import CSV
+          </Button>
         ) : null}
         {canWrite ? (
-          <CreateDialog trigger="Add contact" title="Add contact">
-            {(done) => <AddContactForm listId={listId} done={done} />}
-          </CreateDialog>
+          <Button size="sm" className="rounded-full" onClick={() => setAdding(true)}>
+            Add contact
+          </Button>
         ) : null}
         {canWrite ? (
           <RowMenu
@@ -158,6 +160,16 @@ function ListDetailPage() {
           />
         ) : null}
       </Toolbar>
+      {canWrite ? (
+        <CreateDialog title="Add contact" open={adding} onOpenChange={setAdding}>
+          {(done) => <AddContactForm listId={listId} done={done} />}
+        </CreateDialog>
+      ) : null}
+      {canImport ? (
+        <CreateDialog title="Import contacts" open={importing} onOpenChange={setImporting}>
+          {(done) => <ImportForm listId={listId} done={done} />}
+        </CreateDialog>
+      ) : null}
       <CreateDialog title="Rename list" open={renaming} onOpenChange={setRenaming}>
         {(done) => <RenameForm listId={listId} name={list.name} done={done} />}
       </CreateDialog>
