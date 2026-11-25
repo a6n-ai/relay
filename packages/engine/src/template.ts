@@ -7,6 +7,16 @@ import type { NotificationTables } from "./schema";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Db = PostgresJsDatabase<any>;
 
+// Vars carry customer-entered text (names, notes), so values going into an HTML body are escaped; subject and text stay raw.
+function escapeVars(v: unknown): unknown {
+  if (typeof v === "string") return escapeHtml(v);
+  if (typeof v === "number" || typeof v === "boolean" || v == null) return v;
+  if (Array.isArray(v)) return v.map(escapeVars);
+  if (typeof v === "object") return Object.fromEntries(Object.entries(v as Record<string, unknown>).map(([k, x]) => [k, escapeVars(x)]));
+  return escapeHtml(String(v));
+}
+const htmlVars = (vars: Record<string, unknown>) => escapeVars(vars) as Record<string, unknown>;
+
 export interface TemplateRow {
   channel: string;
   locale: string;
@@ -42,7 +52,7 @@ export async function renderEmailForEvent(
   if (!t || !t.html || !t.text) return null;
   return {
     subject: interpolate(t.subject, vars),
-    html: interpolate(t.html, vars),
+    html: interpolate(t.html, htmlVars(vars)),
     text: interpolate(t.text, vars),
   };
 }
@@ -196,7 +206,7 @@ export async function renderCampaignEmail(
   if (!t || !t.html || !t.text) return null;
   return {
     subject: interpolate(t.subject, vars),
-    html: interpolate(t.html, vars),
+    html: interpolate(t.html, htmlVars(vars)),
     text: interpolate(t.text, vars),
     attachments: t.attachments ?? [],
   };
