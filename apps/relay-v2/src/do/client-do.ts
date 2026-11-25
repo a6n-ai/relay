@@ -1245,6 +1245,7 @@ export class ClientDO extends DurableObject<Env> {
     const row = this.db
       .select({
         sesMessageId: schema.message.sesMessageId,
+        status: schema.message.status,
         campaignId: schema.message.campaignId,
         opens: schema.message.opens,
         clicks: schema.message.clicks,
@@ -1285,6 +1286,22 @@ export class ClientDO extends DurableObject<Env> {
         .get();
     const usage = { delivered: 0, bounced: 0 };
     switch (job.type) {
+      case "Send":
+        // Backfills the SES id when the send consumer lost its markSent; a row that already has one is left alone.
+        if (!row.sesMessageId) {
+          const now = Date.now();
+          const queued = row.status === "queued";
+          this.db
+            .update(schema.message)
+            .set({
+              sesMessageId: job.sesMessageId,
+              ...(queued ? { status: "sent" as const, sentAt: now, claimedUntil: null, error: null, updatedAt: now } : {}),
+            })
+            .where(eq(schema.message.id, job.messageId))
+            .run();
+          if (queued) bumpCampaign(this.ctx.storage.sql, row.campaignId, { sent: 1, queued: -1 });
+        }
+        break;
       case "Open":
         this.db
           .update(schema.message)

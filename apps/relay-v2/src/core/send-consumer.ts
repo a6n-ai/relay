@@ -54,7 +54,7 @@ export async function handleSendBatch(
           changed = await stub.markSent(workspaceId, messageId, receipt.sesMessageId);
         } catch {
           console.error("relay-send: markSent failed, enqueueing finalize", messageId);
-          // shortcut: if the finalize enqueue also fails, the SES id is lost and the sweeper may resend (duplicate email). Upgrade: persist the SES id in the DO before acking.
+          // shortcut: if the finalize enqueue also fails, the SES id is lost until the Send event arrives via SNS, and the sweeper may resend in that window. Upgrade: persist the SES id in the DO before acking.
           await env.SEND.send({ kind: "finalize", workspaceId, messageId, sesMessageId: receipt.sesMessageId }).catch(() =>
             console.error("relay-send: finalize enqueue failed, SES id not recorded", messageId),
           );

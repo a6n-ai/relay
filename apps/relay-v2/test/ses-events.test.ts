@@ -128,6 +128,34 @@ describe("applySesEvents", () => {
     expect((await stub.getMessage(ws, messageId))!.opens).toBe(1);
   });
 
+  it("backfills the SES id and sent status from a Send event on a queued row", async () => {
+    const ws = "wsp_send_backfill";
+    const stub = await seedWorkspace(ws);
+    const { messageId } = await stub.send(ws, base);
+    await stub.applySesEvents(ws, [event(ws, messageId, { type: "Send", sesMessageId: "ses-backfill" })]);
+    const msg = (await stub.getMessage(ws, messageId))!;
+    expect(msg).toMatchObject({ status: "sent", sesMessageId: "ses-backfill" });
+  });
+
+  it("leaves an already-sent row unchanged on a Send event", async () => {
+    const ws = "wsp_send_noop";
+    const { stub, messageId, sesMessageId } = await sentMessage(ws);
+    await stub.applySesEvents(ws, [event(ws, messageId, { type: "Send", sesMessageId })]);
+    expect(await stub.getMessage(ws, messageId)).toMatchObject({ status: "sent", sesMessageId });
+  });
+
+  it("counts a Delivery after a backfilled Send as delivered", async () => {
+    const ws = "wsp_send_delivery";
+    const stub = await seedWorkspace(ws);
+    const { messageId } = await stub.send(ws, base);
+    const result = await stub.applySesEvents(ws, [
+      event(ws, messageId, { type: "Send", sesMessageId: "ses-then-delivery" }),
+      event(ws, messageId, { type: "Delivery", sesMessageId: "ses-then-delivery", recipients: ["guest@x.com"] }),
+    ]);
+    expect(result).toMatchObject({ applied: 2, usage: [{ day: DAY, delivered: 1, bounced: 0 }] });
+    expect(await stub.getMessage(ws, messageId)).toMatchObject({ status: "sent", sesMessageId: "ses-then-delivery" });
+  });
+
   it("counts two Opens with different SNS ids as two opens", async () => {
     const ws = "wsp_opens";
     const { stub, messageId } = await sentMessage(ws);
