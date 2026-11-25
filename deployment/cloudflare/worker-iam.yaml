@@ -55,16 +55,22 @@ Parameters:
     Type: String
     AllowedValues: ["true", "false"]
     Default: "false"
-    Description: Grant identity create/get/delete and sends from any identity in both SES regions, for customer self-serve domains. Leave false until self-serve goes live; the named identities above can never be deleted either way.
+    Description: Grant identity create/get/delete and sends from any identity in both SES regions, for customer self-serve domains. Leave false until self-serve goes live; the named identities above stay undeletable unless AllowDeleteSharedIdentities is true.
   EnableAwsLocation:
     Type: String
     AllowedValues: ["true", "false"]
     Default: "false"
     Description: Grant the Amazon Location maps (tiles/style/glyphs/sprites) and places (autocomplete/geocode/get) calls the app makes
+  AllowDeleteSharedIdentities:
+    Type: String
+    AllowedValues: ["true", "false"]
+    Default: "false"
+    Description: "true drops the Deny on deleting the named SES identities (SesIdentity, SesExtraIdentity, SesUsEastIdentity) so Relay can release a domain it created. Sends are unaffected either way. Leave false unless the owner has chosen to allow deletes."
 
 Conditions:
   AwsLocation: !Equals [!Ref EnableAwsLocation, "true"]
   SelfServeIdentities: !Equals [!Ref EnableSelfServeIdentities, "true"]
+  DenyNamedIdentityDelete: !Equals [!Ref AllowDeleteSharedIdentities, "false"]
   ExtraConfigSet: !Not [!Equals [!Ref SesExtraConfigurationSet, ""]]
   ExtraIdentity: !Not [!Equals [!Ref SesExtraIdentity, ""]]
   SesEventSettings: !Not [!Equals [!Join ["", !Ref SesEventConfigSets], ""]]
@@ -152,28 +158,32 @@ Resources:
                 - !Sub "arn:aws:ses:${SesUsEastRegion}:${AWS::AccountId}:identity/*"
             - !Ref AWS::NoValue
           # The shared production identities must survive whatever the console does, in either region.
-          - Sid: DenyDeleteNamedIdentities
-            Effect: Deny
-            Action: ses:DeleteEmailIdentity
-            Resource:
-              - !Sub "arn:aws:ses:${ResourceRegion}:${AWS::AccountId}:identity/${SesIdentity}"
-              - !Sub "arn:aws:ses:${SesUsEastRegion}:${AWS::AccountId}:identity/${SesIdentity}"
-              - !If
-                - ExtraIdentity
-                - !Sub "arn:aws:ses:${ResourceRegion}:${AWS::AccountId}:identity/${SesExtraIdentity}"
-                - !Ref AWS::NoValue
-              - !If
-                - ExtraIdentity
-                - !Sub "arn:aws:ses:${SesUsEastRegion}:${AWS::AccountId}:identity/${SesExtraIdentity}"
-                - !Ref AWS::NoValue
-              - !If
-                - UsEastIdentity
-                - !Sub "arn:aws:ses:${SesUsEastRegion}:${AWS::AccountId}:identity/${SesUsEastIdentity}"
-                - !Ref AWS::NoValue
-              - !If
-                - UsEastIdentity
-                - !Sub "arn:aws:ses:${ResourceRegion}:${AWS::AccountId}:identity/${SesUsEastIdentity}"
-                - !Ref AWS::NoValue
+          # AllowDeleteSharedIdentities=true omits this Deny; sends are granted separately and are unaffected.
+          - !If
+            - DenyNamedIdentityDelete
+            - Sid: DenyDeleteNamedIdentities
+              Effect: Deny
+              Action: ses:DeleteEmailIdentity
+              Resource:
+                - !Sub "arn:aws:ses:${ResourceRegion}:${AWS::AccountId}:identity/${SesIdentity}"
+                - !Sub "arn:aws:ses:${SesUsEastRegion}:${AWS::AccountId}:identity/${SesIdentity}"
+                - !If
+                  - ExtraIdentity
+                  - !Sub "arn:aws:ses:${ResourceRegion}:${AWS::AccountId}:identity/${SesExtraIdentity}"
+                  - !Ref AWS::NoValue
+                - !If
+                  - ExtraIdentity
+                  - !Sub "arn:aws:ses:${SesUsEastRegion}:${AWS::AccountId}:identity/${SesExtraIdentity}"
+                  - !Ref AWS::NoValue
+                - !If
+                  - UsEastIdentity
+                  - !Sub "arn:aws:ses:${SesUsEastRegion}:${AWS::AccountId}:identity/${SesUsEastIdentity}"
+                  - !Ref AWS::NoValue
+                - !If
+                  - UsEastIdentity
+                  - !Sub "arn:aws:ses:${ResourceRegion}:${AWS::AccountId}:identity/${SesUsEastIdentity}"
+                  - !Ref AWS::NoValue
+            - !Ref AWS::NoValue
           # Campaign Delivered/Opened/Clicked come from SES's CloudWatch counts (Refresh results).
           # GetMetricData has no resource-level scoping.
           - Sid: CampaignMetricsRead
