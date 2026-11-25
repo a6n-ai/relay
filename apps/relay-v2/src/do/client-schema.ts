@@ -40,6 +40,7 @@ export const message = sqliteTable(
     authResults: text("auth_results"),
     unsubscribedAt: integer("unsubscribed_at"),
     mergeData: text("merge_data"),
+    replyTo: text("reply_to"),
   },
   (t) => [
     check("message_channel", sql`${t.channel} = 'email'`),

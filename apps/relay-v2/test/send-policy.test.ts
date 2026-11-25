@@ -145,8 +145,8 @@ describe("send policy", () => {
     await runInDurableObject(stub, (_instance, state) => {
       for (const id of ["msg_out_a", "msg_out_b"])
         state.storage.sql.exec(
-          "INSERT INTO message (id, app_id, direction, stream, status, created_at, updated_at) VALUES (?, 'app_1', 'out', 'transactional', 'sent', ?, ?)",
-          id, now, now,
+          "INSERT INTO message (id, app_id, direction, stream, status, from_email, created_at, updated_at) VALUES (?, 'app_1', 'out', 'transactional', 'sent', ?, ?, ?)",
+          id, from, now, now,
         );
     });
 
@@ -301,5 +301,34 @@ describe("marketing sends carry an unsubscribe link", () => {
     expect(await refused.json()).toEqual({ error: "unsubscribe link required" });
     const queued = await post({ ...body, html: '<a href="{{unsubscribe_url}}">Stop</a>', text: "Stop: {{unsubscribe_url}}" });
     expect(queued.status).toBe(202);
+  });
+});
+
+describe("send attachments are limited at the API", () => {
+  it("refuses a fourth attachment and one over 5 MB", async () => {
+    const slug = "http-attach";
+    const [ws] = await securityDb(env).insert(workspace).values({ name: slug, slug }).returning();
+    const [a] = await securityDb(env).insert(app).values({ workspaceId: ws.id, name: slug, slug: "main" }).returning();
+    const [owner] = await securityDb(env).insert(user).values({ name: slug, email: `${slug}@owner.test` }).returning();
+    await securityDb(env).insert(member).values({ organizationId: ws.id, userId: owner.id, role: "owner" });
+    const { secret } = await createApiKey(env, { workspaceId: ws.id, appId: a.id, name: "web" });
+    await seedSender(ws.id, "tiffingrab.ca", from);
+    const post = (attachments: unknown[]) =>
+      SELF.fetch("https://relay.test/api/v1/messages", {
+        method: "POST",
+        headers: { authorization: `Bearer ${secret}`, "content-type": "application/json" },
+        body: JSON.stringify({ ...base, attachments }),
+      });
+    const file = (content: string) => ({ filename: "a.pdf", contentType: "application/pdf", content });
+
+    const four = await post([file("AAAA"), file("AAAA"), file("AAAA"), file("AAAA")]);
+    expect(four.status).toBe(400);
+    expect(await four.json()).toEqual({ error: "invalid input" });
+
+    // 6 MiB decoded: 8 MiB of base64 "A" is 6 MiB of zero bytes.
+    const big = await post([file("A".repeat(8 * 1024 * 1024))]);
+    expect(big.status).toBe(400);
+    expect(await big.json()).toEqual({ error: "invalid input" });
+    expect(await rowCount(stubFor(ws.id))).toBe(0);
   });
 });

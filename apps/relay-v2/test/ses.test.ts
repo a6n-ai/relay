@@ -64,6 +64,19 @@ describe("sendEmailBody", () => {
     expect(sendEmailBody({ ...request, fromName }).FromEmailAddress).toBe(expected);
   });
 
+  it("sends reply-to and attachments as SES fields, with the bytes base64 encoded", () => {
+    const body = sendEmailBody({
+      ...request,
+      replyTo: "help@tiffingrab.ca",
+      attachments: [{ filename: "receipt.pdf", contentType: "application/pdf", bytes: new Uint8Array([0, 1, 2, 250, 255]) }],
+    });
+    expect(body.ReplyToAddresses).toEqual(["help@tiffingrab.ca"]);
+    expect(body.Content.Simple.Attachments).toEqual([
+      { FileName: "receipt.pdf", ContentType: "application/pdf", RawContent: "AAEC+v8=" },
+    ]);
+    expect(sendEmailBody(request)).not.toHaveProperty("ReplyToAddresses");
+  });
+
   it("rejects a line break in a header field", () => {
     expect(() => sendEmailBody({ ...request, subject: "Hi\r\nBcc: x@evil.com" })).toThrow(
       "header contains a line break",

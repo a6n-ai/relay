@@ -32,7 +32,11 @@ export type SesSendRequest = {
   text: string;
   tags?: { ws: string; msg: string };
   headers?: { name: string; value: string }[];
+  replyTo?: string | null;
+  attachments?: SesAttachment[];
 };
+
+export type SesAttachment = { filename: string; contentType: string; bytes: Uint8Array };
 
 export type SesTransport = { send(req: SesSendRequest): Promise<{ sesMessageId: string }> };
 
@@ -50,14 +54,22 @@ function formatFrom(name: string | null, address: string): string {
   return `=?UTF-8?B?${btoa(String.fromCharCode(...bytes))}?= <${address}>`;
 }
 
+// Chunked: spreading a multi-megabyte array into one fromCharCode call overflows the stack.
+function base64(bytes: Uint8Array): string {
+  let binary = "";
+  for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return btoa(binary);
+}
+
 export function sendEmailBody(req: SesSendRequest) {
   const headerText = (req.headers ?? []).flatMap((h) => [h.name, h.value]);
-  if ([req.from, req.fromName, req.to, req.subject, ...headerText].some((v) => v && /[\r\n]/.test(v))) {
+  if ([req.from, req.fromName, req.to, req.subject, req.replyTo, ...headerText].some((v) => v && /[\r\n]/.test(v))) {
     throw new Error("header contains a line break");
   }
   return {
     FromEmailAddress: formatFrom(req.fromName, req.from),
     Destination: { ToAddresses: [req.to] },
+    ...(req.replyTo ? { ReplyToAddresses: [req.replyTo] } : {}),
     ConfigurationSetName: configSetFor(req.region, req.stream),
     ...(req.tags
       ? {
@@ -75,6 +87,9 @@ export function sendEmailBody(req: SesSendRequest) {
           ...(req.html !== null ? { Html: { Data: req.html, Charset: "UTF-8" } } : {}),
         },
         ...(req.headers ? { Headers: req.headers.map((h) => ({ Name: h.name, Value: h.value })) } : {}),
+        ...(req.attachments?.length
+          ? { Attachments: req.attachments.map((a) => ({ FileName: a.filename, ContentType: a.contentType, RawContent: base64(a.bytes) })) }
+          : {}),
       },
     },
   };

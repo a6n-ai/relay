@@ -69,6 +69,28 @@ async function queue(stub: Awaited<ReturnType<typeof seedWorkspace>>, workspaceI
   return { workspaceId, messageId } satisfies SendJob;
 }
 
+describe("attachments and reply-to reach the transport", () => {
+  it("hands over the decoded bytes, filename, reply-to and from name", async () => {
+    const workspaceId = "wsp_att";
+    const stub = await seedWorkspace(workspaceId);
+    const bytes = new Uint8Array([0, 1, 2, 250, 255]);
+    const content = btoa(String.fromCharCode(...bytes));
+    const { messageId } = await stub.send(workspaceId, {
+      ...base,
+      fromName: "Shop Desk",
+      replyTo: "help@tiffingrab.ca",
+      attachments: [{ filename: "receipt.pdf", contentType: "application/pdf", content }],
+    });
+    memorySesTransport.reset();
+    expect(await deliver({ workspaceId, messageId })).toEqual({ sent: 1, outcomes: [{ kind: "ack" }] });
+    expect(memorySesTransport.sent.at(-1)).toMatchObject({
+      fromName: "Shop Desk",
+      replyTo: "help@tiffingrab.ca",
+      attachments: [{ filename: "receipt.pdf", contentType: "application/pdf", bytes }],
+    });
+  });
+});
+
 async function usageSent(workspaceId: string): Promise<number> {
   const [row] = await coreDb(env)
     .select({ sent: usageDaily.sent })

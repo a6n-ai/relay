@@ -5,7 +5,7 @@ import { brandDomain, campaignProblems, IMPLIED_CONSENT_MS, type CampaignProblem
 import { CHUNK_SIZE, ENQUEUE_BATCH } from "../core/campaign-workflow";
 import { contactValues, fillUnsubscribe, hasMergeToken, MERGE_SAMPLES, renderMerge, type MergeData } from "../core/merge";
 import { sesSendRate } from "../core/send-rate";
-import type { SesSendRequest } from "../core/ses";
+import type { SesAttachment, SesSendRequest } from "../core/ses";
 import { DEFAULT_MONTHLY_QUOTA, LIMITS_TTL_MS, loadWorkspaceLimits, SENDER_RETRY_MS, type WorkspaceLimits } from "../core/limits";
 import { sendInputSchema, type SendInput, type Stream, type SuppressionReason } from "../core/send-input";
 import type { SesEventJob } from "../core/ses-events";
@@ -217,6 +217,18 @@ export class ClientDO extends DurableObject<Env> {
     // shortcut: an R2 object orphaned by a crash between the put and the insert is never swept, add a sweeper when storage cost shows up.
     const htmlKey = preSuppressed ? null : `ws/${workspaceId}/msg/${id}.html`;
     if (htmlKey) await this.env.MAIL.put(htmlKey, data.html);
+    // Stored with the message, not in D1: a 5 MB file would not fit a SQLite row.
+    const files = preSuppressed
+      ? []
+      : (data.attachments ?? []).map((a, position) => ({
+          position,
+          filename: a.filename,
+          contentType: a.contentType,
+          r2Key: `ws/${workspaceId}/att/${id}/${position}-${a.filename}`,
+          bytes: Uint8Array.from(atob(a.content), (c) => c.charCodeAt(0)),
+        }));
+    for (const f of files) await this.env.MAIL.put(f.r2Key, f.bytes, { httpMetadata: { contentType: f.contentType } });
+    const fileKeys = files.map((f) => f.r2Key);
     const now = Date.now();
     // Set before the insert: a crash between insert and enqueue must still leave an alarm to sweep the row.
     if ((await this.ctx.storage.getAlarm()) === null) await this.ctx.storage.setAlarm(now + SWEEP_INTERVAL_MS);
@@ -239,7 +251,8 @@ export class ClientDO extends DurableObject<Env> {
             event: data.event ?? null,
             campaignId: data.campaignId ?? null,
             fromEmail: data.from,
-            fromName: sender.name,
+            fromName: data.fromName ?? sender.name,
+            replyTo: data.replyTo ?? null,
             sesRegion: sender.sesRegion,
             toEmail: data.to,
             subject: data.subject,
@@ -249,13 +262,19 @@ export class ClientDO extends DurableObject<Env> {
             updatedAt: now,
           })
           .run();
+        if (files.length && !suppressed) {
+          this.db
+            .insert(schema.attachment)
+            .values(files.map((f) => ({ messageId: id, appId: data.appId, position: f.position, filename: f.filename, contentType: f.contentType, sizeBytes: f.bytes.byteLength, r2Key: f.r2Key, createdAt: now })))
+            .run();
+        }
       });
     } catch (err) {
-      await this.dropHtml(htmlKey);
+      await this.dropObjects([htmlKey, ...fileKeys]);
       throw err;
     }
     if (suppressed) {
-      await this.dropHtml(htmlKey);
+      await this.dropObjects([htmlKey, ...fileKeys]);
       return { messageId: id, status: "suppressed", duplicate: false };
     }
     try {
@@ -264,20 +283,23 @@ export class ClientDO extends DurableObject<Env> {
       // Keep no row: a same-key retry would otherwise return duplicate and never enqueue.
       this.ctx.storage.transactionSync(() => {
         this.db.delete(schema.message).where(eq(schema.message.id, id)).run();
+        this.db.delete(schema.attachment).where(eq(schema.attachment.messageId, id)).run();
       });
-      await this.dropHtml(htmlKey);
+      await this.dropObjects([htmlKey, ...fileKeys]);
       throw new Error("queue_failed", { cause: err });
     }
     return { messageId: id, status: "queued", duplicate: false };
   }
 
   // A failed delete must not replace the error that caused the rollback.
-  private async dropHtml(htmlKey: string | null): Promise<void> {
-    if (!htmlKey) return;
-    try {
-      await this.env.MAIL.delete(htmlKey);
-    } catch (err) {
-      console.error("ClientDO: failed to delete html object", htmlKey, err);
+  private async dropObjects(keys: (string | null)[]): Promise<void> {
+    for (const key of keys) {
+      if (!key) continue;
+      try {
+        await this.env.MAIL.delete(key);
+      } catch (err) {
+        console.error("ClientDO: failed to delete object", key, err);
+      }
     }
   }
 
@@ -1054,22 +1076,38 @@ export class ClientDO extends DurableObject<Env> {
       return { kind: "claimed", attempt, row, region, body };
     });
     if (claimed.kind === "suppressed") {
-      await this.dropHtml(claimed.htmlKey);
+      await this.dropObjects([claimed.htmlKey]);
       return { kind: "skip", reason: "suppressed" };
     }
     if (claimed.kind === "refused") {
-      await this.dropHtml(claimed.htmlKey);
+      await this.dropObjects([claimed.htmlKey]);
       return { kind: "skip", reason: "failed" };
     }
     if (claimed.kind !== "claimed") return claimed;
 
     const { row, attempt, region, body } = claimed;
     const object = row.htmlKey ? await this.env.MAIL.get(row.htmlKey) : null;
-    if (row.htmlKey && !object) {
+    const attachments: SesAttachment[] = [];
+    let attachmentMissing = false;
+    const attachmentRows = this.db
+      .select({ filename: schema.attachment.filename, contentType: schema.attachment.contentType, r2Key: schema.attachment.r2Key })
+      .from(schema.attachment)
+      .where(eq(schema.attachment.messageId, messageId))
+      .orderBy(schema.attachment.position)
+      .all();
+    for (const a of attachmentRows) {
+      const file = await this.env.MAIL.get(a.r2Key);
+      if (!file) {
+        attachmentMissing = true;
+        break;
+      }
+      attachments.push({ filename: a.filename, contentType: a.contentType, bytes: new Uint8Array(await file.arrayBuffer()) });
+    }
+    if ((row.htmlKey && !object) || attachmentMissing) {
       this.ctx.storage.transactionSync(() => {
         const changed = this.db
           .update(schema.message)
-          .set({ status: "failed", error: "html missing", claimedUntil: null, updatedAt: Date.now() })
+          .set({ status: "failed", error: attachmentMissing ? "attachment missing" : "html missing", claimedUntil: null, updatedAt: Date.now() })
           .where(and(eq(schema.message.id, messageId), eq(schema.message.status, "queued")))
           .returning({ id: schema.message.id })
           .all();
@@ -1091,6 +1129,8 @@ export class ClientDO extends DurableObject<Env> {
         text: body ? fill(body.text) : fill(row.text ?? ""),
         tags: { ws: workspaceId, msg: messageId },
         ...(url ? { headers: listUnsubscribeHeaders(url) } : {}),
+        ...(row.replyTo ? { replyTo: row.replyTo } : {}),
+        ...(attachments.length ? { attachments } : {}),
       },
     };
   }

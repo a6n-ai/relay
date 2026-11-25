@@ -230,6 +230,9 @@ ALTER TABLE contact_list ADD COLUMN import_ref TEXT;
 CREATE UNIQUE INDEX campaign_import_ref ON campaign (app_id, import_ref) WHERE import_ref IS NOT NULL;
 CREATE UNIQUE INDEX contact_list_import_ref ON contact_list (app_id, import_ref) WHERE import_ref IS NOT NULL;
 `,
+`
+ALTER TABLE message ADD COLUMN reply_to TEXT;
+`,
 ];
 
 // PRAGMA user_version is rejected by DO SQL (SQLITE_AUTH), so the version lives in sync KV.
