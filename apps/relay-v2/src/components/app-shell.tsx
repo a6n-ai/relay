@@ -32,10 +32,11 @@ type Active = { item: string; child?: string } | null;
 
 function ParentItem({ item, active }: { item: NavItem; active: Active }) {
   const current = active?.item === item.id;
-  const [open, setOpen] = useState(current);
+  const [override, setOverride] = useState<boolean | null>(null);
+  const open = override ?? current;
   const first = item.children?.[0];
   return (
-    <Collapsible open={open || current} onOpenChange={setOpen} render={<SidebarMenuItem />}>
+    <Collapsible open={open} onOpenChange={setOverride} render={<SidebarMenuItem />}>
       <SidebarMenuButton
         isActive={current}
         tooltip={item.label}
@@ -45,7 +46,7 @@ function ParentItem({ item, active }: { item: NavItem; active: Active }) {
         <span>{item.label}</span>
       </SidebarMenuButton>
       <CollapsibleTrigger render={<SidebarMenuAction aria-label={`Toggle ${item.label}`} />}>
-        <ChevronRight className={open || current ? "rotate-90" : undefined} />
+        <ChevronRight className={open ? "rotate-90" : undefined} />
       </CollapsibleTrigger>
       <CollapsibleContent>
         <SidebarMenuSub>

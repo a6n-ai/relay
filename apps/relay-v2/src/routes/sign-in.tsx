@@ -4,6 +4,7 @@ import { InputOTP, InputOTPGroup, InputOTPSlot } from "@foundry/ui/input-otp";
 import { Label } from "@foundry/ui/label";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
+import { AuthCard } from "../components/auth-card";
 import { FormError } from "../components/form-error";
 import { safeRedirect } from "../console/shell.fns";
 
@@ -55,8 +56,7 @@ function SignIn() {
   }
 
   return (
-    <main className="mx-auto flex min-h-svh max-w-sm flex-col justify-center gap-4 p-6">
-      <h1 className="text-lg font-medium">Sign in to Relay</h1>
+    <AuthCard title="Sign in to Relay">
       {step === "email" ? (
         <form onSubmit={sendCode} className="flex flex-col gap-3">
           <Label htmlFor="email">Email</Label>
@@ -92,9 +92,20 @@ function SignIn() {
           <Button type="submit" disabled={pending || otp.length !== 6}>
             Sign in
           </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => {
+              setStep("email");
+              setOtp("");
+              setError(null);
+            }}
+          >
+            Use a different email
+          </Button>
         </form>
       )}
       <FormError message={error} />
-    </main>
+    </AuthCard>
   );
 }

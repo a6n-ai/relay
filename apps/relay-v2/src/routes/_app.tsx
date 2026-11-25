@@ -2,6 +2,7 @@ import { Toaster } from "@foundry/ui/toast";
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { AppShell } from "../components/app-shell";
 import { AppError } from "../components/denied-state";
+import { FindPalette } from "../components/shell/find-palette";
 import { getShell } from "../console/shell.fns";
 
 export const Route = createFileRoute("/_app")({
@@ -21,7 +22,7 @@ function AppLayout() {
   const { shell } = Route.useRouteContext();
   return (
     <>
-      <AppShell shell={shell}>
+      <AppShell shell={shell} find={<FindPalette shell={shell} />}>
         <Outlet />
       </AppShell>
       <Toaster />
