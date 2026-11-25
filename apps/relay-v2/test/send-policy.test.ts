@@ -278,3 +278,28 @@ describe("send policy", () => {
     expect(await rowCount(stubFor(ws.id))).toBe(0);
   });
 });
+
+describe("marketing sends carry an unsubscribe link", () => {
+  it("refuses a raw marketing send without {{unsubscribe_url}} at the API, and queues one that has it", async () => {
+    const slug = "http-unsub";
+    const [ws] = await securityDb(env).insert(workspace).values({ name: slug, slug }).returning();
+    const [a] = await securityDb(env).insert(app).values({ workspaceId: ws.id, name: slug, slug: "main" }).returning();
+    const [owner] = await securityDb(env).insert(user).values({ name: slug, email: `${slug}@owner.test` }).returning();
+    await securityDb(env).insert(member).values({ organizationId: ws.id, userId: owner.id, role: "owner" });
+    const { secret } = await createApiKey(env, { workspaceId: ws.id, appId: a.id, name: "web" });
+    await seedSender(ws.id, "tiffingrab.ca", from);
+    const post = (payload: unknown) =>
+      SELF.fetch("https://relay.test/api/v1/messages", {
+        method: "POST",
+        headers: { authorization: `Bearer ${secret}`, "content-type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+    const body = { stream: "marketing", from, to: "guest@x.com", subject: "Sale", html: "<p>Hi</p>", text: "Hi" };
+
+    const refused = await post(body);
+    expect(refused.status).toBe(400);
+    expect(await refused.json()).toEqual({ error: "unsubscribe link required" });
+    const queued = await post({ ...body, html: '<a href="{{unsubscribe_url}}">Stop</a>', text: "Stop: {{unsubscribe_url}}" });
+    expect(queued.status).toBe(202);
+  });
+});

@@ -112,7 +112,7 @@ describe("/api/v1 audience hook", () => {
 describe("/api/v1 imports and export", () => {
   it("refuses an unknown import kind", async () => {
     const { key1 } = await seed("api-import-kind");
-    expect((await call("POST", "/import/messages", key1, { rows: [] })).status).toBe(404);
+    expect((await call("POST", "/import/widgets", key1, { rows: [] })).status).toBe(404);
   });
 
   it("starts the export with the header and neutralises a formula cell", async () => {

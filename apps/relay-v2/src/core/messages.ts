@@ -1,6 +1,7 @@
 import type { Env } from "../env";
+import { ApiError } from "./api-error";
 import { loadWorkspaceLimits } from "./limits";
-import { contactValues } from "./merge";
+import { contactValues, hasMergeToken } from "./merge";
 import { templateSendSchema, type SendInput, type TemplateSendInput } from "./send-input";
 
 export type Scope = { workspaceId: string; appId: string };
@@ -24,6 +25,10 @@ export function sendRefusal(err: unknown): SendRefusal | undefined {
 }
 
 export function sendMessage(env: Env, scope: Scope, input: Omit<SendInput, "appId">) {
+  // CASL: marketing mail must carry the opt-out in both bodies, or the recipient has no way to stop it.
+  if (input.stream === "marketing" && !(hasMergeToken(input.html, "unsubscribe_url") && hasMergeToken(input.text, "unsubscribe_url"))) {
+    throw new ApiError(400, "unsubscribe link required");
+  }
   return clientFor(env, scope.workspaceId).send(scope.workspaceId, { ...input, appId: scope.appId });
 }
 
