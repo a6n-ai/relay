@@ -23,13 +23,13 @@
     {
       "binding": "SECURITY_DB",
       "database_name": "relay-security",
-      "database_id": "local-security",
+      "database_id": "9195732e-2204-4250-a50d-1514aa69f941",
       "migrations_dir": "drizzle/security",
     },
     {
       "binding": "CORE_DB",
       "database_name": "relay-core",
-      "database_id": "local-core",
+      "database_id": "5d2fdb97-5fcb-4e88-a4c8-312199a32ada",
       "migrations_dir": "drizzle/core",
     },
   ],

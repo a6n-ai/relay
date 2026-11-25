@@ -27,8 +27,8 @@ for (const name of missing(desired.r2, r2Listing)) {
   wrangler(["r2", "bucket", "create", name]);
 }
 
-const queuesBefore = wranglerJson<{ queue_name?: string; name?: string }[]>(["queues", "list"]);
-const queueNames = queuesBefore.map((q) => q.queue_name ?? q.name ?? "");
+// `wrangler queues list` has no --json: read names from its table cells.
+const queueNames = wrangler(["queues", "list"], true).split(/[\s│]+/);
 for (const name of missing(desired.queues, queueNames)) {
   console.log(`create queue ${name}`);
   wrangler(["queues", "create", name]);
