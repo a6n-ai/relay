@@ -34,11 +34,12 @@ function MessagesPage() {
   const crumbs = [{ label: "Messages" }, { label }];
   const [email, setEmail] = useState(search.email ?? "");
 
-  // Filters live in the URL; the address applies 300 ms after typing stops.
+  // The URL is the source of truth: follow it (sidebar, Back), push typed text 300 ms after typing stops.
+  useEffect(() => setEmail(search.email ?? ""), [search.email, search.dir]);
   useEffect(() => {
     const next = email.trim() || undefined;
     if (next === search.email) return;
-    const t = setTimeout(() => navigate({ search: (s) => ({ ...s, email: next, cursor: undefined }) }), 300);
+    const t = setTimeout(() => navigate({ search: (s) => ({ ...s, email: next, cursor: undefined }), replace: true }), 300);
     return () => clearTimeout(t);
   }, [email, search.email, navigate]);
 
@@ -71,7 +72,7 @@ function MessagesPage() {
           <SearchInput
             value={email}
             onChange={setEmail}
-            placeholder={search.dir === "out" ? "To address" : "From address"}
+            placeholder="From or to address"
           />
         }
         filters={
