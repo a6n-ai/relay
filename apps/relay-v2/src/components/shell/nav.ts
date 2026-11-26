@@ -84,10 +84,10 @@ const CREATE: CreateItem[] = [
   { id: "app", label: "App", to: "/apps/new", need: { tenant: ["write"] } },
   { id: "domain", label: "Domain", to: "/domains/new", need: { sending: ["write"] } },
   { id: "address", label: "Address", to: "/domains/addresses/new", need: { sending: ["write"] } },
-  { id: "campaign", label: "Campaign", to: "/campaigns", new: 1, need: { campaign: ["write"] } },
-  { id: "list", label: "List", to: "/lists", new: 1, need: { list: ["write"] } },
-  { id: "template", label: "Template", to: "/campaigns/templates", new: 1, need: { template: ["write"] } },
-  { id: "automation", label: "Automation", to: "/campaigns/automations", new: 1, need: { campaign: ["send"] } },
+  { id: "campaign", label: "Campaign", to: "/campaigns/new", need: { campaign: ["write"] } },
+  { id: "list", label: "List", to: "/lists/new", need: { list: ["write"] } },
+  { id: "template", label: "Template", to: "/campaigns/templates/new", need: { template: ["write"] } },
+  { id: "automation", label: "Automation", to: "/campaigns/automations/new", need: { campaign: ["send"] } },
   { id: "invite", label: "Invite member", find: "Invite a member", to: "/settings/invites", new: 1, need: { invitation: ["create"] } },
 ];
 

@@ -73,3 +73,49 @@ describe("create pages", { timeout: 60_000 }, () => {
     expect(deniedHtml).not.toContain("Remove address");
   });
 });
+
+describe("campaign, template, automation, list and import pages", { timeout: 60_000 }, () => {
+  it("render for a writer and are denied to a member and billing", async () => {
+    const cookie = await cookieFor("create-pages-t4-owner@example.com", "admin");
+    const workspaceId = await createWorkspace(cookie, "Create Pages T4");
+    await setActive(cookie, workspaceId);
+    const actor = await requireActor(env, headersFor(cookie), { permission: { tenant: ["write"] }, write: true });
+    const { id: appId } = await addApp(env, actor, { name: "Web", slug: "web" });
+    const member = await addMember(workspaceId, "create-pages-t4-member@example.com", "member");
+    const billing = await addMember(workspaceId, "create-pages-t4-billing@example.com", "billing");
+
+    for (const [path, heading, form] of [
+      ["/campaigns/new", "New campaign", 'id="campaign-name"'],
+      ["/campaigns/templates/new", "New template", 'id="template-name"'],
+      ["/campaigns/automations/new", "New automation", 'id="automation-name"'],
+      ["/lists/new", "New list", 'id="list-name"'],
+    ] as const) {
+      const ok = await get(path, cookie);
+      expect(ok.status, path).toBe(200);
+      const html = await ok.text();
+      expect(html, path).toContain(heading);
+      expect(html, path).toContain(form);
+
+      for (const denied of [member, billing]) {
+        const res = await get(path, denied);
+        expect(res.status, path).toBe(200);
+        const text = await res.text();
+        expect(text, path).toContain("Not available to your role");
+        expect(text, path).not.toContain(form);
+      }
+    }
+
+    for (const role of [member, billing]) {
+      const text = await (await get(`/lists/lst_000000000000/import?appId=${appId}`, role)).text();
+      expect(text).toContain("Not available to your role");
+    }
+  });
+
+  it("sends an owner with no app to create one first", async () => {
+    const cookie = await cookieFor("create-pages-t4-empty@example.com", "admin");
+    await setActive(cookie, await createWorkspace(cookie, "Create Pages T4 Empty"));
+    for (const path of ["/campaigns/new", "/campaigns/templates/new", "/campaigns/automations/new", "/lists/new"]) {
+      expect(await (await get(path, cookie)).text(), path).toContain("Create an app first");
+    }
+  });
+});

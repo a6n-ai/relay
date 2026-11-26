@@ -1,21 +1,12 @@
+import { useState } from "react";
+import { Button } from "@foundry/ui/button";
 import { Textarea } from "@foundry/ui/textarea";
 import type { ConsentSource } from "../do/lists";
 import { CONSENT_LABEL } from "./consent-labels";
 import { Field } from "./form/field";
 import { ChoiceField } from "./form/choice-field";
 
-const CONSENT_HELP: Record<ConsentSource, string> = {
-  purchase: "They bought from you.",
-  express_optin: "They asked to hear from you.",
-  event_signup: "They signed up at an event.",
-  import_other: "Another source. Describe it in the note.",
-};
-
-const OPTIONS = (Object.keys(CONSENT_LABEL) as ConsentSource[]).map((s) => ({
-  value: s,
-  label: CONSENT_LABEL[s],
-  description: CONSENT_HELP[s],
-}));
+const OPTIONS = (Object.keys(CONSENT_LABEL) as ConsentSource[]).map((s) => ({ value: s, label: CONSENT_LABEL[s] }));
 
 export function ConsentFields({
   idPrefix,
@@ -30,12 +21,21 @@ export function ConsentFields({
   note: string;
   onNote: (n: string) => void;
 }) {
+  const [noteOpen, setNoteOpen] = useState(note.length > 0);
   return (
     <>
-      <ChoiceField id={`${idPrefix}-consent`} label="Consent" value={consent} onChange={(v) => onConsent(v as ConsentSource)} options={OPTIONS} />
-      <Field id={`${idPrefix}-note`} label="Consent note (optional)" hint="Kept with the list as your record of consent.">
-        <Textarea id={`${idPrefix}-note`} aria-describedby={`${idPrefix}-note-hint`} rows={2} maxLength={500} value={note} onChange={(e) => onNote(e.target.value)} placeholder="Where did these contacts come from?" />
-      </Field>
+      <ChoiceField id={`${idPrefix}-consent`} label="How did these people agree to hear from you?" value={consent} onChange={(v) => onConsent(v as ConsentSource)} options={OPTIONS} />
+      {noteOpen ? (
+        <Field id={`${idPrefix}-note`} label="Note (optional)" hint="Kept with the list as your record of where they came from.">
+          <Textarea id={`${idPrefix}-note`} aria-describedby={`${idPrefix}-note-hint`} rows={2} maxLength={500} value={note} onChange={(e) => onNote(e.target.value)} placeholder="Where did these contacts come from?" />
+        </Field>
+      ) : (
+        <div>
+          <Button type="button" variant="ghost" onClick={() => setNoteOpen(true)}>
+            Add a note
+          </Button>
+        </div>
+      )}
     </>
   );
 }

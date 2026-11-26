@@ -1,16 +1,16 @@
 import { Button } from "@foundry/ui/button";
-import { Input } from "@foundry/ui/input";
 import { Label } from "@foundry/ui/label";
 import { Switch } from "@foundry/ui/switch";
 import { Textarea } from "@foundry/ui/textarea";
 import { toast } from "@foundry/ui/toast";
 import { createFileRoute, useNavigate, useRouter, useSearch } from "@tanstack/react-router";
 import { type FormEvent, useRef, useState } from "react";
-import { ConfirmDialog } from "../../components/confirm-dialog";
+import { DangerCard } from "../../components/page/danger-card";
 import { ContentFields, type ContentValue } from "../../components/content-fields";
 import { DeniedState, deniedReason } from "../../components/denied-state";
 import { errorText, isNotFound } from "../../components/error-text";
 import { FixedField } from "../../components/form/fixed-field";
+import { TextField } from "../../components/form/text-field";
 import { SettingsCard } from "../../components/page/settings-card";
 import { Toolbar } from "../../components/page/toolbar";
 import { PageHeader } from "../../components/shell/page-header";
@@ -143,8 +143,7 @@ function TemplateForm({ template, canWrite, appName }: { template: TemplateView;
           <SettingsCard title="Content">
             <FormBody as="div">
               <FixedField label="App" value={appName} hint="To use another app, create a new template there." />
-              <Label htmlFor="template-name-edit">Name</Label>
-              <Input id="template-name-edit" value={name} disabled={!canWrite} onChange={(e) => setName(e.target.value)} />
+              <TextField id="template-name-edit" label="Name" maxLength={80} value={name} disabled={!canWrite} onChange={(e) => setName(e.target.value)} />
               <ContentFields
                 value={content}
                 onChange={setContent}
@@ -164,10 +163,8 @@ function TemplateForm({ template, canWrite, appName }: { template: TemplateView;
             description="Your app sends this template when it reports this event in this locale."
           >
             <FormBody as="div">
-              <Label htmlFor="template-event">Event key</Label>
-              <Input id="template-event" value={event} disabled={!canWrite} onChange={(e) => setEvent(e.target.value)} />
-              <Label htmlFor="template-locale">Locale</Label>
-              <Input id="template-locale" value={locale} disabled={!canWrite} onChange={(e) => setLocale(e.target.value)} />
+              <TextField id="template-event" label="Event key" value={event} disabled={!canWrite} onChange={(e) => setEvent(e.target.value)} />
+              <TextField id="template-locale" label="Locale" value={locale} disabled={!canWrite} onChange={(e) => setLocale(e.target.value)} />
             </FormBody>
           </SettingsCard>
 
@@ -191,19 +188,12 @@ function TemplateForm({ template, canWrite, appName }: { template: TemplateView;
         </form>
 
         {canWrite ? (
-          <SettingsCard
-            tone="danger"
-            title="Delete template"
-            description="The template and its body will be removed. This can't be undone."
-            action={
-              <ConfirmDialog
-                trigger="Delete"
-                title={`Delete ${template.name}?`}
-                description="The template and its body will be removed. This can't be undone."
-                confirmLabel="Delete template"
-                onConfirm={remove}
-              />
-            }
+          <DangerCard
+            title="Delete this template"
+            description="The template and its content are removed. This can't be undone."
+            buttonLabel="Delete template"
+            confirmTitle={`Delete ${template.name}?`}
+            onConfirm={remove}
           />
         ) : null}
       </FormPanel>

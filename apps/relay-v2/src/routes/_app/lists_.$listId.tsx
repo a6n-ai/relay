@@ -2,12 +2,11 @@ import { Badge } from "@foundry/ui/badge";
 import { TextField } from "../../components/form/text-field";
 import { Button } from "@foundry/ui/button";
 import { toast } from "@foundry/ui/toast";
-import { FileUpload, FileUploadDropzone, FileUploadTrigger } from "@foundry/ui/file-upload";
-import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { UsersIcon } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { ConsentFields } from "../../components/consent-fields";
-import { CONSENT_LABEL } from "../../components/consent-labels";
+import { consentHint } from "../../components/consent-labels";
 import { FixedField } from "../../components/form/fixed-field";
 import { ConfirmDialog } from "../../components/confirm-dialog";
 import { CreateDialog } from "../../components/create-dialog";
@@ -32,7 +31,6 @@ import {
   fetchListMembers,
   updateContactFn,
   fetchLists,
-  importCsvFn,
   removeMemberFn,
   updateListFn,
 } from "../../console/lists.fns";
@@ -40,8 +38,6 @@ import { FormError, FormBody, FormActions } from "../../components/page/form-par
 import { Hint } from "../../components/page/text";
 
 type ListSearch = { appId?: string; cursor?: string; q?: string; offset?: number };
-
-const MAX_CSV_BYTES = 2_000_000;
 
 // The list name comes from the app's list index, so the link carries appId.
 export const Route = createFileRoute("/_app/lists_/$listId")({
@@ -79,7 +75,6 @@ function ListDetailPage() {
   const [deleting, setDeleting] = useState(false);
   const [removing, setRemoving] = useState<{ id: string; email: string } | null>(null);
   const [adding, setAdding] = useState(false);
-  const [importing, setImporting] = useState(false);
   const listsCrumb = { label: "Lists", to: "/lists", search: { appId: search.appId } };
   if (!page) {
     return (
@@ -121,8 +116,8 @@ function ListDetailPage() {
         !q && (canWrite || canImport) ? (
           <div className="flex gap-2">
             {canImport ? (
-              <Button variant="outline" onClick={() => setImporting(true)}>
-                Import CSV
+              <Button variant="outline" render={<Link to="/lists/$listId/import" params={{ listId }} search={{ appId: search.appId }} />}>
+                Import contacts
               </Button>
             ) : null}
             {canWrite ? (
@@ -145,8 +140,8 @@ function ListDetailPage() {
           </Button>
         ) : null}
         {canImport ? (
-          <Button variant="outline" onClick={() => setImporting(true)}>
-            Import CSV
+          <Button variant="outline" render={<Link to="/lists/$listId/import" params={{ listId }} search={{ appId: search.appId }} />}>
+            Import contacts
           </Button>
         ) : null}
         {canWrite ? (
@@ -167,11 +162,6 @@ function ListDetailPage() {
       {canWrite ? (
         <CreateDialog title="Add contact" open={adding} onOpenChange={setAdding}>
           {(done) => <AddContactForm listId={listId} consent={list.consentSource} done={done} />}
-        </CreateDialog>
-      ) : null}
-      {canImport ? (
-        <CreateDialog title="Import contacts" open={importing} onOpenChange={setImporting}>
-          {(done) => <ImportForm listId={listId} consent={list.consentSource} done={done} />}
         </CreateDialog>
       ) : null}
       <CreateDialog title="Edit list" open={editing} onOpenChange={setEditing}>
@@ -280,9 +270,9 @@ function EditListForm({
   }
   return (
     <FormBody onSubmit={submit}>
+      <FixedField label="App" value={appName ?? "This list's app"} hint="Create a new list in the other app instead." />
       <TextField id="list-rename" label="Name" autoFocus required value={name} onChange={(e) => setName(e.target.value)} />
       <ConsentFields idPrefix="list-edit" consent={consent} onConsent={setConsent} note={note} onNote={setNote} />
-      <FixedField label="App" value={appName ?? "This list's app"} hint="Create a new list in the other app instead." />
       <FormError message={error} />
       <FormActions
         cancel
@@ -336,6 +326,7 @@ function AddContactForm({ listId, consent, done }: { listId: string; consent: Co
   const [email, setEmail] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
+  const [named, setNamed] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   async function submit(event: FormEvent) {
@@ -363,80 +354,27 @@ function AddContactForm({ listId, consent, done }: { listId: string; consent: Co
       <TextField
         id="contact-email"
         label="Email"
-        hint={`They are added with the list's consent: ${CONSENT_LABEL[consent]}.`}
+        hint={consentHint(consent)}
         type="email"
         autoFocus
         required
         value={email}
         onChange={(e) => setEmail(e.target.value)}
       />
-      <div className="grid grid-cols-2 gap-3">
-        <TextField id="contact-first" label="First name" value={firstName} onChange={(e) => setFirstName(e.target.value)} />
-        <TextField id="contact-last" label="Last name" value={lastName} onChange={(e) => setLastName(e.target.value)} />
-      </div>
+      {named ? (
+        <div className="grid grid-cols-2 gap-3">
+          <TextField id="contact-first" label="First name (optional)" value={firstName} onChange={(e) => setFirstName(e.target.value)} />
+          <TextField id="contact-last" label="Last name (optional)" value={lastName} onChange={(e) => setLastName(e.target.value)} />
+        </div>
+      ) : (
+        <div>
+          <Button type="button" variant="ghost" onClick={() => setNamed(true)}>
+            Add a name
+          </Button>
+        </div>
+      )}
       <FormError message={error} />
       <FormActions cancel submitLabel="Add contact" pending={pending} pendingLabel="Adding…" disabled={!email.trim()} disabledReason="Enter an email first." />
-    </FormBody>
-  );
-}
-
-function ImportForm({ listId, consent, done }: { listId: string; consent: ConsentSource; done: () => void }) {
-  const router = useRouter();
-  const [files, setFiles] = useState<File[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<Awaited<ReturnType<typeof importCsvFn>> | null>(null);
-  const [pending, setPending] = useState(false);
-  async function submit(event: FormEvent) {
-    event.preventDefault();
-    const file = files[0];
-    if (!file) return;
-    setPending(true);
-    setError(null);
-    try {
-      const counts = await importCsvFn({ data: { listId, csv: await file.text() } });
-      setResult(counts ?? null);
-      await router.invalidate();
-    } catch (err) {
-      setError(errorText(err, "Could not import this file."));
-    } finally {
-      setPending(false);
-    }
-  }
-  if (result) {
-    return (
-      <FormBody as="div">
-        <p className="text-sm tabular-nums">
-          Added {result.added} · Already on list {result.existing} · Suppressed {result.suppressed} · Invalid{" "}
-          {result.invalid} · Duplicates {result.duplicates}
-        </p>
-        <FormActions>
-          <Button onClick={done}>Done</Button>
-        </FormActions>
-      </FormBody>
-    );
-  }
-  return (
-    <FormBody onSubmit={submit}>
-      <FileUpload
-        accept=".csv,text/csv"
-        maxFiles={1}
-        maxSize={MAX_CSV_BYTES}
-        value={files}
-        onValueChange={setFiles}
-        onFileReject={(_, message) => setError(message)}
-        label="CSV file"
-      >
-        <FileUploadDropzone className="gap-2 text-sm text-muted-foreground">
-          <span>Drop a .csv file here, up to 2 MB</span>
-          <FileUploadTrigger>Choose file</FileUploadTrigger>
-        </FileUploadDropzone>
-      </FileUpload>
-      <Hint size="xs">
-        Columns: email, first_name, last_name, name, consent_at. The email column is required.
-      </Hint>
-      <Hint size="xs">Contacts are recorded with this list's consent: {CONSENT_LABEL[consent]}.</Hint>
-      <FormError message={error} />
-      <FormActions cancel submitLabel="Import contacts" pending={pending} pendingLabel="Importing…" disabled={files.length === 0} disabledReason="Choose a CSV file first." />
     </FormBody>
   );
 }

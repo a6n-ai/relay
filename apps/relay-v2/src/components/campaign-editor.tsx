@@ -18,7 +18,7 @@ import type { CampaignView } from "../do/campaigns";
 import type { ListView } from "../do/lists";
 import { campaignProblems } from "../core/campaign-problems";
 import { baselineFrom, isDirty } from "./campaign-dirty";
-import { ConfirmDialog } from "./confirm-dialog";
+import { DangerCard } from "./page/danger-card";
 import { PROBLEM_LABEL } from "./campaign-problems";
 import { ChoiceControl } from "./form/choice-field";
 import { SenderField } from "./form/sender-field";
@@ -184,11 +184,9 @@ export function CampaignEditor({
 
   const schedule = canSend ? (
     problems.length === 0 ? (
-      <ScheduleDialog campaignId={campaign.id} beforeSubmit={saveFirst} onDone={() => router.invalidate()} />
+      <ScheduleDialog campaignId={campaign.id} recipients={audience?.sendable ?? null} beforeSubmit={saveFirst} onDone={() => router.invalidate()} />
     ) : (
-      <Button disabled>
-        Schedule…
-      </Button>
+      <Button disabled>Send campaign</Button>
     )
   ) : null;
 
@@ -300,7 +298,7 @@ export function CampaignEditor({
       <FormPanel>
         <SettingsCard title="Before it can be sent">
           {problems.length === 0 ? (
-            <Hint>Ready to schedule.</Hint>
+            <Hint>Ready to send.</Hint>
           ) : (
             <ul className="grid list-disc gap-1 pl-5 text-sm">
               {problems.map((p) => (
@@ -322,19 +320,12 @@ export function CampaignEditor({
         </SettingsCard>
 
         {canWrite ? (
-          <SettingsCard
-            tone="danger"
-            title="Delete campaign"
-            description="The draft and its body will be removed. This can't be undone."
-            action={
-              <ConfirmDialog
-                trigger="Delete"
-                title={`Delete ${campaign.name}?`}
-                description="The draft and its body will be removed. This can't be undone."
-                confirmLabel="Delete campaign"
-                onConfirm={remove}
-              />
-            }
+          <DangerCard
+            title="Delete this campaign"
+            description="The draft and its content are removed. This can't be undone."
+            buttonLabel="Delete campaign"
+            confirmTitle={`Delete ${campaign.name}?`}
+            onConfirm={remove}
           />
         ) : null}
       </FormPanel>

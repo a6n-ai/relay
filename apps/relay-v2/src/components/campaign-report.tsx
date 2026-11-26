@@ -47,7 +47,7 @@ export function CampaignReport({ campaign, stats }: { campaign: CampaignView; st
       trigger="Cancel campaign"
       title={`Cancel ${campaign.name}?`}
       dismissLabel="Keep campaign"
-      description="Queued mail will not be sent. Messages not yet sent will be dropped. Mail already sent is unaffected."
+      description="Mail not yet sent will not be sent. Mail already sent is unaffected."
       confirmLabel="Cancel campaign"
       onConfirm={() => confirmAction(() => cancelCampaignFn({ data: { id } }), "Campaign cancelled", () => router.invalidate())}
     />

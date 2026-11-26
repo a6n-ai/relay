@@ -30,9 +30,11 @@ import { Route as AppAppsAppIdRouteImport } from './routes/_app/apps_.$appId'
 import { Route as AppAppsNewRouteImport } from './routes/_app/apps_.new'
 import { Route as AppCampaignsCampaignIdRouteImport } from './routes/_app/campaigns_.$campaignId'
 import { Route as AppCampaignsAutomationsRouteImport } from './routes/_app/campaigns_.automations'
+import { Route as AppCampaignsNewRouteImport } from './routes/_app/campaigns_.new'
 import { Route as AppCampaignsTemplatesRouteImport } from './routes/_app/campaigns_.templates'
 import { Route as AppDomainsNewRouteImport } from './routes/_app/domains_.new'
 import { Route as AppListsListIdRouteImport } from './routes/_app/lists_.$listId'
+import { Route as AppListsNewRouteImport } from './routes/_app/lists_.new'
 import { Route as AppMessagesMessageIdRouteImport } from './routes/_app/messages_.$messageId'
 import { Route as AppMessagesFailuresRouteImport } from './routes/_app/messages_.failures'
 import { Route as AppMessagesSuppressionsRouteImport } from './routes/_app/messages_.suppressions'
@@ -52,9 +54,13 @@ import { Route as ApiV1WebhooksRouteImport } from './routes/api/v1/webhooks'
 import { Route as ApiWebhooksSesRouteImport } from './routes/api/webhooks/ses'
 import { Route as ListsListIdExportRouteImport } from './routes/lists.$listId.export'
 import { Route as AppAppsAppIdWebhooksRouteImport } from './routes/_app/apps_.$appId_.webhooks'
+import { Route as AppCampaignsAutomationsAutomationIdRouteImport } from './routes/_app/campaigns_.automations_.$automationId'
+import { Route as AppCampaignsAutomationsNewRouteImport } from './routes/_app/campaigns_.automations_.new'
 import { Route as AppCampaignsTemplatesTemplateIdRouteImport } from './routes/_app/campaigns_.templates_.$templateId'
+import { Route as AppCampaignsTemplatesNewRouteImport } from './routes/_app/campaigns_.templates_.new'
 import { Route as AppDomainsAddressesAddressIdRouteImport } from './routes/_app/domains_.addresses.$addressId'
 import { Route as AppDomainsAddressesNewRouteImport } from './routes/_app/domains_.addresses.new'
+import { Route as AppListsListIdImportRouteImport } from './routes/_app/lists_.$listId_.import'
 import { Route as ApiV1CampaignsIdRouteImport } from './routes/api/v1/campaigns.$id'
 import { Route as ApiV1ImportKindRouteImport } from './routes/api/v1/import.$kind'
 import { Route as ApiV1ListsIdRouteImport } from './routes/api/v1/lists.$id'
@@ -175,6 +181,11 @@ const AppCampaignsAutomationsRoute = AppCampaignsAutomationsRouteImport.update({
   path: '/campaigns/automations',
   getParentRoute: () => AppRoute,
 } as any)
+const AppCampaignsNewRoute = AppCampaignsNewRouteImport.update({
+  id: '/campaigns_/new',
+  path: '/campaigns/new',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppCampaignsTemplatesRoute = AppCampaignsTemplatesRouteImport.update({
   id: '/campaigns_/templates',
   path: '/campaigns/templates',
@@ -188,6 +199,11 @@ const AppDomainsNewRoute = AppDomainsNewRouteImport.update({
 const AppListsListIdRoute = AppListsListIdRouteImport.update({
   id: '/lists_/$listId',
   path: '/lists/$listId',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppListsNewRoute = AppListsNewRouteImport.update({
+  id: '/lists_/new',
+  path: '/lists/new',
   getParentRoute: () => AppRoute,
 } as any)
 const AppMessagesMessageIdRoute = AppMessagesMessageIdRouteImport.update({
@@ -285,10 +301,28 @@ const AppAppsAppIdWebhooksRoute = AppAppsAppIdWebhooksRouteImport.update({
   path: '/apps/$appId/webhooks',
   getParentRoute: () => AppRoute,
 } as any)
+const AppCampaignsAutomationsAutomationIdRoute =
+  AppCampaignsAutomationsAutomationIdRouteImport.update({
+    id: '/campaigns_/automations_/$automationId',
+    path: '/campaigns/automations/$automationId',
+    getParentRoute: () => AppRoute,
+  } as any)
+const AppCampaignsAutomationsNewRoute =
+  AppCampaignsAutomationsNewRouteImport.update({
+    id: '/campaigns_/automations_/new',
+    path: '/campaigns/automations/new',
+    getParentRoute: () => AppRoute,
+  } as any)
 const AppCampaignsTemplatesTemplateIdRoute =
   AppCampaignsTemplatesTemplateIdRouteImport.update({
     id: '/campaigns_/templates_/$templateId',
     path: '/campaigns/templates/$templateId',
+    getParentRoute: () => AppRoute,
+  } as any)
+const AppCampaignsTemplatesNewRoute =
+  AppCampaignsTemplatesNewRouteImport.update({
+    id: '/campaigns_/templates_/new',
+    path: '/campaigns/templates/new',
     getParentRoute: () => AppRoute,
   } as any)
 const AppDomainsAddressesAddressIdRoute =
@@ -300,6 +334,11 @@ const AppDomainsAddressesAddressIdRoute =
 const AppDomainsAddressesNewRoute = AppDomainsAddressesNewRouteImport.update({
   id: '/domains_/addresses/new',
   path: '/domains/addresses/new',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppListsListIdImportRoute = AppListsListIdImportRouteImport.update({
+  id: '/lists_/$listId_/import',
+  path: '/lists/$listId/import',
   getParentRoute: () => AppRoute,
 } as any)
 const ApiV1CampaignsIdRoute = ApiV1CampaignsIdRouteImport.update({
@@ -402,9 +441,11 @@ export interface FileRoutesByFullPath {
   '/apps/new': typeof AppAppsNewRoute
   '/campaigns/$campaignId': typeof AppCampaignsCampaignIdRoute
   '/campaigns/automations': typeof AppCampaignsAutomationsRoute
+  '/campaigns/new': typeof AppCampaignsNewRoute
   '/campaigns/templates': typeof AppCampaignsTemplatesRoute
   '/domains/new': typeof AppDomainsNewRoute
   '/lists/$listId': typeof AppListsListIdRoute
+  '/lists/new': typeof AppListsNewRoute
   '/messages/$messageId': typeof AppMessagesMessageIdRoute
   '/messages/failures': typeof AppMessagesFailuresRoute
   '/messages/suppressions': typeof AppMessagesSuppressionsRoute
@@ -424,9 +465,13 @@ export interface FileRoutesByFullPath {
   '/api/webhooks/ses': typeof ApiWebhooksSesRoute
   '/lists/$listId/export': typeof ListsListIdExportRoute
   '/apps/$appId/webhooks': typeof AppAppsAppIdWebhooksRoute
+  '/campaigns/automations/$automationId': typeof AppCampaignsAutomationsAutomationIdRoute
+  '/campaigns/automations/new': typeof AppCampaignsAutomationsNewRoute
   '/campaigns/templates/$templateId': typeof AppCampaignsTemplatesTemplateIdRoute
+  '/campaigns/templates/new': typeof AppCampaignsTemplatesNewRoute
   '/domains/addresses/$addressId': typeof AppDomainsAddressesAddressIdRoute
   '/domains/addresses/new': typeof AppDomainsAddressesNewRoute
+  '/lists/$listId/import': typeof AppListsListIdImportRoute
   '/api/v1/campaigns/$id': typeof ApiV1CampaignsIdRouteWithChildren
   '/api/v1/import/$kind': typeof ApiV1ImportKindRoute
   '/api/v1/lists/$id': typeof ApiV1ListsIdRouteWithChildren
@@ -464,9 +509,11 @@ export interface FileRoutesByTo {
   '/apps/new': typeof AppAppsNewRoute
   '/campaigns/$campaignId': typeof AppCampaignsCampaignIdRoute
   '/campaigns/automations': typeof AppCampaignsAutomationsRoute
+  '/campaigns/new': typeof AppCampaignsNewRoute
   '/campaigns/templates': typeof AppCampaignsTemplatesRoute
   '/domains/new': typeof AppDomainsNewRoute
   '/lists/$listId': typeof AppListsListIdRoute
+  '/lists/new': typeof AppListsNewRoute
   '/messages/$messageId': typeof AppMessagesMessageIdRoute
   '/messages/failures': typeof AppMessagesFailuresRoute
   '/messages/suppressions': typeof AppMessagesSuppressionsRoute
@@ -486,9 +533,13 @@ export interface FileRoutesByTo {
   '/api/webhooks/ses': typeof ApiWebhooksSesRoute
   '/lists/$listId/export': typeof ListsListIdExportRoute
   '/apps/$appId/webhooks': typeof AppAppsAppIdWebhooksRoute
+  '/campaigns/automations/$automationId': typeof AppCampaignsAutomationsAutomationIdRoute
+  '/campaigns/automations/new': typeof AppCampaignsAutomationsNewRoute
   '/campaigns/templates/$templateId': typeof AppCampaignsTemplatesTemplateIdRoute
+  '/campaigns/templates/new': typeof AppCampaignsTemplatesNewRoute
   '/domains/addresses/$addressId': typeof AppDomainsAddressesAddressIdRoute
   '/domains/addresses/new': typeof AppDomainsAddressesNewRoute
+  '/lists/$listId/import': typeof AppListsListIdImportRoute
   '/api/v1/campaigns/$id': typeof ApiV1CampaignsIdRouteWithChildren
   '/api/v1/import/$kind': typeof ApiV1ImportKindRoute
   '/api/v1/lists/$id': typeof ApiV1ListsIdRouteWithChildren
@@ -528,9 +579,11 @@ export interface FileRoutesById {
   '/_app/apps_/new': typeof AppAppsNewRoute
   '/_app/campaigns_/$campaignId': typeof AppCampaignsCampaignIdRoute
   '/_app/campaigns_/automations': typeof AppCampaignsAutomationsRoute
+  '/_app/campaigns_/new': typeof AppCampaignsNewRoute
   '/_app/campaigns_/templates': typeof AppCampaignsTemplatesRoute
   '/_app/domains_/new': typeof AppDomainsNewRoute
   '/_app/lists_/$listId': typeof AppListsListIdRoute
+  '/_app/lists_/new': typeof AppListsNewRoute
   '/_app/messages_/$messageId': typeof AppMessagesMessageIdRoute
   '/_app/messages_/failures': typeof AppMessagesFailuresRoute
   '/_app/messages_/suppressions': typeof AppMessagesSuppressionsRoute
@@ -550,9 +603,13 @@ export interface FileRoutesById {
   '/api/webhooks/ses': typeof ApiWebhooksSesRoute
   '/lists/$listId/export': typeof ListsListIdExportRoute
   '/_app/apps_/$appId_/webhooks': typeof AppAppsAppIdWebhooksRoute
+  '/_app/campaigns_/automations_/$automationId': typeof AppCampaignsAutomationsAutomationIdRoute
+  '/_app/campaigns_/automations_/new': typeof AppCampaignsAutomationsNewRoute
   '/_app/campaigns_/templates_/$templateId': typeof AppCampaignsTemplatesTemplateIdRoute
+  '/_app/campaigns_/templates_/new': typeof AppCampaignsTemplatesNewRoute
   '/_app/domains_/addresses/$addressId': typeof AppDomainsAddressesAddressIdRoute
   '/_app/domains_/addresses/new': typeof AppDomainsAddressesNewRoute
+  '/_app/lists_/$listId_/import': typeof AppListsListIdImportRoute
   '/api/v1/campaigns/$id': typeof ApiV1CampaignsIdRouteWithChildren
   '/api/v1/import/$kind': typeof ApiV1ImportKindRoute
   '/api/v1/lists/$id': typeof ApiV1ListsIdRouteWithChildren
@@ -592,9 +649,11 @@ export interface FileRouteTypes {
     | '/apps/new'
     | '/campaigns/$campaignId'
     | '/campaigns/automations'
+    | '/campaigns/new'
     | '/campaigns/templates'
     | '/domains/new'
     | '/lists/$listId'
+    | '/lists/new'
     | '/messages/$messageId'
     | '/messages/failures'
     | '/messages/suppressions'
@@ -614,9 +673,13 @@ export interface FileRouteTypes {
     | '/api/webhooks/ses'
     | '/lists/$listId/export'
     | '/apps/$appId/webhooks'
+    | '/campaigns/automations/$automationId'
+    | '/campaigns/automations/new'
     | '/campaigns/templates/$templateId'
+    | '/campaigns/templates/new'
     | '/domains/addresses/$addressId'
     | '/domains/addresses/new'
+    | '/lists/$listId/import'
     | '/api/v1/campaigns/$id'
     | '/api/v1/import/$kind'
     | '/api/v1/lists/$id'
@@ -654,9 +717,11 @@ export interface FileRouteTypes {
     | '/apps/new'
     | '/campaigns/$campaignId'
     | '/campaigns/automations'
+    | '/campaigns/new'
     | '/campaigns/templates'
     | '/domains/new'
     | '/lists/$listId'
+    | '/lists/new'
     | '/messages/$messageId'
     | '/messages/failures'
     | '/messages/suppressions'
@@ -676,9 +741,13 @@ export interface FileRouteTypes {
     | '/api/webhooks/ses'
     | '/lists/$listId/export'
     | '/apps/$appId/webhooks'
+    | '/campaigns/automations/$automationId'
+    | '/campaigns/automations/new'
     | '/campaigns/templates/$templateId'
+    | '/campaigns/templates/new'
     | '/domains/addresses/$addressId'
     | '/domains/addresses/new'
+    | '/lists/$listId/import'
     | '/api/v1/campaigns/$id'
     | '/api/v1/import/$kind'
     | '/api/v1/lists/$id'
@@ -717,9 +786,11 @@ export interface FileRouteTypes {
     | '/_app/apps_/new'
     | '/_app/campaigns_/$campaignId'
     | '/_app/campaigns_/automations'
+    | '/_app/campaigns_/new'
     | '/_app/campaigns_/templates'
     | '/_app/domains_/new'
     | '/_app/lists_/$listId'
+    | '/_app/lists_/new'
     | '/_app/messages_/$messageId'
     | '/_app/messages_/failures'
     | '/_app/messages_/suppressions'
@@ -739,9 +810,13 @@ export interface FileRouteTypes {
     | '/api/webhooks/ses'
     | '/lists/$listId/export'
     | '/_app/apps_/$appId_/webhooks'
+    | '/_app/campaigns_/automations_/$automationId'
+    | '/_app/campaigns_/automations_/new'
     | '/_app/campaigns_/templates_/$templateId'
+    | '/_app/campaigns_/templates_/new'
     | '/_app/domains_/addresses/$addressId'
     | '/_app/domains_/addresses/new'
+    | '/_app/lists_/$listId_/import'
     | '/api/v1/campaigns/$id'
     | '/api/v1/import/$kind'
     | '/api/v1/lists/$id'
@@ -933,6 +1008,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppCampaignsAutomationsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/campaigns_/new': {
+      id: '/_app/campaigns_/new'
+      path: '/campaigns/new'
+      fullPath: '/campaigns/new'
+      preLoaderRoute: typeof AppCampaignsNewRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/campaigns_/templates': {
       id: '/_app/campaigns_/templates'
       path: '/campaigns/templates'
@@ -952,6 +1034,13 @@ declare module '@tanstack/react-router' {
       path: '/lists/$listId'
       fullPath: '/lists/$listId'
       preLoaderRoute: typeof AppListsListIdRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/lists_/new': {
+      id: '/_app/lists_/new'
+      path: '/lists/new'
+      fullPath: '/lists/new'
+      preLoaderRoute: typeof AppListsNewRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/messages_/$messageId': {
@@ -1087,11 +1176,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAppsAppIdWebhooksRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/campaigns_/automations_/$automationId': {
+      id: '/_app/campaigns_/automations_/$automationId'
+      path: '/campaigns/automations/$automationId'
+      fullPath: '/campaigns/automations/$automationId'
+      preLoaderRoute: typeof AppCampaignsAutomationsAutomationIdRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/campaigns_/automations_/new': {
+      id: '/_app/campaigns_/automations_/new'
+      path: '/campaigns/automations/new'
+      fullPath: '/campaigns/automations/new'
+      preLoaderRoute: typeof AppCampaignsAutomationsNewRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/campaigns_/templates_/$templateId': {
       id: '/_app/campaigns_/templates_/$templateId'
       path: '/campaigns/templates/$templateId'
       fullPath: '/campaigns/templates/$templateId'
       preLoaderRoute: typeof AppCampaignsTemplatesTemplateIdRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/campaigns_/templates_/new': {
+      id: '/_app/campaigns_/templates_/new'
+      path: '/campaigns/templates/new'
+      fullPath: '/campaigns/templates/new'
+      preLoaderRoute: typeof AppCampaignsTemplatesNewRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/domains_/addresses/$addressId': {
@@ -1106,6 +1216,13 @@ declare module '@tanstack/react-router' {
       path: '/domains/addresses/new'
       fullPath: '/domains/addresses/new'
       preLoaderRoute: typeof AppDomainsAddressesNewRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/lists_/$listId_/import': {
+      id: '/_app/lists_/$listId_/import'
+      path: '/lists/$listId/import'
+      fullPath: '/lists/$listId/import'
+      preLoaderRoute: typeof AppListsListIdImportRouteImport
       parentRoute: typeof AppRoute
     }
     '/api/v1/campaigns/$id': {
@@ -1230,9 +1347,11 @@ interface AppRouteChildren {
   AppAppsNewRoute: typeof AppAppsNewRoute
   AppCampaignsCampaignIdRoute: typeof AppCampaignsCampaignIdRoute
   AppCampaignsAutomationsRoute: typeof AppCampaignsAutomationsRoute
+  AppCampaignsNewRoute: typeof AppCampaignsNewRoute
   AppCampaignsTemplatesRoute: typeof AppCampaignsTemplatesRoute
   AppDomainsNewRoute: typeof AppDomainsNewRoute
   AppListsListIdRoute: typeof AppListsListIdRoute
+  AppListsNewRoute: typeof AppListsNewRoute
   AppMessagesMessageIdRoute: typeof AppMessagesMessageIdRoute
   AppMessagesFailuresRoute: typeof AppMessagesFailuresRoute
   AppMessagesSuppressionsRoute: typeof AppMessagesSuppressionsRoute
@@ -1240,9 +1359,13 @@ interface AppRouteChildren {
   AppSettingsMembersRoute: typeof AppSettingsMembersRoute
   AppSettingsTeamsRoute: typeof AppSettingsTeamsRoute
   AppAppsAppIdWebhooksRoute: typeof AppAppsAppIdWebhooksRoute
+  AppCampaignsAutomationsAutomationIdRoute: typeof AppCampaignsAutomationsAutomationIdRoute
+  AppCampaignsAutomationsNewRoute: typeof AppCampaignsAutomationsNewRoute
   AppCampaignsTemplatesTemplateIdRoute: typeof AppCampaignsTemplatesTemplateIdRoute
+  AppCampaignsTemplatesNewRoute: typeof AppCampaignsTemplatesNewRoute
   AppDomainsAddressesAddressIdRoute: typeof AppDomainsAddressesAddressIdRoute
   AppDomainsAddressesNewRoute: typeof AppDomainsAddressesNewRoute
+  AppListsListIdImportRoute: typeof AppListsListIdImportRoute
   AppAppsAppIdWebhooksWebhookIdRoute: typeof AppAppsAppIdWebhooksWebhookIdRoute
 }
 
@@ -1260,9 +1383,11 @@ const AppRouteChildren: AppRouteChildren = {
   AppAppsNewRoute: AppAppsNewRoute,
   AppCampaignsCampaignIdRoute: AppCampaignsCampaignIdRoute,
   AppCampaignsAutomationsRoute: AppCampaignsAutomationsRoute,
+  AppCampaignsNewRoute: AppCampaignsNewRoute,
   AppCampaignsTemplatesRoute: AppCampaignsTemplatesRoute,
   AppDomainsNewRoute: AppDomainsNewRoute,
   AppListsListIdRoute: AppListsListIdRoute,
+  AppListsNewRoute: AppListsNewRoute,
   AppMessagesMessageIdRoute: AppMessagesMessageIdRoute,
   AppMessagesFailuresRoute: AppMessagesFailuresRoute,
   AppMessagesSuppressionsRoute: AppMessagesSuppressionsRoute,
@@ -1270,9 +1395,14 @@ const AppRouteChildren: AppRouteChildren = {
   AppSettingsMembersRoute: AppSettingsMembersRoute,
   AppSettingsTeamsRoute: AppSettingsTeamsRoute,
   AppAppsAppIdWebhooksRoute: AppAppsAppIdWebhooksRoute,
+  AppCampaignsAutomationsAutomationIdRoute:
+    AppCampaignsAutomationsAutomationIdRoute,
+  AppCampaignsAutomationsNewRoute: AppCampaignsAutomationsNewRoute,
   AppCampaignsTemplatesTemplateIdRoute: AppCampaignsTemplatesTemplateIdRoute,
+  AppCampaignsTemplatesNewRoute: AppCampaignsTemplatesNewRoute,
   AppDomainsAddressesAddressIdRoute: AppDomainsAddressesAddressIdRoute,
   AppDomainsAddressesNewRoute: AppDomainsAddressesNewRoute,
+  AppListsListIdImportRoute: AppListsListIdImportRoute,
   AppAppsAppIdWebhooksWebhookIdRoute: AppAppsAppIdWebhooksWebhookIdRoute,
 }
 

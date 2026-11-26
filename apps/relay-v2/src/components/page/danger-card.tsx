@@ -3,7 +3,7 @@ import { useState } from "react";
 import { ConfirmDialog } from "../confirm-dialog";
 import { SettingsCard } from "./settings-card";
 
-// The card states the consequence once. The dialog only asks for the name.
+// The card states the consequence once. The dialog asks for the name only when `typed` is given.
 export function DangerCard({
   title,
   description,
@@ -18,7 +18,7 @@ export function DangerCard({
   buttonLabel: string;
   confirmTitle: string;
   confirmLabel?: string;
-  typed: string;
+  typed?: string;
   onConfirm: () => Promise<void>;
 }) {
   const [open, setOpen] = useState(false);

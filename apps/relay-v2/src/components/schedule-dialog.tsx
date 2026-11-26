@@ -9,18 +9,21 @@ import { FormError, FormBody, FormActions } from "./page/form-parts";
 
 export function ScheduleDialog({
   campaignId,
+  recipients,
   beforeSubmit,
   onDone,
 }: {
   campaignId: string;
+  recipients: number | null;
   beforeSubmit: () => Promise<string | null>;
   onDone: () => void;
 }) {
   return (
-    <CreateDialog trigger="Schedule…" title="Schedule campaign">
+    <CreateDialog trigger="Send campaign" title="Send campaign">
       {(done) => (
         <ScheduleForm
           campaignId={campaignId}
+          recipients={recipients}
           beforeSubmit={beforeSubmit}
           done={() => {
             done();
@@ -35,10 +38,12 @@ export function ScheduleDialog({
 // The datetime-local value is read as the browser's local time, so Date gives the UTC instant the server stores.
 function ScheduleForm({
   campaignId,
+  recipients,
   beforeSubmit,
   done,
 }: {
   campaignId: string;
+  recipients: number | null;
   beforeSubmit: () => Promise<string | null>;
   done: () => void;
 }) {
@@ -68,10 +73,10 @@ function ScheduleForm({
         return;
       }
       await scheduleCampaignFn({ data: { id: campaignId, at } });
-      toast.success("Campaign scheduled");
+      toast.success(mode === "now" ? "Campaign sending" : "Campaign scheduled");
       done();
     } catch (err) {
-      setError(errorText(err, "Could not schedule this campaign."));
+      setError(errorText(err, mode === "now" ? "Could not send this campaign." : "Could not schedule this campaign."));
     } finally {
       setPending(false);
     }
@@ -88,28 +93,33 @@ function ScheduleForm({
           setWhenError(null);
         }}
         options={[
-          { value: "now", label: "Send now" },
-          { value: "at", label: "Schedule for later" },
+          { value: "now", label: "Now" },
+          { value: "at", label: "Later" },
         ]}
       />
-      <TextField
-        id="schedule-time"
-        label="Send time"
-        hint={`Times are in your time zone: ${zone}.`}
-        type="datetime-local"
-        value={when}
-        error={whenError}
-        onClearError={() => setWhenError(null)}
-        disabled={mode !== "at"}
-        required={mode === "at"}
-        onChange={(e) => setWhen(e.target.value)}
-      />
+      {mode === "at" ? (
+        <TextField
+          id="schedule-time"
+          label="Send time"
+          hint={`Times are in your time zone: ${zone}.`}
+          type="datetime-local"
+          value={when}
+          error={whenError}
+          onClearError={() => setWhenError(null)}
+          required
+          onChange={(e) => setWhen(e.target.value)}
+        />
+      ) : recipients !== null ? (
+        <p className="text-sm text-muted-foreground tabular-nums">
+          Sends to {recipients} {recipients === 1 ? "recipient" : "recipients"} now.
+        </p>
+      ) : null}
       <FormError message={error} />
       <FormActions
         cancel
         pending={pending}
         pendingLabel={mode === "now" ? "Sending…" : "Scheduling…"}
-        submitLabel={mode === "now" ? "Send now" : "Schedule"}
+        submitLabel={mode === "now" ? "Send campaign" : "Schedule campaign"}
         disabled={mode === "at" && !when}
         disabledReason="Pick a date and time first."
       />

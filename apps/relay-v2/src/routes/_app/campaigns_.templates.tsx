@@ -1,16 +1,12 @@
 import { Badge } from "@foundry/ui/badge";
-import { TextField } from "../../components/form/text-field";
 import { Button } from "@foundry/ui/button";
-import { toast } from "@foundry/ui/toast";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import FileTextIcon from "lucide-react/icons/file-text";
-import { type FormEvent, useState } from "react";
-import { CreateDialog } from "../../components/create-dialog";
+import { useState } from "react";
 import { DeniedState, deniedReason } from "../../components/denied-state";
-import { errorText, isNotFound } from "../../components/error-text";
+import { isNotFound } from "../../components/error-text";
 import { EmptyState } from "../../components/page/empty-state";
 import { PageLocalHint } from "../../components/page/page-local-hint";
-import { AppField, needsAppChoice } from "../../components/form/app-field";
 import { FilterMenu } from "../../components/page/filter-menu";
 import { ResourceGrid } from "../../components/page/resource-grid";
 import { Hint } from "../../components/page/text";
@@ -21,15 +17,13 @@ import { ListSkeleton } from "../../components/page/page-skeleton";
 import { SearchInput, Toolbar } from "../../components/page/toolbar";
 import { useUrlFilter } from "../../components/page/use-url-filter";
 import { ResourceTable } from "../../components/resource-table";
-import { useNewParam } from "../../components/shell/new-param";
 import { PageHeader } from "../../components/shell/page-header";
 import { useCan } from "../../components/use-can";
 import { fetchApps } from "../../console/apps.fns";
-import { createTemplateFn, fetchTemplates } from "../../console/templates.fns";
+import { fetchTemplates } from "../../console/templates.fns";
 import { formatWhen } from "../../lib/format-date";
-import { FormError, FormBody, FormActions } from "../../components/page/form-parts";
 
-type TemplatesSearch = { appId?: string; cursor?: string; offset?: number; new?: 1; q?: string; event?: string; locale?: string };
+type TemplatesSearch = { appId?: string; cursor?: string; offset?: number; q?: string; event?: string; locale?: string };
 
 const PAGE = 50;
 const ROUTE = "/campaigns/templates";
@@ -42,7 +36,6 @@ export const Route = createFileRoute("/_app/campaigns_/templates")({
     offset: typeof search.offset === "number" && search.offset > 0 ? Math.floor(search.offset) : undefined,
     event: text(search.event),
     locale: text(search.locale),
-    new: search.new === 1 || search.new === "1" ? 1 : undefined,
     q: typeof search.q === "string" && search.q ? search.q : undefined,
   }),
   loaderDeps: ({ search }) => ({ appId: search.appId, cursor: search.cursor }),
@@ -68,7 +61,6 @@ function TemplatesPage() {
   const { shell } = Route.useRouteContext();
   const search = Route.useSearch();
   const canWrite = useCan({ template: ["write"] });
-  const [open, setOpen] = useNewParam();
   const [query, setQuery] = useUrlFilter("q");
   const navigate = useNavigate({ from: "/campaigns/templates" });
   const [view, setView] = useState<View>(() => viewPref.read(ROUTE));
@@ -91,7 +83,7 @@ function TemplatesPage() {
   }
   const { apps, appId, templates } = page;
   const canCreate = canWrite && Boolean(appId);
-  const newButton = canCreate ? <Button onClick={() => setOpen(true)}>New template</Button> : null;
+  const newButton = canCreate ? <Button render={<Link to="/campaigns/templates/new" search={{ appId: search.appId }} />}>New template</Button> : null;
   const q = query.trim().toLowerCase();
   const rows = templates.rows.filter(
     (t) => (!q || t.name.toLowerCase().includes(q)) && (!search.event || t.event === search.event) && (!search.locale || t.locale === search.locale),
@@ -110,7 +102,7 @@ function TemplatesPage() {
         icon={FileTextIcon}
         title="No templates yet."
         description="Templates are reusable email content."
-        action={canCreate ? <Button variant="outline" onClick={() => setOpen(true)}>New template</Button> : undefined}
+        action={canCreate ? <Button variant="outline" render={<Link to="/campaigns/templates/new" search={{ appId: search.appId }} />}>New template</Button> : undefined}
       />
     ) : (
       (search.event || search.locale) && templates.nextCursor ? "None on this page" : "No templates match."
@@ -125,11 +117,6 @@ function TemplatesPage() {
       >
         {newButton}
       </Toolbar>
-      {canCreate && appId ? (
-        <CreateDialog title="New template" open={open} onOpenChange={setOpen}>
-          {(done) => <NewTemplateForm apps={apps} appId={appId} scopedAppId={search.appId} done={done} />}
-        </CreateDialog>
-      ) : null}
       <PageLocalHint active={Boolean(search.event || search.locale)} hasMore={Boolean(templates.nextCursor)} />
       {view === "grid" ? (
         <ResourceGrid
@@ -181,47 +168,5 @@ function TemplatesPage() {
         resetSearch={{ appId: search.appId, q: search.q, event: search.event, locale: search.locale }}
       />
     </>
-  );
-}
-
-function NewTemplateForm({
-  apps,
-  appId,
-  scopedAppId,
-  done,
-}: {
-  apps: { id: string; name: string }[];
-  appId: string;
-  scopedAppId?: string;
-  done: () => void;
-}) {
-  const navigate = useNavigate();
-  const [app, setApp] = useState(appId);
-  const [name, setName] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
-  async function submit(event: FormEvent) {
-    event.preventDefault();
-    setPending(true);
-    setError(null);
-    try {
-      const template = await createTemplateFn({ data: { appId: app, input: { name } } });
-      toast.success("Template created");
-      done();
-      await navigate({ to: "/campaigns/templates/$templateId", params: { templateId: template.id }, search: { appId: app } });
-    } catch (err) {
-      setError(errorText(err, "Could not create this template."));
-    } finally {
-      setPending(false);
-    }
-  }
-  const choose = needsAppChoice(apps, scopedAppId);
-  return (
-    <FormBody onSubmit={submit}>
-      <AppField apps={apps} scopedAppId={scopedAppId} value={app} onChange={setApp} id="template-app" autoFocus={choose} />
-      <TextField id="template-name" label="Name" autoFocus={!choose} required placeholder="Welcome email" value={name} onChange={(e) => setName(e.target.value)} />
-      <FormError message={error} />
-      <FormActions cancel pending={pending} pendingLabel="Creating…" submitLabel="Create template" disabled={!name.trim()} disabledReason="Enter a name first." />
-    </FormBody>
   );
 }

@@ -1,15 +1,9 @@
 import { Button } from "@foundry/ui/button";
-import { TextField } from "../../components/form/text-field";
-import { toast } from "@foundry/ui/toast";
-import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ListIcon } from "lucide-react";
-import { type FormEvent, useState } from "react";
-import { ConsentFields } from "../../components/consent-fields";
-import { AppField, needsAppChoice } from "../../components/form/app-field";
+import { useState } from "react";
 import { CONSENT_LABEL } from "../../components/consent-labels";
-import { CreateDialog } from "../../components/create-dialog";
 import { DeniedState, deniedReason } from "../../components/denied-state";
-import { errorText } from "../../components/error-text";
 import { ResourceTable } from "../../components/resource-table";
 import { FilterMenu } from "../../components/page/filter-menu";
 import { ResourceGrid } from "../../components/page/resource-grid";
@@ -22,18 +16,14 @@ import { SearchInput, Toolbar } from "../../components/page/toolbar";
 import { useUrlFilter } from "../../components/page/use-url-filter";
 import { ListSkeleton } from "../../components/page/page-skeleton";
 import { PageHeader } from "../../components/shell/page-header";
-import { useNewParam } from "../../components/shell/new-param";
 import { fetchApps } from "../../console/apps.fns";
-import { createListFn, fetchLists } from "../../console/lists.fns";
-import type { ConsentSource } from "../../do/lists";
-import { FormError, FormBody, FormActions } from "../../components/page/form-parts";
+import { fetchLists } from "../../console/lists.fns";
 
-type ListsSearch = { appId?: string; new?: 1; q?: string };
+type ListsSearch = { appId?: string; q?: string };
 
 export const Route = createFileRoute("/_app/lists")({
   validateSearch: (search: Record<string, unknown>): ListsSearch => ({
     appId: typeof search.appId === "string" && search.appId ? search.appId : undefined,
-    new: search.new === 1 || search.new === "1" ? 1 : undefined,
     q: typeof search.q === "string" && search.q ? search.q : undefined,
   }),
   loaderDeps: ({ search }) => ({ appId: search.appId }),
@@ -59,7 +49,6 @@ function ListsPage() {
   const search = Route.useSearch();
   const { shell } = Route.useRouteContext();
   const canWrite = useCan({ list: ["write"] });
-  const [newOpen, setNewOpen] = useNewParam();
   const [query, setQuery] = useUrlFilter("q");
   const navigate = useNavigate();
   const [view, setView] = useState<View>(() => viewPref.read("/lists"));
@@ -93,7 +82,7 @@ function ListsPage() {
       description={q ? undefined : "Lists hold the people a campaign sends to."}
       action={
         !q && canCreate ? (
-          <Button variant="outline" onClick={() => setNewOpen(true)}>
+          <Button variant="outline" render={<Link to="/lists/new" search={{ appId }} />}>
             New list
           </Button>
         ) : undefined
@@ -101,11 +90,6 @@ function ListsPage() {
     />
   );
   const href = (l: (typeof lists)[number]) => ({ to: "/lists/$listId" as const, params: { listId: l.id }, search: { appId: l.appId } });
-  const newList = canCreate ? (
-    <CreateDialog title="New list" open={newOpen} onOpenChange={setNewOpen}>
-      {(done) => <NewListForm apps={apps} appId={defaultApp} scopedAppId={appId} done={done} />}
-    </CreateDialog>
-  ) : null;
   return (
     <>
       <PageHeader crumbs={crumbs} />
@@ -122,9 +106,8 @@ function ListsPage() {
         }
         view={<ViewToggle route="/lists" value={view} onChange={setView} />}
       >
-        {canCreate ? <Button onClick={() => setNewOpen(true)}>New list</Button> : null}
+        {canCreate ? <Button render={<Link to="/lists/new" search={{ appId }} />}>New list</Button> : null}
       </Toolbar>
-      {newList}
       {view === "grid" ? (
         <ResourceGrid
           items={shown}
@@ -158,52 +141,5 @@ function ListsPage() {
         />
       )}
     </>
-  );
-}
-
-function NewListForm({
-  apps,
-  appId,
-  scopedAppId,
-  done,
-}: {
-  apps: { id: string; name: string }[];
-  appId: string;
-  scopedAppId?: string;
-  done: () => void;
-}) {
-  const router = useRouter();
-  const [app, setApp] = useState(appId);
-  const [name, setName] = useState("");
-  const [consent, setConsent] = useState<ConsentSource>("express_optin");
-  const [note, setNote] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
-  async function submit(event: FormEvent) {
-    event.preventDefault();
-    setPending(true);
-    setError(null);
-    try {
-      await createListFn({
-        data: { appId: app, list: { name, consentSource: consent, consentNote: note.trim() || undefined } },
-      });
-      toast.success("List created");
-      done();
-      await router.invalidate();
-    } catch (err) {
-      setError(errorText(err, "Could not create this list."));
-    } finally {
-      setPending(false);
-    }
-  }
-  const choose = needsAppChoice(apps, scopedAppId);
-  return (
-    <FormBody onSubmit={submit}>
-      <AppField apps={apps} scopedAppId={scopedAppId} value={app} onChange={setApp} id="list-app" autoFocus={choose} />
-      <TextField id="list-name" label="Name" autoFocus={!choose} required value={name} onChange={(e) => setName(e.target.value)} placeholder="Newsletter subscribers" />
-      <ConsentFields idPrefix="list" consent={consent} onConsent={setConsent} note={note} onNote={setNote} />
-      <FormError message={error} />
-      <FormActions cancel pending={pending} pendingLabel="Creating…" submitLabel="Create list" disabled={!name.trim()} disabledReason="Enter a name first." />
-    </FormBody>
   );
 }
