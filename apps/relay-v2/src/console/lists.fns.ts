@@ -3,7 +3,7 @@ import { getRequestHeaders } from "@tanstack/react-start/server";
 import { env } from "cloudflare:workers";
 import { z } from "zod";
 import { ConsoleError, requireActor, toResponseError } from "./actor";
-import { id, listInput, memberInput, validate } from "./schemas";
+import { id, listInput, listPatch, memberInput, validate } from "./schemas";
 import {
   addMemberFor,
   createListFor,
@@ -60,7 +60,7 @@ export const createListFn = createServerFn({ method: "POST" })
   });
 
 export const updateListFn = createServerFn({ method: "POST" })
-  .validator(validate(z.object({ id, patch: listInput.partial() })))
+  .validator(validate(z.object({ id, patch: listPatch })))
   .handler(async ({ data }) => {
     try {
       const actor = await requireActor(env, getRequestHeaders(), WRITE);

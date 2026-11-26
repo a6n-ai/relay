@@ -1,49 +1,52 @@
 import { describe, expect, it } from "vitest";
-import { z, type ZodType } from "zod";
-import { campaignPatch, listInput, templateInput, templatePatch } from "../src/console/schemas";
+import type { ZodType } from "zod";
+import { campaignPatch, listInput, listPatch, templateInput, templatePatch } from "../src/console/schemas";
 import { hookInputSchema } from "../src/core/audience-hook";
 import { campaignCreateInput } from "../src/core/campaign-scope";
 import {
-  importCampaignsSchema,
-  importListsSchema,
-  importMessagesSchema,
-  importSuppressionsSchema,
-  importTemplatesSchema,
+  importCampaignsBody,
+  importListsBody,
+  importMessagesBody,
+  importSuppressionsBody,
+  importTemplatesBody,
 } from "../src/core/imports";
 import { membersImportInput } from "../src/core/lists";
 import { memberInput } from "../src/core/member-input";
-import { sendInputSchema, templateSendSchema } from "../src/core/send-input";
+import { sendBody, templateSendSchema } from "../src/core/send-input";
 import { webhookInputSchema, webhookPatchSchema } from "../src/core/webhooks";
 import { scheduleBody } from "../src/routes/api/v1/campaigns.$id.$action";
 
 type Endpoint = { route: string; title: string; method: string; path: string; schema?: string; body?: unknown };
 
-// The same schema each route parses with. A route that changes its schema must change its name here and its fixture.
-const SCHEMAS: Record<string, ZodType> = {
-  send: sendInputSchema.omit({ appId: true, campaignId: true }),
-  sendTemplate: templateSendSchema,
-  templateCreate: templateInput,
-  templatePatch,
-  listCreate: listInput,
-  listPatch: listInput.partial(),
-  member: memberInput,
-  membersImport: membersImportInput,
-  campaignCreate: campaignCreateInput,
-  campaignPatch,
-  campaignSchedule: scheduleBody,
-  webhookCreate: webhookInputSchema,
-  webhookPatch: webhookPatchSchema,
-  audienceHook: hookInputSchema,
-  importLists: z.object({ rows: importListsSchema }),
-  importTemplates: z.object({ rows: importTemplatesSchema }),
-  importCampaigns: z.object({ rows: importCampaignsSchema }),
-  importMessages: z.object({ rows: importMessagesSchema }),
-  importSuppressions: z.object({ rows: importSuppressionsSchema }),
+// A fixture's `schema` names an entry here; the entry fixes the route file that parses with that exact export.
+const SCHEMAS: Record<string, { route: string; schema: ZodType }> = {
+  send: { route: "messages.ts", schema: sendBody },
+  sendTemplate: { route: "templates.send.ts", schema: templateSendSchema },
+  templateCreate: { route: "templates.ts", schema: templateInput },
+  templatePatch: { route: "templates.$id.ts", schema: templatePatch },
+  listCreate: { route: "lists.ts", schema: listInput },
+  listPatch: { route: "lists.$id.ts", schema: listPatch },
+  member: { route: "lists.$id.members.ts", schema: memberInput },
+  membersImport: { route: "lists.$id.import.ts", schema: membersImportInput },
+  campaignCreate: { route: "campaigns.ts", schema: campaignCreateInput },
+  campaignPatch: { route: "campaigns.$id.ts", schema: campaignPatch },
+  campaignSchedule: { route: "campaigns.$id.$action.ts", schema: scheduleBody },
+  webhookCreate: { route: "webhooks.ts", schema: webhookInputSchema },
+  webhookPatch: { route: "webhooks.$id.ts", schema: webhookPatchSchema },
+  audienceHook: { route: "audience-hook.ts", schema: hookInputSchema },
+  importLists: { route: "import.$kind.ts", schema: importListsBody },
+  importTemplates: { route: "import.$kind.ts", schema: importTemplatesBody },
+  importCampaigns: { route: "import.$kind.ts", schema: importCampaignsBody },
+  importMessages: { route: "import.$kind.ts", schema: importMessagesBody },
+  importSuppressions: { route: "import.$kind.ts", schema: importSuppressionsBody },
 };
 
 const files = import.meta.glob<Endpoint[]>("../../relay-docs/src/fixtures/*.json", { eager: true, import: "default" });
 const endpoints = Object.entries(files).flatMap(([file, list]) => list.map((e) => ({ file, ...e })));
 const pages = Object.values(import.meta.glob<string>("../../relay-docs/src/content/docs/docs/api/*.mdx", { eager: true, query: "?raw", import: "default" })).join("\n");
+const rendered = new Set(
+  [...pages.replace(/<!--[\s\S]*?-->|\{\/\*[\s\S]*?\*\/\}/g, "").matchAll(/<Endpoint file="([^"]+)" title=("(?:[^"\\]|\\.)*") \/>/g)].map((m) => `${m[1]}|${JSON.parse(m[2])}`),
+);
 const routeFiles = Object.keys(import.meta.glob("../src/routes/api/v1/*.ts")).map((p) => p.split("/").pop()!);
 
 describe("docs fixtures", () => {
@@ -57,9 +60,10 @@ describe("docs fixtures", () => {
       expect(e.body, "a fixture with a body names its schema").toBeUndefined();
       return;
     }
-    const schema = SCHEMAS[e.schema];
-    expect(schema, `unknown schema ${e.schema}`).toBeDefined();
-    const result = schema.safeParse(e.body);
+    const entry = SCHEMAS[e.schema];
+    expect(entry, `unknown schema ${e.schema}`).toBeDefined();
+    expect(e.route, `schema ${e.schema} belongs to ${entry.route}`).toBe(entry.route);
+    const result = entry.schema.safeParse(e.body);
     expect(result.success, result.success ? "" : JSON.stringify(result.error.issues)).toBe(true);
   });
 
@@ -71,8 +75,13 @@ describe("docs fixtures", () => {
     expect(endpoints.filter((e) => !routeFiles.includes(e.route)).map((e) => e.route)).toEqual([]);
   });
 
+  it("has no two fixtures with the same title in one file", () => {
+    const keys = endpoints.map((e) => `${e.file}|${e.title}`);
+    expect(keys.filter((k, i) => keys.indexOf(k) !== i)).toEqual([]);
+  });
+
   it.each(endpoints.map((e) => [e.title, e] as const))("%s is rendered on an API page", (_name, e) => {
-    expect(pages).toContain(`<Endpoint file="${e.file.split("/").pop()!.replace(".json", "")}" title=${JSON.stringify(e.title)} />`);
+    expect(rendered.has(`${e.file.split("/").pop()!.replace(".json", "")}|${e.title}`)).toBe(true);
   });
 
   it("never mentions an internal secret name", () => {

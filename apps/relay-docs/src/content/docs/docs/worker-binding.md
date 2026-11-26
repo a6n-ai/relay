@@ -32,7 +32,7 @@ console.log(sent.messageId, sent.status);
 ## How it differs from HTTP
 
 - Methods return the value itself. There is no `{ "data": ... }` wrapper, and there are no status codes.
-- A list method returns `{ rows, nextCursor }`. Pass `nextCursor` back as the `cursor` argument. The members list returns the same shape.
+- `listTemplates`, `listCampaigns` and `listMembers` return `{ rows, nextCursor }`. Pass `nextCursor` back as the `cursor` argument. `listLists` returns an array of every list, with no cursor.
 - A failure throws an `Error`. For an error the API describes, its message is the same fixed message as the HTTP error, such as `not found` or `list in use`. See [Errors](/docs/help/errors/).
 - A bad key throws `unauthorized`. A key over its limit throws `rate limited`.
 - A method that validates its input with a schema throws the validation error for a bad shape, not `invalid input`. The suppression and message lookup methods throw `invalid input`.
