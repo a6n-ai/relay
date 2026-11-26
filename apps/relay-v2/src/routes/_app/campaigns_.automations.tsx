@@ -302,6 +302,13 @@ function AutomationForm({
     if (choices.templates.length === 1) setTemplateId(choices.templates[0]?.id ?? "");
   }, [choices, automation]);
 
+  const dirty =
+    !automation ||
+    name.trim() !== automation.name ||
+    templateId !== automation.templateId ||
+    fromEmail !== automation.fromEmail ||
+    Number(delay) !== automation.delayHours;
+
   async function submit(event: FormEvent) {
     event.preventDefault();
     const missing = {
@@ -369,12 +376,12 @@ function AutomationForm({
       {automation ? (
         <FixedField label="List" value={listName ?? "—"} hint="To use another list, create a new automation." />
       ) : noLists ? (
-        <EmptyChoice id="automation-list" label="List" message="No lists yet." to="/lists" search={{ new: 1 }} linkLabel="Create a list" onNavigate={done} />
+        <EmptyChoice id="automation-list" label="List" message="No lists yet." to="/lists" search={{ new: 1 }} linkLabel="Create a list" onNavigate={done} error={fe.errors.list} />
       ) : (
         <ChoiceField id="automation-list" label="List" value={listId} onChange={setListId} options={listOptions} error={fe.errors.list} onClearError={() => fe.clear("list")} />
       )}
       {noTemplates ? (
-        <EmptyChoice id="automation-template" label="Template" message="No templates yet." to="/campaigns/templates" search={{ new: 1 }} linkLabel="Create a template" onNavigate={done} />
+        <EmptyChoice id="automation-template" label="Template" message="No templates yet." to="/campaigns/templates" search={{ new: 1 }} linkLabel="Create a template" onNavigate={done} error={fe.errors.template} />
       ) : (
         <ChoiceField id="automation-template" label="Template" value={templateId} onChange={setTemplateId} options={templateOptions} error={fe.errors.template} onClearError={() => fe.clear("template")} />
       )}
@@ -387,8 +394,8 @@ function AutomationForm({
         cancel
         pending={pending}
         pendingLabel={automation ? "Saving…" : "Creating…"}
-        disabled={!name.trim()}
-        disabledReason="Enter a name first."
+        disabled={!name.trim() || !dirty}
+        disabledReason={name.trim() ? "Change something to save." : "Enter a name first."}
         submitLabel={automation ? "Save automation" : "Create automation"}
       />
     </FormBody>

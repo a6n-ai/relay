@@ -33,6 +33,7 @@ export function SenderField({
         search={{ new: "address" }}
         linkLabel="Add an address"
         onNavigate={onNavigate}
+        error={error}
       />
     );
   }

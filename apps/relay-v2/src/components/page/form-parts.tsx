@@ -65,16 +65,12 @@ export function FormActions({
       ) : null}
       {children}
       {submitLabel ? (
-        reason ? (
-          <Tooltip>
-            <TooltipTrigger render={<span tabIndex={0} className="inline-flex" />}>
-              {primary}
-            </TooltipTrigger>
-            <TooltipContent>{reason}</TooltipContent>
-          </Tooltip>
-        ) : (
-          primary
-        )
+        <Tooltip disabled={!reason}>
+          <TooltipTrigger render={<span role="group" aria-label={submitLabel} tabIndex={reason ? 0 : undefined} className="inline-flex" />}>
+            {primary}
+          </TooltipTrigger>
+          <TooltipContent>{reason}</TooltipContent>
+        </Tooltip>
       ) : null}
     </div>
   );

@@ -17,9 +17,14 @@ import { FormError } from "./page/form-parts";
 // Exact and case-sensitive: the name is the safeguard.
 export const typedMatches = (typed: string | undefined, text: string) => typed === undefined || text === typed;
 
+export const confirmReady = (typed: string | undefined, text: string, confirmDisabled = false) => !confirmDisabled && typedMatches(typed, text);
+
+// The reminder waits until the text is as long as the answer, so it does not nag from the first key.
+export const typedHint = (typed: string, text: string) => (text.length >= typed.length && text !== typed ? "Type it exactly as shown, including capitals." : undefined);
+
 // Pass open and onOpenChange to drive it from outside (a router blocker); omit trigger then.
 // onConfirm must return a promise that rejects on failure: the dialog stays open while it runs and shows the error inline.
-// typed: the exact text to type, case-sensitive; shown in mono with a placeholder.
+// typed: the exact text to type, case-sensitive; shown in mono.
 // Cancel takes the initial focus, so Enter never confirms by accident. confirmLabel is Verb + noun ("Delete app").
 // children sit under the description (a preview); confirmDisabled holds the confirm until they are satisfied.
 export function ConfirmDialog({
@@ -55,7 +60,7 @@ export function ConfirmDialog({
   const [text, setText] = useState("");
   const cancelRef = useRef<HTMLButtonElement>(null);
   const isOpen = open ?? innerOpen;
-  const ready = !confirmDisabled && typedMatches(typed, text);
+  const ready = confirmReady(typed, text, confirmDisabled);
 
   function setOpen(next: boolean) {
     if (pending) return;
@@ -98,9 +103,8 @@ export function ConfirmDialog({
                 Type <code className="rounded-sm bg-muted px-1 font-mono text-xs text-foreground">{typed}</code> to confirm
               </>
             }
-            hint={text && text !== typed ? "Type it exactly as shown, including capitals." : undefined}
+            hint={typedHint(typed, text)}
             value={text}
-            placeholder={typed}
             className="font-mono"
             onChange={(e) => setText(e.target.value)}
             onKeyDown={(e) => {

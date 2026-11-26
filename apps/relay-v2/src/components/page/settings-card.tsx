@@ -6,6 +6,7 @@ export function SettingsCard({
   title,
   description,
   footer,
+  disabledReason,
   action,
   children,
   tone = "default",
@@ -13,6 +14,7 @@ export function SettingsCard({
   title: string;
   description?: string;
   footer?: ReactNode; // muted hint, left of the footer strip
+  disabledReason?: string; // follows the hint while the action is disabled
   action?: ReactNode; // the footer button, right
   children?: ReactNode;
   tone?: "default" | "danger";
@@ -24,9 +26,9 @@ export function SettingsCard({
         {description ? <CardDescription>{description}</CardDescription> : null}
       </CardHeader>
       {children ? <CardContent>{children}</CardContent> : null}
-      {footer || action ? (
+      {footer || disabledReason || action ? (
         <CardFooter className={cn("flex-wrap justify-between gap-3", tone === "danger" && "border-destructive/30 bg-destructive/5")}>
-          <div className="min-w-0 text-sm text-muted-foreground">{footer}</div>
+          <div className="min-w-0 text-sm text-muted-foreground">{footer}{footer && disabledReason ? " " : null}{disabledReason}</div>
           {action ? <div className="ml-auto">{action}</div> : null}
         </CardFooter>
       ) : null}

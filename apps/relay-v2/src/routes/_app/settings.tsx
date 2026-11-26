@@ -46,7 +46,8 @@ function WorkspaceNameCard({ name: current, slug }: { name: string; slug: string
     <SettingsCard
       title="Workspace name"
       description="The name shown in the workspace switcher."
-      footer="Use up to 80 characters."
+      footer="Up to 80 characters."
+      disabledReason={canRename && !pending && (!next || next === current) ? "Change the name to save it." : undefined}
       action={
         canRename ? (
           <Button type="submit" form="workspace-name-form" variant="outline" disabled={pending || !next || next === current}>

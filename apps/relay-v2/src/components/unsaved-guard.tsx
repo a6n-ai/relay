@@ -26,7 +26,7 @@ export function UnsavedGuard({ when, bypass }: { when: boolean; bypass?: RefObje
       onOpenChange={(open) => !open && blocker.status === "blocked" && blocker.reset()}
       title="Discard changes?"
       description="Your unsaved changes will be lost."
-      confirmLabel="Discard"
+      confirmLabel="Discard changes"
       dismissLabel="Keep editing"
       onConfirm={async () => {
         if (blocker.status === "blocked") blocker.proceed();

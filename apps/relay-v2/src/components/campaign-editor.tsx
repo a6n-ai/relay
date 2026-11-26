@@ -4,7 +4,7 @@ import { Checkbox } from "@foundry/ui/checkbox";
 import { Input } from "@foundry/ui/input";
 import { Label } from "@foundry/ui/label";
 import { toast } from "@foundry/ui/toast";
-import { Link, useRouter, useNavigate } from "@tanstack/react-router";
+import { useRouter, useNavigate } from "@tanstack/react-router";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import {
   deleteCampaignFn,

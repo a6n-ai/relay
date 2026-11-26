@@ -85,7 +85,7 @@ export function ChoiceControl(props: ControlProps) {
   }
   if (mode === "cards") {
     return (
-      <RadioGroup id={id} aria-labelledby={labelledBy} aria-describedby={describedBy} value={value} onValueChange={onChange}>
+      <RadioGroup id={id} aria-labelledby={labelledBy} aria-describedby={describedBy} aria-invalid={invalid || undefined} value={value} onValueChange={onChange}>
         {options.map((o, i) => (
           <Label
             key={o.value}

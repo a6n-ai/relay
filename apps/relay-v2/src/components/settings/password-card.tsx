@@ -56,17 +56,20 @@ export function PasswordCard({ hasPassword }: { hasPassword: boolean }) {
     }
   }
 
+  const blocked = !next || !confirm || (hasPassword && !current);
+
   return (
     <SettingsCard
       title="Password"
-      footer={`Use at least ${MIN} characters.`}
+      footer={`At least ${MIN} characters.`}
+      disabledReason={blocked && !pending ? (hasPassword && !current ? "Enter your current password." : "Enter and confirm the new password.") : undefined}
       description={
         hasPassword
           ? "Change the password you sign in with."
           : "Sign in with a password as well as an email code. You can still use the code."
       }
       action={
-        <Button type="submit" form="password-form" variant="outline" disabled={pending || !next || !confirm || (hasPassword && !current)}>
+        <Button type="submit" form="password-form" variant="outline" disabled={pending || blocked}>
           {pending ? "Saving…" : hasPassword ? "Change password" : "Set password"}
         </Button>
       }

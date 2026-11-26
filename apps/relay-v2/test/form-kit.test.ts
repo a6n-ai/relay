@@ -1,7 +1,8 @@
 import { createElement, isValidElement, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import { typedMatches } from "../src/components/confirm-dialog";
+import { confirmReady, typedHint, typedMatches } from "../src/components/confirm-dialog";
+import { SettingsCard } from "../src/components/page/settings-card";
 import { EmptyChoice } from "../src/components/form/empty-choice";
 import { withoutKey } from "../src/components/form/field";
 import { TextField } from "../src/components/form/text-field";
@@ -10,6 +11,15 @@ import { FormActions } from "../src/components/page/form-parts";
 import { choiceMode } from "../src/components/form/choice-mode";
 import { addressDomains, defaultDomain, normaliseLocal, splitEmail } from "../src/components/form/domain-email";
 import { slugify, splitSlugError } from "../src/components/form/slugify";
+
+const dialog = vi.hoisted(() => ({ props: null as Record<string, unknown> | null }));
+vi.mock("../src/components/confirm-dialog", async (orig) => ({
+  ...(await orig<typeof import("../src/components/confirm-dialog")>()),
+  ConfirmDialog: (props: Record<string, unknown>) => {
+    dialog.props = props;
+    return null;
+  },
+}));
 
 describe("choiceMode", () => {
   it("picks the control by count and options", () => {
@@ -148,6 +158,14 @@ describe("FormActions disabledReason", () => {
     expect(html({ disabled: true, pending: true, disabledReason: "Enter a name first." })).not.toContain("Enter a name first.");
     expect(html({ disabled: true })).not.toContain("text-muted-foreground");
   });
+  it("wraps the primary the same way with or without a reason, and is a tab stop only with one", () => {
+    const withReason = html({ disabled: true, disabledReason: "Enter a name first." });
+    const without = html({});
+    expect(withReason).toMatch(/<span[^>]*role="group"[^>]*aria-label="Create app"/);
+    expect(without).toMatch(/<span[^>]*role="group"[^>]*aria-label="Create app"/);
+    expect(withReason).toContain('tabindex="0"');
+    expect(without).not.toContain("tabindex");
+  });
 });
 
 describe("DangerCard typed confirm", () => {
@@ -158,7 +176,19 @@ describe("DangerCard typed confirm", () => {
     expect(typedMatches("acme", "")).toBe(false);
     expect(typedMatches(undefined, "")).toBe(true);
   });
-  it("states the consequence once, on the card", () => {
+  it("holds the confirm until the exact text is typed or the preview is satisfied", () => {
+    expect(confirmReady("acme", "acme")).toBe(true);
+    expect(confirmReady("acme", "Acme")).toBe(false);
+    expect(confirmReady("acme", "acme", true)).toBe(false);
+    expect(confirmReady(undefined, "", false)).toBe(true);
+  });
+  it("reminds about capitals only once the text is as long as the answer", () => {
+    expect(typedHint("acme", "ac")).toBeUndefined();
+    expect(typedHint("acme", "acme")).toBeUndefined();
+    expect(typedHint("acme", "ACME")).toContain("capitals");
+  });
+  it("states the consequence once, on the card; the dialog gets the name only", () => {
+    dialog.props = null;
     const html = renderToStaticMarkup(
       createElement(DangerCard, {
         title: "Delete workspace",
@@ -170,7 +200,18 @@ describe("DangerCard typed confirm", () => {
       }),
     );
     expect(html.match(/Deletes the workspace and its members\./g)).toHaveLength(1);
-    expect(html).toContain("Delete workspace");
+    expect(dialog.props).toMatchObject({ typed: "acme", title: "Delete this workspace?", confirmLabel: "Delete workspace" });
+    expect(dialog.props).not.toHaveProperty("description");
+  });
+});
+
+describe("SettingsCard footer", () => {
+  const html = (props: Record<string, unknown>) => renderToStaticMarkup(createElement(SettingsCard, { title: "Name", action: createElement("button"), ...props }));
+  it("keeps the hint, and adds the reason after it while the action is disabled", () => {
+    expect(html({ footer: "Up to 80 characters." })).not.toContain("Change the name");
+    const out = html({ footer: "Up to 80 characters.", disabledReason: "Change the name to save it." });
+    expect(out).toContain("Up to 80 characters.");
+    expect(out).toContain("Change the name to save it.");
   });
 });
 
@@ -181,5 +222,13 @@ describe("EmptyChoice", () => {
     expect(link?.search).toEqual({ new: 1 });
     expect(link?.children).toBe("Create a list");
     expect(find(tree, (p) => Array.isArray(p.children) && p.children[0] === "No lists yet.")).toBeTruthy();
+  });
+  it("shows an error when the pick is empty, and labels the group", () => {
+    const tree = EmptyChoice({ id: "list", label: "List", message: "No lists yet.", to: "/lists", linkLabel: "Create a list", error: "Choose a list." });
+    expect(find(tree, (p) => p.error === "Choose a list.")).toBeTruthy();
+    const group = find(tree, (p) => p.role === "group");
+    expect(group?.["aria-labelledby"]).toBe("list-label");
+    expect(group?.["aria-describedby"]).toBe("list-error");
+    expect(find(tree, (p) => p.htmlFor === null)).toBeTruthy();
   });
 });

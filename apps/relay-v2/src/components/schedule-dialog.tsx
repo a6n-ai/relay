@@ -83,7 +83,10 @@ function ScheduleForm({
         autoFocus
         mode="segmented"
         value={mode}
-        onChange={(v) => setMode(v as "now" | "at")}
+        onChange={(v) => {
+          setMode(v as "now" | "at");
+          setWhenError(null);
+        }}
         options={[
           { value: "now", label: "Send now" },
           { value: "at", label: "Schedule for later" },

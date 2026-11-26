@@ -180,6 +180,7 @@ function AppDetailsPanel({ appId, name, slug, canWrite }: { appId: string; name:
     <SettingsCard
       title="Details"
       footer={dirty ? "Unsaved changes" : undefined}
+      disabledReason={canWrite && !pending && !value.trim() ? "Enter a name first." : undefined}
       action={
         canWrite ? (
           <Button type="submit" variant="outline" form="app-details-form" disabled={pending || !dirty || !value.trim()}>
