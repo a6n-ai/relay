@@ -10,7 +10,8 @@ import { CreateDialog } from "../../components/create-dialog";
 import { DeniedState, deniedReason } from "../../components/denied-state";
 import { errorText, isNotFound } from "../../components/error-text";
 import { EmptyState } from "../../components/page/empty-state";
-import { AppField } from "../../components/form/app-field";
+import { PageLocalHint } from "../../components/page/page-local-hint";
+import { AppField, needsAppChoice } from "../../components/form/app-field";
 import { FilterMenu } from "../../components/page/filter-menu";
 import { ResourceGrid } from "../../components/page/resource-grid";
 import { Hint } from "../../components/page/text";
@@ -113,7 +114,7 @@ function TemplatesPage() {
         action={canCreate ? <Button variant="outline" onClick={() => setOpen(true)}>New template</Button> : undefined}
       />
     ) : (
-      "No templates match."
+      (search.event || search.locale) && templates.nextCursor ? "None on this page" : "No templates match."
     );
   return (
     <>
@@ -130,6 +131,7 @@ function TemplatesPage() {
           {(done) => <NewTemplateForm apps={apps} appId={appId} scopedAppId={search.appId} done={done} />}
         </CreateDialog>
       ) : null}
+      <PageLocalHint active={Boolean(search.event || search.locale)} hasMore={Boolean(templates.nextCursor)} />
       {view === "grid" ? (
         <ResourceGrid
           items={rows}
@@ -154,7 +156,7 @@ function TemplatesPage() {
         />
       ) : (
         <ResourceTable
-          offset={search.offset}
+          offset={search.cursor ? search.offset : undefined}
           columns={[
             { header: "Name", kind: "name", cell: (t) => t.name },
             ...(showApp ? [{ header: "App", cell: (t: (typeof rows)[number]) => appName(t.appId) }] : []),
@@ -173,7 +175,7 @@ function TemplatesPage() {
       <LoadMore
         hasMore={Boolean(templates.nextCursor)}
         to="/campaigns/templates"
-        offset={search.offset}
+        offset={search.cursor ? search.offset : undefined}
         pageSize={PAGE}
         search={{ appId: search.appId, q: search.q, event: search.event, locale: search.locale, cursor: templates.nextCursor }}
         resetTo={search.cursor ? "/campaigns/templates" : undefined}
@@ -214,11 +216,12 @@ function NewTemplateForm({
       setPending(false);
     }
   }
+  const choose = needsAppChoice(apps, scopedAppId);
   return (
     <FormBody onSubmit={submit}>
-      <AppField apps={apps} scopedAppId={scopedAppId} value={app} onChange={setApp} id="template-app" />
+      <AppField apps={apps} scopedAppId={scopedAppId} value={app} onChange={setApp} id="template-app" autoFocus={choose} />
       <Label htmlFor="template-name">Name</Label>
-      <Input id="template-name" autoFocus required placeholder="Welcome email" value={name} onChange={(e) => setName(e.target.value)} />
+      <Input id="template-name" autoFocus={!choose} required placeholder="Welcome email" value={name} onChange={(e) => setName(e.target.value)} />
       <FormError message={error} />
       <FormActions cancel pending={pending} pendingLabel="Creating…" submitLabel="Create template" />
     </FormBody>

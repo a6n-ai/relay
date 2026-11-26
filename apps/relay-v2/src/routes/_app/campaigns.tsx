@@ -9,7 +9,8 @@ import { CreateDialog } from "../../components/create-dialog";
 import { DeniedState, deniedReason } from "../../components/denied-state";
 import { errorText, isNotFound } from "../../components/error-text";
 import { EmptyState } from "../../components/page/empty-state";
-import { AppField } from "../../components/form/app-field";
+import { PageLocalHint } from "../../components/page/page-local-hint";
+import { AppField, needsAppChoice } from "../../components/form/app-field";
 import { ChoiceField } from "../../components/form/choice-field";
 import { FilterMenu } from "../../components/page/filter-menu";
 import { ResourceGrid } from "../../components/page/resource-grid";
@@ -97,7 +98,7 @@ function CampaignsPage() {
     campaigns.rows.length === 0 ? (
       <EmptyState icon={MegaphoneIcon} title="No campaigns yet." action={canWrite && appId ? <Button variant="outline" onClick={() => setOpen(true)}>New campaign</Button> : undefined} />
     ) : (
-      "No campaigns match."
+      search.status && campaigns.nextCursor ? "None on this page" : "No campaigns match."
     );
   const create =
     canWrite && appId ? (
@@ -130,6 +131,7 @@ function CampaignsPage() {
         {newButton}
       </Toolbar>
       {create}
+      <PageLocalHint active={Boolean(search.status)} hasMore={Boolean(campaigns.nextCursor)} />
       {view === "grid" ? (
         <ResourceGrid
           items={rows}
@@ -153,7 +155,7 @@ function CampaignsPage() {
         />
       ) : (
         <ResourceTable
-          offset={search.offset}
+          offset={search.cursor ? search.offset : undefined}
           columns={[
             { header: "Name", kind: "name", cell: (c) => c.name },
             { header: "Status", cell: (c) => <StatusBadge status={c.status} /> },
@@ -172,7 +174,7 @@ function CampaignsPage() {
       <LoadMore
         hasMore={Boolean(campaigns.nextCursor)}
         to="/campaigns"
-        offset={search.offset}
+        offset={search.cursor ? search.offset : undefined}
         pageSize={PAGE}
         search={{ appId: search.appId, q: search.q, status: search.status, cursor: campaigns.nextCursor }}
         resetTo={search.cursor ? "/campaigns" : undefined}
@@ -235,11 +237,12 @@ function NewCampaignForm({
       setPending(false);
     }
   }
+  const choose = needsAppChoice(apps, scopedAppId);
   return (
     <FormBody onSubmit={submit}>
-      <AppField apps={apps} scopedAppId={scopedAppId} value={app} onChange={setApp} id="campaign-app" />
+      <AppField apps={apps} scopedAppId={scopedAppId} value={app} onChange={setApp} id="campaign-app" autoFocus={choose} />
       <Label htmlFor="campaign-name">Name</Label>
-      <Input id="campaign-name" autoFocus required placeholder="Spring newsletter" value={name} onChange={(e) => setName(e.target.value)} />
+      <Input id="campaign-name" autoFocus={!choose} required placeholder="Spring newsletter" value={name} onChange={(e) => setName(e.target.value)} />
       <ChoiceField
         id="campaign-template"
         label="Start from"

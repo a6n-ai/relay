@@ -52,6 +52,7 @@ describe("withNew", () => {
 describe("scopeSearch", () => {
   it("sets appId, keeps other params, drops cursor", () => {
     expect(scopeSearch({ q: "x", cursor: "c", appId: "old" }, "a")).toEqual({ q: "x", appId: "a" });
+    expect(scopeSearch({ cursor: "c", offset: 50 }, "a")).toEqual({ appId: "a" });
   });
   it("removes appId for All apps", () => {
     expect(scopeSearch({ q: "x", appId: "old" }, undefined)).toEqual({ q: "x" });

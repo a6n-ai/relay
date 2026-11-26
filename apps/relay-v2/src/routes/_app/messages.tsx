@@ -86,7 +86,7 @@ function MessagesPage() {
         }
       />
       <ResourceTable
-        offset={search.offset}
+        offset={search.cursor ? search.offset : undefined}
         columns={[
           { header: "When", kind: "time", cell: (m) => formatWhen(m.createdAt) },
           { header: "From / To", cell: (m) => (m.direction === "out" ? m.toEmail : m.fromEmail) ?? "—" },
@@ -102,7 +102,7 @@ function MessagesPage() {
       <LoadMore
         hasMore={Boolean(page.nextCursor)}
         to="/messages"
-        offset={search.offset}
+        offset={search.cursor ? search.offset : undefined}
         pageSize={PAGE}
         search={{ ...search, cursor: page.nextCursor }}
         resetTo={search.cursor ? "/messages" : undefined}

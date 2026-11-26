@@ -16,7 +16,7 @@ export const scopeLabel = (apps: { id: string; name: string }[], appId: string |
   apps.find((a) => a.id === appId)?.name ?? "All apps";
 
 export function scopeSearch(prev: Record<string, unknown>, appId: string | undefined) {
-  const { cursor: _cursor, appId: _appId, ...rest } = prev;
+  const { cursor: _cursor, offset: _offset, appId: _appId, ...rest } = prev;
   return appId ? { ...rest, appId } : rest;
 }
 
