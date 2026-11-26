@@ -1,0 +1,99 @@
+[
+  {
+    "route": "webhooks.ts",
+    "title": "List webhooks",
+    "method": "GET",
+    "path": "/api/v1/webhooks",
+    "summary": "Returns the webhooks of your app, oldest first. Signing secrets are never returned.",
+    "status": 200,
+    "response": {
+      "data": [
+        {
+          "id": "whk_Example0001",
+          "appId": "app_Example0001",
+          "url": "https://hooks.example.com/relay",
+          "events": ["mailbox.received"],
+          "enabled": true,
+          "createdAt": 1795000000000,
+          "updatedAt": 1795000000000
+        }
+      ]
+    },
+    "errors": []
+  },
+  {
+    "route": "webhooks.ts",
+    "title": "Create a webhook",
+    "method": "POST",
+    "path": "/api/v1/webhooks",
+    "summary": "Registers an endpoint that Relay calls when an event happens. The signing secret is returned once.",
+    "schema": "webhookCreate",
+    "fields": [
+      { "name": "url", "type": "string", "required": true, "description": "A public https URL, up to 2048 characters, without credentials. Private and local hosts are refused." },
+      { "name": "events", "type": "array of strings", "required": true, "description": "At least one event. The only event is mailbox.received. Duplicates are merged." },
+      { "name": "secret", "type": "string", "required": false, "description": "Your own signing secret, 16 to 256 characters. When omitted, Relay generates one." },
+      { "name": "enabled", "type": "boolean", "required": false, "description": "Set to false to register the webhook paused." }
+    ],
+    "body": { "url": "https://hooks.example.com/relay", "events": ["mailbox.received"], "enabled": true },
+    "status": 201,
+    "response": {
+      "webhook": {
+        "id": "whk_Example0001",
+        "appId": "app_Example0001",
+        "url": "https://hooks.example.com/relay",
+        "events": ["mailbox.received"],
+        "enabled": true,
+        "createdAt": 1795000000000,
+        "updatedAt": 1795000000000
+      },
+      "secret": "test-signing-value-0123456789"
+    },
+    "responseNote": "The body is not wrapped in data. Store the secret now: no endpoint returns it again.",
+    "errors": [
+      { "status": 400, "message": "invalid input", "when": "The body is not valid JSON or fails validation, including a non-public url." },
+      { "status": 503, "message": "webhooks unavailable", "when": "Relay cannot sign webhooks right now. Try again later." }
+    ]
+  },
+  {
+    "route": "webhooks.$id.ts",
+    "title": "Update a webhook",
+    "method": "PATCH",
+    "path": "/api/v1/webhooks/{id}",
+    "summary": "Changes the fields you send. Every field is optional, and the secret cannot be changed here.",
+    "pathParams": [{ "name": "id", "example": "whk_Example0001", "description": "The webhook id." }],
+    "schema": "webhookPatch",
+    "fields": [
+      { "name": "url", "type": "string", "required": false, "description": "A public https URL." },
+      { "name": "events", "type": "array of strings", "required": false, "description": "At least one event." },
+      { "name": "enabled", "type": "boolean", "required": false, "description": "Pause or resume deliveries." }
+    ],
+    "body": { "enabled": false },
+    "status": 200,
+    "response": {
+      "id": "whk_Example0001",
+      "appId": "app_Example0001",
+      "url": "https://hooks.example.com/relay",
+      "events": ["mailbox.received"],
+      "enabled": false,
+      "createdAt": 1795000000000,
+      "updatedAt": 1795000100000
+    },
+    "responseNote": "The body is the webhook and is not wrapped in data.",
+    "errors": [
+      { "status": 400, "message": "invalid input", "when": "The body is not valid JSON or fails validation." },
+      { "status": 404, "message": "not found", "when": "The webhook does not exist or belongs to another app." }
+    ]
+  },
+  {
+    "route": "webhooks.$id.ts",
+    "title": "Delete a webhook",
+    "method": "DELETE",
+    "path": "/api/v1/webhooks/{id}",
+    "summary": "Deletes a webhook.",
+    "pathParams": [{ "name": "id", "example": "whk_Example0001", "description": "The webhook id." }],
+    "status": 204,
+    "response": null,
+    "responseNote": "Empty body.",
+    "errors": [{ "status": 404, "message": "not found", "when": "The webhook does not exist or belongs to another app." }]
+  }
+]

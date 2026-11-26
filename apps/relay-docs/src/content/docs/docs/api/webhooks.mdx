@@ -1,0 +1,26 @@
+---
+title: Webhooks
+description: Webhooks endpoints of the Relay API, with curl, Node and Python examples.
+---
+
+import Endpoint from '../../../../components/docs/Endpoint.astro';
+
+Register an https endpoint and Relay calls it when an event happens. The only event today is `mailbox.received`.
+
+Every request needs an API key. See the [overview](/docs/api/) for authentication, limits and the error format.
+
+### List webhooks
+
+<Endpoint file="webhooks" title="List webhooks" />
+
+### Create a webhook
+
+<Endpoint file="webhooks" title="Create a webhook" />
+
+### Update a webhook
+
+<Endpoint file="webhooks" title="Update a webhook" />
+
+### Delete a webhook
+
+<Endpoint file="webhooks" title="Delete a webhook" />

@@ -1,0 +1,223 @@
+[
+  {
+    "route": "lists.ts",
+    "title": "List lists",
+    "method": "GET",
+    "path": "/api/v1/lists",
+    "summary": "Returns every list of your app.",
+    "status": 200,
+    "response": {
+      "data": [
+        {
+          "id": "ctl_Example0001",
+          "appId": "app_Example0001",
+          "name": "Newsletter",
+          "consentSource": "express_optin",
+          "consentNote": "Signed up on the website",
+          "members": 1,
+          "createdAt": 1795000000000
+        }
+      ]
+    },
+    "errors": []
+  },
+  {
+    "route": "lists.ts",
+    "title": "Create a list",
+    "method": "POST",
+    "path": "/api/v1/lists",
+    "summary": "Creates an empty list and records where its consent came from.",
+    "schema": "listCreate",
+    "fields": [
+      { "name": "name", "type": "string", "required": true, "description": "1 to 80 characters after trimming." },
+      { "name": "consentSource", "type": "string", "required": true, "description": "One of purchase, express_optin, event_signup or import_other." },
+      { "name": "consentNote", "type": "string", "required": false, "description": "Up to 500 characters." }
+    ],
+    "body": { "name": "Newsletter", "consentSource": "express_optin", "consentNote": "Signed up on the website" },
+    "status": 201,
+    "response": {
+      "data": {
+        "id": "ctl_Example0001",
+        "appId": "app_Example0001",
+        "name": "Newsletter",
+        "consentSource": "express_optin",
+        "consentNote": "Signed up on the website",
+        "members": 0,
+        "createdAt": 1795000000000
+      }
+    },
+    "errors": [{ "status": 400, "message": "invalid input", "when": "The body is not valid JSON or fails validation." }]
+  },
+  {
+    "route": "lists.$id.ts",
+    "title": "Get a list",
+    "method": "GET",
+    "path": "/api/v1/lists/{id}",
+    "summary": "Returns one list of your app.",
+    "pathParams": [{ "name": "id", "example": "ctl_Example0001", "description": "The list id." }],
+    "status": 200,
+    "response": {
+      "data": {
+        "id": "ctl_Example0001",
+        "appId": "app_Example0001",
+        "name": "Newsletter",
+        "consentSource": "express_optin",
+        "consentNote": "Signed up on the website",
+        "members": 1,
+        "createdAt": 1795000000000
+      }
+    },
+    "errors": [{ "status": 404, "message": "not found", "when": "The list does not exist or belongs to another app." }]
+  },
+  {
+    "route": "lists.$id.ts",
+    "title": "Update a list",
+    "method": "PATCH",
+    "path": "/api/v1/lists/{id}",
+    "summary": "Changes the fields you send. Every field is optional.",
+    "pathParams": [{ "name": "id", "example": "ctl_Example0001", "description": "The list id." }],
+    "schema": "listPatch",
+    "fields": [
+      { "name": "name", "type": "string", "required": false, "description": "1 to 80 characters after trimming." },
+      { "name": "consentSource", "type": "string", "required": false, "description": "One of purchase, express_optin, event_signup or import_other." },
+      { "name": "consentNote", "type": "string", "required": false, "description": "Up to 500 characters." }
+    ],
+    "body": { "name": "Monthly newsletter" },
+    "status": 200,
+    "response": {
+      "data": {
+        "id": "ctl_Example0001",
+        "appId": "app_Example0001",
+        "name": "Monthly newsletter",
+        "consentSource": "express_optin",
+        "consentNote": "Signed up on the website",
+        "members": 1,
+        "createdAt": 1795000000000
+      }
+    },
+    "errors": [
+      { "status": 400, "message": "invalid input", "when": "The body is not valid JSON or fails validation." },
+      { "status": 404, "message": "not found", "when": "The list does not exist or belongs to another app." }
+    ]
+  },
+  {
+    "route": "lists.$id.ts",
+    "title": "Delete a list",
+    "method": "DELETE",
+    "path": "/api/v1/lists/{id}",
+    "summary": "Deletes a list that no active campaign needs.",
+    "pathParams": [{ "name": "id", "example": "ctl_Example0001", "description": "The list id." }],
+    "status": 204,
+    "response": null,
+    "responseNote": "Empty body.",
+    "errors": [
+      { "status": 404, "message": "not found", "when": "The list does not exist or belongs to another app." },
+      { "status": 409, "message": "list in use", "when": "A scheduled, sending or paused campaign uses the list." }
+    ]
+  },
+  {
+    "route": "lists.$id.members.ts",
+    "title": "List members",
+    "method": "GET",
+    "path": "/api/v1/lists/{id}/members",
+    "summary": "Returns the members of a list, 50 per page.",
+    "pathParams": [{ "name": "id", "example": "ctl_Example0001", "description": "The list id." }],
+    "query": [{ "name": "cursor", "example": "", "description": "The nextCursor from the previous page. Omit it for the first page." }],
+    "status": 200,
+    "response": {
+      "data": [
+        {
+          "id": "clm_Example0001",
+          "email": "ada@example.com",
+          "firstName": "Ada",
+          "lastName": "Lovelace",
+          "source": "manual",
+          "consentAt": 1795000000000,
+          "state": "subscribed",
+          "optedOut": [],
+          "createdAt": 1795000000000
+        }
+      ],
+      "nextCursor": null
+    },
+    "responseNote": "state is subscribed or suppressed. source is manual or import.",
+    "errors": [
+      { "status": 400, "message": "invalid input", "when": "The cursor is not one Relay issued." },
+      { "status": 404, "message": "not found", "when": "The list does not exist or belongs to another app." }
+    ]
+  },
+  {
+    "route": "lists.$id.members.ts",
+    "title": "Add a member",
+    "method": "POST",
+    "path": "/api/v1/lists/{id}/members",
+    "summary": "Adds one address to a list. Adding an address that is already a member is not an error.",
+    "pathParams": [{ "name": "id", "example": "ctl_Example0001", "description": "The list id." }],
+    "schema": "member",
+    "fields": [
+      { "name": "email", "type": "string (email)", "required": true, "description": "Trimmed, lower-cased, up to 254 characters." },
+      { "name": "firstName", "type": "string", "required": false, "description": "Up to 80 characters." },
+      { "name": "lastName", "type": "string", "required": false, "description": "Up to 80 characters." },
+      { "name": "consentAt", "type": "integer", "required": false, "description": "When the person consented, in epoch milliseconds. It cannot be in the future." }
+    ],
+    "body": { "email": "ada@example.com", "firstName": "Ada", "lastName": "Lovelace", "consentAt": 1795000000000 },
+    "status": 201,
+    "response": { "data": { "outcome": "added" } },
+    "responseNote": "outcome is added (status 201) or existing (status 200).",
+    "errors": [
+      { "status": 400, "message": "invalid input", "when": "The body is not valid JSON or fails validation." },
+      { "status": 404, "message": "not found", "when": "The list does not exist or belongs to another app." },
+      { "status": 409, "message": "address suppressed", "when": "The address is on the suppression list." }
+    ]
+  },
+  {
+    "route": "lists.$id.members.$memberId.ts",
+    "title": "Remove a member",
+    "method": "DELETE",
+    "path": "/api/v1/lists/{id}/members/{memberId}",
+    "summary": "Removes one member from a list.",
+    "pathParams": [
+      { "name": "id", "example": "ctl_Example0001", "description": "The list id." },
+      { "name": "memberId", "example": "clm_Example0001", "description": "The member id from the members list." }
+    ],
+    "status": 204,
+    "response": null,
+    "responseNote": "Empty body.",
+    "errors": [{ "status": 404, "message": "not found", "when": "The list or the member does not exist, or the list belongs to another app." }]
+  },
+  {
+    "route": "lists.$id.import.ts",
+    "title": "Import members",
+    "method": "POST",
+    "path": "/api/v1/lists/{id}/import",
+    "summary": "Adds up to 1,000 members in one call. Suppressed addresses are skipped, and members already on the list are counted as existing.",
+    "pathParams": [{ "name": "id", "example": "ctl_Example0001", "description": "The list id." }],
+    "schema": "membersImport",
+    "fields": [{ "name": "rows", "type": "array", "required": true, "description": "Up to 1,000 member objects with the same fields as Add a member." }],
+    "body": {
+      "rows": [
+        { "email": "ada@example.com", "firstName": "Ada", "lastName": "Lovelace" },
+        { "email": "grace@example.com", "firstName": "Grace", "lastName": "Hopper" }
+      ]
+    },
+    "status": 200,
+    "response": { "data": { "added": 2, "existing": 0, "suppressed": 0 } },
+    "errors": [
+      { "status": 400, "message": "invalid input", "when": "The body is not valid JSON, fails validation or has more than 1,000 rows." },
+      { "status": 404, "message": "not found", "when": "The list does not exist or belongs to another app." }
+    ]
+  },
+  {
+    "route": "lists.$id.export.ts",
+    "title": "Export members",
+    "method": "GET",
+    "path": "/api/v1/lists/{id}/export",
+    "summary": "Streams every member of a list as CSV.",
+    "pathParams": [{ "name": "id", "example": "ctl_Example0001", "description": "The list id." }],
+    "status": 200,
+    "response": null,
+    "responseText": "email,first_name,last_name,source,consent_at,added_at,status,opted_out\nada@example.com,Ada,Lovelace,manual,2026-11-26T00:00:00.000Z,2026-11-26T00:00:00.000Z,subscribed,",
+    "responseNote": "The response is text/csv, sent as an attachment named after the list id. opted_out joins brand domains with semicolons.",
+    "errors": [{ "status": 404, "message": "not found", "when": "The list does not exist or belongs to another app." }]
+  }
+]

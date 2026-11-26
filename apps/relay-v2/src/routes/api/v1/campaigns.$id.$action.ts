@@ -8,7 +8,7 @@ import {
   scheduleCampaignForScope,
 } from "../../../core/campaign-scope";
 
-const scheduleBody = z.object({ at: z.number().int() });
+export const scheduleBody = z.object({ at: z.number().int() });
 
 export const Route = createFileRoute("/api/v1/campaigns/$id/$action")({
   server: {

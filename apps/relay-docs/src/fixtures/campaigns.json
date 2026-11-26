@@ -1,0 +1,275 @@
+[
+  {
+    "route": "campaigns.ts",
+    "title": "List campaigns",
+    "method": "GET",
+    "path": "/api/v1/campaigns",
+    "summary": "Returns the campaigns of your app, 50 per page, without their bodies.",
+    "query": [{ "name": "cursor", "example": "", "description": "The nextCursor from the previous page. Omit it for the first page." }],
+    "status": 200,
+    "response": {
+      "data": [
+        {
+          "id": "cmp_Example0001",
+          "appId": "app_Example0001",
+          "name": "November news",
+          "status": "draft",
+          "fromEmail": "news@acme.test",
+          "subject": "What is new in November",
+          "listIds": ["ctl_Example0001"],
+          "audienceKind": "lists",
+          "audienceQuery": null,
+          "scheduledAt": null,
+          "runSeq": 0,
+          "startedAt": null,
+          "finishedAt": null,
+          "recipients": 0,
+          "error": null,
+          "createdAt": 1795000000000,
+          "updatedAt": 1795000000000
+        }
+      ],
+      "nextCursor": null
+    },
+    "responseNote": "status is draft, scheduled, sending, paused, sent or cancelled.",
+    "errors": [{ "status": 400, "message": "invalid input", "when": "The cursor is not one Relay issued." }]
+  },
+  {
+    "route": "campaigns.ts",
+    "title": "Create a campaign",
+    "method": "POST",
+    "path": "/api/v1/campaigns",
+    "summary": "Creates a draft campaign. Edit it with the update endpoint, then schedule it.",
+    "schema": "campaignCreate",
+    "fields": [
+      { "name": "name", "type": "string", "required": true, "description": "1 to 80 characters after trimming." },
+      { "name": "templateId", "type": "string", "required": false, "description": "A template of your app to start from." },
+      { "name": "audienceKind", "type": "string", "required": false, "description": "lists or hook. Use hook to take recipients from your audience hook." },
+      { "name": "audienceQuery", "type": "string or null", "required": false, "description": "Up to 1,000 characters, passed to your audience hook as audience." }
+    ],
+    "body": { "name": "November news", "templateId": "tpl_Example0001", "audienceKind": "lists" },
+    "status": 201,
+    "response": {
+      "data": {
+        "id": "cmp_Example0001",
+        "appId": "app_Example0001",
+        "name": "November news",
+        "status": "draft",
+        "fromEmail": null,
+        "subject": "Your order is confirmed",
+        "html": "<p>Hello from Acme.</p>",
+        "text": "Hello from Acme.",
+        "listIds": [],
+        "audienceKind": "lists",
+        "audienceQuery": null,
+        "scheduledAt": null,
+        "runSeq": 0,
+        "startedAt": null,
+        "finishedAt": null,
+        "recipients": 0,
+        "error": null,
+        "createdAt": 1795000000000,
+        "updatedAt": 1795000000000,
+        "consoleUrl": "https://relay.a6n.ai/campaigns/cmp_Example0001?appId=app_Example0001"
+      }
+    },
+    "responseNote": "consoleUrl links to the campaign in the console.",
+    "errors": [
+      { "status": 400, "message": "invalid input", "when": "The body is not valid JSON or fails validation." },
+      { "status": 404, "message": "not found", "when": "templateId does not exist for your app." }
+    ]
+  },
+  {
+    "route": "campaigns.$id.ts",
+    "title": "Get a campaign",
+    "method": "GET",
+    "path": "/api/v1/campaigns/{id}",
+    "summary": "Returns one campaign with its bodies.",
+    "pathParams": [{ "name": "id", "example": "cmp_Example0001", "description": "The campaign id." }],
+    "status": 200,
+    "response": {
+      "data": {
+        "id": "cmp_Example0001",
+        "appId": "app_Example0001",
+        "name": "November news",
+        "status": "draft",
+        "fromEmail": "news@acme.test",
+        "subject": "What is new in November",
+        "html": "<p>Hello from Acme.</p>",
+        "text": "Hello from Acme.",
+        "listIds": ["ctl_Example0001"],
+        "audienceKind": "lists",
+        "audienceQuery": null,
+        "scheduledAt": null,
+        "runSeq": 0,
+        "startedAt": null,
+        "finishedAt": null,
+        "recipients": 0,
+        "error": null,
+        "createdAt": 1795000000000,
+        "updatedAt": 1795000000000
+      }
+    },
+    "errors": [{ "status": 404, "message": "not found", "when": "The campaign does not exist or belongs to another app." }]
+  },
+  {
+    "route": "campaigns.$id.ts",
+    "title": "Update a campaign",
+    "method": "PATCH",
+    "path": "/api/v1/campaigns/{id}",
+    "summary": "Edits a draft campaign. Every field is optional.",
+    "pathParams": [{ "name": "id", "example": "cmp_Example0001", "description": "The campaign id." }],
+    "schema": "campaignPatch",
+    "fields": [
+      { "name": "name", "type": "string", "required": false, "description": "1 to 80 characters after trimming." },
+      { "name": "fromEmail", "type": "string (email) or null", "required": false, "description": "Must be a verified sender of the app." },
+      { "name": "subject", "type": "string", "required": false, "description": "Up to 300 characters, with no line breaks." },
+      { "name": "html", "type": "string", "required": false, "description": "Up to 500,000 characters." },
+      { "name": "text", "type": "string", "required": false, "description": "Up to 500,000 characters." },
+      { "name": "listIds", "type": "array of strings", "required": false, "description": "Up to 50 list ids of your app." },
+      { "name": "audienceKind", "type": "string", "required": false, "description": "lists or hook." },
+      { "name": "audienceQuery", "type": "string or null", "required": false, "description": "Up to 1,000 characters." }
+    ],
+    "body": { "fromEmail": "news@acme.test", "subject": "What is new in November", "listIds": ["ctl_Example0001"] },
+    "status": 200,
+    "response": {
+      "data": {
+        "id": "cmp_Example0001",
+        "appId": "app_Example0001",
+        "name": "November news",
+        "status": "draft",
+        "fromEmail": "news@acme.test",
+        "subject": "What is new in November",
+        "html": "<p>Hello from Acme.</p>",
+        "text": "Hello from Acme.",
+        "listIds": ["ctl_Example0001"],
+        "audienceKind": "lists",
+        "audienceQuery": null,
+        "scheduledAt": null,
+        "runSeq": 0,
+        "startedAt": null,
+        "finishedAt": null,
+        "recipients": 0,
+        "error": null,
+        "createdAt": 1795000000000,
+        "updatedAt": 1795000100000,
+        "consoleUrl": "https://relay.a6n.ai/campaigns/cmp_Example0001?appId=app_Example0001"
+      }
+    },
+    "errors": [
+      { "status": 400, "message": "invalid input", "when": "The body is not valid JSON or fails validation." },
+      { "status": 400, "message": "unknown merge field", "when": "subject, html or text uses a merge field Relay does not know." },
+      { "status": 400, "message": "sender not verified", "when": "fromEmail is not a verified sender of the app." },
+      { "status": 400, "message": "unknown list", "when": "A listIds entry is not a list of your app." },
+      { "status": 404, "message": "not found", "when": "The campaign does not exist or belongs to another app." },
+      { "status": 409, "message": "campaign not editable", "when": "The campaign is no longer a draft." },
+      { "status": 409, "message": "campaign not ready: data_fields_need_hook", "when": "You switch a hook campaign to lists while its bodies use data fields." }
+    ]
+  },
+  {
+    "route": "campaigns.$id.ts",
+    "title": "Delete a campaign",
+    "method": "DELETE",
+    "path": "/api/v1/campaigns/{id}",
+    "summary": "Deletes a draft campaign.",
+    "pathParams": [{ "name": "id", "example": "cmp_Example0001", "description": "The campaign id." }],
+    "status": 204,
+    "response": null,
+    "responseNote": "Empty body.",
+    "errors": [
+      { "status": 404, "message": "not found", "when": "The campaign does not exist or belongs to another app." },
+      { "status": 409, "message": "campaign not editable", "when": "The campaign is no longer a draft." }
+    ]
+  },
+  {
+    "route": "campaigns.$id.$action.ts",
+    "title": "Schedule a campaign",
+    "method": "POST",
+    "path": "/api/v1/campaigns/{id}/schedule",
+    "summary": "Starts a draft campaign at a time you choose. Relay checks the campaign is ready first.",
+    "pathParams": [{ "name": "id", "example": "cmp_Example0001", "description": "The campaign id." }],
+    "schema": "campaignSchedule",
+    "fields": [{ "name": "at", "type": "integer", "required": true, "description": "Start time in epoch milliseconds. At most 60 seconds in the past and 365 days ahead." }],
+    "body": { "at": 1798761600000 },
+    "status": 200,
+    "response": { "data": { "runSeq": 1 } },
+    "errors": [
+      { "status": 400, "message": "invalid input", "when": "The body is invalid or at is outside the allowed window." },
+      { "status": 404, "message": "not found", "when": "The campaign does not exist or belongs to another app." },
+      { "status": 409, "message": "campaign not editable", "when": "The campaign is no longer a draft." },
+      { "status": 409, "message": "campaign not ready: <problems>", "when": "The draft is incomplete. problems is a comma-separated list of from_missing, subject_missing, html_missing, text_missing, audience_empty, audience_hook_missing, data_fields_need_hook, unsubscribe_missing and postal_address_missing." },
+      { "status": 503, "message": "could not schedule", "when": "Relay could not start the run. Try again." }
+    ]
+  },
+  {
+    "route": "campaigns.$id.$action.ts",
+    "title": "Pause a campaign",
+    "method": "POST",
+    "path": "/api/v1/campaigns/{id}/pause",
+    "summary": "Pauses a campaign that is sending.",
+    "pathParams": [{ "name": "id", "example": "cmp_Example0001", "description": "The campaign id." }],
+    "status": 204,
+    "response": null,
+    "responseNote": "Empty body.",
+    "errors": [
+      { "status": 404, "message": "not found", "when": "The campaign does not exist or belongs to another app." },
+      { "status": 409, "message": "campaign not sending", "when": "The campaign is not sending." }
+    ]
+  },
+  {
+    "route": "campaigns.$id.$action.ts",
+    "title": "Resume a campaign",
+    "method": "POST",
+    "path": "/api/v1/campaigns/{id}/resume",
+    "summary": "Resumes a paused campaign.",
+    "pathParams": [{ "name": "id", "example": "cmp_Example0001", "description": "The campaign id." }],
+    "status": 200,
+    "response": { "data": { "runSeq": 2 } },
+    "errors": [
+      { "status": 404, "message": "not found", "when": "The campaign does not exist or belongs to another app." },
+      { "status": 409, "message": "campaign not paused", "when": "The campaign is not paused." },
+      { "status": 503, "message": "could not resume", "when": "Relay could not restart the run. The campaign stays paused. Try again." }
+    ]
+  },
+  {
+    "route": "campaigns.$id.$action.ts",
+    "title": "Cancel a campaign",
+    "method": "POST",
+    "path": "/api/v1/campaigns/{id}/cancel",
+    "summary": "Cancels a campaign and drops the messages not yet sent.",
+    "pathParams": [{ "name": "id", "example": "cmp_Example0001", "description": "The campaign id." }],
+    "status": 200,
+    "response": { "data": { "dropped": 120 } },
+    "responseNote": "dropped is the number of queued messages marked failed with campaign_cancelled.",
+    "errors": [
+      { "status": 404, "message": "not found", "when": "The campaign does not exist or belongs to another app." },
+      { "status": 409, "message": "campaign not cancellable", "when": "The campaign is not scheduled, sending or paused." }
+    ]
+  },
+  {
+    "route": "campaigns.$id.stats.ts",
+    "title": "Get campaign stats",
+    "method": "GET",
+    "path": "/api/v1/campaigns/{id}/stats",
+    "summary": "Returns the delivery counters of a campaign.",
+    "pathParams": [{ "name": "id", "example": "cmp_Example0001", "description": "The campaign id." }],
+    "status": 200,
+    "response": {
+      "data": {
+        "total": 120,
+        "queued": 0,
+        "sent": 118,
+        "failed": 1,
+        "suppressed": 1,
+        "delivered": 117,
+        "opened": 60,
+        "clicked": 12,
+        "bounced": 1,
+        "complained": 0,
+        "unsubscribed": 2
+      }
+    },
+    "responseNote": "total is queued plus sent plus failed plus suppressed.",
+    "errors": [{ "status": 404, "message": "not found", "when": "The campaign does not exist or belongs to another app." }]
+  }
+]
