@@ -18,6 +18,7 @@ describe("googleConfig", () => {
       clientId: "id",
       clientSecret: "s",
       disableSignUp: true,
+      prompt: "select_account",
     });
   });
 });
@@ -31,6 +32,7 @@ describe("signInErrorText", () => {
       "Platform admins sign in with an email code first, then link Google from their account.",
     );
     expect(signInErrorText("weird")).toBe("Could not sign in with Google. Try again or use your email.");
+    expect(signInErrorText("state_mismatch")).toBe("Could not sign in with Google. Try again or use your email.");
     expect(signInErrorText(undefined)).toBeNull();
   });
 });

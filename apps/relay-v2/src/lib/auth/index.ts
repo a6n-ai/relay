@@ -103,6 +103,8 @@ export function createAuth(env: Env) {
     secret: env.BETTER_AUTH_SECRET,
     baseURL: env.BETTER_AUTH_URL,
     trustedOrigins: [env.BETTER_AUTH_URL],
+    // Expired or replayed OAuth state and other API errors land on our sign-in page, not the default error page.
+    onAPIError: { errorURL: "/sign-in" },
     database: drizzleAdapter(securityDb(env), {
       provider: "sqlite",
       schema: {

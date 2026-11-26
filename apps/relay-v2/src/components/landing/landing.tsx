@@ -47,10 +47,10 @@ export function Landing() {
           <p className="text-lg text-muted-foreground">One API, one console.</p>
           <SignIn />
         </Wrap>
-        <Wrap>
+        <Wrap className="hidden sm:block">
           <div className="overflow-hidden rounded-xl border bg-card">
-            <img src="/landing/console-light.png" alt="Relay console" width={1440} height={900} className="block h-auto w-full dark:hidden" />
-            <img src="/landing/console-dark.png" alt="Relay console" width={1440} height={900} className="hidden h-auto w-full dark:block" />
+            <img src="/landing/console-light.png" alt="Relay console" width={1440} height={500} className="block h-auto w-full dark:hidden" />
+            <img src="/landing/console-dark.png" alt="Relay console" width={1440} height={500} className="hidden h-auto w-full dark:block" />
           </div>
         </Wrap>
         <Wrap className="py-16">
@@ -64,7 +64,7 @@ export function Landing() {
           </ul>
         </Wrap>
         <Wrap className="pb-16">
-          <pre tabIndex={0} className="overflow-x-auto rounded-md border bg-card p-4 font-mono text-sm text-card-foreground">
+          <pre tabIndex={0} className="whitespace-pre-wrap break-all rounded-md border bg-card p-4 font-mono text-sm text-card-foreground">
             <code>{SAMPLE}</code>
           </pre>
         </Wrap>

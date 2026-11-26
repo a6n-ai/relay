@@ -1,5 +1,5 @@
 import { Button } from "@foundry/ui/button";
-import { createFileRoute, redirect, useRouter } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { getShell } from "../console/shell.fns";
 import { acceptInviteFn, getInviteFn } from "../console/members.fns";
@@ -42,7 +42,12 @@ function InvitePage() {
   return (
     <AuthCard>
       {!invite ? (
-        <Title>This invite was not found.</Title>
+        <>
+          <Title>This invite was not found.</Title>
+          <Button variant="outline" render={<Link to="/sign-in" search={{ redirect: undefined }} />}>
+            Back to sign in
+          </Button>
+        </>
       ) : invite.state === "other-email" ? (
         <>
           <Title>This invite is for a different email address.</Title>

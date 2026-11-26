@@ -13,6 +13,7 @@ import { fetchOverview } from "../../console/overview.fns";
 import { Hint, SectionTitle } from "../../components/page/text";
 
 export const Route = createFileRoute("/_app/")({
+  head: () => ({ meta: [{ name: "description", content: "Email, campaigns and webhooks for your apps. One API, one console." }] }),
   // A signed-out visitor sees the landing page, but child loaders still run; skip the fetch for them.
   loader: ({ context }) => (context.shell ? fetchOverview() : (null as never)),
   component: Overview,

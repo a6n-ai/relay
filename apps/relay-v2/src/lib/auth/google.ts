@@ -22,7 +22,7 @@ export function auditKindFor(path: string, state: { link?: unknown } | null | un
 
 export function googleConfig(env: Pick<Env, "GOOGLE_CLIENT_ID" | "GOOGLE_CLIENT_SECRET">) {
   const { GOOGLE_CLIENT_ID: clientId, GOOGLE_CLIENT_SECRET: clientSecret } = env;
-  return clientId && clientSecret ? { clientId, clientSecret, disableSignUp: true as const } : null;
+  return clientId && clientSecret ? { clientId, clientSecret, disableSignUp: true as const, prompt: "select_account" as const } : null;
 }
 
 export function signInErrorText(code: string | undefined): string | null {
