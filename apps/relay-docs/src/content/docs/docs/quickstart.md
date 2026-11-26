@@ -7,7 +7,7 @@ You will send one email and find it in the console. Plan for about ten minutes, 
 
 ## Before you start
 
-You need an invite to a Relay workspace. Sign in at [relay.a6n.ai](https://relay.a6n.ai/sign-in). Your workspace has at least one app. If it has none, create one under **Apps** with **New app**.
+You need an invite to a Relay workspace. Sign in at [relay.a6n.ai](https://relay.a6n.ai/sign-in). Your workspace has at least one app. If it has none, create one under **Apps** with **New app**. Sign in with an email code or Google. You can also set a password under **Settings**, then sign in with it.
 
 ## 1. Get an API key
 

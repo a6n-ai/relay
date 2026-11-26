@@ -52,6 +52,7 @@ const ID_PREFIX: Record<string, string> = {
 const DAY_S = 24 * 60 * 60;
 const OTP_EMAIL_WINDOW_MS = 600_000;
 const OTP_EMAIL_MAX = 5;
+const RESET_TTL_S = 3600;
 
 export function pickMailer(kind: Env["OTP_MAILER"], env: Env): OtpMailer {
   if (kind === "memory") return memoryOtpMailer;
@@ -61,14 +62,14 @@ export function pickMailer(kind: Env["OTP_MAILER"], env: Env): OtpMailer {
 }
 
 // better-auth's limiter keys on IP and path, so rotating IPs could mail-bomb one address. One upsert keeps the count race-free.
-async function otpEmailWithinCap(env: Env, email: string): Promise<boolean> {
+async function emailWithinCap(env: Env, scope: string, email: string, max = OTP_EMAIL_MAX): Promise<boolean> {
   const now = Date.now();
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(email));
   const hex = [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
   const expired = sql`${rateLimit.lastRequest} < ${now - OTP_EMAIL_WINDOW_MS}`;
   const [row] = await securityDb(env)
     .insert(rateLimit)
-    .values({ id: newId("rtl"), key: `otp-email:${hex}`, count: 1, lastRequest: now })
+    .values({ id: newId("rtl"), key: `${scope}:${hex}`, count: 1, lastRequest: now })
     .onConflictDoUpdate({
       target: rateLimit.key,
       set: {
@@ -77,7 +78,7 @@ async function otpEmailWithinCap(env: Env, email: string): Promise<boolean> {
       },
     })
     .returning({ count: rateLimit.count });
-  return row.count <= OTP_EMAIL_MAX;
+  return row.count <= max;
 }
 
 export function createAuth(env: Env) {
@@ -125,6 +126,21 @@ export function createAuth(env: Env) {
     // google is deliberately not in trustedProviders: that would link on an unverified Google email. Without it, linking needs Google's email_verified.
     // Invites pre-create users with emailVerified false, so the local-verified requirement is off; the OTP sign-in keeps working for the same row.
     ...(google ? { socialProviders: { google } } : {}),
+    // Invite-only holds: disableSignUp means a password never creates a user. Passwords are set later, from Account (setPassword) or by reset link.
+    emailAndPassword: {
+      enabled: true,
+      disableSignUp: true,
+      revokeSessionsOnPasswordReset: true,
+      resetPasswordTokenExpiresIn: RESET_TTL_S,
+      // A mail failure is swallowed so a known address cannot be told apart from an unknown one by a 500.
+      sendResetPassword: async ({ user, url }) => {
+        try {
+          await pickMailer(env.OTP_MAILER, env).send(user.email, url, "reset-password");
+        } catch (error) {
+          console.error(`reset mail failed: ${error instanceof Error ? error.message : "unknown"}`);
+        }
+      },
+    },
     account: { accountLinking: { enabled: true, requireLocalEmailVerified: false } },
     advanced: {
       useSecureCookies: env.BETTER_AUTH_URL.startsWith("https://"),
@@ -143,6 +159,8 @@ export function createAuth(env: Env) {
         "/get-session": false,
         "/email-otp/send-verification-otp": { window: 600, max: 5 },
         "/sign-in/email-otp": { window: 600, max: 5 },
+        "/sign-in/email": { window: 600, max: 10 },
+        "/request-password-reset": { window: 600, max: 5 },
         "/email-otp/check-verification-otp": { window: 600, max: 5 },
       },
     },
@@ -196,7 +214,7 @@ export function createAuth(env: Env) {
         },
       },
     },
-    // Relay has no passwords, so these paths only mail OTPs to existing users. Blocked before the handler runs.
+    // The email-otp reset flow is not used: passwords reset through the core /request-password-reset. Blocked before the handler runs.
     hooks: {
       before: createAuthMiddleware(async (ctx) => {
         const resetMail =
@@ -209,7 +227,13 @@ export function createAuth(env: Env) {
         if ((ctx.path === "/sign-in/social" || ctx.path === "/link-social") && ctx.body?.idToken) throw new APIError("FORBIDDEN");
         if (ctx.path === "/email-otp/send-verification-otp") {
           const otpEmail = String(ctx.body?.email ?? "").trim().toLowerCase();
-          if (otpEmail && !(await otpEmailWithinCap(env, otpEmail))) throw new APIError("TOO_MANY_REQUESTS");
+          if (otpEmail && !(await emailWithinCap(env, "otp-email", otpEmail))) throw new APIError("TOO_MANY_REQUESTS");
+        }
+        // Same per-address cap for password sign-in guesses and reset mail; unknown and known addresses count alike.
+        if (ctx.path === "/sign-in/email" || ctx.path === "/request-password-reset") {
+          const pwEmail = String(ctx.body?.email ?? "").trim().toLowerCase();
+          const withinCap = ctx.path === "/sign-in/email" ? emailWithinCap(env, "pw-email", pwEmail, 10) : emailWithinCap(env, "reset-email", pwEmail);
+          if (pwEmail && !(await withinCap)) throw new APIError("TOO_MANY_REQUESTS");
         }
         // Keys are created by the server only: over HTTP, metadata.appId would be client-set and skip the app check.
         if (ctx.request && ctx.path.startsWith("/api-key/")) throw new APIError("NOT_FOUND");
@@ -259,13 +283,14 @@ export function createAuth(env: Env) {
         const meta = requestMeta(ctx);
         const body = (ctx.body ?? {}) as { email?: string; userId?: string; memberId?: string; role?: string; banReason?: string };
 
-        if (ctx.path === "/sign-in/email-otp") {
+        if (ctx.path === "/sign-in/email-otp" || ctx.path === "/sign-in/email") {
+          const method = ctx.path === "/sign-in/email" ? { method: "password" } : {};
           if (isAPIError(result)) {
             const email = String(body.email ?? "").trim().toLowerCase();
-            await writeAudit(env, { action: "sign_in.failure", target: maskEmails(email), data: { status: result.statusCode }, ...meta });
+            await writeAudit(env, { action: "sign_in.failure", target: maskEmails(email), data: { status: result.statusCode, ...method }, ...meta });
           } else {
             const signedIn = (result as { user: { id: string } }).user;
-            await writeAudit(env, { action: "sign_in.success", actorUserId: signedIn.id, target: signedIn.id, ...meta });
+            await writeAudit(env, { action: "sign_in.success", actorUserId: signedIn.id, target: signedIn.id, data: method, ...meta });
           }
           return;
         }

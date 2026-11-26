@@ -1,6 +1,6 @@
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@foundry/ui/input-otp";
 import { Label } from "@foundry/ui/label";
-import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { type FormEvent, useEffect, useState } from "react";
 import { AuthButton, AuthCard, AuthInput, AuthText } from "../components/auth-card";
 import { FormError } from "../components/page/form-parts";
@@ -9,7 +9,7 @@ import { signInErrorText } from "../lib/auth/google";
 
 const SITE = "https://relay.a6n.ai";
 const TITLE = "Sign in to Relay";
-const DESCRIPTION = "Sign in to Relay with a one-time code sent to your email, or with Google.";
+const DESCRIPTION = "Sign in to Relay with a one-time code sent to your email, a password, or Google.";
 
 export const Route = createFileRoute("/sign-in")({
   head: () => ({
@@ -39,6 +39,7 @@ export const Route = createFileRoute("/sign-in")({
 
 const json = { "content-type": "application/json" };
 const TOO_MANY = "Too many codes. Try again in a few minutes.";
+const TOO_MANY_TRIES = "Too many tries. Try again in a few minutes.";
 const RESEND_SECONDS = 30;
 const OFFLINE = "Could not reach Relay. Check your connection and try again.";
 
@@ -49,6 +50,8 @@ function SignIn() {
   const [step, setStep] = useState<"email" | "code">("email");
   const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");
+  const [usePassword, setUsePassword] = useState(false);
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(signInErrorText(errorCode));
   const [pending, setPending] = useState(false);
   const [wait, setWait] = useState(0);
@@ -116,6 +119,27 @@ function SignIn() {
     if (await requestCode()) setStep("code");
   }
 
+  async function signInWithPassword(event: FormEvent) {
+    event.preventDefault();
+    setPending(true);
+    setError(null);
+    let res: Response;
+    try {
+      res = await fetch("/api/auth/sign-in/email", {
+        method: "POST",
+        headers: json,
+        body: JSON.stringify({ email, password }),
+      });
+    } catch {
+      return setError(OFFLINE);
+    } finally {
+      setPending(false);
+    }
+    if (res.status === 429) return setError(TOO_MANY_TRIES);
+    if (!res.ok) return setError("Wrong email or password.");
+    await router.navigate({ href: safeRedirect(redirect) });
+  }
+
   async function verify(code: string) {
     setPending(true);
     setError(null);
@@ -139,7 +163,7 @@ function SignIn() {
   return (
     <AuthCard title={step === "email" ? "Sign in to Relay" : "Check your email"} footer="Access is by invite. Ask your workspace owner.">
       {step === "email" ? (
-        <form onSubmit={sendCode} className="flex flex-col gap-3">
+        <form onSubmit={usePassword ? signInWithPassword : sendCode} className="flex flex-col gap-3">
           {google ? (
             <>
               <AuthButton type="button" variant="outline" disabled={pending} onClick={() => void signInWithGoogle()}>
@@ -167,9 +191,45 @@ function SignIn() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
-          <AuthButton type="submit" disabled={pending}>
-            Continue with email
-          </AuthButton>
+          {usePassword ? (
+            <>
+              <Label htmlFor="password" className="sr-only">
+                Password
+              </Label>
+              <AuthInput
+                id="password"
+                name="password"
+                type="password"
+                autoComplete="current-password"
+                placeholder="Password"
+                required
+                maxLength={128}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+              <AuthButton type="submit" disabled={pending}>
+                Continue with password
+              </AuthButton>
+              <Link to="/forgot-password" className="text-center text-sm text-muted-foreground hover:text-foreground">
+                Forgot password?
+              </Link>
+            </>
+          ) : (
+            <AuthButton type="submit" disabled={pending}>
+              Continue with email
+            </AuthButton>
+          )}
+          <button
+            type="button"
+            className="text-center text-sm text-muted-foreground hover:text-foreground"
+            onClick={() => {
+              setUsePassword(!usePassword);
+              setPassword("");
+              setError(null);
+            }}
+          >
+            {usePassword ? "Use an email code instead" : "Sign in with password"}
+          </button>
         </form>
       ) : (
         <form

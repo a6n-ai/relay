@@ -9,6 +9,7 @@ const COPY = new Map<string, string>([
   ["not found", "That item no longer exists. Refresh and try again."],
   ["cross-origin write", "This request was blocked. Reload the page and try again."],
   ["unauthorized", "Your session has ended. Sign in again."],
+  ["password already set", "A password is already set. Use Change password instead."],
   ["invalid input", "Some details are missing or not valid. Check the form and try again."],
   ["invalid cursor", "This page link has expired. Reload the page."],
   ["invalid slug", "Use lowercase letters, numbers and hyphens for the slug."],
