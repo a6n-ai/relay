@@ -9,7 +9,11 @@ import { CreateDialog } from "../../components/create-dialog";
 import { DeniedState, deniedReason } from "../../components/denied-state";
 import { errorText } from "../../components/error-text";
 import { EmptyState } from "../../components/page/empty-state";
+import { ResourceGrid } from "../../components/page/resource-grid";
 import { SearchInput, Toolbar } from "../../components/page/toolbar";
+import { ViewToggle } from "../../components/page/view-toggle";
+import { type View, viewPref } from "../../components/page/view-pref";
+import { SlugField } from "../../components/form/slug-field";
 import { useUrlFilter } from "../../components/page/use-url-filter";
 import { TableSkeleton } from "../../components/page/table-skeleton";
 import { ResourceTable } from "../../components/resource-table";
@@ -18,7 +22,6 @@ import { PageHeader } from "../../components/shell/page-header";
 import { useCan } from "../../components/use-can";
 import { createAppFn, fetchApps } from "../../console/apps.fns";
 import { FormError, FormBody, FormActions } from "../../components/page/form-parts";
-import { Hint } from "../../components/page/text";
 
 export const Route = createFileRoute("/_app/apps")({
   validateSearch: (search: Record<string, unknown>): { new?: 1; q?: string } => ({
@@ -36,6 +39,7 @@ function AppsPage() {
   const canWrite = useCan({ tenant: ["write"] });
   const [open, setOpen] = useNewParam();
   const [query, setQuery] = useUrlFilter("q");
+  const [view, setView] = useState<View>(() => viewPref.read(Route.fullPath));
   const crumbs = [{ label: "Apps" }];
   if (!apps) {
     return (
@@ -52,39 +56,63 @@ function AppsPage() {
       {(done) => <NewAppForm done={done} />}
     </CreateDialog>
   ) : undefined;
+  const menu = (a: (typeof apps)[number]) => [
+    { label: "Open", to: "/apps/$appId", params: { appId: a.id } },
+    { label: "Webhooks", to: "/apps/$appId/webhooks", params: { appId: a.id } },
+  ];
+  const empty =
+    apps.length === 0 ? (
+      <EmptyState
+        icon={BoxesIcon}
+        title="No apps yet"
+        description="An app gets its own API keys and senders."
+        action={canWrite ? <Button variant="outline" onClick={() => setOpen(true)}>New app</Button> : undefined}
+      />
+    ) : (
+      <p className="p-4 text-sm text-muted-foreground">No apps match your search.</p>
+    );
   return (
     <>
       <PageHeader crumbs={crumbs} />
-      <Toolbar search={apps.length > 0 ? <SearchInput value={query} onChange={setQuery} placeholder="Search apps" /> : undefined}>
+      <Toolbar
+        search={apps.length > 0 ? <SearchInput value={query} onChange={setQuery} placeholder="Search apps" /> : undefined}
+        view={apps.length > 0 ? <ViewToggle route={Route.fullPath} value={view} onChange={setView} /> : undefined}
+      >
         {create}
       </Toolbar>
-      <ResourceTable
-        columns={[
-          { header: "Name", kind: "name", cell: (a) => a.name },
-          { header: "Slug", kind: "mono", cell: (a) => a.slug },
-          { header: "Live keys", numeric: true, cell: (a) => a.keyCount },
-        ]}
-        rows={rows}
-        rowKey={(a) => a.id}
-        rowHref={(a) => ({ to: "/apps/$appId", params: { appId: a.id } })}
-        rowLabel={(a) => `Open ${a.name}`}
-        menu={(a) => [
-          { label: "Open", to: "/apps/$appId", params: { appId: a.id } },
-          { label: "Webhooks", to: "/apps/$appId/webhooks", params: { appId: a.id } },
-        ]}
-        empty={
-          apps.length === 0 ? (
-            <EmptyState
-              icon={BoxesIcon}
-              title="No apps yet"
-              description="An app gets its own API keys and senders."
-              action={canWrite ? <Button variant="outline" onClick={() => setOpen(true)}>New app</Button> : undefined}
-            />
-          ) : (
-            <p className="p-4 text-sm text-muted-foreground">No apps match your search.</p>
-          )
-        }
-      />
+      {view === "grid" ? (
+        <ResourceGrid
+          items={rows}
+          rowKey={(a) => a.id}
+          href={(a) => ({ to: "/apps/$appId", params: { appId: a.id } })}
+          rowLabel={(a) => `Open ${a.name}`}
+          menu={menu}
+          card={(a) => (
+            <div className="grid gap-1 pr-8">
+              <p className="truncate text-sm font-medium">{a.name}</p>
+              <p className="truncate font-mono text-xs text-muted-foreground">{a.slug}</p>
+              <p className="text-xs text-muted-foreground">
+                {a.keyCount} live {a.keyCount === 1 ? "key" : "keys"}
+              </p>
+            </div>
+          )}
+          empty={empty}
+        />
+      ) : (
+        <ResourceTable
+          columns={[
+            { header: "Name", kind: "name", cell: (a) => a.name },
+            { header: "Slug", kind: "mono", cell: (a) => a.slug },
+            { header: "Live keys", numeric: true, cell: (a) => a.keyCount },
+          ]}
+          rows={rows}
+          rowKey={(a) => a.id}
+          rowHref={(a) => ({ to: "/apps/$appId", params: { appId: a.id } })}
+          rowLabel={(a) => `Open ${a.name}`}
+          menu={menu}
+          empty={empty}
+        />
+      )}
     </>
   );
 }
@@ -115,24 +143,18 @@ function NewAppForm({ done }: { done: () => void }) {
   return (
     <FormBody onSubmit={submit}>
       <Label htmlFor="app-name">Name</Label>
-      <Input id="app-name" required maxLength={80} value={name} onChange={(e) => setName(e.target.value)} />
-      <Label htmlFor="app-slug">Slug</Label>
       <Input
-        id="app-slug"
+        id="app-name"
         required
-        value={slug}
-        onChange={(e) => setSlug(e.target.value)}
-        aria-describedby="app-slug-hint"
+        autoFocus
+        maxLength={80}
+        placeholder="Acme Production"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
       />
-      <Hint size="xs" id="app-slug-hint">
-        Lowercase letters, numbers and hyphens.
-      </Hint>
+      <SlugField id="app-slug" name={name} value={slug} onChange={setSlug} />
       <FormError message={error} />
-      <FormActions>
-        <Button type="submit" disabled={pending}>
-          Create app
-        </Button>
-      </FormActions>
+      <FormActions cancel submitLabel="Create app" pending={pending} pendingLabel="Creating…" />
     </FormBody>
   );
 }

@@ -1,8 +1,5 @@
 import { Badge } from "@foundry/ui/badge";
 import { Button } from "@foundry/ui/button";
-import { Checkbox } from "@foundry/ui/checkbox";
-import { Input } from "@foundry/ui/input";
-import { Label } from "@foundry/ui/label";
 import { Switch } from "@foundry/ui/switch";
 import { toast } from "@foundry/ui/toast";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
@@ -21,11 +18,11 @@ import { confirmAction, runAction } from "../../components/run-action";
 import { SecretOnce } from "../../components/secret-once";
 import { useCan } from "../../components/use-can";
 import { WEBHOOK_EVENT_LABELS, WEBHOOK_EVENT_LIST } from "../../components/webhook-events";
+import { EditWebhookForm, WebhookEventsField, WebhookUrlField } from "../../components/webhook-form";
 import { createWebhookFn, deleteWebhookFn, fetchWebhooks, updateWebhookFn } from "../../console/webhooks.fns";
 import type { WebhookEvent } from "../../core/webhooks";
 import { formatDate, formatWhen } from "../../lib/format-date";
 import { FormError, FormBody, FormActions } from "../../components/page/form-parts";
-import { Hint, SectionTitle } from "../../components/page/text";
 
 export const Route = createFileRoute("/_app/apps_/$appId_/webhooks")({
   loader: ({ params }) => fetchWebhooks({ data: { appId: params.appId } }),
@@ -41,12 +38,15 @@ function WebhooksPage() {
   const canWrite = useCan({ webhook: ["write"] });
   const [createOpen, setCreateOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [editId, setEditId] = useState<string | null>(null);
   const appName = shell.apps?.find((a) => a.id === appId)?.name ?? "App";
   const crumbs = [
     { label: "Apps", to: "/apps" },
     { label: appName, to: "/apps/$appId", params: { appId } },
     { label: "Webhooks" },
   ];
+  const editing = webhooks?.find((w) => w.id === editId);
+  const deleting = webhooks?.find((w) => w.id === deleteId);
   if (!webhooks) {
     return (
       <>
@@ -96,6 +96,7 @@ function WebhooksPage() {
         rowHref={(w) => ({ to: "/apps/$appId/webhooks/$webhookId", params: { appId, webhookId: w.id } })}
         rowLabel={() => "Open deliveries"}
         menu={(w) => [
+          { label: "Edit", hidden: !canWrite, onSelect: () => setEditId(w.id) },
           { label: "Deliveries", to: "/apps/$appId/webhooks/$webhookId", params: { appId, webhookId: w.id } },
           { label: "Delete", destructive: true, hidden: !canWrite, onSelect: () => setDeleteId(w.id) },
         ]}
@@ -108,13 +109,22 @@ function WebhooksPage() {
           />
         }
       />
+      <CreateDialog
+        title="Edit webhook"
+        open={editing !== undefined}
+        onOpenChange={(o) => {
+          if (!o) setEditId(null);
+        }}
+      >
+        {(done) => (editing ? <EditWebhookForm key={editing.id} appId={appId} webhook={editing} done={done} /> : null)}
+      </CreateDialog>
       <ConfirmDialog
         open={deleteId !== null}
         onOpenChange={(o) => {
           if (!o) setDeleteId(null);
         }}
-        title="Delete this webhook?"
-        description="Messages stop being sent to this address right away. Deliveries still waiting are marked failed."
+        title={deleting ? `Delete webhook for ${hostOf(deleting.url)}?` : "Delete this webhook?"}
+        description="Relay stops calling this URL right away. Deliveries still waiting are marked failed."
         confirmLabel="Delete webhook"
         onConfirm={async () => {
           if (deleteId) await confirmAction(() => deleteWebhookFn({ data: { appId, id: deleteId } }), "Webhook deleted", () => router.invalidate());
@@ -124,16 +134,25 @@ function WebhooksPage() {
   );
 }
 
+function hostOf(url: string) {
+  try {
+    return new URL(url).host;
+  } catch {
+    return url;
+  }
+}
+
 function NewWebhookForm({ appId, done, lock }: { appId: string; done: () => void; lock: (locked: boolean) => void }) {
   const router = useRouter();
   const [url, setUrl] = useState("");
-  const [events, setEvents] = useState<WebhookEvent[]>([]);
+  const [events, setEvents] = useState<WebhookEvent[]>(WEBHOOK_EVENT_LIST);
   const [created, setCreated] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
+    if (events.length === 0) return;
     setPending(true);
     setError(null);
     try {
@@ -153,27 +172,10 @@ function NewWebhookForm({ appId, done, lock }: { appId: string; done: () => void
 
   return (
     <FormBody onSubmit={submit}>
-      <Label htmlFor="webhook-url">URL</Label>
-      <Input id="webhook-url" type="url" required maxLength={2048} value={url} onChange={(e) => setUrl(e.target.value)} />
-      <Hint size="xs">Must be a public https:// address</Hint>
-      <fieldset className="grid gap-2">
-        <SectionTitle as="legend">Events</SectionTitle>
-        {WEBHOOK_EVENT_LIST.map((ev) => (
-          <label key={ev} className="flex items-center gap-2 text-sm">
-            <Checkbox
-              checked={events.includes(ev)}
-              onCheckedChange={(on) => setEvents(on ? [...events, ev] : events.filter((e) => e !== ev))}
-            />
-            {WEBHOOK_EVENT_LABELS[ev]}
-          </label>
-        ))}
-      </fieldset>
+      <WebhookUrlField value={url} onChange={setUrl} />
+      <WebhookEventsField value={events} onChange={setEvents} />
       <FormError message={error} />
-      <FormActions>
-        <Button type="submit" disabled={pending || events.length === 0}>
-          Create webhook
-        </Button>
-      </FormActions>
+      <FormActions cancel submitLabel="Create webhook" pending={pending || events.length === 0} pendingLabel={pending ? "Creating…" : "Create webhook"} />
     </FormBody>
   );
 }

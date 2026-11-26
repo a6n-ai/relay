@@ -1,7 +1,9 @@
+import { Button } from "@foundry/ui/button";
 import { toast } from "@foundry/ui/toast";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { SendIcon } from "lucide-react";
 import { useState } from "react";
+import { CreateDialog } from "../../components/create-dialog";
 import { DeniedState, deniedReason } from "../../components/denied-state";
 import { errorText } from "../../components/error-text";
 import { EmptyState } from "../../components/page/empty-state";
@@ -15,6 +17,7 @@ import { StatusBadge } from "../../components/status-badge";
 import { useCan } from "../../components/use-can";
 import { deliveryActions } from "../../components/webhook-delivery-actions";
 import { WEBHOOK_EVENT_LABELS } from "../../components/webhook-events";
+import { EditWebhookForm } from "../../components/webhook-form";
 import { fetchDeliveries, retryDeliveryFn } from "../../console/webhooks.fns";
 import type { DeliveryView } from "../../do/console-reads";
 import { formatDate, formatWhen } from "../../lib/format-date";
@@ -35,6 +38,7 @@ function DeliveriesPage() {
   const canWrite = useCan({ webhook: ["write"] });
   const [older, setOlder] = useState<Page | null>(null);
   const [loadingOlder, setLoadingOlder] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const appName = shell.apps?.find((a) => a.id === appId)?.name ?? "App";
   const base = [
     { label: "Apps", to: "/apps" },
@@ -77,12 +81,28 @@ function DeliveriesPage() {
   return (
     <>
       <PageHeader crumbs={[...base, { label: host }]} />
+      <CreateDialog title="Edit webhook" open={editOpen} onOpenChange={setEditOpen}>
+        {(done) => (
+          <EditWebhookForm
+            appId={appId}
+            webhook={{ id: webhookId, url: page.webhook.url, events: page.webhook.events }}
+            done={done}
+          />
+        )}
+      </CreateDialog>
       <div className="grid gap-4 py-4">
         <div className="px-4">
           <SettingsCard
             title="Webhook"
             description={page.webhook.events.map((e) => WEBHOOK_EVENT_LABELS[e]).join(", ") || undefined}
             footer={page.webhook.enabled ? "Enabled" : "Disabled"}
+            action={
+              canWrite ? (
+                <Button type="button" variant="outline" onClick={() => setEditOpen(true)}>
+                  Edit webhook
+                </Button>
+              ) : undefined
+            }
           >
             <p className="break-all font-mono text-xs">{page.webhook.url}</p>
           </SettingsCard>
