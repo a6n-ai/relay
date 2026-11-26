@@ -13,7 +13,7 @@ import { type MemberRole, ROLE_LABEL } from "../../components/role-select";
 import { confirmAction } from "../../components/run-action";
 import { InviteForm } from "../../components/settings/invite-form";
 import { SuspendedNotice } from "../../components/settings/suspended-notice";
-import { useNewParam } from "../../components/shell/create-menu";
+import { useNewParam } from "../../components/shell/new-param";
 import { PageHeader } from "../../components/shell/page-header";
 import { StatusBadge } from "../../components/status-badge";
 import { useCan } from "../../components/use-can";

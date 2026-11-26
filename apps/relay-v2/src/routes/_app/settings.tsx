@@ -7,6 +7,7 @@ import { type FormEvent, useState } from "react";
 import { FixedField } from "../../components/form/fixed-field";
 import { errorText } from "../../components/error-text";
 import { FormError } from "../../components/page/form-parts";
+import { DeleteWorkspaceCard } from "../../components/settings/delete-workspace-card";
 import { SettingsCard } from "../../components/page/settings-card";
 import { PageHeader } from "../../components/shell/page-header";
 import { useCan } from "../../components/use-can";
@@ -79,6 +80,7 @@ function GeneralPage() {
           />
         ) : null}
         {active ? <WorkspaceNameCard key={`${active.id}-${active.name}`} name={active.name} slug={active.slug} /> : null}
+        {active ? <DeleteWorkspaceCard slug={active.slug} /> : null}
       </div>
     </>
   );

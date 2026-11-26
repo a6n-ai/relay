@@ -1,4 +1,9 @@
+import { count, eq } from "drizzle-orm";
 import { isAPIError } from "better-auth/api";
+import { coreDb } from "../db/core/client";
+import { sendingDomain, usageDaily, workspaceProfile } from "../db/core/schema";
+import { securityDb } from "../db/security/client";
+import { app, workspace } from "../db/security/schema";
 import type { Env } from "../env";
 import { createAuth } from "../lib/auth";
 import { assertSameOrigin, ConsoleError, type ConsoleActor } from "./actor";
@@ -28,4 +33,27 @@ export async function renameWorkspace(env: Env, actor: ConsoleActor, headers: He
     if (isAPIError(err) && err.statusCode < 500) throw new ConsoleError(err.statusCode === 403 || err.statusCode === 404 ? err.statusCode : 400, err.message);
     throw err;
   }
+}
+
+const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
+
+// Apps and domains hold Durable Object data, SES identities and sending keys, so they must go first. Only the owner holds organization:delete.
+export async function deleteWorkspace(env: Env, actor: ConsoleActor, headers: Headers, slug: string): Promise<void> {
+  const [row] = await securityDb(env).select({ slug: workspace.slug }).from(workspace).where(eq(workspace.id, actor.workspaceId));
+  if (!row || row.slug !== slug) throw new ConsoleError(400, "slug does not match");
+  const [[apps], [domains]] = await Promise.all([
+    securityDb(env).select({ n: count() }).from(app).where(eq(app.workspaceId, actor.workspaceId)),
+    coreDb(env).select({ n: count() }).from(sendingDomain).where(eq(sendingDomain.workspaceId, actor.workspaceId)),
+  ]);
+  const left = [apps.n > 0 ? plural(apps.n, "app") : "", domains.n > 0 ? plural(domains.n, "domain") : ""].filter(Boolean);
+  if (left.length > 0) throw new ConsoleError(409, `Remove its ${left.join(" and ")} first.`);
+  try {
+    await createAuth(env).api.deleteOrganization({ headers, body: { organizationId: actor.workspaceId } });
+  } catch (err) {
+    if (isAPIError(err) && err.statusCode < 500) throw new ConsoleError(err.statusCode === 403 || err.statusCode === 404 ? err.statusCode : 400, err.message);
+    throw err;
+  }
+  // relay-core has no foreign keys to the workspace, so its rows go here.
+  await coreDb(env).delete(workspaceProfile).where(eq(workspaceProfile.workspaceId, actor.workspaceId));
+  await coreDb(env).delete(usageDaily).where(eq(usageDaily.workspaceId, actor.workspaceId));
 }

@@ -2,7 +2,6 @@ import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbP
 import { SidebarTrigger } from "@foundry/ui/sidebar";
 import { Link, useLocation } from "@tanstack/react-router";
 import { Fragment, useEffect, type ReactNode } from "react";
-import { CreateMenu } from "./create-menu";
 import { isAppScoped } from "./scope";
 import { ScopeSwitcher } from "./scope-switcher";
 
@@ -46,7 +45,6 @@ export function PageHeader({ crumbs, badge, actions }: { crumbs: Crumb[]; badge?
       </div>
       <div className="flex shrink-0 items-center gap-2">
         {actions}
-        <CreateMenu />
       </div>
     </header>
   );

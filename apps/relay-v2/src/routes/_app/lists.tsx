@@ -23,7 +23,7 @@ import { SearchInput, Toolbar } from "../../components/page/toolbar";
 import { useUrlFilter } from "../../components/page/use-url-filter";
 import { ListSkeleton } from "../../components/page/page-skeleton";
 import { PageHeader } from "../../components/shell/page-header";
-import { useNewParam } from "../../components/shell/create-menu";
+import { useNewParam } from "../../components/shell/new-param";
 import { fetchApps } from "../../console/apps.fns";
 import { createListFn, fetchLists } from "../../console/lists.fns";
 import type { ConsentSource } from "../../do/lists";

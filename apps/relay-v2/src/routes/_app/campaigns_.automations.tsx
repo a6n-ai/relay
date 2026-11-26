@@ -24,7 +24,7 @@ import { EmptyState } from "../../components/page/empty-state";
 import { ListSkeleton } from "../../components/page/page-skeleton";
 import { Toolbar } from "../../components/page/toolbar";
 import { ResourceTable } from "../../components/resource-table";
-import { useNewParam } from "../../components/shell/create-menu";
+import { useNewParam } from "../../components/shell/new-param";
 import { PageHeader } from "../../components/shell/page-header";
 import { confirmAction, runAction } from "../../components/run-action";
 import { useCan } from "../../components/use-can";

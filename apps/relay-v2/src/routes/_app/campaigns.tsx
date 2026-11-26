@@ -23,7 +23,7 @@ import { SearchInput, Toolbar } from "../../components/page/toolbar";
 import { useUrlFilter } from "../../components/page/use-url-filter";
 import { ResourceTable } from "../../components/resource-table";
 import { PageHeader } from "../../components/shell/page-header";
-import { useNewParam } from "../../components/shell/create-menu";
+import { useNewParam } from "../../components/shell/new-param";
 import { StatusBadge } from "../../components/status-badge";
 import { useCan } from "../../components/use-can";
 import { fetchApps } from "../../console/apps.fns";
