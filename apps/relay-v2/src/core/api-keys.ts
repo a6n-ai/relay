@@ -35,6 +35,15 @@ export async function revokeApiKey(env: Env, workspaceId: string, id: string): P
   return rows.length > 0;
 }
 
+export async function renameApiKey(env: Env, workspaceId: string, id: string, name: string): Promise<boolean> {
+  const rows = await securityDb(env)
+    .update(apiKey)
+    .set({ name })
+    .where(and(eq(apiKey.id, id), eq(apiKey.referenceId, workspaceId)))
+    .returning({ id: apiKey.id });
+  return rows.length > 0;
+}
+
 // The plugin checks enabled and expiry against D1 on every call; the workspace status is read here.
 export async function resolveApiKey(env: Env, secret: string): Promise<KeyScope | null> {
   const { valid, key } = await createAuth(env).api.verifyApiKey({ body: { key: secret } });

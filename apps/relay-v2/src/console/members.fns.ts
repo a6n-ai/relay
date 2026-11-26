@@ -13,6 +13,7 @@ import {
   inviteMember,
   listPeople,
   removeMember,
+  renameTeam,
   setTeamMember,
 } from "./members";
 import { id, inviteInput, name, role, validate } from "./schemas";
@@ -86,6 +87,18 @@ export const createTeamFn = createServerFn({ method: "POST" })
       const headers = getRequestHeaders();
       await requireActor(env, headers, perm({ team: ["create"] }));
       return await createTeam(env, headers, data.name);
+    } catch (err) {
+      toResponseError(err);
+    }
+  });
+
+export const renameTeamFn = createServerFn({ method: "POST" })
+  .validator(validate(z.object({ id, name })))
+  .handler(async ({ data }) => {
+    try {
+      const headers = getRequestHeaders();
+      const actor = await requireActor(env, headers, perm({ team: ["update"] }));
+      await renameTeam(env, actor, headers, data.id, data.name);
     } catch (err) {
       toResponseError(err);
     }

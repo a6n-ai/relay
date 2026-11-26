@@ -1,7 +1,7 @@
 import { isAPIError } from "better-auth/api";
 import type { Env } from "../env";
 import { createAuth } from "../lib/auth";
-import { assertSameOrigin, ConsoleError } from "./actor";
+import { assertSameOrigin, ConsoleError, type ConsoleActor } from "./actor";
 
 // The cap and the self-serve profile are set by the better-auth hooks, so this path cannot skip them.
 export async function createWorkspace(env: Env, headers: Headers, input: { name: string; slug: string }): Promise<{ id: string }> {
@@ -16,6 +16,16 @@ export async function createWorkspace(env: Env, headers: Headers, input: { name:
     if (isAPIError(err) && (err.statusCode === 400 || err.statusCode === 401 || err.statusCode === 403)) {
       throw new ConsoleError(err.statusCode, err.message);
     }
+    throw err;
+  }
+}
+
+// The slug stays: it is the workspace's address.
+export async function renameWorkspace(env: Env, actor: ConsoleActor, headers: Headers, name: string): Promise<void> {
+  try {
+    await createAuth(env).api.updateOrganization({ headers, body: { organizationId: actor.workspaceId, data: { name } } });
+  } catch (err) {
+    if (isAPIError(err) && err.statusCode < 500) throw new ConsoleError(err.statusCode === 403 || err.statusCode === 404 ? err.statusCode : 400, err.message);
     throw err;
   }
 }

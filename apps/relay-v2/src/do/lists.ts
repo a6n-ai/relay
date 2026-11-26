@@ -251,6 +251,20 @@ export function importMemberRow(
   return inserted.length > 0 ? "added" : "existing";
 }
 
+export function updateMemberRow(sql: SqlStorage, listId: string, memberId: string, input: { firstName: string; lastName: string }): boolean {
+  return (
+    sql
+      .exec(
+        "UPDATE contact_list_member SET first_name = ?, last_name = ? WHERE id = ? AND list_id = ? RETURNING id",
+        input.firstName || null,
+        input.lastName || null,
+        memberId,
+        listId,
+      )
+      .toArray().length > 0
+  );
+}
+
 export function removeMemberRow(sql: SqlStorage, listId: string, memberId: string): boolean {
   return sql.exec("DELETE FROM contact_list_member WHERE id = ? AND list_id = ? RETURNING id", memberId, listId).toArray().length > 0;
 }

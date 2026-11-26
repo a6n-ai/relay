@@ -88,6 +88,23 @@ export async function addMemberFor(env: Env, actor: ConsoleActor, listId: string
   return outcome;
 }
 
+export async function updateContactFor(
+  env: Env,
+  actor: ConsoleActor,
+  input: { listId: string; contactId: string; firstName: string; lastName: string },
+): Promise<void> {
+  requireWrite(actor);
+  const updated = await clientFor(env, actor.workspaceId).updateMember(actor.workspaceId, input.listId, input.contactId, input);
+  if (!updated) throw new ConsoleError(404, "not found");
+  await writeAudit(env, {
+    action: "list.member.update",
+    actorUserId: actor.userId,
+    workspaceId: actor.workspaceId,
+    target: input.contactId,
+    data: { listId: input.listId },
+  });
+}
+
 export async function removeMemberFor(env: Env, actor: ConsoleActor, listId: string, memberId: string): Promise<void> {
   requireWrite(actor);
   const removed = await clientFor(env, actor.workspaceId).removeMember(actor.workspaceId, listId, memberId);

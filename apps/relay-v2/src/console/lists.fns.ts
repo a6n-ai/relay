@@ -12,6 +12,7 @@ import {
   listListsFor,
   listMembersFor,
   removeMemberFor,
+  updateContactFor,
   updateListFor,
 } from "./lists";
 
@@ -108,6 +109,17 @@ export const removeMemberFn = createServerFn({ method: "POST" })
     try {
       const actor = await requireActor(env, getRequestHeaders(), WRITE);
       await removeMemberFor(env, actor, data.listId, data.memberId);
+    } catch (err) {
+      toResponseError(err);
+    }
+  });
+
+export const updateContactFn = createServerFn({ method: "POST" })
+  .validator(validate(z.object({ listId: id, contactId: id, firstName: z.string().trim().max(80), lastName: z.string().trim().max(80) })))
+  .handler(async ({ data }) => {
+    try {
+      const actor = await requireActor(env, getRequestHeaders(), WRITE);
+      await updateContactFor(env, actor, data);
     } catch (err) {
       toResponseError(err);
     }
