@@ -1,8 +1,8 @@
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@foundry/ui/select";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { MailIcon } from "lucide-react";
 import { DeniedState, deniedReason } from "../../components/denied-state";
 import { type MessagesSearch, parseMessagesSearch } from "../../components/messages-search";
+import { FilterMenu } from "../../components/page/filter-menu";
 import { EmptyState } from "../../components/page/empty-state";
 import { LoadMore } from "../../components/page/load-more";
 import { SearchInput, Toolbar } from "../../components/page/toolbar";
@@ -11,19 +11,27 @@ import { TableSkeleton } from "../../components/page/table-skeleton";
 import { ResourceTable } from "../../components/resource-table";
 import { PageHeader } from "../../components/shell/page-header";
 import { StatusBadge } from "../../components/status-badge";
+import { fetchApps } from "../../console/apps.fns";
 import { fetchMessages } from "../../console/messages.fns";
 import { formatWhen } from "../../lib/format-date";
 
 export const Route = createFileRoute("/_app/messages")({
-  validateSearch: parseMessagesSearch,
+  validateSearch: (raw: Record<string, unknown>): MessagesSearch & { offset?: number } => ({
+    ...parseMessagesSearch(raw),
+    offset: typeof raw.offset === "number" && raw.offset > 0 ? Math.floor(raw.offset) : undefined,
+  }),
   loaderDeps: ({ search }) => search,
-  loader: ({ deps: { appId, ...rest } }) => fetchMessages({ data: { ...rest, app: appId } }),
+  loader: async ({ deps: { appId, offset: _offset, ...rest } }) => {
+    const [page, apps] = await Promise.all([fetchMessages({ data: { ...rest, app: appId } }), fetchApps()]);
+    return page ? { ...page, apps: apps ?? [] } : null;
+  },
   pendingComponent: () => <TableSkeleton columns={4} />,
   component: MessagesPage,
 });
 
 type Status = NonNullable<MessagesSearch["status"]>;
 const STATUSES: Status[] = ["queued", "sent", "failed", "suppressed"];
+const PAGE = 50;
 
 function MessagesPage() {
   const page = Route.useLoaderData();
@@ -42,7 +50,7 @@ function MessagesPage() {
       </>
     );
   }
-  const filtered = Boolean(search.status || search.email);
+  const filtered = Boolean(search.status || search.email || search.appId);
   const empty =
     page.restricted && search.dir === "in" ? (
       <EmptyState icon={MailIcon} title="No addresses are shared with you yet." />
@@ -67,27 +75,18 @@ function MessagesPage() {
           />
         }
         filters={
-          <Select
-            value={search.status ?? "all"}
-            onValueChange={(v) =>
-              navigate({ search: (s) => ({ ...s, status: v === "all" ? undefined : (v as Status), cursor: undefined }) })
-            }
-          >
-            <SelectTrigger aria-label="Status" className="w-36">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Any status</SelectItem>
-              {STATUSES.map((s) => (
-                <SelectItem key={s} value={s}>
-                  {s[0].toUpperCase() + s.slice(1)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <FilterMenu
+            facets={[
+              { key: "status", label: "Status", options: STATUSES.map((s) => ({ value: s, label: s[0].toUpperCase() + s.slice(1) })) },
+              { key: "appId", label: "App", options: page.apps.map((a) => ({ value: a.id, label: a.name })) },
+            ]}
+            value={search}
+            onChange={(next) => navigate({ search: next as never })}
+          />
         }
       />
       <ResourceTable
+        offset={search.offset}
         columns={[
           { header: "When", kind: "time", cell: (m) => formatWhen(m.createdAt) },
           { header: "From / To", cell: (m) => (m.direction === "out" ? m.toEmail : m.fromEmail) ?? "—" },
@@ -103,6 +102,8 @@ function MessagesPage() {
       <LoadMore
         hasMore={Boolean(page.nextCursor)}
         to="/messages"
+        offset={search.offset}
+        pageSize={PAGE}
         search={{ ...search, cursor: page.nextCursor }}
         resetTo={search.cursor ? "/messages" : undefined}
         resetSearch={{ ...search, cursor: undefined }}

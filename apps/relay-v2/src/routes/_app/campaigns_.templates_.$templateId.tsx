@@ -5,7 +5,7 @@ import { Switch } from "@foundry/ui/switch";
 import { Textarea } from "@foundry/ui/textarea";
 import { toast } from "@foundry/ui/toast";
 import { createFileRoute, useNavigate, useRouter, useSearch } from "@tanstack/react-router";
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useRef, useState } from "react";
 import { ConfirmDialog } from "../../components/confirm-dialog";
 import { ContentFields, type ContentValue } from "../../components/content-fields";
 import { DeniedState, deniedReason } from "../../components/denied-state";
@@ -13,6 +13,7 @@ import { errorText, isNotFound } from "../../components/error-text";
 import { SettingsCard } from "../../components/page/settings-card";
 import { Toolbar } from "../../components/page/toolbar";
 import { PageHeader } from "../../components/shell/page-header";
+import { UnsavedGuard } from "../../components/unsaved-guard";
 import { useCan } from "../../components/use-can";
 import { deleteTemplateFn, fetchTemplate, previewTemplateFn, updateTemplateFn } from "../../console/templates.fns";
 import type { TemplateView } from "../../do/templates";
@@ -73,6 +74,7 @@ function TemplateForm({ template, canWrite }: { template: TemplateView; canWrite
   const [content, setContent] = useState<ContentValue>({ subject: template.subject, html: template.html, text: template.text });
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const leaving = useRef(false);
 
   // Preview and save both read the saved row, so the form saves first.
   async function persist() {
@@ -109,6 +111,7 @@ function TemplateForm({ template, canWrite }: { template: TemplateView; canWrite
   async function remove() {
     await deleteTemplateFn({ data: { id: template.id } });
     toast.success("Template deleted");
+    leaving.current = true;
     await navigate({ to: "/campaigns/templates", search: { appId: template.appId } });
   }
 
@@ -124,6 +127,7 @@ function TemplateForm({ template, canWrite }: { template: TemplateView; canWrite
 
   return (
     <>
+      <UnsavedGuard when={dirty} bypass={leaving} />
       {canWrite ? (
         <Toolbar>
           <Button type="submit" form="template-form" disabled={pending || !dirty || !name.trim()}>
@@ -190,7 +194,7 @@ function TemplateForm({ template, canWrite }: { template: TemplateView; canWrite
             action={
               <ConfirmDialog
                 trigger="Delete"
-                title="Delete this template?"
+                title={`Delete ${template.name}?`}
                 description="The template and its body will be removed. This can't be undone."
                 confirmLabel="Delete"
                 onConfirm={remove}

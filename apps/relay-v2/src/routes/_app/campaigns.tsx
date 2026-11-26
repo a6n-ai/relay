@@ -1,16 +1,21 @@
 import { Button } from "@foundry/ui/button";
 import { Input } from "@foundry/ui/input";
 import { Label } from "@foundry/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@foundry/ui/select";
 import { toast } from "@foundry/ui/toast";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import MegaphoneIcon from "lucide-react/icons/megaphone";
-import { type FormEvent, useState } from "react";
-import { AppSelect } from "../../components/app-select";
+import { type FormEvent, useEffect, useState } from "react";
 import { CreateDialog } from "../../components/create-dialog";
 import { DeniedState, deniedReason } from "../../components/denied-state";
 import { errorText, isNotFound } from "../../components/error-text";
 import { EmptyState } from "../../components/page/empty-state";
+import { AppField } from "../../components/form/app-field";
+import { ChoiceField } from "../../components/form/choice-field";
+import { FilterMenu } from "../../components/page/filter-menu";
+import { ResourceGrid } from "../../components/page/resource-grid";
+import { ViewToggle } from "../../components/page/view-toggle";
+import { type View, viewPref } from "../../components/page/view-pref";
+import { Hint } from "../../components/page/text";
 import { LoadMore } from "../../components/page/load-more";
 import { TableSkeleton } from "../../components/page/table-skeleton";
 import { SearchInput, Toolbar } from "../../components/page/toolbar";
@@ -26,12 +31,16 @@ import { fetchTemplates } from "../../console/templates.fns";
 import { formatWhen } from "../../lib/format-date";
 import { FormError, FormBody, FormActions } from "../../components/page/form-parts";
 
-type CampaignsSearch = { appId?: string; cursor?: string; new?: 1; q?: string; status?: string };
+type CampaignsSearch = { appId?: string; cursor?: string; offset?: number; new?: 1; q?: string; status?: string };
+
+const PAGE = 50;
+const ROUTE = "/campaigns";
 
 export const Route = createFileRoute("/_app/campaigns")({
   validateSearch: (search: Record<string, unknown>): CampaignsSearch => ({
     appId: typeof search.appId === "string" && search.appId ? search.appId : undefined,
     cursor: typeof search.cursor === "string" && search.cursor ? search.cursor : undefined,
+    offset: typeof search.offset === "number" && search.offset > 0 ? Math.floor(search.offset) : undefined,
     new: search.new === 1 || search.new === "1" ? 1 : undefined,
     q: typeof search.q === "string" && search.q ? search.q : undefined,
     status: typeof search.status === "string" && search.status ? search.status : undefined,
@@ -66,7 +75,7 @@ function CampaignsPage() {
   const [open, setOpen] = useNewParam();
   const [query, setQuery] = useUrlFilter("q");
   const navigate = useNavigate({ from: "/campaigns" });
-  const status = search.status ?? "all";
+  const [view, setView] = useState<View>(() => viewPref.read(ROUTE));
   if (!page) {
     return (
       <>
@@ -84,73 +93,87 @@ function CampaignsPage() {
     );
   }
   const { apps, appId, campaigns, templates } = page;
+  const empty =
+    campaigns.rows.length === 0 ? (
+      <EmptyState icon={MegaphoneIcon} title="No campaigns yet." action={canWrite && appId ? <Button variant="outline" onClick={() => setOpen(true)}>New campaign</Button> : undefined} />
+    ) : (
+      "No campaigns match."
+    );
   const create =
     canWrite && appId ? (
       <CreateDialog title="New campaign" open={open} onOpenChange={setOpen}>
-        {(done) => <NewCampaignForm apps={apps} appId={appId} templates={templates} done={done} />}
+        {(done) => <NewCampaignForm apps={apps} appId={appId} scopedAppId={search.appId} templates={templates} done={done} />}
       </CreateDialog>
     ) : null;
   const newButton = canWrite && appId ? <Button onClick={() => setOpen(true)}>New campaign</Button> : null;
   const q = query.trim().toLowerCase();
-  const rows = campaigns.rows.filter((c) => (status === "all" || c.status === status) && (!q || c.name.toLowerCase().includes(q)));
-  const statuses = [...new Set(campaigns.rows.map((c) => c.status))];
+  const rows = campaigns.rows.filter((c) => (!search.status || c.status === search.status) && (!q || c.name.toLowerCase().includes(q)));
+  const facets = [
+    { key: "status", label: "Status", options: [...new Set(campaigns.rows.map((c) => c.status))].map((s) => ({ value: s, label: `${s[0]?.toUpperCase()}${s.slice(1)}` })) },
+    { key: "appId", label: "App", options: apps.map((a) => ({ value: a.id, label: a.name })) },
+  ];
+  const showApp = !search.appId;
+  const appName = (id: string) => apps.find((a) => a.id === id)?.name ?? "—";
+  const when = (c: (typeof rows)[number]) => {
+    const at = c.finishedAt ?? c.scheduledAt;
+    return at ? formatWhen(at) : "—";
+  };
+  const openRow = (c: (typeof rows)[number]) => ({ to: "/campaigns/$campaignId" as const, params: { campaignId: c.id }, search: { appId: c.appId } });
   return (
     <>
       <PageHeader crumbs={CRUMBS} />
       <Toolbar
         search={<SearchInput value={query} onChange={setQuery} placeholder="Search campaigns" />}
-        filters={
-          statuses.length > 1 ? (
-            <Select value={status} onValueChange={(v) => navigate({ search: (s) => ({ ...s, status: !v || v === "all" ? undefined : v, cursor: undefined }), replace: true })}>
-              <SelectTrigger aria-label="Status" className="w-36">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All statuses</SelectItem>
-                {statuses.map((s) => (
-                  <SelectItem key={s} value={s}>
-                    {s[0]?.toUpperCase()}
-                    {s.slice(1)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          ) : undefined
-        }
+        filters={<FilterMenu facets={facets} value={search} onChange={(next) => navigate({ search: next as never, replace: true })} />}
+        view={<ViewToggle route={ROUTE} value={view} onChange={setView} />}
       >
         {newButton}
       </Toolbar>
       {create}
-      <ResourceTable
-        columns={[
-          { header: "Name", kind: "name", cell: (c) => c.name },
-          { header: "Status", cell: (c) => <StatusBadge status={c.status} /> },
-          ...(search.appId ? [] : [{ header: "App", cell: (c: (typeof rows)[number]) => apps.find((a) => a.id === c.appId)?.name ?? "—" }]),
-          {
-            header: "Scheduled or sent",
-            cell: (c) => {
-              const at = c.finishedAt ?? c.scheduledAt;
-              return at ? formatWhen(at) : "—";
-            },
-          },
-          { header: "Recipients", numeric: true, cell: (c) => c.recipients },
-        ]}
-        rows={rows}
-        rowKey={(c) => c.id}
-        rowHref={(c) => ({ to: "/campaigns/$campaignId", params: { campaignId: c.id }, search: { appId: c.appId } })}
-        rowLabel={(c) => `Open ${c.name}`}
-        menu={(c) => [{ label: "Open", to: "/campaigns/$campaignId", params: { campaignId: c.id }, search: { appId: c.appId } }]}
-        empty={
-          campaigns.rows.length === 0 ? (
-            <EmptyState icon={MegaphoneIcon} title="No campaigns yet." action={canWrite && appId ? <Button variant="outline" onClick={() => setOpen(true)}>New campaign</Button> : undefined} />
-          ) : (
-            "No campaigns match."
-          )
-        }
-      />
+      {view === "grid" ? (
+        <ResourceGrid
+          items={rows}
+          rowKey={(c) => c.id}
+          href={openRow}
+          rowLabel={(c) => `Open ${c.name}`}
+          menu={(c) => [{ label: "Open", ...openRow(c) }]}
+          empty={empty}
+          card={(c) => (
+            <div className="grid gap-1.5 pr-8">
+              <span className="font-medium">{c.name}</span>
+              <span>
+                <StatusBadge status={c.status} />
+              </span>
+              {showApp ? <Hint size="xs">{appName(c.appId)}</Hint> : null}
+              <Hint size="xs">
+                {when(c)} · {c.recipients} recipients
+              </Hint>
+            </div>
+          )}
+        />
+      ) : (
+        <ResourceTable
+          offset={search.offset}
+          columns={[
+            { header: "Name", kind: "name", cell: (c) => c.name },
+            { header: "Status", cell: (c) => <StatusBadge status={c.status} /> },
+            ...(showApp ? [{ header: "App", cell: (c: (typeof rows)[number]) => appName(c.appId) }] : []),
+            { header: "Scheduled or sent", cell: when },
+            { header: "Recipients", numeric: true, cell: (c) => c.recipients },
+          ]}
+          rows={rows}
+          rowKey={(c) => c.id}
+          rowHref={openRow}
+          rowLabel={(c) => `Open ${c.name}`}
+          menu={(c) => [{ label: "Open", ...openRow(c) }]}
+          empty={empty}
+        />
+      )}
       <LoadMore
         hasMore={Boolean(campaigns.nextCursor)}
         to="/campaigns"
+        offset={search.offset}
+        pageSize={PAGE}
         search={{ appId: search.appId, q: search.q, status: search.status, cursor: campaigns.nextCursor }}
         resetTo={search.cursor ? "/campaigns" : undefined}
         resetSearch={{ appId: search.appId, q: search.q, status: search.status }}
@@ -159,31 +182,49 @@ function CampaignsPage() {
   );
 }
 
+type TemplateChoice = { id: string; name: string; subject?: string };
+
 function NewCampaignForm({
   apps,
   appId,
+  scopedAppId,
   templates,
   done,
 }: {
   apps: { id: string; name: string }[];
   appId: string;
-  templates: { id: string; name: string }[];
+  scopedAppId?: string;
+  templates: TemplateChoice[];
   done: () => void;
 }) {
   const navigate = useNavigate();
   const [app, setApp] = useState(appId);
   const [name, setName] = useState("");
   const [template, setTemplate] = useState("blank");
+  const [choices, setChoices] = useState(templates);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
-  // The templates were loaded for the page's app, so they only apply while that app is chosen.
-  const pickable = app === appId && templates.length > 0;
+  // Templates belong to one app, so they reload when the dialog's app changes.
+  useEffect(() => {
+    setTemplate("blank");
+    if (app === appId) {
+      setChoices(templates);
+      return;
+    }
+    let live = true;
+    fetchTemplates({ data: { appId: app } })
+      .then((t) => live && setChoices(t?.rows ?? []))
+      .catch(() => live && setChoices([]));
+    return () => {
+      live = false;
+    };
+  }, [app, appId, templates]);
   async function submit(event: FormEvent) {
     event.preventDefault();
     setPending(true);
     setError(null);
     try {
-      const templateId = pickable && template !== "blank" ? template : undefined;
+      const templateId = template !== "blank" ? template : undefined;
       const campaign = await createCampaignFn({ data: { appId: app, name, templateId } });
       toast.success("Campaign created");
       done();
@@ -196,34 +237,21 @@ function NewCampaignForm({
   }
   return (
     <FormBody onSubmit={submit}>
-      <Label htmlFor="campaign-app">App</Label>
-      <AppSelect apps={apps} value={app} onValueChange={setApp} id="campaign-app" />
+      <AppField apps={apps} scopedAppId={scopedAppId} value={app} onChange={setApp} id="campaign-app" />
       <Label htmlFor="campaign-name">Name</Label>
-      <Input id="campaign-name" required value={name} onChange={(e) => setName(e.target.value)} />
-      {pickable ? (
-        <>
-          <Label htmlFor="campaign-template">Start from</Label>
-          <Select value={template} onValueChange={(v) => setTemplate(v ?? "blank")}>
-            <SelectTrigger id="campaign-template" aria-label="Start from">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="blank">Blank campaign</SelectItem>
-              {templates.map((t) => (
-                <SelectItem key={t.id} value={t.id}>
-                  {t.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </>
-      ) : null}
+      <Input id="campaign-name" autoFocus required placeholder="Spring newsletter" value={name} onChange={(e) => setName(e.target.value)} />
+      <ChoiceField
+        id="campaign-template"
+        label="Start from"
+        value={template}
+        onChange={setTemplate}
+        options={[
+          { value: "blank", label: "Blank campaign", description: "Write it from scratch." },
+          ...choices.map((t) => ({ value: t.id, label: t.name, description: t.subject || "Copies this template's content." })),
+        ]}
+      />
       <FormError message={error} />
-      <FormActions>
-        <Button type="submit" disabled={pending || !name.trim() || !app}>
-          Create campaign
-        </Button>
-      </FormActions>
+      <FormActions cancel pending={pending} pendingLabel="Creating…" submitLabel="Create campaign" />
     </FormBody>
   );
 }

@@ -2,10 +2,8 @@ import { Button } from "@foundry/ui/button";
 import { Checkbox } from "@foundry/ui/checkbox";
 import { Input } from "@foundry/ui/input";
 import { Label } from "@foundry/ui/label";
-import { RadioGroup, RadioGroupItem } from "@foundry/ui/radio-group";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@foundry/ui/select";
 import { toast } from "@foundry/ui/toast";
-import { useRouter, useNavigate } from "@tanstack/react-router";
+import { Link, useRouter, useNavigate } from "@tanstack/react-router";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import {
   deleteCampaignFn,
@@ -21,6 +19,8 @@ import { campaignProblems } from "../core/campaign-problems";
 import { isDirty } from "./campaign-dirty";
 import { ConfirmDialog } from "./confirm-dialog";
 import { PROBLEM_LABEL } from "./campaign-problems";
+import { ChoiceControl } from "./form/choice-field";
+import { SenderField } from "./form/sender-field";
 import { ContentFields, type LetterPreview } from "./content-fields";
 import { errorText } from "./error-text";
 import { ScheduleDialog } from "./schedule-dialog";
@@ -47,6 +47,7 @@ export function CampaignEditor({
   const canWrite = useCan({ campaign: ["write"] });
   const canSend = useCan({ campaign: ["send"] });
   const canSettings = useCan({ settings: ["write"] });
+  const [name, setName] = useState(campaign.name);
   const [from, setFrom] = useState(campaign.fromEmail ?? "");
   const [subject, setSubject] = useState(campaign.subject);
   const [html, setHtml] = useState(campaign.html);
@@ -58,7 +59,9 @@ export function CampaignEditor({
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [address, setAddress] = useState(options.postalAddress ?? "");
-  const dirty = isDirty(
+  const dirty =
+    name.trim() !== campaign.name ||
+    isDirty(
     {
       from: campaign.fromEmail ?? "",
       subject: campaign.subject,
@@ -106,6 +109,7 @@ export function CampaignEditor({
         data: {
           id: campaign.id,
           patch: {
+            name: name.trim(),
             fromEmail: from || null,
             subject,
             html,
@@ -135,18 +139,6 @@ export function CampaignEditor({
 
   // Preview, test send and schedule read the saved row, so they save unsaved edits first.
   const saveFirst = (): Promise<string | null> => (dirty ? persist() : Promise.resolve(null));
-
-  async function toggleList(listId: string, on: boolean) {
-    const next = on ? [...listIds, listId] : listIds.filter((x) => x !== listId);
-    setListIds(next);
-    try {
-      await updateCampaignFn({ data: { id: campaign.id, patch: { listIds: next } } });
-      await router.invalidate();
-    } catch (err) {
-      setListIds(campaign.listIds);
-      toast.error(errorText(err, "Could not update the lists."));
-    }
-  }
 
   async function previewLetter(): Promise<LetterPreview | null> {
     if (await saveFirst()) return null;
@@ -198,7 +190,7 @@ export function CampaignEditor({
       <UnsavedGuard when={dirty} bypass={leaving} />
       <Toolbar>
         {canWrite ? (
-          <Button type="submit" form="campaign-form" variant="outline" disabled={pending || !dirty}>
+          <Button type="submit" form="campaign-form" variant="outline" disabled={pending || !dirty || !name.trim()}>
             Save
           </Button>
         ) : null}
@@ -213,19 +205,26 @@ export function CampaignEditor({
       <FormPanel as="form" id="campaign-form" onSubmit={save}>
         <SettingsCard title="Content">
           <FormBody as="div">
-            <Label htmlFor="campaign-from">From</Label>
-            <Select value={from} onValueChange={(v) => setFrom(v ?? "")} disabled={!canWrite}>
-              <SelectTrigger id="campaign-from" aria-label="From">
-                <SelectValue placeholder="Choose a verified address" />
-              </SelectTrigger>
-              <SelectContent>
-                {options.senders.map((s) => (
-                  <SelectItem key={s} value={s}>
-                    {s}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label htmlFor="campaign-name">Name</Label>
+            <Input id="campaign-name" required value={name} disabled={!canWrite} onChange={(e) => setName(e.target.value)} />
+            {canWrite ? (
+              <SenderField
+                id="campaign-from"
+                senders={options.senders.map((s) => ({ value: s, label: s }))}
+                value={from}
+                onChange={setFrom}
+                emptyAction={
+                  <Link to="/domains" search={{ new: undefined, q: undefined }} className="text-sm underline">
+                    Add a sender address
+                  </Link>
+                }
+              />
+            ) : (
+              <>
+                <Label>Send from</Label>
+                <Hint className="text-foreground">{from || "Not set"}</Hint>
+              </>
+            )}
             <ContentFields
               value={{ subject, html, text }}
               onChange={(next) => {
@@ -244,21 +243,21 @@ export function CampaignEditor({
         <SettingsCard title="Audience">
           <fieldset className="grid gap-2">
             <legend className="sr-only">Audience</legend>
-            <RadioGroup
+            <ChoiceControl
+              id="campaign-audience"
+              mode="cards"
               value={audienceKind}
-              onValueChange={(v) => setAudienceKind(v as "lists" | "hook")}
-              aria-label="Audience"
-              className="grid gap-2"
-            >
-              <Label htmlFor="audience-lists" className="font-normal">
-                <RadioGroupItem id="audience-lists" value="lists" disabled={!canWrite} />
-                Lists
-              </Label>
-              <Label htmlFor="audience-hook" className="font-normal">
-                <RadioGroupItem id="audience-hook" value="hook" disabled={!canWrite || !hookReady} />
-                App audience
-              </Label>
-            </RadioGroup>
+              onChange={(v) => canWrite && setAudienceKind(v as "lists" | "hook")}
+              options={[
+                { value: "lists", label: "Lists", description: "Send to the contacts on the lists you pick.", disabled: !canWrite },
+                {
+                  value: "hook",
+                  label: "App audience",
+                  description: hookReady ? "Ask the app who should receive it." : "Connect an app audience on the app page to use this.",
+                  disabled: !canWrite || !hookReady,
+                },
+              ]}
+            />
             {audienceKind === "hook" ? (
               <>
                 <Label htmlFor="campaign-audience-query">Audience filter</Label>
@@ -278,7 +277,9 @@ export function CampaignEditor({
                     <Checkbox
                       checked={listIds.includes(l.id)}
                       disabled={!canWrite}
-                      onCheckedChange={(on) => toggleList(l.id, on === true)}
+                      onCheckedChange={(on) =>
+                        setListIds((ids) => (on === true ? [...ids, l.id] : ids.filter((x) => x !== l.id)))
+                      }
                     />
                     {l.name}
                   </Label>
@@ -326,7 +327,7 @@ export function CampaignEditor({
             action={
               <ConfirmDialog
                 trigger="Delete"
-                title="Delete this campaign?"
+                title={`Delete ${campaign.name}?`}
                 description="The draft and its body will be removed. This can't be undone."
                 confirmLabel="Delete"
                 onConfirm={remove}
