@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { DevTabs } from "./dev-tabs";
 import { HeroScene, Scene } from "./scene";
 import "./landing.css";
+import { RelayMark } from "../relay-mark";
 
 const Wrap = ({ children, className = "" }: { children: ReactNode; className?: string }) => (
   <div className={`mx-auto w-full max-w-6xl px-4 sm:px-8 ${className}`}>{children}</div>
@@ -61,10 +62,7 @@ export function Landing() {
       </a>
       <header className="border-b">
         <Wrap className="flex h-14 items-center justify-between">
-          <span className="flex items-center gap-2 text-base font-semibold tracking-tight">
-            <span aria-hidden="true" className="size-4 rounded-full bg-foreground" />
-            Relay
-          </span>
+          <RelayMark />
           <nav aria-label="Primary" className="flex items-center gap-2">
             <Docs />
             <SignIn />
