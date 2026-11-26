@@ -16,7 +16,7 @@ import {
 import type { CampaignView } from "../do/campaigns";
 import type { ListView } from "../do/lists";
 import { campaignProblems } from "../core/campaign-problems";
-import { isDirty } from "./campaign-dirty";
+import { baselineFrom, isDirty } from "./campaign-dirty";
 import { ConfirmDialog } from "./confirm-dialog";
 import { PROBLEM_LABEL } from "./campaign-problems";
 import { ChoiceControl } from "./form/choice-field";
@@ -59,11 +59,12 @@ export function CampaignEditor({
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [address, setAddress] = useState(options.postalAddress ?? "");
+  const savedFrom = campaign.fromEmail ?? "";
   const dirty =
     name.trim() !== campaign.name ||
     isDirty(
     {
-      from: campaign.fromEmail ?? "",
+      from: baselineFrom(campaign.fromEmail, options.senders),
       subject: campaign.subject,
       html: campaign.html,
       text: campaign.text,
@@ -73,6 +74,8 @@ export function CampaignEditor({
     },
     { from, subject, html, text, audienceKind, listIds, audienceQuery: audienceQuery.trim() || null },
   );
+  // A synthesized single-sender baseline keeps the editor clean on load, but the row still needs that From saved.
+  const unsaved = dirty || from !== savedFrom;
   const leaving = useRef(false);
 
   // The audience is counted from the saved campaign, so it reloads whenever the saved lists change.
@@ -138,7 +141,7 @@ export function CampaignEditor({
   }
 
   // Preview, test send and schedule read the saved row, so they save unsaved edits first.
-  const saveFirst = (): Promise<string | null> => (dirty ? persist() : Promise.resolve(null));
+  const saveFirst = (): Promise<string | null> => (unsaved ? persist() : Promise.resolve(null));
 
   async function previewLetter(): Promise<LetterPreview | null> {
     if (await saveFirst()) return null;
@@ -190,7 +193,7 @@ export function CampaignEditor({
       <UnsavedGuard when={dirty} bypass={leaving} />
       <Toolbar>
         {canWrite ? (
-          <Button type="submit" form="campaign-form" variant="outline" disabled={pending || !dirty || !name.trim()}>
+          <Button type="submit" form="campaign-form" variant="outline" disabled={pending || !unsaved || !name.trim()}>
             Save
           </Button>
         ) : null}
@@ -206,7 +209,7 @@ export function CampaignEditor({
         <SettingsCard title="Content">
           <FormBody as="div">
             <Label htmlFor="campaign-name">Name</Label>
-            <Input id="campaign-name" required value={name} disabled={!canWrite} onChange={(e) => setName(e.target.value)} />
+            <Input id="campaign-name" required maxLength={80} value={name} disabled={!canWrite} onChange={(e) => setName(e.target.value)} />
             {canWrite ? (
               <SenderField
                 id="campaign-from"

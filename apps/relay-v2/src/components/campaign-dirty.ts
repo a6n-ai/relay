@@ -22,3 +22,8 @@ export function isDirty(saved: CampaignDraft, form: CampaignDraft): boolean {
 function sameIds(a: string[] = [], b: string[] = []): boolean {
   return a.length === b.length && [...a].sort().join("\0") === [...b].sort().join("\0");
 }
+
+// SenderField preselects a lone sender, so that sender is the baseline when no From was saved.
+export function baselineFrom(saved: string | null, senders: string[]): string {
+  return saved ?? (senders.length === 1 ? senders[0]! : "");
+}

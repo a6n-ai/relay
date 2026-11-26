@@ -6,6 +6,7 @@ import { DeniedState, deniedReason } from "../../components/denied-state";
 import { errorText } from "../../components/error-text";
 import { FilterMenu } from "../../components/page/filter-menu";
 import { LoadMore } from "../../components/page/load-more";
+import { Hint } from "../../components/page/text";
 import { Toolbar } from "../../components/page/toolbar";
 import { TableSkeleton } from "../../components/page/table-skeleton";
 import { PageHeader } from "../../components/shell/page-header";
@@ -96,6 +97,9 @@ function FailuresPage() {
           />
         }
       />
+      {page.rows.length >= 100 ? (
+        <Hint>Showing the newest 100 failed messages. The App filter applies to those.</Hint>
+      ) : null}
       <ResourceTable
         offset={offset}
         columns={[

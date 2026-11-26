@@ -112,7 +112,7 @@ function AutomationsPage() {
   const appName = (id: string) => apps.find((a) => a.id === id)?.name ?? "—";
   const listName = (id: string) => lists.find((l) => l.id === id)?.name ?? "—";
   const templateName = (id: string) => templates.find((t) => t.id === id)?.name ?? "—";
-  const delayText = (a: AutomationView) => (a.delayHours === 0 ? "Right away" : `After ${a.delayHours} hours`);
+  const delayText = (a: AutomationView) => (a.delayHours === 0 ? "Right away" : `After ${a.delayHours} ${a.delayHours === 1 ? "hour" : "hours"}`);
   const menu = (a: AutomationView) => [
     { label: "Edit", onSelect: () => setEditing(a), hidden: !canSend },
     { label: "Delete", onSelect: () => setDeleting(a), destructive: true, hidden: !canSend },
@@ -302,6 +302,10 @@ function AutomationForm({
     event.preventDefault();
     if (!name.trim() || (!automation && !listId) || !templateId || !fromEmail) {
       setError("Choose a list, template and sender address.");
+      return;
+    }
+    if (delay.trim() === "") {
+      setError("Enter a delay in hours.");
       return;
     }
     setPending(true);
