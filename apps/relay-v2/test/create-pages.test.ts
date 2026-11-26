@@ -40,8 +40,8 @@ describe("create pages", { timeout: 60_000 }, () => {
     }
   });
 
-  it("serves /workspaces/new to any signed-in user, even with no workspace, and to nobody else", async () => {
-    const lonely = await cookieFor("create-pages-lonely@example.com", "admin");
+  it("serves /workspaces/new to a signed-in user with no workspace and redirects signed-out", async () => {
+    const lonely = await cookieFor("create-pages-lonely@example.com", "user");
     const page = await get("/workspaces/new", lonely);
     expect(page.status).toBe(200);
     const html = await page.text();
@@ -50,6 +50,9 @@ describe("create pages", { timeout: 60_000 }, () => {
     const out = await get("/workspaces/new", "");
     expect(out.status).toBe(307);
     expect(out.headers.get("location")).toContain("/sign-in");
+    const apps = await get("/apps", lonely);
+    expect(apps.status).toBe(307);
+    expect(apps.headers.get("location")).toContain("/no-workspace");
   });
 
   it("sends an owner with no app to create one before adding an address", async () => {

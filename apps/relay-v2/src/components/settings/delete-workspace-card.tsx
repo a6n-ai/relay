@@ -10,7 +10,7 @@ export function DeleteWorkspaceCard({ slug }: { slug: string }) {
   return (
     <DangerCard
       title="Delete workspace"
-      description="Deletes the workspace, its members and invites. It can't be undone."
+      description="Deletes the workspace with its members and invites. Remove its apps and domains first. It can't be undone."
       buttonLabel="Delete workspace"
       confirmTitle="Delete this workspace?"
       typed={slug}

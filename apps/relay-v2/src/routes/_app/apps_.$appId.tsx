@@ -350,7 +350,7 @@ function AudiencePanel({
       <div className="flex items-center gap-2">
         {editable ? (
           <ConfirmDialog
-            trigger="Remove"
+            trigger="Remove audience"
             title={`Remove the App audience${hook?.url ? ` for ${hostOf(hook.url)}` : ""}?`}
             description="Campaigns that use it can't reach their audience until you connect one again."
             confirmLabel="Remove audience"
@@ -361,7 +361,7 @@ function AudiencePanel({
           <ConfirmDialog
             trigger="Rotate secret"
             title={`Rotate the secret for ${hostOf(hook.url ?? "")}?`}
-            description="The current secret stops working right away. Update your server with the new one."
+            description="The current secret stops working right away. The new secret is shown once, so update your server with it."
             confirmLabel="Rotate secret"
             onConfirm={rotate}
           />

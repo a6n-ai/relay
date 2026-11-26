@@ -24,7 +24,8 @@ type SuppressionsSearch = { prefix?: string; cursor?: string; stream?: StreamFil
 
 const STREAM_FILTERS = ["all", "transactional", "tracked", "marketing"] as const;
 type StreamFilter = (typeof STREAM_FILTERS)[number];
-const streamLabel = (s: string) => s[0].toUpperCase() + s.slice(1);
+const STREAM_LABEL: Record<StreamFilter, string> = { all: "All mail", transactional: "Receipts and alerts", tracked: "Tracked mail", marketing: "Campaigns" };
+const streamLabel = (s: string) => STREAM_LABEL[s as StreamFilter] ?? s;
 
 export const Route = createFileRoute("/_app/messages_/suppressions")({
   validateSearch: (search: Record<string, unknown>): SuppressionsSearch => ({
@@ -79,7 +80,7 @@ function SuppressionsPage() {
         search={<PrefixSearch />}
         filters={
           <FilterMenu
-            facets={[{ key: "stream", label: "Stream", options: STREAM_FILTERS.map((s) => ({ value: s, label: s === "all" ? "All streams only" : streamLabel(s) })) }]}
+            facets={[{ key: "stream", label: "Applies to", options: STREAM_FILTERS.map((s) => ({ value: s, label: streamLabel(s) })) }]}
             value={search}
             onChange={(next) => void navigate({ to: ".", search: next as never })}
           />
@@ -93,7 +94,7 @@ function SuppressionsPage() {
       </Toolbar>
       {search.stream ? (
         <Hint>
-          {search.stream === "all" ? "Showing suppressions for all streams on this page only." : `Showing ${streamLabel(search.stream)} suppressions on this page only.`}
+          Showing {streamLabel(search.stream)} suppressions on this page only.
           {page.nextCursor ? " Use Show older to see more." : null}
         </Hint>
       ) : null}
@@ -109,7 +110,7 @@ function SuppressionsPage() {
               </>
             ),
           },
-          { header: "Stream", cell: (s) => (s.stream ? streamLabel(s.stream) : "All") },
+          { header: "Applies to", cell: (s) => (s.stream ? streamLabel(s.stream) : "All mail") },
           { header: "Added", kind: "time", cell: (s) => formatWhen(s.createdAt) },
         ]}
         rows={rows}
@@ -174,10 +175,10 @@ function AddForm({ done }: { done: () => void }) {
       <TextField id="sup-email" label="Email" hint="Relay will not send to this address." type="email" autoFocus required value={email} onChange={(e) => setEmail(e.target.value)} />
       <ChoiceField
         id="sup-stream"
-        label="Stream"
+        label="Applies to"
         value={stream}
         onChange={(v) => setStream(v as StreamFilter)}
-        options={STREAM_FILTERS.map((s) => ({ value: s, label: s === "all" ? "All streams" : streamLabel(s) }))}
+        options={STREAM_FILTERS.map((s) => ({ value: s, label: streamLabel(s) }))}
       />
       <FormError message={error} />
       <FormActions cancel submitLabel="Suppress address" pending={pending} pendingLabel="Adding…" disabled={!email.trim()} disabledReason="Enter an email first." />

@@ -195,7 +195,7 @@ function ManageSheet({ w, run, confirm }: { w: Workspace; run: Run; confirm: (ac
         onSave={(cap) => run(() => setWorkspaceInviteCapFn({ data: { workspaceId: w.id, cap } }), "Invites per day saved")}
       />
       <SettingsCard
-        title={suspend ? "Suspend workspace" : "Resume workspace"}
+        title="Suspension"
         description={
           suspend
             ? "Suspended workspaces can't send or change settings. They still receive mail."

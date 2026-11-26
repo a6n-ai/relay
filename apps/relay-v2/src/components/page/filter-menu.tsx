@@ -36,8 +36,9 @@ export function FilterMenu({
               <DropdownMenuLabel>{f.label}</DropdownMenuLabel>
               <DropdownMenuRadioGroup
                 value={typeof value[f.key] === "string" ? (value[f.key] as string) : ""}
-                onValueChange={(v) => set(f.key, String(v))}
+                onValueChange={(v) => (v ? set(f.key, String(v)) : onChange(withoutKey(value, f.key)))}
               >
+                <DropdownMenuRadioItem value="">Any</DropdownMenuRadioItem>
                 {f.options.map((o) => (
                   <DropdownMenuRadioItem key={o.value} value={o.value}>
                     {o.label}

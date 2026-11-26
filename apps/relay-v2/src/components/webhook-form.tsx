@@ -9,28 +9,29 @@ import { errorText } from "./error-text";
 import { TextField } from "./form/text-field";
 import { FormActions, FormBody, FormError } from "./page/form-parts";
 import { Hint, SectionTitle } from "./page/text";
+import { webhookUrlForInput, webhookUrlFromInput, WEBHOOK_URL_PREFIX } from "./webhook-url";
 import { WEBHOOK_EVENT_LABELS, WEBHOOK_EVENT_LIST } from "./webhook-events";
 
-export function WebhookUrlField({ value, onChange, hint = "Use a public https:// URL." }: { value: string; onChange: (url: string) => void; hint?: string }) {
+export function WebhookUrlField({ value, onChange, hint = "Must be public. Called when a letter arrives." }: { value: string; onChange: (url: string) => void; hint?: string }) {
   return (
     <TextField
       id="webhook-url"
       label="URL"
       hint={hint}
-      type="url"
       required
       autoFocus
       maxLength={2048}
-      placeholder="https://example.com/webhooks/relay"
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
+      prefix={WEBHOOK_URL_PREFIX}
+      placeholder="example.com/webhooks/relay"
+      value={webhookUrlForInput(value)}
+      onChange={(e) => onChange(webhookUrlFromInput(e.target.value))}
     />
   );
 }
 
 export function WebhookEventsField({ value, onChange }: { value: WebhookEvent[]; onChange: (events: WebhookEvent[]) => void }) {
   // One event cannot be unticked, so it is stated instead of offered as a choice.
-  if (WEBHOOK_EVENT_LIST.length < 2) return <Hint>Calls your URL when a letter arrives.</Hint>;
+  if (WEBHOOK_EVENT_LIST.length < 2) return null;
   return (
     <fieldset className="grid gap-2">
       <SectionTitle as="legend">Events</SectionTitle>
@@ -89,7 +90,7 @@ export function EditWebhookForm({
 
   return (
     <FormBody onSubmit={submit}>
-      <WebhookUrlField value={url} onChange={setUrl} hint="The signing secret stays the same." />
+      <WebhookUrlField value={url} onChange={setUrl} hint="Must be public. The signing secret stays the same." />
       <WebhookEventsField value={events} onChange={setEvents} />
       <FormError message={error} />
       <FormActions cancel submitLabel="Save webhook" pending={pending} pendingLabel="Saving…" disabled={!dirty || events.length === 0} disabledReason={events.length === 0 ? "Pick at least one event." : "Change something to save."} />
