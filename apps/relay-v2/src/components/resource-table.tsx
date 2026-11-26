@@ -39,8 +39,9 @@ export function ResourceTable<T>({
   rowLabel?: (row: T) => string;
   menu?: (row: T) => RowAction[];
 }) {
-  if (rows.length === 0) return typeof empty === "string" ? <Hint className="p-4">{empty}</Hint> : <>{empty}</>;
+  if (rows.length === 0) return <div className="px-4 pb-4">{typeof empty === "string" ? <Hint>{empty}</Hint> : empty}</div>;
   return (
+    <div className="px-4 pb-4">
     <Table>
       <TableHeader>
         <TableRow>
@@ -80,5 +81,6 @@ export function ResourceTable<T>({
         })}
       </TableBody>
     </Table>
+    </div>
   );
 }
