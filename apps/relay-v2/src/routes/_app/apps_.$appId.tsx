@@ -328,13 +328,20 @@ function AudiencePanel({
   // The server only generates a secret on first save, so a rotation sends a fresh one and shows it here.
   // url and enabled are required by the save, so they come from a fresh read, not the loader data.
   async function rotate() {
-    const current = await fetchAudienceHook();
-    if (!current?.url) return;
-    const fresh = Array.from(crypto.getRandomValues(new Uint8Array(32)), (b) => b.toString(16).padStart(2, "0")).join("");
-    await setAudienceHookFn({ data: { appId, url: current.url, secret: fresh, enabled: current.enabled } });
-    setSecret(fresh);
-    toast.success("Secret rotated");
-    await router.invalidate();
+    try {
+      const current = await fetchAudienceHook({ data: { appId } });
+      if (!current?.url) {
+        toast.error("Save the audience settings first.");
+        return;
+      }
+      const fresh = Array.from(crypto.getRandomValues(new Uint8Array(32)), (b) => b.toString(16).padStart(2, "0")).join("");
+      await setAudienceHookFn({ data: { appId, url: current.url, secret: fresh, enabled: current.enabled } });
+      setSecret(fresh);
+      toast.success("Secret rotated");
+      await router.invalidate();
+    } catch (err) {
+      toast.error(errorText(err));
+    }
   }
 
   async function connectBinding() {
