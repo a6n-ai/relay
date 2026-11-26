@@ -1,4 +1,4 @@
-import { APIError, createAuthMiddleware, getAuthoritativeSessionFromCtx, getSessionFromCtx, isAPIError } from "better-auth/api";
+import { APIError, createAuthMiddleware, getAuthoritativeSessionFromCtx, getOAuthState, getSessionFromCtx, isAPIError } from "better-auth/api";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { apiKey as apiKeyPlugin } from "@better-auth/api-key";
@@ -28,6 +28,7 @@ import type { Env } from "../../env";
 import { newId } from "../ids";
 import { maskEmails } from "../../core/mask-emails";
 import { writeAudit } from "./audit";
+import { ADMIN_LINK_CODE, auditKindFor, googleConfig, refusesImplicitLink } from "./google";
 import { pickInviteMailer } from "./invite-mailer";
 import { type OtpMailer, consoleOtpMailer, memoryOtpMailer } from "./otp-mailer";
 import { ac as platformAc, orgAc, orgRoles, roles as platformRoles } from "./permissions";
@@ -94,6 +95,10 @@ export function createAuth(env: Env) {
   const actorOf = async (ctx: Parameters<typeof getSessionFromCtx>[0]) =>
     (await getSessionFromCtx(ctx))?.user.id ?? null;
 
+  const google = googleConfig(env);
+  // createAuth runs once per request, so this flag only ever describes the current callback.
+  let adminLinkRefused = false;
+
   return betterAuth({
     secret: env.BETTER_AUTH_SECRET,
     baseURL: env.BETTER_AUTH_URL,
@@ -114,6 +119,11 @@ export function createAuth(env: Env) {
         apikey: apiKey,
       },
     }),
+    // Invite-only: Google never creates a user (disableSignUp), and a Google email with no user row is refused with signup_disabled.
+    // google is deliberately not in trustedProviders: that would link on an unverified Google email. Without it, linking needs Google's email_verified.
+    // Invites pre-create users with emailVerified false, so the local-verified requirement is off; the OTP sign-in keeps working for the same row.
+    ...(google ? { socialProviders: { google } } : {}),
+    account: { accountLinking: { enabled: true, requireLocalEmailVerified: false } },
     advanced: {
       useSecureCookies: env.BETTER_AUTH_URL.startsWith("https://"),
       ipAddress: { ipAddressHeaders: ["cf-connecting-ip"] },
@@ -137,6 +147,23 @@ export function createAuth(env: Env) {
     // Role writes from every path (set-role, update-user, seed) reach user.update.after. The request body says whether one was asked for.
     // The seed has no endpoint context, so it writes its own role.change row.
     databaseHooks: {
+      // Both Google flows insert the account row here. A banned user gets none, and a platform admin gets none from the sign-in callback:
+      // linking Google to an admin is only allowed through /link-social, whose OAuth state carries `link` (server-set, not client additionalData).
+      // false aborts the insert; the after hook below turns the resulting redirect error into ADMIN_LINK_CODE.
+      account: {
+        create: {
+          before: async (acct) => {
+            if (acct.providerId === "credential") return;
+            const [u] = await securityDb(env).select({ banned: user.banned, role: user.role }).from(user).where(eq(user.id, acct.userId));
+            if (u?.banned) return false;
+            const state = await getOAuthState().catch(() => null);
+            if (refusesImplicitLink(u?.role, state?.link ? "link" : "sign-in")) {
+              adminLinkRefused = true;
+              return false;
+            }
+          },
+        },
+      },
       user: {
         create: {
           after: async (user, ctx) => {
@@ -176,6 +203,8 @@ export function createAuth(env: Env) {
           ctx.path === "/email-otp/reset-password" ||
           (ctx.path === "/email-otp/send-verification-otp" && ctx.body?.type === "forget-password");
         if (resetMail) throw new APIError("NOT_FOUND");
+        // An idToken body signs in without the OAuth redirect and its audit; only the redirect flow is allowed.
+        if ((ctx.path === "/sign-in/social" || ctx.path === "/link-social") && ctx.body?.idToken) throw new APIError("FORBIDDEN");
         if (ctx.path === "/email-otp/send-verification-otp") {
           const otpEmail = String(ctx.body?.email ?? "").trim().toLowerCase();
           if (otpEmail && !(await otpEmailWithinCap(env, otpEmail))) throw new APIError("TOO_MANY_REQUESTS");
@@ -235,6 +264,27 @@ export function createAuth(env: Env) {
           } else {
             const signedIn = (result as { user: { id: string } }).user;
             await writeAudit(env, { action: "sign_in.success", actorUserId: signedIn.id, target: signedIn.id, ...meta });
+          }
+          return;
+        }
+        if (ctx.path.startsWith("/callback/")) {
+          const state = await getOAuthState().catch(() => null);
+          if (auditKindFor(ctx.path, state) === "account.link") {
+            const location = (result as { headers?: Headers } | null)?.headers?.get("location");
+            const ok = !(location ? new URL(location, "http://x") : null)?.searchParams.has("error");
+            await writeAudit(env, { action: "account.link", actorUserId: state!.link!.userId, target: state!.link!.userId, data: { provider: ctx.params?.id, ok }, ...meta });
+            return;
+          }
+          const signedIn = ctx.context.newSession?.user;
+          if (signedIn) {
+            await writeAudit(env, { action: "sign_in.success", actorUserId: signedIn.id, target: signedIn.id, data: { provider: ctx.params?.id }, ...meta });
+          } else {
+            const location = (result as { headers?: Headers } | null)?.headers?.get("location");
+            const target = location ? new URL(location, "http://x") : null;
+            if (target && adminLinkRefused) target.searchParams.set("error", ADMIN_LINK_CODE);
+            const error = target?.searchParams.get("error")?.slice(0, 64) ?? null;
+            await writeAudit(env, { action: "sign_in.failure", data: { provider: ctx.params?.id, error }, ...meta });
+            if (target && adminLinkRefused) throw ctx.redirect(location!.startsWith("/") ? target.pathname + target.search : target.href);
           }
           return;
         }
