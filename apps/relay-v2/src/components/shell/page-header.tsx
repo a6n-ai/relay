@@ -20,7 +20,7 @@ export function PageHeader({ crumbs, badge, actions }: { crumbs: Crumb[]; badge?
   return (
     <header className="flex h-12 items-center justify-between gap-2 border-b px-4">
       <div className="flex min-w-0 items-center gap-2">
-        <SidebarTrigger className="md:hidden" />
+        <SidebarTrigger size="icon" className="md:hidden" />
         {isAppScoped(pathname) ? <ScopeSwitcher /> : null}
         <Breadcrumb className="min-w-0">
           <BreadcrumbList className="flex-nowrap">

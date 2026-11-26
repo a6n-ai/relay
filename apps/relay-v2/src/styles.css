@@ -120,7 +120,6 @@
   --accent-badge: #171717;
   --accent-badge-hover: #2e2e2e;
   --accent-badge-foreground: #ffffff;
-  --tag-purple: #8e4ec6;
   --tag-blue: #006bff;
   --tag-green: #107d32;
   --tag-orange: #c35f00;
@@ -178,7 +177,6 @@
   --accent-badge: #ededed;
   --accent-badge-hover: #d4d4d4;
   --accent-badge-foreground: #0a0a0a;
-  --tag-purple: #bf7af0;
   --tag-blue: #52a8ff;
   --tag-green: #3fb950;
   --tag-orange: #f5a524;
@@ -214,4 +212,11 @@
   background-color: transparent;
   color: var(--sidebar-foreground);
   font-weight: 400;
+}
+/* The preset sets --ui-primary-hover on body too, so match it at the same specificity; Relay's own mix is a visible step. */
+.admin-ui, body:has(.admin-ui) {
+  --ui-primary-hover: var(--primary-hover);
+}
+[data-slot="sidebar-menu-button"] {
+  border-radius: var(--ui-radius-control);
 }
