@@ -1,4 +1,6 @@
+import { Avatar, AvatarFallback } from "@foundry/ui/avatar";
 import { Button } from "@foundry/ui/button";
+import { initials } from "@foundry/ui/initials";
 import { Input } from "@foundry/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@foundry/ui/popover";
 import { Link, useLocation, useRouteContext, useSearch } from "@tanstack/react-router";
@@ -41,9 +43,12 @@ export function ScopeSwitcher() {
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger render={<Button variant="ghost" aria-label="Switch app scope" className="max-w-48" />}>
+      <PopoverTrigger render={<Button variant="ghost" aria-label="Switch app scope" className="max-w-64 gap-2 px-2 text-base font-medium" />}>
+        <Avatar size="sm" className="rounded-full after:rounded-full">
+          <AvatarFallback className="rounded-full bg-muted text-foreground">{current ? initials(scopeLabel(shell.apps, current)) : "A"}</AvatarFallback>
+        </Avatar>
         <span className="truncate">{scopeLabel(shell.apps, current)}</span>
-        <ChevronsUpDown aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
+        <ChevronsUpDown aria-hidden className="size-4 shrink-0 text-muted-foreground" />
       </PopoverTrigger>
       <PopoverContent align="start" className="w-64 gap-1.5 p-1.5">
         <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Find app" aria-label="Find app" />

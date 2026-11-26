@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { allows } from "../src/lib/auth/permissions";
-import { activeNav, APP_SCOPED, createItems, visibleNav } from "../src/components/shell/nav";
+import { activeNav, APP_SCOPED, createItems, sectionTabs, visibleNav } from "../src/components/shell/nav";
 
 const ids = (groups: ReturnType<typeof visibleNav>) => groups.map((g) => g.id);
 
@@ -63,11 +63,12 @@ describe("createItems", () => {
   it("gives an owner every create action in order", () => {
     expect(createItems(["owner"], false).map((i) => i.id)).toEqual([
       "app",
+      "domain",
+      "address",
       "campaign",
+      "list",
       "template",
       "automation",
-      "list",
-      "domain",
       "invite",
     ]);
   });
@@ -78,5 +79,21 @@ describe("createItems", () => {
     expect(items.map((i) => i.id)).toEqual(expected.map((i) => i.id));
     expect(items.every((i) => allows(["member"], i.need))).toBe(true);
     expect(items.map((i) => i.id)).not.toContain("app");
+  });
+});
+
+describe("sectionTabs", () => {
+  it("lists Messages tabs and follows the dir search", () => {
+    expect(sectionTabs(["owner"], "/messages", { dir: "in" })).toMatchObject({ title: "Messages", active: "received" });
+    expect(sectionTabs(["owner"], "/messages", {})?.tabs.map((t) => t.label)).toEqual(["Sent", "Received", "Failed", "Suppressed"]);
+  });
+
+  it("has no tabs on a detail page or a page without sections", () => {
+    expect(sectionTabs(["owner"], "/messages/abc", {})).toBeNull();
+    expect(sectionTabs(["owner"], "/domains", {})).toBeNull();
+  });
+
+  it("gives an app its Overview and Webhooks tabs", () => {
+    expect(sectionTabs(["owner"], "/apps/a1/webhooks", {})).toMatchObject({ title: null, active: "webhooks" });
   });
 });

@@ -1,51 +1,56 @@
-import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@foundry/ui/breadcrumb";
 import { SidebarTrigger } from "@foundry/ui/sidebar";
-import { Link, useLocation } from "@tanstack/react-router";
-import { Fragment, useEffect, type ReactNode } from "react";
+import { Link, useLocation, useRouteContext } from "@tanstack/react-router";
+import ChevronLeft from "lucide-react/icons/chevron-left";
+import { type ReactNode, useEffect } from "react";
+import { PageTitle } from "../page/page-title";
+import { AddNewMenu } from "./add-new";
+import { sectionTabs } from "./nav";
+import { PAGE_COPY } from "./page-copy";
 import { isAppScoped } from "./scope";
 import { ScopeSwitcher } from "./scope-switcher";
+import { SectionTabs } from "./section-tabs";
 
 export type Crumb = { label: string; to?: string; params?: Record<string, string>; search?: Record<string, unknown> };
 
-export function PageHeader({ crumbs, badge, actions }: { crumbs: Crumb[]; badge?: ReactNode; actions?: ReactNode }) {
-  const pathname = useLocation({ select: (l) => l.pathname });
+export function PageHeader({ crumbs, badge, actions, description }: { crumbs: Crumb[]; badge?: ReactNode; actions?: ReactNode; description?: string }) {
+  const { pathname, search } = useLocation();
+  const { shell } = useRouteContext({ from: "/_app" });
+  const appId = (search as { appId?: string }).appId;
   const last = crumbs.length - 1;
-  const title = crumbs[last]?.label;
+  const label = crumbs[last]?.label;
+  const section = sectionTabs(shell.active?.roles ?? [], pathname, search as Record<string, unknown>);
+  const title = section?.title ?? label;
+  const parent = section?.title ? undefined : crumbs[last - 1];
 
   useEffect(() => {
-    if (title) document.title = `${title} · Relay`;
-  }, [title]);
+    if (label) document.title = `${label} · Relay`;
+  }, [label]);
 
   return (
-    <header className="flex h-12 items-center justify-between gap-2 border-b px-4">
-      <div className="flex min-w-0 items-center gap-2">
-        <SidebarTrigger size="icon" className="md:hidden" />
-        {isAppScoped(pathname) ? <ScopeSwitcher /> : null}
-        <Breadcrumb className="min-w-0">
-          <BreadcrumbList className="flex-nowrap">
-            {crumbs.map((crumb, i) => (
-              <Fragment key={`${i}-${crumb.label}`}>
-                {i > 0 ? <BreadcrumbSeparator /> : null}
-                <BreadcrumbItem className="min-w-0">
-                  {i === last || !crumb.to ? (
-                    <BreadcrumbPage className="truncate">{crumb.label}</BreadcrumbPage>
-                  ) : (
-                    <BreadcrumbLink
-                      render={<Link to={crumb.to as string} params={crumb.params as never} search={crumb.search as never} />}
-                    >
-                      {crumb.label}
-                    </BreadcrumbLink>
-                  )}
-                </BreadcrumbItem>
-              </Fragment>
-            ))}
-          </BreadcrumbList>
-        </Breadcrumb>
-        {badge}
-      </div>
-      <div className="flex shrink-0 items-center gap-2">
-        {actions}
-      </div>
-    </header>
+    <>
+      <header className="border-b">
+        <div className="flex h-14 items-center justify-between gap-2 px-3">
+          <div className="flex min-w-0 items-center gap-2">
+            <SidebarTrigger size="icon" className="md:hidden" />
+            {parent?.to ? (
+              <Link
+                to={parent.to as string}
+                params={parent.params as never}
+                search={parent.search as never}
+                className="inline-flex h-9 items-center gap-1 rounded-md pr-3 pl-1.5 text-sm text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <ChevronLeft aria-hidden className="size-4" />
+                {parent.label}
+              </Link>
+            ) : isAppScoped(pathname) ? (
+              <ScopeSwitcher />
+            ) : null}
+          </div>
+          <AddNewMenu />
+        </div>
+        {section ? <SectionTabs tabs={section.tabs} active={section.active} appId={appId} /> : null}
+      </header>
+      {title ? <PageTitle title={title} description={description ?? PAGE_COPY[title]} badge={badge} actions={actions} /> : null}
+    </>
   );
 }

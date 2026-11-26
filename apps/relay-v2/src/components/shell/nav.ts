@@ -19,7 +19,7 @@ export type NavLeaf = {
 };
 export type NavItem = NavLeaf & { icon: LucideIcon; children?: NavLeaf[] };
 export type NavGroup = { id: "work" | "setup" | "platform"; items: NavItem[] };
-export type CreateItem = { id: string; label: string; to: string; need: Record<string, string[]> };
+export type CreateItem = { id: string; label: string; to: string; new: 1 | "address"; need: Record<string, string[]> };
 
 export const NAV: NavGroup[] = [
   {
@@ -34,8 +34,8 @@ export const NAV: NavGroup[] = [
         children: [
           { id: "sent", label: "Sent", to: "/messages", search: { dir: "out" }, need: { log: ["read"] } },
           { id: "received", label: "Received", to: "/messages", search: { dir: "in" }, need: { mailbox: ["read"] } },
-          { id: "failures", label: "Failed to receive", to: "/messages/failures", need: { mailbox: ["read"] } },
-          { id: "suppressions", label: "Suppressions", to: "/messages/suppressions", need: { sending: ["read"] } },
+          { id: "failures", label: "Failed", to: "/messages/failures", need: { mailbox: ["read"] } },
+          { id: "suppressions", label: "Suppressed", to: "/messages/suppressions", need: { sending: ["read"] } },
         ],
       },
       {
@@ -80,13 +80,14 @@ export const NAV: NavGroup[] = [
 export const APP_SCOPED: readonly string[] = ["/messages", "/campaigns", "/campaigns/templates", "/campaigns/automations", "/lists"];
 
 const CREATE: CreateItem[] = [
-  { id: "app", label: "App", to: "/apps", need: { tenant: ["write"] } },
-  { id: "campaign", label: "Campaign", to: "/campaigns", need: { campaign: ["write"] } },
-  { id: "template", label: "Template", to: "/campaigns/templates", need: { template: ["write"] } },
-  { id: "automation", label: "Automation", to: "/campaigns/automations", need: { campaign: ["send"] } },
-  { id: "list", label: "List", to: "/lists", need: { list: ["write"] } },
-  { id: "domain", label: "Domain", to: "/domains", need: { sending: ["write"] } },
-  { id: "invite", label: "Invite", to: "/settings/invites", need: { invitation: ["create"] } },
+  { id: "app", label: "App", to: "/apps", new: 1, need: { tenant: ["write"] } },
+  { id: "domain", label: "Domain", to: "/domains", new: 1, need: { sending: ["write"] } },
+  { id: "address", label: "Address", to: "/domains", new: "address", need: { sending: ["write"] } },
+  { id: "campaign", label: "Campaign", to: "/campaigns", new: 1, need: { campaign: ["write"] } },
+  { id: "list", label: "List", to: "/lists", new: 1, need: { list: ["write"] } },
+  { id: "template", label: "Template", to: "/campaigns/templates", new: 1, need: { template: ["write"] } },
+  { id: "automation", label: "Automation", to: "/campaigns/automations", new: 1, need: { campaign: ["send"] } },
+  { id: "invite", label: "Invite member", to: "/settings/invites", new: 1, need: { invitation: ["create"] } },
 ];
 
 const permitted = (roles: OrgRole[], need?: Record<string, string[]>) => !need || allows(roles, need);
@@ -130,4 +131,36 @@ export function activeNav(
 export function createItems(roles: OrgRole[], suspended: boolean): CreateItem[] {
   if (suspended) return [];
   return CREATE.filter((c) => allows(roles, c.need));
+}
+
+const trim = (pathname: string) => (pathname.length > 1 && pathname.endsWith("/") ? pathname.slice(0, -1) : pathname);
+
+export type SectionTab = { id: string; label: string; to: string; search?: Record<string, string> };
+
+// Section tabs show on a section's own pages (the children of a nav item); detail pages get a back link instead.
+export function sectionTabs(
+  roles: OrgRole[],
+  pathname: string,
+  search: Record<string, unknown>,
+): { title: string | null; tabs: SectionTab[]; active: string } | null {
+  const path = trim(pathname);
+  const appTabs = /^\/apps\/([^/]+)(\/webhooks)?$/.exec(path);
+  if (appTabs && appTabs[1] !== "new") {
+    const base = `/apps/${appTabs[1]}`;
+    return {
+      title: null,
+      tabs: [
+        { id: "overview", label: "Overview", to: base },
+        { id: "webhooks", label: "Webhooks", to: `${base}/webhooks` },
+      ],
+      active: appTabs[2] ? "webhooks" : "overview",
+    };
+  }
+  const item = NAV.flatMap((g) => g.items).find((i) => i.children?.some((c) => c.to === path));
+  if (!item) return null;
+  const tabs = visibleNav(roles, true).flatMap((g) => g.items).find((i) => i.id === item.id)?.children ?? [];
+  if (tabs.length < 2) return null;
+  const child = activeNav(path, search)?.child;
+  const active = tabs.some((t) => t.id === child) ? (child as string) : (tabs.find((t) => t.to === path)?.id ?? tabs[0].id);
+  return { title: item.label, tabs, active };
 }

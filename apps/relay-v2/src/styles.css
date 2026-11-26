@@ -220,3 +220,34 @@
 [data-slot="sidebar-menu-button"] {
   border-radius: var(--ui-radius-control);
 }
+
+/* Vercel 2026 scale: 14px body, 36px controls, 40px table rows, 20px card titles. */
+.admin-ui, body:has(.admin-ui) {
+  --ui-table-font-size: 0.875rem;
+  --ui-table-head-size: 0.875rem;
+  --ui-table-row-height: 2.5rem;
+  --ui-card-title-size: 1.25rem;
+  --ui-card-title-weight: 600;
+  --ui-card-description-size: 0.875rem;
+  --ui-tabs-size: 0.875rem;
+}
+body:has(.admin-ui) {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+/* Foundry sizes default controls at h-8; the default size is 36px here. Smaller sizes keep their own class. */
+:is([data-slot="button"], [data-slot="input"], [data-slot="select-trigger"], [data-slot="sidebar-menu-button"]).h-8 {
+  height: 2.25rem;
+}
+[data-slot="sidebar"] [data-slot="sidebar-menu-button"] {
+  font-size: 0.875rem;
+}
+/* The content panel: a bordered, rounded card beside the sidebar on desktop, full-bleed on mobile. */
+@media (min-width: 768px) {
+  [data-slot="sidebar-inset"] {
+    border: 1px solid var(--border);
+    border-radius: 1rem;
+    box-shadow: none;
+    overflow: hidden;
+  }
+}

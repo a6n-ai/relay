@@ -20,7 +20,7 @@ export const Route = createFileRoute("/_app/messages_/$messageId")({
   loaderDeps: ({ search }) => ({ images: search.images }),
   loader: ({ params, deps }) =>
     Promise.all([fetchMessage({ data: { id: params.messageId, images: deps.images } }), fetchApps()]),
-  pendingComponent: () => <DetailSkeleton crumbs={[{ label: "Messages" }, { label: "Message" }]} action />,
+  pendingComponent: () => <DetailSkeleton crumbs={[{ label: "Messages", to: "/messages" }, { label: "Message" }]} action />,
   component: MessagePage,
 });
 
@@ -34,7 +34,7 @@ function MessagePage() {
   if (!result) {
     return (
       <>
-        <PageHeader crumbs={[{ label: "Messages" }, { label: "Message" }]} />
+        <PageHeader crumbs={[{ label: "Messages", to: "/messages" }, { label: "Message" }]} />
         <DeniedState reason={deniedReason(shell)} />
       </>
     );
@@ -42,7 +42,7 @@ function MessagePage() {
   if ("missing" in result) {
     return (
       <>
-        <PageHeader crumbs={[{ label: "Messages" }, { label: "Message" }]} />
+        <PageHeader crumbs={[{ label: "Messages", to: "/messages" }, { label: "Message" }]} />
         <DeniedState reason="not-found" label="Message not found" />
       </>
     );

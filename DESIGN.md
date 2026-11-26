@@ -68,7 +68,7 @@ Foundry ships the shapes. Only `<body>` carries `admin-ui` (`apps/relay-v2/src/r
 - Controls and cards are 6px. Popups and modals are 12px.
 - Badges are pills, 20px tall, one tone fill with tone text and no border. Pass the tone through `--ui-badge-tone`.
 - Tables sit in a bordered, rounded frame with a muted header row. The frame is inset to the page padding so it lines up with the toolbar. Loading skeletons and the empty state render inside the same frame, so loading, empty and full do not jump.
-- The page body is centred at a max width of 72rem (1152px) by a grid in `app-shell.tsx`. The header bar stays full width, and dialogs, sheets and popovers keep their own width.
+- The page body is centred at a max width of 72rem (1152px) by a grid in `app-shell.tsx`. The header (scope row and tabs) stays full width, and dialogs, sheets and popovers keep their own width.
 
 ## Buttons
 
@@ -81,9 +81,11 @@ Foundry ships the shapes. Only `<body>` carries `admin-ui` (`apps/relay-v2/src/r
 
 ## Component behaviour
 
-- **Sidebar** (`app-shell.tsx`, `shell/nav.ts`): at most 8 links in quiet groups. The active link is a grey tint with foreground text. It collapses to an icon rail and never holds settings or tabs.
+- **Sidebar** (`app-shell.tsx`, `shell/nav.ts`): 256px, 36px items at 14px, at most 8 top-level links in quiet groups, no sub-items. The active link is a grey tint with foreground text. Order: workspace switcher, Find (F), nav, account. It collapses to an icon rail and never holds settings or tabs.
+- **Framed panel**: the content is a bordered, rounded (16px) panel inset beside the sidebar on desktop (`variant="inset"`, rule in `styles.css`) and full-bleed on mobile.
 - **Dialogs and forms**: creating something happens in a dialog over the list (`CreateDialog`), never in a side column. Fields are 32px. Focus ring is blue.
-- **Page header** (`PageHeader`): a full-width 48px bar with breadcrumb, scope switcher and actions. Every route renders it first.
+- **Page header** (`PageHeader`): no breadcrumb. A 56px scope row (app scope switcher on app-scoped pages, or a back link on detail pages; `Add New` menu on the right, gated by role through `createItems`), then `SectionTabs` (grey fill on the active tab, 14px) where the section has them (Messages, Campaigns, Settings, app detail), then `PageTitle`: 32px semibold tight title, a one-line 16px muted description (`shell/page-copy.ts`), actions on the right. Every route renders it first. Add New items open the page's create dialog through `?new=1` (`?new=address` for addresses).
+- **Type scale**: body and table text 14px, card titles 20px semibold, controls 36px, table rows 40px; set in the `styles.css` token block, never per page.
 - **Lists** (`ResourceTable` in a `Toolbar` page): the empty state names the next action. No row stagger on filter or search.
 - **Feedback**: route `pendingComponent` with the skeleton that matches the page (`ListSkeleton`, `CardsSkeleton`, `FormSkeleton`, `DetailSkeleton`) for waits, toasts only for results that leave the screen.
 
@@ -93,8 +95,8 @@ Build screens from these parts and the semantic tokens (`bg-card`, `text-muted-f
 
 | Role | Component | File (under `apps/relay-v2/src/components/`) |
 |---|---|---|
-| page header | `PageHeader` | shell/page-header.tsx |
-| create menu, scope switcher | `CreateMenu`, `ScopeSwitcher` | shell/create-menu.tsx, shell/scope-switcher.tsx |
+| page header, title, tabs | `PageHeader`, `PageTitle`, `SectionTabs` | shell/page-header.tsx, page/page-title.tsx, shell/section-tabs.tsx |
+| add new menu, scope switcher | `AddNewMenu`, `ScopeSwitcher` | shell/add-new.tsx, shell/scope-switcher.tsx |
 | toolbar | `Toolbar` | page/toolbar.tsx |
 | table with frame | `ResourceTable` (Foundry `Table`, inset by `TableInset`) | resource-table.tsx, page/table-inset.tsx |
 | loading | `ListSkeleton`, `CardsSkeleton`, `FormSkeleton`, `DetailSkeleton` | page/page-skeleton.tsx |

@@ -26,7 +26,7 @@ export function findEntries(shell: Shell): FindEntry[] {
   );
   const apps = shell.apps.map((a): FindEntry => ({ id: `app:${a.id}`, group: "Apps", label: a.name, to: `/apps/${a.id}` }));
   const actions = createItems(roles, shell.active?.status === "suspended").map(
-    (c): FindEntry => ({ id: `new:${c.id}`, group: "Actions", label: `New ${c.label}`, to: c.to, search: { new: "1" } }),
+    (c): FindEntry => ({ id: `new:${c.id}`, group: "Actions", label: `New ${c.label}`, to: c.to, search: { new: String(c.new) } }),
   );
   return [...pages, ...apps, ...actions];
 }

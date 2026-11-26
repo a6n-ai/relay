@@ -21,8 +21,8 @@ export function scopeSearch(prev: Record<string, unknown>, appId: string | undef
 }
 
 // Create and Find open a dialog on the target page; the current app stays picked there.
-export function withNew(prev: Record<string, unknown>) {
-  return typeof prev.appId === "string" ? { appId: prev.appId, new: 1 } : { new: 1 };
+export function withNew(prev: Record<string, unknown>, kind: 1 | "address" = 1) {
+  return typeof prev.appId === "string" ? { appId: prev.appId, new: kind } : { new: kind };
 }
 
 // Sidebar links into a scoped page keep the picked app.

@@ -48,7 +48,7 @@ import { Hint, Mono } from "../../components/page/text";
 
 export const Route = createFileRoute("/_app/domains")({
   validateSearch: (search: Record<string, unknown>) => ({
-    new: search.new === 1 || search.new === "1" ? (1 as const) : undefined,
+    new: search.new === 1 || search.new === "1" ? (1 as const) : search.new === "address" ? ("address" as const) : undefined,
     q: typeof search.q === "string" && search.q ? search.q : undefined,
     status: search.status === "verified" || search.status === "pending" || search.status === "failed" ? search.status : undefined,
   }),
@@ -106,7 +106,7 @@ function DomainsPage() {
   const [deleting, setDeleting] = useState<{ id: string; domain: string } | null>(null);
   const [editing, setEditing] = useState<Address | null>(null);
   const [removing, setRemoving] = useState<{ id: string; email: string } | null>(null);
-  const [addressOpen, setAddressOpen] = useState(false);
+  const [addressOpen, setAddressOpen] = useNewParam("address");
   const crumbs = [{ label: "Domains" }];
   if (!data) {
     return (
