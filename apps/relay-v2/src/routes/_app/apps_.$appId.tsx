@@ -192,7 +192,7 @@ function AppDetailsPanel({ appId, name, slug, canWrite }: { appId: string; name:
       <FormBody id="app-details-form" onSubmit={save}>
         <UnsavedGuard when={dirty} />
         <TextField id="app-name" label="Name" required maxLength={80} value={value} disabled={!canWrite} onChange={(e) => setValue(e.target.value)} />
-        <FixedField label="Slug" value={slug} hint="Create a new app to use a different slug." />
+        <FixedField label="Short name" value={slug} hint="Create a new app to use a different short name." />
         <FormError message={error} />
       </FormBody>
     </SettingsCard>
@@ -257,7 +257,7 @@ function DefaultSendersPanel({ appId, senders, canWrite }: { appId: string; send
         <div className="grid gap-2">
           <Hint>Add a sender address first.</Hint>
           <div>
-            <Button variant="outline" render={<Link to="/domains" search={{ q: undefined, status: undefined }} />}>
+            <Button variant="outline" render={<Link to="/domains/addresses/new" search={{ appId }} />}>
               Add address
             </Button>
           </div>

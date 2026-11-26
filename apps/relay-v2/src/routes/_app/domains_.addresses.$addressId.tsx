@@ -20,13 +20,14 @@ import { EmptyState } from "../../components/page/empty-state";
 import { ListSkeleton } from "../../components/page/page-skeleton";
 import { SettingsCard } from "../../components/page/settings-card";
 import { PageHeader } from "../../components/shell/page-header";
-import { fetchAddresses, removeAddressFn, updateAddressFn } from "../../console/domains.fns";
+import { fetchAddresses, fetchDomains, removeAddressFn, updateAddressFn } from "../../console/domains.fns";
 import { addGrantFn, fetchAddressAccess, removeGrantFn } from "../../console/grants.fns";
 import { FormError, FormBody, FormActions } from "../../components/page/form-parts";
 import { KIND_LABEL, KINDS } from "../../lib/address-kinds";
 
 export const Route = createFileRoute("/_app/domains_/addresses/$addressId")({
   loader: async ({ params }) => {
+    if (!(await fetchDomains())) return null;
     const addresses = await fetchAddresses();
     if (!addresses) return null;
     const address = addresses.find((a) => a.id === params.addressId);
@@ -48,6 +49,7 @@ function AddressPage() {
   const canWrite = useCan({ sending: ["write"] });
   const canManage = useCan({ mailbox: ["manage"] });
   const [adding, setAdding] = useState(false);
+  const [removed, setRemoved] = useState(false);
   const [removing, setRemoving] = useState<{ id: string; label: string } | null>(null);
   const crumbs = [{ label: "Domains", to: "/domains" }, { label: "Address" }];
   if (!data || (!canWrite && !canManage)) {
@@ -76,6 +78,7 @@ function AddressPage() {
 
   async function removeAddress() {
     await removeAddressFn({ data: { id: address.id } });
+    setRemoved(true);
     toast.success("Address removed", { description: address.email });
     await navigate({ to: "/domains", search: { q: undefined, status: undefined } });
   }
@@ -89,17 +92,18 @@ function AddressPage() {
   return (
     <>
       <PageHeader crumbs={[{ label: "Domains", to: "/domains" }, { label: address.email }]} description="Settings for this address." />
-      <div className="grid max-w-3xl gap-4 px-4 pb-8">
-        <AddressDetailsCard address={address} canWrite={canWrite} />
+      <div className="grid max-w-2xl gap-4 px-4 pb-8">
+        <AddressDetailsCard key={address.id} address={address} canWrite={canWrite} guard={!removed} />
         <SettingsCard title="Mail" description="What this address can do.">
           <FixedField
+            hideLabel
             label="Mail"
             value={KIND_LABEL[address.kind] ?? address.kind}
             hint={`${KINDS.find((k) => k.value === address.kind)?.hint ?? ""} Remove the address and add it again to change it.`.trim()}
           />
         </SettingsCard>
         <SettingsCard title="App" description="The app this address belongs to.">
-          <FixedField label="App" value={address.appName} hint="Remove the address and add it again under another app." />
+          <FixedField hideLabel label="App" value={address.appName} hint="Remove the address and add it again under another app." />
         </SettingsCard>
         {access ? (
           <SettingsCard
@@ -147,7 +151,7 @@ function AddressPage() {
   );
 }
 
-function AddressDetailsCard({ address, canWrite }: { address: Address; canWrite: boolean }) {
+function AddressDetailsCard({ address, canWrite, guard }: { address: Address; canWrite: boolean; guard: boolean }) {
   const router = useRouter();
   const [name, setName] = useState(address.displayName ?? "");
   const [replyTo, setReplyTo] = useState(address.replyTo ?? "");
@@ -189,7 +193,7 @@ function AddressDetailsCard({ address, canWrite }: { address: Address; canWrite:
       }
     >
       <FormBody id="address-details-form" onSubmit={save}>
-        <UnsavedGuard when={dirty} />
+        <UnsavedGuard when={dirty && guard} />
         <FixedField label="Address" value={address.email} hint="Remove it and add a new one to change it." />
         <TextField id="edit-address-name" label="Name" hint="Shown to recipients as the sender name." maxLength={80} value={name} disabled={!canWrite} onChange={(e) => setName(e.target.value)} />
         <TextField
@@ -263,7 +267,7 @@ function NewGrantForm({
     <FormBody onSubmit={submit}>
       <ChoiceField id="grant-who" label="Member or team" value={choice} onChange={setChoice} options={options} people autoFocus error={fe.errors.who} onClearError={() => fe.clear("who")} />
       <FormError message={error} />
-      <FormActions cancel submitLabel="Give access" pending={pending} pendingLabel="Giving access…" />
+      <FormActions cancel submitLabel="Add access" pending={pending} pendingLabel="Adding access…" />
     </FormBody>
   );
 }

@@ -134,6 +134,7 @@ export function ChoiceField({
   describe,
   people,
   autoFocus,
+  hideLabel,
   hint,
   error,
   onClearError,
@@ -146,6 +147,7 @@ export function ChoiceField({
   describe?: boolean;
   people?: boolean;
   autoFocus?: boolean;
+  hideLabel?: boolean;
   hint?: ReactNode;
   error?: string | null;
   onClearError?: () => void;
@@ -156,7 +158,7 @@ export function ChoiceField({
     labels: options.map((o) => (o.badge ? `${o.label} ${o.badge}` : o.label)),
   });
   return (
-    <Field id={id} label={label} hint={hint} error={error} htmlFor={mode === "segmented" || mode === "cards" ? null : id}>
+    <Field id={id} label={label} hideLabel={hideLabel} hint={hint} error={error} htmlFor={mode === "segmented" || mode === "cards" ? null : id}>
       <ChoiceControl
         id={id}
         value={value}

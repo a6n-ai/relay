@@ -33,7 +33,9 @@ describe("create pages", { timeout: 60_000 }, () => {
       expect(denied.status, path).toBe(200);
       const html = await denied.text();
       expect(html, path).toContain("Not available to your role");
-      expect(html, path).not.toContain("Create app");
+      expect(html, path).not.toContain('id="app-name"');
+      expect(html, path).not.toContain('id="address-local"');
+      expect(html, path).not.toContain('id="domain-name"');
     }
   });
 
@@ -62,5 +64,12 @@ describe("create pages", { timeout: 60_000 }, () => {
     expect(html).toContain("Remove address");
 
     expect(await (await get(`/domains/addresses/${created.id}`, member)).text()).toContain("Not available to your role");
+
+    const billing = await addMember(workspaceId, "create-pages-addr-billing@example.com", "billing");
+    const denied = await get(`/domains/addresses/${created.id}`, billing);
+    expect(denied.status).toBe(200);
+    const deniedHtml = await denied.text();
+    expect(deniedHtml).toContain("Not available to your role");
+    expect(deniedHtml).not.toContain("Remove address");
   });
 });

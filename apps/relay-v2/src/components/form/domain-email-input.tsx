@@ -16,11 +16,13 @@ export function DomainEmailInput({
   onChange,
   autoFocus,
   label,
+  hideLabel,
   hint,
   error,
 }: {
   id: string;
   label: string;
+  hideLabel?: boolean;
   hint?: string;
   error?: string | null;
   domains: { domain: string; status: string }[];
@@ -52,7 +54,7 @@ export function DomainEmailInput({
   const domain = value.domain;
   const blocked = kind === "sender" ? undefined : (only?.disabled ? only : current?.disabled ? current : undefined);
   return (
-    <Field id={id} label={label} hint={hint} error={error}>
+    <Field id={id} label={label} hideLabel={hideLabel} hint={hint} error={error}>
       <InputGroup>
         <InputGroupInput id={id} autoFocus={autoFocus} aria-invalid={error ? true : undefined} aria-describedby={fieldDescribedBy(id, hint, error)} value={value.local} onChange={(e) => typed(e.target.value)} placeholder="name" autoComplete="off" />
         <InputGroupAddon align="inline-end">

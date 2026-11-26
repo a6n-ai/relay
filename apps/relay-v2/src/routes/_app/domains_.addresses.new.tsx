@@ -5,7 +5,7 @@ import { type FormEvent, useState } from "react";
 import { Button } from "@foundry/ui/button";
 import { DeniedState, deniedReason } from "../../components/denied-state";
 import { errorText } from "../../components/error-text";
-import { AppField } from "../../components/form/app-field";
+import { AppField, needsAppChoice } from "../../components/form/app-field";
 import { ChoiceField } from "../../components/form/choice-field";
 import { DomainEmailInput } from "../../components/form/domain-email-input";
 import { TextField } from "../../components/form/text-field";
@@ -121,13 +121,15 @@ function AddAddressPage() {
   return (
     <CreatePage crumbs={crumbs} description="Add an address your app sends from, receives mail on, or both." onSubmit={submit}>
       <SettingsCard title="Scope" description="The app this address belongs to.">
-        <AppField apps={apps} scopedAppId={scopedAppId} value={appId} onChange={setAppId} id="address-app" autoFocus />
+        <AppField apps={apps} scopedAppId={scopedAppId} value={appId} onChange={setAppId} id="address-app" autoFocus={needsAppChoice(apps, scopedAppId)} />
         <FormError message={appError} />
       </SettingsCard>
       <SettingsCard title="Address" description="The address and the verified domain it lives on.">
         <DomainEmailInput
           id="address-local"
           label="Address"
+          hideLabel
+          autoFocus={!needsAppChoice(apps, scopedAppId)}
           error={localError ?? serverError}
           domains={domains}
           kind={kind}
@@ -142,6 +144,7 @@ function AddAddressPage() {
         <ChoiceField
           id="address-kind"
           label="Mail"
+          hideLabel
           hint={KINDS.find((k) => k.value === kind)?.hint}
           value={kind}
           onChange={(v) => setKind(v as Kind)}
