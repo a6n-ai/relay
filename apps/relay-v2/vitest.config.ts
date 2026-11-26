@@ -6,6 +6,8 @@ const securityMigrations = await readD1Migrations("./drizzle/security");
 const coreMigrations = await readD1Migrations("./drizzle/core");
 
 export default defineConfig({
+  // The first request in each file cold-starts the Worker bundle (about 7s locally), so 5s is too tight.
+  test: { testTimeout: 20_000 },
   plugins: [
     tanstackStart(),
     cloudflareTest({
