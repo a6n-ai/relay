@@ -30,10 +30,16 @@ async function userIdOf(email: string): Promise<string> {
 }
 
 describe("console shell", { timeout: 60_000 }, () => {
-  it("redirects a signed-out visit to sign-in with the path", async () => {
+  it("shows the landing page to a signed-out visit to /", async () => {
     const res = await getPage("/");
+    expect(res.status).toBe(200);
+    expect(await res.text()).toContain("One API, one console.");
+  });
+
+  it("redirects a signed-out deep link to sign-in with the path", async () => {
+    const res = await getPage("/campaigns");
     expect([302, 307]).toContain(res.status);
-    expect(res.headers.get("location")).toBe("/sign-in?redirect=%2F");
+    expect(res.headers.get("location")).toBe("/sign-in?redirect=%2Fcampaigns");
   });
 
   it("renders the sign-in form", async () => {
