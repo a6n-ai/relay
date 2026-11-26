@@ -6,12 +6,17 @@ import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { type FormEvent, useEffect, useState } from "react";
 import { AuthCard } from "../components/auth-card";
 import { FormError } from "../components/page/form-parts";
-import { safeRedirect } from "../console/shell.fns";
+import { authOptionsFn, safeRedirect } from "../console/shell.fns";
+import { signInErrorText } from "../lib/auth/google";
 import { Hint } from "../components/page/text";
 
 export const Route = createFileRoute("/sign-in")({
-  validateSearch: (search: Record<string, unknown>): { redirect?: string } =>
-    typeof search.redirect === "string" ? { redirect: search.redirect } : {},
+  validateSearch: (search: Record<string, unknown>): { redirect?: string; error?: string; email?: string } => ({
+    ...(typeof search.redirect === "string" ? { redirect: search.redirect } : {}),
+    ...(typeof search.error === "string" ? { error: search.error } : {}),
+    ...(typeof search.email === "string" ? { email: search.email } : {}),
+  }),
+  loader: () => authOptionsFn(),
   component: SignIn,
 });
 
@@ -22,11 +27,12 @@ const OFFLINE = "Could not reach Relay. Check your connection and try again.";
 
 function SignIn() {
   const router = useRouter();
-  const { redirect } = Route.useSearch();
+  const { redirect, error: errorCode, email: errorEmail } = Route.useSearch();
+  const { google } = Route.useLoaderData();
   const [step, setStep] = useState<"email" | "code">("email");
   const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(signInErrorText(errorCode, errorEmail));
   const [pending, setPending] = useState(false);
   const [wait, setWait] = useState(0);
 
@@ -65,6 +71,29 @@ function SignIn() {
     return true;
   }
 
+  async function signInWithGoogle() {
+    setPending(true);
+    setError(null);
+    const target = safeRedirect(redirect);
+    try {
+      const res = await fetch("/api/auth/sign-in/social", {
+        method: "POST",
+        headers: json,
+        body: JSON.stringify({
+          provider: "google",
+          callbackURL: target,
+          errorCallbackURL: `/sign-in?redirect=${encodeURIComponent(target)}`,
+        }),
+      });
+      const data = (await res.json()) as { url?: string };
+      if (!res.ok || !data.url) throw new Error("no url");
+      window.location.assign(data.url);
+    } catch {
+      setError(signInErrorText("google_failed"));
+      setPending(false);
+    }
+  }
+
   async function sendCode(event: FormEvent) {
     event.preventDefault();
     if (await requestCode()) setStep("code");
@@ -91,9 +120,22 @@ function SignIn() {
   }
 
   return (
-    <AuthCard title="Sign in to Relay">
+    <AuthCard title="Sign in to Relay" footer="Access is by invite. Ask your workspace owner.">
       {step === "email" ? (
         <form onSubmit={sendCode} className="flex flex-col gap-3">
+          {google ? (
+            <>
+              <Button type="button" variant="outline" disabled={pending} onClick={() => void signInWithGoogle()}>
+                <GoogleMark />
+                Continue with Google
+              </Button>
+              <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                <span className="h-px flex-1 bg-border" />
+                or
+                <span className="h-px flex-1 bg-border" />
+              </div>
+            </>
+          ) : null}
           <Label htmlFor="email">Email</Label>
           <Input
             id="email"
@@ -106,7 +148,7 @@ function SignIn() {
             onChange={(e) => setEmail(e.target.value)}
           />
           <Button type="submit" disabled={pending}>
-            Send code
+            Continue with email
           </Button>
         </form>
       ) : (
@@ -146,5 +188,16 @@ function SignIn() {
       )}
       <FormError message={error} />
     </AuthCard>
+  );
+}
+
+function GoogleMark() {
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+      <path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5a5.6 5.6 0 0 1-2.4 3.7v3h3.9c2.3-2.1 3.5-5.2 3.5-8.9Z" />
+      <path fill="#34A853" d="M12 24c3.2 0 6-1.1 7.9-2.9l-3.9-3c-1.1.7-2.4 1.2-4 1.2-3.1 0-5.7-2.1-6.6-4.9H1.4v3.1A12 12 0 0 0 12 24Z" />
+      <path fill="#FBBC05" d="M5.4 14.4a7.200 7.2 7.2 0 0 1 0-4.8V6.5H1.4a12 12 0 0 0 0 11l4-3.1Z" />
+      <path fill="#EA4335" d="M12 4.800c1.800 0 3.300.6 4.600 1.800l3.400-3.400A12 12 0 0 0 1.400 6.500l4 3.100C6.300 6.900 8.900 4.800 12 4.800Z" />
+    </svg>
   );
 }

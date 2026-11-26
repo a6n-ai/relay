@@ -37,6 +37,8 @@ declare global {
       API_LIMIT: RateLimit;
       BETTER_AUTH_SECRET: string;
       BETTER_AUTH_URL: string;
+      GOOGLE_CLIENT_ID?: string;
+      GOOGLE_CLIENT_SECRET?: string;
       OTP_MAILER?: "memory" | "console" | "ses";
       INVITE_MAILER?: "memory" | "console" | "ses";
       DEV_OTP_PEEK?: "1";

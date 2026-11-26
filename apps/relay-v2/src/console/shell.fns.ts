@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeaders, setResponseHeader } from "@tanstack/react-start/server";
 import { env } from "cloudflare:workers";
 import { ConsoleError, toResponseError } from "./actor";
+import { googleConfig } from "../lib/auth/google";
 import { loadShell, type Shell } from "./shell";
 
 // Browsers strip tabs and newlines from URLs, so "/\t/host" would become "//host".
@@ -23,3 +24,8 @@ export const getShell = createServerFn({ method: "GET" }).handler(async (): Prom
     toResponseError(err);
   }
 });
+
+// The sign-in page shows the Google button only when both keys are set.
+export const authOptionsFn = createServerFn({ method: "GET" }).handler(
+  async (): Promise<{ google: boolean }> => ({ google: googleConfig(env) !== null }),
+);

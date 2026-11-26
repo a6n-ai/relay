@@ -28,6 +28,7 @@ import type { Env } from "../../env";
 import { newId } from "../ids";
 import { maskEmails } from "../../core/mask-emails";
 import { writeAudit } from "./audit";
+import { googleConfig } from "./google";
 import { pickInviteMailer } from "./invite-mailer";
 import { type OtpMailer, consoleOtpMailer, memoryOtpMailer } from "./otp-mailer";
 import { ac as platformAc, orgAc, orgRoles, roles as platformRoles } from "./permissions";
@@ -94,6 +95,8 @@ export function createAuth(env: Env) {
   const actorOf = async (ctx: Parameters<typeof getSessionFromCtx>[0]) =>
     (await getSessionFromCtx(ctx))?.user.id ?? null;
 
+  const google = googleConfig(env);
+
   return betterAuth({
     secret: env.BETTER_AUTH_SECRET,
     baseURL: env.BETTER_AUTH_URL,
@@ -114,6 +117,11 @@ export function createAuth(env: Env) {
         apikey: apiKey,
       },
     }),
+    // Invite-only: Google never creates a user (disableSignUp), and a Google email with no user row is refused with signup_disabled.
+    // google is deliberately not in trustedProviders: that would link on an unverified Google email. Without it, linking needs Google's email_verified.
+    // Invites pre-create users with emailVerified false, so the local-verified requirement is off; the OTP sign-in keeps working for the same row.
+    ...(google ? { socialProviders: { google } } : {}),
+    account: { accountLinking: { enabled: true, requireLocalEmailVerified: false } },
     advanced: {
       useSecureCookies: env.BETTER_AUTH_URL.startsWith("https://"),
       ipAddress: { ipAddressHeaders: ["cf-connecting-ip"] },
@@ -235,6 +243,17 @@ export function createAuth(env: Env) {
           } else {
             const signedIn = (result as { user: { id: string } }).user;
             await writeAudit(env, { action: "sign_in.success", actorUserId: signedIn.id, target: signedIn.id, ...meta });
+          }
+          return;
+        }
+        if (ctx.path.startsWith("/callback/")) {
+          const signedIn = ctx.context.newSession?.user;
+          if (signedIn) {
+            await writeAudit(env, { action: "sign_in.success", actorUserId: signedIn.id, target: signedIn.id, data: { provider: ctx.params?.id }, ...meta });
+          } else {
+            const location = (result as { headers?: Headers } | null)?.headers?.get("location");
+            const error = location ? new URL(location, "http://x").searchParams.get("error") : null;
+            await writeAudit(env, { action: "sign_in.failure", data: { provider: ctx.params?.id, error }, ...meta });
           }
           return;
         }
