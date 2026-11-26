@@ -79,7 +79,7 @@ function AppsPage() {
               icon={BoxesIcon}
               title="No apps yet"
               description="An app gets its own API keys and senders."
-              action={canWrite ? <Button onClick={() => setOpen(true)}>New app</Button> : undefined}
+              action={canWrite ? <Button variant="outline" onClick={() => setOpen(true)}>New app</Button> : undefined}
             />
           ) : (
             <p className="p-4 text-sm text-muted-foreground">No apps match your search.</p>

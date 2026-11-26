@@ -111,7 +111,7 @@ function ListsPage() {
             description={q ? undefined : "Lists hold the people a campaign sends to."}
             action={
               !q && canCreate ? (
-                <Button onClick={() => setNewOpen(true)}>
+                <Button variant="outline" onClick={() => setNewOpen(true)}>
                   New list
                 </Button>
               ) : undefined

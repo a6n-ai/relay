@@ -143,7 +143,7 @@ function CampaignsPage() {
         menu={(c) => [{ label: "Open", to: "/campaigns/$campaignId", params: { campaignId: c.id }, search: { appId: c.appId } }]}
         empty={
           campaigns.rows.length === 0 ? (
-            <EmptyState icon={MegaphoneIcon} title="No campaigns yet." action={newButton} />
+            <EmptyState icon={MegaphoneIcon} title="No campaigns yet." action={canWrite && appId ? <Button variant="outline" onClick={() => setOpen(true)}>New campaign</Button> : undefined} />
           ) : (
             "No campaigns match."
           )

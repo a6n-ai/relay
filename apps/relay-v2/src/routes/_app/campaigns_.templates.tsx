@@ -108,7 +108,7 @@ function TemplatesPage() {
               icon={FileTextIcon}
               title="No templates yet."
               description="Templates are reusable email content."
-              action={newButton}
+              action={canCreate ? <Button variant="outline" onClick={() => setOpen(true)}>New template</Button> : undefined}
             />
           ) : (
             "No templates match."

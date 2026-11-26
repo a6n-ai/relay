@@ -105,7 +105,7 @@ function AppPage() {
                 icon={KeyRoundIcon}
                 title="No keys yet"
                 description="Create a key to start sending from this app."
-                action={canWrite ? <Button onClick={() => setKeyOpen(true)}>Create key</Button> : undefined}
+                action={canWrite ? <Button variant="outline" onClick={() => setKeyOpen(true)}>Create key</Button> : undefined}
               />
             }
           />

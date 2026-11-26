@@ -124,7 +124,7 @@ function AutomationsPage() {
             icon={WorkflowIcon}
             title="No automations yet."
             description="Send a template when someone joins a list."
-            action={newButton}
+            action={canCreate ? <Button variant="outline" onClick={() => setOpen(true)}>New automation</Button> : undefined}
           />
         }
       />

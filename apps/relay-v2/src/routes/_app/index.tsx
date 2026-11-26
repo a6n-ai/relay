@@ -18,9 +18,9 @@ export const Route = createFileRoute("/_app/")({
 });
 
 const START = [
-  { id: "app", icon: LayoutGrid, title: "Create an app", line: "An app groups the messages, lists and campaigns you send.", cta: "Create", to: "/apps" },
-  { id: "domain", icon: Globe, title: "Add a domain", line: "Verify a domain to send from your own address.", cta: "Add", to: "/domains" },
-  { id: "invite", icon: UserPlus, title: "Invite your team", line: "Give teammates access to this workspace.", cta: "Invite", to: "/settings/invites" },
+  { id: "app", icon: LayoutGrid, title: "Create an app", line: "An app groups the messages, lists and campaigns you send.", cta: "Create app", to: "/apps" },
+  { id: "domain", icon: Globe, title: "Add a domain", line: "Verify a domain to send from your own address.", cta: "Add domain", to: "/domains" },
+  { id: "invite", icon: UserPlus, title: "Invite your team", line: "Give teammates access to this workspace.", cta: "Invite member", to: "/settings/invites" },
 ] as const;
 
 function GetStarted({ shell }: { shell: NonNullable<ReturnType<typeof Route.useRouteContext>["shell"]> }) {

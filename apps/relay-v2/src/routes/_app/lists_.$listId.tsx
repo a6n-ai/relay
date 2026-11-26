@@ -126,7 +126,7 @@ function ListDetailPage() {
               </Button>
             ) : null}
             {canWrite ? (
-              <Button onClick={() => setAdding(true)}>
+              <Button variant="outline" onClick={() => setAdding(true)}>
                 Add contact
               </Button>
             ) : null}
