@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { Hint } from "./page/text";
 import { RowMenu, type RowAction } from "./page/row-menu";
 
+const INSET = "px-4 pb-4 in-data-[slot=card-content]:p-0";
 const KIND = { name: "font-medium", mono: "font-mono text-xs", url: "break-all font-mono text-xs", time: "text-xs tabular-nums" } as const;
 
 // Only real controls sit above the row's overlay link; text, names and badges fall through to it.
@@ -39,9 +40,9 @@ export function ResourceTable<T>({
   rowLabel?: (row: T) => string;
   menu?: (row: T) => RowAction[];
 }) {
-  if (rows.length === 0) return <div className="px-4 pb-4">{typeof empty === "string" ? <Hint>{empty}</Hint> : empty}</div>;
+  if (rows.length === 0) return typeof empty === "string" ? <div className={INSET}><Hint>{empty}</Hint></div> : empty;
   return (
-    <div className="px-4 pb-4">
+    <div className={INSET}>
     <Table>
       <TableHeader>
         <TableRow>
