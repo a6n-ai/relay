@@ -12,8 +12,45 @@ import { StatTile } from "../../components/stat-tile";
 import { fetchOverview } from "../../console/overview.fns";
 import { Hint, SectionTitle } from "../../components/page/text";
 
+const SITE = "https://relay.a6n.ai";
+const DESCRIPTION = "One API for transactional email, campaigns and inbound mail, with signed webhooks and a console your whole team can read.";
+
 export const Route = createFileRoute("/_app/")({
-  head: () => ({ meta: [{ name: "description", content: "Email, campaigns and webhooks for your apps. One API, one console." }] }),
+  head: () => ({
+    meta: [
+      { title: "Relay: email API, campaigns and webhooks" },
+      { name: "description", content: DESCRIPTION },
+      { property: "og:type", content: "website" },
+      { property: "og:site_name", content: "Relay" },
+      { property: "og:title", content: "Relay: email API, campaigns and webhooks" },
+      { property: "og:description", content: DESCRIPTION },
+      { property: "og:url", content: SITE },
+      { property: "og:image", content: `${SITE}/landing/og.png` },
+      { property: "og:image:width", content: "1200" },
+      { property: "og:image:height", content: "630" },
+      { property: "og:image:alt", content: "Relay: send email with one request and see what happens next." },
+      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "Relay: email API, campaigns and webhooks" },
+      { name: "twitter:description", content: DESCRIPTION },
+      { name: "twitter:image", content: `${SITE}/landing/og.png` },
+    ],
+    links: [{ rel: "canonical", href: SITE }],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "SoftwareApplication",
+          name: "Relay",
+          url: SITE,
+          description: DESCRIPTION,
+          applicationCategory: "DeveloperApplication",
+          operatingSystem: "Web",
+          publisher: { "@type": "Organization", name: "a6n", url: "https://a6n.ai" },
+        }),
+      },
+    ],
+  }),
   // A signed-out visitor sees the landing page, but child loaders still run; skip the fetch for them.
   loader: ({ context }) => (context.shell ? fetchOverview() : (null as never)),
   component: Overview,
