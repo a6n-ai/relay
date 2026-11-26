@@ -122,9 +122,6 @@
   transform: scaleX(1);
 }
 @media (prefers-reduced-motion: no-preference) {
-  .ld-dot {
-    transition: background-color 180ms ease, border-color 180ms ease;
-  }
   .ld-fill {
     transition: transform 300ms var(--ease-soft);
   }

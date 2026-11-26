@@ -96,7 +96,7 @@ export function DevTabs() {
             tabIndex={active === i ? 0 : -1}
             onClick={() => setActive(i)}
             className={`shrink-0 whitespace-nowrap border-b-2 px-4 py-2.5 text-sm font-medium outline-offset-[-2px] focus-visible:outline-2 focus-visible:outline-ring ${
-              active === i ? "border-foreground text-foreground hover:bg-background" : "border-transparent text-muted-foreground hover:border-foreground hover:bg-background hover:text-foreground"
+              active === i ? "border-foreground text-foreground hover:bg-background" : "border-transparent text-muted-foreground hover:border-border hover:bg-background"
             }`}
           >
             {t.label}

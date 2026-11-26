@@ -10,7 +10,7 @@
   grid-template-columns: minmax(0, 1fr);
   min-height: 360px;
   /* The window runs off the stage foot: rows fade out where the stage ends. */
-  mask-image: linear-gradient(to bottom, #000 188px, transparent 278px);
+  mask-image: linear-gradient(to bottom, black 188px, transparent 278px);
 }
 /* The new row fades in at the top while the rows below slide down by one row: transform and opacity only. */
 .rlw .rlw-rows {
@@ -77,7 +77,7 @@
 }
 .rlw .ss-stage[data-layout='compact'] .rlw-app {
   min-height: 0;
-  mask-image: linear-gradient(to bottom, #000 170px, transparent 286px);
+  mask-image: linear-gradient(to bottom, black 170px, transparent 286px);
 }
 .rlw .ss-stage[data-layout='compact'] .rlw-chip {
   top: 100px;

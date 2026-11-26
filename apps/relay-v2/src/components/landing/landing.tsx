@@ -137,7 +137,7 @@ export function Landing() {
               <figure className="m-0 mt-12 sm:mt-16">
                 <ol className="ld-attempts m-0 grid list-none grid-cols-5 p-0">
                   {ATTEMPTS.map((label, i) => (
-                    <li key={i} data-first={i === 0 || undefined} className="ld-attempt">
+                    <li key={i} className="ld-attempt">
                       <span className="ld-attempt-dot font-mono text-xs">{i + 1}</span>
                       <span className="mt-3 block font-mono text-xs text-muted-foreground">{label}</span>
                     </li>
