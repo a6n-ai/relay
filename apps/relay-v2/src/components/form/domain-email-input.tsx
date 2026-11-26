@@ -1,7 +1,6 @@
 import { useEffect } from "react";
-import { Input } from "@foundry/ui/input";
 import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from "@foundry/ui/input-group";
-import { Hint, Mono } from "../page/text";
+import { Hint } from "../page/text";
 import { ChoiceControl, type ChoiceOption } from "./choice-field";
 import { choiceMode } from "./choice-mode";
 import { addressDomains, defaultDomain, splitEmail } from "./domain-email";
@@ -47,16 +46,14 @@ export function DomainEmailInput({
   const blocked = kind === "sender" ? undefined : (only?.disabled ? only : current?.disabled ? current : undefined);
   return (
     <div className="grid gap-2">
-      {only ? (
-        <InputGroup>
-          <InputGroupInput id={id} autoFocus={autoFocus} value={value.local} onChange={(e) => typed(e.target.value)} placeholder="name" autoComplete="off" />
-          <InputGroupAddon align="inline-end">
-            <InputGroupText>@{only.domain}</InputGroupText>
-          </InputGroupAddon>
-        </InputGroup>
-      ) : (
+      <InputGroup>
+        <InputGroupInput id={id} autoFocus={autoFocus} value={value.local} onChange={(e) => typed(e.target.value)} placeholder="name" autoComplete="off" />
+        <InputGroupAddon align="inline-end">
+          <InputGroupText>@{only?.domain ?? domain}</InputGroupText>
+        </InputGroupAddon>
+      </InputGroup>
+      {only ? null : (
         <>
-          <Input id={id} autoFocus={autoFocus} value={value.local} onChange={(e) => typed(e.target.value)} placeholder="name" autoComplete="off" />
           <span id={`${id}-domain-label`} className="sr-only">
             Domain
           </span>
@@ -70,11 +67,6 @@ export function DomainEmailInput({
           />
         </>
       )}
-      {value.local && domain ? (
-        <Mono className="text-muted-foreground">
-          {value.local}@{domain}
-        </Mono>
-      ) : null}
       {blocked ? <Hint size="xs">Verify {blocked.domain} first to receive mail on it.</Hint> : null}
       {current?.pending && kind === "sender" ? <Hint size="xs">Verify {current.domain} before mail sent from it is delivered.</Hint> : null}
     </div>

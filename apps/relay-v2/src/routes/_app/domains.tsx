@@ -506,6 +506,8 @@ function NewAddressForm({
 
   return (
     <FormBody onSubmit={submit}>
+      <AppField apps={apps} scopedAppId={scopedAppId} value={appId} onChange={setAppId} id="address-app" />
+      <FormError message={appError} />
       <div className="grid gap-1.5">
         <Label htmlFor="address-local">Address</Label>
         <DomainEmailInput
@@ -521,8 +523,6 @@ function NewAddressForm({
         />
         <FormError message={localError ?? serverError} />
       </div>
-      <AppField apps={apps} scopedAppId={scopedAppId} value={appId} onChange={setAppId} id="address-app" />
-      <FormError message={appError} />
       <ChoiceField
         id="address-kind"
         label="Use"

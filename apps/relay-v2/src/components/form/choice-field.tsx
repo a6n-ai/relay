@@ -112,7 +112,7 @@ export function ChoiceControl(props: ControlProps) {
       onValueChange={(v) => v && onChange(v)}
     >
       {options.map((o, i) => (
-        <ToggleGroupItem key={o.value} value={o.value} disabled={o.disabled} autoFocus={autoFocus && i === 0} className="min-w-0 flex-1 shrink">
+        <ToggleGroupItem key={o.value} value={o.value} disabled={o.disabled} autoFocus={autoFocus && i === 0} className="min-w-0 flex-1 shrink data-pressed:border-foreground data-pressed:bg-muted data-pressed:text-foreground dark:data-pressed:border-foreground dark:data-pressed:bg-muted">
           <span className="truncate">{o.label}</span>
           {o.badge ? <Badge variant="secondary">{o.badge}</Badge> : null}
         </ToggleGroupItem>
