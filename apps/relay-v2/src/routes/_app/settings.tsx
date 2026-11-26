@@ -11,9 +11,12 @@ import { DeleteWorkspaceCard } from "../../components/settings/delete-workspace-
 import { SettingsCard } from "../../components/page/settings-card";
 import { PageHeader } from "../../components/shell/page-header";
 import { useCan } from "../../components/use-can";
+import { passwordStatusFn } from "../../console/password.fns";
 import { renameWorkspaceFn } from "../../console/workspaces.fns";
+import { PasswordCard } from "../../components/settings/password-card";
 
 export const Route = createFileRoute("/_app/settings")({
+  loader: () => passwordStatusFn(),
   component: GeneralPage,
 });
 
@@ -66,6 +69,7 @@ function WorkspaceNameCard({ name: current, slug }: { name: string; slug: string
 
 function GeneralPage() {
   const { shell } = Route.useRouteContext();
+  const { hasPassword } = Route.useLoaderData();
   const active = shell.active;
   const suspended = active?.status === "suspended";
   return (
@@ -80,6 +84,7 @@ function GeneralPage() {
           />
         ) : null}
         {active ? <WorkspaceNameCard key={`${active.id}-${active.name}`} name={active.name} slug={active.slug} /> : null}
+        <PasswordCard hasPassword={hasPassword} />
         {active ? <DeleteWorkspaceCard slug={active.slug} /> : null}
       </div>
     </>

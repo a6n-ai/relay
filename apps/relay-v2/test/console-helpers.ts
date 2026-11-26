@@ -31,9 +31,9 @@ export async function sendOtp(email: string): Promise<string> {
     body: JSON.stringify({ email, type: "sign-in" }),
   });
   expect(sent.status).toBe(200);
-  const otp = memoryOtpMailer.lastOtp(email);
-  expect(otp).toMatch(/^\d{6}$/);
-  return otp as string;
+  // The mail goes out after the response, so wait for it.
+  await expect.poll(() => memoryOtpMailer.lastOtp(email)).toMatch(/^\d{6}$/);
+  return memoryOtpMailer.lastOtp(email) as string;
 }
 
 export async function signIn(email: string): Promise<string> {

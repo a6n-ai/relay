@@ -21,7 +21,21 @@ function systemSend(env: Env) {
 
 export function sesOtpMailer(env: Env): OtpMailer {
   return {
-    async send(email, otp) {
+    async send(email, otp, type) {
+      // For a reset, the mailer's second argument is the reset link, not a code.
+      if (type === "reset-password") {
+        const sentence = "Reset your Relay password with this link. It expires in 1 hour. If you did not ask for it, ignore this email.";
+        return systemSend(env)({
+          to: email,
+          subject: "Reset your Relay password",
+          text: `${sentence} ${otp}`,
+          html: `<p>${sentence}</p><p><a href="${otp}">Reset your password</a></p>`,
+        });
+      }
+      if (type === "password-changed") {
+        const notice = "Your Relay password was set or changed. If this wasn't you, reset it and contact your workspace owner.";
+        return systemSend(env)({ to: email, subject: "Your Relay password changed", text: notice, html: `<p>${notice}</p>` });
+      }
       const sentence = `Your Relay sign-in code is ${otp}. It expires in 10 minutes. If you did not ask for it, ignore this email.`;
       await systemSend(env)({
         to: email,

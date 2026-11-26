@@ -8,10 +8,16 @@ export const consoleOtpMailer: OtpMailer = {
 };
 
 const lastByEmail = new Map<string, string>();
+const noticesByEmail = new Map<string, number>();
 
-export const memoryOtpMailer: OtpMailer & { lastOtp(email: string): string | undefined } = {
-  async send(email, otp) {
-    lastByEmail.set(email.trim().toLowerCase(), otp);
+export const memoryOtpMailer: OtpMailer & { lastOtp(email: string): string | undefined; noticeCount(email: string): number } = {
+  async send(email, otp, type) {
+    const key = email.trim().toLowerCase();
+    if (type === "password-changed") noticesByEmail.set(key, (noticesByEmail.get(key) ?? 0) + 1);
+    else lastByEmail.set(key, otp);
+  },
+  noticeCount(email: string): number {
+    return noticesByEmail.get(email.trim().toLowerCase()) ?? 0;
   },
   lastOtp(email: string): string | undefined {
     return lastByEmail.get(email.trim().toLowerCase());
