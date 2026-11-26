@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { type CampaignDraft, isDirty } from "../src/components/campaign-dirty";
+import { baselineFrom, type CampaignDraft, isDirty } from "../src/components/campaign-dirty";
 
 const saved: CampaignDraft = { from: "a@x.test", subject: "Hi", html: "<p>1</p>", text: "1" };
 
@@ -27,4 +27,10 @@ describe("isDirty", () => {
   ])("is dirty when a list is %s", (_k, listIds) => {
     expect(isDirty({ ...saved, listIds: ["a", "b"] }, { ...saved, listIds })).toBe(true);
   });
+});
+
+describe("baselineFrom", () => {
+  it("uses the saved From", () => expect(baselineFrom("a@x.test", ["b@x.test"])).toBe("a@x.test"));
+  it("falls back to a lone sender", () => expect(baselineFrom(null, ["b@x.test"])).toBe("b@x.test"));
+  it("is empty with several senders", () => expect(baselineFrom(null, ["a", "b"])).toBe(""));
 });

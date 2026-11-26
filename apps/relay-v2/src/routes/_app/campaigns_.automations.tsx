@@ -1,35 +1,48 @@
 import { Button } from "@foundry/ui/button";
 import { Input } from "@foundry/ui/input";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@foundry/ui/input-group";
 import { Label } from "@foundry/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@foundry/ui/select";
 import WorkflowIcon from "lucide-react/icons/workflow";
 import { Switch } from "@foundry/ui/switch";
 import { toast } from "@foundry/ui/toast";
-import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
 import { type FormEvent, useEffect, useState } from "react";
-import { AppSelect } from "../../components/app-select";
+import { ConfirmDialog } from "../../components/confirm-dialog";
 import { CreateDialog } from "../../components/create-dialog";
 import { DeniedState, deniedReason } from "../../components/denied-state";
 import { errorText } from "../../components/error-text";
+import { AppField } from "../../components/form/app-field";
+import { ChoiceControl, ChoiceField } from "../../components/form/choice-field";
+import { FixedField } from "../../components/form/fixed-field";
+import { SenderField } from "../../components/form/sender-field";
+import { FilterMenu } from "../../components/page/filter-menu";
+import { ResourceGrid } from "../../components/page/resource-grid";
+import { Hint } from "../../components/page/text";
+import { type View, viewPref } from "../../components/page/view-pref";
+import { ViewToggle } from "../../components/page/view-toggle";
 import { EmptyState } from "../../components/page/empty-state";
 import { TableSkeleton } from "../../components/page/table-skeleton";
 import { Toolbar } from "../../components/page/toolbar";
 import { ResourceTable } from "../../components/resource-table";
 import { useNewParam } from "../../components/shell/create-menu";
 import { PageHeader } from "../../components/shell/page-header";
-import { runAction } from "../../components/run-action";
+import { confirmAction, runAction } from "../../components/run-action";
 import { useCan } from "../../components/use-can";
 import { fetchApps } from "../../console/apps.fns";
-import { createAutomationFn, enableAutomationFn, fetchAutomations } from "../../console/automations.fns";
+import { createAutomationFn, deleteAutomationFn, enableAutomationFn, fetchAutomations, updateAutomationFn } from "../../console/automations.fns";
 import { fetchCampaignOptions } from "../../console/campaigns.fns";
 import { fetchTemplates } from "../../console/templates.fns";
+import type { AutomationView } from "../../do/automations";
 import { FormError, FormBody, FormActions } from "../../components/page/form-parts";
 
-type AutomationsSearch = { appId?: string; new?: 1 };
+type AutomationsSearch = { appId?: string; new?: 1; status?: "on" | "off" };
+
+const ROUTE = "/campaigns/automations";
 
 export const Route = createFileRoute("/_app/campaigns_/automations")({
   validateSearch: (search: Record<string, unknown>): AutomationsSearch => ({
     appId: typeof search.appId === "string" && search.appId ? search.appId : undefined,
+    status: search.status === "on" || search.status === "off" ? search.status : undefined,
     new: search.new === 1 || search.new === "1" ? 1 : undefined,
   }),
   loaderDeps: ({ search }) => ({ appId: search.appId }),
@@ -60,6 +73,10 @@ function AutomationsPage() {
   const router = useRouter();
   const canSend = useCan({ campaign: ["send"] });
   const [open, setOpen] = useNewParam();
+  const navigate = useNavigate({ from: "/campaigns/automations" });
+  const [view, setView] = useState<View>(() => viewPref.read(ROUTE));
+  const [editing, setEditing] = useState<AutomationView | null>(null);
+  const [deleting, setDeleting] = useState<AutomationView | null>(null);
   const CRUMBS = [{ label: "Campaigns", to: "/campaigns", search: { appId: search.appId } }, { label: "Automations" }];
   if (!page) {
     return (
@@ -80,73 +97,176 @@ function AutomationsPage() {
   const { apps, appId, automations, lists, templates } = page;
   const canCreate = canSend && Boolean(appId);
   const newButton = canCreate ? <Button onClick={() => setOpen(true)}>New automation</Button> : null;
+  const rows = automations.filter((a) => !search.status || a.enabled === (search.status === "on"));
+  const facets = [
+    {
+      key: "status",
+      label: "Status",
+      options: [
+        { value: "on", label: "On" },
+        { value: "off", label: "Off" },
+      ],
+    },
+  ];
+  const showApp = !search.appId;
+  const appName = (id: string) => apps.find((a) => a.id === id)?.name ?? "—";
+  const listName = (id: string) => lists.find((l) => l.id === id)?.name ?? "—";
+  const templateName = (id: string) => templates.find((t) => t.id === id)?.name ?? "—";
+  const delayText = (a: AutomationView) => (a.delayHours === 0 ? "Right away" : `After ${a.delayHours} ${a.delayHours === 1 ? "hour" : "hours"}`);
+  const menu = (a: AutomationView) => [
+    { label: "Edit", onSelect: () => setEditing(a), hidden: !canSend },
+    { label: "Delete", onSelect: () => setDeleting(a), destructive: true, hidden: !canSend },
+  ];
+  const toggle = (a: AutomationView) => (
+    <Switch
+      checked={a.enabled}
+      disabled={!canSend}
+      aria-label={`Enabled for ${a.name}`}
+      onCheckedChange={(on) =>
+        runAction(
+          () => enableAutomationFn({ data: { id: a.id, on } }),
+          on ? "Automation turned on" : "Automation turned off",
+          () => router.invalidate(),
+        )
+      }
+    />
+  );
+  const empty =
+    automations.length === 0 ? (
+      <EmptyState
+        icon={WorkflowIcon}
+        title="No automations yet."
+        description="Send a template when someone joins a list."
+        action={canCreate ? <Button variant="outline" onClick={() => setOpen(true)}>New automation</Button> : undefined}
+      />
+    ) : (
+      "No automations match."
+    );
   return (
     <>
       <PageHeader crumbs={CRUMBS} />
-      <Toolbar>{newButton}</Toolbar>
+      <Toolbar
+        filters={<FilterMenu facets={facets} value={search} onChange={(next) => navigate({ search: next as never, replace: true })} />}
+        view={<ViewToggle route={ROUTE} value={view} onChange={setView} />}
+      >
+        {newButton}
+      </Toolbar>
       {canCreate && appId ? (
         <CreateDialog title="New automation" open={open} onOpenChange={setOpen}>
-          {(done) => <NewAutomationForm apps={apps} appId={appId} done={done} />}
+          {(done) => <AutomationForm apps={apps} appId={appId} scopedAppId={search.appId} done={done} />}
         </CreateDialog>
       ) : null}
-      <ResourceTable
-        columns={[
-          { header: "Name", kind: "name", cell: (a) => a.name },
-          ...(search.appId ? [] : [{ header: "App", cell: () => apps.find((a) => a.id === appId)?.name ?? "—" }]),
-          { header: "List", cell: (a) => lists.find((l) => l.id === a.listId)?.name ?? "—" },
-          { header: "Template", cell: (a) => templates.find((t) => t.id === a.templateId)?.name ?? "—" },
-          { header: "Delay", cell: (a) => (a.delayHours === 0 ? "Right away" : `After ${a.delayHours} hours`) },
-          { header: "Waiting", numeric: true, cell: (a) => a.pending },
-          { header: "Sent", numeric: true, cell: (a) => a.sent },
-          {
-            header: "Enabled",
-            cell: (a) => (
-              <Switch
-                checked={a.enabled}
-                disabled={!canSend}
-                aria-label={`Enabled for ${a.name}`}
-                onCheckedChange={(on) =>
-                  runAction(
-                    () => enableAutomationFn({ data: { id: a.id, on } }),
-                    on ? "Automation turned on" : "Automation turned off",
-                    () => router.invalidate(),
-                  )
-                }
-              />
-            ),
-          },
-        ]}
-        rows={automations}
-        rowKey={(a) => a.id}
-        empty={
-          <EmptyState
-            icon={WorkflowIcon}
-            title="No automations yet."
-            description="Send a template when someone joins a list."
-            action={canCreate ? <Button variant="outline" onClick={() => setOpen(true)}>New automation</Button> : undefined}
-          />
+      <CreateDialog title="Edit automation" open={editing !== null} onOpenChange={(o) => !o && setEditing(null)}>
+        {(done) =>
+          editing ? <AutomationForm key={editing.id} apps={apps} appId={editing.appId} automation={editing} listName={listName(editing.listId)} done={done} /> : null
         }
+      </CreateDialog>
+      <ConfirmDialog
+        open={deleting !== null}
+        onOpenChange={(o) => !o && setDeleting(null)}
+        title={`Delete ${deleting?.name ?? "automation"}?`}
+        description="Waiting messages are dropped. Mail already sent is unaffected."
+        confirmLabel="Delete automation"
+        onConfirm={() => confirmAction(() => deleteAutomationFn({ data: { id: deleting?.id ?? "" } }), "Automation deleted", () => router.invalidate())}
       />
+      {view === "grid" ? (
+        <ResourceGrid
+          items={rows}
+          rowKey={(a) => a.id}
+          menu={menu}
+          empty={empty}
+          card={(a) => (
+            <div className="grid gap-1.5 pr-8">
+              <span className="font-medium">{a.name}</span>
+              {showApp ? <Hint size="xs">{appName(a.appId)}</Hint> : null}
+              <Hint size="xs">
+                {listName(a.listId)} · {templateName(a.templateId)}
+              </Hint>
+              <Hint size="xs">
+                {delayText(a)} · {a.pending} waiting · {a.sent} sent
+              </Hint>
+              <div>{toggle(a)}</div>
+            </div>
+          )}
+        />
+      ) : (
+        <ResourceTable
+          columns={[
+            { header: "Name", kind: "name", cell: (a) => a.name },
+            ...(showApp ? [{ header: "App", cell: (a: AutomationView) => appName(a.appId) }] : []),
+            { header: "List", cell: (a) => listName(a.listId) },
+            { header: "Template", cell: (a) => templateName(a.templateId) },
+            { header: "Delay", cell: delayText },
+            { header: "Waiting", numeric: true, cell: (a) => a.pending },
+            { header: "Sent", numeric: true, cell: (a) => a.sent },
+            { header: "Enabled", cell: toggle },
+          ]}
+          rows={rows}
+          rowKey={(a) => a.id}
+          menu={menu}
+          empty={empty}
+        />
+      )}
     </>
   );
 }
 
-function NewAutomationForm({
+const PRESETS = ["0", "1", "24"];
+
+function DelayField({ value, onChange }: { value: string; onChange: (hours: string) => void }) {
+  const [custom, setCustom] = useState(!PRESETS.includes(value));
+  return (
+    <div className="grid gap-1.5">
+      <Label id="automation-delay-label">Delay</Label>
+      <ChoiceControl
+        id="automation-delay"
+        labelledBy="automation-delay-label"
+        mode="segmented"
+        value={custom ? "custom" : value}
+        onChange={(v) => {
+          setCustom(v === "custom");
+          if (v !== "custom") onChange(v);
+        }}
+        options={[
+          { value: "0", label: "Right away" },
+          { value: "1", label: "1 hour" },
+          { value: "24", label: "24 hours" },
+          { value: "custom", label: "Custom" },
+        ]}
+      />
+      {custom ? (
+        <InputGroup>
+          <InputGroupInput type="number" min={0} max={720} step={1} aria-label="Delay in hours" value={value} onChange={(e) => onChange(e.target.value)} />
+          <InputGroupAddon align="inline-end">hours</InputGroupAddon>
+        </InputGroup>
+      ) : null}
+    </div>
+  );
+}
+
+// Create when `automation` is absent. The list is fixed once an automation exists.
+function AutomationForm({
   apps,
   appId,
+  scopedAppId,
+  automation,
+  listName,
   done,
 }: {
   apps: { id: string; name: string }[];
   appId: string;
+  scopedAppId?: string;
+  automation?: AutomationView;
+  listName?: string;
   done: () => void;
 }) {
   const router = useRouter();
   const [app, setApp] = useState(appId);
-  const [name, setName] = useState("");
+  const [name, setName] = useState(automation?.name ?? "");
   const [listId, setListId] = useState("");
-  const [templateId, setTemplateId] = useState("");
-  const [fromEmail, setFromEmail] = useState("");
-  const [delay, setDelay] = useState("0");
+  const [templateId, setTemplateId] = useState(automation?.templateId ?? "");
+  const [fromEmail, setFromEmail] = useState(automation?.fromEmail ?? "");
+  const [delay, setDelay] = useState(String(automation?.delayHours ?? 0));
   const [choices, setChoices] = useState<{
     lists: { id: string; name: string }[];
     templates: { id: string; name: string }[];
@@ -171,95 +291,87 @@ function NewAutomationForm({
     };
   }, [app]);
 
+  // Exactly one list or template needs no choosing.
+  useEffect(() => {
+    if (automation || !choices) return;
+    if (choices.lists.length === 1) setListId(choices.lists[0]?.id ?? "");
+    if (choices.templates.length === 1) setTemplateId(choices.templates[0]?.id ?? "");
+  }, [choices, automation]);
+
   async function submit(event: FormEvent) {
     event.preventDefault();
+    if (!name.trim() || (!automation && !listId) || !templateId || !fromEmail) {
+      setError("Choose a list, template and sender address.");
+      return;
+    }
+    if (delay.trim() === "") {
+      setError("Enter a delay in hours.");
+      return;
+    }
     setPending(true);
     setError(null);
     try {
-      await createAutomationFn({
-        data: { appId: app, automation: { name, listId, templateId, fromEmail, delayHours: Number(delay) } },
-      });
-      toast.success("Automation created");
+      const delayHours = Number(delay);
+      if (automation) {
+        await updateAutomationFn({ data: { id: automation.id, patch: { name: name.trim(), templateId, fromEmail, delayHours } } });
+      } else {
+        await createAutomationFn({ data: { appId: app, automation: { name, listId, templateId, fromEmail, delayHours } } });
+      }
+      toast.success(automation ? "Automation saved" : "Automation created");
       done();
       await router.invalidate();
     } catch (err) {
-      setError(errorText(err, "Could not create this automation."));
+      setError(errorText(err, automation ? "Could not save this automation." : "Could not create this automation."));
     } finally {
       setPending(false);
     }
   }
 
+  const listOptions = (choices?.lists ?? []).map((l) => ({ value: l.id, label: l.name }));
+  const templateOptions = (choices?.templates ?? []).map((t) => ({ value: t.id, label: t.name }));
+  const noLists = choices !== null && listOptions.length === 0;
+  const noTemplates = choices !== null && templateOptions.length === 0;
   return (
     <FormBody onSubmit={submit}>
-      <Label htmlFor="automation-app">App</Label>
-      <AppSelect
-        apps={apps}
-        value={app}
-        onValueChange={(v) => {
-          setApp(v);
-          setListId("");
-          setTemplateId("");
-          setFromEmail("");
-        }}
-        id="automation-app"
-      />
+      {automation ? null : (
+        <AppField
+          apps={apps}
+          scopedAppId={scopedAppId}
+          value={app}
+          onChange={(v) => {
+            setApp(v);
+            setListId("");
+            setTemplateId("");
+            setFromEmail("");
+          }}
+          id="automation-app"
+        />
+      )}
       <Label htmlFor="automation-name">Name</Label>
-      <Input id="automation-name" required value={name} onChange={(e) => setName(e.target.value)} />
-      <Label htmlFor="automation-list">List</Label>
-      <Select value={listId} onValueChange={(v) => setListId(v ?? "")}>
-        <SelectTrigger id="automation-list" aria-label="List">
-          <SelectValue placeholder="Choose a list" />
-        </SelectTrigger>
-        <SelectContent>
-          {(choices?.lists ?? []).map((l) => (
-            <SelectItem key={l.id} value={l.id}>
-              {l.name}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      <Label htmlFor="automation-template">Template</Label>
-      <Select value={templateId} onValueChange={(v) => setTemplateId(v ?? "")}>
-        <SelectTrigger id="automation-template" aria-label="Template">
-          <SelectValue placeholder="Choose a template" />
-        </SelectTrigger>
-        <SelectContent>
-          {(choices?.templates ?? []).map((t) => (
-            <SelectItem key={t.id} value={t.id}>
-              {t.name}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      <Label htmlFor="automation-from">From</Label>
-      <Select value={fromEmail} onValueChange={(v) => setFromEmail(v ?? "")}>
-        <SelectTrigger id="automation-from" aria-label="From">
-          <SelectValue placeholder="Choose a verified address" />
-        </SelectTrigger>
-        <SelectContent>
-          {(choices?.senders ?? []).map((s) => (
-            <SelectItem key={s} value={s}>
-              {s}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      <Label htmlFor="automation-delay">Delay (hours)</Label>
-      <Input
-        id="automation-delay"
-        type="number"
-        min={0}
-        max={720}
-        step={1}
-        value={delay}
-        onChange={(e) => setDelay(e.target.value)}
-      />
+      <Input id="automation-name" autoFocus required placeholder="Welcome email after sign-up" value={name} onChange={(e) => setName(e.target.value)} />
+      {automation ? (
+        <FixedField label="List" value={listName ?? "—"} hint="To use another list, create a new automation." />
+      ) : noLists ? (
+        <Hint>No lists yet. Create a list first.</Hint>
+      ) : (
+        <ChoiceField id="automation-list" label="List" value={listId} onChange={setListId} options={listOptions} />
+      )}
+      {noTemplates ? (
+        <Hint>No templates yet. Create a template first.</Hint>
+      ) : (
+        <ChoiceField id="automation-template" label="Template" value={templateId} onChange={setTemplateId} options={templateOptions} />
+      )}
+      {choices ? (
+        <SenderField id="automation-from" senders={choices.senders.map((s) => ({ value: s, label: s }))} value={fromEmail} onChange={setFromEmail} />
+      ) : null}
+      <DelayField value={delay} onChange={setDelay} />
       <FormError message={error} />
-      <FormActions>
-        <Button type="submit" disabled={pending || !name.trim() || !listId || !templateId || !fromEmail}>
-          Create automation
-        </Button>
-      </FormActions>
+      <FormActions
+        cancel
+        pending={pending}
+        pendingLabel={automation ? "Saving…" : "Creating…"}
+        submitLabel={automation ? "Save automation" : "Create automation"}
+      />
     </FormBody>
   );
 }

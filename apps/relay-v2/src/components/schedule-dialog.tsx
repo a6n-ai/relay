@@ -1,10 +1,9 @@
-import { Button } from "@foundry/ui/button";
 import { Input } from "@foundry/ui/input";
 import { Label } from "@foundry/ui/label";
-import { RadioGroup, RadioGroupItem } from "@foundry/ui/radio-group";
 import { toast } from "@foundry/ui/toast";
 import { type FormEvent, useState } from "react";
 import { scheduleCampaignFn } from "../console/campaigns.fns";
+import { ChoiceControl } from "./form/choice-field";
 import { CreateDialog } from "./create-dialog";
 import { errorText } from "./error-text";
 import { FormError, FormBody, FormActions } from "./page/form-parts";
@@ -57,6 +56,10 @@ function ScheduleForm({
       setError("Pick a date and time.");
       return;
     }
+    if (mode === "at" && at <= Date.now()) {
+      setError("Pick a time in the future.");
+      return;
+    }
     setPending(true);
     setError(null);
     try {
@@ -76,16 +79,16 @@ function ScheduleForm({
   }
   return (
     <FormBody onSubmit={submit}>
-      <RadioGroup value={mode} onValueChange={(v) => setMode(v as "now" | "at")} aria-label="When to send">
-        <Label htmlFor="schedule-now">
-          <RadioGroupItem id="schedule-now" value="now" />
-          Send now
-        </Label>
-        <Label htmlFor="schedule-at">
-          <RadioGroupItem id="schedule-at" value="at" />
-          At
-        </Label>
-      </RadioGroup>
+      <ChoiceControl
+        id="schedule-mode"
+        mode="segmented"
+        value={mode}
+        onChange={(v) => setMode(v as "now" | "at")}
+        options={[
+          { value: "now", label: "Send now" },
+          { value: "at", label: "Schedule for later" },
+        ]}
+      />
       <Input
         type="datetime-local"
         aria-label="Send time"
@@ -96,11 +99,12 @@ function ScheduleForm({
       />
       <Hint size="xs">Times are in your time zone: {zone}.</Hint>
       <FormError message={error} />
-      <FormActions>
-        <Button type="submit" disabled={pending || (mode === "at" && !when)}>
-          Schedule
-        </Button>
-      </FormActions>
+      <FormActions
+        cancel
+        pending={pending}
+        pendingLabel={mode === "now" ? "Sending…" : "Scheduling…"}
+        submitLabel={mode === "now" ? "Send now" : "Schedule"}
+      />
     </FormBody>
   );
 }
