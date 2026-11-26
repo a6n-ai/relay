@@ -6,15 +6,17 @@ import { CreateDialog } from "../../components/create-dialog";
 import { DeniedState, deniedReason } from "../../components/denied-state";
 import { EmptyState } from "../../components/page/empty-state";
 import { TableSkeleton } from "../../components/page/table-skeleton";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@foundry/ui/dialog";
 import { Toolbar } from "../../components/page/toolbar";
 import { ResourceTable } from "../../components/resource-table";
 import { confirmAction, runAction } from "../../components/run-action";
 import { NewTeamForm } from "../../components/settings/new-team-form";
+import { RenameForm } from "../../components/settings/rename-form";
 import { SuspendedNotice } from "../../components/settings/suspended-notice";
 import { TeamMembersDialog } from "../../components/settings/team-members-dialog";
 import { PageHeader } from "../../components/shell/page-header";
 import { useCan } from "../../components/use-can";
-import { deleteTeamFn, fetchPeople, setTeamMemberFn } from "../../console/members.fns";
+import { deleteTeamFn, fetchPeople, renameTeamFn, setTeamMemberFn } from "../../console/members.fns";
 
 const crumbs = [{ label: "Settings", to: "/settings" }, { label: "Teams" }];
 
@@ -29,6 +31,7 @@ function TeamsPage() {
   const { shell } = Route.useRouteContext();
   const router = useRouter();
   const [editing, setEditing] = useState<string | null>(null);
+  const [renaming, setRenaming] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const suspended = shell.active?.status === "suspended";
   const canCreateTeam = useCan({ team: ["create"] });
@@ -47,6 +50,8 @@ function TeamsPage() {
   }
   const namesById = new Map(people.members.map((m) => [m.id, m.name]));
   const editingTeam = people.teams.find((t) => t.id === editing);
+  const renamingTeam = people.teams.find((t) => t.id === renaming);
+  const deletingTeam = people.teams.find((t) => t.id === deleting);
 
   return (
     <>
@@ -77,6 +82,7 @@ function TeamsPage() {
           />
         }
         menu={(t) => [
+          { label: "Rename team", hidden: !canEditTeam, onSelect: () => setRenaming(t.id) },
           { label: "Members", hidden: !canEditTeam, onSelect: () => setEditing(t.id) },
           { label: "Delete team", destructive: true, hidden: !canDeleteTeam, onSelect: () => setDeleting(t.id) },
         ]}
@@ -92,11 +98,29 @@ function TeamsPage() {
           }
         />
       ) : null}
+      <Dialog open={renamingTeam !== undefined} onOpenChange={(o) => !o && setRenaming(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Rename team</DialogTitle>
+          </DialogHeader>
+          {renamingTeam ? (
+            <RenameForm
+              key={renamingTeam.id}
+              id="rename-team"
+              noun="Team"
+              initial={renamingTeam.name}
+              placeholder="Support"
+              save={(name) => renameTeamFn({ data: { id: renamingTeam.id, name } })}
+              done={() => setRenaming(null)}
+            />
+          ) : null}
+        </DialogContent>
+      </Dialog>
       <ConfirmDialog
         open={deleting !== null}
         onOpenChange={(o) => !o && setDeleting(null)}
-        title="Delete this team?"
-        description="Members stay in the workspace; only the team goes."
+        title={`Delete ${deletingTeam?.name ?? "this team"}?`}
+        description="Members stay in the workspace. Addresses shared with this team lose that access."
         confirmLabel="Delete team"
         onConfirm={async () => {
           const teamId = deleting;

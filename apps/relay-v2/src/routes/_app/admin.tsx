@@ -2,13 +2,14 @@ import { Badge } from "@foundry/ui/badge";
 import { Button } from "@foundry/ui/button";
 import { Input } from "@foundry/ui/input";
 import { Label } from "@foundry/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@foundry/ui/select";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@foundry/ui/sheet";
-import { toast } from "@foundry/ui/toast";
 import { createFileRoute, notFound, useNavigate, useRouter } from "@tanstack/react-router";
 import { BuildingIcon } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { ConfirmDialog } from "../../components/confirm-dialog";
+import { ChoiceControl } from "../../components/form/choice-field";
+import { type Facet } from "../../components/page/filters";
+import { FilterMenu } from "../../components/page/filter-menu";
 import { EmptyState } from "../../components/page/empty-state";
 import { SettingsCard } from "../../components/page/settings-card";
 import { SearchInput, Toolbar } from "../../components/page/toolbar";
@@ -22,12 +23,24 @@ import { SES_REGIONS } from "../../core/ses-regions";
 import { formatDate } from "../../lib/format-date";
 import { Hint } from "../../components/page/text";
 
-type AdminSearch = { ws?: string; q?: string };
+type AdminSearch = { ws?: string; q?: string; status?: "active" | "suspended" };
+
+const STATUS_FACET: Facet = {
+  key: "status",
+  label: "Status",
+  options: [
+    { value: "active", label: "Active" },
+    { value: "suspended", label: "Suspended" },
+  ],
+};
+
+const REGION_LABEL: Record<string, string> = { "ap-south-1": "Mumbai (ap-south-1)", "us-east-1": "N. Virginia (us-east-1)" };
 
 export const Route = createFileRoute("/_app/admin")({
   validateSearch: (search: Record<string, unknown>): AdminSearch => ({
     ws: typeof search.ws === "string" && search.ws ? search.ws : undefined,
     q: typeof search.q === "string" && search.q ? search.q : undefined,
+    status: search.status === "active" || search.status === "suspended" ? search.status : undefined,
   }),
   loader: async () => {
     try {
@@ -78,15 +91,17 @@ function NumberCard({
   onSave: (value: number) => void;
 }) {
   const [value, setValue] = useState(String(initial));
+  const [invalid, setInvalid] = useState(false);
 
   function submit(e: FormEvent) {
     e.preventDefault();
     const next = Number(value);
     // Number("") is 0, which would silently make the workspace unlimited.
     if (value.trim() === "" || !Number.isInteger(next) || next < min || (max !== undefined && next > max)) {
-      toast.error(error);
+      setInvalid(true);
       return;
     }
+    setInvalid(false);
     onSave(next);
   }
 
@@ -95,7 +110,7 @@ function NumberCard({
       title={title}
       description={description}
       action={
-        <Button type="submit" form={id} variant="outline">
+        <Button type="submit" form={id} variant="outline" disabled={value === String(initial)}>
           Save
         </Button>
       }
@@ -111,9 +126,19 @@ function NumberCard({
           max={max}
           step={1}
           value={value}
-          onChange={(e) => setValue(e.target.value)}
+          aria-invalid={invalid}
+          aria-describedby={invalid ? `${id}-error` : undefined}
+          onChange={(e) => {
+            setValue(e.target.value);
+            setInvalid(false);
+          }}
           className="w-40"
         />
+        {invalid ? (
+          <p id={`${id}-error`} role="alert" className="mt-1.5 text-sm text-destructive">
+            {error}
+          </p>
+        ) : null}
       </form>
     </SettingsCard>
   );
@@ -140,18 +165,13 @@ function ManageSheet({ w, run, confirm }: { w: Workspace; run: Run; confirm: (ac
           </Button>
         }
       >
-        <Select value={region} onValueChange={(r) => setRegion(r ?? "")}>
-          <SelectTrigger aria-label={`SES region for ${w.name}`} className="w-40">
-            <SelectValue placeholder="Default" />
-          </SelectTrigger>
-          <SelectContent>
-            {SES_REGIONS.map((r) => (
-              <SelectItem key={r} value={r}>
-                {r}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <ChoiceControl
+          id={`region-${w.id}`}
+          mode="segmented"
+          value={region}
+          onChange={setRegion}
+          options={SES_REGIONS.map((r) => ({ value: r, label: REGION_LABEL[r] ?? r }))}
+        />
       </SettingsCard>
       <NumberCard
         key={`quota-${w.quota}`}
@@ -208,20 +228,31 @@ function ManageSheet({ w, run, confirm }: { w: Workspace; run: Run; confirm: (ac
 
 function AdminPage() {
   const workspaces = Route.useLoaderData();
-  const { ws } = Route.useSearch();
+  const search = Route.useSearch();
+  const { ws, status } = search;
   const navigate = useNavigate({ from: "/admin" });
   const router = useRouter();
   const [query, setQuery] = useUrlFilter("q");
   const run = (action: () => Promise<unknown>, success: string) => runAction(action, success, () => router.invalidate());
   const confirm = (action: () => Promise<unknown>, success: string) => confirmAction(action, success, () => router.invalidate());
   const q = query.trim().toLowerCase();
-  const rows = q ? workspaces.filter((w) => w.name.toLowerCase().includes(q) || w.slug.toLowerCase().includes(q)) : workspaces;
+  const byStatus = status ? workspaces.filter((w) => w.status === status) : workspaces;
+  const rows = q ? byStatus.filter((w) => w.name.toLowerCase().includes(q) || w.slug.toLowerCase().includes(q)) : byStatus;
   const selected = ws ? workspaces.find((w) => w.id === ws) : undefined;
 
   return (
     <>
       <PageHeader crumbs={[{ label: "Admin" }]} />
-      <Toolbar search={<SearchInput value={query} onChange={setQuery} placeholder="Search workspaces" />} />
+      <Toolbar
+        search={<SearchInput value={query} onChange={setQuery} placeholder="Search workspaces" />}
+        filters={
+          <FilterMenu
+            facets={[STATUS_FACET]}
+            value={search}
+            onChange={(next) => void navigate({ search: next as AdminSearch })}
+          />
+        }
+      />
       <ResourceTable
         rows={rows}
         rowKey={(w) => w.id}

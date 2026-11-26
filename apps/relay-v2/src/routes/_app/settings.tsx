@@ -1,11 +1,65 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { Button } from "@foundry/ui/button";
+import { Input } from "@foundry/ui/input";
+import { Label } from "@foundry/ui/label";
+import { toast } from "@foundry/ui/toast";
+import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { type FormEvent, useState } from "react";
+import { errorText } from "../../components/error-text";
+import { FormError } from "../../components/page/form-parts";
 import { SettingsCard } from "../../components/page/settings-card";
 import { PageHeader } from "../../components/shell/page-header";
-import { SectionTitle } from "../../components/page/text";
+import { useCan } from "../../components/use-can";
+import { renameWorkspaceFn } from "../../console/workspaces.fns";
 
 export const Route = createFileRoute("/_app/settings")({
   component: GeneralPage,
 });
+
+function WorkspaceNameCard({ name: current }: { name: string }) {
+  const router = useRouter();
+  const canRename = useCan({ organization: ["update"] });
+  const [name, setName] = useState(current);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
+  const next = name.trim();
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    setPending(true);
+    setError(null);
+    try {
+      await renameWorkspaceFn({ data: { name: next } });
+      toast.success("Workspace renamed", { description: next });
+      await router.invalidate();
+    } catch (err) {
+      setError(errorText(err, "Could not rename the workspace."));
+    } finally {
+      setPending(false);
+    }
+  }
+
+  return (
+    <SettingsCard
+      title="Workspace name"
+      description="The name shown in the workspace switcher. The slug can't be changed."
+      action={
+        canRename ? (
+          <Button type="submit" form="workspace-name-form" variant="outline" disabled={pending || !next || next === current}>
+            {pending ? "Saving…" : "Save name"}
+          </Button>
+        ) : null
+      }
+    >
+      <form id="workspace-name-form" onSubmit={submit} className="grid gap-1.5">
+        <Label htmlFor="workspace-name" className="sr-only">
+          Workspace name
+        </Label>
+        <Input id="workspace-name" required maxLength={80} readOnly={!canRename} value={name} onChange={(e) => setName(e.target.value)} />
+        <FormError message={error} />
+      </form>
+    </SettingsCard>
+  );
+}
 
 function GeneralPage() {
   const { shell } = Route.useRouteContext();
@@ -22,9 +76,7 @@ function GeneralPage() {
             tone="danger"
           />
         ) : null}
-        <SettingsCard title="Workspace name" description="The name shown in the workspace switcher.">
-          <SectionTitle as="p">{active?.name ?? "—"}</SectionTitle>
-        </SettingsCard>
+        {active ? <WorkspaceNameCard key={`${active.id}-${active.name}`} name={active.name} /> : null}
       </div>
     </>
   );

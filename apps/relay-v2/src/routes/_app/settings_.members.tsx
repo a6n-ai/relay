@@ -8,12 +8,13 @@ import { SearchInput, Toolbar } from "../../components/page/toolbar";
 import { useUrlFilter } from "../../components/page/use-url-filter";
 import { TableSkeleton } from "../../components/page/table-skeleton";
 import { ResourceTable } from "../../components/resource-table";
-import { type MemberRole, ROLE_LABEL, RoleSelect } from "../../components/role-select";
-import { confirmAction, runAction } from "../../components/run-action";
+import { type MemberRole, ROLE_LABEL } from "../../components/role-select";
+import { confirmAction } from "../../components/run-action";
+import { ChangeRoleDialog } from "../../components/settings/change-role-dialog";
 import { SuspendedNotice } from "../../components/settings/suspended-notice";
 import { PageHeader } from "../../components/shell/page-header";
 import { useCan } from "../../components/use-can";
-import { changeRoleFn, fetchPeople, removeMemberFn } from "../../console/members.fns";
+import { fetchPeople, removeMemberFn } from "../../console/members.fns";
 
 const crumbs = [{ label: "Settings", to: "/settings" }, { label: "Members" }];
 
@@ -36,7 +37,7 @@ function MembersPage() {
   const canManage = useCan({ member: ["update"] });
   const canRemove = useCan({ member: ["delete"] });
   const [removing, setRemoving] = useState<string | null>(null);
-  const run = (action: () => Promise<unknown>, success: string) => runAction(action, success, () => router.invalidate());
+  const [changing, setChanging] = useState<string | null>(null);
   const confirm = (action: () => Promise<unknown>, success: string) => confirmAction(action, success, () => router.invalidate());
 
   if (!people) {
@@ -49,6 +50,9 @@ function MembersPage() {
   }
   const needle = q.trim().toLowerCase();
   const rows = needle ? people.members.filter((m) => `${m.name} ${m.email}`.toLowerCase().includes(needle)) : people.members;
+
+  const changingMember = people.members.find((m) => m.id === changing);
+  const removingMember = people.members.find((m) => m.id === removing);
 
   return (
     <>
@@ -69,17 +73,7 @@ function MembersPage() {
           { header: "Email", kind: "mono", cell: (m) => m.email },
           {
             header: "Role",
-            cell: (m) =>
-              canManage && (ownerActor || !m.roles.includes("owner")) ? (
-                <RoleSelect
-                  id={`role-${m.id}`}
-                  value={m.roles[0] ?? "member"}
-                  canGrantOwner={ownerActor}
-                  onChange={(role) => run(() => changeRoleFn({ data: { memberId: m.id, role } }), "Role updated")}
-                />
-              ) : (
-                m.roles.map((r) => ROLE_LABEL[r as MemberRole]).join(", ")
-              ),
+            cell: (m) => m.roles.map((r) => ROLE_LABEL[r as MemberRole]).join(", "),
           },
         ]}
         rows={rows}
@@ -92,13 +86,26 @@ function MembersPage() {
           />
         }
         menu={(m) => [
+          {
+            label: "Change role",
+            hidden: !canManage || (!ownerActor && m.roles.includes("owner")),
+            onSelect: () => setChanging(m.id),
+          },
           { label: "Remove", destructive: true, hidden: !canRemove, onSelect: () => setRemoving(m.id) },
         ]}
       />
+      {changingMember ? (
+        <ChangeRoleDialog
+          key={changingMember.id}
+          member={{ id: changingMember.id, name: changingMember.name, role: (changingMember.roles[0] ?? "member") as MemberRole }}
+          canGrantOwner={ownerActor}
+          onOpenChange={(o) => !o && setChanging(null)}
+        />
+      ) : null}
       <ConfirmDialog
         open={removing !== null}
         onOpenChange={(o) => !o && setRemoving(null)}
-        title="Remove this member?"
+        title={`Remove ${removingMember?.name ?? "this member"}?`}
         description="They lose access to this workspace and its apps."
         confirmLabel="Remove member"
         onConfirm={async () => {
