@@ -1,5 +1,6 @@
 import { env } from "cloudflare:workers";
 import handler from "@tanstack/react-start/server-entry";
+import { DOCS_404_PATH, isDocsMiss } from "./docs-404";
 import { receiveEmail } from "./core/email-worker";
 import { handleInboundBatch } from "./core/inbound-consumer";
 import { sweepAll } from "./core/sweep-all";
@@ -18,9 +19,9 @@ export { RelayRpc } from "./rpc/relay-rpc";
 async function fetchWithDocs404(...args: Parameters<typeof handler.fetch>): Promise<Response> {
   const res = await handler.fetch(...args);
   const request = args[0] as Request;
-  if (res.status !== 404 || !/^\/docs(\/|$)/.test(new URL(request.url).pathname)) return res;
-  const page = await env.ASSETS.fetch(new URL("/docs/404.html", request.url));
-  return page.ok ? new Response(page.body, { status: 404, headers: page.headers }) : res;
+  if (!isDocsMiss(new URL(request.url).pathname, res.status)) return res;
+  const page = await env.ASSETS.fetch(new URL(DOCS_404_PATH, request.url));
+  return page.status === 200 ? new Response(page.body, { status: 404, headers: page.headers }) : res;
 }
 
 export default {
