@@ -1,45 +1,18 @@
-.rli .rli-win {
-  position: absolute;
-  top: 24px;
-  left: 24px;
-  width: 472px;
-  height: 400px;
-  box-shadow: var(--ss-shadow-hero);
-}
-.rli .rli-app {
-  min-height: 360px;
-}
-.rli .rli-sub {
-  padding-left: 26px;
-}
-.rli .rli-new {
-  background: var(--ss-ink-2);
-}
 .rli .rli-hook {
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  top: 252px;
-  left: 296px;
-  padding: 0 14px;
-  height: 44px;
+  top: 292px;
+  left: 330px;
+  padding: 12px 14px;
   white-space: nowrap;
   border-radius: 12px;
 }
-.rli .ss-stage[data-layout='compact'] .rli-win {
-  top: 16px;
-  left: 16px;
-  width: 372px;
-}
-.rli .ss-stage[data-layout='compact'] .rli-hook {
-  top: 236px;
-  left: 142px;
-}
-
 .rli .rli-hook-text {
   display: grid;
   gap: 2px;
 }
-.rli .ss-stage[data-layout='compact'] .rli-app {
-  grid-template-columns: minmax(0, 1fr);
+.rli .ss-stage[data-layout='compact'] .rli-hook {
+  top: 236px;
+  left: 142px;
 }

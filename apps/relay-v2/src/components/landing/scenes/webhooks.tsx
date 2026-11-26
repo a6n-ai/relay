@@ -1,5 +1,5 @@
 import { Clock } from 'lucide-react'
-import { Collapse, Count, States, Window, type Act } from '../stageshow'
+import { Collapse, Roll, States, Window, type Act } from '../stageshow'
 import { Crumbs, RStage, Status } from './common'
 import './webhooks.css'
 
@@ -74,8 +74,8 @@ export function WebhooksStage({ animate = true }: { animate?: boolean }) {
                       <span className="rl-st">
                         <States value={s.ok ? 'sent' : 'pending'} align="start" states={{ pending: <Status s="pending" />, sent: <Status s="sent" /> }} />
                       </span>
-                      <span className="rl-num"><Count value={s.ok ? 2 : 1} duration={500} /></span>
-                      <span className="rl-num"><Count value={s.ok ? 200 : 503} duration={500} /></span>
+                      <span className="rl-num"><Roll>{s.ok ? '2' : '1'}</Roll></span>
+                      <span className="rl-num"><Roll>{s.ok ? '200' : '503'}</Roll></span>
                       <span className="rl-mute"><States value={s.ok ? 'ok' : 'err'} align="start" states={{ err: 'HTTP 503', ok: '—' }} /></span>
                     </div>
                   </Collapse>

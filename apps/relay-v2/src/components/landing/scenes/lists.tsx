@@ -82,7 +82,7 @@ export function ListsStage({ animate = true }: { animate?: boolean }) {
             <Window url="relay.a6n.ai/lists" className="rll-win">
               <div className="rl-app rll-app">
                 <div className="rl-main">
-                  <Crumbs items={['Lists', 'Newsletter']} />
+                  <Crumbs items={['Storefront', 'Lists', 'Newsletter']} />
                   <div className="rl-bar">
                     <Button>Add contact</Button>
                     <Button data-target="import">Import CSV</Button>

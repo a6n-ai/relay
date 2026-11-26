@@ -15,8 +15,9 @@ export const CMD = `curl -X POST \\
 
 export type S = { term: boolean; typed: string; resp: boolean; row: boolean; stat: 'queued' | 'sent'; sel: boolean; tl: number }
 
-const initial: S = { term: false, typed: '', resp: false, row: false, stat: 'queued', sel: false, tl: 0 }
 const POSTER: S = { term: true, typed: CMD, resp: true, row: true, stat: 'sent', sel: true, tl: 3 }
+// The loop starts and ends on the poster, so the story takes over from it without a cut.
+const initial: S = POSTER
 
 const ROWS = [
   ['2 min ago', 'grace@example.com', 'Your receipt'],
@@ -49,7 +50,7 @@ export function HeroStage({ script }: { script?: Script }) {
       className="rlh"
     >
       {(s, _rect, layout) => {
-        const term = layout === 'wide' ? s.term : s.term && !s.sel
+        const term = layout === 'wide' ? s.term : s.term && !s.row
         const typedLines = s.typed.split('\n')
         return (
           <>
@@ -60,7 +61,7 @@ export function HeroStage({ script }: { script?: Script }) {
                   <Crumbs items={['Messages', 'Sent']} />
                   <div className="rl-grid" data-head>
                     {layout === 'wide' ? <span>When</span> : null}
-                    <span>To</span>
+                    <span>From / To</span>
                     <span>Subject</span>
                     <span>Status</span>
                   </div>

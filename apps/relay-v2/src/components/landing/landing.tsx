@@ -89,7 +89,7 @@ export function Landing() {
                 <p className="mt-4 text-sm text-muted-foreground">Access is by invite. Ask your workspace owner.</p>
               </div>
               <div className="min-w-0 lg:col-span-7">
-                <HeroScene label="The Relay console: a curl request returns 202, the message appears in Messages as Queued, then Sent, and its timeline shows Queued, Sent and Delivery." />
+                <HeroScene label="A curl request returns 202 and the message appears in the Relay console as Queued, then Sent, with a timeline of Queued, Sent and Delivery." />
               </div>
             </Wrap>
           </section>
@@ -99,7 +99,9 @@ export function Landing() {
             title="Transactional mail that leaves a trail."
             body="POST a message with a bearer key. Relay answers 202 with a message id, then records each step: queued, sent, then each delivery event. Retry with an idempotency key and you get the same message back, not a second email."
             facts={["Three streams: transactional, tracked and marketing.", "Each message page shows its timeline of events.", "Suppressed recipients are recorded as suppressed and never sent."]}
-          />
+          >
+            <Scene name="send" label="Messages in the Relay console: the Sent list gains a Queued message that turns Sent, then the Received list gains a letter marked Received." />
+          </Feature>
 
           <Feature
             flip
@@ -154,7 +156,9 @@ export function Landing() {
             title="Your team sees what your code sent."
             body="Verify a domain, add sender addresses, invite teammates and choose what each can do. Failed messages and suppressions each have their own page."
             facts={["Domains show their verification status.", "Addresses are sender, inbox or both.", "Roles for each teammate, per workspace."]}
-          />
+          >
+            <Scene name="domains" label="Domains in the Relay console: a domain is Pending, its DNS records are checked, and it becomes Verified." />
+          </Feature>
 
           <section aria-labelledby="dev" className="border-b">
             <Wrap className="grid gap-8 py-14 sm:py-20 lg:grid-cols-12 lg:gap-14">

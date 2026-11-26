@@ -8,12 +8,12 @@
 }
 .rlh .rlh-app {
   --cols: 74px 132px minmax(0, 1fr) 62px;
-  --side: 132px;
+  --side: 148px;
   min-height: 380px;
 }
 .rlh .rlh-app .rl-grid,
 .rlh .rlh-app .rl-head {
-  padding-right: 184px;
+  padding-right: 176px;
 }
 .rlh .rlh-term {
   top: 110px;

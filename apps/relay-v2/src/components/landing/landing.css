@@ -60,23 +60,29 @@
   right: -9px;
 }
 
-/* Stageshow scenes: the box reserves the shape of the design that shows, and the scene fades in once it is measured. */
+/* Stageshow scenes: the box reserves the shape of the design that shows. Nothing is hidden before JS, so the server-rendered hero poster is visible at first paint. */
 .ld-cq {
   container-type: inline-size;
 }
 .ld-scene {
   width: 100%;
-  opacity: 0;
   aspect-ratio: 358 / 340;
-}
-.ld-scene[data-ready] {
-  opacity: 1;
-  transition: opacity 0.2s ease;
 }
 .ld-shape-hero {
   aspect-ratio: 358 / 330;
 }
-.ld-shape-lists {
+/* The hero poster is in the server HTML and visible at desktop width. At phone width the stage swaps to its compact design when it is measured, and that swap would shift the layout, so there it appears once measured. */
+@container (max-width: 559px) {
+  .ld-shape-hero:not([data-ready]) {
+    opacity: 0;
+  }
+  .ld-shape-hero {
+    transition: opacity 0.2s ease;
+  }
+}
+.ld-shape-lists,
+.ld-shape-wide,
+.ld-shape-tall {
   aspect-ratio: 358 / 340;
 }
 @container (min-width: 520px) {
@@ -86,14 +92,15 @@
   .ld-shape-lists {
     aspect-ratio: 520 / 380;
   }
+  .ld-shape-wide {
+    aspect-ratio: 600 / 340;
+  }
+  .ld-shape-tall {
+    aspect-ratio: 600 / 420;
+  }
 }
 @container (min-width: 560px) {
   .ld-shape-hero {
     aspect-ratio: 720 / 340;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .ld-scene[data-ready] {
-    transition: none;
   }
 }

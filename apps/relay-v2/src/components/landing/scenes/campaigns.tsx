@@ -1,5 +1,5 @@
-import { Bar, Button, Card, Count, Field, Meter, Segmented, Window, type Act } from '../stageshow'
-import { Crumbs, RStage } from './common'
+import { Bar, Button, Card, Collapse, Count, Field, Meter, Roll, Segmented, Window, type Act } from '../stageshow'
+import { Crumbs, RStage, Track } from './common'
 import './campaigns.css'
 
 // Campaigns: a draft is scheduled from its page. Schedule opens the dialog,
@@ -66,24 +66,24 @@ export function CampaignsStage({ animate = true }: { animate?: boolean }) {
                 <div className="rl-main">
                   <Crumbs items={['Campaigns', 'Spring launch']} />
                   <div className="rlc-tools">
-                    <div className="rl-stack">
-                      <div className="rl-bar" data-on={s.ph === 0 || undefined}>
+                    <Track at={s.ph}>
+                      <div className="rl-bar">
                         {wide ? <Button>Save</Button> : null}
                         <Button>Send test to me</Button>
                         <Button variant="primary" data-target="schedule">Schedule…</Button>
                       </div>
-                      <div className="rl-bar" data-on={s.ph === 1 || undefined}>
+                      <div className="rl-bar">
                         <Button>Unschedule</Button>
                       </div>
-                      <div className="rl-bar" data-on={s.ph === 2 || undefined}>
+                      <div className="rl-bar">
                         <Button>Pause</Button>
                         <Button>Cancel campaign</Button>
                       </div>
-                    </div>
+                    </Track>
                   </div>
                   <div className="rlc-body">
-                    <div className="rl-stack">
-                      <div className="rl-pad" data-on={s.ph === 0 || undefined}>
+                    <Track at={s.ph === 0 ? 0 : 1}>
+                      <div className="rl-pad">
                         <Field label="From" value="hello@mail.acme.test" />
                         <Field label="Subject" value="Our spring launch is here" />
                         <Card pad="small" gap={8} tone="sunken">
@@ -92,12 +92,14 @@ export function CampaignsStage({ animate = true }: { animate?: boolean }) {
                           <Bar w={190} h={7} tone={2} />
                         </Card>
                       </div>
-                      <div className="rl-pad" data-on={s.ph !== 0 || undefined}>
-                        <div className="rl-hint">{s.ph === 1 ? 'Scheduled just now' : 'Scheduled just now · Started just now'}</div>
-                        <div className="rlc-meter">
-                          <Meter value={s.n / TOTAL} tone="ink" />
-                          <span className="rl-hint">{num(s.n)} of {num(TOTAL)}</span>
-                        </div>
+                      <div className="rl-pad">
+                        <div className="rl-hint"><Roll>{s.ph === 2 ? 'Scheduled just now · Started just now' : 'Scheduled just now'}</Roll></div>
+                        <Collapse open={s.ph === 2}>
+                          <div className="rlc-meter">
+                            <Meter value={s.n / TOTAL} tone="ink" />
+                            <span className="rl-hint">{num(s.n)} of {num(TOTAL)}</span>
+                          </div>
+                        </Collapse>
                         <div className="rl-tiles">
                           {[
                             ['Recipients', s.n],
@@ -113,7 +115,7 @@ export function CampaignsStage({ animate = true }: { animate?: boolean }) {
                           ))}
                         </div>
                       </div>
-                    </div>
+                    </Track>
                   </div>
                 </div>
               </div>

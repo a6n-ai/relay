@@ -70,7 +70,7 @@
 
 .rl-app {
   display: grid;
-  grid-template-columns: var(--side, 150px) minmax(0, 1fr);
+  grid-template-columns: var(--side, 148px) minmax(0, 1fr);
   min-height: 100%;
   background: var(--ss-surface);
   color: var(--ss-text-strong);
@@ -94,6 +94,13 @@
   border-radius: 6px;
   color: var(--ss-text);
   white-space: nowrap;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+.rl-sub {
+  margin-left: 15px;
+  padding-left: 14px;
+  border-left: 1px solid var(--ss-line);
+  border-radius: 0 6px 6px 0;
 }
 .rl-nav svg {
   flex: none;
@@ -155,6 +162,7 @@
   color: var(--ss-text);
   font-size: 12px;
   font-weight: 500;
+  padding-top: 2px;
   background: var(--ss-canvas);
 }
 .rl-grid[data-sel] {
@@ -266,17 +274,26 @@
 .rl .ss-stage {
   --ss-accent-2: var(--ss-accent);
 }
-.rl-stack {
-  display: grid;
+.rl-viewport {
+  overflow: hidden;
 }
-.rl-stack > * {
-  grid-area: 1 / 1;
+.rl-track {
+  display: flex;
+  will-change: transform;
+  transform: translateX(calc(var(--at, 0) * -100%));
+  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.rl-slot {
+  flex: 0 0 100%;
   min-width: 0;
   opacity: 0;
-  transition: opacity 0.25s ease;
+  visibility: hidden;
+  transition: opacity 0.18s ease, visibility 0s 0.3s;
 }
-.rl-stack > [data-on] {
+.rl-slot[data-on] {
   opacity: 1;
+  visibility: visible;
+  transition: opacity 0.18s ease;
 }
 .rl .ss-field {
   width: 100%;
@@ -303,4 +320,58 @@
 }
 .rl .ss-button[data-variant='primary'][data-hover] {
   background: color-mix(in srgb, var(--ss-text-strong), var(--ss-surface) 15%);
+}
+
+/* Messages and Domains share one window: a bleed off the right edge, the table's columns ending inside the stage. */
+.rl-win {
+  position: absolute;
+  top: 24px;
+  left: 24px;
+  width: 628px;
+  height: 460px;
+  box-shadow: var(--ss-shadow-hero);
+}
+.rl-app.rl-wide {
+  --side: 148px;
+  min-height: 420px;
+}
+.rl-wide .rl-grid,
+.rl-wide .rl-tools {
+  padding-right: 56px;
+}
+.rl-msg {
+  --cols: 80px 132px minmax(0, 1fr) 70px;
+}
+.rl-dom {
+  --cols: minmax(0, 1fr) 84px 128px 24px;
+}
+.rl-pane {
+  display: flex;
+  flex-direction: column;
+}
+.rl-pane .rl-tools {
+  border-bottom: 1px solid var(--ss-line);
+}
+.rl-pane .rl-tools .ss-field {
+  flex: 1;
+}
+.rl .ss-stage[data-layout='compact'] .rl-win {
+  top: 16px;
+  left: 16px;
+  width: 372px;
+  height: 440px;
+}
+.rl .ss-stage[data-layout='compact'] .rl-app.rl-wide {
+  --side: 0px;
+  grid-template-columns: minmax(0, 1fr);
+}
+.rl .ss-stage[data-layout='compact'] .rl-msg {
+  --cols: 112px minmax(0, 1fr) 76px;
+}
+.rl .ss-stage[data-layout='compact'] .rl-dom {
+  --cols: minmax(0, 1fr) 84px 24px;
+}
+
+.rl .ss-field__placeholder {
+  color: var(--ss-text);
 }

@@ -6,6 +6,8 @@ const SCENES: Record<string, ComponentType> = {
   lists: lazy(() => import("./scenes/lists")),
   webhooks: lazy(() => import("./scenes/webhooks")),
   inbound: lazy(() => import("./scenes/inbound")),
+  send: lazy(() => import("./scenes/send")),
+  domains: lazy(() => import("./scenes/domains")),
 };
 
 // The wide and compact designs have different shapes; the box holds the shape of whichever shows, so nothing shifts when a scene loads.
@@ -14,7 +16,9 @@ const SHAPE: Record<string, string> = {
   campaigns: "ld-shape-card",
   lists: "ld-shape-lists",
   webhooks: "ld-shape-card",
-  inbound: "ld-shape-card",
+  inbound: "ld-shape-tall",
+  send: "ld-shape-tall",
+  domains: "ld-shape-tall",
 };
 
 function Box({ name, label, children }: { name: string; label: string; children: ReactNode }) {
@@ -33,6 +37,9 @@ export function HeroScene({ label }: { label: string }) {
       <Box name="hero" label={label}>
         <Hero />
       </Box>
+      <noscript>
+        <style>{".ld-shape-hero{opacity:1!important}"}</style>
+      </noscript>
     </div>
   );
 }
