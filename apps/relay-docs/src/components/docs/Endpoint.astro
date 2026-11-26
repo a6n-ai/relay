@@ -12,6 +12,7 @@ type Fixture = {
 	query?: Row[];
 	fields?: Row[];
 	body?: unknown;
+	nowPlus?: Record<string, number>;
 	status: number;
 	response?: unknown;
 	responseText?: string;
@@ -45,12 +46,17 @@ const py = (v: unknown, pad = ''): string => {
 	}
 	return JSON.stringify(v);
 };
+// nowPlus names body fields that render as "now plus N ms", so a copied example stays inside the API's time window. The literal body value only has to parse.
+const marks = Object.fromEntries(Object.keys(e.nowPlus ?? {}).map((k) => [k, `__NOW_${k}__`]));
+const exampleBody = hasBody && e.nowPlus ? { ...(e.body as object), ...marks } : e.body;
+const swapNow = (s: string, expr: (ms: number) => string) =>
+	Object.entries(e.nowPlus ?? {}).reduce((acc, [k, ms]) => acc.replace(`"${marks[k]}"`, expr(ms)), s);
 const indentBy = (s: string, pad: string) => s.replace(/\n/g, `\n${pad}`);
 
 const curl = [
 	`curl -X ${e.method} ${url}`,
 	`  -H "Authorization: Bearer ${KEY}"`,
-	...(hasBody ? ['  -H "Content-Type: application/json"', `  -d '${json(e.body).replace(/'/g, `'\\''`)}'`] : []),
+	...(hasBody ? ['  -H "Content-Type: application/json"', `  -d '${swapNow(json(exampleBody).replace(/'/g, `'\\''`), (ms) => `'"$(( $(date +%s) * 1000 + ${ms} ))"'`)}'`] : []),
 ].join(' \\\n');
 
 const readBack = e.status === 204 ? 'console.log(res.status);' : e.responseText ? 'console.log(await res.text());' : 'console.log(res.status, await res.json());';
@@ -61,19 +67,20 @@ const node = [
 	`    Authorization: "Bearer ${KEY}",`,
 	...(hasBody ? ['    "Content-Type": "application/json",'] : []),
 	`  },`,
-	...(hasBody ? [`  body: JSON.stringify(${indentBy(json(e.body), '  ')}),`] : []),
+	...(hasBody ? [`  body: JSON.stringify(${indentBy(swapNow(json(exampleBody), (ms) => `Date.now() + ${ms}`), '  ')}),`] : []),
 	`});`,
 	readBack,
 ].join('\n');
 
 const pyRead = e.status === 204 ? 'print(res.status_code)' : e.responseText ? 'print(res.text)' : 'print(res.status_code, res.json())';
 const python = [
+	...(e.nowPlus ? ['import time'] : []),
 	'import requests',
 	'',
 	`res = requests.${e.method.toLowerCase()}(`,
 	`    "${url}",`,
 	`    headers={"Authorization": "Bearer ${KEY}"},`,
-	...(hasBody ? [`    json=${py(e.body, '    ')},`] : []),
+	...(hasBody ? [`    json=${swapNow(py(exampleBody, '    '), (ms) => `int(time.time() * 1000) + ${ms}`)},`] : []),
 	')',
 	pyRead,
 ].join('\n');
@@ -91,7 +98,7 @@ const params = [
 
 	{
 		params.length > 0 && (
-			<table>
+			<div class="table-scroll"><table>
 				<thead>
 					<tr><th>Parameter</th><th>In</th><th>Description</th></tr>
 				</thead>
@@ -100,13 +107,13 @@ const params = [
 						<tr><td><code>{p.name}</code></td><td>{p.where}</td><td>{p.description}</td></tr>
 					))}
 				</tbody>
-			</table>
+			</table></div>
 		)
 	}
 
 	{
 		e.fields && (
-			<table>
+			<div class="table-scroll"><table>
 				<thead>
 					<tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
 				</thead>
@@ -115,7 +122,7 @@ const params = [
 						<tr><td><code>{f.name}</code></td><td>{f.type}</td><td>{f.required ? 'Yes' : 'No'}</td><td>{f.description}</td></tr>
 					))}
 				</tbody>
-			</table>
+			</table></div>
 		)
 	}
 
@@ -131,7 +138,7 @@ const params = [
 
 	{
 		e.errors.length > 0 && (
-			<table>
+			<div class="table-scroll"><table>
 				<thead>
 					<tr><th>Status</th><th>Message</th><th>When</th></tr>
 				</thead>
@@ -140,7 +147,7 @@ const params = [
 						<tr><td>{x.status}</td><td><code>{x.message}</code></td><td>{x.when}</td></tr>
 					))}
 				</tbody>
-			</table>
+			</table></div>
 		)
 	}
 </div>

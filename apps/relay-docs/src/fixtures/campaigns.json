@@ -189,8 +189,9 @@
     "summary": "Starts a draft campaign at a time you choose. Relay checks the campaign is ready first.",
     "pathParams": [{ "name": "id", "example": "cmp_Example0001", "description": "The campaign id." }],
     "schema": "campaignSchedule",
-    "fields": [{ "name": "at", "type": "integer", "required": true, "description": "Start time in epoch milliseconds. At most 60 seconds in the past and 365 days ahead. The example, 2030-01-01T09:00:00Z, is outside that window: use a time within the next year." }],
+    "fields": [{ "name": "at", "type": "integer", "required": true, "description": "Start time in epoch milliseconds. At most 60 seconds in the past. Up to 365 days ahead." }],
     "body": { "at": 1893488400000 },
+    "nowPlus": { "at": 86400000 },
     "status": 200,
     "response": { "data": { "runSeq": 1 } },
     "errors": [

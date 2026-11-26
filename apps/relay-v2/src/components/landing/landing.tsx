@@ -58,8 +58,8 @@ function Feature({ tag, title, body, facts, flip, children }: { tag: string; tit
 
 const DETAILS = [
   { title: "Idempotent sends", line: "Add an idempotencyKey. A retry returns the original message with duplicate set to true." },
-  { title: "Signed webhooks", line: "Every delivery carries an x-relay-signature header: an HMAC-SHA256 of the raw body." },
-  { title: "Suppression built in", line: "Unsubscribes, bounces and complaints are suppressed, so a later send to that address is skipped." },
+  { title: "Signed webhooks", line: "Every webhook call carries an x-relay-signature header: an HMAC-SHA256 of the raw body." },
+  { title: "Suppression built in", line: "Unsubscribes, hard bounces and complaints are suppressed, so a later send to that address is skipped." },
   { title: "Attachments", line: "Up to 3 files per message, 5 MB each, sent as base64." },
   { title: "Plain errors", line: "An HTTP status and one message string. No error codes to look up." },
   { title: "Worker binding", line: "A Cloudflare Worker can call Relay directly, without an HTTP request." },
@@ -120,7 +120,7 @@ export function Landing() {
             tag="Campaigns"
             title="Write once. Send to a list. Read the report."
             body="Build a template, add people to a list and send now or schedule it. Each campaign keeps its own stats. Marketing mail carries an unsubscribe link, and Relay stops sending to anyone who opts out."
-            facts={["Lists record where each person's consent came from.", "Templates with merge fields for names and your own data.", "Draft, scheduled and sent campaigns in one table."]}
+            facts={["Each list records where its members' consent came from.", "Automations send a template when someone joins a list.", "Templates with merge fields for names and your own data.", "Draft, scheduled and sent campaigns in one table."]}
           >
             <Shot name="campaigns" width={664} height={264} alt="The Campaigns page in the Relay console: two draft campaigns with status and recipient counts." />
           </Feature>
@@ -129,7 +129,7 @@ export function Landing() {
             tag="Inbound"
             title="Replies reach your app."
             body="Give an app an inbox address on your domain. Each letter that arrives is stored, then posted to your webhook as JSON with a signature you can verify."
-            facts={["One event today: mailbox.received.", "A failed delivery can be retried from the console.", "Webhook URLs must be public https."]}
+            facts={["One event today: mailbox.received.", "Up to 6 attempts with backoff, then retry from the console.", "Webhook URLs must be public https."]}
           >
             <figure className="ld-reveal m-0 overflow-hidden rounded-md border bg-card text-card-foreground">
               <div className="border-b bg-muted px-3 py-2 sm:px-4">
@@ -144,7 +144,9 @@ export function Landing() {
                   {"\n"}
                   {"{"}
                   {"\n  "}
+                  <span className="ld-k">"id":</span> "whd_…",{"\n  "}
                   <span className="ld-k">"type":</span> "mailbox.received",{"\n  "}
+                  <span className="ld-k">"createdAt":</span> 1767225600000,{"\n  "}
                   <span className="ld-k">"data":</span> {"{"}
                   {"\n    "}
                   <span className="ld-k">"from":</span> "ada@example.com",{"\n    "}
@@ -226,6 +228,9 @@ export function Landing() {
               <a href="/docs/" className="hover:text-foreground">
                 Docs
               </a>
+              <Link to="/sign-in" search={{ redirect: undefined }} className="hover:text-foreground">
+                Sign in
+              </Link>
               <a href="mailto:support@a6n.ai" className="hover:text-foreground">
                 support@a6n.ai
               </a>

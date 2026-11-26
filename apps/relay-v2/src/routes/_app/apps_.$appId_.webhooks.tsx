@@ -104,7 +104,7 @@ function WebhooksPage() {
           <EmptyState
             icon={WebhookIcon}
             title="No webhooks yet"
-            description="Relay calls your URL when mail is sent, delivered or received."
+            description="Relay calls your URL when mail is received."
             action={canWrite ? <Button variant="outline" onClick={() => setCreateOpen(true)}>New webhook</Button> : undefined}
           />
         }

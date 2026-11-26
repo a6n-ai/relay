@@ -153,6 +153,17 @@ starlight-toc h2 {
 .sl-markdown-content :is(th, td) {
 	border-color: var(--sl-color-hairline);
 }
+/* API tables wrap their Description column and scroll sideways only when a code cell is too wide. */
+.table-scroll {
+	overflow-x: auto;
+}
+.table-scroll > table {
+	display: table;
+	width: 100%;
+}
+.table-scroll td:last-child {
+	min-width: 12rem;
+}
 
 /* Prev/next links as quiet cards. */
 .pagination-links a {
