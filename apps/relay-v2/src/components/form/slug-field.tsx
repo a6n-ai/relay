@@ -23,8 +23,8 @@ export function SlugField({
   return (
     <TextField
       id={id}
-      label="Slug"
-      hint="Can't be changed later."
+      label="Short name"
+      hint="Used in API requests. Can't be changed later."
       error={error}
       value={shown}
       className="font-mono"

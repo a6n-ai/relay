@@ -29,8 +29,7 @@ export function SenderField({
         id={id}
         label="Send from"
         message="No sender addresses yet."
-        to="/domains"
-        search={{ new: "address" }}
+        to="/domains/addresses/new"
         linkLabel="Add an address"
         onNavigate={onNavigate}
         error={error}

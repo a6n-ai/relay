@@ -45,8 +45,9 @@ describe("navSearch", () => {
 });
 
 describe("withNew", () => {
-  it("keeps appId and nothing else", () => expect(withNew({ appId: "a", cursor: "c", q: "x" })).toEqual({ appId: "a", new: 1 }));
-  it("adds only new without an app", () => expect(withNew({ cursor: "c" })).toEqual({ new: 1 }));
+  it("keeps appId and nothing else", () => expect(withNew({ appId: "a", cursor: "c", q: "x" })).toEqual({ appId: "a" }));
+  it("adds nothing without an app", () => expect(withNew({ cursor: "c" })).toEqual({}));
+  it("adds new only for a dialog kind", () => expect(withNew({ appId: "a" }, 1)).toEqual({ appId: "a", new: 1 }));
 });
 
 describe("scopeSearch", () => {

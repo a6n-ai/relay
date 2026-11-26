@@ -20,7 +20,7 @@ export type NavLeaf = {
 };
 export type NavItem = NavLeaf & { icon: LucideIcon; children?: NavLeaf[] };
 export type NavGroup = { id: "work" | "setup" | "platform"; items: NavItem[] };
-export type CreateItem = { id: string; label: string; find?: string; to: FileRouteTypes["to"]; new: 1 | "address"; need: Record<string, string[]> };
+export type CreateItem = { id: string; label: string; find?: string; to: FileRouteTypes["to"]; new?: 1; need: Record<string, string[]> };
 
 export const NAV: NavGroup[] = [
   {
@@ -81,9 +81,9 @@ export const NAV: NavGroup[] = [
 export const APP_SCOPED: readonly string[] = ["/messages", "/campaigns", "/campaigns/templates", "/campaigns/automations", "/lists"];
 
 const CREATE: CreateItem[] = [
-  { id: "app", label: "App", to: "/apps", new: 1, need: { tenant: ["write"] } },
-  { id: "domain", label: "Domain", to: "/domains", new: 1, need: { sending: ["write"] } },
-  { id: "address", label: "Address", to: "/domains", new: "address", need: { sending: ["write"] } },
+  { id: "app", label: "App", to: "/apps/new", need: { tenant: ["write"] } },
+  { id: "domain", label: "Domain", to: "/domains/new", need: { sending: ["write"] } },
+  { id: "address", label: "Address", to: "/domains/addresses/new", need: { sending: ["write"] } },
   { id: "campaign", label: "Campaign", to: "/campaigns", new: 1, need: { campaign: ["write"] } },
   { id: "list", label: "List", to: "/lists", new: 1, need: { list: ["write"] } },
   { id: "template", label: "Template", to: "/campaigns/templates", new: 1, need: { template: ["write"] } },

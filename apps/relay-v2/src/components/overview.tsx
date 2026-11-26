@@ -16,8 +16,8 @@ import { StatTile } from "./stat-tile";
 type OverviewData = NonNullable<Awaited<ReturnType<typeof fetchOverview>>>;
 
 const START = [
-  { id: "app", icon: LayoutGrid, title: "Create an app", line: "An app groups the messages, lists and campaigns you send.", cta: "Create app", to: "/apps" },
-  { id: "domain", icon: Globe, title: "Add a domain", line: "Verify a domain to send from your own address.", cta: "Add domain", to: "/domains" },
+  { id: "app", icon: LayoutGrid, title: "Create an app", line: "An app groups the messages, lists and campaigns you send.", cta: "Create app", to: "/apps/new" },
+  { id: "domain", icon: Globe, title: "Add a domain", line: "Verify a domain to send from your own address.", cta: "Add domain", to: "/domains/new" },
   { id: "invite", icon: UserPlus, title: "Invite your team", line: "Give teammates access to this workspace.", cta: "Invite member", to: "/settings/invites" },
 ] as const;
 
@@ -38,7 +38,7 @@ function GetStarted({ shell }: { shell: Shell }) {
               <SectionTitle as="p">{r.title}</SectionTitle>
               <Hint>{r.line}</Hint>
             </div>
-            <Button variant="outline" render={<Link to={r.to as string} search={{ new: 1 } as never} />}>
+            <Button variant="outline" render={<Link to={r.to as string} search={r.id === "invite" ? ({ new: 1 } as never) : undefined} />}>
               {r.cta}
             </Button>
           </div>

@@ -21,10 +21,10 @@ describe("findEntries", () => {
     expect(entries.find((e) => e.label === "Campaigns › Templates")).toMatchObject({ group: "Pages", to: "/campaigns/templates" });
   });
 
-  it("platform admin sees Admin; owner gets create items with new: 1", () => {
+  it("platform admin sees Admin; owner gets create items", () => {
     const entries = findEntries(shell(["owner"], { platformAdmin: true }));
     expect(entries.find((e) => e.label === "Admin")?.to).toBe("/admin");
-    expect(entries.find((e) => e.label === "New Domain")).toMatchObject({ group: "Actions", to: "/domains", search: { new: "1" } });
+    expect(entries.find((e) => e.label === "New Domain")).toMatchObject({ group: "Actions", to: "/domains/new", search: undefined });
   });
 
   it("suspended workspace has no actions", () => {

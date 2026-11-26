@@ -43,7 +43,7 @@ export function FindPalette({ shell }: { shell: Shell }) {
   const pick = (entry: FindEntry) => {
     localStore.setJson(RECENT_KEY, pushRecent(readRecent(localStore.getJson<unknown>(RECENT_KEY, [])), entry.id));
     setOpen(false);
-    void navigate({ to: entry.to, search: entry.search?.new ? (prev: Record<string, unknown>) => withNew(prev, entry.search?.new === "address" ? "address" : 1) : entry.search } as never);
+    void navigate({ to: entry.to, search: entry.id.startsWith("new:") ? (prev: Record<string, unknown>) => withNew(prev, entry.search?.new ? 1 : undefined) : entry.search } as never);
   };
 
   const recentEntries = recent.flatMap((id) => entries.find((e) => e.id === id) ?? []);

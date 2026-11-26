@@ -59,7 +59,7 @@ export function ScopeSwitcher() {
         {canCreateApp ? (
           <>
             <div className="-mx-1.5 border-t" />
-            <Link to="/apps" search={{ new: 1 } as never} className={row} onClick={close}>
+            <Link to="/apps/new" className={row} onClick={close}>
               New app
             </Link>
           </>

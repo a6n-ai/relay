@@ -1,20 +1,14 @@
 import { Badge } from "@foundry/ui/badge";
-import { TextField } from "../../components/form/text-field";
 import { Button } from "@foundry/ui/button";
 import { toast } from "@foundry/ui/toast";
 import { createFileRoute, Link, useRouter, useSearch } from "@tanstack/react-router";
 import { GlobeIcon } from "lucide-react";
-import { type FormEvent, useState } from "react";
+import { useState } from "react";
 import { ConfirmDialog } from "../../components/confirm-dialog";
-import { CreateDialog } from "../../components/create-dialog";
 import { DeniedState, deniedReason } from "../../components/denied-state";
 import { DnsRecords } from "../../components/dns-records";
 import { DomainDeleteDialog } from "../../components/domain-delete-dialog";
 import { errorText } from "../../components/error-text";
-import { AppField } from "../../components/form/app-field";
-import { ChoiceField } from "../../components/form/choice-field";
-import { DomainEmailInput } from "../../components/form/domain-email-input";
-import { FixedField } from "../../components/form/fixed-field";
 import { ResourceTable } from "../../components/resource-table";
 import { StatusBadge } from "../../components/status-badge";
 import { useCan } from "../../components/use-can";
@@ -26,48 +20,31 @@ import { SearchInput, Toolbar } from "../../components/page/toolbar";
 import { useUrlFilter } from "../../components/page/use-url-filter";
 import { ViewToggle } from "../../components/page/view-toggle";
 import { type View, viewPref } from "../../components/page/view-pref";
-import { useNewParam } from "../../components/shell/new-param";
 import { PageHeader } from "../../components/shell/page-header";
-import { fetchApps } from "../../console/apps.fns";
 import {
-  addAddressFn,
-  addDomainFn,
   checkDomainFn,
   fetchAddresses,
   fetchDomains,
   releaseDomainFn,
   removeAddressFn,
   setDomainProtectedFn,
-  updateAddressFn,
 } from "../../console/domains.fns";
-import { SES_REGIONS } from "../../core/ses-regions";
-import { looksLikeDomain, normaliseDomainInput } from "../../lib/domain-input";
-import { FormError, FormBody, FormActions } from "../../components/page/form-parts";
 import { Hint, Mono } from "../../components/page/text";
+import { KIND_LABEL } from "../../lib/address-kinds";
 
 export const Route = createFileRoute("/_app/domains")({
   validateSearch: (search: Record<string, unknown>) => ({
-    new: search.new === 1 || search.new === "1" ? (1 as const) : search.new === "address" ? ("address" as const) : undefined,
     q: typeof search.q === "string" && search.q ? search.q : undefined,
     status: search.status === "verified" || search.status === "pending" || search.status === "failed" ? search.status : undefined,
   }),
   loader: async () => {
     const domains = await fetchDomains();
     if (!domains) return null;
-    const [addresses, apps] = await Promise.all([fetchAddresses(), fetchApps()]);
-    return { domains, addresses, apps: apps ?? [] };
+    return { domains, addresses: await fetchAddresses() };
   },
   pendingComponent: () => <ListSkeleton crumbs={[{ label: "Domains" }]} columns={3} sections={["Domains", "Addresses"]} search filter view action />,
   component: DomainsPage,
 });
-
-type Kind = "sender" | "inbox" | "both";
-const KINDS: { value: Kind; label: string; hint: string }[] = [
-  { value: "sender", label: "Send only", hint: "Your apps send email from this address. Mail sent to it is rejected." },
-  { value: "inbox", label: "Receive only", hint: "Mail sent to this address shows up in Relay. Apps can't send from it." },
-  { value: "both", label: "Send and receive", hint: "Your apps send from it, and replies show up in Relay." },
-];
-const KIND_LABEL = Object.fromEntries(KINDS.map((k) => [k.value, k.label]));
 
 const STATUS_FACET = {
   key: "status",
@@ -79,16 +56,6 @@ const STATUS_FACET = {
   ],
 };
 
-type Address = {
-  id: string;
-  email: string;
-  kind: Kind;
-  appName: string;
-  displayName: string | null;
-  replyTo: string | null;
-  canSend: boolean;
-};
-
 function DomainsPage() {
   const data = Route.useLoaderData();
   const [q, setQ] = useUrlFilter("q");
@@ -98,14 +65,11 @@ function DomainsPage() {
   const { shell } = Route.useRouteContext();
   const router = useRouter();
   const [view, setView] = useState<View>(() => viewPref.read("/domains"));
-  const [newOpen, setNewOpen] = useNewParam();
   const canWrite = useCan({ sending: ["write"] });
   const canManageMail = useCan({ mailbox: ["manage"] });
   const [releasing, setReleasing] = useState<{ id: string; domain: string } | null>(null);
   const [deleting, setDeleting] = useState<{ id: string; domain: string } | null>(null);
-  const [editing, setEditing] = useState<Address | null>(null);
   const [removing, setRemoving] = useState<{ id: string; email: string } | null>(null);
-  const [addressOpen, setAddressOpen] = useNewParam("address");
   const crumbs = [{ label: "Domains" }];
   if (!data) {
     return (
@@ -115,7 +79,6 @@ function DomainsPage() {
       </>
     );
   }
-  const { apps } = data;
   const needle = q.trim().toLowerCase();
   const domains = data.domains.filter(
     (d) => (!needle || d.domain.toLowerCase().includes(needle)) && (!search.status || d.status === search.status),
@@ -125,7 +88,6 @@ function DomainsPage() {
     const d = a.email.slice(a.email.lastIndexOf("@") + 1);
     addressCount.set(d, (addressCount.get(d) ?? 0) + 1);
   }
-  const scopedAppId = apps.some((a) => a.id === scopeParam) ? scopeParam : undefined;
   const addresses = needle
     ? data.addresses.filter((a) => [a.email, a.appName, a.displayName ?? ""].some((v) => v.toLowerCase().includes(needle)))
     : data.addresses;
@@ -178,7 +140,7 @@ function DomainsPage() {
       title="Add a domain to send from your own address."
       action={
         canWrite ? (
-          <Button variant="outline" onClick={() => setNewOpen(true)}>
+          <Button variant="outline" render={<Link to="/domains/new" />}>
             Add domain
           </Button>
         ) : undefined
@@ -195,31 +157,11 @@ function DomainsPage() {
         view={<ViewToggle route="/domains" value={view} onChange={setView} />}
       >
         {canWrite ? (
-          <Button variant="outline" onClick={() => setAddressOpen(true)}>
+          <Button variant="outline" render={<Link to="/domains/addresses/new" search={{ appId: scopeParam }} />}>
             Add address
           </Button>
         ) : null}
-        {canWrite ? (
-          <CreateDialog title="Add an address" open={addressOpen} onOpenChange={setAddressOpen}>
-            {(done) => (
-              <NewAddressForm
-                apps={apps}
-                domains={data.domains}
-                scopedAppId={scopedAppId}
-                done={done}
-                onAddDomain={() => {
-                  done();
-                  setNewOpen(true);
-                }}
-              />
-            )}
-          </CreateDialog>
-        ) : null}
-        {canWrite ? (
-          <CreateDialog trigger="Add domain" title="Add a sending domain" open={newOpen} onOpenChange={setNewOpen}>
-            {(done) => <NewDomainForm done={done} canPickRegion={shell.platformAdmin} />}
-          </CreateDialog>
-        ) : null}
+        {canWrite ? <Button render={<Link to="/domains/new" />}>Add domain</Button> : null}
       </Toolbar>
 
       <h2 className="px-4 pb-2 text-sm font-medium">Domains</h2>
@@ -276,7 +218,7 @@ function DomainsPage() {
           {
             header: "Address",
             cell: (a) =>
-              canManageMail && a.kind !== "sender" ? (
+              canWrite || canManageMail ? (
                 <Link to="/domains/addresses/$addressId" params={{ addressId: a.id }} className="font-mono text-xs hover:underline">
                   {a.email}
                 </Link>
@@ -292,8 +234,7 @@ function DomainsPage() {
         rows={addresses}
         rowKey={(a) => a.id}
         menu={(a) => [
-          { label: "Access", hidden: !(canManageMail && a.kind !== "sender"), to: "/domains/addresses/$addressId", params: { addressId: a.id } },
-          { label: "Edit", hidden: !canWrite, onSelect: () => setEditing(a) },
+          { label: "Edit", hidden: !(canWrite || canManageMail), to: "/domains/addresses/$addressId", params: { addressId: a.id } },
           { label: "Remove", hidden: !canWrite, destructive: true, onSelect: () => setRemoving({ id: a.id, email: a.email }) },
         ]}
         empty={needle ? "No addresses match your search." : "No addresses yet. Add one on a verified domain to send from it."}
@@ -303,7 +244,7 @@ function DomainsPage() {
         open={releasing !== null}
         onOpenChange={(o) => !o && setReleasing(null)}
         title={`Release ${releasing?.domain ?? "this domain"}?`}
-        description="The domain and its SES identity are deleted. If it is added again, the DNS records change and must be updated."
+        description="The domain is removed from Relay and from the sending service. If you add it again, the DNS records change and you must update them."
         confirmLabel="Release domain"
         onConfirm={async () => {
           if (releasing) await release(releasing.id);
@@ -320,271 +261,6 @@ function DomainsPage() {
           if (removing) await remove(removing.id);
         }}
       />
-      {editing ? (
-        <CreateDialog open title="Edit address" onOpenChange={(o) => !o && setEditing(null)}>
-          {(done) => <EditAddressForm address={editing} done={done} />}
-        </CreateDialog>
-      ) : null}
     </>
-  );
-}
-
-function NewDomainForm({ done, canPickRegion }: { done: () => void; canPickRegion: boolean }) {
-  const router = useRouter();
-  const [domain, setDomain] = useState("");
-  const [region, setRegion] = useState("default");
-  const [fieldError, setFieldError] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
-
-  const check = (value: string) =>
-    setFieldError(value && !looksLikeDomain(value) ? "Enter a domain like example.com, without https:// or a path." : null);
-
-  async function submit(event: FormEvent) {
-    event.preventDefault();
-    const clean = normaliseDomainInput(domain);
-    setDomain(clean);
-    if (!looksLikeDomain(clean)) {
-      setFieldError("Enter a domain like example.com, without https:// or a path.");
-      return;
-    }
-    setPending(true);
-    setError(null);
-    try {
-      await addDomainFn({ data: { domain: clean, ...(region === "default" ? {} : { sesRegion: region }) } });
-      toast.success("Domain added", { description: clean });
-      done();
-      await router.invalidate();
-    } catch (err) {
-      setError(errorText(err, "Could not add the domain."));
-    } finally {
-      setPending(false);
-    }
-  }
-
-  return (
-    <FormBody onSubmit={submit}>
-      <TextField
-        id="domain-name"
-        label="Domain"
-        hint="Next you will add DNS records to verify it."
-        error={fieldError}
-        onClearError={() => setFieldError(null)}
-        autoFocus
-        required
-        inputMode="url"
-        autoCapitalize="none"
-        spellCheck={false}
-        placeholder="example.com"
-        value={domain}
-        onChange={(e) => setDomain(e.target.value)}
-        onBlur={() => {
-          const clean = normaliseDomainInput(domain);
-          setDomain(clean);
-          check(clean);
-        }}
-      />
-      {canPickRegion ? (
-        <ChoiceField
-          id="domain-region"
-          label="Sending region"
-          value={region}
-          onChange={setRegion}
-          options={[{ value: "default", label: "Workspace default" }, ...SES_REGIONS.map((r) => ({ value: r, label: r }))]}
-        />
-      ) : null}
-      <FormError message={error} />
-      <FormActions cancel submitLabel="Add domain" pending={pending} pendingLabel="Adding…" disabled={!domain.trim()} disabledReason="Enter a domain first." />
-    </FormBody>
-  );
-}
-
-const LOCAL_RE = /^[a-z0-9._-]+$/;
-
-function NewAddressForm({
-  apps,
-  domains,
-  scopedAppId,
-  done,
-  onAddDomain,
-}: {
-  apps: { id: string; name: string }[];
-  domains: { domain: string; status: string }[];
-  scopedAppId?: string;
-  done: () => void;
-  onAddDomain: () => void;
-}) {
-  const router = useRouter();
-  const [address, setAddress] = useState({ local: "", domain: "" });
-  const [appId, setAppId] = useState("");
-  const [kind, setKind] = useState<Kind>("sender");
-  const [name, setName] = useState("");
-  const [replyTo, setReplyTo] = useState("");
-  const [showReply, setShowReply] = useState(false);
-  const [touched, setTouched] = useState(false);
-  const [serverError, setServerError] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
-
-  const localError = !touched
-    ? null
-    : !address.local
-      ? "Enter the part before the @."
-      : !LOCAL_RE.test(address.local)
-        ? "Use letters, numbers, dots, hyphens or underscores."
-        : null;
-  const appError = touched && !appId ? "Choose an app." : null;
-  const email = `${address.local}@${address.domain}`;
-  const appName = apps.find((a) => a.id === appId)?.name;
-
-  async function submit(event: FormEvent) {
-    event.preventDefault();
-    setTouched(true);
-    setError(null);
-    setServerError(null);
-    if (!address.local || !LOCAL_RE.test(address.local) || !appId) return;
-    if (!address.domain) {
-      setError("Verify your domain first to receive mail on it.");
-      return;
-    }
-    setPending(true);
-    try {
-      await addAddressFn({ data: { appId, email, kind, displayName: name.trim() || undefined, replyTo: replyTo.trim() || undefined } });
-      toast.success("Address added", { description: email });
-      done();
-      await router.invalidate();
-    } catch (err) {
-      const text = errorText(err, "Could not add the address.");
-      if (err instanceof Error && err.message === "address already exists") setServerError("That address already exists.");
-      else if (err instanceof Error && err.message === "domain not verified") setServerError(`Verify ${address.domain} first to receive mail on it.`);
-      else setError(text);
-    } finally {
-      setPending(false);
-    }
-  }
-
-  if (apps.length === 0) return <Hint>Create an app first. Addresses belong to an app.</Hint>;
-  if (domains.length === 0) {
-    return (
-      <div className="grid gap-3">
-        <Hint>Add and verify a domain first. Addresses live on your domains.</Hint>
-        <FormActions cancel>
-          <Button type="button" onClick={onAddDomain}>
-            Add domain
-          </Button>
-        </FormActions>
-      </div>
-    );
-  }
-
-  return (
-    <FormBody onSubmit={submit}>
-      <AppField apps={apps} scopedAppId={scopedAppId} value={appId} onChange={setAppId} id="address-app" />
-      <FormError message={appError} />
-      <DomainEmailInput
-        id="address-local"
-        label="Address"
-        error={localError ?? serverError}
-        autoFocus
-        domains={domains}
-        kind={kind}
-        value={address}
-        onChange={(v) => {
-          setAddress(v);
-          setServerError(null);
-        }}
-      />
-      <ChoiceField
-        id="address-kind"
-        label="Mail"
-        hint={KINDS.find((k) => k.value === kind)?.hint}
-        value={kind}
-        onChange={(v) => setKind(v as Kind)}
-        options={KINDS.map(({ value, label }) => ({ value, label }))}
-      />
-      <TextField
-        id="address-name"
-        label="Name (optional)"
-        hint="Shown to recipients, like Acme Support."
-        maxLength={80}
-        placeholder={appName ?? "Acme Support"}
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-      />
-      {showReply ? (
-        <TextField
-          id="address-reply-to"
-          label="Reply-To (optional)"
-          type="email"
-          maxLength={254}
-          placeholder={address.local && address.domain ? email : "Same as the address"}
-          value={replyTo}
-          onChange={(e) => setReplyTo(e.target.value)}
-        />
-      ) : (
-        <Button type="button" variant="ghost" className="justify-self-start" onClick={() => setShowReply(true)}>
-          Set a reply-to address
-        </Button>
-      )}
-      <FormError message={error} />
-      <FormActions cancel submitLabel="Add address" pending={pending} pendingLabel="Adding…" />
-    </FormBody>
-  );
-}
-
-function EditAddressForm({ address, done }: { address: Address; done: () => void }) {
-  const router = useRouter();
-  const [name, setName] = useState(address.displayName ?? "");
-  const [replyTo, setReplyTo] = useState(address.replyTo ?? "");
-  const [replyError, setReplyError] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
-
-  async function submit(event: FormEvent) {
-    event.preventDefault();
-    const reply = replyTo.trim();
-    if (reply && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(reply)) {
-      setReplyError("Enter a valid email address or leave it blank.");
-      return;
-    }
-    setPending(true);
-    setError(null);
-    try {
-      await updateAddressFn({
-        data: { id: address.id, displayName: name.trim() || null, replyTo: reply || null },
-      });
-      toast.success("Address updated", { description: address.email });
-      done();
-      await router.invalidate();
-    } catch (err) {
-      setError(errorText(err, "Could not update the address."));
-    } finally {
-      setPending(false);
-    }
-  }
-
-  return (
-    <FormBody onSubmit={submit}>
-      <FixedField label="Address" value={address.email} hint="Remove it and add a new one to change it." />
-      <FixedField label="App" value={address.appName} hint="Remove the address and add it again under another app." />
-      <FixedField
-        label="Mail"
-        value={KIND_LABEL[address.kind] ?? address.kind}
-        hint={`${KINDS.find((k) => k.value === address.kind)?.hint ?? ""} Can't be changed. Remove the address and add it again to change it.`.trim()}
-      />
-      <TextField id="edit-address-name" label="Name" autoFocus maxLength={80} value={name} onChange={(e) => setName(e.target.value)} />
-      <TextField
-        id="edit-address-reply-to"
-        label="Reply-To"
-        type="email"
-        maxLength={254}
-        value={replyTo}
-        error={replyError}
-        onClearError={() => setReplyError(null)}
-        onChange={(e) => setReplyTo(e.target.value)}
-      />
-      <FormError message={error} />
-      <FormActions cancel submitLabel="Save address" pending={pending} pendingLabel="Saving…" />
-    </FormBody>
   );
 }
