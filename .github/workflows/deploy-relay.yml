@@ -9,6 +9,7 @@ on:
     branches: [main]
     paths:
       - "apps/relay-v2/**"
+      - "apps/relay-docs/**"
       - ".github/workflows/deploy-relay.yml"
 concurrency:
   group: deploy-relay

@@ -5,6 +5,8 @@
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
   "main": "src/server.ts",
   "observability": { "enabled": true },
+  // The Vite plugin supplies the directory (dist/client); the binding lets the Worker serve the docs 404 page.
+  "assets": { "binding": "ASSETS" },
   // The new Relay replaces the old Worker named "relay" in place (owner, 2026-11-25): its first deploy IS the hostname cutover.
   "workers_dev": false,
   // enable at 7b step 6 (owner-confirmed cutover): this Worker takes relay.a6n.ai from the old Worker `relay`

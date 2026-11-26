@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev",
-    "build": "vite build",
+    "build": "node scripts/build-docs.ts && vite build",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "db:generate:security": "drizzle-kit generate --config drizzle.security.config.ts",

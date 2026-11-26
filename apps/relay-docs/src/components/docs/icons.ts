@@ -1,0 +1,50 @@
+// One icon set (24px grid, 1.75 stroke) for docs cards and the sidebar.
+export const ICONS: Record<string, string> = {
+	home: 'M4 11l8-7 8 7 M6 9v11h12V9',
+	start: 'M5 21V4 M5 4h11l-2 4 2 4H5',
+	install: 'M3 7l9-4 9 4-9 4-9-4z M3 7v10l9 4 9-4V7 M12 11v10',
+	download: 'M12 3v12 M7 10l5 5 5-5 M5 21h14',
+	queues: 'M8 6h13 M8 12h13 M8 18h13 M3 6h.01 M3 12h.01 M3 18h.01',
+	speed: 'M13 2L4 14h7l-1 8 9-12h-7z',
+	engine: 'M4 17a8 8 0 1 1 16 0 M12 17l4-5 M4 21h16',
+	grid: 'M4 4h7v7H4z M13 4h7v7h-7z M4 13h7v7H4z M13 13h7v7h-7z',
+	chart: 'M4 20V10 M10 20V4 M16 20v-7 M3 20h18',
+	cloud: 'M7 18h10a4 4 0 0 0 .5-7.97A6 6 0 0 0 6.1 9.1 4.5 4.5 0 0 0 7 18z',
+	sorter: 'M12 3l1.8 4.7 4.7 1.8-4.7 1.8L12 16l-1.8-4.7-4.7-1.8 4.7-1.8z M19 15l.8 2.2 2.2.8-2.2.8L19 21l-.8-2.2-2.2-.8 2.2-.8z',
+	models: 'M12 3l9 5-9 5-9-5z M3 12l9 5 9-5 M3 16l9 5 9-5',
+	browser: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z M3 12h18 M12 3a14 14 0 0 1 0 18 M12 3a14 14 0 0 0 0 18',
+	settings: 'M4 6h9 M17 6h3 M4 12h3 M11 12h9 M4 18h11 M19 18h1 M15 4v4 M9 10v4 M17 16v4',
+	terminal: 'M3 5h18v14H3z M7 9l3 3-3 3 M12 15h5',
+	mcp: 'M9 2v5 M15 2v5 M6 7h12v4a6 6 0 0 1-12 0z M12 17v5',
+	help: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8z M5.6 5.6l3.6 3.6 M14.8 14.8l3.6 3.6 M18.4 5.6l-3.6 3.6 M9.2 14.8l-3.6 3.6',
+	notes: 'M7 3h7l5 5v13H7z M14 3v5h5 M10 13h6 M10 17h6',
+	code: 'M8 7l-5 5 5 5 M16 7l5 5-5 5',
+	mail: 'M3 6h18v12H3z M3 7l9 6 9-6',
+	paste: 'M9 4h6v3H9z M7 5H5v16h14V5h-2 M9 12h6 M9 16h4',
+	split: 'M3 12h6 M9 12l6-6h6 M9 12l6 6h6',
+	resume: 'M4 12a8 8 0 1 0 3-6.2 M4 4v4h4',
+	link: 'M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1 M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1',
+	filter: 'M3 5h18l-7 8v6l-4 2v-8z',
+	shield: 'M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z',
+	verify: 'M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z M9 12l2 2 4-4',
+	share: 'M12 15V3 M7 8l5-5 5 5 M5 13v8h14v-8',
+	rename: 'M4 20h4L19 9l-4-4L4 16z M13 7l4 4',
+	folder: 'M3 6h6l2 3h10v10H3z',
+	eye: 'M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z',
+	search: 'M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14z M16 16l5 5',
+	calendar: 'M4 6h16v15H4z M4 10h16 M8 3v4 M16 3v4',
+	wifi: 'M2 9a15 15 0 0 1 20 0 M5.5 12.5a10 10 0 0 1 13 0 M9 16a5 5 0 0 1 6 0 M12 19.5h.01',
+	clock: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z M12 7v5l3 2',
+	power: 'M12 3v9 M6.3 6.3a8 8 0 1 0 11.4 0',
+	moon: 'M20 14.5A8 8 0 1 1 9.5 4 6.5 6.5 0 0 0 20 14.5z',
+	menubar: 'M3 5h18v14H3z M3 9h18',
+	refresh: 'M20 12a8 8 0 1 1-2.3-5.7 M20 4v5h-5',
+	check: 'M5 12l5 5 9-10',
+	heart: 'M12 20s-8-5-8-11a4.5 4.5 0 0 1 8-2.8A4.5 4.5 0 0 1 20 9c0 6-8 11-8 11z',
+};
+
+export const svg = (name: string, size = 16) =>
+	`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${ICONS[name] ?? ''}"/></svg>`;
+
+export const maskUrl = (name: string) =>
+	`url("data:image/svg+xml,${encodeURIComponent(svg(name).replace('currentColor', '#000'))}")`;

@@ -1,0 +1,312 @@
+/* Relay docs: Vercel monochrome tokens (same values as relay-v2 src/styles.css), Geist, hairline borders, quiet sidebar with icons. */
+@import '@fontsource-variable/geist';
+@import '@fontsource-variable/geist-mono';
+@import './tokens.css';
+
+:root {
+	--sl-font: 'Geist Variable', system-ui, sans-serif;
+	--sl-font-mono: 'Geist Mono Variable', ui-monospace, monospace;
+	--sl-sidebar-width: 17.5rem;
+	--sl-content-width: 46rem;
+	--sl-nav-height: 4rem;
+	--sl-text-h1: 2.5rem;
+	--sl-text-h2: 1.5rem;
+	--sl-text-h3: 1.2rem;
+
+	--sl-color-accent-low: var(--info-low);
+	--sl-color-accent: var(--info);
+	--sl-color-accent-high: var(--info);
+	--sl-color-white: var(--foreground);
+	--sl-color-gray-1: var(--gray-1);
+	--sl-color-gray-2: var(--gray-2);
+	--sl-color-gray-3: var(--muted-foreground);
+	--sl-color-gray-4: var(--gray-4);
+	--sl-color-gray-5: var(--border);
+	--sl-color-gray-6: var(--card);
+	--sl-color-gray-7: var(--secondary);
+	--sl-color-black: var(--background);
+	--sl-color-hairline: var(--border);
+	--sl-color-hairline-light: var(--border);
+	--sl-color-bg-nav: var(--background);
+	--sl-color-bg-sidebar: var(--background);
+	--sl-color-text-accent: var(--info);
+	--relay-current: var(--secondary);
+}
+
+/* Headings: tight, white, medium weight. */
+.sl-markdown-content :is(h1, h2, h3, h4),
+h1#_top {
+	color: var(--sl-color-white);
+	font-weight: 600;
+	letter-spacing: -0.02em;
+}
+.sl-markdown-content {
+	color: var(--sl-color-gray-2);
+	line-height: 1.7;
+}
+.sl-markdown-content img {
+	border: 1px solid var(--sl-color-hairline);
+	border-radius: 0.75rem;
+}
+.content-panel {
+	border-top-color: transparent;
+}
+
+/* Header and search: hairline bottom, icon-only search button next to the brand. */
+header.header {
+	border-bottom: 1px solid var(--sl-color-hairline);
+}
+.rh .search site-search button[data-open-modal] {
+	width: 2rem;
+	height: 2rem;
+	padding: 0;
+	justify-content: center;
+	border: 1px solid var(--sl-color-gray-5);
+	border-radius: var(--radius);
+	background: transparent;
+}
+.rh .search site-search button[data-open-modal] > :not(svg) {
+	display: none;
+}
+.rh .search site-search button[data-open-modal] svg {
+	margin: 0;
+}
+
+/* Sidebar: small muted group labels, no carets, icons before links, soft current row. */
+.sidebar-pane {
+	border-inline-end: 1px solid var(--sl-color-hairline);
+}
+.sidebar-content summary .group-label .large {
+	color: var(--sl-color-gray-3);
+	font-size: 0.8125rem;
+	font-weight: 500;
+}
+.sidebar-content summary .caret {
+	display: none;
+}
+.sidebar-content ul ul {
+	border-inline-start: 0;
+	margin-inline-start: 0;
+}
+.sidebar-content a {
+	display: flex;
+	align-items: center;
+	gap: 0.65rem;
+	padding: 0.4rem 0.6rem;
+	border-radius: 0.5rem;
+	color: var(--sl-color-gray-2);
+	font-size: 0.9rem;
+}
+.sidebar-content a[data-icon]::before {
+	content: '';
+	flex: none;
+	width: 16px;
+	height: 16px;
+	background: currentColor;
+	-webkit-mask-repeat: no-repeat;
+	mask-repeat: no-repeat;
+	-webkit-mask-size: contain;
+	mask-size: contain;
+	opacity: 0.8;
+}
+.sidebar-content a:hover {
+	color: var(--sl-color-white);
+	background: var(--relay-current);
+}
+.sidebar-content a[aria-current='page'],
+.sidebar-content a[aria-current='page']:hover {
+	background: var(--relay-current);
+	color: var(--sl-color-white);
+	font-weight: 500;
+}
+
+/* Table of contents: a line on the left, the current entry marked on it. */
+starlight-toc nav > ul {
+	border-inline-start: 1px solid var(--sl-color-hairline);
+}
+starlight-toc a {
+	padding-inline-start: calc(0.9rem + var(--depth, 0) * 0.75rem);
+	margin-inline-start: -1px;
+	border-inline-start: 1px solid transparent;
+	color: var(--sl-color-gray-3);
+	font-size: 0.8125rem;
+}
+starlight-toc a[aria-current='true'] {
+	border-inline-start-color: var(--sl-color-white);
+	color: var(--sl-color-white);
+}
+starlight-toc h2 {
+	color: var(--sl-color-gray-3);
+	font-size: 0.8125rem;
+	font-weight: 500;
+}
+
+/* Code blocks and inline code on the near-black ground. */
+.sl-markdown-content :not(pre) > code {
+	background: var(--sl-color-gray-6);
+	border: 1px solid var(--sl-color-hairline);
+	border-radius: 0.35rem;
+}
+.sl-markdown-content table {
+	border-collapse: collapse;
+}
+.sl-markdown-content :is(th, td) {
+	border-color: var(--sl-color-hairline);
+}
+
+/* Prev/next links as quiet cards. */
+.pagination-links a {
+	border-color: var(--sl-color-hairline);
+	border-radius: 0.75rem;
+	box-shadow: none;
+}
+.pagination-links a:hover {
+	border-color: var(--sl-color-gray-4);
+}
+
+/* Starlight indents nested lists and draws a line beside them; the docs keep items flush under the label. */
+.sidebar-content ul.top-level > li > details > ul {
+	margin-inline-start: 0;
+	padding-inline-start: 0;
+	border-inline-start: 0;
+}
+.sidebar-content ul.top-level > li > details > ul > li {
+	margin-inline-start: 0;
+	padding-inline-start: 0;
+	border-inline-start: 0;
+}
+.sidebar-content summary {
+	padding-inline: 0.6rem;
+}
+
+/* Pages without a table of contents (the docs home) get the wider column the card grid needs. */
+:root:not([data-has-toc]) {
+	--sl-content-width: 62rem;
+}
+.sl-markdown-content .lead {
+	color: var(--sl-color-gray-3);
+	font-size: 1.05rem;
+	margin-top: -0.5rem;
+}
+
+/* Crossfade between pages; the Relay mark is shared. */
+@view-transition {
+	navigation: auto;
+}
+/* The old page fades back, the new one rises into place. */
+@keyframes relay-page-out {
+	to {
+		opacity: 0;
+		transform: scale(0.985);
+	}
+}
+@keyframes relay-page-in {
+	from {
+		opacity: 0;
+		transform: translateY(14px);
+	}
+}
+::view-transition-old(root) {
+	animation: relay-page-out 200ms cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+::view-transition-new(root) {
+	animation: relay-page-in 280ms cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+::view-transition-group(relay-logo) {
+	animation-duration: 320ms;
+	animation-timing-function: cubic-bezier(0.77, 0, 0.175, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+	@view-transition {
+		navigation: none;
+	}
+}
+.rh .logo img {
+	view-transition-name: relay-logo;
+}
+
+/* Hover is more than a colour change: the logo lifts, sidebar links slide a hair, cards rise. */
+.rh .logo,
+.rh .section {
+	transition: opacity 160ms ease;
+}
+.rh .logo:hover,
+.rh .section:hover {
+	opacity: 0.75;
+}
+.rh .logo img {
+	transition: transform 200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.rh .logo:hover img {
+	transform: rotate(-6deg) scale(1.06);
+}
+.sidebar-content a > span {
+	transition: transform 160ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.sidebar-content a:hover > span {
+	transform: translateX(2px);
+}
+.sl-markdown-content a:hover {
+	text-decoration-thickness: 2px;
+}
+
+/* Heading anchors and small controls meet a 24px target. */
+.sl-anchor-link {
+	padding: 0.3rem;
+	margin-inline-start: 0.1rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.rh .logo img,
+	.sidebar-content a > span {
+		transition: none;
+	}
+}
+
+/* Header actions and page links answer the pointer with movement, not only colour. */
+.rh .copy,
+.rh .get,
+.rh .search site-search button[data-open-modal],
+.pagination-links a {
+	transition: transform 180ms cubic-bezier(0.16, 1, 0.3, 1), border-color 150ms, color 150ms, opacity 150ms;
+}
+.rh .copy:hover,
+.rh .search site-search button[data-open-modal]:hover {
+	transform: translateY(-1px);
+	border-color: var(--sl-color-gray-3);
+}
+.rh .get:hover {
+	transform: translateY(-1px);
+}
+.rh .copy:active,
+.rh .get:active,
+.rh .search site-search button[data-open-modal]:active {
+	transform: scale(0.97);
+}
+.pagination-links a:hover {
+	transform: translateY(-2px);
+}
+/* Inline links in prose reach a 24px target. */
+.sl-markdown-content p a {
+	padding-block: 3px;
+}
+@media (prefers-reduced-motion: reduce) {
+	.rh .copy,
+	.rh .get,
+	.pagination-links a {
+		transition: none;
+	}
+}
+
+/* Heading anchors appear on hover or keyboard focus only, in a neutral grey, so they stop competing with the heading. */
+.sl-anchor-link {
+	color: var(--sl-color-gray-3);
+	opacity: 0;
+	transition: opacity 150ms;
+}
+.sl-anchor-link:hover,
+.sl-anchor-link:focus-visible,
+.sl-heading-wrapper:hover .sl-anchor-link {
+	opacity: 1;
+}
+

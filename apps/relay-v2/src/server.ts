@@ -1,3 +1,4 @@
+import { env } from "cloudflare:workers";
 import handler from "@tanstack/react-start/server-entry";
 import { receiveEmail } from "./core/email-worker";
 import { handleInboundBatch } from "./core/inbound-consumer";
@@ -13,8 +14,17 @@ export { OpsWorkflow } from "./core/ops-workflow";
 export { ClientDO } from "./do/client-do";
 export { RelayRpc } from "./rpc/relay-rpc";
 
+// A path under /docs that no static file matched shows the docs 404 page, not the console's.
+async function fetchWithDocs404(...args: Parameters<typeof handler.fetch>): Promise<Response> {
+  const res = await handler.fetch(...args);
+  const request = args[0] as Request;
+  if (res.status !== 404 || !/^\/docs(\/|$)/.test(new URL(request.url).pathname)) return res;
+  const page = await env.ASSETS.fetch(new URL("/docs/404.html", request.url));
+  return page.ok ? new Response(page.body, { status: 404, headers: page.headers }) : res;
+}
+
 export default {
-  fetch: handler.fetch,
+  fetch: fetchWithDocs404,
   email: receiveEmail,
   async scheduled(_controller: ScheduledController, env: Env) {
     const result = await sweepAll(env);

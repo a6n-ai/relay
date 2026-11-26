@@ -24,6 +24,7 @@ export type InboundJob = {
 declare global {
   namespace Cloudflare {
     interface Env {
+      ASSETS: Fetcher;
       SECURITY_DB: D1Database;
       CORE_DB: D1Database;
       CLIENT: DurableObjectNamespace<ClientDO>;

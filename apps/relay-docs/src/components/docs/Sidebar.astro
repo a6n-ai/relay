@@ -1,0 +1,40 @@
+---
+// Starlight's sidebar plus an icon per link, chosen by the item's data-icon attribute in astro.config.mjs.
+import Default from '@astrojs/starlight/components/Sidebar.astro';
+import { ICONS, maskUrl } from './icons';
+import { NAV } from './nav-links';
+
+const css = Object.keys(ICONS)
+	.map((n) => `.sidebar-content a[data-icon='${n}']::before{-webkit-mask-image:${maskUrl(n)};mask-image:${maskUrl(n)}}`)
+	.join('\n');
+---
+
+<nav class="site-links" aria-label="Site">
+	{NAV.map((l) => <a href={l.href}>{l.label}</a>)}
+</nav>
+<Default />
+<style is:global set:html={css}></style>
+<style>
+	/* The header carries these from 64rem up; below that they sit at the top of the sidebar and the mobile menu. */
+	.site-links {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.25rem 1rem;
+		margin-bottom: 1rem;
+		padding-bottom: 0.75rem;
+		border-bottom: 1px solid var(--sl-color-hairline);
+	}
+	.site-links a {
+		display: inline-flex;
+		align-items: center;
+		min-height: 2.75rem;
+		color: var(--sl-color-white);
+		font-size: 0.9rem;
+		text-decoration: none;
+	}
+	@media (min-width: 64rem) {
+		.site-links {
+			display: none;
+		}
+	}
+</style>

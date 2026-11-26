@@ -1,0 +1,181 @@
+---
+// Docs header: brand and search over the sidebar, breadcrumb over the page, actions on the right.
+import Search from 'virtual:starlight/components/Search';
+import ThemeToggle from './ThemeToggle.astro';
+import { NAV } from './nav-links';
+
+const { sidebar, entry } = Astro.locals.starlightRoute;
+type Item = { type: string; label: string; isCurrent?: boolean; entries?: Item[] };
+const group = (sidebar as Item[]).find((g) => g.type === 'group' && g.entries?.some((e) => e.isCurrent));
+const crumbs = (entry.id === 'index' ? ['Home'] : [group?.label, entry.data.title].filter(Boolean)) as string[];
+const path = Astro.url.pathname;
+const isCurrent = (href: string) => (href === '/docs/' ? path.startsWith('/docs/') && !path.startsWith('/docs/api/') : path.startsWith(href));
+---
+
+<div class="rh">
+	<div class="brand">
+		<a href="/docs/" class="logo"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12h12 M12 6l6 6-6 6" /></svg><span>Relay</span></a>
+		<div class="search"><Search /></div>
+	</div>
+	<div class="mid">
+		<nav class="crumbs" aria-label="Breadcrumb">
+			{crumbs.map((c, i) => (i < crumbs.length - 1 ? <><span>{c}</span><span class="slash" aria-hidden="true">/</span></> : <span aria-current="page">{c}</span>))}
+		</nav>
+		<nav class="links" aria-label="Site">
+			{NAV.map((l) => <a href={l.href} aria-current={isCurrent(l.href) ? 'true' : undefined}>{l.label}</a>)}
+		</nav>
+	</div>
+	<div class="actions">
+		<ThemeToggle />
+		<button type="button" class="copy" data-copy-page>
+			<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2" /><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" /></svg>
+			<span data-copy-label>Copy page</span>
+		</button>
+		<a class="get" href="/sign-in">Sign in</a>
+	</div>
+</div>
+
+<script>
+	// Copies the page as markdown from the index.md that scripts/markdown.mjs writes next to each page.
+	for (const button of document.querySelectorAll<HTMLButtonElement>('[data-copy-page]')) {
+		const label = button.querySelector('[data-copy-label]')!;
+		button.addEventListener('click', async () => {
+			try {
+				const res = await fetch(`${location.pathname.replace(/\/?$/, '/')}index.md`);
+				if (!res.ok) throw new Error('no markdown');
+				await navigator.clipboard.writeText(await res.text());
+				label.textContent = 'Copied';
+			} catch {
+				label.textContent = 'Copy failed';
+			}
+			setTimeout(() => (label.textContent = 'Copy page'), 2000);
+		});
+	}
+</script>
+
+<style>
+	.rh {
+		display: flex;
+		align-items: center;
+		gap: 1rem;
+		height: 100%;
+	}
+	.brand {
+		display: flex;
+		align-items: center;
+		gap: 0.65rem;
+		min-width: 0;
+	}
+	.logo {
+		display: flex;
+		align-items: center;
+		gap: 0.55rem;
+		color: var(--sl-color-white);
+		font-weight: 600;
+		font-size: 1rem;
+		text-decoration: none;
+		white-space: nowrap;
+	}
+		.mid {
+		display: none;
+		align-items: center;
+		gap: 1.5rem;
+		min-width: 0;
+	}
+	.links {
+		display: none;
+		gap: 1.25rem;
+		margin-inline-start: auto;
+		font-size: 0.875rem;
+	}
+	.links a {
+		color: var(--sl-color-gray-3);
+		text-decoration: none;
+		white-space: nowrap;
+		transition: color 150ms;
+	}
+	.links a:hover,
+	.links a[aria-current] {
+		color: var(--sl-color-white);
+	}
+	.crumbs {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		font-size: 0.875rem;
+		color: var(--sl-color-gray-3);
+		white-space: nowrap;
+		overflow: hidden;
+	}
+	.crumbs [aria-current] {
+		color: var(--sl-color-white);
+	}
+	.slash {
+		color: var(--sl-color-gray-4);
+	}
+	.actions {
+		display: flex;
+		align-items: center;
+		gap: 0.6rem;
+		margin-inline-start: auto;
+	}
+	.copy {
+		display: none;
+		align-items: center;
+		gap: 0.4rem;
+		height: 2rem;
+		padding: 0 0.75rem;
+		border: 1px solid var(--sl-color-gray-5);
+		border-radius: var(--radius);
+		background: transparent;
+		color: var(--sl-color-gray-2);
+		font: 500 0.8125rem var(--sl-font);
+		cursor: pointer;
+		transition: color 150ms, border-color 150ms;
+	}
+	.copy:hover {
+		color: var(--sl-color-white);
+		border-color: var(--sl-color-gray-4);
+	}
+	.get {
+		display: inline-flex;
+		align-items: center;
+		height: 2rem;
+		padding: 0 0.9rem;
+		border-radius: var(--radius);
+		background: var(--sl-color-white);
+		color: var(--sl-color-black);
+		font-size: 0.8125rem;
+		font-weight: 600;
+		text-decoration: none;
+		transition: opacity 150ms;
+	}
+	.get:hover {
+		opacity: 0.88;
+	}
+	@media (min-width: 50rem) {
+		.rh {
+			display: grid;
+			grid-template-columns: calc(var(--sl-sidebar-width) - 2 * var(--sl-nav-pad-x)) minmax(0, 1fr) auto;
+			gap: calc(2 * var(--sl-nav-pad-x));
+		}
+		.search {
+			margin-inline-start: auto;
+		}
+		.mid,
+		.copy {
+			display: flex;
+		}
+	}
+	@media (min-width: 64rem) {
+		.links {
+			display: flex;
+		}
+	}
+	@media (max-width: 899px), (pointer: coarse) {
+		.get,
+		.copy {
+			height: 2.75rem;
+		}
+	}
+</style>
