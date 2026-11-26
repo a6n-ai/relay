@@ -12,6 +12,7 @@ import { ChoiceField } from "../../components/form/choice-field";
 import { FilterMenu } from "../../components/page/filter-menu";
 import { LoadMore } from "../../components/page/load-more";
 import { TableSkeleton } from "../../components/page/table-skeleton";
+import { Hint } from "../../components/page/text";
 import { SearchInput, Toolbar } from "../../components/page/toolbar";
 import { useUrlFilter } from "../../components/page/use-url-filter";
 import { PageHeader } from "../../components/shell/page-header";
@@ -80,7 +81,7 @@ function SuppressionsPage() {
         search={<PrefixSearch />}
         filters={
           <FilterMenu
-            facets={[{ key: "stream", label: "Stream", options: STREAM_FILTERS.map((s) => ({ value: s, label: s === "all" ? "All streams" : streamLabel(s) })) }]}
+            facets={[{ key: "stream", label: "Stream", options: STREAM_FILTERS.map((s) => ({ value: s, label: s === "all" ? "Any stream" : streamLabel(s) })) }]}
             value={search}
             onChange={(next) => void navigate({ to: ".", search: next as never })}
           />
@@ -92,6 +93,11 @@ function SuppressionsPage() {
           </CreateDialog>
         ) : null}
       </Toolbar>
+      {search.stream ? (
+        <Hint>
+          Showing {search.stream === "all" ? "all-stream" : search.stream} suppressions on this page only. Use Show older to see more.
+        </Hint>
+      ) : null}
       <ResourceTable
         columns={[
           { header: "Email", cell: (s) => s.email },
@@ -110,7 +116,7 @@ function SuppressionsPage() {
         rows={rows}
         offset={offset}
         rowKey={(s) => s.email}
-        empty="No suppressed addresses match."
+        empty={search.stream && page.nextCursor ? "None on this page" : "No suppressed addresses match."}
         menu={(s) => [{ label: "Remove", onSelect: () => setRemoving(s.email), destructive: true, hidden: !canWrite || OPTED_OUT.has(s.reason) }]}
       />
       <ConfirmDialog
