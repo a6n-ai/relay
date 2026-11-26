@@ -168,7 +168,7 @@ export function AppShell({ shell, find, children }: { shell: Shell; find?: React
       </Sidebar>
       <SidebarInset>
         {shell.active?.status === "suspended" ? <SuspendedBanner /> : null}
-        {children}
+        <div className="[&>:not(header)]:mx-auto [&>:not(header)]:w-full [&>:not(header)]:max-w-6xl">{children}</div>
       </SidebarInset>
     </SidebarProvider>
   );

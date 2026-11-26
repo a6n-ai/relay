@@ -53,7 +53,7 @@ export function FindPalette({ shell }: { shell: Shell }) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="flex h-8 w-full items-center gap-2 rounded-full border bg-sidebar px-3 text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+        className="flex h-8 w-full items-center gap-2 rounded-(--ui-radius-control) border bg-sidebar px-3 text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
       >
         <SearchIcon className="size-4" />
         <span className="flex-1 text-left">Find</span>
