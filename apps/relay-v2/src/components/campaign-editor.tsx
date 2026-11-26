@@ -217,7 +217,7 @@ export function CampaignEditor({
                 value={from}
                 onChange={setFrom}
                 emptyAction={
-                  <Link to="/domains" search={{ new: undefined, q: undefined }} className="text-sm underline">
+                  <Link to="/domains" search={{ new: undefined, q: undefined, status: undefined }} className="text-sm underline">
                     Add a sender address
                   </Link>
                 }

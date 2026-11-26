@@ -256,7 +256,7 @@ function DefaultSendersPanel({ appId, senders, canWrite }: { appId: string; send
         <div className="grid gap-2">
           <Hint>Add a sender address first.</Hint>
           <div>
-            <Button variant="outline" render={<Link to="/domains" search={{ new: undefined, q: undefined }} />}>
+            <Button variant="outline" render={<Link to="/domains" search={{ new: undefined, q: undefined, status: undefined }} />}>
               Add address
             </Button>
           </div>
