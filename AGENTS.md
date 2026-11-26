@@ -1,17 +1,18 @@
 ## Learned User Preferences
 
-- Relay follows `DESIGN.md` at the repo root (Linear design language, owner 2026-11-10). Read it before any UI change; it beats every older note here. Never TiffinGrab orange/cream.
-- Lavender `#5e6ad2` is the one hue, used generously on interaction and data (actions, active nav, hover/selection tints, focus, charts). Dark is the default theme; light mirrors it.
+- Relay follows `DESIGN.md` at the repo root (Vercel style, owner 2026-11-26; it replaced Linear). Read it before any UI change; it beats every older note here. Never TiffinGrab orange/cream.
+- Monochrome. Primary is foreground on background; colour carries meaning only (blue link and focus ring, green success, amber warning, red destructive). No accent hue. Geist Sans and Geist Mono.
+- Controls and cards are 6px, popups and modals 12px, badges are pills. Buttons use the Foundry default size (no `size="sm"`): one primary per view placed last, outline secondary, ghost tertiary, destructive only in the confirm dialog. Labels are a verb plus a noun.
 - Always reuse: build screens from `components/ds` (Panel, StatusBadge, IconTile, SectionTabs, ListingTable, OperatorSplit…), `@foundry/design-system` and `@foundry/ui`, styled only through tokens. A pattern used twice becomes a component; no one-off class strings on pages. Collection pages use `ListingTable` as a thin adapter over Foundry/Realm `DataTable` + `FilterPill` chips (Beautiful UI Filter Table ref); columnar/sortable grids use `DataTable` directly (Records Table ref). Do not add a second Foundry table primitive. Shadcn Dashboard and beautifului.dev are visual refs only — do not vendor their dumps.
 - Shadcn Dashboard blocks (shadcndashboard.dev) are visual/layout reference only (including Dashboard Shell 03 analytics). Implement with Foundry primitives plus Relay DS; do not vendor dumped `components/ui` or ecommerce dummy blocks as the source of truth.
 - Do not push `.cursor/` MCP/AI config to GitHub.
-- Use semantic design tokens (`bg-primary`, etc.), not raw color utilities. Buttons share one Linear-style full pill radius via tokens (`9999px` / `rounded-full`) on operator UI and public/marketing; inputs and cards stay at the moderate radius.
+- Use semantic design tokens (`bg-primary`, etc.), not raw color utilities, and no per-page colour or radius classes.
 - Use Foundry data-access (`UpdatableRepository`, `SessionUpdatableService`) and `@foundry/routes` for operator CRUD, not ad-hoc Drizzle on those paths.
 - Tenants are consuming apps: monthly send quota, channel-scoped API tokens, and verified tenant senders (unverified From falls back to operator). A tenant domain can mint send-as addresses or Relay inboxes; people IMAP inboxes stay a later roster. Email first; operator SMTP/domains/From live in Settings.
 - Operator chrome must stay non-technical. The sidebar is 8 grouped links (components/ds/nav.ts): Overview: Home, Inbox; Reach people: Campaigns, People; Activity: Sends; Setup: Apps, Channels, Settings. Team lives in Settings → Members. Settings has its own sidebar with Account / Workspace / Apps / Organization groups; Organization holds Clients (`/dashboard/settings/clients`, `super_admin` only). Templates/Automations, Status updates, and the four channels are tabs (SectionTabs) inside the product links. Keep product links at 8 or fewer. Never SMTP, IMAP, webhook, outbox, tenant, POST /v1, Foundry, or skip locked in the UI. Routes and schema keep those names.
 - Operator listings share search plus filter chips (client-side over loaded rows). Empty catalogs stay a plain empty state until there is something to narrow.
-- Collection pages use a shared create/browse split (`OperatorSplit`) and hairline resource rows, not per-page stacked cards. Linear shell: `ViewHeader` title row (~44px breadcrumb + actions) with a view row for `SectionTabs`; `CreateDialog` is top-anchored and closes on successful save with a toast.
-- Public landing (`components/marketing/`) follows Linear.app homepage patterns: Hairline figures with stageshow kit and GSAP ScrollTrigger; figure ground fills match page `--background` (`#0f1011` dark / `#fbfbfc` light).
+- Collection pages use a shared create/browse split (`OperatorSplit`) and hairline resource rows, not per-page stacked cards. Shell: `ViewHeader` title row (~44px breadcrumb + actions) with a view row for `SectionTabs`; `CreateDialog` is top-anchored and closes on successful save with a toast.
+- Public landing (`components/marketing/`): to be redesigned in Vercel style.
 
 ## Learned Workspace Facts
 
