@@ -1,6 +1,36 @@
 ---
 title: Relay documentation
-description: Relay documentation for Relay. Coming soon.
+description: Send email, manage audiences and campaigns, and receive webhooks through one API.
 ---
 
-Coming soon.
+Relay sends your app's email. Call the API to send a message. Use the console to manage the rest: domains, senders, lists and campaigns.
+
+## Start here
+
+- [Quickstart](/docs/quickstart/) takes you from an API key to a first message in Messages.
+- [Concepts](/docs/concepts/) names the pieces: workspace, app, key, sender and stream.
+- [API reference](/docs/api/) lists every endpoint with request and response examples.
+
+## Guides
+
+- **Sending.** [Messages](/docs/sending/messages/), [templates](/docs/sending/templates/), [domains](/docs/sending/domains/), [streams](/docs/sending/streams/) and [limits](/docs/sending/limits/).
+- **Audiences.** [Lists](/docs/audiences/lists/), [contacts](/docs/audiences/contacts/), [consent](/docs/audiences/consent/), [suppressions](/docs/audiences/suppressions/) and the [audience hook](/docs/audiences/audience-hook/).
+- **Campaigns.** [Campaigns](/docs/campaigns/campaigns/), [automations](/docs/campaigns/automations/) and [stats](/docs/campaigns/stats/).
+- **Webhooks.** [Events](/docs/webhooks/events/), [signatures](/docs/webhooks/signatures/) and [retries](/docs/webhooks/retries/).
+- **Help.** [Errors](/docs/help/errors/), [troubleshooting](/docs/help/troubleshooting/) and [support](/docs/help/support/).
+
+## API or console
+
+Some tasks have an HTTP endpoint. Others happen only in the console. Each guide says which.
+
+| Task | Where |
+| --- | --- |
+| Send a message, send a template | API |
+| Lists, contacts, imports and exports | API and console |
+| Campaigns, schedule, pause, resume, cancel, stats | API and console |
+| Webhooks | API and console |
+| Audience hook | API and console |
+| API keys, domains, sender addresses | Console |
+| Suppressions, consent, automations, team | Console |
+
+If your app runs as a Cloudflare Worker, you can also call Relay through a [Worker binding](/docs/worker-binding/).
