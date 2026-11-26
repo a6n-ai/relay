@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { DrizzleQueryError } from "drizzle-orm";
 import { describeError, failureOf, logFailure, recordFailure } from "../src/core/log";
 
 afterEach(() => vi.restoreAllMocks());
@@ -13,6 +14,13 @@ describe("describeError", () => {
   });
 
   it("describes a non-Error throw", () => expect(describeError("boom")).toBe("boom"));
+
+  it("drops the bound values drizzle appends after params:", () => {
+    const err = new DrizzleQueryError("insert into address (email, display_name) values (?, ?)", ["x@y.com", "Jane Doe"], new Error("D1_ERROR: UNIQUE constraint failed: address.email"));
+    const text = describeError(err);
+    expect(text).toBe("Error: Failed query: insert into address (email, display_name) values (?, ?) <- Error: D1_ERROR: UNIQUE constraint failed: address.email");
+    expect(text).not.toContain("Jane");
+  });
 });
 
 describe("logFailure", () => {

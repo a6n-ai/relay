@@ -1,6 +1,14 @@
 import { maskEmails } from "./mask-emails";
 
-// Each error in the cause chain as "Name: message", outermost first. Emails are masked; request bodies are never logged.
+// DrizzleQueryError's message is "Failed query: <sql with ? placeholders>\nparams: <bound values>". The values can hold names,
+// subjects or other row data, so only its `query` is logged. Any other "params:" tail is cut the same way.
+function safeMessage(e: Error): string {
+  const { query } = e as { query?: unknown };
+  if (typeof query === "string" && "params" in e) return `Failed query: ${query}`;
+  return e.message.split(/\s*\bparams:/)[0];
+}
+
+// Each error in the cause chain as "Name: message", outermost first. Emails are masked; bound values and request bodies are never logged.
 export function describeError(err: unknown): string {
   const parts: string[] = [];
   let e: unknown = err;
@@ -9,7 +17,7 @@ export function describeError(err: unknown): string {
       parts.push(String(e));
       break;
     }
-    parts.push(`${e.name}: ${e.message}`);
+    parts.push(`${e.name}: ${safeMessage(e)}`);
     e = e.cause;
   }
   return maskEmails(parts.join(" <- "));
