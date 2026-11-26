@@ -235,7 +235,7 @@ body:has(.admin-ui) {
   font-size: 0.875rem;
   line-height: 1.25rem;
 }
-/* Foundry sizes default controls at h-8; the default size is 36px here. Smaller sizes keep their own class. */
+/* Foundry sizes default controls at h-8; the default size is 36px here. Smaller sizes keep their own class. Recheck this selector when Foundry is upgraded. */
 :is([data-slot="button"], [data-slot="input"], [data-slot="select-trigger"], [data-slot="sidebar-menu-button"]).h-8 {
   height: 2.25rem;
 }
@@ -244,9 +244,12 @@ body:has(.admin-ui) {
 }
 /* The content panel: a bordered, rounded card beside the sidebar on desktop, full-bleed on mobile. */
 @media (min-width: 768px) {
+  .admin-ui {
+    --ui-radius-panel: 1rem;
+  }
   [data-slot="sidebar-inset"] {
     border: 1px solid var(--border);
-    border-radius: 1rem;
+    border-radius: var(--ui-radius-panel);
     box-shadow: none;
     overflow: hidden;
   }

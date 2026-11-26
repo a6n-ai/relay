@@ -14,7 +14,7 @@ export function AddNewMenu() {
   if (items.length === 0) return null;
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger render={<Button />}>
+      <DropdownMenuTrigger render={<Button variant="outline" />}>
         Add New
         <ChevronDown aria-hidden />
       </DropdownMenuTrigger>
@@ -22,7 +22,7 @@ export function AddNewMenu() {
         {items.map((c) => (
           <DropdownMenuItem
             key={c.id}
-            render={<Link to={c.to as string} search={((prev: Record<string, unknown>) => withNew(prev, c.new)) as never} />}
+            render={<Link to={c.to} search={((prev: Record<string, unknown>) => withNew(prev, c.new)) as never} />}
           >
             {c.label}
           </DropdownMenuItem>

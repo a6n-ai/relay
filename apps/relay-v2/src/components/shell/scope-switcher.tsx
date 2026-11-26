@@ -11,7 +11,7 @@ import { createItems } from "./nav";
 import { effectiveApp, scopeLabel, scopeSearch, showsAllApps } from "./scope";
 
 const row =
-  "flex h-8 items-center justify-between gap-2 rounded-md px-2 text-sm transition-colors hover:bg-muted focus-visible:bg-muted outline-none";
+  "flex h-9 items-center justify-between gap-2 rounded-md px-2 text-sm hover:bg-muted focus-visible:bg-muted outline-none";
 
 export function ScopeSwitcher() {
   const { shell } = useRouteContext({ from: "/_app" });

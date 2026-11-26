@@ -25,7 +25,7 @@ typography:
   sans: "Geist Sans"           # --font-sans and --font-heading
   mono: "Geist Mono"           # ids, keys, code, shortcuts (--font-mono)
   body: { size: 14px, weight: 400 }
-  table: { size: 13px }
+  table: { size: 14px }
   caption: { size: 12px }
   badge: { size: 11px, weight: 500 }
 
@@ -60,20 +60,20 @@ Foundry ships the shapes. Only `<body>` carries `admin-ui` (`apps/relay-v2/src/r
 ## Type
 
 - Geist Sans for all UI text and headings, Geist Mono for ids, keys and code. Both are self-hosted.
-- Body is 14px, table text 13px, captions 12px, badges 11px at weight 500.
+- Body is 14px, table text 14px, captions 12px, badges 11px at weight 500.
 - Headings use weight 600 with slight negative tracking.
 
 ## Shape
 
-- Controls and cards are 6px. Popups and modals are 12px.
+- Controls and cards are 6px. Popups and modals are 12px. The framed content panel is 16px (`--ui-radius-panel` in `styles.css`).
 - Badges are pills, 20px tall, one tone fill with tone text and no border. Pass the tone through `--ui-badge-tone`.
 - Tables sit in a bordered, rounded frame with a muted header row. The frame is inset to the page padding so it lines up with the toolbar. Loading skeletons and the empty state render inside the same frame, so loading, empty and full do not jump.
 - The page body is centred at a max width of 72rem (1152px) by a grid in `app-shell.tsx`. The header (scope row and tabs) stays full width, and dialogs, sheets and popovers keep their own width.
 
 ## Buttons
 
-- Size is the Foundry default, 32px. No `size="sm"`. Icon buttons use `icon`, not `icon-sm`.
-- Primary: one per view, placed last.
+- Size is the Foundry default, 36px. No `size="sm"`. Icon buttons use `icon`, not `icon-sm`.
+- Primary: one per view, placed last. The global `Add New` menu in the scope row is the one exception to filled: it is outline, so the page's primary stays the single filled button.
 - Outline: secondary actions.
 - Ghost: tertiary actions such as Cancel, Back and icon buttons.
 - Destructive: only inside `confirm-dialog.tsx`.
@@ -83,8 +83,8 @@ Foundry ships the shapes. Only `<body>` carries `admin-ui` (`apps/relay-v2/src/r
 
 - **Sidebar** (`app-shell.tsx`, `shell/nav.ts`): 256px, 36px items at 14px, at most 8 top-level links in quiet groups, no sub-items. The active link is a grey tint with foreground text. Order: workspace switcher, Find (F), nav, account. It collapses to an icon rail and never holds settings or tabs.
 - **Framed panel**: the content is a bordered, rounded (16px) panel inset beside the sidebar on desktop (`variant="inset"`, rule in `styles.css`) and full-bleed on mobile.
-- **Dialogs and forms**: creating something happens in a dialog over the list (`CreateDialog`), never in a side column. Fields are 32px. Focus ring is blue.
-- **Page header** (`PageHeader`): no breadcrumb. A 56px scope row (app scope switcher on app-scoped pages, or a back link on detail pages; `Add New` menu on the right, gated by role through `createItems`), then `SectionTabs` (grey fill on the active tab, 14px) where the section has them (Messages, Campaigns, Settings, app detail), then `PageTitle`: 32px semibold tight title, a one-line 16px muted description (`shell/page-copy.ts`), actions on the right. Every route renders it first. Add New items open the page's create dialog through `?new=1` (`?new=address` for addresses).
+- **Dialogs and forms**: creating something happens in a dialog over the list (`CreateDialog`), never in a side column. Fields are 36px. Focus ring is blue.
+- **Page header** (`PageHeader`): no breadcrumb. A 56px scope row (app scope switcher on app-scoped pages, a back link on detail pages, otherwise the workspace name as plain text; `Add New` menu on the right, gated by role through `createItems`), then `SectionTabs` (grey fill on the active tab, 14px) where the section has them (Messages, Campaigns, Settings, app detail), then `PageTitle`: 32px semibold tight title, a one-line 16px muted description (`shell/page-copy.ts`), actions on the right. Every route renders it first. Add New items open the page's create dialog through `?new=1` (`?new=address` for addresses).
 - **Type scale**: body and table text 14px, card titles 20px semibold, controls 36px, table rows 40px; set in the `styles.css` token block, never per page.
 - **Lists** (`ResourceTable` in a `Toolbar` page): the empty state names the next action. No row stagger on filter or search.
 - **Feedback**: route `pendingComponent` with the skeleton that matches the page (`ListSkeleton`, `CardsSkeleton`, `FormSkeleton`, `DetailSkeleton`) for waits, toasts only for results that leave the screen.

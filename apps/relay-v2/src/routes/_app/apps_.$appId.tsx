@@ -77,11 +77,8 @@ function AppPage() {
 
   return (
     <>
-      <PageHeader crumbs={[{ label: "Apps", to: "/apps" }, { label: app.name }]} />
+      <PageHeader crumbs={[{ label: "Apps", to: "/apps" }, { label: app.name }]} description="Details and API keys for this app." />
       <Toolbar>
-        <Button variant="outline" render={<Link to="/apps/$appId/webhooks" params={{ appId: app.id }} />}>
-          Webhooks
-        </Button>
         {canWrite ? (
           <CreateDialog trigger="Create key" title="New API key" open={keyOpen} onOpenChange={setKeyOpen}>
             {(done, lock) => <NewKeyForm appId={app.id} first={keys.length === 0} done={done} lock={lock} />}

@@ -20,6 +20,7 @@ export function PageHeader({ crumbs, badge, actions, description }: { crumbs: Cr
   const label = crumbs[last]?.label;
   const section = sectionTabs(shell.active?.roles ?? [], pathname, search as Record<string, unknown>);
   const title = section?.title ?? label;
+  const tab = section?.tabs.find((t) => t.id === section.active)?.label;
   const parent = section?.title ? undefined : crumbs[last - 1];
 
   useEffect(() => {
@@ -34,6 +35,7 @@ export function PageHeader({ crumbs, badge, actions, description }: { crumbs: Cr
             <SidebarTrigger size="icon" className="md:hidden" />
             {parent?.to ? (
               <Link
+                aria-label={`Back to ${parent.label}`}
                 to={parent.to as string}
                 params={parent.params as never}
                 search={parent.search as never}
@@ -44,13 +46,15 @@ export function PageHeader({ crumbs, badge, actions, description }: { crumbs: Cr
               </Link>
             ) : isAppScoped(pathname) ? (
               <ScopeSwitcher />
-            ) : null}
+            ) : (
+              <span className="truncate px-2 text-base font-medium">{shell.active?.name}</span>
+            )}
           </div>
           <AddNewMenu />
         </div>
         {section ? <SectionTabs tabs={section.tabs} active={section.active} appId={appId} /> : null}
       </header>
-      {title ? <PageTitle title={title} description={description ?? PAGE_COPY[title]} badge={badge} actions={actions} /> : null}
+      {title ? <PageTitle title={title} description={description ?? PAGE_COPY[tab ?? title] ?? PAGE_COPY[title]} badge={badge} actions={actions} /> : null}
     </>
   );
 }

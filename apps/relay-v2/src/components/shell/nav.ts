@@ -8,6 +8,7 @@ import Megaphone from "lucide-react/icons/megaphone";
 import Settings from "lucide-react/icons/settings";
 import Shield from "lucide-react/icons/shield";
 import type { OrgRole } from "../../console/actor";
+import type { FileRouteTypes } from "../../routeTree.gen";
 import { allows } from "../../lib/auth/permissions";
 
 export type NavLeaf = {
@@ -19,7 +20,7 @@ export type NavLeaf = {
 };
 export type NavItem = NavLeaf & { icon: LucideIcon; children?: NavLeaf[] };
 export type NavGroup = { id: "work" | "setup" | "platform"; items: NavItem[] };
-export type CreateItem = { id: string; label: string; to: string; new: 1 | "address"; need: Record<string, string[]> };
+export type CreateItem = { id: string; label: string; find?: string; to: FileRouteTypes["to"]; new: 1 | "address"; need: Record<string, string[]> };
 
 export const NAV: NavGroup[] = [
   {
@@ -87,7 +88,7 @@ const CREATE: CreateItem[] = [
   { id: "list", label: "List", to: "/lists", new: 1, need: { list: ["write"] } },
   { id: "template", label: "Template", to: "/campaigns/templates", new: 1, need: { template: ["write"] } },
   { id: "automation", label: "Automation", to: "/campaigns/automations", new: 1, need: { campaign: ["send"] } },
-  { id: "invite", label: "Invite member", to: "/settings/invites", new: 1, need: { invitation: ["create"] } },
+  { id: "invite", label: "Invite member", find: "Invite a member", to: "/settings/invites", new: 1, need: { invitation: ["create"] } },
 ];
 
 const permitted = (roles: OrgRole[], need?: Record<string, string[]>) => !need || allows(roles, need);
