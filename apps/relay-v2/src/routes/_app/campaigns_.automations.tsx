@@ -333,7 +333,9 @@ function AutomationForm({
   const noTemplates = choices !== null && templateOptions.length === 0;
   return (
     <FormBody onSubmit={submit}>
-      {automation ? null : (
+      {automation ? (
+        <FixedField label="App" value={apps.find((a) => a.id === app)?.name ?? "—"} hint="To use another app, create a new automation there." />
+      ) : (
         <AppField
           apps={apps}
           scopedAppId={scopedAppId}

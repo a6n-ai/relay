@@ -124,7 +124,7 @@ function FailuresPage() {
         }}
         title={target ? `Delete the message to ${target.envelopeTo}?` : "Delete this message?"}
         description="The message is removed and will not be retried."
-        confirmLabel="Delete"
+        confirmLabel="Delete message"
         onConfirm={async () => {
           if (deleting) await remove(deleting);
         }}

@@ -4,6 +4,7 @@ import { Label } from "@foundry/ui/label";
 import { toast } from "@foundry/ui/toast";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
+import { FixedField } from "../../components/form/fixed-field";
 import { errorText } from "../../components/error-text";
 import { FormError } from "../../components/page/form-parts";
 import { SettingsCard } from "../../components/page/settings-card";
@@ -15,7 +16,7 @@ export const Route = createFileRoute("/_app/settings")({
   component: GeneralPage,
 });
 
-function WorkspaceNameCard({ name: current }: { name: string }) {
+function WorkspaceNameCard({ name: current, slug }: { name: string; slug: string }) {
   const router = useRouter();
   const canRename = useCan({ organization: ["update"] });
   const [name, setName] = useState(current);
@@ -41,7 +42,7 @@ function WorkspaceNameCard({ name: current }: { name: string }) {
   return (
     <SettingsCard
       title="Workspace name"
-      description="The name shown in the workspace switcher. The slug can't be changed."
+      description="The name shown in the workspace switcher."
       action={
         canRename ? (
           <Button type="submit" form="workspace-name-form" variant="outline" disabled={pending || !next || next === current}>
@@ -55,6 +56,7 @@ function WorkspaceNameCard({ name: current }: { name: string }) {
           Workspace name
         </Label>
         <Input id="workspace-name" required maxLength={80} readOnly={!canRename} value={name} onChange={(e) => setName(e.target.value)} />
+        <FixedField label="Slug" value={slug} hint="Create a new workspace to use a different address." />
         <FormError message={error} />
       </form>
     </SettingsCard>
@@ -76,7 +78,7 @@ function GeneralPage() {
             tone="danger"
           />
         ) : null}
-        {active ? <WorkspaceNameCard key={`${active.id}-${active.name}`} name={active.name} /> : null}
+        {active ? <WorkspaceNameCard key={`${active.id}-${active.name}`} name={active.name} slug={active.slug} /> : null}
       </div>
     </>
   );

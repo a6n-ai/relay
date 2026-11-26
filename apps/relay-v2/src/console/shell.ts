@@ -8,7 +8,7 @@ import { type OrgRole, parseRoles, requireSession } from "./actor";
 export type Shell = {
   user: { id: string; email: string; name: string };
   platformAdmin: boolean;
-  active: { id: string; name: string; status: "active" | "suspended"; roles: OrgRole[] } | null;
+  active: { id: string; name: string; slug: string; status: "active" | "suspended"; roles: OrgRole[] } | null;
   workspaces: { id: string; name: string }[];
   apps: { id: string; name: string }[];
 };
@@ -20,7 +20,7 @@ export async function loadShell(env: Env, headers: Headers, setCookies: string[]
   const db = securityDb(env);
   const [u] = await db.select({ id: user.id, email: user.email, name: user.name }).from(user).where(eq(user.id, userId));
   const memberships = await db
-    .select({ id: workspace.id, name: workspace.name, status: workspace.status, role: member.role })
+    .select({ id: workspace.id, name: workspace.name, slug: workspace.slug, status: workspace.status, role: member.role })
     .from(member)
     .innerJoin(workspace, eq(workspace.id, member.organizationId))
     .where(eq(member.userId, userId))
@@ -51,7 +51,7 @@ export async function loadShell(env: Env, headers: Headers, setCookies: string[]
   return {
     user: u,
     platformAdmin,
-    active: current && { id: current.id, name: current.name, status: current.status, roles: parseRoles(current.role) },
+    active: current && { id: current.id, name: current.name, slug: current.slug, status: current.status, roles: parseRoles(current.role) },
     workspaces: memberships.map(({ id, name }) => ({ id, name })),
     apps,
   };

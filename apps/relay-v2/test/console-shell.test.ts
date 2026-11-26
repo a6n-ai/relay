@@ -216,6 +216,16 @@ describe("shell apps", { timeout: 60_000 }, () => {
     expect(Object.keys(shell.apps[0]).sort()).toEqual(["id", "name"]);
   });
 
+  it("exposes the active workspace's slug", async () => {
+    const owner = await cookieFor("slug-shell-owner@example.com", "admin");
+    const wsId = await createWorkspace(owner, "Slug Shell Co");
+    await setActive(owner, wsId);
+    const [row] = await db.select().from(workspace).where(eq(workspace.id, wsId));
+    const shell = await loadShell(env, headersFor(owner));
+    expect(shell.active?.slug).toBe(row.slug);
+    expect(row.slug).toBeTruthy();
+  });
+
   it("never lists another workspace's apps", async () => {
     const owner = await cookieFor("apps-shell-other-owner@example.com", "admin");
     const wsId = await createWorkspace(owner, "Apps Shell Mine");

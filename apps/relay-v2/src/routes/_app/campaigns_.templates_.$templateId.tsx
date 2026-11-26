@@ -10,6 +10,7 @@ import { ConfirmDialog } from "../../components/confirm-dialog";
 import { ContentFields, type ContentValue } from "../../components/content-fields";
 import { DeniedState, deniedReason } from "../../components/denied-state";
 import { errorText, isNotFound } from "../../components/error-text";
+import { FixedField } from "../../components/form/fixed-field";
 import { SettingsCard } from "../../components/page/settings-card";
 import { Toolbar } from "../../components/page/toolbar";
 import { PageHeader } from "../../components/shell/page-header";
@@ -58,12 +59,12 @@ function TemplatePage() {
   return (
     <>
       <PageHeader crumbs={crumbs(page.appId, page.name)} />
-      <TemplateForm template={page} canWrite={canWrite} />
+      <TemplateForm template={page} canWrite={canWrite} appName={shell.apps.find((a) => a.id === page.appId)?.name ?? "—"} />
     </>
   );
 }
 
-function TemplateForm({ template, canWrite }: { template: TemplateView; canWrite: boolean }) {
+function TemplateForm({ template, canWrite, appName }: { template: TemplateView; canWrite: boolean; appName: string }) {
   const router = useRouter();
   const navigate = useNavigate();
   const [name, setName] = useState(template.name);
@@ -139,6 +140,7 @@ function TemplateForm({ template, canWrite }: { template: TemplateView; canWrite
         <form id="template-form" onSubmit={save} className="grid gap-4">
           <SettingsCard title="Content">
             <FormBody as="div">
+              <FixedField label="App" value={appName} hint="To use another app, create a new template there." />
               <Label htmlFor="template-name-edit">Name</Label>
               <Input id="template-name-edit" value={name} disabled={!canWrite} onChange={(e) => setName(e.target.value)} />
               <ContentFields
@@ -196,7 +198,7 @@ function TemplateForm({ template, canWrite }: { template: TemplateView; canWrite
                 trigger="Delete"
                 title={`Delete ${template.name}?`}
                 description="The template and its body will be removed. This can't be undone."
-                confirmLabel="Delete"
+                confirmLabel="Delete template"
                 onConfirm={remove}
               />
             }

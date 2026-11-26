@@ -66,7 +66,12 @@ function CampaignPage() {
       {page.stats ? (
         <CampaignReport campaign={campaign} stats={page.stats} />
       ) : (
-        <CampaignEditor campaign={campaign} options={page.options} hookReady={page.hookReady} />
+        <CampaignEditor
+          campaign={campaign}
+          options={page.options}
+          hookReady={page.hookReady}
+          appName={shell.apps.find((a) => a.id === campaign.appId)?.name ?? "—"}
+        />
       )}
     </>
   );

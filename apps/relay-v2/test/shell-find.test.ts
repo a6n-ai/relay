@@ -6,7 +6,7 @@ import { findEntries, pushRecent, readRecent } from "../src/components/shell/fin
 const shell = (roles: OrgRole[], over: Partial<Shell> = {}): Shell => ({
   user: { id: "u", email: "u@x.co", name: "U" },
   platformAdmin: false,
-  active: { id: "w", name: "W", status: "active", roles },
+  active: { id: "w", name: "W", slug: "w", status: "active", roles },
   workspaces: [{ id: "w", name: "W" }],
   apps: [{ id: "a1", name: "Alpha" }, { id: "a2", name: "Beta" }],
   ...over,
@@ -28,7 +28,7 @@ describe("findEntries", () => {
   });
 
   it("suspended workspace has no actions", () => {
-    const entries = findEntries(shell(["owner"], { active: { id: "w", name: "W", status: "suspended", roles: ["owner"] } }));
+    const entries = findEntries(shell(["owner"], { active: { id: "w", name: "W", slug: "w", status: "suspended", roles: ["owner"] } }));
     expect(entries.some((e) => e.group === "Actions")).toBe(false);
   });
 });

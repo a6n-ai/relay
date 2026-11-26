@@ -211,7 +211,7 @@ function ManageSheet({ w, run, confirm }: { w: Workspace; run: Run; confirm: (ac
                 ? "Suspended workspaces can't send or change settings. They still receive mail."
                 : "The workspace can send and change settings again."
             }
-            confirmLabel={suspend ? "Suspend" : "Resume"}
+            confirmLabel={suspend ? "Suspend workspace" : "Resume workspace"}
             destructive={suspend}
             onConfirm={() =>
               confirm(

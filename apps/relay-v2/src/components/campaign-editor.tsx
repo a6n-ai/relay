@@ -30,6 +30,7 @@ import { UnsavedGuard } from "./unsaved-guard";
 import { useCan } from "./use-can";
 import { FormError, FormActions, FormPanel, FormBody } from "./page/form-parts";
 import { Hint } from "./page/text";
+import { FixedField } from "./form/fixed-field";
 
 export type CampaignOptions = { senders: string[]; lists: ListView[]; postalAddress: string | null };
 
@@ -37,10 +38,12 @@ export function CampaignEditor({
   campaign,
   options,
   hookReady,
+  appName,
 }: {
   campaign: CampaignView;
   options: CampaignOptions;
   hookReady: boolean;
+  appName: string;
 }) {
   const router = useRouter();
   const navigate = useNavigate();
@@ -210,6 +213,7 @@ export function CampaignEditor({
           <FormBody as="div">
             <Label htmlFor="campaign-name">Name</Label>
             <Input id="campaign-name" required maxLength={80} value={name} disabled={!canWrite} onChange={(e) => setName(e.target.value)} />
+            <FixedField label="App" value={appName} hint="To use another app, create a new campaign there." />
             {canWrite ? (
               <SenderField
                 id="campaign-from"
@@ -332,7 +336,7 @@ export function CampaignEditor({
                 trigger="Delete"
                 title={`Delete ${campaign.name}?`}
                 description="The draft and its body will be removed. This can't be undone."
-                confirmLabel="Delete"
+                confirmLabel="Delete campaign"
                 onConfirm={remove}
               />
             }

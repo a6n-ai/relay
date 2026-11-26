@@ -35,6 +35,8 @@ import {
 import { setAudienceBindingFn } from "../../console/admin.fns";
 import { formatDate, formatWhen } from "../../lib/format-date";
 import { FormError, FormBody, FormActions } from "../../components/page/form-parts";
+import { UnsavedGuard } from "../../components/unsaved-guard";
+import { RenameForm } from "../../components/form/rename-form";
 import { Hint } from "../../components/page/text";
 
 export const Route = createFileRoute("/_app/apps_/$appId")({
@@ -135,7 +137,7 @@ function AppPage() {
           if (!o) setRenameId(null);
         }}
       >
-        {(done) => (renaming ? <RenameKeyForm key={renaming.id} id={renaming.id} name={renaming.name ?? ""} done={done} /> : null)}
+        {(done) => (renaming ? <RenameForm key={renaming.id} id="key-rename" noun="Key" initial={renaming.name ?? ""} hint="Only the name changes. The key itself keeps working." save={(name) => renameKeyFn({ data: { id: renaming.id, name } })} done={done} /> : null)}
       </CreateDialog>
       <ConfirmDialog
         open={revokeId !== null}
@@ -189,6 +191,7 @@ function AppDetailsPanel({ appId, name, slug, canWrite }: { appId: string; name:
       }
     >
       <FormBody id="app-details-form" onSubmit={save}>
+        <UnsavedGuard when={dirty} />
         <Label htmlFor="app-name">Name</Label>
         <Input id="app-name" required maxLength={80} value={value} disabled={!canWrite} onChange={(e) => setValue(e.target.value)} />
         <FixedField label="Slug" value={slug} hint="Create a new app to use a different slug." />
@@ -263,6 +266,7 @@ function DefaultSendersPanel({ appId, senders, canWrite }: { appId: string; send
         </div>
       ) : (
         <FormBody id="default-senders-form" onSubmit={save}>
+          <UnsavedGuard when={dirty} />
           {only !== NONE && savedTransactional === NONE && savedMarketing === NONE ? (
             <Hint size="xs">This app has one sender address, so it is selected for both. Save to keep it.</Hint>
           ) : null}
@@ -328,20 +332,13 @@ function AudiencePanel({
   // The server only generates a secret on first save, so a rotation sends a fresh one and shows it here.
   // url and enabled are required by the save, so they come from a fresh read, not the loader data.
   async function rotate() {
-    try {
-      const current = await fetchAudienceHook({ data: { appId } });
-      if (!current?.url) {
-        toast.error("Save the audience settings first.");
-        return;
-      }
-      const fresh = Array.from(crypto.getRandomValues(new Uint8Array(32)), (b) => b.toString(16).padStart(2, "0")).join("");
-      await setAudienceHookFn({ data: { appId, url: current.url, secret: fresh, enabled: current.enabled } });
-      setSecret(fresh);
-      toast.success("Secret rotated");
-      await router.invalidate();
-    } catch (err) {
-      toast.error(errorText(err));
-    }
+    const current = await fetchAudienceHook({ data: { appId } });
+    if (!current?.url) throw new Error("Save the audience settings first.");
+    const fresh = Array.from(crypto.getRandomValues(new Uint8Array(32)), (b) => b.toString(16).padStart(2, "0")).join("");
+    await setAudienceHookFn({ data: { appId, url: current.url, secret: fresh, enabled: current.enabled } });
+    setSecret(fresh);
+    toast.success("Secret rotated");
+    await router.invalidate();
   }
 
   async function connectBinding() {
@@ -360,7 +357,7 @@ function AudiencePanel({
             trigger="Remove"
             title={`Remove the App audience${hook?.url ? ` for ${hostOf(hook.url)}` : ""}?`}
             description="Campaigns that use it can't reach their audience until you connect one again."
-            confirmLabel="Remove"
+            confirmLabel="Remove audience"
             onConfirm={remove}
           />
         ) : null}
@@ -378,7 +375,7 @@ function AudiencePanel({
             trigger={`Connect ${BINDING_NAME}`}
             title="Connect this audience?"
             description="Campaigns in this app will reach the connected app's customers. This replaces any Audience URL."
-            confirmLabel="Connect"
+            confirmLabel="Connect audience"
             destructive={false}
             onConfirm={connectBinding}
           />
@@ -402,6 +399,7 @@ function AudiencePanel({
         <p className="text-sm">Connected by Relay</p>
       ) : (
         <FormBody id="audience-form" onSubmit={save}>
+          <UnsavedGuard when={dirty} />
           <Label htmlFor="audience-url">Audience URL</Label>
           <Input
             id="audience-url"
@@ -467,46 +465,6 @@ function NewKeyForm({ appId, first, done, lock }: { appId: string; first: boolea
       <Hint size="xs">Pick a name you will recognise later, such as Production or Staging.</Hint>
       <FormError message={error} />
       <FormActions cancel submitLabel="Create key" pending={pending} pendingLabel="Creating…" />
-    </FormBody>
-  );
-}
-
-function RenameKeyForm({ id, name, done }: { id: string; name: string; done: () => void }) {
-  const router = useRouter();
-  const [value, setValue] = useState(name);
-  const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
-  const dirty = value.trim() !== name;
-
-  async function submit(event: FormEvent) {
-    event.preventDefault();
-    if (!dirty || !value.trim()) return;
-    setPending(true);
-    setError(null);
-    try {
-      await renameKeyFn({ data: { id, name: value.trim() } });
-      toast.success("Key renamed");
-      done();
-      await router.invalidate();
-    } catch (err) {
-      setError(errorText(err, "Could not rename the key."));
-    } finally {
-      setPending(false);
-    }
-  }
-
-  return (
-    <FormBody onSubmit={submit}>
-      <Label htmlFor="key-rename">Name</Label>
-      <Input id="key-rename" required autoFocus maxLength={80} value={value} onChange={(e) => setValue(e.target.value)} />
-      <Hint size="xs">Only the name changes. The key itself keeps working.</Hint>
-      <FormError message={error} />
-      <FormActions
-        cancel
-        submitLabel="Save name"
-        pending={pending || !dirty || !value.trim()}
-        pendingLabel={pending ? "Saving…" : "Save name"}
-      />
     </FormBody>
   );
 }
