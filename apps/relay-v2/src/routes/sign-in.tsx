@@ -185,7 +185,7 @@ function SignIn() {
           <InputOTP autoFocus maxLength={6} pattern="digits" value={otp} onChange={setOtp} onComplete={verify} aria-label="Sign-in code">
             <InputOTPGroup className="w-full">
               {[0, 1, 2, 3, 4, 5].map((i) => (
-                <InputOTPSlot key={i} index={i} className="h-11 flex-1" />
+                <InputOTPSlot key={i} index={i} className="h-11 flex-1 bg-background text-base" />
               ))}
             </InputOTPGroup>
           </InputOTP>
