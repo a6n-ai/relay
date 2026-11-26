@@ -91,7 +91,7 @@ function MembersPage() {
             hidden: !canManage || (!ownerActor && m.roles.includes("owner")),
             onSelect: () => setChanging(m.id),
           },
-          { label: "Remove", destructive: true, hidden: !canRemove, onSelect: () => setRemoving(m.id) },
+          { label: "Remove member", destructive: true, hidden: !canRemove, onSelect: () => setRemoving(m.id) },
         ]}
       />
       {changingMember ? (

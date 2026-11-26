@@ -29,6 +29,8 @@ export function WebhookUrlField({ value, onChange, hint = "Use a public https://
 }
 
 export function WebhookEventsField({ value, onChange }: { value: WebhookEvent[]; onChange: (events: WebhookEvent[]) => void }) {
+  // One event cannot be unticked, so it is stated instead of offered as a choice.
+  if (WEBHOOK_EVENT_LIST.length < 2) return <Hint>Calls your URL when a letter arrives.</Hint>;
   return (
     <fieldset className="grid gap-2">
       <SectionTitle as="legend">Events</SectionTitle>

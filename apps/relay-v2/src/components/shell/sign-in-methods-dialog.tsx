@@ -49,7 +49,7 @@ export function SignInMethodsDialog({ onOpenChange }: { onOpenChange: (open: boo
           <Hint size="xs">Email code is always available.</Hint>
           <p className="text-sm">{linked === null ? "Checking Google…" : linked ? "Google is linked to your account." : "Google is not linked."}</p>
           <FormError message={error} />
-          <FormActions cancel>
+          <FormActions cancel cancelLabel="Close">
             {linked === false ? (
               <Button type="button" onClick={linkGoogle} disabled={pending}>
                 Link Google

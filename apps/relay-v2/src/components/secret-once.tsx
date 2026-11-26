@@ -12,7 +12,7 @@ export function SecretOnce({ secret, label, onDone }: { secret: string; label: s
       <SectionTitle as="p">{label}</SectionTitle>
       <code className="break-all rounded-md bg-muted p-3 font-mono text-sm">{secret}</code>
       <Hint>Copy this now. It won't be shown again.</Hint>
-      <FormError message={copyFailed ? "Copy failed, select the key" : null} />
+      <FormError message={copyFailed ? "Copy failed. Select the text and copy it." : null} />
       <FormActions>
         <Button
           type="button"

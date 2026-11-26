@@ -41,6 +41,7 @@ import { Route as AppMessagesSuppressionsRouteImport } from './routes/_app/messa
 import { Route as AppSettingsInvitesRouteImport } from './routes/_app/settings_.invites'
 import { Route as AppSettingsMembersRouteImport } from './routes/_app/settings_.members'
 import { Route as AppSettingsTeamsRouteImport } from './routes/_app/settings_.teams'
+import { Route as AppWorkspacesNewRouteImport } from './routes/_app/workspaces_.new'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiDevOtpRouteImport } from './routes/api/dev/otp'
 import { Route as ApiInternalDoSweepRouteImport } from './routes/api/internal/do-sweep'
@@ -234,6 +235,11 @@ const AppSettingsMembersRoute = AppSettingsMembersRouteImport.update({
 const AppSettingsTeamsRoute = AppSettingsTeamsRouteImport.update({
   id: '/settings_/teams',
   path: '/settings/teams',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppWorkspacesNewRoute = AppWorkspacesNewRouteImport.update({
+  id: '/workspaces_/new',
+  path: '/workspaces/new',
   getParentRoute: () => AppRoute,
 } as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
@@ -452,6 +458,7 @@ export interface FileRoutesByFullPath {
   '/settings/invites': typeof AppSettingsInvitesRoute
   '/settings/members': typeof AppSettingsMembersRoute
   '/settings/teams': typeof AppSettingsTeamsRoute
+  '/workspaces/new': typeof AppWorkspacesNewRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/dev/otp': typeof ApiDevOtpRoute
   '/api/internal/do-sweep': typeof ApiInternalDoSweepRoute
@@ -520,6 +527,7 @@ export interface FileRoutesByTo {
   '/settings/invites': typeof AppSettingsInvitesRoute
   '/settings/members': typeof AppSettingsMembersRoute
   '/settings/teams': typeof AppSettingsTeamsRoute
+  '/workspaces/new': typeof AppWorkspacesNewRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/dev/otp': typeof ApiDevOtpRoute
   '/api/internal/do-sweep': typeof ApiInternalDoSweepRoute
@@ -590,6 +598,7 @@ export interface FileRoutesById {
   '/_app/settings_/invites': typeof AppSettingsInvitesRoute
   '/_app/settings_/members': typeof AppSettingsMembersRoute
   '/_app/settings_/teams': typeof AppSettingsTeamsRoute
+  '/_app/workspaces_/new': typeof AppWorkspacesNewRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/dev/otp': typeof ApiDevOtpRoute
   '/api/internal/do-sweep': typeof ApiInternalDoSweepRoute
@@ -660,6 +669,7 @@ export interface FileRouteTypes {
     | '/settings/invites'
     | '/settings/members'
     | '/settings/teams'
+    | '/workspaces/new'
     | '/api/auth/$'
     | '/api/dev/otp'
     | '/api/internal/do-sweep'
@@ -728,6 +738,7 @@ export interface FileRouteTypes {
     | '/settings/invites'
     | '/settings/members'
     | '/settings/teams'
+    | '/workspaces/new'
     | '/api/auth/$'
     | '/api/dev/otp'
     | '/api/internal/do-sweep'
@@ -797,6 +808,7 @@ export interface FileRouteTypes {
     | '/_app/settings_/invites'
     | '/_app/settings_/members'
     | '/_app/settings_/teams'
+    | '/_app/workspaces_/new'
     | '/api/auth/$'
     | '/api/dev/otp'
     | '/api/internal/do-sweep'
@@ -1085,6 +1097,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSettingsTeamsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/workspaces_/new': {
+      id: '/_app/workspaces_/new'
+      path: '/workspaces/new'
+      fullPath: '/workspaces/new'
+      preLoaderRoute: typeof AppWorkspacesNewRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/api/auth/$': {
       id: '/api/auth/$'
       path: '/api/auth/$'
@@ -1358,6 +1377,7 @@ interface AppRouteChildren {
   AppSettingsInvitesRoute: typeof AppSettingsInvitesRoute
   AppSettingsMembersRoute: typeof AppSettingsMembersRoute
   AppSettingsTeamsRoute: typeof AppSettingsTeamsRoute
+  AppWorkspacesNewRoute: typeof AppWorkspacesNewRoute
   AppAppsAppIdWebhooksRoute: typeof AppAppsAppIdWebhooksRoute
   AppCampaignsAutomationsAutomationIdRoute: typeof AppCampaignsAutomationsAutomationIdRoute
   AppCampaignsAutomationsNewRoute: typeof AppCampaignsAutomationsNewRoute
@@ -1394,6 +1414,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppSettingsInvitesRoute: AppSettingsInvitesRoute,
   AppSettingsMembersRoute: AppSettingsMembersRoute,
   AppSettingsTeamsRoute: AppSettingsTeamsRoute,
+  AppWorkspacesNewRoute: AppWorkspacesNewRoute,
   AppAppsAppIdWebhooksRoute: AppAppsAppIdWebhooksRoute,
   AppCampaignsAutomationsAutomationIdRoute:
     AppCampaignsAutomationsAutomationIdRoute,

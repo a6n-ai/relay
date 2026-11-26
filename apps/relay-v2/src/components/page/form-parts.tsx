@@ -31,6 +31,7 @@ export function FormActions({
   disabledReason,
   onCancel,
   cancel,
+  cancelLabel = "Cancel",
   ...props
 }: Omit<ComponentProps<"div">, "children"> & {
   children?: React.ReactNode;
@@ -41,6 +42,7 @@ export function FormActions({
   disabledReason?: string;
   onCancel?: () => void;
   cancel?: boolean;
+  cancelLabel?: string; // "Close" when the dialog has nothing to cancel
 }) {
   const reasonId = useId();
   const reason = disabled && !pending ? disabledReason : undefined;
@@ -61,7 +63,7 @@ export function FormActions({
           Cancel
         </Button>
       ) : cancel ? (
-        <DialogClose render={<Button type="button" variant="ghost" />}>Cancel</DialogClose>
+        <DialogClose render={<Button type="button" variant="ghost" />}>{cancelLabel}</DialogClose>
       ) : null}
       {children}
       {submitLabel ? (

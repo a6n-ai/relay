@@ -31,7 +31,7 @@ export function TeamMembersDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{team.name}</DialogTitle>
+          <DialogTitle>Members of {team.name}</DialogTitle>
           <DialogDescription>
             {team.memberIds.length} of {people.length} members in this team.
           </DialogDescription>
@@ -45,7 +45,10 @@ export function TeamMembersDialog({
           <ul className="grid max-h-80 gap-3 overflow-y-auto">
             {shown.map((p) => (
               <li key={p.id} className="flex items-center justify-between gap-3">
-                <span className="text-sm">{p.name}</span>
+                <span className="grid min-w-0">
+                  <span className="truncate text-sm">{p.name}</span>
+                  <Hint as="span" size="xs" className="truncate">{p.email}</Hint>
+                </span>
                 <Switch
                   checked={team.memberIds.includes(p.id)}
                   onCheckedChange={(on) => onToggle(p.id, on)}

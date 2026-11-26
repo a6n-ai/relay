@@ -58,7 +58,7 @@ function WorkspaceNameCard({ name: current, slug }: { name: string; slug: string
     >
       <form id="workspace-name-form" onSubmit={submit} className="grid gap-3">
         <TextField id="workspace-name" label="Workspace name" hideLabel required maxLength={80} readOnly={!canRename} value={name} onChange={(e) => setName(e.target.value)} />
-        <FixedField label="Slug" value={slug} hint="Create a new workspace to use a different address." />
+        <FixedField label="Short name" value={slug} hint="Create a new workspace to use a different address." />
         <FormError message={error} />
       </form>
     </SettingsCard>

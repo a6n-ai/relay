@@ -16,7 +16,8 @@ export const Route = createFileRoute("/_app")({
     if (!shell) throw redirect({ to: "/sign-in", search: { redirect: location.href } });
     // The platform admin page covers every workspace, so an admin with no membership can still open it.
     const platformPage = shell.platformAdmin && location.pathname === "/admin";
-    if (!shell.active && !platformPage) throw redirect({ to: "/no-workspace" });
+    const newWorkspacePage = location.pathname === "/workspaces/new";
+    if (!shell.active && !platformPage && !newWorkspacePage) throw redirect({ to: "/no-workspace" });
     return { shell, landing: false };
   },
   component: AppLayout,

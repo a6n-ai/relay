@@ -8,8 +8,6 @@ import Check from "lucide-react/icons/check";
 import ChevronsUpDown from "lucide-react/icons/chevrons-up-down";
 import { useState } from "react";
 import type { OrgRole } from "../console/actor";
-import { CreateDialog } from "./create-dialog";
-import { NewWorkspaceForm } from "./new-workspace-form";
 
 type Active = { id: string; name: string; status: "active" | "suspended"; roles: OrgRole[] };
 
@@ -18,7 +16,6 @@ const capitalise = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 export function WorkspaceSwitcher({ active, workspaces }: { active: Active | null; workspaces: { id: string; name: string }[] }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
-  const [creating, setCreating] = useState(false);
   const role = active?.roles[0];
 
   async function switchTo(organizationId: string) {
@@ -60,13 +57,10 @@ export function WorkspaceSwitcher({ active, workspaces }: { active: Active | nul
               </DropdownMenuItem>
             ))}
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => setCreating(true)}>New workspace</DropdownMenuItem>
+            <DropdownMenuItem render={<Link to="/workspaces/new" />}>New workspace</DropdownMenuItem>
             <DropdownMenuItem render={<Link to="/settings" />}>Workspace settings</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-        <CreateDialog title="New workspace" open={creating} onOpenChange={setCreating}>
-          {(done) => <NewWorkspaceForm done={done} />}
-        </CreateDialog>
         {error ? <p role="alert" className="px-2 pt-1 text-xs text-destructive">{error}</p> : null}
       </SidebarMenuItem>
     </SidebarMenu>

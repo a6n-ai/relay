@@ -1,12 +1,11 @@
 import { Badge } from "@foundry/ui/badge";
 import { Button } from "@foundry/ui/button";
-import { Input } from "@foundry/ui/input";
-import { Label } from "@foundry/ui/label";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@foundry/ui/sheet";
 import { createFileRoute, notFound, useNavigate, useRouter } from "@tanstack/react-router";
 import { BuildingIcon } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { ConfirmDialog } from "../../components/confirm-dialog";
+import { TextField } from "../../components/form/text-field";
 import { ChoiceControl } from "../../components/form/choice-field";
 import { type Facet } from "../../components/page/filters";
 import { FilterMenu } from "../../components/page/filter-menu";
@@ -79,6 +78,8 @@ function NumberCard({
   min,
   max,
   error,
+  unit,
+  saveLabel,
   onSave,
 }: {
   id: string;
@@ -88,6 +89,8 @@ function NumberCard({
   min: number;
   max?: number;
   error: string;
+  unit: string;
+  saveLabel: string;
   onSave: (value: number) => void;
 }) {
   const [value, setValue] = useState(String(initial));
@@ -105,40 +108,33 @@ function NumberCard({
     onSave(next);
   }
 
+  const unchanged = value === String(initial);
   return (
     <SettingsCard
       title={title}
       description={description}
+      disabledReason={unchanged ? "Change the value to save it." : undefined}
       action={
-        <Button type="submit" form={id} variant="outline" disabled={value === String(initial)}>
-          Save
+        <Button type="submit" form={id} variant="outline" disabled={unchanged}>
+          {saveLabel}
         </Button>
       }
     >
       <form id={id} onSubmit={submit}>
-        <Label htmlFor={`${id}-input`} className="sr-only">
-          {title}
-        </Label>
-        <Input
+        <TextField
           id={`${id}-input`}
+          label={title}
+          hideLabel
           type="number"
           min={min}
           max={max}
           step={1}
+          suffix={unit}
           value={value}
-          aria-invalid={invalid}
-          aria-describedby={invalid ? `${id}-error` : undefined}
-          onChange={(e) => {
-            setValue(e.target.value);
-            setInvalid(false);
-          }}
-          className="w-40"
+          error={invalid ? error : null}
+          onClearError={() => setInvalid(false)}
+          onChange={(e) => setValue(e.target.value)}
         />
-        {invalid ? (
-          <p id={`${id}-error`} role="alert" className="mt-1.5 text-sm text-destructive">
-            {error}
-          </p>
-        ) : null}
       </form>
     </SettingsCard>
   );
@@ -161,7 +157,7 @@ function ManageSheet({ w, run, confirm }: { w: Workspace; run: Run; confirm: (ac
             disabled={!region || region === w.sesRegion}
             onClick={() => run(() => setWorkspaceRegionFn({ data: { workspaceId: w.id, region } }), "Region saved")}
           >
-            Save
+            Save region
           </Button>
         }
       >
@@ -181,6 +177,8 @@ function ManageSheet({ w, run, confirm }: { w: Workspace; run: Run; confirm: (ac
         value={w.quota}
         min={0}
         error="Quota must be a whole number, 0 or more"
+        unit="messages / month"
+        saveLabel="Save quota"
         onSave={(quota) => run(() => setWorkspaceQuotaFn({ data: { workspaceId: w.id, quota } }), "Quota saved")}
       />
       <NumberCard
@@ -192,6 +190,8 @@ function ManageSheet({ w, run, confirm }: { w: Workspace; run: Run; confirm: (ac
         min={1}
         max={10000}
         error="Invites per day must be a whole number from 1 to 10000"
+        unit="invites / day"
+        saveLabel="Save limit"
         onSave={(cap) => run(() => setWorkspaceInviteCapFn({ data: { workspaceId: w.id, cap } }), "Invites per day saved")}
       />
       <SettingsCard
@@ -204,13 +204,9 @@ function ManageSheet({ w, run, confirm }: { w: Workspace; run: Run; confirm: (ac
         tone={suspend ? "danger" : "default"}
         action={
           <ConfirmDialog
-            trigger={suspend ? "Suspend" : "Resume"}
+            trigger={suspend ? "Suspend workspace" : "Resume workspace"}
             title={suspend ? `Suspend ${w.name}?` : `Resume ${w.name}?`}
-            description={
-              suspend
-                ? "Suspended workspaces can't send or change settings. They still receive mail."
-                : "The workspace can send and change settings again."
-            }
+            description={suspend ? "Members lose sending and settings until you resume it." : "Members can send and change settings again."}
             confirmLabel={suspend ? "Suspend workspace" : "Resume workspace"}
             destructive={suspend}
             onConfirm={() =>

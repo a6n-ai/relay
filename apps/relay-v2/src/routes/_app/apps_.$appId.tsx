@@ -81,7 +81,7 @@ function AppPage() {
       <PageHeader crumbs={[{ label: "Apps", to: "/apps" }, { label: app.name }]} description="Details and API keys for this app." />
       <Toolbar>
         {canWrite ? (
-          <CreateDialog trigger="Create key" title="New API key" open={keyOpen} onOpenChange={setKeyOpen}>
+          <CreateDialog trigger="New key" title="New API key" open={keyOpen} onOpenChange={setKeyOpen}>
             {(done, lock) => <NewKeyForm appId={app.id} first={keys.length === 0} done={done} lock={lock} />}
           </CreateDialog>
         ) : null}
@@ -105,8 +105,8 @@ function AppPage() {
             menu={
               canWrite
                 ? (k) => [
-                    { label: "Rename", onSelect: () => setRenameId(k.id) },
-                    { label: "Revoke", destructive: true, hidden: !k.enabled, onSelect: () => setRevokeId(k.id) },
+                    { label: "Rename key", onSelect: () => setRenameId(k.id) },
+                    { label: "Revoke key", destructive: true, hidden: !k.enabled, onSelect: () => setRevokeId(k.id) },
                   ]
                 : undefined
             }

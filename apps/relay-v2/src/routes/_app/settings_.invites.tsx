@@ -61,7 +61,7 @@ function InvitesPage() {
 
   const cancellingInvite = people.invites.find((i) => i.id === cancelling);
   const invite = canInvite ? (
-    <CreateDialog trigger="Invite member" title="Invite a member" open={open} onOpenChange={setOpen}>
+    <CreateDialog trigger="Invite member" title="Invite member" open={open} onOpenChange={setOpen}>
       {(done) => <InviteForm done={done} canGrantOwner={ownerActor} />}
     </CreateDialog>
   ) : null;

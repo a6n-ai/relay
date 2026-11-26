@@ -6,7 +6,6 @@ import { CreateDialog } from "../../components/create-dialog";
 import { DeniedState, deniedReason } from "../../components/denied-state";
 import { EmptyState } from "../../components/page/empty-state";
 import { ListSkeleton } from "../../components/page/page-skeleton";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@foundry/ui/dialog";
 import { Toolbar } from "../../components/page/toolbar";
 import { ResourceTable } from "../../components/resource-table";
 import { confirmAction, runAction } from "../../components/run-action";
@@ -83,7 +82,7 @@ function TeamsPage() {
         }
         menu={(t) => [
           { label: "Rename team", hidden: !canEditTeam, onSelect: () => setRenaming(t.id) },
-          { label: "Members", hidden: !canEditTeam, onSelect: () => setEditing(t.id) },
+          { label: "Manage members", hidden: !canEditTeam, onSelect: () => setEditing(t.id) },
           { label: "Delete team", destructive: true, hidden: !canDeleteTeam, onSelect: () => setDeleting(t.id) },
         ]}
       />
@@ -98,12 +97,9 @@ function TeamsPage() {
           }
         />
       ) : null}
-      <Dialog open={renamingTeam !== undefined} onOpenChange={(o) => !o && setRenaming(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Rename team</DialogTitle>
-          </DialogHeader>
-          {renamingTeam ? (
+      <CreateDialog title="Rename team" open={renamingTeam !== undefined} onOpenChange={(o) => !o && setRenaming(null)}>
+        {(done) =>
+          renamingTeam ? (
             <RenameForm
               key={renamingTeam.id}
               id="rename-team"
@@ -111,11 +107,11 @@ function TeamsPage() {
               initial={renamingTeam.name}
               placeholder="Support"
               save={(name) => renameTeamFn({ data: { id: renamingTeam.id, name } })}
-              done={() => setRenaming(null)}
+              done={done}
             />
-          ) : null}
-        </DialogContent>
-      </Dialog>
+          ) : null
+        }
+      </CreateDialog>
       <ConfirmDialog
         open={deleting !== null}
         onOpenChange={(o) => !o && setDeleting(null)}

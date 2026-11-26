@@ -96,9 +96,9 @@ function WebhooksPage() {
         rowHref={(w) => ({ to: "/apps/$appId/webhooks/$webhookId", params: { appId, webhookId: w.id } })}
         rowLabel={() => "Open deliveries"}
         menu={(w) => [
-          { label: "Edit", hidden: !canWrite, onSelect: () => setEditId(w.id) },
-          { label: "Deliveries", to: "/apps/$appId/webhooks/$webhookId", params: { appId, webhookId: w.id } },
-          { label: "Delete", destructive: true, hidden: !canWrite, onSelect: () => setDeleteId(w.id) },
+          { label: "Edit webhook", hidden: !canWrite, onSelect: () => setEditId(w.id) },
+          { label: "View deliveries", to: "/apps/$appId/webhooks/$webhookId", params: { appId, webhookId: w.id } },
+          { label: "Delete webhook", destructive: true, hidden: !canWrite, onSelect: () => setDeleteId(w.id) },
         ]}
         empty={
           <EmptyState
