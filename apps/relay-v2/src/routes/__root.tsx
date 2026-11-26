@@ -32,7 +32,7 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
         <InlineScript html={themeBootScript} />
         <HeadContent />
       </head>
-      <body>
+      <body className="admin-ui">
         {children}
         <Scripts />
       </body>
