@@ -121,12 +121,12 @@ function ListDetailPage() {
         !q && (canWrite || canImport) ? (
           <div className="flex gap-2">
             {canImport ? (
-              <Button variant="outline" size="sm" onClick={() => setImporting(true)}>
+              <Button variant="outline" onClick={() => setImporting(true)}>
                 Import CSV
               </Button>
             ) : null}
             {canWrite ? (
-              <Button size="sm" onClick={() => setAdding(true)}>
+              <Button variant="outline" onClick={() => setAdding(true)}>
                 Add contact
               </Button>
             ) : null}
@@ -140,17 +140,17 @@ function ListDetailPage() {
       <PageHeader crumbs={[listsCrumb, { label: list.name }]} />
       <Toolbar search={<SearchInput value={query} onChange={setQuery} placeholder="Search contacts" />}>
         {canImport ? (
-          <Button variant="outline" size="sm" render={<a href={`/lists/${listId}/export`} download />}>
+          <Button variant="outline" render={<a href={`/lists/${listId}/export`} download />}>
             Export CSV
           </Button>
         ) : null}
         {canImport ? (
-          <Button variant="outline" size="sm" onClick={() => setImporting(true)}>
+          <Button variant="outline" onClick={() => setImporting(true)}>
             Import CSV
           </Button>
         ) : null}
         {canWrite ? (
-          <Button size="sm" onClick={() => setAdding(true)}>
+          <Button onClick={() => setAdding(true)}>
             Add contact
           </Button>
         ) : null}
@@ -305,7 +305,7 @@ function AddContactForm({ listId, done }: { listId: string; done: () => void }) 
       <FormError message={error} />
       <FormActions>
         <Button type="submit" disabled={pending || !email.trim()}>
-          Add
+          Add contact
         </Button>
       </FormActions>
     </FormBody>
@@ -369,7 +369,7 @@ function ImportForm({ listId, done }: { listId: string; done: () => void }) {
       <FormError message={error} />
       <FormActions>
         <Button type="submit" disabled={pending || files.length === 0}>
-          Import
+          Import contacts
         </Button>
       </FormActions>
     </FormBody>

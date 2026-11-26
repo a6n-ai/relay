@@ -32,7 +32,7 @@ export function LetterView({
         </div>
       )}
       {blockedRemote > 0 ? (
-        <Button variant="outline" size="sm" className="w-fit" onClick={onShowImages}>
+        <Button variant="outline" className="w-fit" onClick={onShowImages}>
           Show images ({blockedRemote} blocked)
         </Button>
       ) : null}

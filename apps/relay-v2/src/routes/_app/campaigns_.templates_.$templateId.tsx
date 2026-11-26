@@ -131,7 +131,7 @@ function TemplateForm({ template, canWrite }: { template: TemplateView; canWrite
     <>
       {canWrite ? (
         <Toolbar>
-          <Button type="submit" form="template-form" size="sm" disabled={pending || !dirty || !name.trim()}>
+          <Button type="submit" form="template-form" disabled={pending || !dirty || !name.trim()}>
             Save
           </Button>
         </Toolbar>

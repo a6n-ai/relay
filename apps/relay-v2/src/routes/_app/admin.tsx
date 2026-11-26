@@ -95,7 +95,7 @@ function NumberCard({
       title={title}
       description={description}
       action={
-        <Button type="submit" form={id} size="sm" variant="outline">
+        <Button type="submit" form={id} variant="outline">
           Save
         </Button>
       }
@@ -130,7 +130,6 @@ function ManageSheet({ w, run }: { w: Workspace; run: (action: () => Promise<unk
         description="Where this workspace sends from."
         action={
           <Button
-            size="sm"
             variant="outline"
             disabled={!region || region === w.sesRegion}
             onClick={() => run(() => setWorkspaceRegionFn({ data: { workspaceId: w.id, region } }), "Region saved")}

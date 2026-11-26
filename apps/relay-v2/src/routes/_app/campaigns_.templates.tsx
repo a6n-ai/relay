@@ -77,7 +77,7 @@ function TemplatesPage() {
   }
   const { apps, appId, templates } = page;
   const canCreate = canWrite && Boolean(appId);
-  const newButton = canCreate ? <Button size="sm" onClick={() => setOpen(true)}>New template</Button> : null;
+  const newButton = canCreate ? <Button onClick={() => setOpen(true)}>New template</Button> : null;
   const q = query.trim().toLowerCase();
   const rows = templates.rows.filter((t) => !q || t.name.toLowerCase().includes(q));
   return (
@@ -108,7 +108,7 @@ function TemplatesPage() {
               icon={FileTextIcon}
               title="No templates yet."
               description="Templates are reusable email content."
-              action={newButton}
+              action={canCreate ? <Button variant="outline" onClick={() => setOpen(true)}>New template</Button> : undefined}
             />
           ) : (
             "No templates match."
@@ -163,7 +163,7 @@ function NewTemplateForm({
       <FormError message={error} />
       <FormActions>
         <Button type="submit" disabled={pending || !name.trim() || !app}>
-          Create
+          Create template
         </Button>
       </FormActions>
     </FormBody>

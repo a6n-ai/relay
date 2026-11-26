@@ -91,7 +91,7 @@ function CampaignsPage() {
         {(done) => <NewCampaignForm apps={apps} appId={appId} templates={templates} done={done} />}
       </CreateDialog>
     ) : null;
-  const newButton = canWrite && appId ? <Button size="sm" onClick={() => setOpen(true)}>New campaign</Button> : null;
+  const newButton = canWrite && appId ? <Button onClick={() => setOpen(true)}>New campaign</Button> : null;
   const q = query.trim().toLowerCase();
   const rows = campaigns.rows.filter((c) => (status === "all" || c.status === status) && (!q || c.name.toLowerCase().includes(q)));
   const statuses = [...new Set(campaigns.rows.map((c) => c.status))];
@@ -143,7 +143,7 @@ function CampaignsPage() {
         menu={(c) => [{ label: "Open", to: "/campaigns/$campaignId", params: { campaignId: c.id }, search: { appId: c.appId } }]}
         empty={
           campaigns.rows.length === 0 ? (
-            <EmptyState icon={MegaphoneIcon} title="No campaigns yet." action={newButton} />
+            <EmptyState icon={MegaphoneIcon} title="No campaigns yet." action={canWrite && appId ? <Button variant="outline" onClick={() => setOpen(true)}>New campaign</Button> : undefined} />
           ) : (
             "No campaigns match."
           )
@@ -222,7 +222,7 @@ function NewCampaignForm({
       <FormError message={error} />
       <FormActions>
         <Button type="submit" disabled={pending || !name.trim() || !app}>
-          Create
+          Create campaign
         </Button>
       </FormActions>
     </FormBody>

@@ -153,7 +153,7 @@ function DomainsPage() {
         }
       >
         {canWrite ? (
-          <Button variant="outline" size="sm" onClick={() => setAddressOpen(true)}>
+          <Button variant="outline" onClick={() => setAddressOpen(true)}>
             Add address
           </Button>
         ) : null}
@@ -206,7 +206,7 @@ function DomainsPage() {
               title="Add a domain to send from your own address."
               action={
                 canWrite ? (
-                  <Button size="sm" onClick={() => setNewOpen(true)}>
+                  <Button variant="outline" onClick={() => setNewOpen(true)}>
                     Add domain
                   </Button>
                 ) : undefined

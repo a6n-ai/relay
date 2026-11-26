@@ -11,7 +11,7 @@ export function CreateMenu() {
   if (items.length === 0) return null;
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger render={<Button size="sm" />}>
+      <DropdownMenuTrigger render={<Button />}>
         <Plus aria-hidden /> Create
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">

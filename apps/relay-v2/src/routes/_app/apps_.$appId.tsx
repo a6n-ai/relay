@@ -75,7 +75,7 @@ function AppPage() {
     <>
       <PageHeader crumbs={[{ label: "Apps", to: "/apps" }, { label: app.name }]} />
       <Toolbar>
-        <Button variant="outline" size="sm" render={<Link to="/apps/$appId/webhooks" params={{ appId: app.id }} />}>
+        <Button variant="outline" render={<Link to="/apps/$appId/webhooks" params={{ appId: app.id }} />}>
           Webhooks
         </Button>
         {canWrite ? (
@@ -105,7 +105,7 @@ function AppPage() {
                 icon={KeyRoundIcon}
                 title="No keys yet"
                 description="Create a key to start sending from this app."
-                action={canWrite ? <Button size="sm" onClick={() => setKeyOpen(true)}>Create key</Button> : undefined}
+                action={canWrite ? <Button variant="outline" onClick={() => setKeyOpen(true)}>Create key</Button> : undefined}
               />
             }
           />
@@ -185,7 +185,7 @@ function DefaultSendersPanel({ appId, senders, canWrite }: { appId: string; send
       description="Used when a send leaves out From. Tracked mail uses the transactional sender."
       action={
         canWrite ? (
-          <Button type="submit" form="default-senders-form" size="sm" disabled={pending}>
+          <Button type="submit" form="default-senders-form" disabled={pending}>
             Save
           </Button>
         ) : undefined
@@ -292,7 +292,7 @@ function AudiencePanel({
           />
         ) : null}
         {canWrite ? (
-          <Button type="submit" form="audience-form" size="sm" disabled={pending || !url.trim()}>
+          <Button type="submit" form="audience-form" disabled={pending || !url.trim()}>
             Save
           </Button>
         ) : null}

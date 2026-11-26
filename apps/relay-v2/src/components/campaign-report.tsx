@@ -77,17 +77,17 @@ export function CampaignReport({ campaign, stats }: { campaign: CampaignView; st
     <>
       <Toolbar>
         {canAct && status === "scheduled" && (
-          <Button variant="outline" size="sm" onClick={() => void act(() => unscheduleCampaignFn({ data: { id } }), "Schedule removed")}>
+          <Button variant="outline" onClick={() => void act(() => unscheduleCampaignFn({ data: { id } }), "Schedule removed")}>
             Unschedule
           </Button>
         )}
         {canAct && status === "sending" && (
-          <Button variant="outline" size="sm" onClick={() => void act(() => pauseCampaignFn({ data: { id } }), "Campaign paused")}>
+          <Button variant="outline" onClick={() => void act(() => pauseCampaignFn({ data: { id } }), "Campaign paused")}>
             Pause
           </Button>
         )}
         {canAct && status === "paused" && (
-          <Button variant="outline" size="sm" onClick={() => void act(() => resumeCampaignFn({ data: { id } }), "Campaign resumed")}>
+          <Button variant="outline" onClick={() => void act(() => resumeCampaignFn({ data: { id } }), "Campaign resumed")}>
             Resume
           </Button>
         )}

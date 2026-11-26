@@ -36,7 +36,7 @@ export function ConfirmDialog({
 }) {
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      {trigger !== undefined ? <AlertDialogTrigger render={<Button variant="outline" size="sm" />}>{trigger}</AlertDialogTrigger> : null}
+      {trigger !== undefined ? <AlertDialogTrigger render={<Button variant="outline" />}>{trigger}</AlertDialogTrigger> : null}
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>{title}</AlertDialogTitle>
@@ -44,7 +44,7 @@ export function ConfirmDialog({
         </AlertDialogHeader>
         {children}
         <AlertDialogFooter>
-          <AlertDialogClose render={<Button variant="outline" />}>Cancel</AlertDialogClose>
+          <AlertDialogClose render={<Button variant="ghost" />}>Cancel</AlertDialogClose>
           <AlertDialogClose render={<Button variant="destructive" disabled={confirmDisabled} onClick={onConfirm} />}>{confirmLabel}</AlertDialogClose>
         </AlertDialogFooter>
       </AlertDialogContent>

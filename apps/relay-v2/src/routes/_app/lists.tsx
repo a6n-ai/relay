@@ -90,7 +90,7 @@ function ListsPage() {
     <>
       <PageHeader crumbs={crumbs} />
       <Toolbar search={<SearchInput value={query} onChange={setQuery} placeholder="Search lists" />}>
-        {canCreate ? <Button size="sm" onClick={() => setNewOpen(true)}>New list</Button> : null}
+        {canCreate ? <Button onClick={() => setNewOpen(true)}>New list</Button> : null}
       </Toolbar>
       {newList}
       <ResourceTable
@@ -111,7 +111,7 @@ function ListsPage() {
             description={q ? undefined : "Lists hold the people a campaign sends to."}
             action={
               !q && canCreate ? (
-                <Button size="sm" onClick={() => setNewOpen(true)}>
+                <Button variant="outline" onClick={() => setNewOpen(true)}>
                   New list
                 </Button>
               ) : undefined
@@ -180,7 +180,7 @@ function NewListForm({
       <FormError message={error} />
       <FormActions>
         <Button type="submit" disabled={pending || !name.trim() || !app}>
-          Create
+          Create list
         </Button>
       </FormActions>
     </FormBody>

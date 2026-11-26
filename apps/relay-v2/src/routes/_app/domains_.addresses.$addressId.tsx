@@ -82,7 +82,7 @@ function AddressAccessPage() {
             title="Owners and admins can read this address. Share it with a member or team."
             action={
               canManage ? (
-                <Button size="sm" onClick={() => setAdding(true)}>
+                <Button variant="outline" onClick={() => setAdding(true)}>
                   Add access
                 </Button>
               ) : undefined

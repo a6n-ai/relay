@@ -70,12 +70,12 @@ function MessagePage() {
       {hasHtml || hasRaw ? (
         <Toolbar>
           {hasHtml ? (
-            <Button variant="outline" size="sm" render={<a href={`/api/console/messages/${m.id}/html`} />}>
+            <Button variant="outline" render={<a href={`/api/console/messages/${m.id}/html`} />}>
               Download HTML
             </Button>
           ) : null}
           {hasRaw ? (
-            <Button variant="outline" size="sm" render={<a href={`/api/console/messages/${m.id}/raw`} />}>
+            <Button variant="outline" render={<a href={`/api/console/messages/${m.id}/raw`} />}>
               Download original
             </Button>
           ) : null}
