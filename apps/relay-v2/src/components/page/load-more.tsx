@@ -2,6 +2,12 @@ import { Button } from "@foundry/ui/button";
 import { Link } from "@tanstack/react-router";
 import { Loader2Icon } from "lucide-react";
 
+const withoutOffset = (s?: Record<string, unknown>) => {
+  if (!s) return s;
+  const { offset: _o, ...rest } = s;
+  return rest;
+};
+
 export function LoadMore({
   hasMore,
   loading = false,
@@ -10,6 +16,8 @@ export function LoadMore({
   search,
   resetTo,
   resetSearch,
+  offset,
+  pageSize,
 }: {
   hasMore: boolean;
   loading?: boolean;
@@ -18,6 +26,8 @@ export function LoadMore({
   search?: Record<string, unknown>;
   resetTo?: string;
   resetSearch?: Record<string, unknown>;
+  offset?: number;
+  pageSize?: number;
 }) {
   if (!hasMore && !resetTo) return null;
   const spinner = loading ? <Loader2Icon className="animate-spin" /> : null;
@@ -25,7 +35,7 @@ export function LoadMore({
     <div className="flex items-center justify-center gap-2 p-4">
       {hasMore ? (
         to ? (
-          <Button variant="outline" render={<Link to={to as never} search={search as never} />}>
+          <Button variant="outline" render={<Link to={to as never} search={(pageSize === undefined ? search : { ...search, offset: (offset ?? 0) + pageSize }) as never} />}>
             {spinner}Show older
           </Button>
         ) : (
@@ -35,7 +45,7 @@ export function LoadMore({
         )
       ) : null}
       {resetTo ? (
-        <Button variant="ghost" render={<Link to={resetTo as never} search={resetSearch as never} />}>
+        <Button variant="ghost" render={<Link to={resetTo as never} search={withoutOffset(resetSearch) as never} />}>
           Back to newest
         </Button>
       ) : null}

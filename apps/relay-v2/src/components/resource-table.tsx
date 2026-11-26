@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { Hint } from "./page/text";
 import { TableInset } from "./page/table-inset";
 import { RowMenu, type RowAction } from "./page/row-menu";
+import { rowNumber } from "./page/row-number";
 
 const KIND = { name: "font-medium", mono: "font-mono text-xs", url: "break-all font-mono text-xs", time: "text-xs tabular-nums" } as const;
 
@@ -31,6 +32,7 @@ export function ResourceTable<T>({
   rowHref,
   rowLabel,
   menu,
+  offset,
 }: {
   columns: Column<T>[];
   rows: T[];
@@ -39,6 +41,7 @@ export function ResourceTable<T>({
   rowHref?: (row: T) => LinkProps;
   rowLabel?: (row: T) => string;
   menu?: (row: T) => RowAction[];
+  offset?: number;
 }) {
   if (rows.length === 0)
     return (
@@ -46,7 +49,7 @@ export function ResourceTable<T>({
         <Table>
           <TableBody>
             <TableRow data-table-empty>
-              <TableCell colSpan={columns.length + (menu ? 1 : 0)}>{typeof empty === "string" ? <Hint>{empty}</Hint> : empty}</TableCell>
+              <TableCell colSpan={columns.length + 1 + (menu ? 1 : 0)}>{typeof empty === "string" ? <Hint>{empty}</Hint> : empty}</TableCell>
             </TableRow>
           </TableBody>
         </Table>
@@ -57,6 +60,7 @@ export function ResourceTable<T>({
     <Table>
       <TableHeader>
         <TableRow>
+          <TableHead className="w-10">#</TableHead>
           {columns.map((c) => (
             <TableHead key={c.header} className={c.numeric ? "text-right tabular-nums" : undefined}>
               {c.header}
@@ -66,10 +70,11 @@ export function ResourceTable<T>({
         </TableRow>
       </TableHeader>
       <TableBody>
-        {rows.map((row) => {
+        {rows.map((row, index) => {
           const href = rowHref?.(row);
           return (
             <TableRow key={rowKey(row)} className={href ? ROW_LINK : undefined}>
+              <TableCell className="w-10 text-muted-foreground tabular-nums">{rowNumber(offset, index)}</TableCell>
               {columns.map((c, i) => (
                 <TableCell key={c.header} className={c.numeric ? "text-right tabular-nums" : undefined}>
                   {c.kind ? <span className={KIND[c.kind]}>{c.cell(row)}</span> : c.cell(row)}

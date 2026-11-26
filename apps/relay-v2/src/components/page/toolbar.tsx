@@ -4,12 +4,13 @@ import { SearchIcon } from "lucide-react";
 import { type ReactNode, useEffect, useRef } from "react";
 import { isTypingTarget } from "./keys";
 
-export function Toolbar({ search, filters, children }: { search?: ReactNode; filters?: ReactNode; children?: ReactNode }) {
+export function Toolbar({ search, filters, view, children }: { search?: ReactNode; filters?: ReactNode; view?: ReactNode; children?: ReactNode }) {
   return (
     <div className="flex flex-wrap items-center gap-2 px-4 py-3">
       {search ? <div className="min-w-48 max-w-md flex-1">{search}</div> : null}
       {filters}
-      {children ? <div className="ml-auto flex items-center gap-2">{children}</div> : null}
+      {view ? <div className="ml-auto">{view}</div> : null}
+      {children ? <div className={`${view ? "" : "ml-auto "}flex items-center gap-2`}>{children}</div> : null}
     </div>
   );
 }
