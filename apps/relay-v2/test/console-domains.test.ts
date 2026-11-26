@@ -270,6 +270,34 @@ describe("console sending domains and addresses", { timeout: 60_000 }, () => {
     });
   });
 
+  it("turns sending on for a new sender or both address and off for an inbox", async () => {
+    const a = await workspaceFor("addr-cansend@example.com", "Addr Cansend Co");
+    const actor = await requireActor(env, headersFor(a.cookie), WRITE);
+    const { id: appId } = await addApp(env, actor, { name: "Web", slug: "web" });
+    await addDomain(env, actor, { domain: "cansend-default.test" });
+
+    const sender = await addAddress(env, actor, { appId, email: "s@cansend-default.test", kind: "sender" });
+    const both = await addAddress(env, actor, { appId, email: "b@cansend-default.test", kind: "both" });
+    const inbox = await addAddress(env, actor, { appId, email: "i@cansend-default.test", kind: "inbox" });
+
+    const rows = await coreDb(env).select().from(address).where(eq(address.workspaceId, a.workspaceId));
+    const canSendById = Object.fromEntries(rows.map((r) => [r.id, r.canSend]));
+    expect(canSendById[sender.id]).toBe(true);
+    expect(canSendById[both.id]).toBe(true);
+    expect(canSendById[inbox.id]).toBe(false);
+  });
+
+  it("keeps an explicit canSend false on a sender", async () => {
+    const a = await workspaceFor("addr-cansend-off@example.com", "Addr Cansend Off Co");
+    const actor = await requireActor(env, headersFor(a.cookie), WRITE);
+    const { id: appId } = await addApp(env, actor, { name: "Web", slug: "web" });
+    await addDomain(env, actor, { domain: "cansend-explicit.test" });
+
+    const { id } = await addAddress(env, actor, { appId, email: "s@cansend-explicit.test", kind: "sender", canSend: false });
+    const [row] = await coreDb(env).select().from(address).where(eq(address.id, id));
+    expect(row.canSend).toBe(false);
+  });
+
   it("hides Domains from the billing role and shows it a not-allowed message on a direct visit", async () => {
     const owner = await workspaceFor("dom-nav-owner@example.com", "Dom Nav Co");
     const billing = await addMember(owner.workspaceId, "dom-nav-billing@example.com", "billing");

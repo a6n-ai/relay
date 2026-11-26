@@ -220,7 +220,7 @@ export async function addAddress(
 
   let row: { id: string };
   try {
-    row = await createAddress(env, { ...input, workspaceId: actor.workspaceId, email });
+    row = await createAddress(env, { ...input, canSend: input.canSend ?? input.kind !== "inbox", workspaceId: actor.workspaceId, email });
   } catch (err) {
     if (uniqueViolation(err, "address.email")) throw new ConsoleError(409, "address already exists");
     throw err;
