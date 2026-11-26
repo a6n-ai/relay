@@ -3,7 +3,7 @@ import { BASE, json } from "./console-helpers";
 import { applyMigrations } from "./migrate";
 import { beforeAll, describe, expect, it } from "vitest";
 import { createAuth } from "../src/lib/auth";
-import { ADMIN_LINK_CODE, googleConfig, refusesImplicitLink, signInErrorText } from "../src/lib/auth/google";
+import { ADMIN_LINK_CODE, auditKindFor, googleConfig, refusesImplicitLink, signInErrorText } from "../src/lib/auth/google";
 import type { Env } from "../src/env";
 
 describe("googleConfig", () => {
@@ -63,6 +63,15 @@ describe("refusesImplicitLink", () => {
   });
 });
 
+describe("auditKindFor", () => {
+  it("audits a callback with link state as account.link, otherwise as sign-in", () => {
+    expect(auditKindFor("/callback/google", { link: { userId: "u", email: "e" } })).toBe("account.link");
+    expect(auditKindFor("/callback/google", {})).toBe("sign_in");
+    expect(auditKindFor("/callback/google", null)).toBe("sign_in");
+    expect(auditKindFor("/sign-in/email-otp", { link: {} })).toBeNull();
+  });
+});
+
 describe("google flows with Google configured", () => {
   const google = { ...env, GOOGLE_CLIENT_ID: "id", GOOGLE_CLIENT_SECRET: "s" } as Env;
   beforeAll(applyMigrations);
@@ -78,7 +87,18 @@ describe("google flows with Google configured", () => {
     expect(res.status).toBe(403);
   });
 
-  it("creates no account row for an admin on the implicit path, but does for a member and for an explicit link", async () => {
+  it("refuses an idToken body on /link-social", async () => {
+    const res = await createAuth(google).handler(
+      new Request(`${BASE}/link-social`, {
+        method: "POST",
+        headers: json,
+        body: JSON.stringify({ provider: "google", idToken: { token: "x" } }),
+      }),
+    );
+    expect(res.status).toBe(403);
+  });
+
+  it("creates no account row for an admin on the implicit path, but does for a member", async () => {
     const ctx = await createAuth(google).$context;
     const mk = async (role: string, tag: string) =>
       (await ctx.internalAdapter.createUser({ email: `${tag}@example.com`, name: tag, emailVerified: true, role }, undefined as never)).id;

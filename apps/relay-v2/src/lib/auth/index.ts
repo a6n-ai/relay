@@ -28,7 +28,7 @@ import type { Env } from "../../env";
 import { newId } from "../ids";
 import { maskEmails } from "../../core/mask-emails";
 import { writeAudit } from "./audit";
-import { ADMIN_LINK_CODE, googleConfig, refusesImplicitLink } from "./google";
+import { ADMIN_LINK_CODE, auditKindFor, googleConfig, refusesImplicitLink } from "./google";
 import { pickInviteMailer } from "./invite-mailer";
 import { type OtpMailer, consoleOtpMailer, memoryOtpMailer } from "./otp-mailer";
 import { ac as platformAc, orgAc, orgRoles, roles as platformRoles } from "./permissions";
@@ -204,7 +204,7 @@ export function createAuth(env: Env) {
           (ctx.path === "/email-otp/send-verification-otp" && ctx.body?.type === "forget-password");
         if (resetMail) throw new APIError("NOT_FOUND");
         // An idToken body signs in without the OAuth redirect and its audit; only the redirect flow is allowed.
-        if (ctx.path === "/sign-in/social" && ctx.body?.idToken) throw new APIError("FORBIDDEN");
+        if ((ctx.path === "/sign-in/social" || ctx.path === "/link-social") && ctx.body?.idToken) throw new APIError("FORBIDDEN");
         if (ctx.path === "/email-otp/send-verification-otp") {
           const otpEmail = String(ctx.body?.email ?? "").trim().toLowerCase();
           if (otpEmail && !(await otpEmailWithinCap(env, otpEmail))) throw new APIError("TOO_MANY_REQUESTS");
@@ -268,6 +268,13 @@ export function createAuth(env: Env) {
           return;
         }
         if (ctx.path.startsWith("/callback/")) {
+          const state = await getOAuthState().catch(() => null);
+          if (auditKindFor(ctx.path, state) === "account.link") {
+            const location = (result as { headers?: Headers } | null)?.headers?.get("location");
+            const ok = !(location ? new URL(location, "http://x") : null)?.searchParams.has("error");
+            await writeAudit(env, { action: "account.link", actorUserId: state!.link!.userId, target: state!.link!.userId, data: { provider: ctx.params?.id, ok }, ...meta });
+            return;
+          }
           const signedIn = ctx.context.newSession?.user;
           if (signedIn) {
             await writeAudit(env, { action: "sign_in.success", actorUserId: signedIn.id, target: signedIn.id, data: { provider: ctx.params?.id }, ...meta });

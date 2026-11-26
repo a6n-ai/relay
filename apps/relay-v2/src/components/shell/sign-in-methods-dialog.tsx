@@ -2,14 +2,16 @@ import { Button } from "@foundry/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@foundry/ui/dialog";
 import { useEffect, useState } from "react";
 import { FormActions, FormBody, FormError } from "../page/form-parts";
+import { signInErrorText } from "../../lib/auth/google";
 import { Hint } from "../page/text";
 
+export const LINK_MARKER = "sign-in-methods";
 const json = { "content-type": "application/json" };
 
 // Linking runs through Better Auth's /link-social, the only flow that may attach Google to a platform admin.
 export function SignInMethodsDialog({ onOpenChange }: { onOpenChange: (open: boolean) => void }) {
   const [linked, setLinked] = useState<boolean | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(() => signInErrorText(new URLSearchParams(window.location.search).get("error") ?? undefined));
   const [pending, setPending] = useState(false);
 
   useEffect(() => {
@@ -26,7 +28,7 @@ export function SignInMethodsDialog({ onOpenChange }: { onOpenChange: (open: boo
       const res = await fetch("/api/auth/link-social", {
         method: "POST",
         headers: json,
-        body: JSON.stringify({ provider: "google", callbackURL: window.location.pathname, errorCallbackURL: window.location.pathname }),
+        body: JSON.stringify({ provider: "google", callbackURL: window.location.pathname, errorCallbackURL: `${window.location.pathname}?${LINK_MARKER}=1` }),
       });
       const data = (await res.json()) as { url?: string };
       if (!res.ok || !data.url) throw new Error("no url");

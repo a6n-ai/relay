@@ -17,7 +17,7 @@ import Ellipsis from "lucide-react/icons/ellipsis";
 import { useEffect, useState } from "react";
 import { authOptionsFn } from "../../console/shell.fns";
 import { useSignOut } from "../sign-out-button";
-import { SignInMethodsDialog } from "./sign-in-methods-dialog";
+import { LINK_MARKER, SignInMethodsDialog } from "./sign-in-methods-dialog";
 import { resolveTheme, THEME_KEY, type ThemePref } from "./theme";
 
 const isPref = (v: string | null): v is ThemePref => v === "dark" || v === "light" || v === "system";
@@ -35,6 +35,8 @@ export function UserMenu({ email, name }: { email: string; name?: string }) {
 
   useEffect(() => {
     authOptionsFn().then((o) => setGoogle(o.google), () => {});
+    // A failed link redirects back here with the marker and ?error=.
+    if (new URLSearchParams(window.location.search).has(LINK_MARKER)) setMethodsOpen(true);
   }, []);
 
   useEffect(() => {
