@@ -1,10 +1,9 @@
 import { maskEmails } from "./mask-emails";
 
-// DrizzleQueryError's message is "Failed query: <sql with ? placeholders>\nparams: <bound values>". The values can hold names,
-// subjects or other row data, so only its `query` is logged. Any other "params:" tail is cut the same way.
+// DrizzleQueryError's message is "Failed query: <sql>\nparams: <bound values>". Only the error is logged, never the SQL or its
+// values; the D1 error in its cause names the table and column. Any other "params:" tail is cut the same way.
 function safeMessage(e: Error): string {
-  const { query } = e as { query?: unknown };
-  if (typeof query === "string" && "params" in e) return `Failed query: ${query}`;
+  if ("query" in e && "params" in e) return "Failed query";
   return e.message.split(/\s*\bparams:/)[0];
 }
 
