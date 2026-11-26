@@ -15,7 +15,9 @@ import { localStore } from "@foundry/ui/safe-storage";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@foundry/ui/tooltip";
 import Ellipsis from "lucide-react/icons/ellipsis";
 import { useEffect, useState } from "react";
+import { authOptionsFn } from "../../console/shell.fns";
 import { useSignOut } from "../sign-out-button";
+import { SignInMethodsDialog } from "./sign-in-methods-dialog";
 import { resolveTheme, THEME_KEY, type ThemePref } from "./theme";
 
 const isPref = (v: string | null): v is ThemePref => v === "dark" || v === "light" || v === "system";
@@ -28,6 +30,12 @@ function apply(pref: ThemePref) {
 export function UserMenu({ email, name }: { email: string; name?: string }) {
   const signOut = useSignOut();
   const [pref, setPref] = useState<ThemePref>("dark");
+  const [google, setGoogle] = useState(false);
+  const [methodsOpen, setMethodsOpen] = useState(false);
+
+  useEffect(() => {
+    authOptionsFn().then((o) => setGoogle(o.google), () => {});
+  }, []);
 
   useEffect(() => {
     const stored = localStore.get(THEME_KEY);
@@ -70,9 +78,11 @@ export function UserMenu({ email, name }: { email: string; name?: string }) {
             <DropdownMenuRadioItem value="system">System</DropdownMenuRadioItem>
           </DropdownMenuRadioGroup>
           <DropdownMenuSeparator />
+          {google ? <DropdownMenuItem onClick={() => setMethodsOpen(true)}>Sign-in methods</DropdownMenuItem> : null}
           <DropdownMenuItem onClick={signOut}>Sign out</DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+      {methodsOpen ? <SignInMethodsDialog onOpenChange={setMethodsOpen} /> : null}
     </div>
   );
 }
