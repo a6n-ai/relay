@@ -41,7 +41,7 @@ export function ScopeSwitcher() {
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger render={<Button variant="ghost" size="sm" aria-label="Switch app scope" className="max-w-48" />}>
+      <PopoverTrigger render={<Button variant="ghost" aria-label="Switch app scope" className="max-w-48" />}>
         <span className="truncate">{scopeLabel(shell.apps, current)}</span>
         <ChevronsUpDown aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
       </PopoverTrigger>

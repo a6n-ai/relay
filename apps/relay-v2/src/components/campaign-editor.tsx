@@ -197,7 +197,7 @@ export function CampaignEditor({
     problems.length === 0 ? (
       <ScheduleDialog campaignId={campaign.id} beforeSubmit={saveFirst} onDone={() => router.invalidate()} />
     ) : (
-      <Button size="sm" disabled>
+      <Button disabled>
         Schedule…
       </Button>
     )
@@ -215,12 +215,12 @@ export function CampaignEditor({
       />
       <Toolbar>
         {canWrite ? (
-          <Button type="submit" form="campaign-form" variant="outline" size="sm" disabled={pending || !dirty}>
+          <Button type="submit" form="campaign-form" variant="outline" disabled={pending || !dirty}>
             Save
           </Button>
         ) : null}
         {canWrite ? (
-          <Button variant="outline" size="sm" onClick={sendTest}>
+          <Button variant="outline" onClick={sendTest}>
             Send test to me
           </Button>
         ) : null}
@@ -327,7 +327,7 @@ export function CampaignEditor({
               <Label htmlFor="campaign-postal">Postal address</Label>
               <Input id="campaign-postal" value={address} onChange={(e) => setAddress(e.target.value)} />
               <FormActions>
-                <Button type="submit" size="sm" disabled={!address.trim()}>
+                <Button type="submit" disabled={!address.trim()}>
                   Save address
                 </Button>
               </FormActions>

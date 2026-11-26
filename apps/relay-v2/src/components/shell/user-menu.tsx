@@ -59,7 +59,7 @@ export function UserMenu({ email, name }: { email: string; name?: string }) {
         <TooltipContent side="top">{email}</TooltipContent>
       </Tooltip>
       <DropdownMenu>
-        <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" aria-label="User menu" />}>
+        <DropdownMenuTrigger render={<Button variant="ghost" size="icon" aria-label="User menu" />}>
           <Ellipsis />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" side="top" className="min-w-44 transition-none">

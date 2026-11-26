@@ -80,7 +80,7 @@ function AutomationsPage() {
   }
   const { apps, appId, automations, lists, templates } = page;
   const canCreate = canSend && Boolean(appId);
-  const newButton = canCreate ? <Button size="sm" onClick={() => setOpen(true)}>New automation</Button> : null;
+  const newButton = canCreate ? <Button onClick={() => setOpen(true)}>New automation</Button> : null;
   return (
     <>
       <PageHeader crumbs={CRUMBS} />
@@ -258,7 +258,7 @@ function NewAutomationForm({
       <FormError message={error} />
       <FormActions>
         <Button type="submit" disabled={pending || !name.trim() || !listId || !templateId || !fromEmail}>
-          Create
+          Create automation
         </Button>
       </FormActions>
     </FormBody>

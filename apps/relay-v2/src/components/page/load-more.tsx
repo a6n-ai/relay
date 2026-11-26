@@ -25,17 +25,17 @@ export function LoadMore({
     <div className="flex items-center justify-center gap-2 p-4">
       {hasMore ? (
         to ? (
-          <Button variant="outline" size="sm" render={<Link to={to as never} search={search as never} />}>
+          <Button variant="outline" render={<Link to={to as never} search={search as never} />}>
             {spinner}Show older
           </Button>
         ) : (
-          <Button variant="outline" size="sm" disabled={loading} onClick={onMore}>
+          <Button variant="outline" disabled={loading} onClick={onMore}>
             {spinner}Show older
           </Button>
         )
       ) : null}
       {resetTo ? (
-        <Button variant="ghost" size="sm" render={<Link to={resetTo as never} search={resetSearch as never} />}>
+        <Button variant="ghost" render={<Link to={resetTo as never} search={resetSearch as never} />}>
           Back to newest
         </Button>
       ) : null}

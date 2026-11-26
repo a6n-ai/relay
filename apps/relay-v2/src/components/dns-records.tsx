@@ -8,7 +8,7 @@ export function DnsRecords({ records }: { records: DnsRecord[] }) {
   if (records.length === 0) return <Hint as="span" size="xs">Not available yet</Hint>;
   return (
     <Collapsible>
-      <CollapsibleTrigger render={<Button variant="ghost" size="sm" />}>DNS records ({records.length})</CollapsibleTrigger>
+      <CollapsibleTrigger render={<Button variant="ghost" />}>DNS records ({records.length})</CollapsibleTrigger>
       <CollapsibleContent>
         <ul className="mt-2 grid gap-3 text-xs">
           {records.map((r) => (

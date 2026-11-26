@@ -34,7 +34,7 @@ export function CreateDialog({
         if (next || !locked) setOpen(next);
       }}
     >
-      {trigger ? <DialogTrigger render={<Button size="sm" />}>{trigger}</DialogTrigger> : null}
+      {trigger ? <DialogTrigger render={<Button />}>{trigger}</DialogTrigger> : null}
       <DialogContent showCloseButton={!locked}>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>

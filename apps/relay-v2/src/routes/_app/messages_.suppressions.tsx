@@ -166,7 +166,7 @@ function AddForm({ done }: { done: () => void }) {
       <FormError message={error} />
       <FormActions>
         <Button type="submit" disabled={pending || !email.trim()}>
-          Add
+          Add suppression
         </Button>
       </FormActions>
     </FormBody>

@@ -40,7 +40,7 @@ function GetStarted({ shell }: { shell: NonNullable<ReturnType<typeof Route.useR
               <SectionTitle as="p">{r.title}</SectionTitle>
               <Hint>{r.line}</Hint>
             </div>
-            <Button size="sm" render={<Link to={r.to as string} search={{ new: 1 } as never} />}>
+            <Button variant="outline" render={<Link to={r.to as string} search={{ new: 1 } as never} />}>
               {r.cta}
             </Button>
           </div>

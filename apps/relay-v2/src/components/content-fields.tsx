@@ -65,7 +65,7 @@ export function ContentFields({
         {dataFields ? <>, {"{{data.<key>}}"}</> : null}
       </Hint>
       <div>
-        <Button type="button" variant="outline" size="sm" onClick={show}>
+        <Button type="button" variant="outline" onClick={show}>
           Preview
         </Button>
       </div>

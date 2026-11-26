@@ -91,7 +91,7 @@ function CampaignsPage() {
         {(done) => <NewCampaignForm apps={apps} appId={appId} templates={templates} done={done} />}
       </CreateDialog>
     ) : null;
-  const newButton = canWrite && appId ? <Button size="sm" onClick={() => setOpen(true)}>New campaign</Button> : null;
+  const newButton = canWrite && appId ? <Button onClick={() => setOpen(true)}>New campaign</Button> : null;
   const q = query.trim().toLowerCase();
   const rows = campaigns.rows.filter((c) => (status === "all" || c.status === status) && (!q || c.name.toLowerCase().includes(q)));
   const statuses = [...new Set(campaigns.rows.map((c) => c.status))];
@@ -222,7 +222,7 @@ function NewCampaignForm({
       <FormError message={error} />
       <FormActions>
         <Button type="submit" disabled={pending || !name.trim() || !app}>
-          Create
+          Create campaign
         </Button>
       </FormActions>
     </FormBody>

@@ -13,7 +13,7 @@ export function useSignOut() {
 export function SignOutButton() {
   const signOut = useSignOut();
   return (
-    <Button variant="ghost" size="sm" onClick={signOut}>
+    <Button variant="ghost" onClick={signOut}>
       Sign out
     </Button>
   );
