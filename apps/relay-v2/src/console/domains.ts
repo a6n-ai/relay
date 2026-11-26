@@ -204,7 +204,7 @@ export async function listAddresses(env: Env, actor: ConsoleActor) {
 export async function addAddress(
   env: Env,
   actor: ConsoleActor,
-  input: { appId: string; email: string; kind: "inbox" | "sender" | "both"; displayName?: string; replyTo?: string | null; canSend?: boolean },
+  input: { appId: string; email: string; kind: "inbox" | "sender" | "both"; displayName?: string; replyTo?: string | null },
 ): Promise<{ id: string }> {
   await getApp(env, actor, input.appId);
   const email = normaliseEmail(input.email);
@@ -220,7 +220,7 @@ export async function addAddress(
 
   let row: { id: string };
   try {
-    row = await createAddress(env, { ...input, canSend: input.canSend ?? input.kind !== "inbox", workspaceId: actor.workspaceId, email });
+    row = await createAddress(env, { ...input, canSend: input.kind !== "inbox", workspaceId: actor.workspaceId, email });
   } catch (err) {
     if (uniqueViolation(err, "address.email")) throw new ConsoleError(409, "address already exists");
     throw err;
@@ -233,9 +233,11 @@ export async function updateAddress(
   env: Env,
   actor: ConsoleActor,
   id: string,
-  patch: { displayName?: string | null; replyTo?: string | null; canSend?: boolean },
+  patch: { displayName?: string | null; replyTo?: string | null },
 ): Promise<void> {
-  if (!(await updateAddressRow(env, actor.workspaceId, id, patch))) throw new ConsoleError(404, "not found");
+  // Sending follows kind, so canSend is never taken from the caller.
+  const { displayName, replyTo } = patch;
+  if (!(await updateAddressRow(env, actor.workspaceId, id, { displayName, replyTo }))) throw new ConsoleError(404, "not found");
   await refreshWorkspaceLimits(env, actor.workspaceId);
 }
 

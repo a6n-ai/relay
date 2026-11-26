@@ -43,7 +43,7 @@ async function sendingWorkspace(email: string, name: string, domain: string) {
   memorySesIdentity.preset("ap-south-1", domain, { verified: true, dkimStatus: "SUCCESS", dkimTokens: [] });
   await checkDomain(env, actor, domainId);
   const from = `hi@${domain}`;
-  await addAddress(env, actor, { appId, email: from, kind: "sender", canSend: true });
+  await addAddress(env, actor, { appId, email: from, kind: "sender" });
   const key = await createKey(env, actor, { appId, name: "test" });
   return { ...a, from, secret: key.secret };
 }

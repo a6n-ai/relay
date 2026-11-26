@@ -19,6 +19,7 @@ import { coreDb } from "../src/db/core/client";
 import { address, sendingDomain } from "../src/db/core/schema";
 import { securityDb } from "../src/db/security/client";
 import { addressGrant, member } from "../src/db/security/schema";
+import backfill from "../drizzle/core/0006_address_can_send_follows_kind.sql?raw";
 import { addMember, cookieFor, createWorkspace, headersFor, ORIGIN, setActive } from "./console-helpers";
 import { applyMigrations } from "./migrate";
 
@@ -171,17 +172,15 @@ describe("console sending domains and addresses", { timeout: 60_000 }, () => {
     const actor = await requireActor(env, headersFor(a.cookie), WRITE);
     const { id: appId } = await addApp(env, actor, { name: "Web", slug: "web" });
     const { id: domainId } = await addDomain(env, actor, { domain: "mail-send.test" });
-    const { id } = await addAddress(env, actor, { appId, email: "hi@mail-send.test", kind: "sender", canSend: true });
+    const { id } = await addAddress(env, actor, { appId, email: "hi@mail-send.test", kind: "sender" });
 
     expect((await snapshot(a.workspaceId))!.senders).not.toHaveProperty(["hi@mail-send.test"]);
     memorySesIdentity.preset("ap-south-1", "mail-send.test", { verified: true, dkimStatus: "SUCCESS", dkimTokens: [] });
     await checkDomain(env, actor, domainId);
     expect((await snapshot(a.workspaceId))!.senders).toHaveProperty(["hi@mail-send.test"]);
 
-    await updateAddress(env, actor, id, { canSend: false });
-    expect((await snapshot(a.workspaceId))!.senders).not.toHaveProperty(["hi@mail-send.test"]);
     await expect(listAddresses(env, actor)).resolves.toEqual([
-      expect.objectContaining({ id, email: "hi@mail-send.test", appName: "Web", canSend: false }),
+      expect.objectContaining({ id, email: "hi@mail-send.test", appName: "Web", canSend: true }),
     ]);
   });
 
@@ -204,7 +203,7 @@ describe("console sending domains and addresses", { timeout: 60_000 }, () => {
     await addDomain(env, actorB, { domain: "addr-b-own.test" });
     const { id } = await addAddress(env, actorB, { appId: appB, email: "hi@addr-b-own.test", kind: "inbox" });
 
-    await expect(updateAddress(env, actorA, id, { canSend: true })).rejects.toMatchObject({ status: 404 });
+    await expect(updateAddress(env, actorA, id, { displayName: "X" })).rejects.toMatchObject({ status: 404 });
     await expect(removeAddress(env, actorA, id)).rejects.toMatchObject({ status: 404 });
     const [row] = await coreDb(env).select().from(address).where(eq(address.id, id));
     expect(row).toMatchObject({ canSend: false });
@@ -287,15 +286,39 @@ describe("console sending domains and addresses", { timeout: 60_000 }, () => {
     expect(canSendById[inbox.id]).toBe(false);
   });
 
-  it("keeps an explicit canSend false on a sender", async () => {
+  it("ignores canSend on add and update: sending follows the kind", async () => {
     const a = await workspaceFor("addr-cansend-off@example.com", "Addr Cansend Off Co");
     const actor = await requireActor(env, headersFor(a.cookie), WRITE);
     const { id: appId } = await addApp(env, actor, { name: "Web", slug: "web" });
     await addDomain(env, actor, { domain: "cansend-explicit.test" });
+    const flag = async (id: string) => (await coreDb(env).select().from(address).where(eq(address.id, id)))[0].canSend;
 
-    const { id } = await addAddress(env, actor, { appId, email: "s@cansend-explicit.test", kind: "sender", canSend: false });
-    const [row] = await coreDb(env).select().from(address).where(eq(address.id, id));
-    expect(row.canSend).toBe(false);
+    const sender = await addAddress(env, actor, { appId, email: "s@cansend-explicit.test", kind: "sender", canSend: false } as never);
+    const inbox = await addAddress(env, actor, { appId, email: "i@cansend-explicit.test", kind: "inbox", canSend: true } as never);
+    expect(await flag(sender.id)).toBe(true);
+    expect(await flag(inbox.id)).toBe(false);
+
+    await updateAddress(env, actor, sender.id, { canSend: false } as never);
+    await updateAddress(env, actor, inbox.id, { canSend: true } as never);
+    expect(await flag(sender.id)).toBe(true);
+    expect(await flag(inbox.id)).toBe(false);
+  });
+
+  it("backfills sending on for send-only and both addresses and off for inboxes", async () => {
+    const a = await workspaceFor("addr-backfill@example.com", "Addr Backfill Co");
+    const actor = await requireActor(env, headersFor(a.cookie), WRITE);
+    const { id: appId } = await addApp(env, actor, { name: "Web", slug: "web" });
+    await addDomain(env, actor, { domain: "backfill.test" });
+    const s = await addAddress(env, actor, { appId, email: "s@backfill.test", kind: "sender" });
+    const b = await addAddress(env, actor, { appId, email: "b@backfill.test", kind: "both" });
+    const i = await addAddress(env, actor, { appId, email: "i@backfill.test", kind: "inbox" });
+    await coreDb(env).update(address).set({ canSend: false }).where(eq(address.workspaceId, a.workspaceId));
+    await coreDb(env).update(address).set({ canSend: true }).where(eq(address.id, i.id));
+
+    await env.CORE_DB.prepare(backfill).run();
+    const rows = await coreDb(env).select().from(address).where(eq(address.workspaceId, a.workspaceId));
+    const byId = Object.fromEntries(rows.map((r) => [r.id, r.canSend]));
+    expect(byId).toEqual({ [s.id]: true, [b.id]: true, [i.id]: false });
   });
 
   it("hides Domains from the billing role and shows it a not-allowed message on a direct visit", async () => {
@@ -323,7 +346,8 @@ describe("console sending domains and addresses", { timeout: 60_000 }, () => {
 
     const ownerHtml = await (await SELF.fetch(`${ORIGIN}/domains`, { redirect: "manual", headers: { cookie: owner.cookie } })).text();
     expect(ownerHtml).toContain("Add domain");
-    expect(ownerHtml).toContain('role="switch"');
+    expect(ownerHtml).toContain("Send only");
+    expect(ownerHtml).not.toContain("Can send");
 
     const res = await SELF.fetch(`${ORIGIN}/domains`, { redirect: "manual", headers: { cookie: member } });
     expect(res.status).toBe(200);

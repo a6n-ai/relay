@@ -116,7 +116,6 @@ export const addAddressFn = createServerFn({ method: "POST" })
         kind: z.enum(["inbox", "sender", "both"]),
         displayName,
         replyTo,
-        canSend: z.boolean().optional(),
       }),
     ),
   )
@@ -130,7 +129,7 @@ export const addAddressFn = createServerFn({ method: "POST" })
   });
 
 export const updateAddressFn = createServerFn({ method: "POST" })
-  .validator(validate(z.object({ id, displayName: displayName.nullable(), replyTo, canSend: z.boolean().optional() })))
+  .validator(validate(z.object({ id, displayName: displayName.nullable(), replyTo })))
   .handler(async ({ data }) => {
     try {
       const actor = await requireActor(env, getRequestHeaders(), WRITE);

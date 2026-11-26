@@ -2,7 +2,6 @@ import { Badge } from "@foundry/ui/badge";
 import { Button } from "@foundry/ui/button";
 import { Input } from "@foundry/ui/input";
 import { Label } from "@foundry/ui/label";
-import { Switch } from "@foundry/ui/switch";
 import { toast } from "@foundry/ui/toast";
 import { createFileRoute, Link, useRouter, useSearch } from "@tanstack/react-router";
 import { GlobeIcon } from "lucide-react";
@@ -65,9 +64,9 @@ export const Route = createFileRoute("/_app/domains")({
 
 type Kind = "sender" | "inbox" | "both";
 const KINDS: { value: Kind; label: string; hint: string }[] = [
-  { value: "sender", label: "Sends", hint: "Apps send mail from this address." },
-  { value: "inbox", label: "Receives", hint: "Mail to this address lands in Relay. Apps can't send from it." },
-  { value: "both", label: "Both", hint: "Apps send from it and mail to it lands in Relay." },
+  { value: "sender", label: "Send only", hint: "Your apps send email from this address. Mail sent to it is rejected." },
+  { value: "inbox", label: "Receive only", hint: "Mail sent to this address shows up in Relay. Apps can't send from it." },
+  { value: "both", label: "Send and receive", hint: "Your apps send from it, and replies show up in Relay." },
 ];
 const KIND_LABEL = Object.fromEntries(KINDS.map((k) => [k.value, k.label]));
 
@@ -156,15 +155,6 @@ function DomainsPage() {
       await router.invalidate();
     } catch (err) {
       toast.error(errorText(err, "Could not change protection"));
-    }
-  }
-
-  async function setCanSend(id: string, canSend: boolean) {
-    try {
-      await updateAddressFn({ data: { id, canSend } });
-      await router.invalidate();
-    } catch (err) {
-      toast.error(errorText(err, "Could not update the address"));
     }
   }
 
@@ -298,17 +288,7 @@ function DomainsPage() {
           { header: "App", cell: (a) => a.appName },
           { header: "Name", cell: (a) => a.displayName ?? "—" },
           { header: "Reply-To", cell: (a) => a.replyTo ?? "—" },
-          {
-            header: "Can send",
-            cell: (a) =>
-              canWrite ? (
-                <Switch checked={a.canSend} onCheckedChange={(v) => setCanSend(a.id, v)} aria-label={`Can send from ${a.email}`} />
-              ) : a.canSend ? (
-                "Yes"
-              ) : (
-                "No"
-              ),
-          },
+          { header: "Mail", cell: (a) => KIND_LABEL[a.kind] },
         ]}
         rows={addresses}
         rowKey={(a) => a.id}
@@ -525,7 +505,7 @@ function NewAddressForm({
       </div>
       <ChoiceField
         id="address-kind"
-        label="Use"
+        label="Mail"
         value={kind}
         onChange={(v) => setKind(v as Kind)}
         options={KINDS.map(({ value, label }) => ({ value, label }))}
@@ -569,7 +549,6 @@ function EditAddressForm({ address, done }: { address: Address; done: () => void
   const router = useRouter();
   const [name, setName] = useState(address.displayName ?? "");
   const [replyTo, setReplyTo] = useState(address.replyTo ?? "");
-  const [canSend, setCanSend] = useState(address.canSend);
   const [replyError, setReplyError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -585,7 +564,7 @@ function EditAddressForm({ address, done }: { address: Address; done: () => void
     setError(null);
     try {
       await updateAddressFn({
-        data: { id: address.id, displayName: name.trim() || null, replyTo: reply || null, ...(address.kind === "inbox" ? {} : { canSend }) },
+        data: { id: address.id, displayName: name.trim() || null, replyTo: reply || null },
       });
       toast.success("Address updated", { description: address.email });
       done();
@@ -601,7 +580,11 @@ function EditAddressForm({ address, done }: { address: Address; done: () => void
     <FormBody onSubmit={submit}>
       <FixedField label="Address" value={address.email} hint="Remove it and add a new one to change it." />
       <FixedField label="App" value={address.appName} hint="Remove the address and add it again under another app." />
-      <FixedField label="Use" value={KIND_LABEL[address.kind] ?? address.kind} hint="Remove the address and add it again to change it." />
+      <FixedField
+        label="Mail"
+        value={KIND_LABEL[address.kind] ?? address.kind}
+        hint={`${KINDS.find((k) => k.value === address.kind)?.hint ?? ""} Can't be changed. Remove the address and add it again to change it.`.trim()}
+      />
       <div className="grid gap-1.5">
         <Label htmlFor="edit-address-name">Name</Label>
         <Input id="edit-address-name" autoFocus maxLength={80} value={name} onChange={(e) => setName(e.target.value)} />
@@ -621,12 +604,6 @@ function EditAddressForm({ address, done }: { address: Address; done: () => void
         />
         <FormError message={replyError} />
       </div>
-      {address.kind !== "inbox" ? (
-        <Label className="justify-between font-normal">
-          Allow apps to send from this address
-          <Switch checked={canSend} onCheckedChange={setCanSend} />
-        </Label>
-      ) : null}
       <FormError message={error} />
       <FormActions cancel submitLabel="Save address" pending={pending} pendingLabel="Saving…" />
     </FormBody>
