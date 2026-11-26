@@ -32,6 +32,10 @@ export function sesOtpMailer(env: Env): OtpMailer {
           html: `<p>${sentence}</p><p><a href="${otp}">Reset your password</a></p>`,
         });
       }
+      if (type === "password-changed") {
+        const notice = "Your Relay password was set or changed. If this wasn't you, reset it and contact your workspace owner.";
+        return systemSend(env)({ to: email, subject: "Your Relay password changed", text: notice, html: `<p>${notice}</p>` });
+      }
       const sentence = `Your Relay sign-in code is ${otp}. It expires in 10 minutes. If you did not ask for it, ignore this email.`;
       await systemSend(env)({
         to: email,

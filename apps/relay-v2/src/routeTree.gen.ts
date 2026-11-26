@@ -38,7 +38,6 @@ import { Route as AppSettingsInvitesRouteImport } from './routes/_app/settings_.
 import { Route as AppSettingsMembersRouteImport } from './routes/_app/settings_.members'
 import { Route as AppSettingsTeamsRouteImport } from './routes/_app/settings_.teams'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
-import { Route as ApiDevOtpRouteImport } from './routes/api/dev/otp'
 import { Route as ApiInternalDoSweepRouteImport } from './routes/api/internal/do-sweep'
 import { Route as ApiInternalSeedRouteImport } from './routes/api/internal/seed'
 import { Route as ApiV1AudienceHookRouteImport } from './routes/api/v1/audience-hook'
@@ -210,11 +209,6 @@ const AppSettingsTeamsRoute = AppSettingsTeamsRouteImport.update({
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiDevOtpRoute = ApiDevOtpRouteImport.update({
-  id: '/api/dev/otp',
-  path: '/api/dev/otp',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiInternalDoSweepRoute = ApiInternalDoSweepRouteImport.update({
@@ -392,7 +386,6 @@ export interface FileRoutesByFullPath {
   '/settings/members': typeof AppSettingsMembersRoute
   '/settings/teams': typeof AppSettingsTeamsRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
-  '/api/dev/otp': typeof ApiDevOtpRoute
   '/api/internal/do-sweep': typeof ApiInternalDoSweepRoute
   '/api/internal/seed': typeof ApiInternalSeedRoute
   '/api/v1/audience-hook': typeof ApiV1AudienceHookRoute
@@ -451,7 +444,6 @@ export interface FileRoutesByTo {
   '/settings/members': typeof AppSettingsMembersRoute
   '/settings/teams': typeof AppSettingsTeamsRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
-  '/api/dev/otp': typeof ApiDevOtpRoute
   '/api/internal/do-sweep': typeof ApiInternalDoSweepRoute
   '/api/internal/seed': typeof ApiInternalSeedRoute
   '/api/v1/audience-hook': typeof ApiV1AudienceHookRoute
@@ -512,7 +504,6 @@ export interface FileRoutesById {
   '/_app/settings_/members': typeof AppSettingsMembersRoute
   '/_app/settings_/teams': typeof AppSettingsTeamsRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
-  '/api/dev/otp': typeof ApiDevOtpRoute
   '/api/internal/do-sweep': typeof ApiInternalDoSweepRoute
   '/api/internal/seed': typeof ApiInternalSeedRoute
   '/api/v1/audience-hook': typeof ApiV1AudienceHookRoute
@@ -573,7 +564,6 @@ export interface FileRouteTypes {
     | '/settings/members'
     | '/settings/teams'
     | '/api/auth/$'
-    | '/api/dev/otp'
     | '/api/internal/do-sweep'
     | '/api/internal/seed'
     | '/api/v1/audience-hook'
@@ -632,7 +622,6 @@ export interface FileRouteTypes {
     | '/settings/members'
     | '/settings/teams'
     | '/api/auth/$'
-    | '/api/dev/otp'
     | '/api/internal/do-sweep'
     | '/api/internal/seed'
     | '/api/v1/audience-hook'
@@ -692,7 +681,6 @@ export interface FileRouteTypes {
     | '/_app/settings_/members'
     | '/_app/settings_/teams'
     | '/api/auth/$'
-    | '/api/dev/otp'
     | '/api/internal/do-sweep'
     | '/api/internal/seed'
     | '/api/v1/audience-hook'
@@ -733,7 +721,6 @@ export interface RootRouteChildren {
   InviteIdRoute: typeof InviteIdRoute
   UTokenRoute: typeof UTokenRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
-  ApiDevOtpRoute: typeof ApiDevOtpRoute
   ApiInternalDoSweepRoute: typeof ApiInternalDoSweepRoute
   ApiInternalSeedRoute: typeof ApiInternalSeedRoute
   ApiV1AudienceHookRoute: typeof ApiV1AudienceHookRoute
@@ -951,13 +938,6 @@ declare module '@tanstack/react-router' {
       path: '/api/auth/$'
       fullPath: '/api/auth/$'
       preLoaderRoute: typeof ApiAuthSplatRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/dev/otp': {
-      id: '/api/dev/otp'
-      path: '/api/dev/otp'
-      fullPath: '/api/dev/otp'
-      preLoaderRoute: typeof ApiDevOtpRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/internal/do-sweep': {
@@ -1327,7 +1307,6 @@ const rootRouteChildren: RootRouteChildren = {
   InviteIdRoute: InviteIdRoute,
   UTokenRoute: UTokenRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
-  ApiDevOtpRoute: ApiDevOtpRoute,
   ApiInternalDoSweepRoute: ApiInternalDoSweepRoute,
   ApiInternalSeedRoute: ApiInternalSeedRoute,
   ApiV1AudienceHookRoute: ApiV1AudienceHookRoute,

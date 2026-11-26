@@ -6,7 +6,7 @@ import { isAPIError } from "better-auth/api";
 import { z } from "zod";
 import { securityDb } from "../db/security/client";
 import { account } from "../db/security/schema";
-import { createAuth } from "../lib/auth";
+import { createAuth, isFreshSession, recordPasswordChange, STALE_SESSION_MESSAGE } from "../lib/auth";
 import { assertSameOrigin, ConsoleError, requireSession, toResponseError } from "./actor";
 import { validate } from "./schemas";
 
@@ -30,14 +30,21 @@ export const setPasswordFn = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     try {
       const headers = getRequestHeaders();
-      await requireSession(env, headers);
+      const auth = createAuth(env);
+      const current = await auth.api.getSession({ headers, query: { disableCookieCache: true } });
+      if (!current) throw new ConsoleError(401, "unauthorized");
       assertSameOrigin(env, headers);
+      if (current.session.impersonatedBy || !isFreshSession(current.session.createdAt)) throw new ConsoleError(403, STALE_SESSION_MESSAGE);
       try {
-        await createAuth(env).api.setPassword({ headers, body: { newPassword: data.newPassword } });
+        await auth.api.setPassword({ headers, body: { newPassword: data.newPassword } });
       } catch (err) {
-        if (isAPIError(err) && err.statusCode === 400) throw new ConsoleError(409, "password already set");
+        if (isAPIError(err) && err.body?.code === "PASSWORD_ALREADY_SET") throw new ConsoleError(409, "password already set");
         throw err;
       }
+      await recordPasswordChange(env, current.user, "password.set", {
+        ip: headers.get("cf-connecting-ip"),
+        userAgent: headers.get("user-agent"),
+      });
     } catch (err) {
       toResponseError(err);
     }

@@ -38,6 +38,7 @@ export function PasswordCard({ hasPassword }: { hasPassword: boolean }) {
           body: JSON.stringify({ currentPassword: current, newPassword: next, revokeOtherSessions: others }),
         });
         if (res.status === 429) return setError("Too many tries. Try again in a few minutes.");
+        if (res.status === 403) return setError("Sign in again to set a password.");
         if (!res.ok) return setError(res.status === 400 ? "Your current password is wrong." : "Could not change the password. Try again.");
       } else {
         await setPasswordFn({ data: { newPassword: next } });

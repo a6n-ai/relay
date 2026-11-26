@@ -1,5 +1,6 @@
 import { APIError, createAuthMiddleware, getAuthoritativeSessionFromCtx, getOAuthState, getSessionFromCtx, isAPIError } from "better-auth/api";
 import { betterAuth } from "better-auth";
+import { waitUntil } from "cloudflare:workers";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { apiKey as apiKeyPlugin } from "@better-auth/api-key";
 import { admin } from "better-auth/plugins/admin";
@@ -81,6 +82,26 @@ async function emailWithinCap(env: Env, scope: string, email: string, max = OTP_
   return row.count <= max;
 }
 
+// A password is a lasting credential, so setting or changing one needs a sign-in from the last 10 minutes.
+export const FRESH_SESSION_MS = 10 * 60_000;
+export const STALE_SESSION_MESSAGE = "Sign in again to set a password.";
+export const isFreshSession = (createdAt: Date | string | number) => Date.now() - new Date(createdAt).getTime() <= FRESH_SESSION_MS;
+
+// Audit row plus a notice mail. The change has already committed, so a failed notice is logged (no address) and never fails the caller.
+export async function recordPasswordChange(
+  env: Env,
+  u: { id: string; email: string },
+  action: "password.set" | "password.change" | "password.reset",
+  meta: { ip?: string | null; userAgent?: string | null } = {},
+): Promise<void> {
+  await writeAudit(env, { action, actorUserId: u.id, target: u.id, ...meta });
+  try {
+    await pickMailer(env.OTP_MAILER, env).send(u.email, "", "password-changed");
+  } catch (error) {
+    console.error(`password notice failed: ${action}: ${error instanceof Error ? error.message : "unknown"}`);
+  }
+}
+
 export function createAuth(env: Env) {
   if (!env.BETTER_AUTH_SECRET || !env.BETTER_AUTH_URL) {
     throw new Error("BETTER_AUTH_SECRET and BETTER_AUTH_URL are required");
@@ -140,9 +161,16 @@ export function createAuth(env: Env) {
           console.error(`reset mail failed: ${error instanceof Error ? error.message : "unknown"}`);
         }
       },
+      onPasswordReset: async ({ user }, request) => {
+        await recordPasswordChange(env, user, "password.reset", request ? requestMeta({ request }) : {});
+      },
     },
+    // Reset links are stored hashed, so a database read does not yield a usable link.
+    verification: { storeIdentifier: { default: "plain", overrides: { "reset-password:": "hashed" } } },
     account: { accountLinking: { enabled: true, requireLocalEmailVerified: false } },
     advanced: {
+      // Mail sends run after the response, so a known address costs the same time as an unknown one.
+      backgroundTasks: { handler: (promise) => waitUntil(promise) },
       useSecureCookies: env.BETTER_AUTH_URL.startsWith("https://"),
       ipAddress: { ipAddressHeaders: ["cf-connecting-ip"] },
       database: {
@@ -161,6 +189,8 @@ export function createAuth(env: Env) {
         "/sign-in/email-otp": { window: 600, max: 5 },
         "/sign-in/email": { window: 600, max: 10 },
         "/request-password-reset": { window: 600, max: 5 },
+        "/change-password": { window: 600, max: 5 },
+        "/reset-password": { window: 600, max: 10 },
         "/email-otp/check-verification-otp": { window: 600, max: 5 },
       },
     },
@@ -232,8 +262,15 @@ export function createAuth(env: Env) {
         // Same per-address cap for password sign-in guesses and reset mail; unknown and known addresses count alike.
         if (ctx.path === "/sign-in/email" || ctx.path === "/request-password-reset") {
           const pwEmail = String(ctx.body?.email ?? "").trim().toLowerCase();
-          const withinCap = ctx.path === "/sign-in/email" ? emailWithinCap(env, "pw-email", pwEmail, 10) : emailWithinCap(env, "reset-email", pwEmail);
-          if (pwEmail && !(await withinCap)) throw new APIError("TOO_MANY_REQUESTS");
+          if (pwEmail && !(await (ctx.path === "/sign-in/email" ? emailWithinCap(env, "pw-email", pwEmail, 10) : emailWithinCap(env, "reset-email", pwEmail))))
+            throw new APIError("TOO_MANY_REQUESTS");
+        }
+        // The reset link always lands on our reset page, whatever the client asked for.
+        if (ctx.path === "/request-password-reset" && ctx.body) ctx.body.redirectTo = "/reset-password";
+        if (ctx.path === "/change-password") {
+          const current = await getAuthoritativeSessionFromCtx(ctx);
+          if (current && (current.session.impersonatedBy || !isFreshSession(current.session.createdAt)))
+            throw new APIError("FORBIDDEN", { message: STALE_SESSION_MESSAGE });
         }
         // Keys are created by the server only: over HTTP, metadata.appId would be client-set and skip the app check.
         if (ctx.request && ctx.path.startsWith("/api-key/")) throw new APIError("NOT_FOUND");
@@ -338,6 +375,10 @@ export function createAuth(env: Env) {
               data: { to: body.role },
               ...meta,
             });
+          }
+          case "/change-password": {
+            const changed = (result as { user: { id: string; email: string } }).user;
+            return recordPasswordChange(env, changed, "password.change", meta);
           }
           case "/admin/impersonate-user":
             return writeAudit(env, { action: "impersonate.start", actorUserId: await actorOf(ctx), target: body.userId, ...meta });
