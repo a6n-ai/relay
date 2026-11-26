@@ -1,12 +1,12 @@
 /* Landing motion. Start states live inside the no-preference query, so reduced motion (and no CSS support) shows the finished page. */
 .ld-code {
-  font-size: 12px;
+  font-size: var(--text-caption);
   line-height: 1.7;
   tab-size: 2;
 }
 @media (min-width: 640px) {
   .ld-code {
-    font-size: 13px;
+    font-size: var(--text-footnote);
   }
 }
 .ld-k {
@@ -59,7 +59,7 @@
     animation-delay: calc(var(--d, 0ms) + 120ms);
   }
   .ld-dot-live::after {
-    animation: ld-ping 2400ms cubic-bezier(0.22, 1, 0.36, 1) 3600ms infinite;
+    animation: ld-ping 2400ms cubic-bezier(0.22, 1, 0.36, 1) 3600ms 3;
   }
   @supports (animation-timeline: view()) {
     .ld-reveal {

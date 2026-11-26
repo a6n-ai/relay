@@ -5,12 +5,12 @@ import { DevTabs } from "./dev-tabs";
 import { HeroPanel } from "./hero-panel";
 import "./landing.css";
 
-type ShotProps = { name: string; width: number; height: number; alt: string; eager?: boolean };
+type ShotProps = { name: string; width: number; height: number; alt: string; reveal?: boolean };
 
-function Shot({ name, width, height, alt, eager }: ShotProps) {
-  const common = { width, height, alt, decoding: "async" as const, loading: eager ? ("eager" as const) : ("lazy" as const) };
+function Shot({ name, width, height, alt, reveal = true }: ShotProps) {
+  const common = { width, height, alt, decoding: "async" as const, loading: "lazy" as const };
   return (
-    <div className="ld-reveal overflow-hidden rounded-md border bg-card">
+    <div className={`${reveal ? "ld-reveal " : ""}overflow-hidden rounded-md border bg-card`}>
       <img src={`/landing/${name}-light.webp`} {...common} className="block h-auto w-full dark:hidden" />
       <img src={`/landing/${name}-dark.webp`} {...common} className="hidden h-auto w-full dark:block" />
     </div>
@@ -44,7 +44,7 @@ function Feature({ tag, title, body, facts, flip, children }: { tag: string; tit
           <ul className="mt-6 grid gap-2 border-t pt-5 text-sm">
             {facts.map((f) => (
               <li key={f} className="flex gap-3">
-                <span aria-hidden="true" className="mt-[9px] h-px w-3 shrink-0 bg-foreground" />
+                <span aria-hidden="true" className="mt-2 h-px w-3 shrink-0 bg-foreground" />
                 {f}
               </li>
             ))}
@@ -109,10 +109,10 @@ export function Landing() {
           <Feature
             tag="Send"
             title="Transactional mail that leaves a trail."
-            body="POST a message with a bearer key. Relay answers 202 with a message id, then records each step: queued, sent, delivered. Retry with an idempotency key and you get the same message back, not a second email."
+            body="POST a message with a bearer key. Relay answers 202 with a message id, then records each step: queued, sent, then each delivery event. Retry with an idempotency key and you get the same message back, not a second email."
             facts={["Three streams: transactional, tracked and marketing.", "Each message page shows its timeline of events.", "Suppressed recipients are recorded as suppressed and never sent."]}
           >
-            <Shot name="messages" width={664} height={392} alt="The Messages page in the Relay console: five sent messages with recipient, subject and status." eager />
+            <Shot name="messages" width={664} height={392} alt="The Messages page in the Relay console: five sent messages with recipient, subject and status." />
           </Feature>
 
           <Feature
@@ -155,7 +155,7 @@ export function Landing() {
                 </code>
               </pre>
             </figure>
-            <Shot name="webhooks" width={664} height={232} alt="The Webhooks page in the Relay console: one webhook for new letters received, switched on." />
+            <Shot name="webhooks" width={664} height={232} alt="The Webhooks page in the Relay console: one webhook for new letters received, switched on." reveal={false} />
           </Feature>
 
           <Feature

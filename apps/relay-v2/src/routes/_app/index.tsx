@@ -1,155 +1,64 @@
-import { Button } from "@foundry/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@foundry/ui/card";
-import { createFileRoute, Link } from "@tanstack/react-router";
-import Globe from "lucide-react/icons/globe";
-import LayoutGrid from "lucide-react/icons/layout-grid";
-import UserPlus from "lucide-react/icons/user-plus";
-import { DeniedState, deniedReason } from "../../components/denied-state";
-import { MeterBar } from "../../components/meter-bar";
-import { createItems } from "../../components/shell/nav";
-import { PageHeader } from "../../components/shell/page-header";
-import { StatTile } from "../../components/stat-tile";
+import { createFileRoute } from "@tanstack/react-router";
+import { lazy, Suspense } from "react";
 import { fetchOverview } from "../../console/overview.fns";
-import { Hint, SectionTitle } from "../../components/page/text";
+
+// Overview and its shell pieces load only when it renders, never on the signed-out landing page.
+const OverviewView = lazy(() => import("../../components/overview"));
 
 const SITE = "https://relay.a6n.ai";
 const DESCRIPTION = "One API for transactional email, campaigns and inbound mail, with signed webhooks and a console your whole team can read.";
 
+const landingHead = () => ({
+  meta: [
+    { title: "Relay: email API, campaigns and webhooks" },
+    { name: "description", content: DESCRIPTION },
+    { property: "og:type", content: "website" },
+    { property: "og:site_name", content: "Relay" },
+    { property: "og:title", content: "Relay: email API, campaigns and webhooks" },
+    { property: "og:description", content: DESCRIPTION },
+    { property: "og:url", content: SITE },
+    { property: "og:image", content: `${SITE}/landing/og.png` },
+    { property: "og:image:width", content: "1200" },
+    { property: "og:image:height", content: "630" },
+    { property: "og:image:alt", content: "Relay: send email with one request and see what happens next." },
+    { name: "twitter:card", content: "summary_large_image" },
+    { name: "twitter:title", content: "Relay: email API, campaigns and webhooks" },
+    { name: "twitter:description", content: DESCRIPTION },
+    { name: "twitter:image", content: `${SITE}/landing/og.png` },
+  ],
+  links: [{ rel: "canonical", href: SITE }],
+  scripts: [
+    {
+      type: "application/ld+json",
+      children: JSON.stringify({
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        name: "Relay",
+        url: SITE,
+        description: DESCRIPTION,
+        applicationCategory: "DeveloperApplication",
+        operatingSystem: "Web",
+        publisher: { "@type": "Organization", name: "a6n", url: "https://a6n.ai" },
+      }),
+    },
+  ],
+});
+
 export const Route = createFileRoute("/_app/")({
-  head: () => ({
-    meta: [
-      { title: "Relay: email API, campaigns and webhooks" },
-      { name: "description", content: DESCRIPTION },
-      { property: "og:type", content: "website" },
-      { property: "og:site_name", content: "Relay" },
-      { property: "og:title", content: "Relay: email API, campaigns and webhooks" },
-      { property: "og:description", content: DESCRIPTION },
-      { property: "og:url", content: SITE },
-      { property: "og:image", content: `${SITE}/landing/og.png` },
-      { property: "og:image:width", content: "1200" },
-      { property: "og:image:height", content: "630" },
-      { property: "og:image:alt", content: "Relay: send email with one request and see what happens next." },
-      { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "Relay: email API, campaigns and webhooks" },
-      { name: "twitter:description", content: DESCRIPTION },
-      { name: "twitter:image", content: `${SITE}/landing/og.png` },
-    ],
-    links: [{ rel: "canonical", href: SITE }],
-    scripts: [
-      {
-        type: "application/ld+json",
-        children: JSON.stringify({
-          "@context": "https://schema.org",
-          "@type": "SoftwareApplication",
-          name: "Relay",
-          url: SITE,
-          description: DESCRIPTION,
-          applicationCategory: "DeveloperApplication",
-          operatingSystem: "Web",
-          publisher: { "@type": "Organization", name: "a6n", url: "https://a6n.ai" },
-        }),
-      },
-    ],
-  }),
+  // Marketing meta applies only when the landing page renders, not to the signed-in Overview.
+  head: ({ match }: { match: { context: { landing?: boolean } } }) => (match.context.landing ? landingHead() : {}),
   // A signed-out visitor sees the landing page, but child loaders still run; skip the fetch for them.
   loader: ({ context }) => (context.shell ? fetchOverview() : (null as never)),
   component: Overview,
 });
 
-const START = [
-  { id: "app", icon: LayoutGrid, title: "Create an app", line: "An app groups the messages, lists and campaigns you send.", cta: "Create app", to: "/apps" },
-  { id: "domain", icon: Globe, title: "Add a domain", line: "Verify a domain to send from your own address.", cta: "Add domain", to: "/domains" },
-  { id: "invite", icon: UserPlus, title: "Invite your team", line: "Give teammates access to this workspace.", cta: "Invite member", to: "/settings/invites" },
-] as const;
-
-function GetStarted({ shell }: { shell: NonNullable<ReturnType<typeof Route.useRouteContext>["shell"]> }) {
-  const allowed = new Set(createItems(shell.active?.roles ?? [], shell.active?.status === "suspended").map((c) => c.id));
-  const rows = START.filter((r) => allowed.has(r.id));
-  if (rows.length === 0) return null;
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Get started</CardTitle>
-      </CardHeader>
-      <CardContent className="grid divide-y">
-        {rows.map((r) => (
-          <div key={r.id} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
-            <r.icon className="size-5 shrink-0 text-muted-foreground" aria-hidden="true" />
-            <div className="min-w-0 flex-1">
-              <SectionTitle as="p">{r.title}</SectionTitle>
-              <Hint>{r.line}</Hint>
-            </div>
-            <Button variant="outline" render={<Link to={r.to as string} search={{ new: 1 } as never} />}>
-              {r.cta}
-            </Button>
-          </div>
-        ))}
-      </CardContent>
-    </Card>
-  );
-}
-
-const fmt = (n: number) => n.toLocaleString("en-CA");
-
 function Overview() {
   const overview = Route.useLoaderData();
   const { shell } = Route.useRouteContext();
-  if (!overview) {
-    return (
-      <>
-        <PageHeader crumbs={[{ label: "Overview" }]} />
-        <DeniedState reason={deniedReason(shell)} />
-      </>
-    );
-  }
-
-  const { month, quota, sent, delivered, bounced, inbound, days } = overview;
-  const busiest = Math.max(1, ...days.map((d) => d.sent));
   return (
-    <>
-      <PageHeader crumbs={[{ label: "Overview" }]} />
-      <div className="grid gap-4 p-4">
-        {shell.apps.length === 0 ? (
-          <GetStarted shell={shell} />
-        ) : (
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-            <StatTile label="Sent" value={fmt(sent)} />
-            <StatTile label="Delivered" value={fmt(delivered)} />
-            <StatTile label="Bounced" value={fmt(bounced)} />
-            <StatTile label="Received" value={fmt(inbound)} />
-          </div>
-        )}
-        <Card>
-          <CardHeader>
-            <CardTitle>{month} usage</CardTitle>
-          </CardHeader>
-          <CardContent className="grid gap-2">
-            {quota === 0 ? (
-              <p className="text-sm tabular-nums">{fmt(sent)} sent, unlimited</p>
-            ) : (
-              <div className="flex items-center gap-3">
-                <MeterBar percent={(sent / quota) * 100} />
-                <p className="text-sm tabular-nums">
-                  {fmt(sent)} of {fmt(quota)}
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-        {days.length > 0 ? (
-          <Card>
-            <CardContent className="grid gap-2">
-              {days.map((d) => (
-                <div key={d.day} className="flex items-center gap-3 text-xs">
-                  <span className="w-20 shrink-0 tabular-nums text-muted-foreground">{d.day}</span>
-                  <MeterBar percent={(d.sent / busiest) * 100} />
-                  <span className="w-12 text-right tabular-nums">{fmt(d.sent)}</span>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        ) : null}
-      </div>
-    </>
+    <Suspense fallback={null}>
+      <OverviewView overview={overview} shell={shell} />
+    </Suspense>
   );
 }
+

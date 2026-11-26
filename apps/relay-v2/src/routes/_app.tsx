@@ -1,11 +1,12 @@
-import { Toaster } from "@foundry/ui/toast";
-import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
-import { AppShell } from "../components/app-shell";
+import { createFileRoute, redirect } from "@tanstack/react-router";
+import { lazy, Suspense } from "react";
 import { AppError } from "../components/denied-state";
 import { Landing } from "../components/landing/landing";
-import { FindPalette } from "../components/shell/find-palette";
 import { getShell } from "../console/shell.fns";
 import { isPublicWhenSignedOut } from "../lib/public-path";
+
+// Console code loads only for signed-in visitors, so the landing page ships none of it.
+const ConsoleLayout = lazy(() => import("../components/console-layout"));
 
 export const Route = createFileRoute("/_app")({
   beforeLoad: async ({ location }) => {
@@ -26,11 +27,8 @@ function AppLayout() {
   const { shell, landing } = Route.useRouteContext();
   if (!shell || landing) return <Landing />;
   return (
-    <>
-      <AppShell shell={shell} find={<FindPalette shell={shell} />}>
-        <Outlet />
-      </AppShell>
-      <Toaster />
-    </>
+    <Suspense fallback={null}>
+      <ConsoleLayout shell={shell} />
+    </Suspense>
   );
 }

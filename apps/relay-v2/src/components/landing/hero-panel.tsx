@@ -48,11 +48,10 @@ const RESPONSE: ReactNode[] = [
   "}",
 ];
 
-const TRAIL: { label: string; note: string; mono?: boolean }[] = [
+const TRAIL: { label: string; note: string }[] = [
   { label: "Queued", note: "Stored and waiting to send." },
   { label: "Sent", note: "Handed to the mail service." },
-  { label: "Delivered", note: "Accepted by the recipient's server." },
-  { label: "mailbox.received", note: "Mail arrives at your inbox address. Your webhook is called, signed.", mono: true },
+  { label: "Delivery", note: "Reported by the mail service once the message is delivered." },
 ];
 
 export function HeroPanel() {
@@ -87,9 +86,9 @@ export function HeroPanel() {
       <ol className="m-0 grid list-none gap-0 border-t bg-background p-0 px-3 py-4 sm:px-4">
         {TRAIL.map((row, i) => (
           <li key={row.label} className="ld-step ld-track grid grid-cols-[9px_1fr] items-start gap-x-3 pb-3 last:pb-0" style={at(1900 + i * 260)}>
-            <span className={`ld-dot mt-[6px] ${i === TRAIL.length - 1 ? "ld-dot-live" : ""}`} aria-hidden="true" />
+            <span className={`ld-dot mt-1.5 ${i === TRAIL.length - 1 ? "ld-dot-live" : ""}`} aria-hidden="true" />
             <span className="grid gap-0.5 text-sm">
-              <span className={row.mono ? "font-mono text-[13px]" : "font-medium"}>{row.label}</span>
+              <span className="font-medium">{row.label}</span>
               <span className="text-xs text-muted-foreground">{row.note}</span>
             </span>
           </li>
