@@ -13,7 +13,7 @@ import { Input } from "@foundry/ui/input";
 import { Label } from "@foundry/ui/label";
 import { type ReactNode, useState } from "react";
 import { errorText } from "./error-text";
-import { FormError } from "./form-error";
+import { FormError } from "./page/form-parts";
 
 // Pass open and onOpenChange to drive it from outside (a router blocker); omit trigger then.
 // onConfirm must return a promise that rejects on failure: the dialog stays open while it runs and shows the error inline.
