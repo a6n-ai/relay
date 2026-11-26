@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { AppSelect } from "../app-select";
 import { Label } from "@foundry/ui/label";
 import { Hint } from "../page/text";
@@ -19,6 +20,10 @@ export function AppField({
 }) {
   const scoped = scopedAppId ? apps.find((a) => a.id === scopedAppId) : undefined;
   const fixed = scoped ?? (apps.length === 1 ? apps[0] : undefined);
+  const fixedId = fixed?.id;
+  useEffect(() => {
+    if (fixedId && fixedId !== value) onChange(fixedId);
+  }, [fixedId, value]);
   if (fixed) {
     return (
       <div className="grid gap-1.5">

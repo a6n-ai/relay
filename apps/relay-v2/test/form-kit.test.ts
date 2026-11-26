@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { choiceMode } from "../src/components/form/choice-mode";
-import { addressDomains, normaliseLocal, splitEmail } from "../src/components/form/domain-email";
+import { addressDomains, defaultDomain, normaliseLocal, splitEmail } from "../src/components/form/domain-email";
 import { slugify } from "../src/components/form/slugify";
 
 describe("choiceMode", () => {
@@ -45,11 +45,21 @@ describe("addressDomains", () => {
   });
 });
 
+describe("defaultDomain", () => {
+  it("picks the first enabled domain, or none", () => {
+    expect(defaultDomain([{ domain: "b.com", disabled: true }, { domain: "a.com", disabled: false }])).toBe("a.com");
+    expect(defaultDomain([{ domain: "b.com", disabled: true }])).toBe("");
+  });
+});
+
 describe("slugify", () => {
   const re = /^[a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])?$/;
   it("slugs names", () => {
     expect(slugify("Acme Mail!")).toBe("acme-mail");
     expect(slugify("  --x--  ")).toBe("x");
+  });
+  it("returns empty for no usable characters", () => {
+    expect(slugify("!!!")).toBe("");
   });
   it("caps at 40 with no trailing dash", () => {
     const s = slugify("word ".repeat(12));

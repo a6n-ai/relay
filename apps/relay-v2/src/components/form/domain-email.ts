@@ -24,3 +24,7 @@ export function addressDomains(
     return { domain: d.domain, pending, disabled: pending && kind !== "sender" };
   });
 }
+
+export function defaultDomain(rows: { domain: string; disabled: boolean }[]): string {
+  return rows.find((r) => !r.disabled)?.domain ?? "";
+}
