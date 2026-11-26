@@ -1,17 +1,22 @@
 import { Button } from "@foundry/ui/button";
 import { Input } from "@foundry/ui/input";
 import { Label } from "@foundry/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@foundry/ui/select";
 import { toast } from "@foundry/ui/toast";
-import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
 import { ListIcon } from "lucide-react";
 import { type FormEvent, useState } from "react";
-import { AppSelect } from "../../components/app-select";
+import { ConsentFields } from "../../components/consent-fields";
+import { AppField } from "../../components/form/app-field";
 import { CONSENT_LABEL } from "../../components/consent-labels";
 import { CreateDialog } from "../../components/create-dialog";
 import { DeniedState, deniedReason } from "../../components/denied-state";
 import { errorText } from "../../components/error-text";
 import { ResourceTable } from "../../components/resource-table";
+import { FilterMenu } from "../../components/page/filter-menu";
+import { ResourceGrid } from "../../components/page/resource-grid";
+import { ViewToggle } from "../../components/page/view-toggle";
+import { type View, viewPref } from "../../components/page/view-pref";
+import { Hint } from "../../components/page/text";
 import { useCan } from "../../components/use-can";
 import { EmptyState } from "../../components/page/empty-state";
 import { SearchInput, Toolbar } from "../../components/page/toolbar";
@@ -50,14 +55,15 @@ export const Route = createFileRoute("/_app/lists")({
   component: ListsPage,
 });
 
-const CONSENT_SOURCES = Object.keys(CONSENT_LABEL) as ConsentSource[];
-
 function ListsPage() {
   const page = Route.useLoaderData();
+  const search = Route.useSearch();
   const { shell } = Route.useRouteContext();
   const canWrite = useCan({ list: ["write"] });
   const [newOpen, setNewOpen] = useNewParam();
   const [query, setQuery] = useUrlFilter("q");
+  const navigate = useNavigate();
+  const [view, setView] = useState<View>(() => viewPref.read("/lists"));
   const crumbs = [{ label: "Lists" }];
   if (!page) {
     return (
@@ -80,44 +86,78 @@ function ListsPage() {
   const canCreate = canWrite && !!defaultApp;
   const q = query.trim().toLowerCase();
   const shown = q ? lists.filter((l) => l.name.toLowerCase().includes(q)) : lists;
+  const appName = (id: string) => apps.find((a) => a.id === id)?.name ?? "—";
+  const empty = (
+    <EmptyState
+      icon={ListIcon}
+      title={q ? "No lists match" : "No lists yet"}
+      description={q ? undefined : "Lists hold the people a campaign sends to."}
+      action={
+        !q && canCreate ? (
+          <Button variant="outline" onClick={() => setNewOpen(true)}>
+            New list
+          </Button>
+        ) : undefined
+      }
+    />
+  );
+  const href = (l: (typeof lists)[number]) => ({ to: "/lists/$listId" as const, params: { listId: l.id }, search: { appId: l.appId } });
   const newList = canCreate ? (
     <CreateDialog title="New list" open={newOpen} onOpenChange={setNewOpen}>
-      {(done) => <NewListForm apps={apps} appId={defaultApp} done={done} />}
+      {(done) => <NewListForm apps={apps} appId={defaultApp} scopedAppId={appId} done={done} />}
     </CreateDialog>
   ) : null;
   return (
     <>
       <PageHeader crumbs={crumbs} />
-      <Toolbar search={<SearchInput value={query} onChange={setQuery} placeholder="Search lists" />}>
+      <Toolbar
+        search={<SearchInput value={query} onChange={setQuery} placeholder="Search lists" />}
+        filters={
+          apps.length > 1 ? (
+            <FilterMenu
+              facets={[{ key: "appId", label: "App", options: apps.map((a) => ({ value: a.id, label: a.name })) }]}
+              value={search}
+              onChange={(next) => void navigate({ to: ".", search: next as never })}
+            />
+          ) : undefined
+        }
+        view={<ViewToggle route="/lists" value={view} onChange={setView} />}
+      >
         {canCreate ? <Button onClick={() => setNewOpen(true)}>New list</Button> : null}
       </Toolbar>
       {newList}
-      <ResourceTable
-        columns={[
-          { header: "Name", kind: "name", cell: (l) => l.name },
-          { header: "App", cell: (l) => apps.find((a) => a.id === l.appId)?.name ?? "—" },
-          { header: "Contacts", cell: (l) => l.members, numeric: true },
-          { header: "Consent", cell: (l) => CONSENT_LABEL[l.consentSource] },
-        ]}
-        rows={shown}
-        rowKey={(l) => l.id}
-        rowHref={(l) => ({ to: "/lists/$listId", params: { listId: l.id }, search: { appId: l.appId } })}
-        rowLabel={() => "Open list"}
-        empty={
-          <EmptyState
-            icon={ListIcon}
-            title={q ? "No lists match" : "No lists yet"}
-            description={q ? undefined : "Lists hold the people a campaign sends to."}
-            action={
-              !q && canCreate ? (
-                <Button variant="outline" onClick={() => setNewOpen(true)}>
-                  New list
-                </Button>
-              ) : undefined
-            }
-          />
-        }
-      />
+      {view === "grid" ? (
+        <ResourceGrid
+          items={shown}
+          rowKey={(l) => l.id}
+          href={href}
+          rowLabel={() => "Open list"}
+          empty={empty}
+          card={(l) => (
+            <div className="grid gap-1">
+              <p className="font-medium">{l.name}</p>
+              <Hint size="xs">{appName(l.appId)}</Hint>
+              <Hint>
+                {l.members} {l.members === 1 ? "contact" : "contacts"} · {CONSENT_LABEL[l.consentSource]}
+              </Hint>
+            </div>
+          )}
+        />
+      ) : (
+        <ResourceTable
+          columns={[
+            { header: "Name", kind: "name", cell: (l) => l.name },
+            { header: "App", cell: (l) => appName(l.appId) },
+            { header: "Contacts", cell: (l) => l.members, numeric: true },
+            { header: "Consent", cell: (l) => CONSENT_LABEL[l.consentSource] },
+          ]}
+          rows={shown}
+          rowKey={(l) => l.id}
+          rowHref={href}
+          rowLabel={() => "Open list"}
+          empty={empty}
+        />
+      )}
     </>
   );
 }
@@ -125,10 +165,12 @@ function ListsPage() {
 function NewListForm({
   apps,
   appId,
+  scopedAppId,
   done,
 }: {
   apps: { id: string; name: string }[];
   appId: string;
+  scopedAppId?: string;
   done: () => void;
 }) {
   const router = useRouter();
@@ -157,31 +199,14 @@ function NewListForm({
   }
   return (
     <FormBody onSubmit={submit}>
-      <Label htmlFor="list-app">App</Label>
-      <AppSelect apps={apps} value={app} onValueChange={setApp} id="list-app" />
-      <Label htmlFor="list-name">Name</Label>
-      <Input id="list-name" required value={name} onChange={(e) => setName(e.target.value)} />
-      <Label htmlFor="list-consent">Consent</Label>
-      <Select value={consent} onValueChange={(v) => setConsent(v as ConsentSource)}>
-        <SelectTrigger id="list-consent">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          {CONSENT_SOURCES.map((s) => (
-            <SelectItem key={s} value={s}>
-              {CONSENT_LABEL[s]}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      <Label htmlFor="list-note">Note</Label>
-      <Input id="list-note" value={note} onChange={(e) => setNote(e.target.value)} />
+      <AppField apps={apps} scopedAppId={scopedAppId} value={app} onChange={setApp} id="list-app" />
+      <div className="grid gap-1.5">
+        <Label htmlFor="list-name">Name</Label>
+        <Input id="list-name" autoFocus required value={name} onChange={(e) => setName(e.target.value)} placeholder="Newsletter subscribers" />
+      </div>
+      <ConsentFields idPrefix="list" consent={consent} onConsent={setConsent} note={note} onNote={setNote} />
       <FormError message={error} />
-      <FormActions>
-        <Button type="submit" disabled={pending || !name.trim() || !app}>
-          Create list
-        </Button>
-      </FormActions>
+      <FormActions cancel pending={pending} pendingLabel="Creating…" submitLabel="Create list" />
     </FormBody>
   );
 }
