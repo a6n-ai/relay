@@ -81,7 +81,7 @@ function SuppressionsPage() {
         search={<PrefixSearch />}
         filters={
           <FilterMenu
-            facets={[{ key: "stream", label: "Stream", options: STREAM_FILTERS.map((s) => ({ value: s, label: s === "all" ? "Any stream" : streamLabel(s) })) }]}
+            facets={[{ key: "stream", label: "Stream", options: STREAM_FILTERS.map((s) => ({ value: s, label: s === "all" ? "All streams only" : streamLabel(s) })) }]}
             value={search}
             onChange={(next) => void navigate({ to: ".", search: next as never })}
           />
@@ -95,7 +95,8 @@ function SuppressionsPage() {
       </Toolbar>
       {search.stream ? (
         <Hint>
-          Showing {search.stream === "all" ? "all-stream" : search.stream} suppressions on this page only. Use Show older to see more.
+          {search.stream === "all" ? "Showing suppressions for all streams on this page only." : `Showing ${streamLabel(search.stream)} suppressions on this page only.`}
+          {page.nextCursor ? " Use Show older to see more." : null}
         </Hint>
       ) : null}
       <ResourceTable
