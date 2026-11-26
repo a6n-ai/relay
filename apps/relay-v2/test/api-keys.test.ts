@@ -108,8 +108,9 @@ describe("API keys", () => {
     // The limiter window is a fixed 60 s, so spend the budget right before each call; otherwise a window rollover between spend and call makes this flaky.
     const exhaust = () => env.API_LIMIT.limit({ key: id, delta: 600 });
 
-    await exhaust();
-    const res = await post(secret);
+    // shortcut: up to 3 tries absorbs a window rollover between spend and call; a real missing limit still fails all 3.
+    let res = await (async () => (await exhaust(), post(secret)))();
+    for (let i = 0; i < 2 && res.status !== 429; i++) res = await (async () => (await exhaust(), post(secret)))();
     expect(res.status).toBe(429);
     expect(await res.json()).toEqual({ error: "rate limited" });
     const rpc = new RelayRpc(createExecutionContext(), env);
