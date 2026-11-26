@@ -15,7 +15,7 @@ export default defineConfig({
 			lastUpdated: false,
 			head: [
 				{ tag: 'meta', attrs: { property: 'og:site_name', content: 'Relay' } },
-				{ tag: 'meta', attrs: { property: 'og:image', content: 'https://relay.a6n.ai/docs/og.svg' } },
+				{ tag: 'meta', attrs: { property: 'og:image', content: 'https://relay.a6n.ai/landing/og.png' } },
 				{ tag: 'meta', attrs: { property: 'og:image:alt', content: 'Relay docs' } },
 				{ tag: 'meta', attrs: { name: 'twitter:card', content: 'summary_large_image' } },
 				{ tag: 'link', attrs: { rel: 'alternate', type: 'text/plain', href: '/docs/llms.txt', title: 'LLM summary' } },
