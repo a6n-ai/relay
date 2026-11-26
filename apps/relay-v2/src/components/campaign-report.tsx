@@ -8,7 +8,7 @@ import { ConfirmDialog } from "./confirm-dialog";
 import { FormError } from "./form-error";
 import { formatWhen } from "../lib/format-date";
 import { MeterBar } from "./meter-bar";
-import { runAction } from "./run-action";
+import { confirmAction, runAction } from "./run-action";
 import { StatTile } from "./stat-tile";
 import { Toolbar } from "./page/toolbar";
 import { useCan } from "./use-can";
@@ -48,7 +48,7 @@ export function CampaignReport({ campaign, stats }: { campaign: CampaignView; st
       title="Cancel this campaign?"
       description="Queued mail will not be sent. Messages not yet sent will be dropped. Mail already sent is unaffected."
       confirmLabel="Cancel campaign"
-      onConfirm={() => void act(() => cancelCampaignFn({ data: { id } }), "Campaign cancelled")}
+      onConfirm={() => confirmAction(() => cancelCampaignFn({ data: { id } }), "Campaign cancelled", () => router.invalidate())}
     />
   );
   const sendable = audience?.sendable ?? 0;

@@ -15,7 +15,7 @@ import { SearchInput, Toolbar } from "../../components/page/toolbar";
 import { useUrlFilter } from "../../components/page/use-url-filter";
 import { TableSkeleton } from "../../components/page/table-skeleton";
 import { ResourceTable } from "../../components/resource-table";
-import { runAction } from "../../components/run-action";
+import { confirmAction, runAction } from "../../components/run-action";
 import { PageHeader } from "../../components/shell/page-header";
 import { fetchWorkspaces, setWorkspaceInviteCapFn, setWorkspaceQuotaFn, setWorkspaceRegionFn, setWorkspaceStatusFn } from "../../console/admin.fns";
 import { SES_REGIONS } from "../../core/ses-regions";
@@ -119,7 +119,9 @@ function NumberCard({
   );
 }
 
-function ManageSheet({ w, run }: { w: Workspace; run: (action: () => Promise<unknown>, success: string) => void }) {
+type Run = (action: () => Promise<unknown>, success: string) => void;
+
+function ManageSheet({ w, run, confirm }: { w: Workspace; run: Run; confirm: (action: () => Promise<unknown>, success: string) => Promise<void> }) {
   const [region, setRegion] = useState(w.sesRegion ?? "");
   const suspend = w.status !== "suspended";
   return (
@@ -190,8 +192,9 @@ function ManageSheet({ w, run }: { w: Workspace; run: (action: () => Promise<unk
                 : "The workspace can send and change settings again."
             }
             confirmLabel={suspend ? "Suspend" : "Resume"}
+            destructive={suspend}
             onConfirm={() =>
-              run(
+              confirm(
                 () => setWorkspaceStatusFn({ data: { workspaceId: w.id, status: suspend ? "suspended" : "active" } }),
                 suspend ? "Workspace suspended" : "Workspace resumed",
               )
@@ -210,6 +213,7 @@ function AdminPage() {
   const router = useRouter();
   const [query, setQuery] = useUrlFilter("q");
   const run = (action: () => Promise<unknown>, success: string) => runAction(action, success, () => router.invalidate());
+  const confirm = (action: () => Promise<unknown>, success: string) => confirmAction(action, success, () => router.invalidate());
   const q = query.trim().toLowerCase();
   const rows = q ? workspaces.filter((w) => w.name.toLowerCase().includes(q) || w.slug.toLowerCase().includes(q)) : workspaces;
   const selected = ws ? workspaces.find((w) => w.id === ws) : undefined;
@@ -262,7 +266,7 @@ function AdminPage() {
                 <SheetTitle>Manage {selected.name}</SheetTitle>
                 <SheetDescription>{selected.slug}</SheetDescription>
               </SheetHeader>
-              <ManageSheet key={selected.id} w={selected} run={run} />
+              <ManageSheet key={selected.id} w={selected} run={run} confirm={confirm} />
             </>
           ) : null}
         </SheetContent>

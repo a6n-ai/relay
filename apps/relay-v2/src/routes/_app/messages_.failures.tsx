@@ -57,13 +57,9 @@ function FailuresPage() {
   }
 
   async function remove(failureId: string) {
-    try {
-      await deleteFailureFn({ data: { id: failureId } });
-      toast.success("Message deleted");
-      await router.invalidate();
-    } catch (err) {
-      toast.error(errorText(err, "Could not delete this message."));
-    }
+    await deleteFailureFn({ data: { id: failureId } });
+    toast.success("Message deleted");
+    await router.invalidate();
   }
 
   return (
@@ -93,7 +89,9 @@ function FailuresPage() {
         title="Delete this message?"
         description="The message is removed and will not be retried."
         confirmLabel="Delete"
-        onConfirm={() => deleting && remove(deleting)}
+        onConfirm={async () => {
+          if (deleting) await remove(deleting);
+        }}
       />
     </>
   );

@@ -5,7 +5,7 @@ import { Label } from "@foundry/ui/label";
 import { RadioGroup, RadioGroupItem } from "@foundry/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@foundry/ui/select";
 import { toast } from "@foundry/ui/toast";
-import { useBlocker, useRouter, useNavigate } from "@tanstack/react-router";
+import { useRouter, useNavigate } from "@tanstack/react-router";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import {
   deleteCampaignFn,
@@ -27,6 +27,7 @@ import { FormError } from "./form-error";
 import { ScheduleDialog } from "./schedule-dialog";
 import { SettingsCard } from "./page/settings-card";
 import { Toolbar } from "./page/toolbar";
+import { UnsavedGuard } from "./unsaved-guard";
 import { useCan } from "./use-can";
 import { FormActions, FormPanel, FormBody } from "./page/form-parts";
 import { Hint } from "./page/text";
@@ -71,12 +72,6 @@ export function CampaignEditor({
     { from, subject, html, text, audienceKind, listIds, audienceQuery: audienceQuery.trim() || null },
   );
   const leaving = useRef(false);
-  const blocker = useBlocker({
-    shouldBlockFn: () => !leaving.current,
-    withResolver: true,
-    disabled: !dirty,
-  });
-  const blocked = blocker.status === "blocked" ? blocker : null;
 
   // The audience is counted from the saved campaign, so it reloads whenever the saved lists change.
   const savedLists = campaign.listIds.join(",");
@@ -172,14 +167,10 @@ export function CampaignEditor({
   }
 
   async function remove() {
-    try {
-      await deleteCampaignFn({ data: { id: campaign.id } });
-      toast.success("Campaign deleted");
-      leaving.current = true;
-      await navigate({ to: "/campaigns", search: { appId: campaign.appId } });
-    } catch (err) {
-      toast.error(errorText(err, "Could not delete this campaign."));
-    }
+    await deleteCampaignFn({ data: { id: campaign.id } });
+    toast.success("Campaign deleted");
+    leaving.current = true;
+    await navigate({ to: "/campaigns", search: { appId: campaign.appId } });
   }
 
   async function savePostalAddress(event: FormEvent) {
@@ -205,14 +196,7 @@ export function CampaignEditor({
 
   return (
     <>
-      <ConfirmDialog
-        open={blocked !== null}
-        onOpenChange={(open) => !open && blocked?.reset()}
-        title="Leave this page?"
-        description="Your unsaved changes will be lost."
-        confirmLabel="Leave without saving"
-        onConfirm={() => blocked?.proceed()}
-      />
+      <UnsavedGuard when={dirty} bypass={leaving} />
       <Toolbar>
         {canWrite ? (
           <Button type="submit" form="campaign-form" variant="outline" disabled={pending || !dirty}>

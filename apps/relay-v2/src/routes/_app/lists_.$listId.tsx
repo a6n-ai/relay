@@ -92,22 +92,14 @@ function ListDetailPage() {
   }
   const { list, members } = page;
   async function remove(memberId: string) {
-    try {
-      await removeMemberFn({ data: { listId, memberId } });
-      toast.success("Contact removed");
-      await router.invalidate();
-    } catch (err) {
-      toast.error(errorText(err, "Could not remove this contact."));
-    }
+    await removeMemberFn({ data: { listId, memberId } });
+    toast.success("Contact removed");
+    await router.invalidate();
   }
   async function deleteList() {
-    try {
-      await deleteListFn({ data: { id: listId } });
-      toast.success("List deleted");
-      await navigate({ to: "/lists", search: { appId: list.appId } });
-    } catch (err) {
-      toast.error(errorText(err, "Could not delete this list."));
-    }
+    await deleteListFn({ data: { id: listId } });
+    toast.success("List deleted");
+    await navigate({ to: "/lists", search: { appId: list.appId } });
   }
   const q = query.trim().toLowerCase();
   const shown = q
@@ -193,8 +185,8 @@ function ListDetailPage() {
         onOpenChange={(o) => {
           if (!o) setRemoving(null);
         }}
-        onConfirm={() => {
-          if (removing) void remove(removing);
+        onConfirm={async () => {
+          if (removing) await remove(removing);
         }}
       />
       <ResourceTable

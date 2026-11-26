@@ -62,13 +62,9 @@ function AppPage() {
   const { app, keys, hook, senders } = data;
 
   async function revoke(id: string) {
-    try {
-      await revokeKeyFn({ data: { id } });
-      toast.success("Key revoked");
-      await router.invalidate();
-    } catch (err) {
-      toast.error(errorText(err, "Could not revoke the key"));
-    }
+    await revokeKeyFn({ data: { id } });
+    toast.success("Key revoked");
+    await router.invalidate();
   }
 
   return (
@@ -126,8 +122,8 @@ function AppPage() {
         title="Revoke this key?"
         description="Requests that use this key stop working right away."
         confirmLabel="Revoke key"
-        onConfirm={() => {
-          if (revokeId) void revoke(revokeId);
+        onConfirm={async () => {
+          if (revokeId) await revoke(revokeId);
         }}
       />
     </>
@@ -249,24 +245,16 @@ function AudiencePanel({
   }
 
   async function remove() {
-    try {
-      await deleteAudienceHookFn({ data: { appId } });
-      toast.success("App audience removed");
-      await router.invalidate();
-    } catch (err) {
-      toast.error(errorText(err, "Could not remove the App audience."));
-    }
+    await deleteAudienceHookFn({ data: { appId } });
+    toast.success("App audience removed");
+    await router.invalidate();
   }
 
   async function connectBinding() {
     if (!bindWorkspaceId) return;
-    try {
-      await setAudienceBindingFn({ data: { workspaceId: bindWorkspaceId, appId, binding: BINDING } });
-      toast.success("App audience connected");
-      await router.invalidate();
-    } catch (err) {
-      toast.error(errorText(err, "Could not connect the App audience."));
-    }
+    await setAudienceBindingFn({ data: { workspaceId: bindWorkspaceId, appId, binding: BINDING } });
+    toast.success("App audience connected");
+    await router.invalidate();
   }
 
   const editable = canWrite && hook && hook.kind !== "binding";
@@ -288,6 +276,7 @@ function AudiencePanel({
             title="Connect this audience?"
             description="Campaigns in this app will reach the connected app's customers. This replaces any Audience URL."
             confirmLabel="Connect"
+            destructive={false}
             onConfirm={connectBinding}
           />
         ) : null}
