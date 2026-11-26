@@ -8,10 +8,10 @@ export function googleConfig(env: Pick<Env, "GOOGLE_CLIENT_ID" | "GOOGLE_CLIENT_
   return clientId && clientSecret ? { clientId, clientSecret, disableSignUp: true as const } : null;
 }
 
-export function signInErrorText(code: string | undefined, email?: string): string | null {
+export function signInErrorText(code: string | undefined): string | null {
   if (!code) return null;
   if (code === NO_ACCOUNT_CODE) {
-    return `No Relay account for ${email ?? "that email"}. Ask your workspace owner for an invite.`;
+    return "No Relay account for that email. Ask your workspace owner for an invite.";
   }
   return "Could not sign in with Google. Try again or use your email.";
 }

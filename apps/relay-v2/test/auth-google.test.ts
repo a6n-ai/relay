@@ -1,5 +1,7 @@
-import { env } from "cloudflare:test";
-import { describe, expect, it } from "vitest";
+import { env, SELF } from "cloudflare:test";
+import { BASE, json } from "./console-helpers";
+import { applyMigrations } from "./migrate";
+import { beforeAll, describe, expect, it } from "vitest";
 import { createAuth } from "../src/lib/auth";
 import { googleConfig, signInErrorText } from "../src/lib/auth/google";
 import type { Env } from "../src/env";
@@ -22,8 +24,8 @@ describe("googleConfig", () => {
 
 describe("signInErrorText", () => {
   it("maps codes to copy", () => {
-    expect(signInErrorText("signup_disabled", "a@b.com")).toBe(
-      "No Relay account for a@b.com. Ask your workspace owner for an invite.",
+    expect(signInErrorText("signup_disabled")).toBe(
+      "No Relay account for that email. Ask your workspace owner for an invite.",
     );
     expect(signInErrorText("weird")).toBe("Could not sign in with Google. Try again or use your email.");
     expect(signInErrorText(undefined)).toBeNull();
@@ -46,4 +48,16 @@ describe("createAuth google provider", () => {
     expect(linking?.requireLocalEmailVerified).toBe(false);
   });
   it.todo("a mocked Google profile with no user row is refused and creates no user or account row (token exchange needs a Google network mock; covered in the browser pass)");
+});
+
+describe("google idToken path", () => {
+  beforeAll(applyMigrations);
+  it("refuses an idToken body on /sign-in/social", async () => {
+    const res = await SELF.fetch(`${BASE}/sign-in/social`, {
+      method: "POST",
+      headers: json,
+      body: JSON.stringify({ provider: "google", idToken: { token: "x" } }),
+    });
+    expect(res.status).toBe(403);
+  });
 });

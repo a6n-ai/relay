@@ -11,10 +11,9 @@ import { signInErrorText } from "../lib/auth/google";
 import { Hint } from "../components/page/text";
 
 export const Route = createFileRoute("/sign-in")({
-  validateSearch: (search: Record<string, unknown>): { redirect?: string; error?: string; email?: string } => ({
+  validateSearch: (search: Record<string, unknown>): { redirect?: string; error?: string } => ({
     ...(typeof search.redirect === "string" ? { redirect: search.redirect } : {}),
     ...(typeof search.error === "string" ? { error: search.error } : {}),
-    ...(typeof search.email === "string" ? { email: search.email } : {}),
   }),
   loader: () => authOptionsFn(),
   component: SignIn,
@@ -27,12 +26,12 @@ const OFFLINE = "Could not reach Relay. Check your connection and try again.";
 
 function SignIn() {
   const router = useRouter();
-  const { redirect, error: errorCode, email: errorEmail } = Route.useSearch();
+  const { redirect, error: errorCode } = Route.useSearch();
   const { google } = Route.useLoaderData();
   const [step, setStep] = useState<"email" | "code">("email");
   const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");
-  const [error, setError] = useState<string | null>(signInErrorText(errorCode, errorEmail));
+  const [error, setError] = useState<string | null>(signInErrorText(errorCode));
   const [pending, setPending] = useState(false);
   const [wait, setWait] = useState(0);
 

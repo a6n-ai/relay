@@ -145,6 +145,16 @@ export function createAuth(env: Env) {
     // Role writes from every path (set-role, update-user, seed) reach user.update.after. The request body says whether one was asked for.
     // The seed has no endpoint context, so it writes its own role.change row.
     databaseHooks: {
+      // A banned user must not get a Google account row linked before sign-in is refused. false aborts the insert.
+      account: {
+        create: {
+          before: async (acct) => {
+            if (acct.providerId === "credential") return;
+            const [u] = await securityDb(env).select({ banned: user.banned }).from(user).where(eq(user.id, acct.userId));
+            if (u?.banned) return false;
+          },
+        },
+      },
       user: {
         create: {
           after: async (user, ctx) => {
@@ -184,6 +194,8 @@ export function createAuth(env: Env) {
           ctx.path === "/email-otp/reset-password" ||
           (ctx.path === "/email-otp/send-verification-otp" && ctx.body?.type === "forget-password");
         if (resetMail) throw new APIError("NOT_FOUND");
+        // An idToken body signs in without the OAuth redirect and its audit; only the redirect flow is allowed.
+        if (ctx.path === "/sign-in/social" && ctx.body?.idToken) throw new APIError("FORBIDDEN");
         if (ctx.path === "/email-otp/send-verification-otp") {
           const otpEmail = String(ctx.body?.email ?? "").trim().toLowerCase();
           if (otpEmail && !(await otpEmailWithinCap(env, otpEmail))) throw new APIError("TOO_MANY_REQUESTS");
@@ -252,7 +264,7 @@ export function createAuth(env: Env) {
             await writeAudit(env, { action: "sign_in.success", actorUserId: signedIn.id, target: signedIn.id, data: { provider: ctx.params?.id }, ...meta });
           } else {
             const location = (result as { headers?: Headers } | null)?.headers?.get("location");
-            const error = location ? new URL(location, "http://x").searchParams.get("error") : null;
+            const error = location ? new URL(location, "http://x").searchParams.get("error")?.slice(0, 64) ?? null : null;
             await writeAudit(env, { action: "sign_in.failure", data: { provider: ctx.params?.id, error }, ...meta });
           }
           return;
