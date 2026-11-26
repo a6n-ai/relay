@@ -2,20 +2,8 @@ import { Button } from "@foundry/ui/button";
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { DevTabs } from "./dev-tabs";
-import { HeroPanel } from "./hero-panel";
+import { HeroScene, Scene } from "./scene";
 import "./landing.css";
-
-type ShotProps = { name: string; width: number; height: number; alt: string; reveal?: boolean };
-
-function Shot({ name, width, height, alt, reveal = true }: ShotProps) {
-  const common = { width, height, alt, decoding: "async" as const, loading: "lazy" as const };
-  return (
-    <div className={`${reveal ? "ld-reveal " : ""}overflow-hidden rounded-md border bg-card`}>
-      <img src={`/landing/${name}-light.webp`} {...common} className="block h-auto w-full dark:hidden" />
-      <img src={`/landing/${name}-dark.webp`} {...common} className="hidden h-auto w-full dark:block" />
-    </div>
-  );
-}
 
 const Wrap = ({ children, className = "" }: { children: ReactNode; className?: string }) => (
   <div className={`mx-auto w-full max-w-6xl px-4 sm:px-8 ${className}`}>{children}</div>
@@ -31,11 +19,11 @@ const SignIn = () => (
   <Button render={<Link to="/sign-in" search={{ redirect: undefined }} />}>Sign in</Button>
 );
 
-function Feature({ tag, title, body, facts, flip, children }: { tag: string; title: string; body: string; facts: readonly string[]; flip?: boolean; children: ReactNode }) {
+function Feature({ tag, title, body, facts, flip, children }: { tag: string; title: string; body: string; facts: readonly string[]; flip?: boolean; children?: ReactNode }) {
   return (
     <section aria-labelledby={`f-${tag}`} className="border-b">
-      <Wrap className="grid gap-8 py-14 sm:py-20 lg:grid-cols-12 lg:items-center lg:gap-14">
-        <div className={`lg:col-span-5 ${flip ? "lg:order-2" : ""}`}>
+      <Wrap className="grid gap-8 py-14 sm:py-20 lg:grid-cols-12 lg:items-start lg:gap-14">
+        <div className={`${children ? "lg:sticky lg:top-24 lg:col-span-5" : "lg:col-span-8"} ${flip ? "lg:order-2" : ""}`}>
           <p className="font-mono text-xs uppercase tracking-wider text-muted-foreground">{tag}</p>
           <h2 id={`f-${tag}`} className="mt-3 text-balance text-2xl font-semibold tracking-tight sm:text-3xl">
             {title}
@@ -50,7 +38,7 @@ function Feature({ tag, title, body, facts, flip, children }: { tag: string; tit
             ))}
           </ul>
         </div>
-        <div className={`grid gap-4 lg:col-span-7 ${flip ? "lg:order-1" : ""}`}>{children}</div>
+        {children ? <div className={`grid gap-4 lg:col-span-7 ${flip ? "lg:order-1" : ""}`}>{children}</div> : null}
       </Wrap>
     </section>
   );
@@ -101,7 +89,7 @@ export function Landing() {
                 <p className="mt-4 text-sm text-muted-foreground">Access is by invite. Ask your workspace owner.</p>
               </div>
               <div className="min-w-0 lg:col-span-7">
-                <HeroPanel />
+                <HeroScene label="The Relay console: a curl request returns 202, the message appears in Messages as Queued, then Sent, and its timeline shows Queued, Sent and Delivery." />
               </div>
             </Wrap>
           </section>
@@ -111,9 +99,7 @@ export function Landing() {
             title="Transactional mail that leaves a trail."
             body="POST a message with a bearer key. Relay answers 202 with a message id, then records each step: queued, sent, then each delivery event. Retry with an idempotency key and you get the same message back, not a second email."
             facts={["Three streams: transactional, tracked and marketing.", "Each message page shows its timeline of events.", "Suppressed recipients are recorded as suppressed and never sent."]}
-          >
-            <Shot name="messages" width={664} height={392} alt="The Messages page in the Relay console: five sent messages with recipient, subject and status." />
-          </Feature>
+          />
 
           <Feature
             flip
@@ -122,7 +108,8 @@ export function Landing() {
             body="Build a template, add people to a list and send now or schedule it. Each campaign keeps its own stats. Marketing mail carries an unsubscribe link, and Relay stops sending to anyone who opts out."
             facts={["Each list records where its members' consent came from.", "Automations send a template when someone joins a list.", "Templates with merge fields for names and your own data.", "Draft, scheduled and sent campaigns in one table."]}
           >
-            <Shot name="campaigns" width={664} height={264} alt="The Campaigns page in the Relay console: two draft campaigns with status and recipient counts." />
+            <Scene name="campaigns" label="A campaign page in the Relay console: Schedule opens a dialog, Send now starts the campaign, and the page shows its recipients and sent counts rising." />
+            <Scene name="lists" label="The Import contacts dialog on a list: a CSV file is dropped in, the import reports Added 3 and Suppressed 1, and the new contacts appear on the list." />
           </Feature>
 
           <Feature
@@ -131,6 +118,7 @@ export function Landing() {
             body="Give an app an inbox address on your domain. Each letter that arrives is stored, then posted to your webhook as JSON with a signature you can verify."
             facts={["One event today: mailbox.received.", "Up to 6 attempts with backoff, then retry from the console.", "Webhook URLs must be public https."]}
           >
+            <Scene name="inbound" label="Messages, Received, in the Relay console: a letter from ada@example.com arrives at the top of the list and is posted to the webhook as mailbox.received." />
             <figure className="ld-reveal m-0 overflow-hidden rounded-md border bg-card text-card-foreground">
               <div className="border-b bg-muted px-3 py-2 sm:px-4">
                 <span className="ld-code font-mono">
@@ -157,7 +145,7 @@ export function Landing() {
                 </code>
               </pre>
             </figure>
-            <Shot name="webhooks" width={664} height={232} alt="The Webhooks page in the Relay console: one webhook for new letters received, switched on." reveal={false} />
+            <Scene name="webhooks" label="A webhook's deliveries in the Relay console: a delivery fails with HTTP 503, is retried a minute later, and ends as Sent with two attempts and a 200 response." />
           </Feature>
 
           <Feature
@@ -166,9 +154,7 @@ export function Landing() {
             title="Your team sees what your code sent."
             body="Verify a domain, add sender addresses, invite teammates and choose what each can do. Failed messages and suppressions each have their own page."
             facts={["Domains show their verification status.", "Addresses are sender, inbox or both.", "Roles for each teammate, per workspace."]}
-          >
-            <Shot name="domains" width={664} height={500} alt="The Domains page in the Relay console: a verified domain and three sender and inbox addresses." />
-          </Feature>
+          />
 
           <section aria-labelledby="dev" className="border-b">
             <Wrap className="grid gap-8 py-14 sm:py-20 lg:grid-cols-12 lg:gap-14">

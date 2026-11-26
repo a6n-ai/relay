@@ -1,0 +1,103 @@
+.rll .rll-win {
+  position: absolute;
+  top: 24px;
+  left: 32px;
+  width: 456px;
+  height: 400px;
+  box-shadow: var(--ss-shadow-hero);
+}
+.rll .rll-app {
+  grid-template-columns: minmax(0, 1fr);
+  min-height: 360px;
+}
+.rll .rll-dlg {
+  top: 66px;
+  left: 96px;
+  width: 290px;
+}
+.rll .rll-dlg .rl-h {
+  margin: 0 0 12px;
+}
+.rll .rll-form {
+  display: grid;
+  gap: 12px;
+  padding-bottom: 2px;
+}
+.rll .rll-zone {
+  display: grid;
+  place-items: center;
+  height: 60px;
+  border: 1px dashed var(--ss-line);
+  border-radius: 6px;
+  color: var(--ss-text);
+  font-size: 12px;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+.rll .rll-zone[data-hot] {
+  background: var(--ss-ink-2);
+  border-color: var(--ss-text);
+}
+.rll .rll-chosen {
+  width: 104px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ss-text-strong);
+  font-size: 13px;
+}
+.rll .rll-act {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 4px;
+}
+.rll .rll-res {
+  margin: 0;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.rll .rll-src {
+  position: absolute;
+  z-index: 70;
+  top: 328px;
+  left: 40px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 6px;
+  background: var(--ss-surface);
+  box-shadow: var(--ss-shadow-card);
+  color: var(--ss-text-strong);
+  font-size: 13px;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  will-change: transform;
+}
+.rll .rll-src[data-on],
+.rll .rll-src[data-lifted] {
+  opacity: 1;
+}
+.rll .rll-src[data-lifted] {
+  box-shadow: var(--ss-shadow-lift);
+}
+.rll .ss-stage[data-layout='compact'] .rll-win {
+  top: 16px;
+  left: 16px;
+  width: 372px;
+}
+.rll .ss-stage[data-layout='compact'] .rll-dlg {
+  top: 62px;
+  left: 16px;
+  width: 326px;
+}
+.rll .ss-stage[data-layout='compact'] .rll-src {
+  top: 290px;
+  left: 16px;
+}
+.rll .ss-stage[data-layout='compact'] .rll-zone {
+  height: 74px;
+}
