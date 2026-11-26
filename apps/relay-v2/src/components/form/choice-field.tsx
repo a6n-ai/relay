@@ -20,14 +20,15 @@ type ControlProps = {
   options: ChoiceOption[];
   mode: ChoiceModeName;
   labelledBy?: string;
+  autoFocus?: boolean;
 };
 
-function Combobox({ id, value, onChange, options, labelledBy }: ControlProps) {
+function Combobox({ id, value, onChange, options, labelledBy, autoFocus }: ControlProps) {
   const [open, setOpen] = useState(false);
   const current = options.find((o) => o.value === value);
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger render={<Button id={id} variant="outline" role="combobox" aria-labelledby={labelledBy} aria-expanded={open} className="w-full justify-between font-normal" />}>
+      <PopoverTrigger render={<Button id={id} autoFocus={autoFocus} variant="outline" role="combobox" aria-labelledby={labelledBy} aria-expanded={open} className="w-full justify-between font-normal" />}>
         <span className="truncate">{current?.label ?? "Select…"}</span>
         <ChevronsUpDownIcon className="text-muted-foreground" />
       </PopoverTrigger>
@@ -60,12 +61,12 @@ function Combobox({ id, value, onChange, options, labelledBy }: ControlProps) {
 }
 
 export function ChoiceControl(props: ControlProps) {
-  const { id, value, onChange, options, mode, labelledBy } = props;
+  const { id, value, onChange, options, mode, labelledBy, autoFocus } = props;
   if (mode === "combobox") return <Combobox {...props} />;
   if (mode === "select") {
     return (
       <Select value={value} onValueChange={onChange}>
-        <SelectTrigger id={id} aria-labelledby={labelledBy} className="w-full">
+        <SelectTrigger id={id} autoFocus={autoFocus} aria-labelledby={labelledBy} className="w-full">
           <SelectValue placeholder="Select…" />
         </SelectTrigger>
         <SelectContent>
@@ -82,14 +83,14 @@ export function ChoiceControl(props: ControlProps) {
   if (mode === "cards") {
     return (
       <RadioGroup id={id} aria-labelledby={labelledBy} value={value} onValueChange={onChange}>
-        {options.map((o) => (
+        {options.map((o, i) => (
           <Label
             key={o.value}
             className="items-start gap-3 rounded-(--ui-radius-control) border border-input p-3 font-normal has-data-checked:border-ring has-data-disabled:opacity-50"
           >
-            <RadioGroupItem value={o.value} disabled={o.disabled} className="mt-0.5" />
-            <span className="grid gap-1">
-              <span className="flex items-center gap-2 font-medium">
+            <RadioGroupItem value={o.value} disabled={o.disabled} autoFocus={autoFocus && i === 0} className="mt-0.5" />
+            <span className="grid min-w-0 gap-1">
+              <span className="flex items-center gap-2 break-all font-medium">
                 {o.label}
                 {o.badge ? <Badge variant="secondary">{o.badge}</Badge> : null}
               </span>
@@ -106,12 +107,13 @@ export function ChoiceControl(props: ControlProps) {
       aria-labelledby={labelledBy}
       type="single"
       variant="outline"
+      className="w-full"
       value={value}
       onValueChange={(v) => v && onChange(v)}
     >
-      {options.map((o) => (
-        <ToggleGroupItem key={o.value} value={o.value} disabled={o.disabled}>
-          {o.label}
+      {options.map((o, i) => (
+        <ToggleGroupItem key={o.value} value={o.value} disabled={o.disabled} autoFocus={autoFocus && i === 0} className="min-w-0 flex-1 shrink">
+          <span className="truncate">{o.label}</span>
           {o.badge ? <Badge variant="secondary">{o.badge}</Badge> : null}
         </ToggleGroupItem>
       ))}
@@ -127,6 +129,7 @@ export function ChoiceField({
   options,
   describe,
   people,
+  autoFocus,
 }: {
   id: string;
   label: string;
@@ -135,14 +138,19 @@ export function ChoiceField({
   options: ChoiceOption[];
   describe?: boolean;
   people?: boolean;
+  autoFocus?: boolean;
 }) {
-  const mode = choiceMode(options.length, { describe: describe ?? options.some((o) => o.description), people });
+  const mode = choiceMode(options.length, {
+    describe: describe ?? options.some((o) => o.description),
+    people,
+    labels: options.map((o) => (o.badge ? `${o.label} ${o.badge}` : o.label)),
+  });
   return (
     <div className="grid gap-1.5">
       <Label id={`${id}-label`} htmlFor={mode === "segmented" || mode === "cards" ? undefined : id}>
         {label}
       </Label>
-      <ChoiceControl id={id} value={value} onChange={onChange} options={options} mode={mode} labelledBy={`${id}-label`} />
+      <ChoiceControl id={id} value={value} onChange={onChange} options={options} mode={mode} labelledBy={`${id}-label`} autoFocus={autoFocus} />
     </div>
   );
 }

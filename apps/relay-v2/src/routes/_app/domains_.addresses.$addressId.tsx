@@ -137,7 +137,7 @@ function NewGrantForm({
 
   return (
     <FormBody onSubmit={submit}>
-      <ChoiceField id="grant-who" label="Member or team" value={choice} onChange={setChoice} options={options} people />
+      <ChoiceField id="grant-who" label="Member or team" value={choice} onChange={setChoice} options={options} people autoFocus />
       <FormError message={error} />
       <FormActions cancel submitLabel="Give access" pending={pending} pendingLabel="Giving access…" />
     </FormBody>

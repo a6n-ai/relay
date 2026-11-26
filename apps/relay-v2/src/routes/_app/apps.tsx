@@ -14,6 +14,7 @@ import { SearchInput, Toolbar } from "../../components/page/toolbar";
 import { ViewToggle } from "../../components/page/view-toggle";
 import { type View, viewPref } from "../../components/page/view-pref";
 import { SlugField } from "../../components/form/slug-field";
+import { splitSlugError } from "../../components/form/slugify";
 import { useUrlFilter } from "../../components/page/use-url-filter";
 import { TableSkeleton } from "../../components/page/table-skeleton";
 import { ResourceTable } from "../../components/resource-table";
@@ -140,6 +141,7 @@ function NewAppForm({ done }: { done: () => void }) {
     }
   }
 
+  const split = splitSlugError(error);
   return (
     <FormBody onSubmit={submit}>
       <Label htmlFor="app-name">Name</Label>
@@ -152,8 +154,8 @@ function NewAppForm({ done }: { done: () => void }) {
         value={name}
         onChange={(e) => setName(e.target.value)}
       />
-      <SlugField id="app-slug" name={name} value={slug} onChange={setSlug} />
-      <FormError message={error} />
+      <SlugField id="app-slug" name={name} value={slug} onChange={setSlug} error={split.slug} />
+      <FormError message={split.rest} />
       <FormActions cancel submitLabel="Create app" pending={pending} pendingLabel="Creating…" />
     </FormBody>
   );

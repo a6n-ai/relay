@@ -1,9 +1,13 @@
 import { useEffect } from "react";
-import { AppSelect } from "../app-select";
+import { ChoiceField } from "./choice-field";
 import { Label } from "@foundry/ui/label";
 import { Hint } from "../page/text";
 
 type App = { id: string; name: string };
+
+export function needsAppChoice(apps: App[], scopedAppId?: string | null) {
+  return apps.length > 1 && !apps.some((a) => a.id === scopedAppId);
+}
 
 export function AppField({
   apps,
@@ -11,12 +15,14 @@ export function AppField({
   value,
   onChange,
   id = "app",
+  autoFocus,
 }: {
   apps: App[];
   scopedAppId?: string | null;
   value: string;
   onChange: (appId: string) => void;
   id?: string;
+  autoFocus?: boolean;
 }) {
   const scoped = scopedAppId ? apps.find((a) => a.id === scopedAppId) : undefined;
   const fixed = scoped ?? (apps.length === 1 ? apps[0] : undefined);
@@ -33,9 +39,13 @@ export function AppField({
     );
   }
   return (
-    <div className="grid gap-1.5">
-      <Label htmlFor={id}>App</Label>
-      <AppSelect id={id} apps={apps} value={value} onValueChange={onChange} placeholder="Choose an app" />
-    </div>
+    <ChoiceField
+      id={id}
+      label="App"
+      value={value}
+      onChange={onChange}
+      options={apps.map((a) => ({ value: a.id, label: a.name }))}
+      autoFocus={autoFocus}
+    />
   );
 }

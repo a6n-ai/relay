@@ -46,10 +46,10 @@ export function ChangeRoleDialog({
           <DialogTitle>Change role for {member.name}</DialogTitle>
         </DialogHeader>
         <FormBody onSubmit={submit}>
-          <RoleChoice id="change-role" value={role} onChange={setRole} canGrantOwner={canGrantOwner} />
+          <RoleChoice id="change-role" value={role} onChange={setRole} canGrantOwner={canGrantOwner} autoFocus />
           <Hint size="xs">Name and email come from the person's account and can't be changed here.</Hint>
           <FormError message={error} />
-          <FormActions cancel submitLabel="Save role" pending={pending} pendingLabel="Saving…" />
+          <FormActions cancel submitLabel="Save role" pending={pending} pendingLabel="Saving…" disabled={role === member.role} />
         </FormBody>
       </DialogContent>
     </Dialog>

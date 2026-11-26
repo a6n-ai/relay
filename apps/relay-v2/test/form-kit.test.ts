@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { choiceMode } from "../src/components/form/choice-mode";
 import { addressDomains, defaultDomain, normaliseLocal, splitEmail } from "../src/components/form/domain-email";
-import { slugify } from "../src/components/form/slugify";
+import { slugify, splitSlugError } from "../src/components/form/slugify";
 
 describe("choiceMode", () => {
   it("picks the control by count and options", () => {
@@ -10,6 +10,11 @@ describe("choiceMode", () => {
     expect(choiceMode(5)).toBe("select");
     expect(choiceMode(13)).toBe("combobox");
     expect(choiceMode(2, { people: true })).toBe("combobox");
+  });
+  it("falls back to cards when the segments cannot fit a dialog", () => {
+    expect(choiceMode(3, { labels: ["Member", "Admin", "Owner"] })).toBe("segmented");
+    expect(choiceMode(4, { labels: ["All streams", "Transactional", "Tracked", "Marketing"] })).toBe("cards");
+    expect(choiceMode(2, { labels: ["mail.relaycheck.test", "pending.relaycheck.test Pending"] })).toBe("cards");
   });
 });
 
@@ -66,5 +71,13 @@ describe("slugify", () => {
     expect(s.length).toBeLessThanOrEqual(40);
     expect(s.endsWith("-")).toBe(false);
     expect(s).toMatch(re);
+  });
+});
+
+describe("splitSlugError", () => {
+  it("routes slug errors to the slug field only", () => {
+    expect(splitSlugError("That slug is already used in this workspace.")).toEqual({ slug: "That slug is already used in this workspace.", rest: null });
+    expect(splitSlugError("Could not create the app.")).toEqual({ slug: null, rest: "Could not create the app." });
+    expect(splitSlugError(null)).toEqual({ slug: null, rest: null });
   });
 });

@@ -3,6 +3,7 @@ import { Input } from "@foundry/ui/input";
 import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from "@foundry/ui/input-group";
 import { Hint, Mono } from "../page/text";
 import { ChoiceControl, type ChoiceOption } from "./choice-field";
+import { choiceMode } from "./choice-mode";
 import { addressDomains, defaultDomain, splitEmail } from "./domain-email";
 
 export type DomainEmailValue = { local: string; domain: string };
@@ -13,12 +14,14 @@ export function DomainEmailInput({
   kind,
   value,
   onChange,
+  autoFocus,
 }: {
   id: string;
   domains: { domain: string; status: string }[];
   kind: "sender" | "inbox" | "both";
   value: DomainEmailValue;
   onChange: (value: DomainEmailValue) => void;
+  autoFocus?: boolean;
 }) {
   const rows = addressDomains(domains, kind);
   const fallback = defaultDomain(rows);
@@ -41,19 +44,19 @@ export function DomainEmailInput({
     onChange({ local: s.local, domain: next });
   };
   const domain = value.domain;
-  const blocked = kind === "sender" ? undefined : (only?.disabled ? only : current?.disabled ? current : rows.find((r) => r.disabled));
+  const blocked = kind === "sender" ? undefined : (only?.disabled ? only : current?.disabled ? current : undefined);
   return (
     <div className="grid gap-2">
       {only ? (
         <InputGroup>
-          <InputGroupInput id={id} value={value.local} onChange={(e) => typed(e.target.value)} placeholder="name" autoComplete="off" />
+          <InputGroupInput id={id} autoFocus={autoFocus} value={value.local} onChange={(e) => typed(e.target.value)} placeholder="name" autoComplete="off" />
           <InputGroupAddon align="inline-end">
             <InputGroupText>@{only.domain}</InputGroupText>
           </InputGroupAddon>
         </InputGroup>
       ) : (
         <>
-          <Input id={id} value={value.local} onChange={(e) => typed(e.target.value)} placeholder="name" autoComplete="off" />
+          <Input id={id} autoFocus={autoFocus} value={value.local} onChange={(e) => typed(e.target.value)} placeholder="name" autoComplete="off" />
           <span id={`${id}-domain-label`} className="sr-only">
             Domain
           </span>
@@ -63,7 +66,7 @@ export function DomainEmailInput({
             value={value.domain}
             onChange={(d) => onChange({ ...value, domain: d })}
             options={options}
-            mode={rows.length <= 4 ? "segmented" : "combobox"}
+            mode={rows.length <= 4 ? choiceMode(rows.length, { labels: options.map((o) => (o.badge ? `${o.label} ${o.badge}` : o.label)) }) : "combobox"}
           />
         </>
       )}

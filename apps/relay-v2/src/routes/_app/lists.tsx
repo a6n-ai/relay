@@ -6,7 +6,7 @@ import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router"
 import { ListIcon } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { ConsentFields } from "../../components/consent-fields";
-import { AppField } from "../../components/form/app-field";
+import { AppField, needsAppChoice } from "../../components/form/app-field";
 import { CONSENT_LABEL } from "../../components/consent-labels";
 import { CreateDialog } from "../../components/create-dialog";
 import { DeniedState, deniedReason } from "../../components/denied-state";
@@ -197,12 +197,13 @@ function NewListForm({
       setPending(false);
     }
   }
+  const choose = needsAppChoice(apps, scopedAppId);
   return (
     <FormBody onSubmit={submit}>
-      <AppField apps={apps} scopedAppId={scopedAppId} value={app} onChange={setApp} id="list-app" />
+      <AppField apps={apps} scopedAppId={scopedAppId} value={app} onChange={setApp} id="list-app" autoFocus={choose} />
       <div className="grid gap-1.5">
         <Label htmlFor="list-name">Name</Label>
-        <Input id="list-name" autoFocus required value={name} onChange={(e) => setName(e.target.value)} placeholder="Newsletter subscribers" />
+        <Input id="list-name" autoFocus={!choose} required value={name} onChange={(e) => setName(e.target.value)} placeholder="Newsletter subscribers" />
       </div>
       <ConsentFields idPrefix="list" consent={consent} onConsent={setConsent} note={note} onNote={setNote} />
       <FormError message={error} />

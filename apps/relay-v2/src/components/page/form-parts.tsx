@@ -25,6 +25,7 @@ export function FormActions({
   submitLabel,
   pending,
   pendingLabel,
+  disabled,
   onCancel,
   cancel,
   ...props
@@ -33,6 +34,7 @@ export function FormActions({
   submitLabel?: string;
   pending?: boolean;
   pendingLabel?: string;
+  disabled?: boolean;
   onCancel?: () => void;
   cancel?: boolean;
 }) {
@@ -47,7 +49,7 @@ export function FormActions({
       ) : null}
       {children}
       {submitLabel ? (
-        <Button type="submit" disabled={pending}>
+        <Button type="submit" disabled={pending || disabled}>
           {pending ? (pendingLabel ?? submitLabel) : submitLabel}
         </Button>
       ) : null}

@@ -81,6 +81,7 @@ function ScheduleForm({
     <FormBody onSubmit={submit}>
       <ChoiceControl
         id="schedule-mode"
+        autoFocus
         mode="segmented"
         value={mode}
         onChange={(v) => setMode(v as "now" | "at")}

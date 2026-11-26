@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Input } from "@foundry/ui/input";
 import { Label } from "@foundry/ui/label";
+import { FormError } from "../page/form-parts";
 import { Hint } from "../page/text";
 import { slugify } from "./slugify";
 
@@ -9,11 +10,13 @@ export function SlugField({
   name,
   value,
   onChange,
+  error,
 }: {
   id: string;
   name: string;
   value: string;
   onChange: (slug: string) => void;
+  error?: string | null;
 }) {
   const [edited, setEdited] = useState(false);
   const shown = edited ? value : slugify(name);
@@ -34,6 +37,7 @@ export function SlugField({
         }}
       />
       <Hint size="xs">Can't be changed later.</Hint>
+      <FormError message={error ?? null} />
     </div>
   );
 }

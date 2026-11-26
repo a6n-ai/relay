@@ -23,11 +23,13 @@ export function RoleChoice({
   value,
   onChange,
   canGrantOwner,
+  autoFocus,
 }: {
   id: string;
   value: MemberRole;
   onChange: (role: MemberRole) => void;
   canGrantOwner: boolean;
+  autoFocus?: boolean;
 }) {
-  return <ChoiceField id={id} label="Role" value={value} onChange={(v) => onChange(v as MemberRole)} options={roleOptions(canGrantOwner)} />;
+  return <ChoiceField id={id} label="Role" value={value} onChange={(v) => onChange(v as MemberRole)} options={roleOptions(canGrantOwner)} autoFocus={autoFocus} />;
 }

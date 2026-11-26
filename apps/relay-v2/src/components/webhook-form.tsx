@@ -93,7 +93,7 @@ export function EditWebhookForm({
       <WebhookEventsField value={events} onChange={setEvents} />
       <Hint size="xs">The signing secret stays the same.</Hint>
       <FormError message={error} />
-      <FormActions cancel submitLabel="Save webhook" pending={pending || !dirty || events.length === 0} pendingLabel={pending ? "Saving…" : "Save webhook"} />
+      <FormActions cancel submitLabel="Save webhook" pending={pending} pendingLabel="Saving…" disabled={!dirty || events.length === 0} />
     </FormBody>
   );
 }

@@ -6,6 +6,7 @@ import { type FormEvent, useState } from "react";
 import { createWorkspaceFn } from "../console/workspaces.fns";
 import { errorText } from "./error-text";
 import { SlugField } from "./form/slug-field";
+import { splitSlugError } from "./form/slugify";
 import { FormActions, FormBody, FormError } from "./page/form-parts";
 
 export function NewWorkspaceForm({ done }: { done: () => void }) {
@@ -32,6 +33,7 @@ export function NewWorkspaceForm({ done }: { done: () => void }) {
     }
   }
 
+  const split = splitSlugError(error);
   return (
     <FormBody onSubmit={submit}>
       <div className="grid gap-1.5">
@@ -46,8 +48,8 @@ export function NewWorkspaceForm({ done }: { done: () => void }) {
           onChange={(e) => setName(e.target.value)}
         />
       </div>
-      <SlugField id="workspace-slug" name={name} value={slug} onChange={setSlug} />
-      <FormError message={error} />
+      <SlugField id="workspace-slug" name={name} value={slug} onChange={setSlug} error={split.slug} />
+      <FormError message={split.rest} />
       <FormActions cancel submitLabel="Create workspace" pending={pending} pendingLabel="Creating…" />
     </FormBody>
   );

@@ -510,6 +510,7 @@ function NewAddressForm({
         <Label htmlFor="address-local">Address</Label>
         <DomainEmailInput
           id="address-local"
+          autoFocus
           domains={domains}
           kind={kind}
           value={address}

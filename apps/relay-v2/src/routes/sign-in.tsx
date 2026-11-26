@@ -18,6 +18,7 @@ export const Route = createFileRoute("/sign-in")({
 const json = { "content-type": "application/json" };
 const TOO_MANY = "Too many codes. Try again in a few minutes.";
 const RESEND_SECONDS = 30;
+const OFFLINE = "Could not reach Relay. Check your connection and try again.";
 
 function SignIn() {
   const router = useRouter();
@@ -39,12 +40,19 @@ function SignIn() {
   async function requestCode(): Promise<boolean> {
     setPending(true);
     setError(null);
-    const res = await fetch("/api/auth/email-otp/send-verification-otp", {
-      method: "POST",
-      headers: json,
-      body: JSON.stringify({ email, type: "sign-in" }),
-    });
-    setPending(false);
+    let res: Response;
+    try {
+      res = await fetch("/api/auth/email-otp/send-verification-otp", {
+        method: "POST",
+        headers: json,
+        body: JSON.stringify({ email, type: "sign-in" }),
+      });
+    } catch {
+      setError(OFFLINE);
+      return false;
+    } finally {
+      setPending(false);
+    }
     if (res.status === 429) {
       setError(TOO_MANY);
       return false;
@@ -65,12 +73,18 @@ function SignIn() {
   async function verify(code: string) {
     setPending(true);
     setError(null);
-    const res = await fetch("/api/auth/sign-in/email-otp", {
-      method: "POST",
-      headers: json,
-      body: JSON.stringify({ email, otp: code }),
-    });
-    setPending(false);
+    let res: Response;
+    try {
+      res = await fetch("/api/auth/sign-in/email-otp", {
+        method: "POST",
+        headers: json,
+        body: JSON.stringify({ email, otp: code }),
+      });
+    } catch {
+      return setError(OFFLINE);
+    } finally {
+      setPending(false);
+    }
     if (res.status === 429) return setError(TOO_MANY);
     if (!res.ok) return setError("That code is not right. Try again.");
     await router.navigate({ href: safeRedirect(redirect) });
@@ -104,7 +118,7 @@ function SignIn() {
           className="flex flex-col gap-3"
         >
           <Hint>Enter the 6-digit code we sent to {email}.</Hint>
-          <InputOTP maxLength={6} pattern="digits" value={otp} onChange={setOtp} onComplete={verify} aria-label="Sign-in code">
+          <InputOTP autoFocus maxLength={6} pattern="digits" value={otp} onChange={setOtp} onComplete={verify} aria-label="Sign-in code">
             <InputOTPGroup>
               {[0, 1, 2, 3, 4, 5].map((i) => (
                 <InputOTPSlot key={i} index={i} />

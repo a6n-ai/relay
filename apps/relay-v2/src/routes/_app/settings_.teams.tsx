@@ -11,7 +11,7 @@ import { Toolbar } from "../../components/page/toolbar";
 import { ResourceTable } from "../../components/resource-table";
 import { confirmAction, runAction } from "../../components/run-action";
 import { NewTeamForm } from "../../components/settings/new-team-form";
-import { RenameForm } from "../../components/settings/rename-form";
+import { RenameForm } from "../../components/form/rename-form";
 import { SuspendedNotice } from "../../components/settings/suspended-notice";
 import { TeamMembersDialog } from "../../components/settings/team-members-dialog";
 import { PageHeader } from "../../components/shell/page-header";

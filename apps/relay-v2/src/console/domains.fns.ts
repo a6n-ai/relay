@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeaders } from "@tanstack/react-start/server";
 import { env } from "cloudflare:workers";
 import { z } from "zod";
+import { SES_REGIONS } from "../core/ses-regions";
 import { ConsoleError, requireActor, toResponseError } from "./actor";
 import { deleteDomain, domainDeletePreview as domainDeletePreviewFor } from "./domain-delete";
 import {
@@ -41,7 +42,7 @@ export const fetchAddresses = createServerFn({ method: "GET" }).handler(async ()
 });
 
 export const addDomainFn = createServerFn({ method: "POST" })
-  .validator(validate(z.object({ domain: z.string().min(1).max(253), sesRegion: z.string().max(40).optional() })))
+  .validator(validate(z.object({ domain: z.string().min(1).max(253), sesRegion: z.enum(SES_REGIONS).optional() })))
   .handler(async ({ data }) => {
     try {
       const actor = await requireActor(env, getRequestHeaders(), WRITE);
