@@ -5,7 +5,7 @@ import { Label } from "@foundry/ui/label";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
 import { AuthCard } from "../components/auth-card";
-import { FormError } from "../components/form-error";
+import { FormError } from "../components/page/form-parts";
 import { safeRedirect } from "../console/shell.fns";
 import { Hint } from "../components/page/text";
 

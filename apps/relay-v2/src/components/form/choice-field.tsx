@@ -1,0 +1,148 @@
+import { useState } from "react";
+import { ChevronsUpDownIcon } from "lucide-react";
+import { Badge } from "@foundry/ui/badge";
+import { Button } from "@foundry/ui/button";
+import { Command, CommandEmpty, CommandInput, CommandItem, CommandList } from "@foundry/ui/command";
+import { Label } from "@foundry/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "@foundry/ui/popover";
+import { RadioGroup, RadioGroupItem } from "@foundry/ui/radio-group";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@foundry/ui/select";
+import { ToggleGroup, ToggleGroupItem } from "@foundry/ui/toggle-group";
+import { Hint } from "../page/text";
+import { choiceMode, type ChoiceModeName } from "./choice-mode";
+
+export type ChoiceOption = { value: string; label: string; description?: string; disabled?: boolean; badge?: string };
+
+type ControlProps = {
+  id: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: ChoiceOption[];
+  mode: ChoiceModeName;
+  labelledBy?: string;
+};
+
+function Combobox({ id, value, onChange, options, labelledBy }: ControlProps) {
+  const [open, setOpen] = useState(false);
+  const current = options.find((o) => o.value === value);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger render={<Button id={id} variant="outline" role="combobox" aria-labelledby={labelledBy} aria-expanded={open} className="w-full justify-between font-normal" />}>
+        <span className="truncate">{current?.label ?? "Select…"}</span>
+        <ChevronsUpDownIcon className="text-muted-foreground" />
+      </PopoverTrigger>
+      <PopoverContent className="w-(--anchor-width) p-0">
+        <Command>
+          <CommandInput placeholder="Search…" />
+          <CommandList>
+            <CommandEmpty>No matches.</CommandEmpty>
+            {options.map((o) => (
+              <CommandItem
+                key={o.value}
+                value={o.value}
+                label={o.label}
+                disabled={o.disabled}
+                data-checked={o.value === value}
+                onSelect={() => {
+                  onChange(o.value);
+                  setOpen(false);
+                }}
+              >
+                {o.label}
+                {o.badge ? <Badge variant="secondary">{o.badge}</Badge> : null}
+              </CommandItem>
+            ))}
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+export function ChoiceControl(props: ControlProps) {
+  const { id, value, onChange, options, mode, labelledBy } = props;
+  if (mode === "combobox") return <Combobox {...props} />;
+  if (mode === "select") {
+    return (
+      <Select value={value} onValueChange={onChange}>
+        <SelectTrigger id={id} aria-labelledby={labelledBy} className="w-full">
+          <SelectValue placeholder="Select…" />
+        </SelectTrigger>
+        <SelectContent>
+          {options.map((o) => (
+            <SelectItem key={o.value} value={o.value} disabled={o.disabled}>
+              {o.label}
+              {o.badge ? <Badge variant="secondary">{o.badge}</Badge> : null}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    );
+  }
+  if (mode === "cards") {
+    return (
+      <RadioGroup id={id} aria-labelledby={labelledBy} value={value} onValueChange={onChange}>
+        {options.map((o) => (
+          <Label
+            key={o.value}
+            className="items-start gap-3 rounded-(--ui-radius-control) border border-input p-3 font-normal has-data-checked:border-ring has-data-disabled:opacity-50"
+          >
+            <RadioGroupItem value={o.value} disabled={o.disabled} className="mt-0.5" />
+            <span className="grid gap-1">
+              <span className="flex items-center gap-2 font-medium">
+                {o.label}
+                {o.badge ? <Badge variant="secondary">{o.badge}</Badge> : null}
+              </span>
+              {o.description ? <Hint as="span" size="xs">{o.description}</Hint> : null}
+            </span>
+          </Label>
+        ))}
+      </RadioGroup>
+    );
+  }
+  return (
+    <ToggleGroup
+      id={id}
+      aria-labelledby={labelledBy}
+      type="single"
+      variant="outline"
+      value={value}
+      onValueChange={(v) => v && onChange(v)}
+    >
+      {options.map((o) => (
+        <ToggleGroupItem key={o.value} value={o.value} disabled={o.disabled}>
+          {o.label}
+          {o.badge ? <Badge variant="secondary">{o.badge}</Badge> : null}
+        </ToggleGroupItem>
+      ))}
+    </ToggleGroup>
+  );
+}
+
+export function ChoiceField({
+  id,
+  label,
+  value,
+  onChange,
+  options,
+  describe,
+  people,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: ChoiceOption[];
+  describe?: boolean;
+  people?: boolean;
+}) {
+  const mode = choiceMode(options.length, { describe: describe ?? options.some((o) => o.description), people });
+  return (
+    <div className="grid gap-1.5">
+      <Label id={`${id}-label`} htmlFor={mode === "segmented" || mode === "cards" ? undefined : id}>
+        {label}
+      </Label>
+      <ChoiceControl id={id} value={value} onChange={onChange} options={options} mode={mode} labelledBy={`${id}-label`} />
+    </div>
+  );
+}

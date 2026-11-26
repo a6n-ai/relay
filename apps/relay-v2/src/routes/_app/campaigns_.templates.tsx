@@ -9,7 +9,6 @@ import { AppSelect } from "../../components/app-select";
 import { CreateDialog } from "../../components/create-dialog";
 import { DeniedState, deniedReason } from "../../components/denied-state";
 import { errorText, isNotFound } from "../../components/error-text";
-import { FormError } from "../../components/form-error";
 import { EmptyState } from "../../components/page/empty-state";
 import { LoadMore } from "../../components/page/load-more";
 import { TableSkeleton } from "../../components/page/table-skeleton";
@@ -22,7 +21,7 @@ import { useCan } from "../../components/use-can";
 import { fetchApps } from "../../console/apps.fns";
 import { createTemplateFn, fetchTemplates } from "../../console/templates.fns";
 import { formatWhen } from "../../lib/format-date";
-import { FormBody, FormActions } from "../../components/page/form-parts";
+import { FormError, FormBody, FormActions } from "../../components/page/form-parts";
 
 type TemplatesSearch = { appId?: string; cursor?: string; new?: 1; q?: string };
 

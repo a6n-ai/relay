@@ -5,7 +5,7 @@ import { cancelCampaignFn, pauseCampaignFn, previewAudienceFn, resumeCampaignFn,
 import type { AudiencePreview, CampaignStats, CampaignView } from "../do/campaigns";
 import { reasonText } from "./error-text";
 import { ConfirmDialog } from "./confirm-dialog";
-import { FormError } from "./form-error";
+import { FormError } from "./page/form-parts";
 import { formatWhen } from "../lib/format-date";
 import { MeterBar } from "./meter-bar";
 import { confirmAction, runAction } from "./run-action";

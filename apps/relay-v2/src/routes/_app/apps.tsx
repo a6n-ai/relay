@@ -8,7 +8,6 @@ import { type FormEvent, useState } from "react";
 import { CreateDialog } from "../../components/create-dialog";
 import { DeniedState, deniedReason } from "../../components/denied-state";
 import { errorText } from "../../components/error-text";
-import { FormError } from "../../components/form-error";
 import { EmptyState } from "../../components/page/empty-state";
 import { SearchInput, Toolbar } from "../../components/page/toolbar";
 import { useUrlFilter } from "../../components/page/use-url-filter";
@@ -18,7 +17,7 @@ import { useNewParam } from "../../components/shell/create-menu";
 import { PageHeader } from "../../components/shell/page-header";
 import { useCan } from "../../components/use-can";
 import { createAppFn, fetchApps } from "../../console/apps.fns";
-import { FormBody, FormActions } from "../../components/page/form-parts";
+import { FormError, FormBody, FormActions } from "../../components/page/form-parts";
 import { Hint } from "../../components/page/text";
 
 export const Route = createFileRoute("/_app/apps")({

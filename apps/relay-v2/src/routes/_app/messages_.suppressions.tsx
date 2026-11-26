@@ -9,7 +9,6 @@ import { ConfirmDialog } from "../../components/confirm-dialog";
 import { CreateDialog } from "../../components/create-dialog";
 import { DeniedState, deniedReason } from "../../components/denied-state";
 import { errorText } from "../../components/error-text";
-import { FormError } from "../../components/form-error";
 import { LoadMore } from "../../components/page/load-more";
 import { TableSkeleton } from "../../components/page/table-skeleton";
 import { SearchInput, Toolbar } from "../../components/page/toolbar";
@@ -19,7 +18,7 @@ import { ResourceTable } from "../../components/resource-table";
 import { useCan } from "../../components/use-can";
 import { formatWhen } from "../../lib/format-date";
 import { addSuppressionFn, fetchSuppressions, removeSuppressionFn } from "../../console/suppressions.fns";
-import { FormBody, FormActions } from "../../components/page/form-parts";
+import { FormError, FormBody, FormActions } from "../../components/page/form-parts";
 
 type SuppressionsSearch = { prefix?: string; cursor?: string };
 

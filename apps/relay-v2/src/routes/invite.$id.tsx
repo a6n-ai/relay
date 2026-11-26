@@ -5,7 +5,7 @@ import { getShell } from "../console/shell.fns";
 import { acceptInviteFn, getInviteFn } from "../console/members.fns";
 import { AuthCard } from "../components/auth-card";
 import { errorText } from "../components/error-text";
-import { FormError } from "../components/form-error";
+import { FormError } from "../components/page/form-parts";
 import { ROLE_LABEL, type MemberRole } from "../components/role-select";
 import { SignOutButton } from "../components/sign-out-button";
 import { Hint, Title } from "../components/page/text";

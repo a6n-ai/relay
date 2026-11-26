@@ -11,7 +11,6 @@ import { ConfirmDialog } from "../../components/confirm-dialog";
 import { CreateDialog } from "../../components/create-dialog";
 import { DeniedState, deniedReason } from "../../components/denied-state";
 import { errorText } from "../../components/error-text";
-import { FormError } from "../../components/form-error";
 import { CellWhen, ResourceTable } from "../../components/resource-table";
 import { StatusBadge } from "../../components/status-badge";
 import { useCan } from "../../components/use-can";
@@ -32,7 +31,7 @@ import {
   removeMemberFn,
   updateListFn,
 } from "../../console/lists.fns";
-import { FormBody, FormActions } from "../../components/page/form-parts";
+import { FormError, FormBody, FormActions } from "../../components/page/form-parts";
 import { Hint } from "../../components/page/text";
 
 type ListSearch = { appId?: string; cursor?: string; q?: string };

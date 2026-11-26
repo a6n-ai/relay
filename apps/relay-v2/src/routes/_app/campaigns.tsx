@@ -10,7 +10,6 @@ import { AppSelect } from "../../components/app-select";
 import { CreateDialog } from "../../components/create-dialog";
 import { DeniedState, deniedReason } from "../../components/denied-state";
 import { errorText, isNotFound } from "../../components/error-text";
-import { FormError } from "../../components/form-error";
 import { EmptyState } from "../../components/page/empty-state";
 import { LoadMore } from "../../components/page/load-more";
 import { TableSkeleton } from "../../components/page/table-skeleton";
@@ -25,7 +24,7 @@ import { fetchApps } from "../../console/apps.fns";
 import { createCampaignFn, fetchCampaigns } from "../../console/campaigns.fns";
 import { fetchTemplates } from "../../console/templates.fns";
 import { formatWhen } from "../../lib/format-date";
-import { FormBody, FormActions } from "../../components/page/form-parts";
+import { FormError, FormBody, FormActions } from "../../components/page/form-parts";
 
 type CampaignsSearch = { appId?: string; cursor?: string; new?: 1; q?: string; status?: string };
 

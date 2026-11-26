@@ -5,9 +5,8 @@ import { toast } from "@foundry/ui/toast";
 import { useRouter } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
 import { errorText } from "../error-text";
-import { FormError } from "../form-error";
 import { createTeamFn } from "../../console/members.fns";
-import { FormBody, FormActions } from "../page/form-parts";
+import { FormError, FormBody, FormActions } from "../page/form-parts";
 
 export function NewTeamForm({ done }: { done: () => void }) {
   const router = useRouter();

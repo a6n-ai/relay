@@ -12,7 +12,6 @@ import { ConfirmDialog } from "../../components/confirm-dialog";
 import { CreateDialog } from "../../components/create-dialog";
 import { DeniedState, deniedReason } from "../../components/denied-state";
 import { errorText } from "../../components/error-text";
-import { FormError } from "../../components/form-error";
 import { EmptyState } from "../../components/page/empty-state";
 import { SettingsCard } from "../../components/page/settings-card";
 import { TableSkeleton } from "../../components/page/table-skeleton";
@@ -32,7 +31,7 @@ import {
 } from "../../console/apps.fns";
 import { setAudienceBindingFn } from "../../console/admin.fns";
 import { formatDate, formatWhen } from "../../lib/format-date";
-import { FormBody, FormActions } from "../../components/page/form-parts";
+import { FormError, FormBody, FormActions } from "../../components/page/form-parts";
 
 export const Route = createFileRoute("/_app/apps_/$appId")({
   pendingComponent: () => <TableSkeleton columns={5} />,

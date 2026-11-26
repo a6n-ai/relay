@@ -15,7 +15,6 @@ import { DeniedState, deniedReason } from "../../components/denied-state";
 import { DnsRecords } from "../../components/dns-records";
 import { DomainDeleteDialog } from "../../components/domain-delete-dialog";
 import { errorText } from "../../components/error-text";
-import { FormError } from "../../components/form-error";
 import { ResourceTable } from "../../components/resource-table";
 import { StatusBadge } from "../../components/status-badge";
 import { useCan } from "../../components/use-can";
@@ -37,7 +36,7 @@ import {
   setDomainProtectedFn,
   updateAddressFn,
 } from "../../console/domains.fns";
-import { FormBody, FormActions } from "../../components/page/form-parts";
+import { FormError, FormBody, FormActions } from "../../components/page/form-parts";
 import { Hint, Mono } from "../../components/page/text";
 
 export const Route = createFileRoute("/_app/domains")({

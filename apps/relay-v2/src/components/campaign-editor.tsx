@@ -23,13 +23,12 @@ import { ConfirmDialog } from "./confirm-dialog";
 import { PROBLEM_LABEL } from "./campaign-problems";
 import { ContentFields, type LetterPreview } from "./content-fields";
 import { errorText } from "./error-text";
-import { FormError } from "./form-error";
 import { ScheduleDialog } from "./schedule-dialog";
 import { SettingsCard } from "./page/settings-card";
 import { Toolbar } from "./page/toolbar";
 import { UnsavedGuard } from "./unsaved-guard";
 import { useCan } from "./use-can";
-import { FormActions, FormPanel, FormBody } from "./page/form-parts";
+import { FormError, FormActions, FormPanel, FormBody } from "./page/form-parts";
 import { Hint } from "./page/text";
 
 export type CampaignOptions = { senders: string[]; lists: ListView[]; postalAddress: string | null };

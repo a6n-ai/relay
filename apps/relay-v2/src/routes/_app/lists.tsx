@@ -11,7 +11,6 @@ import { CONSENT_LABEL } from "../../components/consent-labels";
 import { CreateDialog } from "../../components/create-dialog";
 import { DeniedState, deniedReason } from "../../components/denied-state";
 import { errorText } from "../../components/error-text";
-import { FormError } from "../../components/form-error";
 import { ResourceTable } from "../../components/resource-table";
 import { useCan } from "../../components/use-can";
 import { EmptyState } from "../../components/page/empty-state";
@@ -23,7 +22,7 @@ import { useNewParam } from "../../components/shell/create-menu";
 import { fetchApps } from "../../console/apps.fns";
 import { createListFn, fetchLists } from "../../console/lists.fns";
 import type { ConsentSource } from "../../do/lists";
-import { FormBody, FormActions } from "../../components/page/form-parts";
+import { FormError, FormBody, FormActions } from "../../components/page/form-parts";
 
 type ListsSearch = { appId?: string; new?: 1; q?: string };
 
