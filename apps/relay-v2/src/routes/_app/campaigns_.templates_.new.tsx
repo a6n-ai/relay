@@ -71,7 +71,7 @@ function NewTemplatePage() {
       <SettingsCard title="Details" description="Name the template. You write its content next.">
         <div className="grid gap-4">
           <AppField apps={apps} scopedAppId={scopedAppId} value={app} onChange={setApp} id="template-app" autoFocus={choose} />
-          <TextField id="template-name" label="Name" autoFocus={!choose} required maxLength={80} placeholder="Welcome email" value={name} onChange={(e) => setName(e.target.value)} />
+          <TextField id="template-name" label="Name" autoFocus={!choose} required maxLength={120} placeholder="Welcome email" value={name} onChange={(e) => setName(e.target.value)} />
         </div>
       </SettingsCard>
       <FormError message={error} />

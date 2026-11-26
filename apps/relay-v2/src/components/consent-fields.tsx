@@ -31,7 +31,7 @@ export function ConsentFields({
         </Field>
       ) : (
         <div>
-          <Button type="button" variant="ghost" onClick={() => setNoteOpen(true)}>
+          <Button type="button" variant="link" className="px-0" onClick={() => setNoteOpen(true)}>
             Add a note
           </Button>
         </div>

@@ -217,14 +217,14 @@ describe("SettingsCard footer", () => {
 
 describe("EmptyChoice", () => {
   it("says there is nothing yet and links to where one is made", () => {
-    const tree = EmptyChoice({ id: "list", label: "List", message: "No lists yet.", to: "/lists", search: { new: 1 }, linkLabel: "Create a list" });
-    const link = find(tree, (p) => p.to === "/lists");
-    expect(link?.search).toEqual({ new: 1 });
+    const tree = EmptyChoice({ id: "list", label: "List", message: "No lists yet.", to: "/lists/new", search: { appId: "app_1" }, linkLabel: "Create a list" });
+    const link = find(tree, (p) => p.to === "/lists/new");
+    expect(link?.search).toEqual({ appId: "app_1" });
     expect(link?.children).toBe("Create a list");
     expect(find(tree, (p) => Array.isArray(p.children) && p.children[0] === "No lists yet.")).toBeTruthy();
   });
   it("shows an error when the pick is empty, and labels the group", () => {
-    const tree = EmptyChoice({ id: "list", label: "List", message: "No lists yet.", to: "/lists", linkLabel: "Create a list", error: "Choose a list." });
+    const tree = EmptyChoice({ id: "list", label: "List", message: "No lists yet.", to: "/lists/new", linkLabel: "Create a list", error: "Choose a list." });
     expect(find(tree, (p) => p.error === "Choose a list.")).toBeTruthy();
     const group = find(tree, (p) => p.role === "group");
     expect(group?.["aria-labelledby"]).toBe("list-label");

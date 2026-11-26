@@ -1,7 +1,6 @@
 import { Button } from "@foundry/ui/button";
 import { TextField } from "./form/text-field";
 import { Checkbox } from "@foundry/ui/checkbox";
-import { Input } from "@foundry/ui/input";
 import { Label } from "@foundry/ui/label";
 import { toast } from "@foundry/ui/toast";
 import { useRouter, useNavigate } from "@tanstack/react-router";
@@ -215,15 +214,13 @@ export function CampaignEditor({
             {canWrite ? (
               <SenderField
                 id="campaign-from"
+                appId={campaign.appId}
                 senders={options.senders.map((s) => ({ value: s, label: s }))}
                 value={from}
                 onChange={setFrom}
               />
             ) : (
-              <>
-                <Label>Send from</Label>
-                <Hint className="text-foreground">{from || "Not set"}</Hint>
-              </>
+              <FixedField label="Send from" value={from || "Not set"} hint="You do not have permission to change this." />
             )}
             <ContentFields
               value={{ subject, html, text }}
@@ -260,14 +257,14 @@ export function CampaignEditor({
             />
             {audienceKind === "hook" ? (
               <>
-                <Label htmlFor="campaign-audience-query">Audience filter</Label>
-                <Input
+                <TextField
                   id="campaign-audience-query"
+                  label="Audience filter"
+                  hint="Counted when it sends"
                   value={audienceQuery}
                   disabled={!canWrite}
                   onChange={(e) => setAudienceQuery(e.target.value)}
                 />
-                <Hint>Counted when it sends</Hint>
               </>
             ) : (
               <>
@@ -308,8 +305,7 @@ export function CampaignEditor({
           )}
           {problems.includes("postal_address_missing") && canSettings ? (
             <form onSubmit={savePostalAddress} className="mt-3 grid gap-2">
-              <Label htmlFor="campaign-postal">Postal address</Label>
-              <Input id="campaign-postal" value={address} onChange={(e) => setAddress(e.target.value)} />
+              <TextField id="campaign-postal" label="Postal address" value={address} onChange={(e) => setAddress(e.target.value)} />
               <FormActions>
                 <Button type="submit" disabled={!address.trim()}>
                   Save address

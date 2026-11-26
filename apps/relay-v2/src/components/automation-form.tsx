@@ -2,7 +2,7 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from "@foundry/ui/input-
 import { toast } from "@foundry/ui/toast";
 import { useNavigate } from "@tanstack/react-router";
 import { type FormEvent, useEffect, useRef, useState } from "react";
-import { createAutomationFn, updateAutomationFn } from "../console/automations.fns";
+import { createAutomationFn, deleteAutomationFn, updateAutomationFn } from "../console/automations.fns";
 import { fetchCampaignOptions } from "../console/campaigns.fns";
 import { fetchTemplates } from "../console/templates.fns";
 import type { AutomationView } from "../do/automations";
@@ -14,6 +14,7 @@ import { Field, useFieldErrors } from "./form/field";
 import { FixedField } from "./form/fixed-field";
 import { SenderField } from "./form/sender-field";
 import { TextField } from "./form/text-field";
+import { DangerCard } from "./page/danger-card";
 import { FormActions, FormError } from "./page/form-parts";
 import { SettingsCard } from "./page/settings-card";
 import { UnsavedGuard } from "./unsaved-guard";
@@ -149,10 +150,18 @@ export function AutomationForm({
   const templateOptions = (choices?.templates ?? []).map((t) => ({ value: t.id, label: t.name }));
   const noLists = choices !== null && listOptions.length === 0;
   const noTemplates = choices !== null && templateOptions.length === 0;
+  async function remove() {
+    if (!automation) return;
+    await deleteAutomationFn({ data: { id: automation.id } });
+    toast.success("Automation deleted", { description: automation.name });
+    leaving.current = true;
+    await navigate({ to: "/campaigns/automations", search: { appId: automation.appId } });
+  }
   const choose = needsAppChoice(apps, scopedAppId);
   const back = () => void navigate({ to: "/campaigns/automations", search: { appId: app } });
   return (
-    <form onSubmit={submit} className="grid max-w-2xl gap-4 px-4 pb-4 pt-2">
+    <div className="grid max-w-2xl gap-4 px-4 pb-8 pt-2">
+    <form onSubmit={submit} className="grid gap-4">
       <UnsavedGuard when={Boolean(automation) && dirty} bypass={leaving} />
       <SettingsCard title="Trigger" description="Relay sends the message when someone joins this list.">
         <div className="grid gap-4">
@@ -202,7 +211,7 @@ export function AutomationForm({
             <ChoiceField id="automation-template" label="Template" value={templateId} onChange={setTemplateId} options={templateOptions} error={fe.errors.template} onClearError={() => fe.clear("template")} />
           )}
           {choices ? (
-            <SenderField id="automation-from" senders={choices.senders.map((s) => ({ value: s, label: s }))} value={fromEmail} onChange={setFromEmail} error={fe.errors.from} onClearError={() => fe.clear("from")} />
+            <SenderField id="automation-from" appId={app} senders={choices.senders.map((s) => ({ value: s, label: s }))} value={fromEmail} onChange={setFromEmail} error={fe.errors.from} onClearError={() => fe.clear("from")} />
           ) : null}
         </div>
       </SettingsCard>
@@ -219,5 +228,15 @@ export function AutomationForm({
         submitLabel={automation ? "Save automation" : "Create automation"}
       />
     </form>
+    {automation ? (
+      <DangerCard
+        title="Delete this automation"
+        description="Messages waiting to go out are dropped. Mail already sent is unaffected."
+        buttonLabel="Delete automation"
+        confirmTitle={`Delete ${automation.name}?`}
+        onConfirm={remove}
+      />
+    ) : null}
+    </div>
   );
 }

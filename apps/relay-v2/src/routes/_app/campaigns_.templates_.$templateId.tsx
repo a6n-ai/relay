@@ -143,7 +143,7 @@ function TemplateForm({ template, canWrite, appName }: { template: TemplateView;
           <SettingsCard title="Content">
             <FormBody as="div">
               <FixedField label="App" value={appName} hint="To use another app, create a new template there." />
-              <TextField id="template-name-edit" label="Name" maxLength={80} value={name} disabled={!canWrite} onChange={(e) => setName(e.target.value)} />
+              <TextField id="template-name-edit" label="Name" maxLength={120} value={name} disabled={!canWrite} onChange={(e) => setName(e.target.value)} />
               <ContentFields
                 value={content}
                 onChange={setContent}

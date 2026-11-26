@@ -7,4 +7,11 @@ export const CONSENT_LABEL: Record<ConsentSource, string> = {
   import_other: "Another source",
 };
 
+export const CONSENT_SHORT: Record<ConsentSource, string> = {
+  purchase: "Customer",
+  express_optin: "Opted in",
+  event_signup: "Event signup",
+  import_other: "Other source",
+};
+
 export const consentHint = (source: ConsentSource) => `They are added with the list's consent: ${CONSENT_LABEL[source].toLowerCase()}.`;

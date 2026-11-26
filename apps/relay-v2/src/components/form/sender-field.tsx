@@ -4,6 +4,7 @@ import { EmptyChoice } from "./empty-choice";
 
 export function SenderField({
   id,
+  appId,
   senders,
   value,
   onChange,
@@ -12,6 +13,7 @@ export function SenderField({
   onClearError,
 }: {
   id: string;
+  appId?: string;
   senders: ChoiceOption[];
   value: string;
   onChange: (value: string) => void;
@@ -30,6 +32,7 @@ export function SenderField({
         label="Send from"
         message="No sender addresses yet."
         to="/domains/addresses/new"
+        search={appId ? { appId } : undefined}
         linkLabel="Add an address"
         onNavigate={onNavigate}
         error={error}

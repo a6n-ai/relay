@@ -31,6 +31,15 @@ export async function listAutomationsFor(env: Env, actor: ConsoleActor, appId: s
   return clientFor(env, actor.workspaceId).listAutomations(actor.workspaceId, appId);
 }
 
+// Looked up across the workspace, then the app check keeps an app hidden from this reader hidden.
+export async function getAutomationFor(env: Env, actor: ConsoleActor, id: string): Promise<AutomationView> {
+  requireRead(actor);
+  const found = (await clientFor(env, actor.workspaceId).listAutomations(actor.workspaceId)).find((a) => a.id === id);
+  if (!found) throw new ConsoleError(404, "not found");
+  await getApp(env, actor, found.appId);
+  return found;
+}
+
 export async function createAutomationFor(env: Env, actor: ConsoleActor, appId: string, input: AutomationInput): Promise<AutomationView> {
   requireSend(actor);
   await getApp(env, actor, appId);

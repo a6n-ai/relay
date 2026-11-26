@@ -70,7 +70,8 @@ function ImportPage() {
     setError(null);
     try {
       const counts = await importCsvFn({ data: { listId, csv: await file.text() } });
-      setResult(counts ?? null);
+      if (counts) setResult(counts);
+      else setError("Could not import this file.");
     } catch (err) {
       setError(errorText(err, "Could not import this file."));
     } finally {
@@ -92,7 +93,6 @@ function ImportPage() {
         <FormPanel className="pt-2">
           <SettingsCard
             title="Result"
-            description={`Added ${result.added}${result.suppressed ? `, suppressed ${result.suppressed}` : ""}.`}
             action={
               <Button render={<Link to="/lists/$listId" params={{ listId }} search={{ appId }} />}>Back to list</Button>
             }
@@ -125,7 +125,10 @@ function ImportPage() {
             maxFiles={1}
             maxSize={MAX_CSV_BYTES}
             value={files}
-            onValueChange={setFiles}
+            onValueChange={(next) => {
+              setFiles(next);
+              setError(null);
+            }}
             onFileReject={(_, message) => setError(message)}
             label="CSV file"
           >

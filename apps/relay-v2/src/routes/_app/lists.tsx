@@ -2,7 +2,7 @@ import { Button } from "@foundry/ui/button";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ListIcon } from "lucide-react";
 import { useState } from "react";
-import { CONSENT_LABEL } from "../../components/consent-labels";
+import { CONSENT_SHORT } from "../../components/consent-labels";
 import { DeniedState, deniedReason } from "../../components/denied-state";
 import { ResourceTable } from "../../components/resource-table";
 import { FilterMenu } from "../../components/page/filter-menu";
@@ -120,7 +120,7 @@ function ListsPage() {
               <p className="font-medium">{l.name}</p>
               <Hint size="xs">{appName(l.appId)}</Hint>
               <Hint>
-                {l.members} {l.members === 1 ? "contact" : "contacts"} · {CONSENT_LABEL[l.consentSource]}
+                {l.members} {l.members === 1 ? "contact" : "contacts"} · {CONSENT_SHORT[l.consentSource]}
               </Hint>
             </div>
           )}
@@ -131,7 +131,7 @@ function ListsPage() {
             { header: "Name", kind: "name", cell: (l) => l.name },
             { header: "App", cell: (l) => appName(l.appId) },
             { header: "Contacts", cell: (l) => l.members, numeric: true },
-            { header: "Consent", cell: (l) => CONSENT_LABEL[l.consentSource] },
+            { header: "Consent", cell: (l) => CONSENT_SHORT[l.consentSource] },
           ]}
           rows={shown}
           rowKey={(l) => l.id}

@@ -3,6 +3,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { requireActor } from "../src/console/actor";
 import { addApp } from "../src/console/apps";
 import { addAddress, addDomain } from "../src/console/domains";
+import { createListFor } from "../src/console/lists";
 import { addMember, cookieFor, createWorkspace, headersFor, ORIGIN, setActive } from "./console-helpers";
 import { applyMigrations } from "./migrate";
 
@@ -107,6 +108,29 @@ describe("campaign, template, automation, list and import pages", { timeout: 60_
 
     for (const role of [member, billing]) {
       const text = await (await get(`/lists/lst_000000000000/import?appId=${appId}`, role)).text();
+      expect(text).toContain("Not available to your role");
+    }
+  });
+
+  it("renders the import page for a writer and says when the list or automation is unknown", async () => {
+    const cookie = await cookieFor("create-pages-t4b-owner@example.com", "admin");
+    const workspaceId = await createWorkspace(cookie, "Create Pages T4b");
+    await setActive(cookie, workspaceId);
+    const actor = await requireActor(env, headersFor(cookie), { permission: { tenant: ["write"] }, write: true });
+    const { id: appId } = await addApp(env, actor, { name: "Web", slug: "web" });
+    const list = await createListFor(env, actor, appId, { name: "Newsletter", consentSource: "express_optin" });
+    const member = await addMember(workspaceId, "create-pages-t4b-member@example.com", "member");
+    const billing = await addMember(workspaceId, "create-pages-t4b-billing@example.com", "billing");
+
+    const ok = await (await get(`/lists/${list.id}/import?appId=${appId}`, cookie)).text();
+    expect(ok).toContain("CSV file");
+    expect(ok).toContain("Choose a CSV file first.");
+    expect(await (await get(`/lists/lst_000000000000/import?appId=${appId}`, cookie)).text()).toContain("List not found");
+
+    const automationPath = "/campaigns/automations/aut_000000000000";
+    expect(await (await get(automationPath, cookie)).text()).toContain("Automation not found");
+    for (const role of [member, billing]) {
+      const text = await (await get(automationPath, role)).text();
       expect(text).toContain("Not available to your role");
     }
   });

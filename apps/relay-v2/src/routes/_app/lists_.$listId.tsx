@@ -328,9 +328,14 @@ function AddContactForm({ listId, consent, done }: { listId: string; consent: Co
   const [lastName, setLastName] = useState("");
   const [named, setNamed] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [emailError, setEmailError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   async function submit(event: FormEvent) {
     event.preventDefault();
+    if (!/^\S+@\S+\.\S+$/.test(email.trim())) {
+      setEmailError("Enter a valid email address.");
+      return;
+    }
     setPending(true);
     setError(null);
     try {
@@ -359,6 +364,8 @@ function AddContactForm({ listId, consent, done }: { listId: string; consent: Co
         autoFocus
         required
         value={email}
+        error={emailError}
+        onClearError={() => setEmailError(null)}
         onChange={(e) => setEmail(e.target.value)}
       />
       {named ? (
@@ -368,7 +375,7 @@ function AddContactForm({ listId, consent, done }: { listId: string; consent: Co
         </div>
       ) : (
         <div>
-          <Button type="button" variant="ghost" onClick={() => setNamed(true)}>
+          <Button type="button" variant="link" className="px-0" onClick={() => setNamed(true)}>
             Add a name
           </Button>
         </div>

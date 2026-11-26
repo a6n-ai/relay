@@ -3,7 +3,7 @@ import { getRequestHeaders } from "@tanstack/react-start/server";
 import { env } from "cloudflare:workers";
 import { z } from "zod";
 import { ConsoleError, requireActor, toResponseError } from "./actor";
-import { createAutomationFor, deleteAutomationFor, enableAutomationFor, listAutomationsFor, updateAutomationFor } from "./automations";
+import { createAutomationFor, deleteAutomationFor, enableAutomationFor, getAutomationFor, listAutomationsFor, updateAutomationFor } from "./automations";
 import { automationInput, automationPatch, id, validate } from "./schemas";
 
 const READ = { permission: { campaign: ["read"] } };
@@ -16,6 +16,19 @@ export const fetchAutomations = createServerFn({ method: "GET" })
     try {
       const actor = await requireActor(env, getRequestHeaders(), READ);
       return await listAutomationsFor(env, actor, data.appId);
+    } catch (err) {
+      if (err instanceof ConsoleError && err.status === 403) return null;
+      if (err instanceof ConsoleError && err.status === 404) return { missing: true as const };
+      toResponseError(err);
+    }
+  });
+
+export const fetchAutomation = createServerFn({ method: "GET" })
+  .validator(validate(z.object({ id })))
+  .handler(async ({ data }) => {
+    try {
+      const actor = await requireActor(env, getRequestHeaders(), READ);
+      return await getAutomationFor(env, actor, data.id);
     } catch (err) {
       if (err instanceof ConsoleError && err.status === 403) return null;
       if (err instanceof ConsoleError && err.status === 404) return { missing: true as const };

@@ -3,6 +3,7 @@ import { toast } from "@foundry/ui/toast";
 import { type FormEvent, useState } from "react";
 import { scheduleCampaignFn } from "../console/campaigns.fns";
 import { ChoiceControl } from "./form/choice-field";
+import { Field } from "./form/field";
 import { CreateDialog } from "./create-dialog";
 import { errorText } from "./error-text";
 import { FormError, FormBody, FormActions } from "./page/form-parts";
@@ -83,8 +84,10 @@ function ScheduleForm({
   }
   return (
     <FormBody onSubmit={submit}>
+      <Field id="schedule-mode" label="When to send" hideLabel htmlFor={null}>
       <ChoiceControl
         id="schedule-mode"
+        labelledBy="schedule-mode-label"
         autoFocus
         mode="segmented"
         value={mode}
@@ -97,6 +100,7 @@ function ScheduleForm({
           { value: "at", label: "Later" },
         ]}
       />
+      </Field>
       {mode === "at" ? (
         <TextField
           id="schedule-time"

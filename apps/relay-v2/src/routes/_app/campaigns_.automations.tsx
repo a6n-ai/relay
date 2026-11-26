@@ -149,6 +149,8 @@ function AutomationsPage() {
         <ResourceGrid
           items={rows}
           rowKey={(a) => a.id}
+          href={openRow}
+          rowLabel={(a) => `Open ${a.name}`}
           menu={menu}
           empty={empty}
           card={(a) => (
@@ -179,6 +181,8 @@ function AutomationsPage() {
           ]}
           rows={rows}
           rowKey={(a) => a.id}
+          rowHref={openRow}
+          rowLabel={(a) => `Open ${a.name}`}
           menu={menu}
           empty={empty}
         />
