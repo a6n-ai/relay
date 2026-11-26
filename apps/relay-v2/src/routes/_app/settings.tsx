@@ -1,6 +1,5 @@
 import { Button } from "@foundry/ui/button";
-import { Input } from "@foundry/ui/input";
-import { Label } from "@foundry/ui/label";
+import { TextField } from "../../components/form/text-field";
 import { toast } from "@foundry/ui/toast";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
@@ -47,6 +46,7 @@ function WorkspaceNameCard({ name: current, slug }: { name: string; slug: string
     <SettingsCard
       title="Workspace name"
       description="The name shown in the workspace switcher."
+      footer="Use up to 80 characters."
       action={
         canRename ? (
           <Button type="submit" form="workspace-name-form" variant="outline" disabled={pending || !next || next === current}>
@@ -55,11 +55,8 @@ function WorkspaceNameCard({ name: current, slug }: { name: string; slug: string
         ) : null
       }
     >
-      <form id="workspace-name-form" onSubmit={submit} className="grid gap-1.5">
-        <Label htmlFor="workspace-name" className="sr-only">
-          Workspace name
-        </Label>
-        <Input id="workspace-name" required maxLength={80} readOnly={!canRename} value={name} onChange={(e) => setName(e.target.value)} />
+      <form id="workspace-name-form" onSubmit={submit} className="grid gap-3">
+        <TextField id="workspace-name" label="Workspace name" hideLabel required maxLength={80} readOnly={!canRename} value={name} onChange={(e) => setName(e.target.value)} />
         <FixedField label="Slug" value={slug} hint="Create a new workspace to use a different address." />
         <FormError message={error} />
       </form>

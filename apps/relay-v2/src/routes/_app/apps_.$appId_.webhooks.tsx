@@ -175,7 +175,7 @@ function NewWebhookForm({ appId, done, lock }: { appId: string; done: () => void
       <WebhookUrlField value={url} onChange={setUrl} />
       <WebhookEventsField value={events} onChange={setEvents} />
       <FormError message={error} />
-      <FormActions cancel submitLabel="Create webhook" pending={pending} pendingLabel="Creating…" disabled={events.length === 0} />
+      <FormActions cancel submitLabel="Create webhook" pending={pending} pendingLabel="Creating…" disabled={events.length === 0} disabledReason="Pick at least one event." />
     </FormBody>
   );
 }

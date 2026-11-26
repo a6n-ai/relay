@@ -1,7 +1,6 @@
 import { Badge } from "@foundry/ui/badge";
+import { TextField } from "../../components/form/text-field";
 import { Button } from "@foundry/ui/button";
-import { Input } from "@foundry/ui/input";
-import { Label } from "@foundry/ui/label";
 import { toast } from "@foundry/ui/toast";
 import { FileUpload, FileUploadDropzone, FileUploadTrigger } from "@foundry/ui/file-upload";
 import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
@@ -281,18 +280,18 @@ function EditListForm({
   }
   return (
     <FormBody onSubmit={submit}>
-      <div className="grid gap-1.5">
-        <Label htmlFor="list-rename">Name</Label>
-        <Input id="list-rename" autoFocus required value={name} onChange={(e) => setName(e.target.value)} />
-      </div>
+      <TextField id="list-rename" label="Name" autoFocus required value={name} onChange={(e) => setName(e.target.value)} />
       <ConsentFields idPrefix="list-edit" consent={consent} onConsent={setConsent} note={note} onNote={setNote} />
       <FixedField label="App" value={appName ?? "This list's app"} hint="Create a new list in the other app instead." />
       <FormError message={error} />
-      <FormActions cancel>
-        <Button type="submit" disabled={pending || !dirty || !name.trim()}>
-          {pending ? "Saving…" : "Save changes"}
-        </Button>
-      </FormActions>
+      <FormActions
+        cancel
+        submitLabel="Save list"
+        pending={pending}
+        pendingLabel="Saving…"
+        disabled={!dirty || !name.trim()}
+        disabledReason={name.trim() ? "Change something to save." : "Enter a name first."}
+      />
     </FormBody>
   );
 }
@@ -323,21 +322,11 @@ function EditContactForm({ listId, member, done }: { listId: string; member: Mem
     <FormBody onSubmit={submit}>
       <FixedField label="Email" value={member.email} hint="Remove this contact and add the new address instead." />
       <div className="grid grid-cols-2 gap-3">
-        <div className="grid gap-1.5">
-          <Label htmlFor="contact-edit-first">First name</Label>
-          <Input id="contact-edit-first" autoFocus value={firstName} onChange={(e) => setFirstName(e.target.value)} />
-        </div>
-        <div className="grid gap-1.5">
-          <Label htmlFor="contact-edit-last">Last name</Label>
-          <Input id="contact-edit-last" value={lastName} onChange={(e) => setLastName(e.target.value)} />
-        </div>
+        <TextField id="contact-edit-first" label="First name" autoFocus value={firstName} onChange={(e) => setFirstName(e.target.value)} />
+        <TextField id="contact-edit-last" label="Last name" value={lastName} onChange={(e) => setLastName(e.target.value)} />
       </div>
       <FormError message={error} />
-      <FormActions cancel>
-        <Button type="submit" disabled={pending || !dirty}>
-          {pending ? "Saving…" : "Save changes"}
-        </Button>
-      </FormActions>
+      <FormActions cancel submitLabel="Save contact" pending={pending} pendingLabel="Saving…" disabled={!dirty} disabledReason="Change a name to save." />
     </FormBody>
   );
 }
@@ -371,27 +360,22 @@ function AddContactForm({ listId, consent, done }: { listId: string; consent: Co
   }
   return (
     <FormBody onSubmit={submit}>
-      <div className="grid gap-1.5">
-        <Label htmlFor="contact-email">Email</Label>
-        <Input id="contact-email" type="email" autoFocus required value={email} onChange={(e) => setEmail(e.target.value)} />
-      </div>
+      <TextField
+        id="contact-email"
+        label="Email"
+        hint={`They are added with the list's consent: ${CONSENT_LABEL[consent]}.`}
+        type="email"
+        autoFocus
+        required
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+      />
       <div className="grid grid-cols-2 gap-3">
-        <div className="grid gap-1.5">
-          <Label htmlFor="contact-first">First name</Label>
-          <Input id="contact-first" value={firstName} onChange={(e) => setFirstName(e.target.value)} />
-        </div>
-        <div className="grid gap-1.5">
-          <Label htmlFor="contact-last">Last name</Label>
-          <Input id="contact-last" value={lastName} onChange={(e) => setLastName(e.target.value)} />
-        </div>
+        <TextField id="contact-first" label="First name" value={firstName} onChange={(e) => setFirstName(e.target.value)} />
+        <TextField id="contact-last" label="Last name" value={lastName} onChange={(e) => setLastName(e.target.value)} />
       </div>
-      <Hint size="xs">Consent follows this list: {CONSENT_LABEL[consent]}.</Hint>
       <FormError message={error} />
-      <FormActions cancel>
-        <Button type="submit" disabled={pending || !email.trim()}>
-          {pending ? "Adding…" : "Add contact"}
-        </Button>
-      </FormActions>
+      <FormActions cancel submitLabel="Add contact" pending={pending} pendingLabel="Adding…" disabled={!email.trim()} disabledReason="Enter an email first." />
     </FormBody>
   );
 }
@@ -452,11 +436,7 @@ function ImportForm({ listId, consent, done }: { listId: string; consent: Consen
       </Hint>
       <Hint size="xs">Contacts are recorded with this list's consent: {CONSENT_LABEL[consent]}.</Hint>
       <FormError message={error} />
-      <FormActions cancel>
-        <Button type="submit" disabled={pending || files.length === 0}>
-          {pending ? "Importing…" : "Import contacts"}
-        </Button>
-      </FormActions>
+      <FormActions cancel submitLabel="Import contacts" pending={pending} pendingLabel="Importing…" disabled={files.length === 0} disabledReason="Choose a CSV file first." />
     </FormBody>
   );
 }

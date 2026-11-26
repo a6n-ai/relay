@@ -1,13 +1,11 @@
-import { Input } from "@foundry/ui/input";
-import { Label } from "@foundry/ui/label";
 import { toast } from "@foundry/ui/toast";
 import { useRouter } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
 import { errorText } from "../error-text";
+import { TextField } from "../form/text-field";
 import { type MemberRole, RoleChoice } from "../role-select";
 import { inviteMemberFn } from "../../console/members.fns";
 import { FormError, FormBody, FormActions } from "../page/form-parts";
-import { Hint } from "../page/text";
 
 export function InviteForm({ done, canGrantOwner }: { done: () => void; canGrantOwner: boolean }) {
   const router = useRouter();
@@ -34,22 +32,10 @@ export function InviteForm({ done, canGrantOwner }: { done: () => void; canGrant
 
   return (
     <FormBody onSubmit={submit}>
-      <div className="grid gap-1.5">
-        <Label htmlFor="invite-email">Email</Label>
-        <Input
-          id="invite-email"
-          type="email"
-          required
-          autoFocus
-          placeholder="name@company.com"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-      </div>
+      <TextField id="invite-email" label="Email" type="email" required autoFocus placeholder="name@company.com" value={email} onChange={(e) => setEmail(e.target.value)} />
       <RoleChoice id="invite-role" value={role} onChange={setRole} canGrantOwner={canGrantOwner} />
-      <Hint size="xs">An invite can't be edited. To change the role, cancel it and send a new one.</Hint>
       <FormError message={error} />
-      <FormActions cancel submitLabel="Send invite" pending={pending} pendingLabel="Sending…" />
+      <FormActions cancel submitLabel="Send invite" pending={pending} pendingLabel="Sending…" disabled={!email.trim()} disabledReason="Enter an email first." />
     </FormBody>
   );
 }

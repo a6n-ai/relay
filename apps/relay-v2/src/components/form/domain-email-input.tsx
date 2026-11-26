@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from "@foundry/ui/input-group";
 import { Hint } from "../page/text";
+import { Field, fieldDescribedBy } from "./field";
 import { ChoiceControl, type ChoiceOption } from "./choice-field";
 import { choiceMode } from "./choice-mode";
 import { addressDomains, defaultDomain, splitEmail } from "./domain-email";
@@ -14,8 +15,14 @@ export function DomainEmailInput({
   value,
   onChange,
   autoFocus,
+  label,
+  hint,
+  error,
 }: {
   id: string;
+  label: string;
+  hint?: string;
+  error?: string | null;
   domains: { domain: string; status: string }[];
   kind: "sender" | "inbox" | "both";
   value: DomainEmailValue;
@@ -45,9 +52,9 @@ export function DomainEmailInput({
   const domain = value.domain;
   const blocked = kind === "sender" ? undefined : (only?.disabled ? only : current?.disabled ? current : undefined);
   return (
-    <div className="grid gap-2">
+    <Field id={id} label={label} hint={hint} error={error}>
       <InputGroup>
-        <InputGroupInput id={id} autoFocus={autoFocus} value={value.local} onChange={(e) => typed(e.target.value)} placeholder="name" autoComplete="off" />
+        <InputGroupInput id={id} autoFocus={autoFocus} aria-invalid={error ? true : undefined} aria-describedby={fieldDescribedBy(id, hint, error)} value={value.local} onChange={(e) => typed(e.target.value)} placeholder="name" autoComplete="off" />
         <InputGroupAddon align="inline-end">
           <InputGroupText>@{only?.domain ?? domain}</InputGroupText>
         </InputGroupAddon>
@@ -69,6 +76,6 @@ export function DomainEmailInput({
       )}
       {blocked ? <Hint size="xs">Verify {blocked.domain} first to receive mail on it.</Hint> : null}
       {current?.pending && kind === "sender" ? <Hint size="xs">Verify {current.domain} before mail sent from it is delivered.</Hint> : null}
-    </div>
+    </Field>
   );
 }

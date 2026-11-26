@@ -1,6 +1,6 @@
 import { Button } from "@foundry/ui/button";
+import { TextField } from "../form/text-field";
 import { Checkbox } from "@foundry/ui/checkbox";
-import { Input } from "@foundry/ui/input";
 import { Label } from "@foundry/ui/label";
 import { toast } from "@foundry/ui/toast";
 import { useRouter } from "@tanstack/react-router";
@@ -59,6 +59,7 @@ export function PasswordCard({ hasPassword }: { hasPassword: boolean }) {
   return (
     <SettingsCard
       title="Password"
+      footer={`Use at least ${MIN} characters.`}
       description={
         hasPassword
           ? "Change the password you sign in with."
@@ -72,19 +73,10 @@ export function PasswordCard({ hasPassword }: { hasPassword: boolean }) {
     >
       <form id="password-form" onSubmit={submit} className="grid gap-3">
         {hasPassword ? (
-          <div className="grid gap-1.5">
-            <Label htmlFor="current-password">Current password</Label>
-            <Input id="current-password" type="password" autoComplete="current-password" maxLength={MAX} value={current} onChange={(e) => setCurrent(e.target.value)} />
-          </div>
+          <TextField id="current-password" label="Current password" type="password" autoComplete="current-password" maxLength={MAX} value={current} onChange={(e) => setCurrent(e.target.value)} />
         ) : null}
-        <div className="grid gap-1.5">
-          <Label htmlFor="new-password">New password</Label>
-          <Input id="new-password" type="password" autoComplete="new-password" minLength={MIN} maxLength={MAX} value={next} onChange={(e) => setNext(e.target.value)} />
-        </div>
-        <div className="grid gap-1.5">
-          <Label htmlFor="confirm-password">Confirm new password</Label>
-          <Input id="confirm-password" type="password" autoComplete="new-password" maxLength={MAX} value={confirm} onChange={(e) => setConfirm(e.target.value)} />
-        </div>
+        <TextField id="new-password" label="New password" type="password" autoComplete="new-password" minLength={MIN} maxLength={MAX} value={next} onChange={(e) => setNext(e.target.value)} />
+        <TextField id="confirm-password" label="Confirm new password" type="password" autoComplete="new-password" maxLength={MAX} value={confirm} onChange={(e) => setConfirm(e.target.value)} />
         {hasPassword ? (
           <Label className="font-normal">
             <Checkbox checked={others} onCheckedChange={(on) => setOthers(on === true)} />

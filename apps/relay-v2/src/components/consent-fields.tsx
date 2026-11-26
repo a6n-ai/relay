@@ -1,9 +1,8 @@
-import { Label } from "@foundry/ui/label";
 import { Textarea } from "@foundry/ui/textarea";
 import type { ConsentSource } from "../do/lists";
 import { CONSENT_LABEL } from "./consent-labels";
+import { Field } from "./form/field";
 import { ChoiceField } from "./form/choice-field";
-import { Hint } from "./page/text";
 
 const CONSENT_HELP: Record<ConsentSource, string> = {
   purchase: "They bought from you.",
@@ -34,11 +33,9 @@ export function ConsentFields({
   return (
     <>
       <ChoiceField id={`${idPrefix}-consent`} label="Consent" value={consent} onChange={(v) => onConsent(v as ConsentSource)} options={OPTIONS} />
-      <div className="grid gap-1.5">
-        <Label htmlFor={`${idPrefix}-note`}>Consent note (optional)</Label>
-        <Textarea id={`${idPrefix}-note`} rows={2} maxLength={500} value={note} onChange={(e) => onNote(e.target.value)} placeholder="Where did these contacts come from?" />
-        <Hint size="xs">Kept with the list as your record of consent.</Hint>
-      </div>
+      <Field id={`${idPrefix}-note`} label="Consent note (optional)" hint="Kept with the list as your record of consent.">
+        <Textarea id={`${idPrefix}-note`} aria-describedby={`${idPrefix}-note-hint`} rows={2} maxLength={500} value={note} onChange={(e) => onNote(e.target.value)} placeholder="Where did these contacts come from?" />
+      </Field>
     </>
   );
 }

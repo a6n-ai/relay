@@ -1,6 +1,5 @@
 import { Button } from "@foundry/ui/button";
-import { Input } from "@foundry/ui/input";
-import { Label } from "@foundry/ui/label";
+import { TextField } from "../../components/form/text-field";
 import { toast } from "@foundry/ui/toast";
 import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
 import { ListIcon } from "lucide-react";
@@ -201,13 +200,10 @@ function NewListForm({
   return (
     <FormBody onSubmit={submit}>
       <AppField apps={apps} scopedAppId={scopedAppId} value={app} onChange={setApp} id="list-app" autoFocus={choose} />
-      <div className="grid gap-1.5">
-        <Label htmlFor="list-name">Name</Label>
-        <Input id="list-name" autoFocus={!choose} required value={name} onChange={(e) => setName(e.target.value)} placeholder="Newsletter subscribers" />
-      </div>
+      <TextField id="list-name" label="Name" autoFocus={!choose} required value={name} onChange={(e) => setName(e.target.value)} placeholder="Newsletter subscribers" />
       <ConsentFields idPrefix="list" consent={consent} onConsent={setConsent} note={note} onNote={setNote} />
       <FormError message={error} />
-      <FormActions cancel pending={pending} pendingLabel="Creating…" submitLabel="Create list" />
+      <FormActions cancel pending={pending} pendingLabel="Creating…" submitLabel="Create list" disabled={!name.trim()} disabledReason="Enter a name first." />
     </FormBody>
   );
 }

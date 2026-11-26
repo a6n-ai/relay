@@ -1,4 +1,5 @@
 import { Button } from "@foundry/ui/button";
+import { TextField } from "./form/text-field";
 import { Checkbox } from "@foundry/ui/checkbox";
 import { Input } from "@foundry/ui/input";
 import { Label } from "@foundry/ui/label";
@@ -211,8 +212,7 @@ export function CampaignEditor({
       <FormPanel as="form" id="campaign-form" onSubmit={save}>
         <SettingsCard title="Content">
           <FormBody as="div">
-            <Label htmlFor="campaign-name">Name</Label>
-            <Input id="campaign-name" required maxLength={80} value={name} disabled={!canWrite} onChange={(e) => setName(e.target.value)} />
+            <TextField id="campaign-name" label="Name" required maxLength={80} value={name} disabled={!canWrite} onChange={(e) => setName(e.target.value)} />
             <FixedField label="App" value={appName} hint="To use another app, create a new campaign there." />
             {canWrite ? (
               <SenderField
@@ -220,11 +220,6 @@ export function CampaignEditor({
                 senders={options.senders.map((s) => ({ value: s, label: s }))}
                 value={from}
                 onChange={setFrom}
-                emptyAction={
-                  <Link to="/domains" search={{ new: undefined, q: undefined, status: undefined }} className="text-sm underline">
-                    Add a sender address
-                  </Link>
-                }
               />
             ) : (
               <>

@@ -1,8 +1,5 @@
 import { useEffect, useState } from "react";
-import { Input } from "@foundry/ui/input";
-import { Label } from "@foundry/ui/label";
-import { FormError } from "../page/form-parts";
-import { Hint } from "../page/text";
+import { TextField } from "./text-field";
 import { slugify } from "./slugify";
 
 export function SlugField({
@@ -24,20 +21,18 @@ export function SlugField({
     if (!edited && shown !== value) onChange(shown);
   }, [edited, shown, value, onChange]);
   return (
-    <div className="grid gap-1.5">
-      <Label htmlFor={id}>Slug</Label>
-      <Input
-        id={id}
-        value={shown}
-        className="font-mono"
-        autoComplete="off"
-        onChange={(e) => {
-          setEdited(true);
-          onChange(e.target.value);
-        }}
-      />
-      <Hint size="xs">Can't be changed later.</Hint>
-      <FormError message={error ?? null} />
-    </div>
+    <TextField
+      id={id}
+      label="Slug"
+      hint="Can't be changed later."
+      error={error}
+      value={shown}
+      className="font-mono"
+      autoComplete="off"
+      onChange={(e) => {
+        setEdited(true);
+        onChange(e.target.value);
+      }}
+    />
   );
 }

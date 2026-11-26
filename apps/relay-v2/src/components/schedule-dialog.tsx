@@ -1,5 +1,4 @@
-import { Input } from "@foundry/ui/input";
-import { Label } from "@foundry/ui/label";
+import { TextField } from "./form/text-field";
 import { toast } from "@foundry/ui/toast";
 import { type FormEvent, useState } from "react";
 import { scheduleCampaignFn } from "../console/campaigns.fns";
@@ -7,7 +6,6 @@ import { ChoiceControl } from "./form/choice-field";
 import { CreateDialog } from "./create-dialog";
 import { errorText } from "./error-text";
 import { FormError, FormBody, FormActions } from "./page/form-parts";
-import { Hint } from "./page/text";
 
 export function ScheduleDialog({
   campaignId,
@@ -47,17 +45,18 @@ function ScheduleForm({
   const [mode, setMode] = useState<"now" | "at">("now");
   const [when, setWhen] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [whenError, setWhenError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   async function submit(event: FormEvent) {
     event.preventDefault();
     const at = mode === "now" ? Date.now() : new Date(when).getTime();
     if (!Number.isFinite(at)) {
-      setError("Pick a date and time.");
+      setWhenError("Pick a date and time.");
       return;
     }
     if (mode === "at" && at <= Date.now()) {
-      setError("Pick a time in the future.");
+      setWhenError("Pick a time in the future.");
       return;
     }
     setPending(true);
@@ -90,21 +89,26 @@ function ScheduleForm({
           { value: "at", label: "Schedule for later" },
         ]}
       />
-      <Input
+      <TextField
+        id="schedule-time"
+        label="Send time"
+        hint={`Times are in your time zone: ${zone}.`}
         type="datetime-local"
-        aria-label="Send time"
         value={when}
+        error={whenError}
+        onClearError={() => setWhenError(null)}
         disabled={mode !== "at"}
         required={mode === "at"}
         onChange={(e) => setWhen(e.target.value)}
       />
-      <Hint size="xs">Times are in your time zone: {zone}.</Hint>
       <FormError message={error} />
       <FormActions
         cancel
         pending={pending}
         pendingLabel={mode === "now" ? "Sending…" : "Scheduling…"}
         submitLabel={mode === "now" ? "Send now" : "Schedule"}
+        disabled={mode === "at" && !when}
+        disabledReason="Pick a date and time first."
       />
     </FormBody>
   );

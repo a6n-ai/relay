@@ -10,13 +10,14 @@ import { errorText } from "../../components/error-text";
 import { ResourceTable } from "../../components/resource-table";
 import { useCan } from "../../components/use-can";
 import { ChoiceField } from "../../components/form/choice-field";
+import { EmptyChoice } from "../../components/form/empty-choice";
+import { useFieldErrors } from "../../components/form/field";
 import { EmptyState } from "../../components/page/empty-state";
 import { ListSkeleton } from "../../components/page/page-skeleton";
 import { Toolbar } from "../../components/page/toolbar";
 import { PageHeader } from "../../components/shell/page-header";
 import { addGrantFn, fetchAddressAccess, removeGrantFn } from "../../console/grants.fns";
 import { FormError, FormBody, FormActions } from "../../components/page/form-parts";
-import { Hint } from "../../components/page/text";
 
 export const Route = createFileRoute("/_app/domains_/addresses/$addressId")({
   loader: ({ params }) => fetchAddressAccess({ data: { addressId: params.addressId } }),
@@ -109,13 +110,14 @@ function NewGrantForm({
 }) {
   const router = useRouter();
   const [choice, setChoice] = useState(options.length === 1 ? options[0]!.value : "");
+  const fe = useFieldErrors<"who">();
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (!choice) {
-      setError("Choose a person or team.");
+      fe.set({ who: "Choose a person or team." });
       return;
     }
     setPending(true);
@@ -133,11 +135,23 @@ function NewGrantForm({
     }
   }
 
-  if (options.length === 0) return <Hint>Everyone in this workspace already has access.</Hint>;
+  if (options.length === 0) {
+    return (
+      <EmptyChoice
+        id="grant-who"
+        label="Member or team"
+        message="Everyone in this workspace already has access."
+        to="/settings/invites"
+        search={{ new: 1 }}
+        linkLabel="Invite a member"
+        onNavigate={done}
+      />
+    );
+  }
 
   return (
     <FormBody onSubmit={submit}>
-      <ChoiceField id="grant-who" label="Member or team" value={choice} onChange={setChoice} options={options} people autoFocus />
+      <ChoiceField id="grant-who" label="Member or team" value={choice} onChange={setChoice} options={options} people autoFocus error={fe.errors.who} onClearError={() => fe.clear("who")} />
       <FormError message={error} />
       <FormActions cancel submitLabel="Give access" pending={pending} pendingLabel="Giving access…" />
     </FormBody>

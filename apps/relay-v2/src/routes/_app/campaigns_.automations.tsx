@@ -1,7 +1,6 @@
 import { Button } from "@foundry/ui/button";
-import { Input } from "@foundry/ui/input";
+import { TextField } from "../../components/form/text-field";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@foundry/ui/input-group";
-import { Label } from "@foundry/ui/label";
 import WorkflowIcon from "lucide-react/icons/workflow";
 import { Switch } from "@foundry/ui/switch";
 import { toast } from "@foundry/ui/toast";
@@ -13,6 +12,8 @@ import { DeniedState, deniedReason } from "../../components/denied-state";
 import { errorText } from "../../components/error-text";
 import { AppField } from "../../components/form/app-field";
 import { ChoiceControl, ChoiceField } from "../../components/form/choice-field";
+import { EmptyChoice } from "../../components/form/empty-choice";
+import { Field, useFieldErrors } from "../../components/form/field";
 import { FixedField } from "../../components/form/fixed-field";
 import { SenderField } from "../../components/form/sender-field";
 import { FilterMenu } from "../../components/page/filter-menu";
@@ -213,19 +214,21 @@ function AutomationsPage() {
 
 const PRESETS = ["0", "1", "24"];
 
-function DelayField({ value, onChange }: { value: string; onChange: (hours: string) => void }) {
+function DelayField({ value, onChange, error, onClearError }: { value: string; onChange: (hours: string) => void; error?: string; onClearError: () => void }) {
   const [custom, setCustom] = useState(!PRESETS.includes(value));
   return (
-    <div className="grid gap-1.5">
-      <Label id="automation-delay-label">Delay</Label>
+    <Field id="automation-delay" label="Delay" error={error} htmlFor={null}>
       <ChoiceControl
         id="automation-delay"
         labelledBy="automation-delay-label"
+        describedBy={error ? "automation-delay-error" : undefined}
+        invalid={!!error}
         mode="segmented"
         value={custom ? "custom" : value}
         onChange={(v) => {
           setCustom(v === "custom");
           if (v !== "custom") onChange(v);
+          onClearError();
         }}
         options={[
           { value: "0", label: "Right away" },
@@ -236,11 +239,11 @@ function DelayField({ value, onChange }: { value: string; onChange: (hours: stri
       />
       {custom ? (
         <InputGroup>
-          <InputGroupInput type="number" min={0} max={720} step={1} aria-label="Delay in hours" value={value} onChange={(e) => onChange(e.target.value)} />
+          <InputGroupInput type="number" min={0} max={720} step={1} aria-label="Delay in hours" aria-invalid={error ? true : undefined} aria-describedby={error ? "automation-delay-error" : undefined} value={value} onChange={(e) => { onClearError(); onChange(e.target.value); }} />
           <InputGroupAddon align="inline-end">hours</InputGroupAddon>
         </InputGroup>
       ) : null}
-    </div>
+    </Field>
   );
 }
 
@@ -273,6 +276,7 @@ function AutomationForm({
     senders: string[];
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const fe = useFieldErrors<"name" | "list" | "template" | "from" | "delay">();
   const [pending, setPending] = useState(false);
 
   // Lists, templates and From addresses belong to one app, so they reload when the dialog's app changes.
@@ -300,14 +304,15 @@ function AutomationForm({
 
   async function submit(event: FormEvent) {
     event.preventDefault();
-    if (!name.trim() || (!automation && !listId) || !templateId || !fromEmail) {
-      setError("Choose a list, template and sender address.");
-      return;
-    }
-    if (delay.trim() === "") {
-      setError("Enter a delay in hours.");
-      return;
-    }
+    const missing = {
+      ...(name.trim() ? {} : { name: "Enter a name." }),
+      ...(automation || listId ? {} : { list: "Choose a list." }),
+      ...(templateId ? {} : { template: "Choose a template." }),
+      ...(fromEmail ? {} : { from: "Choose a send-from address." }),
+      ...(delay.trim() === "" ? { delay: "Enter a delay in hours." } : {}),
+    };
+    fe.set(missing);
+    if (Object.keys(missing).length > 0) return;
     setPending(true);
     setError(null);
     try {
@@ -349,29 +354,41 @@ function AutomationForm({
           id="automation-app"
         />
       )}
-      <Label htmlFor="automation-name">Name</Label>
-      <Input id="automation-name" autoFocus required placeholder="Welcome email after sign-up" value={name} onChange={(e) => setName(e.target.value)} />
+      <TextField
+        id="automation-name"
+        label="Name"
+        autoFocus
+        required
+        maxLength={80}
+        placeholder="Welcome email after sign-up"
+        value={name}
+        error={fe.errors.name}
+        onClearError={() => fe.clear("name")}
+        onChange={(e) => setName(e.target.value)}
+      />
       {automation ? (
         <FixedField label="List" value={listName ?? "—"} hint="To use another list, create a new automation." />
       ) : noLists ? (
-        <Hint>No lists yet. Create a list first.</Hint>
+        <EmptyChoice id="automation-list" label="List" message="No lists yet." to="/lists" search={{ new: 1 }} linkLabel="Create a list" onNavigate={done} />
       ) : (
-        <ChoiceField id="automation-list" label="List" value={listId} onChange={setListId} options={listOptions} />
+        <ChoiceField id="automation-list" label="List" value={listId} onChange={setListId} options={listOptions} error={fe.errors.list} onClearError={() => fe.clear("list")} />
       )}
       {noTemplates ? (
-        <Hint>No templates yet. Create a template first.</Hint>
+        <EmptyChoice id="automation-template" label="Template" message="No templates yet." to="/campaigns/templates" search={{ new: 1 }} linkLabel="Create a template" onNavigate={done} />
       ) : (
-        <ChoiceField id="automation-template" label="Template" value={templateId} onChange={setTemplateId} options={templateOptions} />
+        <ChoiceField id="automation-template" label="Template" value={templateId} onChange={setTemplateId} options={templateOptions} error={fe.errors.template} onClearError={() => fe.clear("template")} />
       )}
       {choices ? (
-        <SenderField id="automation-from" senders={choices.senders.map((s) => ({ value: s, label: s }))} value={fromEmail} onChange={setFromEmail} />
+        <SenderField id="automation-from" senders={choices.senders.map((s) => ({ value: s, label: s }))} value={fromEmail} onChange={setFromEmail} onNavigate={done} error={fe.errors.from} onClearError={() => fe.clear("from")} />
       ) : null}
-      <DelayField value={delay} onChange={setDelay} />
+      <DelayField value={delay} onChange={setDelay} error={fe.errors.delay} onClearError={() => fe.clear("delay")} />
       <FormError message={error} />
       <FormActions
         cancel
         pending={pending}
         pendingLabel={automation ? "Saving…" : "Creating…"}
+        disabled={!name.trim()}
+        disabledReason="Enter a name first."
         submitLabel={automation ? "Save automation" : "Create automation"}
       />
     </FormBody>

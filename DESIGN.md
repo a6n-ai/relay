@@ -76,14 +76,14 @@ Foundry ships the shapes. Only `<body>` carries `admin-ui` (`apps/relay-v2/src/r
 - Primary: one per view, placed last. The global `Add New` menu in the scope row is the one exception to filled: it is outline, so the page's primary stays the single filled button.
 - Outline: secondary actions.
 - Ghost: tertiary actions such as Cancel, Back and icon buttons.
-- Destructive: only inside `confirm-dialog.tsx`.
+- Destructive: only in `confirm-dialog.tsx` and the footer button of `DangerCard`, which opens it.
 - Labels are a verb plus a noun, such as "Create campaign" or "Add contact". Never a bare "Create" or "Add".
 
 ## Component behaviour
 
 - **Sidebar** (`app-shell.tsx`, `shell/nav.ts`): 256px, 36px items at 14px, at most 8 top-level links in quiet groups, no sub-items. The active link is a grey tint with foreground text. Order: workspace switcher, Find (F), nav, account. It collapses to an icon rail and never holds settings or tabs.
 - **Framed panel**: the content is a bordered, rounded (16px) panel inset beside the sidebar on desktop (`variant="inset"`, rule in `styles.css`) and full-bleed on mobile.
-- **Dialogs and forms**: creating something happens in a dialog over the list (`CreateDialog`), never in a side column. Fields are 36px. Focus ring is blue.
+- **Dialogs and forms**: creating something happens in a dialog over the list (`CreateDialog`), never in a side column. Fields are 36px. Focus ring is blue. Every field is a `TextField` or `ChoiceField`: label, control, then the error and hint tucked under it; the error sits on the field and clears when it changes. A disabled primary says why (`disabledReason`). `ConfirmDialog` focuses Cancel first, its primary is Verb + noun, and a typed name is exact and case-sensitive.
 - **Page header** (`PageHeader`): no breadcrumb. A 56px scope row (app scope switcher on app-scoped pages, a back link on detail pages, otherwise the workspace name as plain text; `Add New` menu on the right, gated by role through `createItems`), then `SectionTabs` (grey fill on the active tab, 14px) where the section has them (Messages, Campaigns, Settings, app detail), then `PageTitle`: 32px semibold tight title, a one-line 16px muted description (`shell/page-copy.ts`), actions on the right. Every route renders it first. Add New items open the page's create dialog through `?new=1` (`?new=address` for addresses).
 - **Type scale**: body and table text 14px, card titles 20px semibold, controls 36px, table rows 40px; set in the `styles.css` token block, never per page.
 - **Lists** (`ResourceTable` in a `Toolbar` page): the empty state names the next action. No row stagger on filter or search.
@@ -102,7 +102,11 @@ Build screens from these parts and the semantic tokens (`bg-card`, `text-muted-f
 | loading | `ListSkeleton`, `CardsSkeleton`, `FormSkeleton`, `DetailSkeleton` | page/page-skeleton.tsx |
 | empty | `EmptyState` (passed as `empty` to `ResourceTable`) | page/empty-state.tsx |
 | row actions | `RowMenu` | page/row-menu.tsx |
-| settings card | `SettingsCard` | page/settings-card.tsx |
+| settings card (hint left, action right, grey footer strip) | `SettingsCard` | page/settings-card.tsx |
+| danger zone (consequence once, typed-name confirm) | `DangerCard` | page/danger-card.tsx |
+| text field (label, hint, error, prefix/suffix) | `TextField` | form/text-field.tsx |
+| choice field, empty pick with a create link | `ChoiceField`, `EmptyChoice` | form/choice-field.tsx, form/empty-choice.tsx |
+| form buttons (`disabledReason` explains a disabled primary) | `FormActions` | page/form-parts.tsx |
 | create flow | `CreateDialog` | create-dialog.tsx |
 | destructive confirm | `ConfirmDialog` | confirm-dialog.tsx |
 | status, meter, stat | `StatusBadge`, `MeterBar`, `StatTile` | status-badge.tsx, meter-bar.tsx, stat-tile.tsx |

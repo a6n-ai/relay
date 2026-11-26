@@ -1,12 +1,11 @@
-import { Label } from "@foundry/ui/label";
 import { Hint } from "../page/text";
+import { Field } from "./field";
 
 export function FixedField({ label, value, hint }: { label: string; value: string; hint?: string }) {
+  const id = `fixed-${label.toLowerCase().replace(/\W+/g, "-")}`;
   return (
-    <div className="grid gap-1.5">
-      <Label>{label}</Label>
+    <Field id={id} label={label} hint={`Can't be changed.${hint ? ` ${hint}` : ""}`} htmlFor={null}>
       <Hint className="text-foreground">{value}</Hint>
-      <Hint size="xs">Can't be changed.{hint ? ` ${hint}` : ""}</Hint>
-    </div>
+    </Field>
   );
 }

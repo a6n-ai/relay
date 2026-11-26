@@ -1,6 +1,4 @@
 import { Button } from "@foundry/ui/button";
-import { Input } from "@foundry/ui/input";
-import { Label } from "@foundry/ui/label";
 import { toast } from "@foundry/ui/toast";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { BoxesIcon } from "lucide-react";
@@ -14,6 +12,7 @@ import { SearchInput, Toolbar } from "../../components/page/toolbar";
 import { ViewToggle } from "../../components/page/view-toggle";
 import { type View, viewPref } from "../../components/page/view-pref";
 import { SlugField } from "../../components/form/slug-field";
+import { TextField } from "../../components/form/text-field";
 import { splitSlugError } from "../../components/form/slugify";
 import { useUrlFilter } from "../../components/page/use-url-filter";
 import { ListSkeleton } from "../../components/page/page-skeleton";
@@ -144,19 +143,10 @@ function NewAppForm({ done }: { done: () => void }) {
   const split = splitSlugError(error);
   return (
     <FormBody onSubmit={submit}>
-      <Label htmlFor="app-name">Name</Label>
-      <Input
-        id="app-name"
-        required
-        autoFocus
-        maxLength={80}
-        placeholder="Acme Production"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-      />
+      <TextField id="app-name" label="Name" required autoFocus maxLength={80} placeholder="Marketing site" value={name} onChange={(e) => setName(e.target.value)} />
       <SlugField id="app-slug" name={name} value={slug} onChange={setSlug} error={split.slug} />
       <FormError message={split.rest} />
-      <FormActions cancel submitLabel="Create app" pending={pending} pendingLabel="Creating…" />
+      <FormActions cancel submitLabel="Create app" pending={pending} pendingLabel="Creating…" disabled={!name.trim()} disabledReason="Enter a name first." />
     </FormBody>
   );
 }

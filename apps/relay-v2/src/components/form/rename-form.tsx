@@ -1,11 +1,9 @@
-import { Input } from "@foundry/ui/input";
-import { Label } from "@foundry/ui/label";
 import { toast } from "@foundry/ui/toast";
 import { useRouter } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
 import { errorText } from "../error-text";
 import { FormActions, FormBody, FormError } from "../page/form-parts";
-import { Hint } from "../page/text";
+import { TextField } from "./text-field";
 
 export function RenameForm({
   id,
@@ -49,13 +47,9 @@ export function RenameForm({
 
   return (
     <FormBody onSubmit={submit}>
-      <div className="grid gap-1.5">
-        <Label htmlFor={id}>Name</Label>
-        <Input id={id} required autoFocus maxLength={80} placeholder={placeholder} value={name} onChange={(e) => setName(e.target.value)} />
-      </div>
-      {hint ? <Hint size="xs">{hint}</Hint> : null}
+      <TextField id={id} label="Name" hint={hint} required autoFocus maxLength={80} placeholder={placeholder} value={name} onChange={(e) => setName(e.target.value)} />
       <FormError message={error} />
-      <FormActions cancel submitLabel="Save name" pending={pending} pendingLabel="Saving…" disabled={!dirty} />
+      <FormActions cancel submitLabel="Save name" pending={pending} pendingLabel="Saving…" disabled={!dirty} disabledReason={name.trim() ? "Change the name to save." : "Enter a name first."} />
     </FormBody>
   );
 }

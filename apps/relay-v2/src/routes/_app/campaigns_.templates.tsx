@@ -1,7 +1,6 @@
 import { Badge } from "@foundry/ui/badge";
+import { TextField } from "../../components/form/text-field";
 import { Button } from "@foundry/ui/button";
-import { Input } from "@foundry/ui/input";
-import { Label } from "@foundry/ui/label";
 import { toast } from "@foundry/ui/toast";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import FileTextIcon from "lucide-react/icons/file-text";
@@ -220,10 +219,9 @@ function NewTemplateForm({
   return (
     <FormBody onSubmit={submit}>
       <AppField apps={apps} scopedAppId={scopedAppId} value={app} onChange={setApp} id="template-app" autoFocus={choose} />
-      <Label htmlFor="template-name">Name</Label>
-      <Input id="template-name" autoFocus={!choose} required placeholder="Welcome email" value={name} onChange={(e) => setName(e.target.value)} />
+      <TextField id="template-name" label="Name" autoFocus={!choose} required placeholder="Welcome email" value={name} onChange={(e) => setName(e.target.value)} />
       <FormError message={error} />
-      <FormActions cancel pending={pending} pendingLabel="Creating…" submitLabel="Create template" />
+      <FormActions cancel pending={pending} pendingLabel="Creating…" submitLabel="Create template" disabled={!name.trim()} disabledReason="Enter a name first." />
     </FormBody>
   );
 }

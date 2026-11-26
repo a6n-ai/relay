@@ -5,7 +5,6 @@ import { type FormEvent, useState } from "react";
 import { changeRoleFn } from "../../console/members.fns";
 import { errorText } from "../error-text";
 import { FormActions, FormBody, FormError } from "../page/form-parts";
-import { Hint } from "../page/text";
 import { type MemberRole, RoleChoice } from "../role-select";
 
 // Opened from a row menu, so the parent owns open state.
@@ -47,9 +46,8 @@ export function ChangeRoleDialog({
         </DialogHeader>
         <FormBody onSubmit={submit}>
           <RoleChoice id="change-role" value={role} onChange={setRole} canGrantOwner={canGrantOwner} autoFocus />
-          <Hint size="xs">Name and email come from the person's account and can't be changed here.</Hint>
           <FormError message={error} />
-          <FormActions cancel submitLabel="Save role" pending={pending} pendingLabel="Saving…" disabled={role === member.role} />
+          <FormActions cancel submitLabel="Save role" pending={pending} pendingLabel="Saving…" disabled={role === member.role} disabledReason="Pick a different role to save." />
         </FormBody>
       </DialogContent>
     </Dialog>

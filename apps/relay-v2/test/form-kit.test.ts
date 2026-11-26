@@ -1,4 +1,12 @@
-import { describe, expect, it } from "vitest";
+import { createElement, isValidElement, type ReactNode } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { describe, expect, it, vi } from "vitest";
+import { typedMatches } from "../src/components/confirm-dialog";
+import { EmptyChoice } from "../src/components/form/empty-choice";
+import { withoutKey } from "../src/components/form/field";
+import { TextField } from "../src/components/form/text-field";
+import { DangerCard } from "../src/components/page/danger-card";
+import { FormActions } from "../src/components/page/form-parts";
 import { choiceMode } from "../src/components/form/choice-mode";
 import { addressDomains, defaultDomain, normaliseLocal, splitEmail } from "../src/components/form/domain-email";
 import { slugify, splitSlugError } from "../src/components/form/slugify";
@@ -79,5 +87,99 @@ describe("splitSlugError", () => {
     expect(splitSlugError("That slug is already used in this workspace.")).toEqual({ slug: "That slug is already used in this workspace.", rest: null });
     expect(splitSlugError("Could not create the app.")).toEqual({ slug: null, rest: "Could not create the app." });
     expect(splitSlugError(null)).toEqual({ slug: null, rest: null });
+  });
+});
+
+// Function components without hooks can be called, which gives their element tree to walk.
+function find(node: ReactNode, test: (props: Record<string, any>) => boolean): Record<string, any> | undefined {
+  if (!isValidElement(node)) return Array.isArray(node) ? node.map((n) => find(n, test)).find(Boolean) : undefined;
+  const props = node.props as Record<string, any>;
+  return test(props) ? props : find(props.children, test);
+}
+
+describe("TextField", () => {
+  it("puts the error on the field and wires aria", () => {
+    const html = renderToStaticMarkup(createElement(TextField, { id: "n", label: "Name", hint: "Shown in lists.", error: "Enter a name.", value: "", onChange: () => {} }));
+    expect(html).toContain('aria-invalid="true"');
+    expect(html).toContain('aria-describedby="n-error n-hint"');
+    expect(html).toContain('id="n-error"');
+    expect(html).toContain('role="alert"');
+    expect(html).toContain('for="n"');
+  });
+  it("has no aria-invalid without an error", () => {
+    const html = renderToStaticMarkup(createElement(TextField, { id: "n", label: "Name", value: "", onChange: () => {} }));
+    expect(html).not.toContain(" aria-invalid=");
+    expect(html).not.toContain(" aria-describedby=");
+  });
+  it("renders a prefix or suffix inside the field", () => {
+    const html = renderToStaticMarkup(createElement(TextField, { id: "u", label: "URL", prefix: "https://", suffix: "/hook", value: "", onChange: () => {} }));
+    expect(html.indexOf("https://")).toBeLessThan(html.indexOf("<input"));
+    expect(html.indexOf("/hook")).toBeGreaterThan(html.indexOf("<input"));
+  });
+  it("asks the form to clear the error on change, not before", () => {
+    const clear = vi.fn();
+    const change = vi.fn();
+    const withError = TextField({ id: "n", label: "Name", error: "Enter a name.", onClearError: clear, onChange: change });
+    find(withError, (p) => typeof p.onChange === "function")?.onChange({ target: { value: "a" } });
+    expect(clear).toHaveBeenCalledTimes(1);
+    expect(change).toHaveBeenCalledTimes(1);
+    const clean = vi.fn();
+    const noError = TextField({ id: "n", label: "Name", onClearError: clean, onChange: change });
+    find(noError, (p) => typeof p.onChange === "function")?.onChange({ target: { value: "a" } });
+    expect(clean).not.toHaveBeenCalled();
+  });
+  it("withoutKey drops only that field's error", () => {
+    expect(withoutKey<"a" | "b">({ a: "x", b: "y" }, "a")).toEqual({ b: "y" });
+    const same: Partial<Record<"a" | "b", string>> = { b: "y" };
+    expect(withoutKey(same, "a")).toBe(same);
+  });
+});
+
+describe("FormActions disabledReason", () => {
+  const html = (props: Record<string, unknown>) => renderToStaticMarkup(createElement(FormActions, { submitLabel: "Create app", ...props }));
+  it("shows the reason as a muted line and ties it to the disabled primary", () => {
+    const out = html({ disabled: true, disabledReason: "Enter a name first." });
+    expect(out).toContain("Enter a name first.");
+    expect(out).toContain("text-muted-foreground");
+    expect(out).toMatch(/<button[^>]*disabled[^>]*aria-describedby=/);
+  });
+  it("shows nothing when enabled, pending or no reason is given", () => {
+    expect(html({ disabledReason: "Enter a name first." })).not.toContain("Enter a name first.");
+    expect(html({ disabled: true, pending: true, disabledReason: "Enter a name first." })).not.toContain("Enter a name first.");
+    expect(html({ disabled: true })).not.toContain("text-muted-foreground");
+  });
+});
+
+describe("DangerCard typed confirm", () => {
+  it("matches the exact text only, case-sensitive", () => {
+    expect(typedMatches("acme", "acme")).toBe(true);
+    expect(typedMatches("acme", "Acme")).toBe(false);
+    expect(typedMatches("acme", "acme ")).toBe(false);
+    expect(typedMatches("acme", "")).toBe(false);
+    expect(typedMatches(undefined, "")).toBe(true);
+  });
+  it("states the consequence once, on the card", () => {
+    const html = renderToStaticMarkup(
+      createElement(DangerCard, {
+        title: "Delete workspace",
+        description: "Deletes the workspace and its members.",
+        buttonLabel: "Delete workspace",
+        confirmTitle: "Delete this workspace?",
+        typed: "acme",
+        onConfirm: async () => {},
+      }),
+    );
+    expect(html.match(/Deletes the workspace and its members\./g)).toHaveLength(1);
+    expect(html).toContain("Delete workspace");
+  });
+});
+
+describe("EmptyChoice", () => {
+  it("says there is nothing yet and links to where one is made", () => {
+    const tree = EmptyChoice({ id: "list", label: "List", message: "No lists yet.", to: "/lists", search: { new: 1 }, linkLabel: "Create a list" });
+    const link = find(tree, (p) => p.to === "/lists");
+    expect(link?.search).toEqual({ new: 1 });
+    expect(link?.children).toBe("Create a list");
+    expect(find(tree, (p) => Array.isArray(p.children) && p.children[0] === "No lists yet.")).toBeTruthy();
   });
 });

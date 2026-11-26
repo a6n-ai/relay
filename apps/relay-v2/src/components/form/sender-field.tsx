@@ -1,19 +1,23 @@
-import { useEffect, type ReactNode } from "react";
-import { Hint } from "../page/text";
+import { useEffect } from "react";
 import { ChoiceField, type ChoiceOption } from "./choice-field";
+import { EmptyChoice } from "./empty-choice";
 
 export function SenderField({
   id,
   senders,
   value,
   onChange,
-  emptyAction,
+  onNavigate,
+  error,
+  onClearError,
 }: {
   id: string;
   senders: ChoiceOption[];
   value: string;
   onChange: (value: string) => void;
-  emptyAction?: ReactNode;
+  onNavigate?: () => void;
+  error?: string | null;
+  onClearError?: () => void;
 }) {
   const only = senders.length === 1 ? senders[0]?.value : undefined;
   useEffect(() => {
@@ -21,11 +25,16 @@ export function SenderField({
   }, [only, value, onChange]);
   if (senders.length === 0) {
     return (
-      <div className="grid gap-1.5">
-        <Hint>No senders yet.</Hint>
-        {emptyAction}
-      </div>
+      <EmptyChoice
+        id={id}
+        label="Send from"
+        message="No sender addresses yet."
+        to="/domains"
+        search={{ new: "address" }}
+        linkLabel="Add an address"
+        onNavigate={onNavigate}
+      />
     );
   }
-  return <ChoiceField id={id} label="Send from" value={value} onChange={onChange} options={senders} />;
+  return <ChoiceField id={id} label="Send from" value={value} onChange={onChange} options={senders} error={error} onClearError={onClearError} />;
 }

@@ -8,6 +8,7 @@ import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { KeyRoundIcon } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { ChoiceField, type ChoiceOption } from "../../components/form/choice-field";
+import { TextField } from "../../components/form/text-field";
 import { FixedField } from "../../components/form/fixed-field";
 import { ConfirmDialog } from "../../components/confirm-dialog";
 import { CreateDialog } from "../../components/create-dialog";
@@ -189,8 +190,7 @@ function AppDetailsPanel({ appId, name, slug, canWrite }: { appId: string; name:
     >
       <FormBody id="app-details-form" onSubmit={save}>
         <UnsavedGuard when={dirty} />
-        <Label htmlFor="app-name">Name</Label>
-        <Input id="app-name" required maxLength={80} value={value} disabled={!canWrite} onChange={(e) => setValue(e.target.value)} />
+        <TextField id="app-name" label="Name" required maxLength={80} value={value} disabled={!canWrite} onChange={(e) => setValue(e.target.value)} />
         <FixedField label="Slug" value={slug} hint="Create a new app to use a different slug." />
         <FormError message={error} />
       </FormBody>
@@ -268,10 +268,8 @@ function DefaultSendersPanel({ appId, senders, canWrite }: { appId: string; send
             <Hint size="xs">This app has one sender address, so it is selected for both. Save to keep it.</Hint>
           ) : null}
           <fieldset disabled={!canWrite} className="grid gap-3">
-            <ChoiceField id="default-transactional" label="Transactional" value={transactional} onChange={setTransactional} options={choices} />
-            <Hint size="xs">Receipts, password resets and other one-to-one mail.</Hint>
-            <ChoiceField id="default-marketing" label="Marketing" value={marketing} onChange={setMarketing} options={choices} />
-            <Hint size="xs">Campaigns and other mail sent to many people.</Hint>
+            <ChoiceField id="default-transactional" label="Transactional" hint="Receipts, password resets and other one-to-one mail." value={transactional} onChange={setTransactional} options={choices} />
+            <ChoiceField id="default-marketing" label="Marketing" hint="Campaigns and other mail sent to many people." value={marketing} onChange={setMarketing} options={choices} />
           </fieldset>
           <FormError message={error} />
         </FormBody>
@@ -449,9 +447,10 @@ function NewKeyForm({ appId, first, done, lock }: { appId: string; first: boolea
 
   return (
     <FormBody onSubmit={submit}>
-      <Label htmlFor="key-name">Name</Label>
-      <Input
+      <TextField
         id="key-name"
+        label="Name"
+        hint="Production, Staging or the service that uses it."
         required
         autoFocus
         maxLength={80}
@@ -459,9 +458,8 @@ function NewKeyForm({ appId, first, done, lock }: { appId: string; first: boolea
         value={name}
         onChange={(e) => setName(e.target.value)}
       />
-      <Hint size="xs">Pick a name you will recognise later, such as Production or Staging.</Hint>
       <FormError message={error} />
-      <FormActions cancel submitLabel="Create key" pending={pending} pendingLabel="Creating…" />
+      <FormActions cancel submitLabel="Create key" pending={pending} pendingLabel="Creating…" disabled={!name.trim()} disabledReason="Enter a name first." />
     </FormBody>
   );
 }

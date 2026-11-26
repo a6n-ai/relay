@@ -12,8 +12,8 @@ export function SettingsCard({
 }: {
   title: string;
   description?: string;
-  footer?: ReactNode;
-  action?: ReactNode;
+  footer?: ReactNode; // muted hint, left of the footer strip
+  action?: ReactNode; // the footer button, right
   children?: ReactNode;
   tone?: "default" | "danger";
 }) {
@@ -25,9 +25,9 @@ export function SettingsCard({
       </CardHeader>
       {children ? <CardContent>{children}</CardContent> : null}
       {footer || action ? (
-        <CardFooter className={cn("justify-between gap-3", tone === "danger" && "border-destructive/30 bg-destructive/5")}>
-          <div className="text-sm text-muted-foreground">{footer}</div>
-          {action}
+        <CardFooter className={cn("flex-wrap justify-between gap-3", tone === "danger" && "border-destructive/30 bg-destructive/5")}>
+          <div className="min-w-0 text-sm text-muted-foreground">{footer}</div>
+          {action ? <div className="ml-auto">{action}</div> : null}
         </CardFooter>
       ) : null}
     </Card>

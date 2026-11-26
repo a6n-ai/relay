@@ -1,6 +1,5 @@
 import { Button } from "@foundry/ui/button";
-import { Input } from "@foundry/ui/input";
-import { Label } from "@foundry/ui/label";
+import { TextField } from "../../components/form/text-field";
 import { toast } from "@foundry/ui/toast";
 import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
@@ -88,7 +87,7 @@ function SuppressionsPage() {
         }
       >
         {canWrite ? (
-          <CreateDialog trigger="Suppress address" title="Suppress an address">
+          <CreateDialog trigger="Suppress address" title="Suppress address">
             {(done) => <AddForm done={done} />}
           </CreateDialog>
         ) : null}
@@ -173,10 +172,7 @@ function AddForm({ done }: { done: () => void }) {
   }
   return (
     <FormBody onSubmit={submit}>
-      <div className="grid gap-1.5">
-        <Label htmlFor="sup-email">Email</Label>
-        <Input id="sup-email" type="email" autoFocus required value={email} onChange={(e) => setEmail(e.target.value)} />
-      </div>
+      <TextField id="sup-email" label="Email" hint="Relay will not send to this address." type="email" autoFocus required value={email} onChange={(e) => setEmail(e.target.value)} />
       <ChoiceField
         id="sup-stream"
         label="Stream"
@@ -185,11 +181,7 @@ function AddForm({ done }: { done: () => void }) {
         options={STREAM_FILTERS.map((s) => ({ value: s, label: s === "all" ? "All streams" : streamLabel(s) }))}
       />
       <FormError message={error} />
-      <FormActions cancel>
-        <Button type="submit" disabled={pending || !email.trim()}>
-          {pending ? "Adding…" : "Add suppression"}
-        </Button>
-      </FormActions>
+      <FormActions cancel submitLabel="Suppress address" pending={pending} pendingLabel="Adding…" disabled={!email.trim()} disabledReason="Enter an email first." />
     </FormBody>
   );
 }

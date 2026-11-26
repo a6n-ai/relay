@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { ChevronsUpDownIcon } from "lucide-react";
 import { Badge } from "@foundry/ui/badge";
 import { Button } from "@foundry/ui/button";
@@ -9,6 +9,7 @@ import { RadioGroup, RadioGroupItem } from "@foundry/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@foundry/ui/select";
 import { ToggleGroup, ToggleGroupItem } from "@foundry/ui/toggle-group";
 import { Hint } from "../page/text";
+import { Field, fieldDescribedBy } from "./field";
 import { choiceMode, type ChoiceModeName } from "./choice-mode";
 
 export type ChoiceOption = { value: string; label: string; description?: string; disabled?: boolean; badge?: string };
@@ -20,15 +21,17 @@ type ControlProps = {
   options: ChoiceOption[];
   mode: ChoiceModeName;
   labelledBy?: string;
+  describedBy?: string;
+  invalid?: boolean;
   autoFocus?: boolean;
 };
 
-function Combobox({ id, value, onChange, options, labelledBy, autoFocus }: ControlProps) {
+function Combobox({ id, value, onChange, options, labelledBy, describedBy, invalid, autoFocus }: ControlProps) {
   const [open, setOpen] = useState(false);
   const current = options.find((o) => o.value === value);
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger render={<Button id={id} autoFocus={autoFocus} variant="outline" role="combobox" aria-labelledby={labelledBy} aria-expanded={open} className="w-full justify-between font-normal" />}>
+      <PopoverTrigger render={<Button id={id} autoFocus={autoFocus} variant="outline" role="combobox" aria-labelledby={labelledBy} aria-describedby={describedBy} aria-invalid={invalid || undefined} aria-expanded={open} className="w-full justify-between font-normal" />}>
         <span className="truncate">{current?.label ?? "Select…"}</span>
         <ChevronsUpDownIcon className="text-muted-foreground" />
       </PopoverTrigger>
@@ -61,12 +64,12 @@ function Combobox({ id, value, onChange, options, labelledBy, autoFocus }: Contr
 }
 
 export function ChoiceControl(props: ControlProps) {
-  const { id, value, onChange, options, mode, labelledBy, autoFocus } = props;
+  const { id, value, onChange, options, mode, labelledBy, describedBy, invalid, autoFocus } = props;
   if (mode === "combobox") return <Combobox {...props} />;
   if (mode === "select") {
     return (
       <Select value={value} onValueChange={onChange}>
-        <SelectTrigger id={id} autoFocus={autoFocus} aria-labelledby={labelledBy} className="w-full">
+        <SelectTrigger id={id} autoFocus={autoFocus} aria-labelledby={labelledBy} aria-describedby={describedBy} aria-invalid={invalid || undefined} className="w-full">
           <SelectValue placeholder="Select…" />
         </SelectTrigger>
         <SelectContent>
@@ -82,7 +85,7 @@ export function ChoiceControl(props: ControlProps) {
   }
   if (mode === "cards") {
     return (
-      <RadioGroup id={id} aria-labelledby={labelledBy} value={value} onValueChange={onChange}>
+      <RadioGroup id={id} aria-labelledby={labelledBy} aria-describedby={describedBy} value={value} onValueChange={onChange}>
         {options.map((o, i) => (
           <Label
             key={o.value}
@@ -105,6 +108,7 @@ export function ChoiceControl(props: ControlProps) {
     <ToggleGroup
       id={id}
       aria-labelledby={labelledBy}
+      aria-describedby={describedBy}
       type="single"
       variant="outline"
       className="w-full"
@@ -130,6 +134,9 @@ export function ChoiceField({
   describe,
   people,
   autoFocus,
+  hint,
+  error,
+  onClearError,
 }: {
   id: string;
   label: string;
@@ -139,6 +146,9 @@ export function ChoiceField({
   describe?: boolean;
   people?: boolean;
   autoFocus?: boolean;
+  hint?: ReactNode;
+  error?: string | null;
+  onClearError?: () => void;
 }) {
   const mode = choiceMode(options.length, {
     describe: describe ?? options.some((o) => o.description),
@@ -146,11 +156,21 @@ export function ChoiceField({
     labels: options.map((o) => (o.badge ? `${o.label} ${o.badge}` : o.label)),
   });
   return (
-    <div className="grid gap-1.5">
-      <Label id={`${id}-label`} htmlFor={mode === "segmented" || mode === "cards" ? undefined : id}>
-        {label}
-      </Label>
-      <ChoiceControl id={id} value={value} onChange={onChange} options={options} mode={mode} labelledBy={`${id}-label`} autoFocus={autoFocus} />
-    </div>
+    <Field id={id} label={label} hint={hint} error={error} htmlFor={mode === "segmented" || mode === "cards" ? null : id}>
+      <ChoiceControl
+        id={id}
+        value={value}
+        onChange={(v) => {
+          if (error) onClearError?.();
+          onChange(v);
+        }}
+        options={options}
+        mode={mode}
+        labelledBy={`${id}-label`}
+        describedBy={fieldDescribedBy(id, hint, error)}
+        invalid={!!error}
+        autoFocus={autoFocus}
+      />
+    </Field>
   );
 }

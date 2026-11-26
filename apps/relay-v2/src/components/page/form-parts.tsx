@@ -2,6 +2,8 @@ import type { ComponentProps } from "react";
 import { Button } from "@foundry/ui/button";
 import { cn } from "@foundry/ui/cn";
 import { DialogClose } from "@foundry/ui/dialog";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@foundry/ui/tooltip";
+import { useId } from "react";
 
 export function FormError({ message }: { message: string | null }) {
   if (!message) return null;
@@ -26,6 +28,7 @@ export function FormActions({
   pending,
   pendingLabel,
   disabled,
+  disabledReason,
   onCancel,
   cancel,
   ...props
@@ -35,11 +38,24 @@ export function FormActions({
   pending?: boolean;
   pendingLabel?: string;
   disabled?: boolean;
+  disabledReason?: string;
   onCancel?: () => void;
   cancel?: boolean;
 }) {
+  const reasonId = useId();
+  const reason = disabled && !pending ? disabledReason : undefined;
+  const primary = submitLabel ? (
+    <Button type="submit" disabled={pending || disabled} aria-describedby={reason ? reasonId : undefined}>
+      {pending ? (pendingLabel ?? submitLabel) : submitLabel}
+    </Button>
+  ) : null;
   return (
-    <div className={cn("flex justify-end gap-2", className)} {...props}>
+    <div className={cn("flex flex-wrap items-center justify-end gap-2", className)} {...props}>
+      {reason ? (
+        <p id={reasonId} className="min-w-0 basis-full text-xs text-muted-foreground sm:basis-0 sm:flex-1">
+          {reason}
+        </p>
+      ) : null}
       {onCancel ? (
         <Button type="button" variant="ghost" onClick={onCancel}>
           Cancel
@@ -49,9 +65,16 @@ export function FormActions({
       ) : null}
       {children}
       {submitLabel ? (
-        <Button type="submit" disabled={pending || disabled}>
-          {pending ? (pendingLabel ?? submitLabel) : submitLabel}
-        </Button>
+        reason ? (
+          <Tooltip>
+            <TooltipTrigger render={<span tabIndex={0} className="inline-flex" />}>
+              {primary}
+            </TooltipTrigger>
+            <TooltipContent>{reason}</TooltipContent>
+          </Tooltip>
+        ) : (
+          primary
+        )
       ) : null}
     </div>
   );

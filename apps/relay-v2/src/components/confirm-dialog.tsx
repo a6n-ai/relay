@@ -9,14 +9,18 @@ import {
   AlertDialogTrigger,
 } from "@foundry/ui/alert-dialog";
 import { Button } from "@foundry/ui/button";
-import { Input } from "@foundry/ui/input";
-import { Label } from "@foundry/ui/label";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useRef, useState } from "react";
 import { errorText } from "./error-text";
+import { TextField } from "./form/text-field";
 import { FormError } from "./page/form-parts";
+
+// Exact and case-sensitive: the name is the safeguard.
+export const typedMatches = (typed: string | undefined, text: string) => typed === undefined || text === typed;
 
 // Pass open and onOpenChange to drive it from outside (a router blocker); omit trigger then.
 // onConfirm must return a promise that rejects on failure: the dialog stays open while it runs and shows the error inline.
+// typed: the exact text to type, case-sensitive; shown in mono with a placeholder.
+// Cancel takes the initial focus, so Enter never confirms by accident. confirmLabel is Verb + noun ("Delete app").
 // children sit under the description (a preview); confirmDisabled holds the confirm until they are satisfied.
 export function ConfirmDialog({
   trigger,
@@ -49,8 +53,9 @@ export function ConfirmDialog({
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [text, setText] = useState("");
+  const cancelRef = useRef<HTMLButtonElement>(null);
   const isOpen = open ?? innerOpen;
-  const ready = !confirmDisabled && (typed === undefined || text.trim() === typed);
+  const ready = !confirmDisabled && typedMatches(typed, text);
 
   function setOpen(next: boolean) {
     if (pending) return;
@@ -79,32 +84,38 @@ export function ConfirmDialog({
   return (
     <AlertDialog open={isOpen} onOpenChange={setOpen}>
       {trigger !== undefined ? <AlertDialogTrigger render={<Button variant="outline" />}>{trigger}</AlertDialogTrigger> : null}
-      <AlertDialogContent>
+      <AlertDialogContent initialFocus={() => cancelRef.current}>
         <AlertDialogHeader>
           <AlertDialogTitle>{title}</AlertDialogTitle>
           {description ? <AlertDialogDescription>{description}</AlertDialogDescription> : null}
         </AlertDialogHeader>
         {children}
         {typed !== undefined ? (
-          <Label className="flex flex-col items-start gap-1">
-            Type {typed} to confirm
-            <Input
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  void confirm();
-                }
-              }}
-              autoComplete="off"
-              spellCheck={false}
-            />
-          </Label>
+          <TextField
+            id="confirm-typed"
+            label={
+              <>
+                Type <code className="rounded-sm bg-muted px-1 font-mono text-xs text-foreground">{typed}</code> to confirm
+              </>
+            }
+            hint={text && text !== typed ? "Type it exactly as shown, including capitals." : undefined}
+            value={text}
+            placeholder={typed}
+            className="font-mono"
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                void confirm();
+              }
+            }}
+            autoComplete="off"
+            spellCheck={false}
+          />
         ) : null}
         <FormError message={error} />
         <AlertDialogFooter>
-          <AlertDialogClose render={<Button variant="ghost" disabled={pending} />}>{dismissLabel}</AlertDialogClose>
+          <AlertDialogClose render={<Button ref={cancelRef} variant="ghost" disabled={pending} />}>{dismissLabel}</AlertDialogClose>
           <Button variant={destructive ? "destructive" : "default"} disabled={!ready || pending} onClick={() => void confirm()}>
             {pending ? `${confirmLabel}…` : confirmLabel}
           </Button>

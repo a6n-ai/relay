@@ -1,6 +1,5 @@
 import { Button } from "@foundry/ui/button";
-import { Input } from "@foundry/ui/input";
-import { Label } from "@foundry/ui/label";
+import { TextField } from "../../components/form/text-field";
 import { toast } from "@foundry/ui/toast";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import MegaphoneIcon from "lucide-react/icons/megaphone";
@@ -241,8 +240,7 @@ function NewCampaignForm({
   return (
     <FormBody onSubmit={submit}>
       <AppField apps={apps} scopedAppId={scopedAppId} value={app} onChange={setApp} id="campaign-app" autoFocus={choose} />
-      <Label htmlFor="campaign-name">Name</Label>
-      <Input id="campaign-name" autoFocus={!choose} required placeholder="Spring newsletter" value={name} onChange={(e) => setName(e.target.value)} />
+      <TextField id="campaign-name" label="Name" autoFocus={!choose} required placeholder="Spring newsletter" value={name} onChange={(e) => setName(e.target.value)} />
       <ChoiceField
         id="campaign-template"
         label="Start from"
@@ -254,7 +252,7 @@ function NewCampaignForm({
         ]}
       />
       <FormError message={error} />
-      <FormActions cancel pending={pending} pendingLabel="Creating…" submitLabel="Create campaign" />
+      <FormActions cancel pending={pending} pendingLabel="Creating…" submitLabel="Create campaign" disabled={!name.trim()} disabledReason="Enter a name first." />
     </FormBody>
   );
 }

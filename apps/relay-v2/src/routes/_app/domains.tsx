@@ -1,7 +1,6 @@
 import { Badge } from "@foundry/ui/badge";
+import { TextField } from "../../components/form/text-field";
 import { Button } from "@foundry/ui/button";
-import { Input } from "@foundry/ui/input";
-import { Label } from "@foundry/ui/label";
 import { toast } from "@foundry/ui/toast";
 import { createFileRoute, Link, useRouter, useSearch } from "@tanstack/react-router";
 import { GlobeIcon } from "lucide-react";
@@ -365,9 +364,12 @@ function NewDomainForm({ done, canPickRegion }: { done: () => void; canPickRegio
 
   return (
     <FormBody onSubmit={submit}>
-      <Label htmlFor="domain-name">Domain</Label>
-      <Input
+      <TextField
         id="domain-name"
+        label="Domain"
+        hint="Next you will add DNS records to verify it."
+        error={fieldError}
+        onClearError={() => setFieldError(null)}
         autoFocus
         required
         inputMode="url"
@@ -375,22 +377,13 @@ function NewDomainForm({ done, canPickRegion }: { done: () => void; canPickRegio
         spellCheck={false}
         placeholder="example.com"
         value={domain}
-        onChange={(e) => {
-          setDomain(e.target.value);
-          setFieldError(null);
-        }}
+        onChange={(e) => setDomain(e.target.value)}
         onBlur={() => {
           const clean = normaliseDomainInput(domain);
           setDomain(clean);
           check(clean);
         }}
-        aria-invalid={!!fieldError}
-        aria-describedby="domain-hint"
       />
-      <FormError message={fieldError} />
-      <Hint size="xs" id="domain-hint">
-        You will add DNS records next; press Check now to verify.
-      </Hint>
       {canPickRegion ? (
         <ChoiceField
           id="domain-region"
@@ -401,7 +394,7 @@ function NewDomainForm({ done, canPickRegion }: { done: () => void; canPickRegio
         />
       ) : null}
       <FormError message={error} />
-      <FormActions cancel submitLabel="Add domain" pending={pending} pendingLabel="Adding…" />
+      <FormActions cancel submitLabel="Add domain" pending={pending} pendingLabel="Adding…" disabled={!domain.trim()} disabledReason="Enter a domain first." />
     </FormBody>
   );
 }
@@ -488,52 +481,46 @@ function NewAddressForm({
     <FormBody onSubmit={submit}>
       <AppField apps={apps} scopedAppId={scopedAppId} value={appId} onChange={setAppId} id="address-app" />
       <FormError message={appError} />
-      <div className="grid gap-1.5">
-        <Label htmlFor="address-local">Address</Label>
-        <DomainEmailInput
-          id="address-local"
-          autoFocus
-          domains={domains}
-          kind={kind}
-          value={address}
-          onChange={(v) => {
-            setAddress(v);
-            setServerError(null);
-          }}
-        />
-        <FormError message={localError ?? serverError} />
-      </div>
+      <DomainEmailInput
+        id="address-local"
+        label="Address"
+        error={localError ?? serverError}
+        autoFocus
+        domains={domains}
+        kind={kind}
+        value={address}
+        onChange={(v) => {
+          setAddress(v);
+          setServerError(null);
+        }}
+      />
       <ChoiceField
         id="address-kind"
         label="Mail"
+        hint={KINDS.find((k) => k.value === kind)?.hint}
         value={kind}
         onChange={(v) => setKind(v as Kind)}
         options={KINDS.map(({ value, label }) => ({ value, label }))}
       />
-      <Hint size="xs">{KINDS.find((k) => k.value === kind)?.hint}</Hint>
-      <div className="grid gap-1.5">
-        <Label htmlFor="address-name">Name (optional)</Label>
-        <Input
-          id="address-name"
-          maxLength={80}
-          placeholder={appName ?? "Acme Support"}
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
-        <Hint size="xs">Shown to recipients, like Acme Support.</Hint>
-      </div>
+      <TextField
+        id="address-name"
+        label="Name (optional)"
+        hint="Shown to recipients, like Acme Support."
+        maxLength={80}
+        placeholder={appName ?? "Acme Support"}
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+      />
       {showReply ? (
-        <div className="grid gap-1.5">
-          <Label htmlFor="address-reply-to">Reply-To (optional)</Label>
-          <Input
-            id="address-reply-to"
-            type="email"
-            maxLength={254}
-            placeholder={address.local && address.domain ? email : "Same as the address"}
-            value={replyTo}
-            onChange={(e) => setReplyTo(e.target.value)}
-          />
-        </div>
+        <TextField
+          id="address-reply-to"
+          label="Reply-To (optional)"
+          type="email"
+          maxLength={254}
+          placeholder={address.local && address.domain ? email : "Same as the address"}
+          value={replyTo}
+          onChange={(e) => setReplyTo(e.target.value)}
+        />
       ) : (
         <Button type="button" variant="ghost" className="justify-self-start" onClick={() => setShowReply(true)}>
           Set a reply-to address
@@ -585,25 +572,17 @@ function EditAddressForm({ address, done }: { address: Address; done: () => void
         value={KIND_LABEL[address.kind] ?? address.kind}
         hint={`${KINDS.find((k) => k.value === address.kind)?.hint ?? ""} Can't be changed. Remove the address and add it again to change it.`.trim()}
       />
-      <div className="grid gap-1.5">
-        <Label htmlFor="edit-address-name">Name</Label>
-        <Input id="edit-address-name" autoFocus maxLength={80} value={name} onChange={(e) => setName(e.target.value)} />
-      </div>
-      <div className="grid gap-1.5">
-        <Label htmlFor="edit-address-reply-to">Reply-To</Label>
-        <Input
-          id="edit-address-reply-to"
-          type="email"
-          maxLength={254}
-          value={replyTo}
-          aria-invalid={!!replyError}
-          onChange={(e) => {
-            setReplyTo(e.target.value);
-            setReplyError(null);
-          }}
-        />
-        <FormError message={replyError} />
-      </div>
+      <TextField id="edit-address-name" label="Name" autoFocus maxLength={80} value={name} onChange={(e) => setName(e.target.value)} />
+      <TextField
+        id="edit-address-reply-to"
+        label="Reply-To"
+        type="email"
+        maxLength={254}
+        value={replyTo}
+        error={replyError}
+        onClearError={() => setReplyError(null)}
+        onChange={(e) => setReplyTo(e.target.value)}
+      />
       <FormError message={error} />
       <FormActions cancel submitLabel="Save address" pending={pending} pendingLabel="Saving…" />
     </FormBody>

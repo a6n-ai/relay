@@ -1,5 +1,4 @@
 import { Checkbox } from "@foundry/ui/checkbox";
-import { Input } from "@foundry/ui/input";
 import { Label } from "@foundry/ui/label";
 import { toast } from "@foundry/ui/toast";
 import { useRouter } from "@tanstack/react-router";
@@ -7,26 +6,25 @@ import { type FormEvent, useState } from "react";
 import { updateWebhookFn } from "../console/webhooks.fns";
 import type { WebhookEvent } from "../core/webhooks";
 import { errorText } from "./error-text";
+import { TextField } from "./form/text-field";
 import { FormActions, FormBody, FormError } from "./page/form-parts";
 import { Hint, SectionTitle } from "./page/text";
 import { WEBHOOK_EVENT_LABELS, WEBHOOK_EVENT_LIST } from "./webhook-events";
 
-export function WebhookUrlField({ value, onChange }: { value: string; onChange: (url: string) => void }) {
+export function WebhookUrlField({ value, onChange, hint = "Use a public https:// URL." }: { value: string; onChange: (url: string) => void; hint?: string }) {
   return (
-    <div className="grid gap-1.5">
-      <Label htmlFor="webhook-url">URL</Label>
-      <Input
-        id="webhook-url"
-        type="url"
-        required
-        autoFocus
-        maxLength={2048}
-        placeholder="https://example.com/webhooks/relay"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-      />
-      <Hint size="xs">Use a public https:// URL.</Hint>
-    </div>
+    <TextField
+      id="webhook-url"
+      label="URL"
+      hint={hint}
+      type="url"
+      required
+      autoFocus
+      maxLength={2048}
+      placeholder="https://example.com/webhooks/relay"
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+    />
   );
 }
 
@@ -89,11 +87,10 @@ export function EditWebhookForm({
 
   return (
     <FormBody onSubmit={submit}>
-      <WebhookUrlField value={url} onChange={setUrl} />
+      <WebhookUrlField value={url} onChange={setUrl} hint="The signing secret stays the same." />
       <WebhookEventsField value={events} onChange={setEvents} />
-      <Hint size="xs">The signing secret stays the same.</Hint>
       <FormError message={error} />
-      <FormActions cancel submitLabel="Save webhook" pending={pending} pendingLabel="Saving…" disabled={!dirty || events.length === 0} />
+      <FormActions cancel submitLabel="Save webhook" pending={pending} pendingLabel="Saving…" disabled={!dirty || events.length === 0} disabledReason={events.length === 0 ? "Pick at least one event." : "Change something to save."} />
     </FormBody>
   );
 }
