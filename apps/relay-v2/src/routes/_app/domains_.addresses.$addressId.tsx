@@ -9,7 +9,6 @@ import { ConfirmDialog } from "../../components/confirm-dialog";
 import { CreateDialog } from "../../components/create-dialog";
 import { DeniedState, deniedReason } from "../../components/denied-state";
 import { errorText } from "../../components/error-text";
-import { FormError } from "../../components/form-error";
 import { ResourceTable } from "../../components/resource-table";
 import { useCan } from "../../components/use-can";
 import { EmptyState } from "../../components/page/empty-state";
@@ -17,7 +16,7 @@ import { TableSkeleton } from "../../components/page/table-skeleton";
 import { Toolbar } from "../../components/page/toolbar";
 import { PageHeader } from "../../components/shell/page-header";
 import { addGrantFn, fetchAddressAccess, removeGrantFn } from "../../console/grants.fns";
-import { FormBody, FormActions } from "../../components/page/form-parts";
+import { FormError, FormBody, FormActions } from "../../components/page/form-parts";
 import { Hint } from "../../components/page/text";
 
 export const Route = createFileRoute("/_app/domains_/addresses/$addressId")({

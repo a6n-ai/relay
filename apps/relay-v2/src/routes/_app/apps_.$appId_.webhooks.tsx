@@ -12,7 +12,6 @@ import { ConfirmDialog } from "../../components/confirm-dialog";
 import { CreateDialog } from "../../components/create-dialog";
 import { DeniedState, deniedReason } from "../../components/denied-state";
 import { errorText } from "../../components/error-text";
-import { FormError } from "../../components/form-error";
 import { EmptyState } from "../../components/page/empty-state";
 import { TableSkeleton } from "../../components/page/table-skeleton";
 import { Toolbar } from "../../components/page/toolbar";
@@ -25,7 +24,7 @@ import { WEBHOOK_EVENT_LABELS, WEBHOOK_EVENT_LIST } from "../../components/webho
 import { createWebhookFn, deleteWebhookFn, fetchWebhooks, updateWebhookFn } from "../../console/webhooks.fns";
 import type { WebhookEvent } from "../../core/webhooks";
 import { formatDate, formatWhen } from "../../lib/format-date";
-import { FormBody, FormActions } from "../../components/page/form-parts";
+import { FormError, FormBody, FormActions } from "../../components/page/form-parts";
 import { Hint, SectionTitle } from "../../components/page/text";
 
 export const Route = createFileRoute("/_app/apps_/$appId_/webhooks")({

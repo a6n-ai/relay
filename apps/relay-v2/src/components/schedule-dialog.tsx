@@ -7,8 +7,7 @@ import { type FormEvent, useState } from "react";
 import { scheduleCampaignFn } from "../console/campaigns.fns";
 import { CreateDialog } from "./create-dialog";
 import { errorText } from "./error-text";
-import { FormError } from "./form-error";
-import { FormBody, FormActions } from "./page/form-parts";
+import { FormError, FormBody, FormActions } from "./page/form-parts";
 import { Hint } from "./page/text";
 
 export function ScheduleDialog({

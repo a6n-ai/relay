@@ -6,7 +6,7 @@ import { useRouter } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
 import { createWorkspaceFn } from "../console/workspaces.fns";
 import { errorText } from "./error-text";
-import { FormError } from "./form-error";
+import { FormError } from "./page/form-parts";
 import { FormBody, FormActions } from "./page/form-parts";
 import { Hint } from "./page/text";
 

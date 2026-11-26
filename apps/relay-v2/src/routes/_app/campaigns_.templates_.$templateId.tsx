@@ -10,14 +10,13 @@ import { ConfirmDialog } from "../../components/confirm-dialog";
 import { ContentFields, type ContentValue } from "../../components/content-fields";
 import { DeniedState, deniedReason } from "../../components/denied-state";
 import { errorText, isNotFound } from "../../components/error-text";
-import { FormError } from "../../components/form-error";
 import { SettingsCard } from "../../components/page/settings-card";
 import { Toolbar } from "../../components/page/toolbar";
 import { PageHeader } from "../../components/shell/page-header";
 import { useCan } from "../../components/use-can";
 import { deleteTemplateFn, fetchTemplate, previewTemplateFn, updateTemplateFn } from "../../console/templates.fns";
 import type { TemplateView } from "../../do/templates";
-import { FormPanel, FormBody } from "../../components/page/form-parts";
+import { FormError, FormPanel, FormBody } from "../../components/page/form-parts";
 
 export const Route = createFileRoute("/_app/campaigns_/templates_/$templateId")({
   loader: ({ params }) =>

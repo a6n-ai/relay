@@ -1,6 +1,6 @@
 import { Button } from "@foundry/ui/button";
 import { useState } from "react";
-import { FormError } from "./form-error";
+import { FormError } from "./page/form-parts";
 import { FormBody, FormActions } from "./page/form-parts";
 import { Hint, SectionTitle } from "./page/text";
 
