@@ -2,23 +2,13 @@ import { lazy, Suspense, useEffect, useRef, useState, type ComponentType, type R
 import { Hero } from "./scenes/hero";
 
 const SCENES: Record<string, ComponentType> = {
-  campaigns: lazy(() => import("./scenes/campaigns")),
-  lists: lazy(() => import("./scenes/lists")),
   webhooks: lazy(() => import("./scenes/webhooks")),
-  inbound: lazy(() => import("./scenes/inbound")),
-  send: lazy(() => import("./scenes/send")),
-  domains: lazy(() => import("./scenes/domains")),
 };
 
 // The wide and compact designs have different shapes; the box holds the shape of whichever shows, so nothing shifts when a scene loads.
 const SHAPE: Record<string, string> = {
   hero: "ld-shape-hero",
-  campaigns: "ld-shape-card",
-  lists: "ld-shape-lists",
   webhooks: "ld-shape-card",
-  inbound: "ld-shape-tall",
-  send: "ld-shape-tall",
-  domains: "ld-shape-tall",
 };
 
 function Box({ name, label, children }: { name: string; label: string; children: ReactNode }) {

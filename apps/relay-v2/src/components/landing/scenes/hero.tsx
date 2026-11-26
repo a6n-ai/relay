@@ -65,14 +65,14 @@ export function HeroStage({ script }: { script?: Script }) {
                   <div className="rl-grid" data-head>
                     {layout === 'wide' ? <span>When</span> : null}
                     <span>From / To</span>
-                    <span>Subject</span>
+                    {layout === 'wide' ? <span>Subject</span> : null}
                     <span>Status</span>
                   </div>
                   <Collapse open={s.row} reveal="drop">
                     <div className="rl-grid" data-sel={s.sel || undefined} data-target="row-new">
                       {layout === 'wide' ? <span className="rl-mute">Just now</span> : null}
                       <span>ada@example.com</span>
-                      <span className="rl-name">Welcome aboard</span>
+                      {layout === 'wide' ? <span className="rl-name">Welcome aboard</span> : null}
                       <span className="rl-st"><States value={s.stat} align="start" states={{ queued: <Status s="queued" />, sent: <Status s="sent" /> }} /></span>
                     </div>
                   </Collapse>
@@ -80,7 +80,7 @@ export function HeroStage({ script }: { script?: Script }) {
                     <div key={to} className="rl-grid">
                       {layout === 'wide' ? <span className="rl-mute">{when}</span> : null}
                       <span>{to}</span>
-                      <span className="rl-name">{subject}</span>
+                      {layout === 'wide' ? <span className="rl-name">{subject}</span> : null}
                       <span className="rl-st"><Status s="sent" /></span>
                     </div>
                   ))}

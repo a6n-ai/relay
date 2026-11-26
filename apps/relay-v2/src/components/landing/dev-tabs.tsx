@@ -96,7 +96,7 @@ export function DevTabs() {
             tabIndex={active === i ? 0 : -1}
             onClick={() => setActive(i)}
             className={`shrink-0 whitespace-nowrap border-b-2 px-4 py-2.5 text-sm font-medium outline-offset-[-2px] focus-visible:outline-2 focus-visible:outline-ring ${
-              active === i ? "border-foreground text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
+              active === i ? "border-foreground text-foreground hover:bg-card" : "border-transparent text-muted-foreground hover:border-border hover:bg-card hover:text-foreground"
             }`}
           >
             {t.label}
@@ -110,8 +110,11 @@ export function DevTabs() {
           </pre>
           <div className="flex flex-wrap items-center justify-between gap-2 border-t px-3 py-2.5 text-xs text-muted-foreground sm:px-4">
             <span>Test values only. Replace the key and addresses with your own.</span>
-            <a href={t.href} className="font-medium text-foreground underline underline-offset-4">
+            <a href={t.href} className="ld-link inline-flex min-h-6 items-center gap-1 font-medium text-foreground">
               {t.link}
+              <span aria-hidden="true" className="ld-arrow">
+                →
+              </span>
             </a>
           </div>
         </div>
