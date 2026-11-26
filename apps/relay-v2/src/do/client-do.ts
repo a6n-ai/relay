@@ -84,6 +84,7 @@ import {
   IMPORT_CHUNK,
   importMemberRow,
   removeMemberRow,
+  updateMemberRow,
   updateListRow,
   type ImportResult,
   type ListInput,
@@ -492,6 +493,11 @@ export class ClientDO extends DurableObject<Env> {
     }
     if (total.added > 0) await this.scheduleAlarmAt(earliestDue(sql));
     return total;
+  }
+
+  async updateMember(workspaceId: string, listId: string, memberId: string, input: { firstName: string; lastName: string }): Promise<boolean> {
+    await this.ready(workspaceId);
+    return this.ctx.storage.transactionSync(() => updateMemberRow(this.ctx.storage.sql, listId, memberId, input));
   }
 
   async removeMember(workspaceId: string, listId: string, memberId: string): Promise<boolean> {

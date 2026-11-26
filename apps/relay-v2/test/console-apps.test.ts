@@ -1,7 +1,7 @@
 import { env, SELF } from "cloudflare:test";
 import { beforeAll, describe, expect, it } from "vitest";
 import { requireActor, uniqueViolation } from "../src/console/actor";
-import { addApp, createKey, deleteAudienceHookFor, getApp, listApps, listKeys, revokeKey, setAudienceHookFor } from "../src/console/apps";
+import { addApp, createKey, deleteAudienceHookFor, getApp, listApps, listKeys, renameApp, renameKey, revokeKey, setAudienceHookFor } from "../src/console/apps";
 import { createApp } from "../src/core/apps";
 import { clientFor } from "../src/core/messages";
 import { resolveApiKey } from "../src/core/api-keys";
@@ -151,5 +151,30 @@ describe("app audience hook", () => {
     });
     await expect(deleteAudienceHookFor(env, tenantOwner, appId)).rejects.toMatchObject({ status: 403 });
     expect(await clientFor(env, workspaceId).getAudienceHook(workspaceId, appId)).toMatchObject({ kind: "binding" });
+  });
+
+  it("renames an app and a key for a writer, keeps the slug, and refuses a member with 403", async () => {
+    const { cookie, workspaceId } = await workspaceFor("apps-rename@example.com", "Apps Rename Co");
+    const actor = await requireActor(env, headersFor(cookie), WRITE);
+    const { id: appId } = await addApp(env, actor, { name: "Web", slug: "web" });
+    const { id: keyId } = await createKey(env, actor, { appId, name: "old" });
+    await renameApp(env, actor, appId, "Storefront");
+    await renameKey(env, actor, keyId, "new");
+    await expect(getApp(env, actor, appId)).resolves.toMatchObject({ name: "Storefront", slug: "web" });
+    expect((await listKeys(env, actor, appId))[0]).toMatchObject({ id: keyId, name: "new" });
+    const memberCookie = await addMember(workspaceId, "apps-rename-member@example.com", "member");
+    await expect(requireActor(env, headersFor(memberCookie), WRITE)).rejects.toMatchObject({ status: 403 });
+  });
+
+  it("answers 404 when renaming another workspace's app or key", async () => {
+    const a = await workspaceFor("apps-rename-a@example.com", "Apps Rename A Co");
+    const b = await workspaceFor("apps-rename-b@example.com", "Apps Rename B Co");
+    const actorA = await requireActor(env, headersFor(a.cookie), WRITE);
+    const actorB = await requireActor(env, headersFor(b.cookie), WRITE);
+    const { id: appB } = await addApp(env, actorB, { name: "Web", slug: "web" });
+    const { id: keyB } = await createKey(env, actorB, { appId: appB, name: "b key" });
+    await expect(renameApp(env, actorA, appB, "x")).rejects.toMatchObject({ status: 404 });
+    await expect(renameKey(env, actorA, keyB, "x")).rejects.toMatchObject({ status: 404 });
+    await expect(getApp(env, actorB, appB)).resolves.toMatchObject({ name: "Web" });
   });
 });

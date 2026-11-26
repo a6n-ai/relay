@@ -11,8 +11,10 @@ import {
   inviteMember,
   listPeople,
   removeMember,
+  renameTeam,
   setTeamMember,
 } from "../src/console/members";
+import { renameWorkspace } from "../src/console/workspaces";
 import { inviteInput } from "../src/console/schemas";
 import { securityDb } from "../src/db/security/client";
 import { invitation, member, user, workspace } from "../src/db/security/schema";
@@ -243,5 +245,31 @@ describe("accepting an invite", { timeout: 60_000 }, () => {
       status: 403,
       message: "workspace suspended",
     });
+  });
+
+  it("renames a team and refuses a member with 403 and another workspace with 404", async () => {
+    const a = await workspaceFor("mem-rt-a@example.com", "Mem RT A Co");
+    const b = await workspaceFor("mem-rt-b@example.com", "Mem RT B Co");
+    const need = { permission: { team: ["update"] }, write: true };
+    const actorA = await requireActor(env, headersFor(a.cookie), need);
+    const actorB = await requireActor(env, headersFor(b.cookie), need);
+    const { id: teamId } = await createTeam(env, headersFor(a.cookie), "Support");
+    await renameTeam(env, actorA, headersFor(a.cookie), teamId, "Success");
+    const people = await listPeople(env, actorA);
+    expect(people.teams[0]).toMatchObject({ id: teamId, name: "Success" });
+    await expect(renameTeam(env, actorB, headersFor(b.cookie), teamId, "x")).rejects.toMatchObject({ status: 404 });
+    const memberCookie = await addMember(a.workspaceId, "mem-rt-member@example.com", "member");
+    await expect(requireActor(env, headersFor(memberCookie), need)).rejects.toMatchObject({ status: 403 });
+  });
+
+  it("renames a workspace, keeps its slug, and refuses a member with 403", async () => {
+    const a = await workspaceFor("mem-rw@example.com", "Mem RW Co");
+    const need = { permission: { organization: ["update"] }, write: true };
+    const actor = await requireActor(env, headersFor(a.cookie), need);
+    await renameWorkspace(env, actor, headersFor(a.cookie), "Renamed Co");
+    const [row] = await db.select({ name: workspace.name, slug: workspace.slug }).from(workspace).where(eq(workspace.id, a.workspaceId));
+    expect(row).toMatchObject({ name: "Renamed Co", slug: "Mem RW Co" });
+    const memberCookie = await addMember(a.workspaceId, "mem-rw-member@example.com", "member");
+    await expect(requireActor(env, headersFor(memberCookie), need)).rejects.toMatchObject({ status: 403 });
   });
 });

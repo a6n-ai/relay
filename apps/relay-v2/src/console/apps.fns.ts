@@ -11,6 +11,8 @@ import {
   getAudienceHookFor,
   listApps,
   listKeys,
+  renameApp,
+  renameKey,
   getDefaultSenders,
   revokeKey,
   setAudienceHookFor,
@@ -124,6 +126,28 @@ export const setAppDefaultSendersFn = createServerFn({ method: "POST" })
     try {
       const actor = await requireActor(env, getRequestHeaders(), WRITE);
       await setDefaultSendersFor(env, actor, data.appId, data);
+    } catch (err) {
+      toResponseError(err);
+    }
+  });
+
+export const updateAppFn = createServerFn({ method: "POST" })
+  .validator(validate(z.object({ id, name })))
+  .handler(async ({ data }) => {
+    try {
+      const actor = await requireActor(env, getRequestHeaders(), WRITE);
+      await renameApp(env, actor, data.id, data.name);
+    } catch (err) {
+      toResponseError(err);
+    }
+  });
+
+export const renameKeyFn = createServerFn({ method: "POST" })
+  .validator(validate(z.object({ id, name })))
+  .handler(async ({ data }) => {
+    try {
+      const actor = await requireActor(env, getRequestHeaders(), WRITE);
+      await renameKey(env, actor, data.id, data.name);
     } catch (err) {
       toResponseError(err);
     }

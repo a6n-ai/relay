@@ -13,6 +13,7 @@ import {
   listListsFor,
   listMembersFor,
   removeMemberFor,
+  updateContactFor,
   updateListFor,
 } from "../src/console/lists";
 import { securityDb } from "../src/db/security/client";
@@ -154,5 +155,23 @@ describe("list export", () => {
     const cookie = await addMember(a.workspaceId, "lst-export-member@example.com", "member");
     const member = await requireActor(env, headersFor(cookie));
     await expect(exportMembersFor(env, member, own.id)).rejects.toMatchObject({ status: 403 });
+  });
+
+  it("renames a contact, keeps the email, audits it, and refuses a member and another workspace", async () => {
+    const a = await workspaceFor("lst-contact-a@example.com", "Lst Contact A Co");
+    const b = await workspaceFor("lst-contact-b@example.com", "Lst Contact B Co");
+    const { id: appA } = await addApp(env, a.owner, { name: "Web", slug: "web" });
+    const list = await createListFor(env, a.owner, appA, { name: "VIP", consentSource: "purchase" });
+    await addMemberFor(env, a.owner, list.id, { email: "ann@x.test", firstName: "Ann" });
+    const contactId = (await listMembersFor(env, a.owner, list.id)).rows[0].id;
+    await updateContactFor(env, a.owner, { listId: list.id, contactId, firstName: "Anna", lastName: "Lee" });
+    expect((await listMembersFor(env, a.owner, list.id)).rows[0]).toMatchObject({ email: "ann@x.test", firstName: "Anna", lastName: "Lee" });
+    const audit = await securityDb(env).select({ action: securityAudit.action }).from(securityAudit).where(eq(securityAudit.workspaceId, a.workspaceId));
+    expect(audit.map((r) => r.action)).toContain("list.member.update");
+    const cookie = await addMember(a.workspaceId, "lst-contact-member@example.com", "member");
+    const member = await requireActor(env, headersFor(cookie));
+    await expect(updateContactFor(env, member, { listId: list.id, contactId, firstName: "x", lastName: "" })).rejects.toMatchObject({ status: 403 });
+    await expect(updateContactFor(env, b.owner, { listId: list.id, contactId, firstName: "x", lastName: "" })).rejects.toMatchObject({ status: 404 });
+    expect((await listMembersFor(env, a.owner, list.id)).rows[0]).toMatchObject({ firstName: "Anna" });
   });
 });

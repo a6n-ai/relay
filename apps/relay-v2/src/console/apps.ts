@@ -1,5 +1,5 @@
 import { and, asc, count, desc, eq, inArray, sql } from "drizzle-orm";
-import { createApiKey, revokeApiKey } from "../core/api-keys";
+import { createApiKey, renameApiKey, revokeApiKey } from "../core/api-keys";
 import { hookInputSchema } from "../core/audience-hook";
 import { createApp } from "../core/apps";
 import { clientFor } from "../core/messages";
@@ -63,6 +63,15 @@ export async function addApp(env: Env, actor: ConsoleActor, input: { name: strin
   }
 }
 
+export async function renameApp(env: Env, actor: ConsoleActor, id: string, name: string): Promise<void> {
+  const rows = await securityDb(env)
+    .update(app)
+    .set({ name, updatedAt: new Date() })
+    .where(and(eq(app.id, id), eq(app.workspaceId, actor.workspaceId)))
+    .returning({ id: app.id });
+  if (!rows.length) throw new ConsoleError(404, "not found");
+}
+
 // The secret is never stored or listed: listKeys selects only the metadata columns the screen shows.
 export async function listKeys(env: Env, actor: ConsoleActor, appId: string) {
   await getApp(env, actor, appId);
@@ -96,6 +105,10 @@ export async function createKey(
 
 export async function revokeKey(env: Env, actor: ConsoleActor, id: string): Promise<void> {
   if (!(await revokeApiKey(env, actor.workspaceId, id))) throw new ConsoleError(404, "not found");
+}
+
+export async function renameKey(env: Env, actor: ConsoleActor, id: string, name: string): Promise<void> {
+  if (!(await renameApiKey(env, actor.workspaceId, id, name))) throw new ConsoleError(404, "not found");
 }
 
 const AUDIENCE_READ = { tenant: ["read"] };

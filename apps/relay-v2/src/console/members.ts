@@ -152,6 +152,11 @@ async function ownTeam(env: Env, actor: ConsoleActor, teamId: string): Promise<v
   if (!row) throw new ConsoleError(404, "not found");
 }
 
+export async function renameTeam(env: Env, actor: ConsoleActor, headers: Headers, teamId: string, name: string): Promise<void> {
+  await ownTeam(env, actor, teamId);
+  await authCall(() => createAuth(env).api.updateTeam({ headers, body: { teamId, data: { name } } }));
+}
+
 export async function deleteTeam(env: Env, actor: ConsoleActor, headers: Headers, teamId: string): Promise<void> {
   await ownTeam(env, actor, teamId);
   await authCall(() => createAuth(env).api.removeTeam({ headers, body: { teamId } }));
