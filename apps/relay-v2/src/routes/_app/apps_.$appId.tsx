@@ -2,12 +2,13 @@ import { Badge } from "@foundry/ui/badge";
 import { Button } from "@foundry/ui/button";
 import { Input } from "@foundry/ui/input";
 import { Label } from "@foundry/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@foundry/ui/select";
 import { Switch } from "@foundry/ui/switch";
 import { toast } from "@foundry/ui/toast";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { KeyRoundIcon } from "lucide-react";
 import { type FormEvent, useState } from "react";
+import { ChoiceField, type ChoiceOption } from "../../components/form/choice-field";
+import { FixedField } from "../../components/form/fixed-field";
 import { ConfirmDialog } from "../../components/confirm-dialog";
 import { CreateDialog } from "../../components/create-dialog";
 import { DeniedState, deniedReason } from "../../components/denied-state";
@@ -22,6 +23,8 @@ import { SecretOnce } from "../../components/secret-once";
 import { useCan } from "../../components/use-can";
 import {
   createKeyFn,
+  renameKeyFn,
+  updateAppFn,
   deleteAudienceHookFn,
   fetchAppDetail,
   fetchAudienceHook,
@@ -32,6 +35,7 @@ import {
 import { setAudienceBindingFn } from "../../console/admin.fns";
 import { formatDate, formatWhen } from "../../lib/format-date";
 import { FormError, FormBody, FormActions } from "../../components/page/form-parts";
+import { Hint } from "../../components/page/text";
 
 export const Route = createFileRoute("/_app/apps_/$appId")({
   pendingComponent: () => <TableSkeleton columns={5} />,
@@ -50,6 +54,7 @@ function AppPage() {
   const canWrite = useCan({ tenant: ["write"] });
   const [keyOpen, setKeyOpen] = useState(false);
   const [revokeId, setRevokeId] = useState<string | null>(null);
+  const [renameId, setRenameId] = useState<string | null>(null);
   if (!data) {
     return (
       <>
@@ -59,6 +64,8 @@ function AppPage() {
     );
   }
   const { app, keys, hook, senders } = data;
+  const revoking = keys.find((k) => k.id === revokeId);
+  const renaming = keys.find((k) => k.id === renameId);
 
   async function revoke(id: string) {
     await revokeKeyFn({ data: { id } });
@@ -75,11 +82,12 @@ function AppPage() {
         </Button>
         {canWrite ? (
           <CreateDialog trigger="Create key" title="New API key" open={keyOpen} onOpenChange={setKeyOpen}>
-            {(done, lock) => <NewKeyForm appId={app.id} done={done} lock={lock} />}
+            {(done, lock) => <NewKeyForm appId={app.id} first={keys.length === 0} done={done} lock={lock} />}
           </CreateDialog>
         ) : null}
       </Toolbar>
       <div className="grid max-w-3xl gap-4 px-4 pb-8">
+        <AppDetailsPanel appId={app.id} name={app.name} slug={app.slug} canWrite={canWrite} />
         <SettingsCard title="API keys" description="Keys let this app send through Relay.">
           <ResourceTable
             columns={[
@@ -94,7 +102,14 @@ function AppPage() {
             ]}
             rows={keys}
             rowKey={(k) => k.id}
-            menu={canWrite ? (k) => [{ label: "Revoke", destructive: true, hidden: !k.enabled, onSelect: () => setRevokeId(k.id) }] : undefined}
+            menu={
+              canWrite
+                ? (k) => [
+                    { label: "Rename", onSelect: () => setRenameId(k.id) },
+                    { label: "Revoke", destructive: true, hidden: !k.enabled, onSelect: () => setRevokeId(k.id) },
+                  ]
+                : undefined
+            }
             empty={
               <EmptyState
                 icon={KeyRoundIcon}
@@ -113,12 +128,21 @@ function AppPage() {
           bindWorkspaceId={shell.platformAdmin ? (shell.active?.id ?? null) : null}
         />
       </div>
+      <CreateDialog
+        title="Rename key"
+        open={renaming !== undefined}
+        onOpenChange={(o) => {
+          if (!o) setRenameId(null);
+        }}
+      >
+        {(done) => (renaming ? <RenameKeyForm key={renaming.id} id={renaming.id} name={renaming.name ?? ""} done={done} /> : null)}
+      </CreateDialog>
       <ConfirmDialog
         open={revokeId !== null}
         onOpenChange={(o) => {
           if (!o) setRevokeId(null);
         }}
-        title="Revoke this key?"
+        title={revoking ? `Revoke ${revoking.name ?? "this key"}${revoking.start ? ` (${revoking.start}…)` : ""}?` : "Revoke this key?"}
         description="Requests that use this key stop working right away."
         confirmLabel="Revoke key"
         onConfirm={async () => {
@@ -126,6 +150,51 @@ function AppPage() {
         }}
       />
     </>
+  );
+}
+
+function AppDetailsPanel({ appId, name, slug, canWrite }: { appId: string; name: string; slug: string; canWrite: boolean }) {
+  const router = useRouter();
+  const [value, setValue] = useState(name);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
+  const dirty = value.trim() !== name;
+
+  async function save(event: FormEvent) {
+    event.preventDefault();
+    if (!dirty || !value.trim()) return;
+    setPending(true);
+    setError(null);
+    try {
+      await updateAppFn({ data: { id: appId, name: value.trim() } });
+      toast.success("App renamed");
+      await router.invalidate();
+    } catch (err) {
+      setError(errorText(err, "Could not rename the app."));
+    } finally {
+      setPending(false);
+    }
+  }
+
+  return (
+    <SettingsCard
+      title="Details"
+      footer={dirty ? "Unsaved changes" : undefined}
+      action={
+        canWrite ? (
+          <Button type="submit" variant="outline" form="app-details-form" disabled={pending || !dirty || !value.trim()}>
+            {pending ? "Saving…" : "Save app"}
+          </Button>
+        ) : undefined
+      }
+    >
+      <FormBody id="app-details-form" onSubmit={save}>
+        <Label htmlFor="app-name">Name</Label>
+        <Input id="app-name" required maxLength={80} value={value} disabled={!canWrite} onChange={(e) => setValue(e.target.value)} />
+        <FixedField label="Slug" value={slug} hint="Create a new app to use a different slug." />
+        <FormError message={error} />
+      </FormBody>
+    </SettingsCard>
   );
 }
 
@@ -141,13 +210,18 @@ function DefaultSendersPanel({ appId, senders, canWrite }: { appId: string; send
   const router = useRouter();
   const known = new Set(senders.options.map((o) => o.id));
   // A default whose address can no longer send is shown as None; saving then clears it.
-  const [transactional, setTransactional] = useState(senders.transactionalId && known.has(senders.transactionalId) ? senders.transactionalId : NONE);
-  const [marketing, setMarketing] = useState(senders.marketingId && known.has(senders.marketingId) ? senders.marketingId : NONE);
+  const only = senders.options.length === 1 ? senders.options[0].id : NONE;
+  const savedTransactional = senders.transactionalId && known.has(senders.transactionalId) ? senders.transactionalId : NONE;
+  const savedMarketing = senders.marketingId && known.has(senders.marketingId) ? senders.marketingId : NONE;
+  const [transactional, setTransactional] = useState(savedTransactional === NONE ? only : savedTransactional);
+  const [marketing, setMarketing] = useState(savedMarketing === NONE ? only : savedMarketing);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const dirty = transactional !== savedTransactional || marketing !== savedMarketing;
 
   async function save(event: FormEvent) {
     event.preventDefault();
+    if (!dirty) return;
     setPending(true);
     setError(null);
     try {
@@ -163,46 +237,44 @@ function DefaultSendersPanel({ appId, senders, canWrite }: { appId: string; send
     }
   }
 
-  const choices = (
-    <>
-      <SelectItem value={NONE}>None</SelectItem>
-      {senders.options.map((o) => (
-        <SelectItem key={o.id} value={o.id}>
-          {o.email}
-        </SelectItem>
-      ))}
-    </>
-  );
+  const choices: ChoiceOption[] = [{ value: NONE, label: "None" }, ...senders.options.map((o) => ({ value: o.id, label: o.email }))];
 
   return (
     <SettingsCard
       title="Default senders"
       description="Used when a send leaves out From. Tracked mail uses the transactional sender."
+      footer={dirty ? "Unsaved changes" : undefined}
       action={
-        canWrite ? (
-          <Button type="submit" variant="outline" form="default-senders-form" disabled={pending}>
-            Save
+        canWrite && senders.options.length > 0 ? (
+          <Button type="submit" variant="outline" form="default-senders-form" disabled={pending || !dirty}>
+            {pending ? "Saving…" : "Save senders"}
           </Button>
         ) : undefined
       }
     >
-      <FormBody id="default-senders-form" onSubmit={save}>
-        <Label htmlFor="default-transactional">Transactional</Label>
-        <Select value={transactional} onValueChange={(v) => setTransactional(v ?? NONE)} disabled={!canWrite}>
-          <SelectTrigger id="default-transactional">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>{choices}</SelectContent>
-        </Select>
-        <Label htmlFor="default-marketing">Marketing</Label>
-        <Select value={marketing} onValueChange={(v) => setMarketing(v ?? NONE)} disabled={!canWrite}>
-          <SelectTrigger id="default-marketing">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>{choices}</SelectContent>
-        </Select>
-        <FormError message={error} />
-      </FormBody>
+      {senders.options.length === 0 ? (
+        <div className="grid gap-2">
+          <Hint>Add a sender address first.</Hint>
+          <div>
+            <Button variant="outline" render={<Link to="/domains" search={{ new: undefined, q: undefined }} />}>
+              Add address
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <FormBody id="default-senders-form" onSubmit={save}>
+          {only !== NONE && savedTransactional === NONE && savedMarketing === NONE ? (
+            <Hint size="xs">This app has one sender address, so it is selected for both. Save to keep it.</Hint>
+          ) : null}
+          <fieldset disabled={!canWrite} className="grid gap-3">
+            <ChoiceField id="default-transactional" label="Transactional" value={transactional} onChange={setTransactional} options={choices} />
+            <Hint size="xs">Receipts, password resets and other one-to-one mail.</Hint>
+            <ChoiceField id="default-marketing" label="Marketing" value={marketing} onChange={setMarketing} options={choices} />
+            <Hint size="xs">Campaigns and other mail sent to many people.</Hint>
+          </fieldset>
+          <FormError message={error} />
+        </FormBody>
+      )}
     </SettingsCard>
   );
 }
@@ -226,13 +298,17 @@ function AudiencePanel({
   const [secret, setSecret] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const trimmed = url.trim();
+  const urlInvalid = trimmed !== "" && !/^https:\/\/\S+$/i.test(trimmed);
+  const dirty = url !== (hook?.url ?? "") || enabled !== (hook?.enabled ?? true);
 
   async function save(event: FormEvent) {
     event.preventDefault();
+    if (!dirty || !trimmed || urlInvalid) return;
     setPending(true);
     setError(null);
     try {
-      const result = await setAudienceHookFn({ data: { appId, url, enabled } });
+      const result = await setAudienceHookFn({ data: { appId, url: trimmed, enabled } });
       setSecret(result.secret);
       toast.success("App audience saved");
       await router.invalidate();
@@ -246,6 +322,16 @@ function AudiencePanel({
   async function remove() {
     await deleteAudienceHookFn({ data: { appId } });
     toast.success("App audience removed");
+    await router.invalidate();
+  }
+
+  // The server only generates a secret on first save, so a rotation sends a fresh one and shows it here.
+  async function rotate() {
+    if (!hook?.url) return;
+    const fresh = Array.from(crypto.getRandomValues(new Uint8Array(32)), (b) => b.toString(16).padStart(2, "0")).join("");
+    await setAudienceHookFn({ data: { appId, url: hook.url, secret: fresh, enabled: hook.enabled } });
+    setSecret(fresh);
+    toast.success("Secret rotated");
     await router.invalidate();
   }
 
@@ -263,10 +349,19 @@ function AudiencePanel({
         {editable ? (
           <ConfirmDialog
             trigger="Remove"
-            title="Remove the App audience?"
+            title={`Remove the App audience${hook?.url ? ` for ${hostOf(hook.url)}` : ""}?`}
             description="Campaigns that use it can't reach their audience until you connect one again."
             confirmLabel="Remove"
             onConfirm={remove}
+          />
+        ) : null}
+        {editable && hook?.kind === "https" ? (
+          <ConfirmDialog
+            trigger="Rotate secret"
+            title={`Rotate the secret for ${hostOf(hook.url ?? "")}?`}
+            description="The current secret stops working right away. Update your server with the new one."
+            confirmLabel="Rotate secret"
+            onConfirm={rotate}
           />
         ) : null}
         {bindWorkspaceId ? (
@@ -280,8 +375,8 @@ function AudiencePanel({
           />
         ) : null}
         {canWrite ? (
-          <Button type="submit" variant="outline" form="audience-form" disabled={pending || !url.trim()}>
-            Save
+          <Button type="submit" variant="outline" form="audience-form" disabled={pending || !dirty || !trimmed || urlInvalid}>
+            {pending ? "Saving…" : "Save audience"}
           </Button>
         ) : null}
       </div>
@@ -291,6 +386,7 @@ function AudiencePanel({
     <SettingsCard
       title="App audience"
       description="Relay calls this URL for the people a campaign reaches. Campaigns pick it under Audience."
+      footer={dirty ? "Unsaved changes" : undefined}
       action={action}
     >
       {hook?.kind === "binding" ? (
@@ -298,7 +394,17 @@ function AudiencePanel({
       ) : (
         <FormBody id="audience-form" onSubmit={save}>
           <Label htmlFor="audience-url">Audience URL</Label>
-          <Input id="audience-url" type="url" required value={url} disabled={!canWrite} onChange={(e) => setUrl(e.target.value)} />
+          <Input
+            id="audience-url"
+            type="url"
+            required
+            placeholder="https://example.com/relay/audience"
+            aria-invalid={urlInvalid || undefined}
+            value={url}
+            disabled={!canWrite}
+            onChange={(e) => setUrl(e.target.value)}
+          />
+          {urlInvalid ? <FormError message="Must be a public https:// URL." /> : null}
           <Label className="font-normal">
             <Switch checked={enabled} onCheckedChange={setEnabled} disabled={!canWrite} />
             Enabled
@@ -311,9 +417,9 @@ function AudiencePanel({
   );
 }
 
-function NewKeyForm({ appId, done, lock }: { appId: string; done: () => void; lock: (locked: boolean) => void }) {
+function NewKeyForm({ appId, first, done, lock }: { appId: string; first: boolean; done: () => void; lock: (locked: boolean) => void }) {
   const router = useRouter();
-  const [name, setName] = useState("");
+  const [name, setName] = useState(first ? "Production" : "");
   const [created, setCreated] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -340,13 +446,66 @@ function NewKeyForm({ appId, done, lock }: { appId: string; done: () => void; lo
   return (
     <FormBody onSubmit={submit}>
       <Label htmlFor="key-name">Name</Label>
-      <Input id="key-name" required maxLength={80} value={name} onChange={(e) => setName(e.target.value)} />
+      <Input
+        id="key-name"
+        required
+        autoFocus
+        maxLength={80}
+        placeholder="Production"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+      />
+      <Hint size="xs">Pick a name you will recognise later, such as Production or Staging.</Hint>
       <FormError message={error} />
-      <FormActions>
-        <Button type="submit" disabled={pending}>
-          Create key
-        </Button>
-      </FormActions>
+      <FormActions cancel submitLabel="Create key" pending={pending} pendingLabel="Creating…" />
     </FormBody>
   );
+}
+
+function RenameKeyForm({ id, name, done }: { id: string; name: string; done: () => void }) {
+  const router = useRouter();
+  const [value, setValue] = useState(name);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
+  const dirty = value.trim() !== name;
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    if (!dirty || !value.trim()) return;
+    setPending(true);
+    setError(null);
+    try {
+      await renameKeyFn({ data: { id, name: value.trim() } });
+      toast.success("Key renamed");
+      done();
+      await router.invalidate();
+    } catch (err) {
+      setError(errorText(err, "Could not rename the key."));
+    } finally {
+      setPending(false);
+    }
+  }
+
+  return (
+    <FormBody onSubmit={submit}>
+      <Label htmlFor="key-rename">Name</Label>
+      <Input id="key-rename" required autoFocus maxLength={80} value={value} onChange={(e) => setValue(e.target.value)} />
+      <Hint size="xs">Only the name changes. The key itself keeps working.</Hint>
+      <FormError message={error} />
+      <FormActions
+        cancel
+        submitLabel="Save name"
+        pending={pending || !dirty || !value.trim()}
+        pendingLabel={pending ? "Saving…" : "Save name"}
+      />
+    </FormBody>
+  );
+}
+
+function hostOf(url: string) {
+  try {
+    return new URL(url).host;
+  } catch {
+    return url;
+  }
 }
