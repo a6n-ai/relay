@@ -44,7 +44,7 @@ import {
   isSuppressedForScope,
 } from "../core/imports";
 import { getMessageForScope, sendMessage, sendTemplateMessage } from "../core/messages";
-import { sendInputSchema, templateSendSchema } from "../core/send-input";
+import { sendBody, templateSendSchema } from "../core/send-input";
 import {
   createTemplateForScope,
   deleteTemplateForScope,
@@ -53,7 +53,7 @@ import {
   templateOverridesForScope,
   updateTemplateForScope,
 } from "../core/templates";
-import { campaignPatch, listInput, templateInput, templatePatch } from "../console/schemas";
+import { campaignPatch, listInput, listPatch, templateInput, templatePatch } from "../console/schemas";
 import type { Env } from "../env";
 
 // Module-level, not a method: WorkerEntrypoint exposes every method over RPC, private or not.
@@ -80,7 +80,7 @@ const streamName = z.enum(["transactional", "tracked", "marketing"]);
 
 export class RelayRpc extends WorkerEntrypoint<Env> {
   async send(apiKey: string, input: unknown) {
-    return withScope(this.env, apiKey, (scope) => sendMessage(this.env, scope, sendInputSchema.omit({ appId: true, campaignId: true }).parse(input)));
+    return withScope(this.env, apiKey, (scope) => sendMessage(this.env, scope, sendBody.parse(input)));
   }
 
   async sendTemplate(apiKey: string, input: unknown) {
@@ -100,7 +100,7 @@ export class RelayRpc extends WorkerEntrypoint<Env> {
   }
 
   async updateList(apiKey: string, id: string, patch: unknown) {
-    return withScope(this.env, apiKey, (s) => updateListForScope(this.env, s, id, listInput.partial().parse(patch)));
+    return withScope(this.env, apiKey, (s) => updateListForScope(this.env, s, id, listPatch.parse(patch)));
   }
 
   async deleteList(apiKey: string, id: string) {

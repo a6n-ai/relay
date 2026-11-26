@@ -120,6 +120,12 @@ export const importMessagesSchema = z
   .min(1)
   .max(IMPORT_MAX_ROWS);
 
+export const importListsBody = z.object({ rows: importListsSchema });
+export const importTemplatesBody = z.object({ rows: importTemplatesSchema });
+export const importCampaignsBody = z.object({ rows: importCampaignsSchema });
+export const importMessagesBody = z.object({ rows: importMessagesSchema });
+export const importSuppressionsBody = z.object({ rows: importSuppressionsSchema });
+
 // Each import takes at most 500 rows and returns the ids of its refs. A ref kept by another app is refused as a conflict.
 function checkedRows<T>(rows: T[]): T[] {
   if (rows.length > IMPORT_MAX_ROWS) throw new ApiError(400, "invalid input");

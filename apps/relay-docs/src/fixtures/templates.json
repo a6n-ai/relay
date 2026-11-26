@@ -1,0 +1,195 @@
+[
+  {
+    "route": "templates.ts",
+    "title": "List templates",
+    "method": "GET",
+    "path": "/api/v1/templates",
+    "summary": "Returns the templates of your app, 50 per page.",
+    "query": [{ "name": "cursor", "example": "", "description": "The nextCursor from the previous page. Omit it for the first page." }],
+    "status": 200,
+    "response": {
+      "data": [
+        {
+          "id": "tpl_Example0001",
+          "appId": "app_Example0001",
+          "name": "Order confirmation",
+          "event": "order_confirmation",
+          "locale": "en",
+          "subject": "Your order is confirmed",
+          "intro": null,
+          "html": "<p>Hi {{contact.first_name}}, thanks for your order.</p>",
+          "text": "Hi {{contact.first_name}}, thanks for your order.",
+          "enabled": true,
+          "createdAt": 1795000000000,
+          "updatedAt": 1795000000000
+        }
+      ],
+      "nextCursor": null
+    },
+    "responseNote": "nextCursor is null on the last page.",
+    "errors": [{ "status": 400, "message": "invalid input", "when": "The cursor is not one Relay issued." }]
+  },
+  {
+    "route": "templates.ts",
+    "title": "Create a template",
+    "method": "POST",
+    "path": "/api/v1/templates",
+    "summary": "Creates a template. Send it later by id with the template send endpoint.",
+    "schema": "templateCreate",
+    "fields": [
+      { "name": "name", "type": "string", "required": true, "description": "1 to 120 characters." },
+      { "name": "event", "type": "string or null", "required": false, "description": "Up to 80 characters. Only one template per app can use an event." },
+      { "name": "locale", "type": "string", "required": false, "description": "2 to 35 characters, such as en." },
+      { "name": "subject", "type": "string", "required": false, "description": "Up to 300 characters, with no line breaks." },
+      { "name": "intro", "type": "string or null", "required": false, "description": "Up to 2000 characters." },
+      { "name": "html", "type": "string", "required": false, "description": "Up to 500,000 characters." },
+      { "name": "text", "type": "string", "required": false, "description": "Up to 500,000 characters." },
+      { "name": "enabled", "type": "boolean", "required": false, "description": "Whether the template can be sent." }
+    ],
+    "body": {
+      "name": "Order confirmation",
+      "event": "order_confirmation",
+      "locale": "en",
+      "subject": "Your order is confirmed",
+      "html": "<p>Hi {{contact.first_name}}, thanks for your order.</p>",
+      "text": "Hi {{contact.first_name}}, thanks for your order.",
+      "enabled": true
+    },
+    "status": 201,
+    "response": {
+      "data": {
+        "id": "tpl_Example0001",
+        "appId": "app_Example0001",
+        "name": "Order confirmation",
+        "event": "order_confirmation",
+        "locale": "en",
+        "subject": "Your order is confirmed",
+        "intro": null,
+        "html": "<p>Hi {{contact.first_name}}, thanks for your order.</p>",
+        "text": "Hi {{contact.first_name}}, thanks for your order.",
+        "enabled": true,
+        "createdAt": 1795000000000,
+        "updatedAt": 1795000000000
+      }
+    },
+    "errors": [
+      { "status": 400, "message": "invalid input", "when": "The body is not valid JSON or fails validation." },
+      { "status": 400, "message": "unknown merge field", "when": "subject, intro, html or text uses a merge field Relay does not know." },
+      { "status": 409, "message": "template event taken", "when": "Another template of the app already uses this event." }
+    ]
+  },
+  {
+    "route": "templates.$id.ts",
+    "title": "Get a template",
+    "method": "GET",
+    "path": "/api/v1/templates/{id}",
+    "summary": "Returns one template of your app.",
+    "pathParams": [{ "name": "id", "example": "tpl_Example0001", "description": "The template id." }],
+    "status": 200,
+    "response": {
+      "data": {
+        "id": "tpl_Example0001",
+        "appId": "app_Example0001",
+        "name": "Order confirmation",
+        "event": "order_confirmation",
+        "locale": "en",
+        "subject": "Your order is confirmed",
+        "intro": null,
+        "html": "<p>Hi {{contact.first_name}}, thanks for your order.</p>",
+        "text": "Hi {{contact.first_name}}, thanks for your order.",
+        "enabled": true,
+        "createdAt": 1795000000000,
+        "updatedAt": 1795000000000
+      }
+    },
+    "errors": [{ "status": 404, "message": "not found", "when": "The template does not exist or belongs to another app." }]
+  },
+  {
+    "route": "templates.$id.ts",
+    "title": "Update a template",
+    "method": "PATCH",
+    "path": "/api/v1/templates/{id}",
+    "summary": "Changes the fields you send. Every field is optional.",
+    "pathParams": [{ "name": "id", "example": "tpl_Example0001", "description": "The template id." }],
+    "schema": "templatePatch",
+    "fields": [{ "name": "(same fields as create)", "type": "", "required": false, "description": "Send only what changes. name, event, locale, subject, intro, html, text and enabled follow the same limits as create." }],
+    "body": { "subject": "We have your order", "enabled": true },
+    "status": 200,
+    "response": {
+      "data": {
+        "id": "tpl_Example0001",
+        "appId": "app_Example0001",
+        "name": "Order confirmation",
+        "event": "order_confirmation",
+        "locale": "en",
+        "subject": "We have your order",
+        "intro": null,
+        "html": "<p>Hi {{contact.first_name}}, thanks for your order.</p>",
+        "text": "Hi {{contact.first_name}}, thanks for your order.",
+        "enabled": true,
+        "createdAt": 1795000000000,
+        "updatedAt": 1795000100000
+      }
+    },
+    "errors": [
+      { "status": 400, "message": "invalid input", "when": "The body is not valid JSON or fails validation." },
+      { "status": 400, "message": "unknown merge field", "when": "A text field uses a merge field Relay does not know." },
+      { "status": 404, "message": "not found", "when": "The template does not exist or belongs to another app." },
+      { "status": 409, "message": "template event taken", "when": "Another template of the app already uses this event." }
+    ]
+  },
+  {
+    "route": "templates.$id.ts",
+    "title": "Delete a template",
+    "method": "DELETE",
+    "path": "/api/v1/templates/{id}",
+    "summary": "Deletes a template that no automation uses.",
+    "pathParams": [{ "name": "id", "example": "tpl_Example0001", "description": "The template id." }],
+    "status": 204,
+    "response": null,
+    "responseNote": "Empty body.",
+    "errors": [
+      { "status": 404, "message": "not found", "when": "The template does not exist or belongs to another app." },
+      { "status": 409, "message": "template in use", "when": "An automation still uses the template." }
+    ]
+  },
+  {
+    "route": "templates.send.ts",
+    "title": "Send a template",
+    "method": "POST",
+    "path": "/api/v1/templates/send",
+    "summary": "Renders a template for one recipient and queues the email.",
+    "schema": "sendTemplate",
+    "fields": [
+      { "name": "templateId", "type": "string", "required": true, "description": "The template to render." },
+      { "name": "stream", "type": "string", "required": true, "description": "One of transactional, tracked or marketing. Only marketing may include an unsubscribe link." },
+      { "name": "to", "type": "string (email)", "required": true, "description": "The recipient." },
+      { "name": "from", "type": "string (email)", "required": false, "description": "A verified sender. Defaults to the app's sender for the stream." },
+      { "name": "contact", "type": "object", "required": false, "description": "firstName and lastName, each up to 200 characters, for the merge fields." },
+      { "name": "data", "type": "object", "required": false, "description": "Up to 10 keys matching ^[a-z0-9_]{1,40}$. Each value is a string of at most 200 characters." },
+      { "name": "event", "type": "string", "required": false, "description": "A label you choose." },
+      { "name": "idempotencyKey", "type": "string", "required": false, "description": "A repeat with the same key returns the first message." }
+    ],
+    "body": {
+      "templateId": "tpl_Example0001",
+      "stream": "transactional",
+      "to": "ada@example.com",
+      "contact": { "firstName": "Ada" },
+      "data": { "order_number": "1042" },
+      "idempotencyKey": "order-1042"
+    },
+    "status": 201,
+    "response": { "data": { "messageId": "msg_Example0001", "status": "queued", "duplicate": false } },
+    "errors": [
+      { "status": 400, "message": "invalid input", "when": "The body is not valid JSON or fails validation." },
+      { "status": 400, "message": "no default sender", "when": "from is omitted and the app has no default sender for the stream." },
+      { "status": 400, "message": "unsubscribe only on marketing", "when": "The template has an unsubscribe link and the stream is not marketing." },
+      { "status": 400, "message": "unsubscribe link required", "when": "A marketing message lacks the unsubscribe link in html or text." },
+      { "status": 403, "message": "workspace_suspended", "when": "The workspace is suspended." },
+      { "status": 404, "message": "template not found", "when": "The template does not exist for your app." },
+      { "status": 409, "message": "template disabled", "when": "The template is not enabled." },
+      { "status": 422, "message": "sender_not_verified", "when": "from is not a verified sender." },
+      { "status": 429, "message": "quota_exceeded", "when": "The monthly send quota is used up." }
+    ]
+  }
+]

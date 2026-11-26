@@ -1,0 +1,49 @@
+[
+  {
+    "route": "audience-hook.ts",
+    "title": "Get the audience hook",
+    "method": "GET",
+    "path": "/api/v1/audience-hook",
+    "summary": "Returns the audience hook of your app. The signing secret is never returned.",
+    "status": 200,
+    "response": { "data": { "kind": "https", "url": "https://hooks.example.com/audience", "enabled": true } },
+    "responseNote": "kind is https, or binding when a platform admin set the hook up for you.",
+    "errors": [{ "status": 404, "message": "not found", "when": "The app has no audience hook." }]
+  },
+  {
+    "route": "audience-hook.ts",
+    "title": "Set the audience hook",
+    "method": "PUT",
+    "path": "/api/v1/audience-hook",
+    "summary": "Sets or replaces the https endpoint Relay calls to fetch campaign recipients.",
+    "schema": "audienceHook",
+    "fields": [
+      { "name": "url", "type": "string", "required": true, "description": "A public https URL, up to 2048 characters, without credentials." },
+      { "name": "secret", "type": "string", "required": false, "description": "Your own signing secret, 16 to 256 characters. When omitted, Relay keeps the existing secret, or generates one for a new hook." },
+      { "name": "enabled", "type": "boolean", "required": false, "description": "Set to false to switch the hook off." }
+    ],
+    "body": { "url": "https://hooks.example.com/audience", "enabled": true },
+    "status": 200,
+    "response": { "data": { "secret": "test-signing-value-0123456789" } },
+    "responseNote": "secret is returned only when Relay generated a new one. Otherwise it is null. Store it now: no endpoint returns it again.",
+    "errors": [
+      { "status": 400, "message": "invalid input", "when": "The body is not valid JSON or fails validation, including a non-public url." },
+      { "status": 403, "message": "hook managed by platform admin", "when": "The hook is a binding. A key cannot change it." },
+      { "status": 503, "message": "audience hook unavailable", "when": "Relay cannot sign requests right now. Try again later." }
+    ]
+  },
+  {
+    "route": "audience-hook.ts",
+    "title": "Delete the audience hook",
+    "method": "DELETE",
+    "path": "/api/v1/audience-hook",
+    "summary": "Removes the audience hook of your app.",
+    "status": 204,
+    "response": null,
+    "responseNote": "Empty body.",
+    "errors": [
+      { "status": 403, "message": "hook managed by platform admin", "when": "The hook is a binding. A key cannot remove it." },
+      { "status": 404, "message": "not found", "when": "The app has no audience hook." }
+    ]
+  }
+]

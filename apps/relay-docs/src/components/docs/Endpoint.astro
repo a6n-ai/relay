@@ -1,0 +1,146 @@
+---
+// One API endpoint, rendered from src/fixtures/<file>.json. relay-v2 test/docs-fixtures.test.ts parses each fixture body against the route's real schema.
+import { Code, TabItem, Tabs } from '@astrojs/starlight/components';
+
+type Row = { name: string; type?: string; required?: boolean; description: string; example?: string };
+type Fixture = {
+	title: string;
+	method: string;
+	path: string;
+	summary: string;
+	pathParams?: Row[];
+	query?: Row[];
+	fields?: Row[];
+	body?: unknown;
+	status: number;
+	response?: unknown;
+	responseText?: string;
+	responseNote?: string;
+	errors: { status: number; message: string; when: string }[];
+};
+
+interface Props {
+	file: string;
+	title: string;
+}
+
+const { file, title } = Astro.props;
+const fixtures = import.meta.glob<Fixture[]>('../../fixtures/*.json', { eager: true, import: 'default' });
+const e = fixtures[`../../fixtures/${file}.json`]?.find((f) => f.title === title);
+if (!e) throw new Error(`no fixture "${title}" in ${file}.json`);
+
+const BASE = 'https://relay.a6n.ai';
+const KEY = 'rk_test_example';
+const url = BASE + e.path.replace(/\{(\w+)\}/g, (_, name) => e.pathParams?.find((p) => p.name === name)?.example ?? name);
+const hasBody = e.body !== undefined;
+const json = (v: unknown, indent = 2) => JSON.stringify(v, null, indent);
+const py = (v: unknown, pad = ''): string => {
+	if (v === null) return 'None';
+	if (v === true) return 'True';
+	if (v === false) return 'False';
+	if (Array.isArray(v)) return v.length === 0 ? '[]' : `[\n${v.map((x) => `${pad}    ${py(x, pad + '    ')}`).join(',\n')},\n${pad}]`;
+	if (typeof v === 'object') {
+		const entries = Object.entries(v as object);
+		return entries.length === 0 ? '{}' : `{\n${entries.map(([k, x]) => `${pad}    ${JSON.stringify(k)}: ${py(x, pad + '    ')}`).join(',\n')},\n${pad}}`;
+	}
+	return JSON.stringify(v);
+};
+const indentBy = (s: string, pad: string) => s.replace(/\n/g, `\n${pad}`);
+
+const curl = [
+	`curl -X ${e.method} ${url}`,
+	`  -H "Authorization: Bearer ${KEY}"`,
+	...(hasBody ? ['  -H "Content-Type: application/json"', `  -d '${json(e.body).replace(/'/g, `'\\''`)}'`] : []),
+].join(' \\\n');
+
+const readBack = e.status === 204 ? 'console.log(res.status);' : e.responseText ? 'console.log(await res.text());' : 'console.log(res.status, await res.json());';
+const node = [
+	`const res = await fetch("${url}", {`,
+	`  method: "${e.method}",`,
+	`  headers: {`,
+	`    Authorization: "Bearer ${KEY}",`,
+	...(hasBody ? ['    "Content-Type": "application/json",'] : []),
+	`  },`,
+	...(hasBody ? [`  body: JSON.stringify(${indentBy(json(e.body), '  ')}),`] : []),
+	`});`,
+	readBack,
+].join('\n');
+
+const pyRead = e.status === 204 ? 'print(res.status_code)' : e.responseText ? 'print(res.text)' : 'print(res.status_code, res.json())';
+const python = [
+	'import requests',
+	'',
+	`res = requests.${e.method.toLowerCase()}(`,
+	`    "${url}",`,
+	`    headers={"Authorization": "Bearer ${KEY}"},`,
+	...(hasBody ? [`    json=${py(e.body, '    ')},`] : []),
+	')',
+	pyRead,
+].join('\n');
+
+const params = [
+	...(e.pathParams ?? []).map((p) => ({ ...p, where: 'path' })),
+	...(e.query ?? []).map((p) => ({ ...p, where: 'query' })),
+];
+---
+
+<div class="endpoint">
+	<p><code>{e.method}</code> <code>{e.path}</code></p>
+	<p>{e.summary}</p>
+	<p>Send the header <code>Authorization: Bearer rk_…</code> with every request.</p>
+
+	{
+		params.length > 0 && (
+			<table>
+				<thead>
+					<tr><th>Parameter</th><th>In</th><th>Description</th></tr>
+				</thead>
+				<tbody>
+					{params.map((p) => (
+						<tr><td><code>{p.name}</code></td><td>{p.where}</td><td>{p.description}</td></tr>
+					))}
+				</tbody>
+			</table>
+		)
+	}
+
+	{
+		e.fields && (
+			<table>
+				<thead>
+					<tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
+				</thead>
+				<tbody>
+					{e.fields.map((f) => (
+						<tr><td><code>{f.name}</code></td><td>{f.type}</td><td>{f.required ? 'Yes' : 'No'}</td><td>{f.description}</td></tr>
+					))}
+				</tbody>
+			</table>
+		)
+	}
+
+	<Tabs syncKey="lang">
+		<TabItem label="curl"><Code code={curl} lang="bash" /></TabItem>
+		<TabItem label="Node"><Code code={node} lang="js" /></TabItem>
+		<TabItem label="Python"><Code code={python} lang="python" /></TabItem>
+	</Tabs>
+
+	<p>Response: <code>{e.status}</code>. {e.responseNote}</p>
+	{e.response != null && <Code code={json(e.response)} lang="json" />}
+	{e.responseText && <Code code={e.responseText} lang="csv" />}
+
+	{
+		e.errors.length > 0 && (
+			<table>
+				<thead>
+					<tr><th>Status</th><th>Message</th><th>When</th></tr>
+				</thead>
+				<tbody>
+					{e.errors.map((x) => (
+						<tr><td>{x.status}</td><td><code>{x.message}</code></td><td>{x.when}</td></tr>
+					))}
+				</tbody>
+			</table>
+		)
+	}
+</div>

@@ -43,6 +43,8 @@ export const sendInputSchema = z.object({
   attachments: z.array(attachmentSchema).max(3).optional(),
 });
 
+export const sendBody = sendInputSchema.omit({ appId: true, campaignId: true });
+
 export type SendInput = z.input<typeof sendInputSchema>;
 
 // What the client DO receives: the sender is always resolved by then.

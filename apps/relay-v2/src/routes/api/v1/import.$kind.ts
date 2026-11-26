@@ -1,17 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { z } from "zod";
 import { apiRoute, data, json, readJson } from "../../../core/api-route";
 import {
   importCampaignsForScope,
-  importCampaignsSchema,
+  importCampaignsBody,
   importListsForScope,
-  importListsSchema,
+  importListsBody,
   importMessagesForScope,
-  importMessagesSchema,
+  importMessagesBody,
   importSuppressionsForScope,
-  importSuppressionsSchema,
+  importSuppressionsBody,
   importTemplatesForScope,
-  importTemplatesSchema,
+  importTemplatesBody,
 } from "../../../core/imports";
 
 export const Route = createFileRoute("/api/v1/import/$kind")({
@@ -21,15 +20,15 @@ export const Route = createFileRoute("/api/v1/import/$kind")({
         const body = await readJson(request);
         switch (params.kind) {
           case "lists":
-            return data(await importListsForScope(env, scope, z.object({ rows: importListsSchema }).parse(body).rows));
+            return data(await importListsForScope(env, scope, importListsBody.parse(body).rows));
           case "templates":
-            return data(await importTemplatesForScope(env, scope, z.object({ rows: importTemplatesSchema }).parse(body).rows));
+            return data(await importTemplatesForScope(env, scope, importTemplatesBody.parse(body).rows));
           case "campaigns":
-            return data(await importCampaignsForScope(env, scope, z.object({ rows: importCampaignsSchema }).parse(body).rows));
+            return data(await importCampaignsForScope(env, scope, importCampaignsBody.parse(body).rows));
           case "messages":
-            return data(await importMessagesForScope(env, scope, z.object({ rows: importMessagesSchema }).parse(body).rows));
+            return data(await importMessagesForScope(env, scope, importMessagesBody.parse(body).rows));
           case "suppressions":
-            return data(await importSuppressionsForScope(env, scope, z.object({ rows: importSuppressionsSchema }).parse(body).rows));
+            return data(await importSuppressionsForScope(env, scope, importSuppressionsBody.parse(body).rows));
           default:
             return json({ error: "not found" }, 404);
         }

@@ -1,0 +1,79 @@
+[
+  {
+    "route": "messages.ts",
+    "title": "Send a message",
+    "method": "POST",
+    "path": "/api/v1/messages",
+    "summary": "Queues one email. Relay returns as soon as the message is stored, not when it is delivered.",
+    "schema": "send",
+    "fields": [
+      { "name": "stream", "type": "string", "required": true, "description": "One of transactional, tracked or marketing." },
+      { "name": "from", "type": "string (email)", "required": false, "description": "A verified sender. When omitted, the app's default sender for the stream is used." },
+      { "name": "to", "type": "string (email)", "required": true, "description": "The recipient. Trimmed and lower-cased." },
+      { "name": "subject", "type": "string", "required": true, "description": "At least one character, with no line breaks." },
+      { "name": "html", "type": "string", "required": true, "description": "The HTML body." },
+      { "name": "text", "type": "string", "required": true, "description": "The plain-text body. On the marketing stream, both bodies need the {{unsubscribe_url}} merge token." },
+      { "name": "event", "type": "string", "required": false, "description": "A label you choose, such as order_confirmation." },
+      { "name": "idempotencyKey", "type": "string", "required": false, "description": "A repeat with the same key returns the first message with duplicate set to true." },
+      { "name": "fromName", "type": "string", "required": false, "description": "Display name, up to 100 characters, with no line breaks." },
+      { "name": "replyTo", "type": "string (email)", "required": false, "description": "Reply-to address." },
+      { "name": "attachments", "type": "array", "required": false, "description": "Up to 3 objects with filename, contentType and base64 content. Each decodes to at most 5 MB." }
+    ],
+    "body": {
+      "stream": "transactional",
+      "from": "orders@acme.test",
+      "to": "ada@example.com",
+      "subject": "Your order is confirmed",
+      "html": "<p>Thanks for your order.</p>",
+      "text": "Thanks for your order.",
+      "event": "order_confirmation",
+      "idempotencyKey": "order-1042"
+    },
+    "status": 202,
+    "response": { "messageId": "msg_Example0001", "status": "queued", "duplicate": false },
+    "responseNote": "status is queued, sent, failed or suppressed. The body is not wrapped in data.",
+    "errors": [
+      { "status": 400, "message": "invalid input", "when": "The body is not valid JSON or fails validation." },
+      { "status": 400, "message": "no default sender", "when": "from is omitted and the app has no default sender for the stream." },
+      { "status": 400, "message": "unsubscribe link required", "when": "A marketing message lacks {{unsubscribe_url}} in html or text." },
+      { "status": 403, "message": "workspace_suspended", "when": "The workspace is suspended." },
+      { "status": 422, "message": "sender_not_verified", "when": "from is not a verified sender." },
+      { "status": 429, "message": "quota_exceeded", "when": "The monthly send quota is used up." }
+    ]
+  },
+  {
+    "route": "messages.$id.ts",
+    "title": "Get a message",
+    "method": "GET",
+    "path": "/api/v1/messages/{id}",
+    "summary": "Returns one message of your app, including its status and counters.",
+    "pathParams": [{ "name": "id", "example": "msg_Example0001", "description": "The messageId returned by a send." }],
+    "status": 200,
+    "response": {
+      "id": "msg_Example0001",
+      "appId": "app_Example0001",
+      "channel": "email",
+      "direction": "out",
+      "stream": "transactional",
+      "status": "sent",
+      "idempotencyKey": "order-1042",
+      "event": "order_confirmation",
+      "campaignId": null,
+      "fromEmail": "orders@acme.test",
+      "toEmail": "ada@example.com",
+      "subject": "Your order is confirmed",
+      "text": "Thanks for your order.",
+      "html": "<p>Thanks for your order.</p>",
+      "error": null,
+      "attempts": 1,
+      "opens": 0,
+      "clicks": 0,
+      "createdAt": 1795000000000,
+      "updatedAt": 1795000002000,
+      "sentAt": 1795000002000,
+      "attachments": []
+    },
+    "responseNote": "The body is the stored message and is not wrapped in data. It carries further delivery fields beyond the ones shown. Times are epoch milliseconds.",
+    "errors": [{ "status": 404, "message": "not found", "when": "The message does not exist or belongs to another app." }]
+  }
+]
