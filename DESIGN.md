@@ -6,12 +6,12 @@ description: "Relay's console in the Vercel dashboard style: monochrome, Geist t
 colors:
   # Source of truth for exact values: apps/relay-v2/src/styles.css. These are the Geist-scale values it ships.
   background: "#ffffff"        # light page
-  surface: "#fafafa"           # light cards and muted fills (#f2f2f2 for deeper fills)
+  card: "#ffffff"              # light cards; muted, secondary and accent fills are #f2f2f2 (sidebar is #fafafa)
   border: "#ebebeb"            # light hairline
   foreground: "#171717"        # light ink
   muted-foreground: "#666666"  # light secondary ink
   dark-background: "#0a0a0a"
-  dark-surface: "#111111"      # dark cards and muted fills (#1a1a1a for deeper fills)
+  dark-card: "#111111"         # dark cards and popovers; muted, secondary and accent fills are #1a1a1a
   dark-border: "#2e2e2e"
   dark-foreground: "#ededed"
   dark-muted-foreground: "#a1a1a1"
@@ -47,14 +47,14 @@ rules:
 
 Relay uses the Vercel dashboard style. It replaced the Linear design language on 2026-11-26 by owner decision.
 
-Foundry ships the shapes. The root element and `body` carry `admin-ui`, so the preset also styles portalled menus, popovers and dialogs. Relay sets only colour and font tokens in `apps/relay-v2/src/styles.css`. Do not add per-page colour or radius classes.
+Foundry ships the shapes. Only `<body>` carries `admin-ui` (`apps/relay-v2/src/routes/__root.tsx`), so the preset also styles portalled menus, popovers and dialogs. Relay sets only colour and font tokens in `apps/relay-v2/src/styles.css`. Do not add per-page colour or radius classes.
 
 ## Palette
 
 `apps/relay-v2/src/styles.css` is the source of truth for exact values. The front matter above lists the Geist-scale values for both themes.
 
-- Light is the page on `#ffffff` with `#fafafa` cards, `#ebebeb` borders, `#171717` ink and `#666666` muted ink.
-- Dark is the page on `#0a0a0a` with `#111111` cards, `#2e2e2e` borders, `#ededed` ink and `#a1a1a1` muted ink.
+- Light is the page on `#ffffff` with `#ffffff` cards, `#f2f2f2` muted fills, `#fafafa` sidebar, `#ebebeb` borders, `#171717` ink and `#666666` muted ink.
+- Dark is the page on `#0a0a0a` with `#111111` cards, `#1a1a1a` muted fills, `#2e2e2e` borders, `#ededed` ink and `#a1a1a1` muted ink.
 - Every `bg-primary text-primary-foreground` pair flips with the theme. Check both themes after a change.
 
 ## Type
@@ -67,8 +67,8 @@ Foundry ships the shapes. The root element and `body` carry `admin-ui`, so the p
 
 - Controls and cards are 6px. Popups and modals are 12px.
 - Badges are pills, 20px tall, one tone fill with tone text and no border. Pass the tone through `--ui-badge-tone`.
-- Tables sit in a bordered, rounded frame with a muted header row. The frame is inset to the page padding so it lines up with the toolbar. The empty state sits in the same frame.
-- The page body is centred at a max width of about 1200px.
+- Tables sit in a bordered, rounded frame with a muted header row. The frame is inset to the page padding so it lines up with the toolbar. Loading skeletons and the empty state render inside the same frame, so loading, empty and full do not jump.
+- The page body is centred at a max width of 72rem (1152px) by a grid in `app-shell.tsx`. The header bar stays full width, and dialogs, sheets and popovers keep their own width.
 
 ## Buttons
 
@@ -81,32 +81,29 @@ Foundry ships the shapes. The root element and `body` carry `admin-ui`, so the p
 
 ## Component behaviour
 
-- **Sidebar** (`RelaySidebar`, `nav.ts`): at most 8 links in quiet groups. The active link is a grey tint with foreground text. It collapses to an icon rail and never holds settings or tabs.
-- **Tabs** (`SectionTabs`): links in a `nav`, not a Radix tablist, so back and forward work. The active tab sets `aria-current="page"`.
+- **Sidebar** (`app-shell.tsx`, `shell/nav.ts`): at most 8 links in quiet groups. The active link is a grey tint with foreground text. It collapses to an icon rail and never holds settings or tabs.
 - **Dialogs and forms**: creating something happens in a dialog over the list (`CreateDialog`), never in a side column. Fields are 32px. Focus ring is blue.
-- **View header** (`ViewHeader`): one compact row with title and actions, plus at most one muted line. Never a hero.
-- **Lists** (`ListingTable`, `ResourceRow`): search and filter chips above compact rows. The empty state names the next action. No row stagger on filter or search.
-- **Feedback**: `loading.tsx` skeletons for waits, `LoadingButton` for in-place saving, toasts only for results that leave the screen.
+- **Page header** (`PageHeader`): a full-width 48px bar with breadcrumb, scope switcher and actions. Every route renders it first.
+- **Lists** (`ResourceTable` in a `Toolbar` page): the empty state names the next action. No row stagger on filter or search.
+- **Feedback**: route `pendingComponent` with `TableSkeleton` for waits, toasts only for results that leave the screen.
 
 ## Components (reuse, never restyle ad hoc)
 
-Build screens from these parts and the semantic tokens (`bg-card`, `text-muted-foreground`, `bg-primary`). A pattern used twice becomes a component in `apps/relay/components/ds/`.
+Build screens from these parts and the semantic tokens (`bg-card`, `text-muted-foreground`, `bg-primary`). A pattern used twice becomes a component in `apps/relay-v2/src/components/`. `apps/relay` (v1) is legacy: it still renders Linear lavender and pills and is out of scope for this style.
 
-| Role | Relay component | File |
+| Role | Component | File (under `apps/relay-v2/src/components/`) |
 |---|---|---|
-| panel | `Panel` | components/ds/panel.tsx |
-| table frame | `DataSurface` (a `Panel`) | components/ds/data-surface.tsx |
-| list with search and filters | `ListingTable` over Foundry `DataTable` + `FilterPill` chips | components/ds/listing-controls.tsx |
-| sortable grid | Foundry `DataTable` directly | `@foundry/design-system` |
-| collection page | `OperatorSplit`, `CreateDialog` | components/ds/operator-split.tsx, create-dialog.tsx |
-| status badge | `StatusBadge` (tone: ok, bad, neutral) | components/ds/status-badge.tsx |
-| send status | `OutboxStatusBadge` | components/outbox-status-badge.tsx |
-| icon square | `IconTile` | components/ds/icon-tile.tsx |
-| section tabs | `SectionTabs` (from `nav.ts`) | components/ds/section-tabs.tsx |
-| sidebar | `RelaySidebar` | components/relay-sidebar.tsx |
-| async button | `LoadingButton` | components/interior/loading-button.tsx |
-| view header | `ViewHeader` | components/ds/view-header.tsx |
-| page frame, card, tabs | `PageShell`, `SectionCard`, `Tabs` | @foundry/design-system |
+| page header | `PageHeader` | shell/page-header.tsx |
+| create menu, scope switcher | `CreateMenu`, `ScopeSwitcher` | shell/create-menu.tsx, shell/scope-switcher.tsx |
+| toolbar | `Toolbar` | page/toolbar.tsx |
+| table with frame | `ResourceTable` (Foundry `Table`, inset by `TableInset`) | resource-table.tsx, page/table-inset.tsx |
+| loading | `TableSkeleton` | page/table-skeleton.tsx |
+| empty | `EmptyState` (passed as `empty` to `ResourceTable`) | page/empty-state.tsx |
+| row actions | `RowMenu` | page/row-menu.tsx |
+| settings card | `SettingsCard` | page/settings-card.tsx |
+| create flow | `CreateDialog` | create-dialog.tsx |
+| destructive confirm | `ConfirmDialog` | confirm-dialog.tsx |
+| status, meter, stat | `StatusBadge`, `MeterBar`, `StatTile` | status-badge.tsx, meter-bar.tsx, stat-tile.tsx |
 | primitives | `Button`, `Input`, `Select`, `Dialog`, `Badge`, `Skeleton` | @foundry/ui |
 
 Styling lives in tokens and these components, never in one-off class strings on pages.
