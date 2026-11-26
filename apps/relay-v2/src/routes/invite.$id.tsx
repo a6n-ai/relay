@@ -1,14 +1,12 @@
-import { Button } from "@foundry/ui/button";
 import { createFileRoute, Link, redirect, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { getShell } from "../console/shell.fns";
 import { acceptInviteFn, getInviteFn } from "../console/members.fns";
-import { AuthCard } from "../components/auth-card";
+import { AuthButton, AuthCard, AuthText, AuthTitle } from "../components/auth-card";
 import { errorText } from "../components/error-text";
 import { FormError } from "../components/page/form-parts";
 import { ROLE_LABEL, type MemberRole } from "../components/role-select";
-import { SignOutButton } from "../components/sign-out-button";
-import { Hint, Title } from "../components/page/text";
+import { useSignOut } from "../components/sign-out-button";
 
 export const Route = createFileRoute("/invite/$id")({
   beforeLoad: async ({ location }) => {
@@ -23,6 +21,7 @@ function InvitePage() {
   const { id } = Route.useParams();
   const invite = Route.useLoaderData();
   const router = useRouter();
+  const signOut = useSignOut();
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
@@ -43,29 +42,31 @@ function InvitePage() {
     <AuthCard>
       {!invite ? (
         <>
-          <Title>This invite was not found.</Title>
-          <Button variant="outline" render={<Link to="/sign-in" search={{ redirect: undefined }} />}>
+          <AuthTitle>This invite was not found.</AuthTitle>
+          <AuthButton variant="outline" render={<Link to="/sign-in" search={{ redirect: undefined }} />}>
             Back to sign in
-          </Button>
+          </AuthButton>
         </>
       ) : invite.state === "other-email" ? (
         <>
-          <Title>This invite is for a different email address.</Title>
-          <SignOutButton />
+          <AuthTitle>This invite is for a different email address.</AuthTitle>
+          <AuthButton variant="outline" onClick={signOut}>
+            Sign out
+          </AuthButton>
         </>
       ) : invite.state === "suspended" ? (
-        <Title>This workspace is suspended, so the invite cannot be accepted.</Title>
+        <AuthTitle>This workspace is suspended, so the invite cannot be accepted.</AuthTitle>
       ) : invite.status !== "pending" ? (
-        <Title>This invite is {invite.status}.</Title>
+        <AuthTitle>This invite is {invite.status}.</AuthTitle>
       ) : (
         <>
-          <Title>Join {invite.workspaceName}</Title>
-          <Hint>
+          <AuthTitle>Join {invite.workspaceName}</AuthTitle>
+          <AuthText>
             You are invited as {ROLE_LABEL[invite.role as MemberRole] ?? invite.role} for {invite.email}.
-          </Hint>
-          <Button onClick={accept} disabled={pending}>
+          </AuthText>
+          <AuthButton onClick={accept} disabled={pending}>
             Accept invite
-          </Button>
+          </AuthButton>
         </>
       )}
       <FormError message={error} />

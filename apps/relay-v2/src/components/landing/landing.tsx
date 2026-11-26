@@ -5,19 +5,7 @@ import { DevTabs } from "./dev-tabs";
 import { LifecycleRail, RailSteps, STAGES } from "./lifecycle-rail";
 import { HeroScene, Scene } from "./scene";
 import "./landing.css";
-import { RelayMark } from "../relay-mark";
-
-const Wrap = ({ children, className = "" }: { children: ReactNode; className?: string }) => (
-  <div className={`mx-auto w-full max-w-6xl px-4 sm:px-8 ${className}`}>{children}</div>
-);
-
-const big = (hero?: boolean) => (hero ? "h-11 px-5 text-base" : "");
-
-const Docs = ({ href = "/docs/", hero }: { href?: string; hero?: boolean }) => (
-  <Button variant="outline" size={hero ? "lg" : "default"} className={`ld-docs ${big(hero)}`} render={<a href={href} />}>
-    Docs
-  </Button>
-);
+import { Docs, SiteHeader, Wrap, big } from "../site-header";
 
 const SignIn = ({ hero }: { hero?: boolean }) => (
   <Button size={hero ? "lg" : "default"} className={`ld-signin ${big(hero)}`} render={<Link to="/sign-in" search={{ redirect: undefined }} />}>
@@ -72,15 +60,9 @@ export function Landing() {
       <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-30 focus:rounded-md focus:bg-primary focus:px-3 focus:py-2 focus:text-primary-foreground">
         Skip to content
       </a>
-      <header className="border-b">
-        <Wrap className="flex h-14 items-center justify-between">
-          <RelayMark />
-          <nav aria-label="Primary" className="flex items-center gap-2">
-            <Docs />
-            <SignIn />
-          </nav>
-        </Wrap>
-      </header>
+      <SiteHeader>
+        <SignIn />
+      </SiteHeader>
       <div className="mx-auto max-w-6xl border-x">
         <main id="main">
           <section aria-labelledby="hero" className="ld-frame border-b">

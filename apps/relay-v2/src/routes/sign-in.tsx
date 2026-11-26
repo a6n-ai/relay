@@ -1,14 +1,11 @@
-import { Button } from "@foundry/ui/button";
-import { Input } from "@foundry/ui/input";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@foundry/ui/input-otp";
 import { Label } from "@foundry/ui/label";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { type FormEvent, useEffect, useState } from "react";
-import { AuthCard } from "../components/auth-card";
+import { AuthButton, AuthCard, AuthInput, AuthText } from "../components/auth-card";
 import { FormError } from "../components/page/form-parts";
 import { authOptionsFn, safeRedirect } from "../console/shell.fns";
 import { signInErrorText } from "../lib/auth/google";
-import { Hint } from "../components/page/text";
 
 const SITE = "https://relay.a6n.ai";
 const TITLE = "Sign in to Relay";
@@ -140,15 +137,15 @@ function SignIn() {
   }
 
   return (
-    <AuthCard title="Sign in to Relay" footer="Access is by invite. Ask your workspace owner.">
+    <AuthCard title={step === "email" ? "Sign in to Relay" : "Check your email"} footer="Access is by invite. Ask your workspace owner.">
       {step === "email" ? (
         <form onSubmit={sendCode} className="flex flex-col gap-3">
           {google ? (
             <>
-              <Button type="button" variant="outline" disabled={pending} onClick={() => void signInWithGoogle()}>
+              <AuthButton type="button" variant="outline" disabled={pending} onClick={() => void signInWithGoogle()}>
                 <GoogleMark />
                 Continue with Google
-              </Button>
+              </AuthButton>
               <div className="flex items-center gap-3 text-xs text-muted-foreground">
                 <span className="h-px flex-1 bg-border" />
                 or
@@ -156,20 +153,23 @@ function SignIn() {
               </div>
             </>
           ) : null}
-          <Label htmlFor="email">Email</Label>
-          <Input
+          <Label htmlFor="email" className="sr-only">
+            Email
+          </Label>
+          <AuthInput
             id="email"
             name="email"
             type="email"
             autoComplete="email"
+            placeholder="Email address"
             required
             autoFocus
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
-          <Button type="submit" disabled={pending}>
+          <AuthButton type="submit" disabled={pending}>
             Continue with email
-          </Button>
+          </AuthButton>
         </form>
       ) : (
         <form
@@ -179,21 +179,23 @@ function SignIn() {
           }}
           className="flex flex-col gap-3"
         >
-          <Hint>Enter the 6-digit code we sent to {email}.</Hint>
+          <AuthText>
+            Enter the 6-digit code we sent to <span className="text-foreground">{email}</span>.
+          </AuthText>
           <InputOTP autoFocus maxLength={6} pattern="digits" value={otp} onChange={setOtp} onComplete={verify} aria-label="Sign-in code">
-            <InputOTPGroup>
+            <InputOTPGroup className="w-full">
               {[0, 1, 2, 3, 4, 5].map((i) => (
-                <InputOTPSlot key={i} index={i} />
+                <InputOTPSlot key={i} index={i} className="h-11 flex-1" />
               ))}
             </InputOTPGroup>
           </InputOTP>
-          <Button type="submit" disabled={pending || otp.length !== 6}>
+          <AuthButton type="submit" disabled={pending || otp.length !== 6}>
             Sign in
-          </Button>
-          <Button type="button" variant="outline" disabled={pending || wait > 0} onClick={() => void requestCode()}>
+          </AuthButton>
+          <AuthButton type="button" variant="outline" disabled={pending || wait > 0} onClick={() => void requestCode()}>
             {wait > 0 ? `Resend code in ${wait}s` : "Resend code"}
-          </Button>
-          <Button
+          </AuthButton>
+          <AuthButton
             type="button"
             variant="ghost"
             onClick={() => {
@@ -202,8 +204,8 @@ function SignIn() {
               setError(null);
             }}
           >
-            Use a different email
-          </Button>
+            Use another email
+          </AuthButton>
         </form>
       )}
       <FormError message={error} />
