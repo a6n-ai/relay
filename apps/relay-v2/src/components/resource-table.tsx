@@ -3,9 +3,9 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@foundry/ui/tooltip";
 import { Link, type LinkProps } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { Hint } from "./page/text";
+import { TableInset } from "./page/table-inset";
 import { RowMenu, type RowAction } from "./page/row-menu";
 
-const INSET = "px-4 pb-4 in-data-[slot=card-content]:p-0";
 const KIND = { name: "font-medium", mono: "font-mono text-xs", url: "break-all font-mono text-xs", time: "text-xs tabular-nums" } as const;
 
 // Only real controls sit above the row's overlay link; text, names and badges fall through to it.
@@ -40,9 +40,20 @@ export function ResourceTable<T>({
   rowLabel?: (row: T) => string;
   menu?: (row: T) => RowAction[];
 }) {
-  if (rows.length === 0) return typeof empty === "string" ? <div className={INSET}><Hint>{empty}</Hint></div> : empty;
+  if (rows.length === 0)
+    return (
+      <TableInset>
+        <Table>
+          <TableBody>
+            <TableRow data-table-empty>
+              <TableCell colSpan={columns.length + (menu ? 1 : 0)}>{typeof empty === "string" ? <Hint>{empty}</Hint> : empty}</TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
+      </TableInset>
+    );
   return (
-    <div className={INSET}>
+    <TableInset>
     <Table>
       <TableHeader>
         <TableRow>
@@ -82,6 +93,6 @@ export function ResourceTable<T>({
         })}
       </TableBody>
     </Table>
-    </div>
+    </TableInset>
   );
 }

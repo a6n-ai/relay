@@ -185,7 +185,7 @@ function DefaultSendersPanel({ appId, senders, canWrite }: { appId: string; send
       description="Used when a send leaves out From. Tracked mail uses the transactional sender."
       action={
         canWrite ? (
-          <Button type="submit" form="default-senders-form" disabled={pending}>
+          <Button type="submit" variant="outline" form="default-senders-form" disabled={pending}>
             Save
           </Button>
         ) : undefined
@@ -292,7 +292,7 @@ function AudiencePanel({
           />
         ) : null}
         {canWrite ? (
-          <Button type="submit" form="audience-form" disabled={pending || !url.trim()}>
+          <Button type="submit" variant="outline" form="audience-form" disabled={pending || !url.trim()}>
             Save
           </Button>
         ) : null}
