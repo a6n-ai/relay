@@ -6,7 +6,7 @@ export function RelayMark() {
     <Link
       to="/"
       aria-label="Relay home"
-      className="flex items-center gap-2 rounded-(--ui-radius-control) text-base font-semibold tracking-tight outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="flex items-center gap-2 rounded-(--ui-radius-control) text-base font-semibold tracking-tight outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
     >
       <span aria-hidden="true" className="size-4 rounded-full bg-foreground" />
       Relay

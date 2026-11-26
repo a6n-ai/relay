@@ -44,6 +44,9 @@ h1#_top {
 	color: var(--sl-color-gray-2);
 	line-height: 1.7;
 }
+.sl-markdown-content a:not(.sl-link-button) {
+	color: var(--sl-color-text-accent);
+}
 .sl-markdown-content img {
 	border: 1px solid var(--sl-color-hairline);
 	border-radius: 0.75rem;
@@ -198,42 +201,6 @@ starlight-toc h2 {
 	color: var(--sl-color-gray-3);
 	font-size: 1.05rem;
 	margin-top: -0.5rem;
-}
-
-/* Crossfade between pages; the Relay mark is shared. */
-@view-transition {
-	navigation: auto;
-}
-/* The old page fades back, the new one rises into place. */
-@keyframes relay-page-out {
-	to {
-		opacity: 0;
-		transform: scale(0.985);
-	}
-}
-@keyframes relay-page-in {
-	from {
-		opacity: 0;
-		transform: translateY(14px);
-	}
-}
-::view-transition-old(root) {
-	animation: relay-page-out 200ms cubic-bezier(0.23, 1, 0.32, 1) both;
-}
-::view-transition-new(root) {
-	animation: relay-page-in 280ms cubic-bezier(0.23, 1, 0.32, 1) both;
-}
-::view-transition-group(relay-logo) {
-	animation-duration: 320ms;
-	animation-timing-function: cubic-bezier(0.77, 0, 0.175, 1);
-}
-@media (prefers-reduced-motion: reduce) {
-	@view-transition {
-		navigation: none;
-	}
-}
-.rh .logo img {
-	view-transition-name: relay-logo;
 }
 
 /* Hover is more than a colour change: the logo lifts, sidebar links slide a hair, cards rise. */

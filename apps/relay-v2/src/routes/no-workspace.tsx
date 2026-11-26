@@ -26,7 +26,7 @@ function NoWorkspace() {
       </div>
       {shell.platformAdmin ? (
         <div>
-          <Link to="/admin" className="text-sm underline">
+          <Link to="/admin" className="inline-flex min-h-6 items-center text-sm underline">
             Open platform admin
           </Link>
         </div>

@@ -23,6 +23,7 @@ export default defineConfig({
 			components: {
 				Header: './src/components/docs/Header.astro',
 				Sidebar: './src/components/docs/Sidebar.astro',
+				ThemeProvider: './src/components/docs/ThemeProvider.astro',
 			},
 			sidebar: [
 				{

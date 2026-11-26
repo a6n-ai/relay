@@ -10,7 +10,28 @@ import { authOptionsFn, safeRedirect } from "../console/shell.fns";
 import { signInErrorText } from "../lib/auth/google";
 import { Hint } from "../components/page/text";
 
+const SITE = "https://relay.a6n.ai";
+const TITLE = "Sign in to Relay";
+const DESCRIPTION = "Sign in to Relay with a one-time code sent to your email, or with Google.";
+
 export const Route = createFileRoute("/sign-in")({
+  head: () => ({
+    meta: [
+      { title: TITLE },
+      { name: "description", content: DESCRIPTION },
+      { property: "og:type", content: "website" },
+      { property: "og:site_name", content: "Relay" },
+      { property: "og:title", content: TITLE },
+      { property: "og:description", content: DESCRIPTION },
+      { property: "og:url", content: `${SITE}/sign-in` },
+      { property: "og:image", content: `${SITE}/landing/og.png` },
+      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: TITLE },
+      { name: "twitter:description", content: DESCRIPTION },
+      { name: "twitter:image", content: `${SITE}/landing/og.png` },
+    ],
+    links: [{ rel: "canonical", href: `${SITE}/sign-in` }],
+  }),
   validateSearch: (search: Record<string, unknown>): { redirect?: string; error?: string } => ({
     ...(typeof search.redirect === "string" ? { redirect: search.redirect } : {}),
     ...(typeof search.error === "string" ? { error: search.error } : {}),

@@ -1,0 +1,16 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /messages
+Disallow: /campaigns
+Disallow: /lists
+Disallow: /apps
+Disallow: /domains
+Disallow: /settings
+Disallow: /members
+Disallow: /admin
+Disallow: /no-workspace
+Disallow: /invite/
+Disallow: /u/
+
+Sitemap: https://relay.a6n.ai/sitemap.xml

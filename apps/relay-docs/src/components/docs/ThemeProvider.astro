@@ -1,0 +1,12 @@
+{/* Inlined to avoid a flash. Reads the console's relay-theme key (dark, light, system); dark when unset, like the console. */}
+<script is:inline>
+	(() => {
+		let theme = 'dark';
+		try {
+			const v = localStorage.getItem('relay-theme');
+			if (v === 'light') theme = 'light';
+			else if (v === 'system' && matchMedia('(prefers-color-scheme: light)').matches) theme = 'light';
+		} catch {}
+		document.documentElement.dataset.theme = theme;
+	})();
+</script>
