@@ -15,52 +15,7 @@
 .ld-p {
   color: var(--muted-foreground);
 }
-.ld-track {
-  position: relative;
-}
-.ld-track::before {
-  content: "";
-  position: absolute;
-  left: 4px;
-  top: 14px;
-  bottom: -14px;
-  width: 1px;
-  background: var(--border);
-}
-.ld-track:last-child::before {
-  display: none;
-}
-.ld-dot {
-  position: relative;
-  width: 9px;
-  height: 9px;
-  border-radius: 9999px;
-  background: var(--foreground);
-}
-.ld-dot-live::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  border: 1px solid var(--foreground);
-}
-
 @media (prefers-reduced-motion: no-preference) {
-  .ld-step {
-    opacity: 0;
-    transform: translateY(4px);
-    animation: ld-in 260ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
-    animation-delay: var(--d, 0ms);
-  }
-  .ld-track::before {
-    transform: scaleY(0);
-    transform-origin: top;
-    animation: ld-grow 260ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
-    animation-delay: calc(var(--d, 0ms) + 120ms);
-  }
-  .ld-dot-live::after {
-    animation: ld-ping 2400ms cubic-bezier(0.22, 1, 0.36, 1) 3600ms 3;
-  }
   @supports (animation-timeline: view()) {
     .ld-reveal {
       animation: ld-in 300ms cubic-bezier(0.22, 1, 0.36, 1) both;
@@ -73,22 +28,6 @@
   to {
     opacity: 1;
     transform: none;
-  }
-}
-@keyframes ld-grow {
-  to {
-    transform: scaleY(1);
-  }
-}
-@keyframes ld-ping {
-  0% {
-    opacity: 0.6;
-    transform: scale(1);
-  }
-  70%,
-  100% {
-    opacity: 0;
-    transform: scale(2.6);
   }
 }
 
@@ -119,4 +58,49 @@
 }
 .ld-frame::after {
   right: -9px;
+}
+
+/* Stageshow scenes: the box reserves the shape of the design that shows. Nothing is hidden before JS, so the server-rendered hero poster is visible at first paint. */
+.ld-cq {
+  container-type: inline-size;
+}
+.ld-scene {
+  width: 100%;
+  aspect-ratio: 358 / 340;
+}
+.ld-shape-hero {
+  aspect-ratio: 358 / 330;
+}
+/* The hero poster is in the server HTML and visible at desktop width. At phone width the stage swaps to its compact design when it is measured, and that swap would shift the layout, so there it appears once measured. */
+@container (max-width: 559px) {
+  .ld-shape-hero:not([data-ready]) {
+    opacity: 0;
+  }
+  .ld-shape-hero {
+    transition: opacity 0.2s ease;
+  }
+}
+.ld-shape-lists,
+.ld-shape-wide,
+.ld-shape-tall {
+  aspect-ratio: 358 / 340;
+}
+@container (min-width: 520px) {
+  .ld-shape-card {
+    aspect-ratio: 520 / 340;
+  }
+  .ld-shape-lists {
+    aspect-ratio: 520 / 380;
+  }
+  .ld-shape-wide {
+    aspect-ratio: 600 / 340;
+  }
+  .ld-shape-tall {
+    aspect-ratio: 600 / 420;
+  }
+}
+@container (min-width: 560px) {
+  .ld-shape-hero {
+    aspect-ratio: 720 / 340;
+  }
 }

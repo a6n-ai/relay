@@ -1,0 +1,18 @@
+.rli .rli-hook {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  top: 292px;
+  left: 330px;
+  padding: 12px 14px;
+  white-space: nowrap;
+  border-radius: 12px;
+}
+.rli .rli-hook-text {
+  display: grid;
+  gap: 2px;
+}
+.rli .ss-stage[data-layout='compact'] .rli-hook {
+  top: 236px;
+  left: 142px;
+}

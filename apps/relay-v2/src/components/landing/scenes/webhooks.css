@@ -1,0 +1,49 @@
+.rlw .rlw-win {
+  position: absolute;
+  top: 24px;
+  left: 32px;
+  width: 456px;
+  height: 400px;
+  box-shadow: var(--ss-shadow-hero);
+}
+.rlw .rlw-app {
+  grid-template-columns: minmax(0, 1fr);
+  min-height: 360px;
+}
+.rlw .rlw-url {
+  display: grid;
+  gap: 4px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--ss-line);
+}
+.rlw .rl-grid[data-wash] {
+  animation: rlw-wash 1.6s ease-out 1;
+}
+@keyframes rlw-wash {
+  0% {
+    background: var(--ss-ink-2);
+  }
+  100% {
+    background: transparent;
+  }
+}
+.rlw .rlw-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  top: 118px;
+  left: 340px;
+  padding: 0 14px;
+  height: 36px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.rlw .ss-stage[data-layout='compact'] .rlw-win {
+  top: 16px;
+  left: 16px;
+  width: 372px;
+}
+.rlw .ss-stage[data-layout='compact'] .rlw-chip {
+  top: 112px;
+  left: 209px;
+}

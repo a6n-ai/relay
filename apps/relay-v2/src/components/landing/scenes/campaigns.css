@@ -1,0 +1,51 @@
+.rlc .rlc-win {
+  position: absolute;
+  top: 24px;
+  left: 32px;
+  width: 456px;
+  height: 400px;
+  box-shadow: var(--ss-shadow-hero);
+}
+.rlc .rlc-app {
+  grid-template-columns: minmax(0, 1fr);
+  min-height: 360px;
+}
+.rlc .rlc-tools {
+  border-bottom: 1px solid var(--ss-line);
+}
+.rlc .rlc-body {
+  padding-top: 8px;
+}
+.rlc .rlc-meter {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+}
+.rlc .rlc-dlg {
+  top: 142px;
+  left: 120px;
+  width: 280px;
+  display: grid;
+  gap: 12px;
+}
+.rlc .rlc-dlg .rl-h {
+  margin: 0;
+}
+.rlc .rlc-dlg-act {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 4px;
+}
+.rlc .ss-stage[data-layout='compact'] .rlc-win {
+  top: 16px;
+  left: 16px;
+  top: 16px;
+  width: 372px;
+  height: 400px;
+}
+.rlc .ss-stage[data-layout='compact'] .rlc-dlg {
+  top: 134px;
+  left: 16px;
+  width: 326px;
+}
