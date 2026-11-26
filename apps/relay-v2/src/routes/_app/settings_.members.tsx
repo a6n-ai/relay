@@ -9,7 +9,7 @@ import { useUrlFilter } from "../../components/page/use-url-filter";
 import { TableSkeleton } from "../../components/page/table-skeleton";
 import { ResourceTable } from "../../components/resource-table";
 import { type MemberRole, ROLE_LABEL, RoleSelect } from "../../components/role-select";
-import { runAction } from "../../components/run-action";
+import { confirmAction, runAction } from "../../components/run-action";
 import { SuspendedNotice } from "../../components/settings/suspended-notice";
 import { PageHeader } from "../../components/shell/page-header";
 import { useCan } from "../../components/use-can";
@@ -37,6 +37,7 @@ function MembersPage() {
   const canRemove = useCan({ member: ["delete"] });
   const [removing, setRemoving] = useState<string | null>(null);
   const run = (action: () => Promise<unknown>, success: string) => runAction(action, success, () => router.invalidate());
+  const confirm = (action: () => Promise<unknown>, success: string) => confirmAction(action, success, () => router.invalidate());
 
   if (!people) {
     return (
@@ -100,9 +101,9 @@ function MembersPage() {
         title="Remove this member?"
         description="They lose access to this workspace and its apps."
         confirmLabel="Remove member"
-        onConfirm={() => {
+        onConfirm={async () => {
           const memberId = removing;
-          if (memberId) void run(() => removeMemberFn({ data: { memberId } }), "Member removed");
+          if (memberId) await confirm(() => removeMemberFn({ data: { memberId } }), "Member removed");
         }}
       />
     </>

@@ -108,13 +108,9 @@ function TemplateForm({ template, canWrite }: { template: TemplateView; canWrite
   }
 
   async function remove() {
-    try {
-      await deleteTemplateFn({ data: { id: template.id } });
-      toast.success("Template deleted");
-      await navigate({ to: "/campaigns/templates", search: { appId: template.appId } });
-    } catch (err) {
-      toast.error(errorText(err, "Could not delete this template."));
-    }
+    await deleteTemplateFn({ data: { id: template.id } });
+    toast.success("Template deleted");
+    await navigate({ to: "/campaigns/templates", search: { appId: template.appId } });
   }
 
   const dirty =

@@ -10,7 +10,7 @@ import { TableSkeleton } from "../../components/page/table-skeleton";
 import { Toolbar } from "../../components/page/toolbar";
 import { ResourceTable } from "../../components/resource-table";
 import { type MemberRole, ROLE_LABEL } from "../../components/role-select";
-import { runAction } from "../../components/run-action";
+import { confirmAction } from "../../components/run-action";
 import { InviteForm } from "../../components/settings/invite-form";
 import { SuspendedNotice } from "../../components/settings/suspended-notice";
 import { useNewParam } from "../../components/shell/create-menu";
@@ -48,7 +48,7 @@ function InvitesPage() {
   const ownerActor = (shell.active?.roles ?? []).includes("owner");
   const canInvite = useCan({ invitation: ["create"] });
   const canCancel = useCan({ invitation: ["cancel"] });
-  const run = (action: () => Promise<unknown>, success: string) => runAction(action, success, () => router.invalidate());
+  const confirm = (action: () => Promise<unknown>, success: string) => confirmAction(action, success, () => router.invalidate());
 
   if (!people) {
     return (
@@ -94,9 +94,9 @@ function InvitesPage() {
         title="Cancel this invite?"
         description="The link stops working. You can invite them again later."
         confirmLabel="Cancel invite"
-        onConfirm={() => {
+        onConfirm={async () => {
           const id = cancelling;
-          if (id) void run(() => cancelInviteFn({ data: { id } }), "Invite cancelled");
+          if (id) await confirm(() => cancelInviteFn({ data: { id } }), "Invite cancelled");
         }}
       />
     </>

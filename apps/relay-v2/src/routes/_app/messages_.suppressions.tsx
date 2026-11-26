@@ -60,13 +60,9 @@ function SuppressionsPage() {
     );
   }
   async function remove(email: string) {
-    try {
-      await removeSuppressionFn({ data: { email } });
-      toast.success("Suppression removed");
-      await router.invalidate();
-    } catch (err) {
-      toast.error(errorText(err, "Could not remove this suppression."));
-    }
+    await removeSuppressionFn({ data: { email } });
+    toast.success("Suppression removed");
+    await router.invalidate();
   }
   return (
     <>
@@ -106,7 +102,9 @@ function SuppressionsPage() {
         title="Remove this suppression?"
         description="Mail to this address can be sent again."
         confirmLabel="Remove"
-        onConfirm={() => removing && remove(removing)}
+        onConfirm={async () => {
+          if (removing) await remove(removing);
+        }}
       />
       <LoadMore
         hasMore={Boolean(page.nextCursor)}

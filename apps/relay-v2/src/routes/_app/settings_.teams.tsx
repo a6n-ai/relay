@@ -8,7 +8,7 @@ import { EmptyState } from "../../components/page/empty-state";
 import { TableSkeleton } from "../../components/page/table-skeleton";
 import { Toolbar } from "../../components/page/toolbar";
 import { ResourceTable } from "../../components/resource-table";
-import { runAction } from "../../components/run-action";
+import { confirmAction, runAction } from "../../components/run-action";
 import { NewTeamForm } from "../../components/settings/new-team-form";
 import { SuspendedNotice } from "../../components/settings/suspended-notice";
 import { TeamMembersDialog } from "../../components/settings/team-members-dialog";
@@ -35,6 +35,7 @@ function TeamsPage() {
   const canEditTeam = useCan({ team: ["update"] });
   const canDeleteTeam = useCan({ team: ["delete"] });
   const run = (action: () => Promise<unknown>, success: string) => runAction(action, success, () => router.invalidate());
+  const confirm = (action: () => Promise<unknown>, success: string) => confirmAction(action, success, () => router.invalidate());
 
   if (!people) {
     return (
@@ -97,9 +98,9 @@ function TeamsPage() {
         title="Delete this team?"
         description="Members stay in the workspace; only the team goes."
         confirmLabel="Delete team"
-        onConfirm={() => {
+        onConfirm={async () => {
           const teamId = deleting;
-          if (teamId) void run(() => deleteTeamFn({ data: { teamId } }), "Team deleted");
+          if (teamId) await confirm(() => deleteTeamFn({ data: { teamId } }), "Team deleted");
         }}
       />
     </>

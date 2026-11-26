@@ -18,7 +18,7 @@ import { TableSkeleton } from "../../components/page/table-skeleton";
 import { Toolbar } from "../../components/page/toolbar";
 import { CellWhen, ResourceTable } from "../../components/resource-table";
 import { PageHeader } from "../../components/shell/page-header";
-import { runAction } from "../../components/run-action";
+import { confirmAction, runAction } from "../../components/run-action";
 import { SecretOnce } from "../../components/secret-once";
 import { useCan } from "../../components/use-can";
 import { WEBHOOK_EVENT_LABELS, WEBHOOK_EVENT_LIST } from "../../components/webhook-events";
@@ -117,13 +117,8 @@ function WebhooksPage() {
         title="Delete this webhook?"
         description="Messages stop being sent to this address right away. Deliveries still waiting are marked failed."
         confirmLabel="Delete webhook"
-        onConfirm={() => {
-          if (deleteId)
-            void runAction(
-              () => deleteWebhookFn({ data: { appId, id: deleteId } }),
-              "Webhook deleted",
-              () => router.invalidate(),
-            );
+        onConfirm={async () => {
+          if (deleteId) await confirmAction(() => deleteWebhookFn({ data: { appId, id: deleteId } }), "Webhook deleted", () => router.invalidate());
         }}
       />
     </>

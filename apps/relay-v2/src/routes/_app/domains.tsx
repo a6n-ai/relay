@@ -102,13 +102,9 @@ function DomainsPage() {
   }
 
   async function release(id: string) {
-    try {
-      await releaseDomainFn({ data: { id } });
-      toast.success("Domain released");
-      await router.invalidate();
-    } catch (err) {
-      toast.error(errorText(err, "Could not release the domain"));
-    }
+    await releaseDomainFn({ data: { id } });
+    toast.success("Domain released");
+    await router.invalidate();
   }
 
   async function setProtected(id: string, protectedNow: boolean) {
@@ -131,13 +127,9 @@ function DomainsPage() {
   }
 
   async function remove(id: string) {
-    try {
-      await removeAddressFn({ data: { id } });
-      toast.success("Address removed");
-      await router.invalidate();
-    } catch (err) {
-      toast.error(errorText(err, "Could not remove the address"));
-    }
+    await removeAddressFn({ data: { id } });
+    toast.success("Address removed");
+    await router.invalidate();
   }
 
   return (
@@ -261,7 +253,9 @@ function DomainsPage() {
         title="Release this domain?"
         description="The domain and its SES identity are deleted. If it is added again, the DNS records change and must be updated."
         confirmLabel="Release domain"
-        onConfirm={() => releasing && release(releasing)}
+        onConfirm={async () => {
+          if (releasing) await release(releasing);
+        }}
       />
       {deleting ? <DomainDeleteDialog id={deleting.id} domain={deleting.domain} open onOpenChange={(o) => !o && setDeleting(null)} /> : null}
       <ConfirmDialog
@@ -270,7 +264,9 @@ function DomainsPage() {
         title="Remove this address?"
         description="Mail to it stops being received, and the app can no longer send from it."
         confirmLabel="Remove address"
-        onConfirm={() => removing && remove(removing)}
+        onConfirm={async () => {
+          if (removing) await remove(removing);
+        }}
       />
       {editing ? (
         <CreateDialog open title="Edit address" onOpenChange={(o) => !o && setEditing(null)}>

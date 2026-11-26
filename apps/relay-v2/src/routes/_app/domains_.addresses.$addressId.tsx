@@ -49,13 +49,9 @@ function AddressAccessPage() {
   ].filter((o) => !granted.has(o.value));
 
   async function remove(grantId: string) {
-    try {
-      await removeGrantFn({ data: { id: grantId } });
-      toast.success("Access removed");
-      await router.invalidate();
-    } catch (err) {
-      toast.error(errorText(err, "Could not remove access"));
-    }
+    await removeGrantFn({ data: { id: grantId } });
+    toast.success("Access removed");
+    await router.invalidate();
   }
 
   return (
@@ -96,7 +92,9 @@ function AddressAccessPage() {
         title="Remove this access?"
         description="This person or team can no longer read mail sent to this address."
         confirmLabel="Remove access"
-        onConfirm={() => removing && remove(removing)}
+        onConfirm={async () => {
+          if (removing) await remove(removing);
+        }}
       />
     </>
   );

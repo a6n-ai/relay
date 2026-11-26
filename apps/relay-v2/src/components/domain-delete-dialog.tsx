@@ -1,5 +1,4 @@
 import { Checkbox } from "@foundry/ui/checkbox";
-import { Input } from "@foundry/ui/input";
 import { Label } from "@foundry/ui/label";
 import { toast } from "@foundry/ui/toast";
 import { useRouter } from "@tanstack/react-router";
@@ -29,13 +28,11 @@ export function DomainDeleteDialog({
   const open = controlledOpen ?? innerOpen;
   const setOpen = onOpenChange ?? setInnerOpen;
   const [preview, setPreview] = useState<Preview | null>(null);
-  const [typed, setTyped] = useState("");
   const [deleteHistory, setDeleteHistory] = useState(false);
 
   useEffect(() => {
     if (!open) {
       setPreview(null);
-      setTyped("");
       setDeleteHistory(false);
       return;
     }
@@ -54,14 +51,10 @@ export function DomainDeleteDialog({
   }, [open, id]);
 
   async function confirm() {
-    try {
-      const { ownerCommand } = await deleteDomainFn({ data: { id, confirm: typed.trim(), deleteHistory } });
-      toast.success("Domain deleted");
-      if (ownerCommand) toast("Delete the SES identity as the owner", { description: ownerCommand });
-      await router.invalidate();
-    } catch (err) {
-      toast.error(errorText(err, "Could not delete the domain"));
-    }
+    const { ownerCommand } = await deleteDomainFn({ data: { id, confirm: domain, deleteHistory } });
+    toast.success("Domain deleted");
+    if (ownerCommand) toast("Delete the SES identity as the owner", { description: ownerCommand });
+    await router.invalidate();
   }
 
   return (
@@ -73,7 +66,8 @@ export function DomainDeleteDialog({
       onConfirm={confirm}
       open={open}
       onOpenChange={setOpen}
-      confirmDisabled={!preview || typed.trim() !== domain}
+      typed={domain}
+      confirmDisabled={!preview}
     >
       <div className="flex flex-col gap-3 text-sm">
         {preview ? (
@@ -107,10 +101,6 @@ export function DomainDeleteDialog({
         <Label className="font-normal">
           <Checkbox checked={deleteHistory} onCheckedChange={(on) => setDeleteHistory(on === true)} />
           Also delete mail history
-        </Label>
-        <Label className="flex flex-col items-start gap-1">
-          Type {domain} to confirm
-          <Input value={typed} onChange={(e) => setTyped(e.target.value)} autoComplete="off" spellCheck={false} />
         </Label>
       </div>
     </ConfirmDialog>
