@@ -11,7 +11,6 @@ import { DeniedState, deniedReason } from "../../components/denied-state";
 import { errorText } from "../../components/error-text";
 import { EmptyState } from "../../components/page/empty-state";
 import { ListSkeleton } from "../../components/page/page-skeleton";
-import { Toolbar } from "../../components/page/toolbar";
 import { CellWhen, ResourceTable } from "../../components/resource-table";
 import { PageHeader } from "../../components/shell/page-header";
 import { confirmAction, runAction } from "../../components/run-action";
@@ -58,14 +57,16 @@ function WebhooksPage() {
 
   return (
     <>
-      <PageHeader crumbs={crumbs} />
-      <Toolbar>
-        {canWrite ? (
-          <CreateDialog trigger="New webhook" title="New webhook" open={createOpen} onOpenChange={setCreateOpen}>
-            {(done, lock) => <NewWebhookForm appId={appId} done={done} lock={lock} />}
-          </CreateDialog>
-        ) : null}
-      </Toolbar>
+      <PageHeader
+        crumbs={crumbs}
+        actions={
+          canWrite ? (
+            <CreateDialog trigger="New webhook" title="New webhook" open={createOpen} onOpenChange={setCreateOpen}>
+              {(done, lock) => <NewWebhookForm appId={appId} done={done} lock={lock} />}
+            </CreateDialog>
+          ) : null
+        }
+      />
       <ResourceTable
         columns={[
           { header: "URL", kind: "url", cell: (w) => w.url },

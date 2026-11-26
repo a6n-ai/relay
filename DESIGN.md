@@ -68,7 +68,9 @@ Foundry ships the shapes. Only `<body>` carries `admin-ui` (`apps/relay-v2/src/r
 - Controls and cards are 6px. Popups and modals are 12px. The framed content panel is 16px (`--ui-radius-panel` in `styles.css`).
 - Badges are pills, 20px tall, one tone fill with tone text and no border. Pass the tone through `--ui-badge-tone`.
 - Tables sit in a bordered, rounded frame with a muted header row. The frame is inset to the page padding so it lines up with the toolbar. Loading skeletons and the empty state render inside the same frame, so loading, empty and full do not jump.
-- The page body is centred at a max width of 72rem (1152px) by a grid in `app-shell.tsx`. The header (scope row and tabs) stays full width, and dialogs, sheets and popovers keep their own width.
+- The page body is centred at a max width of 72rem (1152px) by a grid in `app-shell.tsx`. Form and settings pages fill the same 72rem through `FormPanel`, the one body wrapper, so page actions in the title row line up with the cards.
+- Cards follow Vercel: a title row (20px title, description) with a hairline under it, the body, then a muted footer strip. `DangerCard` has the same normal border; only its footer button is red.
+- Tables are 40px rows through `--ui-table-row-height`, so a row-menu button must not set a taller row. Under `sm`, columns marked `secondary` hide, so a phone never cuts a cell mid-word. The header (scope row and tabs) stays full width, and dialogs, sheets and popovers keep their own width.
 
 ## Buttons
 
@@ -83,10 +85,10 @@ Foundry ships the shapes. Only `<body>` carries `admin-ui` (`apps/relay-v2/src/r
 
 - **Sidebar** (`app-shell.tsx`, `shell/nav.ts`): 256px, 36px items at 14px, at most 8 top-level links in quiet groups, no sub-items. The active link is a grey tint with foreground text. Order: workspace switcher, Find (F), nav, account. It collapses to an icon rail and never holds settings or tabs.
 - **Framed panel**: the content is a bordered, rounded (16px) panel inset beside the sidebar on desktop (`variant="inset"`, rule in `styles.css`) and full-bleed on mobile.
-- **Dialogs and forms**: creating something happens in a dialog over the list (`CreateDialog`), never in a side column. Fields are 36px. Focus ring is blue. Every field is a `TextField` or `ChoiceField`: label, control, then the error and hint tucked under it; the error sits on the field and clears when it changes. A disabled primary says why (`disabledReason`). `ConfirmDialog` focuses Cancel first, its primary is Verb + noun, and a typed name is exact and case-sensitive.
-- **Page header** (`PageHeader`): no breadcrumb. A 56px scope row (app scope switcher on app-scoped pages, a back link on detail pages, otherwise the workspace name as plain text; `Add New` menu on the right, gated by role through `createItems`), then `SectionTabs` (grey fill on the active tab, 14px) where the section has them (Messages, Campaigns, Settings, app detail), then `PageTitle`: 32px semibold tight title, a one-line 16px muted description (`shell/page-copy.ts`), actions on the right. Every route renders it first. Add New items open the page's create dialog through `?new=1` (`?new=address` for addresses).
+- **Dialogs and pages**: a create with several sections is a full page (`CreatePage`, with `FormPanel` and one `SettingsCard` per section): app, domain, address, campaign, template, automation, list, import and workspace. Only an add with 3 fields or fewer, a secret shown once, a schedule and a confirm are dialogs (`CreateDialog`, `ConfirmDialog`), never a side column. Fields are 36px. Focus ring is blue. Every field is a `TextField` or `ChoiceField`: label, control, then the error and hint tucked under it; the error sits on the field and clears when it changes. A disabled primary says why (`disabledReason`). `ConfirmDialog` focuses Cancel first, its primary is Verb + noun, and a typed name is exact and case-sensitive.
+- **Page header** (`PageHeader`): no breadcrumb. A 56px scope row (app scope switcher on app-scoped pages, a back link on detail pages, otherwise the workspace name as plain text; `Add New` menu on the right, gated by role through `createItems`), then `SectionTabs` (grey fill on the active tab, 14px) where the section has them (Messages, Campaigns, Settings, app detail), then `PageTitle`: 32px semibold tight title, a one-line 16px muted description (`shell/page-copy.ts`), actions on the right of the title row (`PageHeader actions`), never alone on a row of their own. A toolbar holds search, filters and the view toggle; on phones the search takes a full row and the filter and view toggle share the next. Every route renders it first. Add New items are routes (`shell/nav.ts`); only Invite member opens its dialog through `?new=1`.
 - **Type scale**: body and table text 14px, card titles 20px semibold, controls 36px, table rows 40px; set in the `styles.css` token block, never per page.
-- **Lists** (`ResourceTable` in a `Toolbar` page): the empty state names the next action. No row stagger on filter or search.
+- **Lists** (`ResourceTable` in a `Toolbar` page): the empty state is `EmptyState`: one 32px icon, a title, a line and the action, in that order, always. No row stagger on filter or search.
 - **Feedback**: route `pendingComponent` with the skeleton that matches the page (`ListSkeleton`, `CardsSkeleton`, `FormSkeleton`, `DetailSkeleton`) for waits, toasts only for results that leave the screen.
 
 ## Components (reuse, never restyle ad hoc)
@@ -101,8 +103,14 @@ Build screens from these parts and the semantic tokens (`bg-card`, `text-muted-f
 | table with frame | `ResourceTable` (Foundry `Table`, inset by `TableInset`) | resource-table.tsx, page/table-inset.tsx |
 | loading | `ListSkeleton`, `CardsSkeleton`, `FormSkeleton`, `DetailSkeleton` | page/page-skeleton.tsx |
 | empty | `EmptyState` (passed as `empty` to `ResourceTable`) | page/empty-state.tsx |
+| page body wrapper (the only one) | `FormPanel` | page/form-parts.tsx |
+| create page (back link, title, one card per section, primary last) | `CreatePage` | page/create-page.tsx |
+| create page when no app exists | `NoAppState` | page/no-app-state.tsx |
+| read-only value with a hint | `FixedField` | form/fixed-field.tsx |
+| automation create and edit | `AutomationForm` | automation-form.tsx |
 | row actions | `RowMenu` | page/row-menu.tsx |
-| settings card (hint left, action right, grey footer strip) | `SettingsCard` | page/settings-card.tsx |
+| settings card (title row, hint left, action right, grey footer strip) | `SettingsCard` | page/settings-card.tsx |
+| settings card with its own Save (form, hint, blocked reason, unsaved prompt) | `SettingsForm` | page/settings-card.tsx |
 | danger zone (consequence once, typed-name confirm) | `DangerCard` | page/danger-card.tsx |
 | text field (label, hint, error, prefix/suffix) | `TextField` | form/text-field.tsx |
 | choice field, empty pick with a create link | `ChoiceField`, `EmptyChoice` | form/choice-field.tsx, form/empty-choice.tsx |

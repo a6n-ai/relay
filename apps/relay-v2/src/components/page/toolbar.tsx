@@ -7,7 +7,7 @@ import { isTypingTarget } from "./keys";
 export function Toolbar({ search, filters, view, children }: { search?: ReactNode; filters?: ReactNode; view?: ReactNode; children?: ReactNode }) {
   return (
     <div className="flex flex-wrap items-center gap-2 px-4 py-3">
-      {search ? <div className="min-w-48 max-w-md flex-1">{search}</div> : null}
+      {search ? <div className="w-full sm:min-w-48 sm:max-w-md sm:flex-1">{search}</div> : null}
       {filters}
       {view ? <div className="ml-auto">{view}</div> : null}
       {children ? <div className={`${view ? "" : "ml-auto "}flex items-center gap-2`}>{children}</div> : null}

@@ -15,9 +15,8 @@ import { CreateDialog } from "../../components/create-dialog";
 import { DeniedState, deniedReason } from "../../components/denied-state";
 import { errorText } from "../../components/error-text";
 import { EmptyState } from "../../components/page/empty-state";
-import { SettingsCard } from "../../components/page/settings-card";
+import { SettingsCard, SettingsForm } from "../../components/page/settings-card";
 import { FormSkeleton } from "../../components/page/page-skeleton";
-import { Toolbar } from "../../components/page/toolbar";
 import { CellWhen, ResourceTable } from "../../components/resource-table";
 import { PageHeader } from "../../components/shell/page-header";
 import { SecretOnce } from "../../components/secret-once";
@@ -35,13 +34,12 @@ import {
 } from "../../console/apps.fns";
 import { setAudienceBindingFn } from "../../console/admin.fns";
 import { formatDate, formatWhen } from "../../lib/format-date";
-import { FormError, FormBody, FormActions } from "../../components/page/form-parts";
-import { UnsavedGuard } from "../../components/unsaved-guard";
+import { FormError, FormBody, FormActions, FormPanel } from "../../components/page/form-parts";
 import { RenameForm } from "../../components/form/rename-form";
 import { Hint } from "../../components/page/text";
 
 export const Route = createFileRoute("/_app/apps_/$appId")({
-  pendingComponent: () => <FormSkeleton crumbs={[{ label: "Apps", to: "/apps" }, { label: "App" }]} cards={3} wide action />,
+  pendingComponent: () => <FormSkeleton crumbs={[{ label: "Apps", to: "/apps" }, { label: "App" }]} cards={3} action />,
   loader: async ({ params }) => {
     const data = await fetchAppDetail({ data: { appId: params.appId } });
     if (!data) return null;
@@ -78,25 +76,28 @@ function AppPage() {
 
   return (
     <>
-      <PageHeader crumbs={[{ label: "Apps", to: "/apps" }, { label: app.name }]} description="Details and API keys for this app." />
-      <Toolbar>
-        {canWrite ? (
-          <CreateDialog trigger="New key" title="New API key" open={keyOpen} onOpenChange={setKeyOpen}>
-            {(done, lock) => <NewKeyForm appId={app.id} first={keys.length === 0} done={done} lock={lock} />}
-          </CreateDialog>
-        ) : null}
-      </Toolbar>
-      <div className="grid max-w-3xl gap-4 px-4 pb-8">
+      <PageHeader
+        crumbs={[{ label: "Apps", to: "/apps" }, { label: app.name }]}
+        description="Details and API keys for this app."
+        actions={
+          canWrite ? (
+            <CreateDialog trigger="New key" title="New API key" open={keyOpen} onOpenChange={setKeyOpen}>
+              {(done, lock) => <NewKeyForm appId={app.id} first={keys.length === 0} done={done} lock={lock} />}
+            </CreateDialog>
+          ) : null
+        }
+      />
+      <FormPanel>
         <AppDetailsPanel appId={app.id} name={app.name} slug={app.slug} canWrite={canWrite} />
         <SettingsCard title="API keys" description="Keys let this app send through Relay.">
           <ResourceTable
             columns={[
               { header: "Name", cell: (k) => k.name ?? "Unnamed" },
-              { header: "Prefix", kind: "mono", cell: (k) => k.start ? `${k.start}…` : "—" },
+              { header: "Prefix", secondary: true, kind: "mono", cell: (k) => k.start ? `${k.start}…` : "—" },
               { header: "Status", cell: (k) => <Badge variant={k.enabled ? "secondary" : "outline"}>{k.enabled ? "Active" : "Revoked"}</Badge> },
-              { header: "Created", cell: (k) => <CellWhen when={formatDate(k.createdAt)} text={formatWhen(k.createdAt)} /> },
+              { header: "Created", secondary: true, cell: (k) => <CellWhen when={formatDate(k.createdAt)} text={formatWhen(k.createdAt)} /> },
               {
-                header: "Last used",
+                header: "Last used", secondary: true,
                 cell: (k) => (k.lastRequest ? <CellWhen when={formatDate(k.lastRequest)} text={formatWhen(k.lastRequest)} /> : "—"),
               },
             ]}
@@ -127,7 +128,7 @@ function AppPage() {
           canWrite={canWrite}
           bindWorkspaceId={shell.platformAdmin ? (shell.active?.id ?? null) : null}
         />
-      </div>
+      </FormPanel>
       <CreateDialog
         title="Rename key"
         open={renaming !== undefined}
@@ -177,25 +178,19 @@ function AppDetailsPanel({ appId, name, slug, canWrite }: { appId: string; name:
   }
 
   return (
-    <SettingsCard
+    <SettingsForm
       title="Details"
-      footer={dirty ? "Unsaved changes" : undefined}
-      disabledReason={canWrite && !pending && !value.trim() ? "Enter a name first." : undefined}
-      action={
-        canWrite ? (
-          <Button type="submit" variant="outline" form="app-details-form" disabled={pending || !dirty || !value.trim()}>
-            {pending ? "Saving…" : "Save app"}
-          </Button>
-        ) : undefined
-      }
+      dirty={dirty}
+      pending={pending}
+      saveLabel="Save app"
+      canWrite={canWrite}
+      invalidReason={!value.trim() ? "Enter a name first." : undefined}
+      onSubmit={save}
     >
-      <FormBody id="app-details-form" onSubmit={save}>
-        <UnsavedGuard when={dirty} />
-        <TextField id="app-name" label="Name" required maxLength={80} value={value} disabled={!canWrite} onChange={(e) => setValue(e.target.value)} />
-        <FixedField label="Short name" value={slug} hint="Create a new app to use a different short name." />
-        <FormError message={error} />
-      </FormBody>
-    </SettingsCard>
+      <TextField id="app-name" label="Name" required maxLength={80} value={value} disabled={!canWrite} onChange={(e) => setValue(e.target.value)} />
+      <FixedField label="Short name" value={slug} hint="Create a new app to use a different short name." />
+      <FormError message={error} />
+    </SettingsForm>
   );
 }
 
@@ -241,17 +236,14 @@ function DefaultSendersPanel({ appId, senders, canWrite }: { appId: string; send
   const choices: ChoiceOption[] = [{ value: NONE, label: "None" }, ...senders.options.map((o) => ({ value: o.id, label: o.email }))];
 
   return (
-    <SettingsCard
+    <SettingsForm
       title="Default senders"
       description="Used when a send leaves out From. Tracked mail uses the transactional sender."
-      footer={dirty ? "Unsaved changes" : undefined}
-      action={
-        canWrite && senders.options.length > 0 ? (
-          <Button type="submit" variant="outline" form="default-senders-form" disabled={pending || !dirty}>
-            {pending ? "Saving…" : "Save senders"}
-          </Button>
-        ) : undefined
-      }
+      dirty={dirty}
+      pending={pending}
+      saveLabel="Save senders"
+      canWrite={canWrite && senders.options.length > 0}
+      onSubmit={save}
     >
       {senders.options.length === 0 ? (
         <div className="grid gap-2">
@@ -263,8 +255,7 @@ function DefaultSendersPanel({ appId, senders, canWrite }: { appId: string; send
           </div>
         </div>
       ) : (
-        <FormBody id="default-senders-form" onSubmit={save}>
-          <UnsavedGuard when={dirty} />
+        <>
           {only !== NONE && savedTransactional === NONE && savedMarketing === NONE ? (
             <Hint size="xs">This app has one sender address, so it is selected for both. Save to keep it.</Hint>
           ) : null}
@@ -273,9 +264,9 @@ function DefaultSendersPanel({ appId, senders, canWrite }: { appId: string; send
             <ChoiceField id="default-marketing" label="Marketing" hint="Campaigns and other mail sent to many people." value={marketing} onChange={setMarketing} options={choices} />
           </fieldset>
           <FormError message={error} />
-        </FormBody>
+        </>
       )}
-    </SettingsCard>
+    </SettingsForm>
   );
 }
 
@@ -345,9 +336,9 @@ function AudiencePanel({
   }
 
   const editable = canWrite && hook && hook.kind !== "binding";
-  const action =
+  const extraActions =
     hook?.kind === "binding" ? undefined : (
-      <div className="flex items-center gap-2">
+      <>
         {editable ? (
           <ConfirmDialog
             trigger="Remove audience"
@@ -376,26 +367,25 @@ function AudiencePanel({
             onConfirm={connectBinding}
           />
         ) : null}
-        {canWrite ? (
-          <Button type="submit" variant="outline" form="audience-form" disabled={pending || !dirty || !trimmed || urlInvalid}>
-            {pending ? "Saving…" : "Save audience"}
-          </Button>
-        ) : null}
-      </div>
+      </>
     );
 
   return (
-    <SettingsCard
+    <SettingsForm
       title="App audience"
       description="Relay calls this URL for the people a campaign reaches. Campaigns pick it under Audience."
-      footer={dirty ? "Unsaved changes" : undefined}
-      action={action}
+      dirty={dirty}
+      pending={pending}
+      saveLabel="Save audience"
+      canWrite={canWrite && hook?.kind !== "binding"}
+      invalidReason={!trimmed ? "Enter the audience URL first." : urlInvalid ? "Use a public https:// URL." : undefined}
+      onSubmit={save}
+      extraActions={extraActions}
     >
       {hook?.kind === "binding" ? (
         <p className="text-sm">Connected by Relay</p>
       ) : (
-        <FormBody id="audience-form" onSubmit={save}>
-          <UnsavedGuard when={dirty} />
+        <>
           <Label htmlFor="audience-url">Audience URL</Label>
           <Input
             id="audience-url"
@@ -414,9 +404,9 @@ function AudiencePanel({
           </Label>
           {secret ? <SecretOnce secret={secret} label="Your App audience secret" onDone={() => setSecret(null)} /> : null}
           <FormError message={error} />
-        </FormBody>
+        </>
       )}
-    </SettingsCard>
+    </SettingsForm>
   );
 }
 

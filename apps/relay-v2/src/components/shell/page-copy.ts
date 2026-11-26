@@ -15,5 +15,4 @@ export const PAGE_COPY: Record<string, string> = {
   Teams: "Groups of members you can give access together.",
   Admin: "Every workspace on this Relay.",
   Webhooks: "Where Relay tells your app about message events.",
-  Access: "Who can read and send from this address.",
 };

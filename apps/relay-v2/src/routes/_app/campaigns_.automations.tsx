@@ -121,7 +121,7 @@ function AutomationsPage() {
     automations.length === 0 ? (
       <EmptyState
         icon={WorkflowIcon}
-        title="No automations yet."
+        title="No automations yet"
         description="Send a template when someone joins a list."
         action={canCreate ? <Button variant="outline" render={<Link to="/campaigns/automations/new" search={{ appId: search.appId }} />}>New automation</Button> : undefined}
       />
@@ -172,11 +172,11 @@ function AutomationsPage() {
           columns={[
             { header: "Name", kind: "name", cell: (a) => a.name },
             ...(showApp ? [{ header: "App", cell: (a: AutomationView) => appName(a.appId) }] : []),
-            { header: "List", cell: (a) => listName(a.listId) },
-            { header: "Template", cell: (a) => templateName(a.templateId) },
-            { header: "Send after", cell: delayText },
-            { header: "Waiting", numeric: true, cell: (a) => a.pending },
-            { header: "Sent", numeric: true, cell: (a) => a.sent },
+            { header: "List", secondary: true, cell: (a) => listName(a.listId) },
+            { header: "Template", secondary: true, cell: (a) => templateName(a.templateId) },
+            { header: "Send after", secondary: true, cell: delayText },
+            { header: "Waiting", secondary: true, numeric: true, cell: (a) => a.pending },
+            { header: "Sent", secondary: true, numeric: true, cell: (a) => a.sent },
             { header: "Enabled", cell: toggle },
           ]}
           rows={rows}

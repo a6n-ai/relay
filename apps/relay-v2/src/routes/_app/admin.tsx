@@ -201,7 +201,6 @@ function ManageSheet({ w, run, confirm }: { w: Workspace; run: Run; confirm: (ac
             ? "Suspended workspaces can't send or change settings. They still receive mail."
             : "The workspace can send and change settings again."
         }
-        tone={suspend ? "danger" : "default"}
         action={
           <ConfirmDialog
             trigger={suspend ? "Suspend workspace" : "Resume workspace"}
@@ -273,10 +272,10 @@ function AdminPage() {
           },
           { header: "Status", cell: (w) => <StatusCell w={w} /> },
           { header: "Members", numeric: true, cell: (w) => w.members },
-          { header: "Sent this month", numeric: true, cell: (w) => w.sentThisMonth },
-          { header: "Region", cell: (w) => w.sesRegion ?? "—" },
-          { header: "Quota", numeric: true, cell: (w) => (w.quota === 0 ? "Unlimited" : w.quota) },
-          { header: "Invites/day", numeric: true, cell: (w) => w.invitesPerDay },
+          { header: "Sent this month", secondary: true, numeric: true, cell: (w) => w.sentThisMonth },
+          { header: "Region", secondary: true, cell: (w) => w.sesRegion ?? "—" },
+          { header: "Quota", secondary: true, numeric: true, cell: (w) => (w.quota === 0 ? "Unlimited" : w.quota) },
+          { header: "Invites/day", secondary: true, numeric: true, cell: (w) => w.invitesPerDay },
         ]}
       />
       <Sheet

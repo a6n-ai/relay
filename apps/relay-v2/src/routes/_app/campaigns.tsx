@@ -83,7 +83,7 @@ function CampaignsPage() {
   const { apps, appId, campaigns } = page;
   const empty =
     campaigns.rows.length === 0 ? (
-      <EmptyState icon={MegaphoneIcon} title="No campaigns yet." action={canWrite && appId ? <Button variant="outline" render={<Link to="/campaigns/new" search={{ appId: search.appId }} />}>New campaign</Button> : undefined} />
+      <EmptyState icon={MegaphoneIcon} title="No campaigns yet" description="A campaign sends one message to everyone on a list." action={canWrite && appId ? <Button variant="outline" render={<Link to="/campaigns/new" search={{ appId: search.appId }} />}>New campaign</Button> : undefined} />
     ) : (
       search.status && campaigns.nextCursor ? "None on this page" : "No campaigns match."
     );
@@ -140,8 +140,8 @@ function CampaignsPage() {
             { header: "Name", kind: "name", cell: (c) => c.name },
             { header: "Status", cell: (c) => <StatusBadge status={c.status} /> },
             ...(showApp ? [{ header: "App", cell: (c: (typeof rows)[number]) => appName(c.appId) }] : []),
-            { header: "Scheduled or sent", cell: when },
-            { header: "Recipients", numeric: true, cell: (c) => c.recipients },
+            { header: "Scheduled or sent", secondary: true, cell: when },
+            { header: "Recipients", secondary: true, numeric: true, cell: (c) => c.recipients },
           ]}
           rows={rows}
           rowKey={(c) => c.id}

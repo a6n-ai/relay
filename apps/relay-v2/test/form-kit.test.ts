@@ -158,11 +158,10 @@ describe("FormActions disabledReason", () => {
     expect(html({ disabled: true, pending: true, disabledReason: "Enter a name first." })).not.toContain("Enter a name first.");
     expect(html({ disabled: true })).not.toContain("text-muted-foreground");
   });
-  it("wraps the primary the same way with or without a reason, and is a tab stop only with one", () => {
+  it("is a tab stop only while a reason shows, and adds no group name", () => {
     const withReason = html({ disabled: true, disabledReason: "Enter a name first." });
     const without = html({});
-    expect(withReason).toMatch(/<span[^>]*role="group"[^>]*aria-label="Create app"/);
-    expect(without).toMatch(/<span[^>]*role="group"[^>]*aria-label="Create app"/);
+    expect(withReason).not.toContain('role="group"');
     expect(withReason).toContain('tabindex="0"');
     expect(without).not.toContain("tabindex");
   });

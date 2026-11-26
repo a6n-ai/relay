@@ -119,9 +119,9 @@ function DeliveriesPage() {
               ),
             },
             { header: "Status", cell: (d) => <StatusBadge status={d.status} /> },
-            { header: "Attempts", numeric: true, cell: (d) => d.attempts },
-            { header: "Response", numeric: true, cell: (d) => (d.responseStatus === null ? "—" : d.responseStatus) },
-            { header: "Last error", cell: (d) => d.lastError ?? "—" },
+            { header: "Attempts", secondary: true, numeric: true, cell: (d) => d.attempts },
+            { header: "Response", secondary: true, numeric: true, cell: (d) => (d.responseStatus === null ? "—" : d.responseStatus) },
+            { header: "Last error", secondary: true, cell: (d) => d.lastError ?? "—" },
           ]}
           rows={rows}
           rowKey={(d) => d.id}

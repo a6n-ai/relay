@@ -7,7 +7,6 @@ import { CreateDialog } from "../../components/create-dialog";
 import { DeniedState, deniedReason } from "../../components/denied-state";
 import { EmptyState } from "../../components/page/empty-state";
 import { ListSkeleton } from "../../components/page/page-skeleton";
-import { Toolbar } from "../../components/page/toolbar";
 import { ResourceTable } from "../../components/resource-table";
 import { type MemberRole, ROLE_LABEL } from "../../components/role-select";
 import { confirmAction } from "../../components/run-action";
@@ -68,15 +67,14 @@ function InvitesPage() {
 
   return (
     <>
-      <PageHeader crumbs={crumbs} />
+      <PageHeader crumbs={crumbs} actions={invite} />
       {suspended ? <SuspendedNotice /> : null}
-      <Toolbar>{invite}</Toolbar>
       <ResourceTable
         columns={[
           { header: "Email", kind: "mono", cell: (i) => i.email },
-          { header: "Role", cell: (i) => ROLE_LABEL[i.role as MemberRole] ?? i.role },
+          { header: "Role", secondary: true, cell: (i) => ROLE_LABEL[i.role as MemberRole] ?? i.role },
           { header: "Status", cell: (i) => <InviteStatus status={i.status} /> },
-          { header: "Expires", cell: (i) => formatDate(i.expiresAt) },
+          { header: "Expires", secondary: true, cell: (i) => formatDate(i.expiresAt) },
         ]}
         rows={people.invites}
         rowKey={(i) => i.id}

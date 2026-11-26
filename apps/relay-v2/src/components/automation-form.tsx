@@ -15,7 +15,7 @@ import { FixedField } from "./form/fixed-field";
 import { SenderField } from "./form/sender-field";
 import { TextField } from "./form/text-field";
 import { DangerCard } from "./page/danger-card";
-import { FormActions, FormError } from "./page/form-parts";
+import { FormActions, FormError, FormPanel } from "./page/form-parts";
 import { SettingsCard } from "./page/settings-card";
 import { UnsavedGuard } from "./unsaved-guard";
 
@@ -160,7 +160,7 @@ export function AutomationForm({
   const choose = needsAppChoice(apps, scopedAppId);
   const back = () => void navigate({ to: "/campaigns/automations", search: { appId: app } });
   return (
-    <div className="grid max-w-2xl gap-4 px-4 pb-8 pt-2">
+    <FormPanel className="pt-2">
     <form onSubmit={submit} className="grid gap-4">
       <UnsavedGuard when={Boolean(automation) && dirty} bypass={leaving} />
       <SettingsCard title="Trigger" description="Relay sends the message when someone joins this list.">
@@ -237,6 +237,6 @@ export function AutomationForm({
         onConfirm={remove}
       />
     ) : null}
-    </div>
+    </FormPanel>
   );
 }

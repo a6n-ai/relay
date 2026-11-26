@@ -100,7 +100,7 @@ function TemplatesPage() {
     templates.rows.length === 0 ? (
       <EmptyState
         icon={FileTextIcon}
-        title="No templates yet."
+        title="No templates yet"
         description="Templates are reusable email content."
         action={canCreate ? <Button variant="outline" render={<Link to="/campaigns/templates/new" search={{ appId: search.appId }} />}>New template</Button> : undefined}
       />
@@ -146,9 +146,9 @@ function TemplatesPage() {
           columns={[
             { header: "Name", kind: "name", cell: (t) => t.name },
             ...(showApp ? [{ header: "App", cell: (t: (typeof rows)[number]) => appName(t.appId) }] : []),
-            { header: "Event", cell: (t) => t.event ?? "—" },
+            { header: "Event", secondary: true, cell: (t) => t.event ?? "—" },
             { header: "Enabled", cell: (t) => <Badge variant={t.enabled ? "secondary" : "outline"}>{t.enabled ? "On" : "Off"}</Badge> },
-            { header: "Updated", cell: (t) => <span className="tabular-nums">{formatWhen(t.updatedAt)}</span> },
+            { header: "Updated", secondary: true, cell: (t) => <span className="tabular-nums">{formatWhen(t.updatedAt)}</span> },
           ]}
           rows={rows}
           rowKey={(t) => t.id}

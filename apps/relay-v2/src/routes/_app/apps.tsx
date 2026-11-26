@@ -88,8 +88,8 @@ function AppsPage() {
         <ResourceTable
           columns={[
             { header: "Name", kind: "name", cell: (a) => a.name },
-            { header: "Short name", kind: "mono", cell: (a) => a.slug },
-            { header: "Live keys", numeric: true, cell: (a) => a.keyCount },
+            { header: "Short name", secondary: true, kind: "mono", cell: (a) => a.slug },
+            { header: "Live keys", secondary: true, numeric: true, cell: (a) => a.keyCount },
           ]}
           rows={rows}
           rowKey={(a) => a.id}

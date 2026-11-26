@@ -110,8 +110,8 @@ function SuppressionsPage() {
               </>
             ),
           },
-          { header: "Applies to", cell: (s) => (s.stream ? streamLabel(s.stream) : "All mail") },
-          { header: "Added", kind: "time", cell: (s) => formatWhen(s.createdAt) },
+          { header: "Applies to", secondary: true, cell: (s) => (s.stream ? streamLabel(s.stream) : "All mail") },
+          { header: "Added", secondary: true, kind: "time", cell: (s) => formatWhen(s.createdAt) },
         ]}
         rows={rows}
         offset={offset}

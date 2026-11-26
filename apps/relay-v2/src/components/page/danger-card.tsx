@@ -25,7 +25,6 @@ export function DangerCard({
   return (
     <>
       <SettingsCard
-        tone="danger"
         title={title}
         description={description}
         action={

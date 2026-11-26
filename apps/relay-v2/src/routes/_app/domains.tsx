@@ -14,6 +14,8 @@ import { StatusBadge } from "../../components/status-badge";
 import { useCan } from "../../components/use-can";
 import { EmptyState } from "../../components/page/empty-state";
 import { FilterMenu } from "../../components/page/filter-menu";
+import { FormPanel } from "../../components/page/form-parts";
+import { SettingsCard } from "../../components/page/settings-card";
 import { ResourceGrid } from "../../components/page/resource-grid";
 import { ListSkeleton } from "../../components/page/page-skeleton";
 import { SearchInput, Toolbar } from "../../components/page/toolbar";
@@ -137,7 +139,8 @@ function DomainsPage() {
   ) : (
     <EmptyState
       icon={GlobeIcon}
-      title="Add a domain to send from your own address."
+      title="No domains yet"
+      description="Add a domain to send from your own address."
       action={
         canWrite ? (
           <Button variant="outline" render={<Link to="/domains/new" />}>
@@ -164,8 +167,10 @@ function DomainsPage() {
         {canWrite ? <Button render={<Link to="/domains/new" />}>Add domain</Button> : null}
       </Toolbar>
 
-      <h2 className="px-4 pb-2 text-sm font-medium">Domains</h2>
+      <FormPanel className="max-w-none">
       {view === "grid" ? (
+        <section className="-mx-4">
+        <h2 className="px-4 pb-2 text-base font-semibold">Domains</h2>
         <ResourceGrid
           items={domains}
           rowKey={(d) => d.id}
@@ -185,7 +190,9 @@ function DomainsPage() {
             </div>
           )}
         />
+        </section>
       ) : (
+        <SettingsCard title="Domains" description="Domains you send from and receive on.">
         <ResourceTable
           columns={[
             {
@@ -203,16 +210,17 @@ function DomainsPage() {
               ),
             },
             { header: "Status", cell: (d) => <StatusBadge status={d.status} /> },
-            { header: "DNS", cell: (d) => <DnsRecords records={d.records} /> },
+            { header: "DNS", secondary: true, cell: (d) => <DnsRecords records={d.records} /> },
           ]}
           rows={domains}
           rowKey={(d) => d.id}
           menu={domainMenu}
           empty={domainsEmpty}
         />
+        </SettingsCard>
       )}
 
-      <h2 className="px-4 pb-2 pt-6 text-sm font-medium">Addresses</h2>
+      <SettingsCard title="Addresses" description="The addresses on those domains.">
       <ResourceTable
         columns={[
           {
@@ -226,10 +234,10 @@ function DomainsPage() {
                 <Mono>{a.email}</Mono>
               ),
           },
-          { header: "App", cell: (a) => a.appName },
-          { header: "Name", cell: (a) => a.displayName ?? "—" },
-          { header: "Reply-To", cell: (a) => a.replyTo ?? "—" },
-          { header: "Mail", cell: (a) => KIND_LABEL[a.kind] },
+          { header: "App", secondary: true, cell: (a) => a.appName },
+          { header: "Name", secondary: true, cell: (a) => a.displayName ?? "—" },
+          { header: "Reply-To", secondary: true, cell: (a) => a.replyTo ?? "—" },
+          { header: "Mail", secondary: true, cell: (a) => KIND_LABEL[a.kind] },
         ]}
         rows={addresses}
         rowKey={(a) => a.id}
@@ -239,6 +247,8 @@ function DomainsPage() {
         ]}
         empty={needle ? "No addresses match your search." : "No addresses yet. Add one on a verified domain to send from it."}
       />
+      </SettingsCard>
+      </FormPanel>
 
       <ConfirmDialog
         open={releasing !== null}

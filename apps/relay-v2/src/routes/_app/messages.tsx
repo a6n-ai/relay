@@ -53,9 +53,9 @@ function MessagesPage() {
   const filtered = Boolean(search.status || search.email || search.appId);
   const empty =
     page.restricted && search.dir === "in" ? (
-      <EmptyState icon={MailIcon} title="No addresses are shared with you yet." />
+      <EmptyState icon={MailIcon} title="No addresses are shared with you yet." description="Ask an owner or admin to share one with you." />
     ) : filtered ? (
-      <EmptyState icon={MailIcon} title="No messages match these filters" />
+      <EmptyState icon={MailIcon} title="No messages match these filters" description="Try a different search or clear the filters." />
     ) : (
       <EmptyState
         icon={MailIcon}
@@ -89,7 +89,7 @@ function MessagesPage() {
         offset={search.cursor ? search.offset : undefined}
         columns={[
           { header: "When", kind: "time", cell: (m) => formatWhen(m.createdAt) },
-          { header: "From / To", cell: (m) => (m.direction === "out" ? m.toEmail : m.fromEmail) ?? "—" },
+          { header: "From / To", secondary: true, cell: (m) => (m.direction === "out" ? m.toEmail : m.fromEmail) ?? "—" },
           { header: "Subject", kind: "name", cell: (m) => m.subject || "(no subject)" },
           { header: "Status", cell: (m) => <StatusBadge status={m.status} direction={m.direction} /> },
         ]}

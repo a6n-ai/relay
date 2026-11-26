@@ -129,9 +129,9 @@ function ListsPage() {
         <ResourceTable
           columns={[
             { header: "Name", kind: "name", cell: (l) => l.name },
-            { header: "App", cell: (l) => appName(l.appId) },
+            { header: "App", secondary: true, cell: (l) => appName(l.appId) },
             { header: "Contacts", cell: (l) => l.members, numeric: true },
-            { header: "Consent", cell: (l) => CONSENT_SHORT[l.consentSource] },
+            { header: "Consent", secondary: true, cell: (l) => CONSENT_SHORT[l.consentSource] },
           ]}
           rows={shown}
           rowKey={(l) => l.id}

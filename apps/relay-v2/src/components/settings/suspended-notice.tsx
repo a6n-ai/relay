@@ -6,7 +6,6 @@ export function SuspendedNotice() {
       <SettingsCard
         title="Workspace suspended"
         description="Members, invites and teams are read-only while the workspace is suspended."
-        tone="danger"
       />
     </div>
   );

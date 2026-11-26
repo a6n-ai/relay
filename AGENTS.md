@@ -1,5 +1,6 @@
 ## Learned User Preferences
 
+- The bullets below that name `components/ds`, `OperatorSplit`, `ViewHeader`, a top-anchored `CreateDialog` and the 8-link sidebar describe `apps/relay` (v1). `apps/relay-v2` follows `DESIGN.md` only.
 - Relay follows `DESIGN.md` at the repo root (Vercel style, owner 2026-11-26; it replaced Linear). Read it before any UI change; it beats every older note here. Never TiffinGrab orange/cream.
 - Monochrome. Primary is foreground on background; colour carries meaning only (blue link and focus ring, green success, amber warning, red destructive). No accent hue. Geist Sans and Geist Mono.
 - Controls and cards are 6px, popups and modals 12px, badges are pills. Buttons use the Foundry default size (no `size="sm"`): one primary per view placed last, outline secondary, ghost tertiary, destructive only in the confirm dialog and the footer button of `DangerCard`, which opens it. Labels are a verb plus a noun.

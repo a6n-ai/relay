@@ -2,13 +2,12 @@ import { Button } from "@foundry/ui/button";
 import { toast } from "@foundry/ui/toast";
 import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
 import { UsersIcon } from "lucide-react";
-import { type FormEvent, useState } from "react";
+import { type FormEvent, type RefObject, useRef, useState } from "react";
 import { ConfirmDialog } from "../../components/confirm-dialog";
 import { CreateDialog } from "../../components/create-dialog";
 import { DeniedState, deniedReason } from "../../components/denied-state";
 import { errorText } from "../../components/error-text";
 import { ResourceTable } from "../../components/resource-table";
-import { UnsavedGuard } from "../../components/unsaved-guard";
 import { useCan } from "../../components/use-can";
 import { ChoiceField } from "../../components/form/choice-field";
 import { EmptyChoice } from "../../components/form/empty-choice";
@@ -18,11 +17,11 @@ import { TextField } from "../../components/form/text-field";
 import { DangerCard } from "../../components/page/danger-card";
 import { EmptyState } from "../../components/page/empty-state";
 import { ListSkeleton } from "../../components/page/page-skeleton";
-import { SettingsCard } from "../../components/page/settings-card";
+import { SettingsCard, SettingsForm } from "../../components/page/settings-card";
 import { PageHeader } from "../../components/shell/page-header";
 import { fetchAddresses, fetchDomains, removeAddressFn, updateAddressFn } from "../../console/domains.fns";
 import { addGrantFn, fetchAddressAccess, removeGrantFn } from "../../console/grants.fns";
-import { FormError, FormBody, FormActions } from "../../components/page/form-parts";
+import { FormError, FormBody, FormActions, FormPanel } from "../../components/page/form-parts";
 import { KIND_LABEL, KINDS } from "../../lib/address-kinds";
 
 export const Route = createFileRoute("/_app/domains_/addresses/$addressId")({
@@ -49,7 +48,7 @@ function AddressPage() {
   const canWrite = useCan({ sending: ["write"] });
   const canManage = useCan({ mailbox: ["manage"] });
   const [adding, setAdding] = useState(false);
-  const [removed, setRemoved] = useState(false);
+  const leaving = useRef(false);
   const [removing, setRemoving] = useState<{ id: string; label: string } | null>(null);
   const crumbs = [{ label: "Domains", to: "/domains" }, { label: "Address" }];
   if (!data || (!canWrite && !canManage)) {
@@ -78,7 +77,7 @@ function AddressPage() {
 
   async function removeAddress() {
     await removeAddressFn({ data: { id: address.id } });
-    setRemoved(true);
+    leaving.current = true;
     toast.success("Address removed", { description: address.email });
     await navigate({ to: "/domains", search: { q: undefined, status: undefined } });
   }
@@ -92,8 +91,8 @@ function AddressPage() {
   return (
     <>
       <PageHeader crumbs={[{ label: "Domains", to: "/domains" }, { label: address.email }]} description="Settings for this address." />
-      <div className="grid max-w-2xl gap-4 px-4 pb-8">
-        <AddressDetailsCard key={address.id} address={address} canWrite={canWrite} guard={!removed} />
+      <FormPanel>
+        <AddressDetailsCard key={address.id} address={address} canWrite={canWrite} bypass={leaving} />
         <SettingsCard title="Mail" description="What this address can do.">
           <FixedField
             hideLabel
@@ -118,7 +117,7 @@ function AddressPage() {
               ]}
               rows={access.grants}
               rowKey={(g) => g.id}
-              menu={(g) => [{ label: "Remove", hidden: !canManage, destructive: true, onSelect: () => setRemoving({ id: g.id, label: g.label }) }]}
+              menu={(g) => [{ label: "Remove access", hidden: !canManage, destructive: true, onSelect: () => setRemoving({ id: g.id, label: g.label }) }]}
               empty={<EmptyState icon={UsersIcon} title="No one has been given access" description="Share this address with a member or team." />}
             />
           </SettingsCard>
@@ -133,7 +132,7 @@ function AddressPage() {
             onConfirm={removeAddress}
           />
         ) : null}
-      </div>
+      </FormPanel>
       <CreateDialog title="Add access" open={adding} onOpenChange={setAdding}>
         {(done) => <NewGrantForm addressId={address.id} options={options} done={done} />}
       </CreateDialog>
@@ -151,7 +150,7 @@ function AddressPage() {
   );
 }
 
-function AddressDetailsCard({ address, canWrite, guard }: { address: Address; canWrite: boolean; guard: boolean }) {
+function AddressDetailsCard({ address, canWrite, bypass }: { address: Address; canWrite: boolean; bypass: RefObject<boolean> }) {
   const router = useRouter();
   const [name, setName] = useState(address.displayName ?? "");
   const [replyTo, setReplyTo] = useState(address.replyTo ?? "");
@@ -181,35 +180,31 @@ function AddressDetailsCard({ address, canWrite, guard }: { address: Address; ca
   }
 
   return (
-    <SettingsCard
+    <SettingsForm
       title="General"
-      footer={dirty ? "Unsaved changes" : "Name and reply-to are optional."}
-      action={
-        canWrite ? (
-          <Button type="submit" variant="outline" form="address-details-form" disabled={pending || !dirty}>
-            {pending ? "Saving…" : "Save address"}
-          </Button>
-        ) : undefined
-      }
+      hint="Name and reply-to are optional."
+      dirty={dirty}
+      pending={pending}
+      saveLabel="Save address"
+      canWrite={canWrite}
+      bypass={bypass}
+      onSubmit={save}
     >
-      <FormBody id="address-details-form" onSubmit={save}>
-        <UnsavedGuard when={dirty && guard} />
-        <FixedField label="Address" value={address.email} hint="Remove it and add a new one to change it." />
-        <TextField id="edit-address-name" label="Name" hint="Shown to recipients as the sender name." maxLength={80} value={name} disabled={!canWrite} onChange={(e) => setName(e.target.value)} />
-        <TextField
-          id="edit-address-reply-to"
-          label="Reply-To"
-          type="email"
-          maxLength={254}
-          value={replyTo}
-          error={replyError}
-          disabled={!canWrite}
-          onClearError={() => setReplyError(null)}
-          onChange={(e) => setReplyTo(e.target.value)}
-        />
-        <FormError message={error} />
-      </FormBody>
-    </SettingsCard>
+      <FixedField label="Address" value={address.email} hint="Remove it and add a new one to change it." />
+      <TextField id="edit-address-name" label="Name" hint="Shown to recipients as the sender name." maxLength={80} value={name} disabled={!canWrite} onChange={(e) => setName(e.target.value)} />
+      <TextField
+        id="edit-address-reply-to"
+        label="Reply-To"
+        type="email"
+        maxLength={254}
+        value={replyTo}
+        error={replyError}
+        disabled={!canWrite}
+        onClearError={() => setReplyError(null)}
+        onChange={(e) => setReplyTo(e.target.value)}
+      />
+      <FormError message={error} />
+    </SettingsForm>
   );
 }
 

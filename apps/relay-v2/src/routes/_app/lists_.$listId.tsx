@@ -111,7 +111,8 @@ function ListDetailPage() {
   const empty = (
     <EmptyState
       icon={UsersIcon}
-      title={q ? "No contacts match" : "No contacts on this list yet."}
+      title={q ? "No contacts match" : "No contacts yet"}
+      description={q ? "Try a different email or name." : "Add contacts one at a time or import a CSV."}
       action={
         !q && (canWrite || canImport) ? (
           <div className="flex gap-2">
@@ -194,8 +195,8 @@ function ListDetailPage() {
         columns={[
           { header: "Email", cell: (m) => m.email },
           { header: "Name", cell: (m) => [m.firstName, m.lastName].filter(Boolean).join(" ") || "—" },
-          { header: "Source", cell: (m) => (m.source === "import" ? "Import" : "Manual") },
-          { header: "Added", cell: (m) => <CellWhen when={formatDate(m.createdAt)} text={formatWhen(m.createdAt)} /> },
+          { header: "Source", secondary: true, cell: (m) => (m.source === "import" ? "Import" : "Manual") },
+          { header: "Added", secondary: true, cell: (m) => <CellWhen when={formatDate(m.createdAt)} text={formatWhen(m.createdAt)} /> },
           {
             header: "Status",
             cell: (m) => (

@@ -1,13 +1,12 @@
-import { Button } from "@foundry/ui/button";
 import { TextField } from "../../components/form/text-field";
 import { toast } from "@foundry/ui/toast";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
 import { FixedField } from "../../components/form/fixed-field";
 import { errorText } from "../../components/error-text";
-import { FormError } from "../../components/page/form-parts";
+import { FormError, FormPanel } from "../../components/page/form-parts";
 import { DeleteWorkspaceCard } from "../../components/settings/delete-workspace-card";
-import { SettingsCard } from "../../components/page/settings-card";
+import { SettingsCard, SettingsForm } from "../../components/page/settings-card";
 import { PageHeader } from "../../components/shell/page-header";
 import { useCan } from "../../components/use-can";
 import { passwordStatusFn } from "../../console/password.fns";
@@ -43,25 +42,21 @@ function WorkspaceNameCard({ name: current, slug }: { name: string; slug: string
   }
 
   return (
-    <SettingsCard
+    <SettingsForm
       title="Workspace name"
       description="The name shown in the workspace switcher."
-      footer="Up to 80 characters."
-      disabledReason={canRename && !pending && (!next || next === current) ? "Change the name to save it." : undefined}
-      action={
-        canRename ? (
-          <Button type="submit" form="workspace-name-form" variant="outline" disabled={pending || !next || next === current}>
-            {pending ? "Saving…" : "Save name"}
-          </Button>
-        ) : null
-      }
+      hint="Up to 80 characters."
+      dirty={Boolean(next) && next !== current}
+      pending={pending}
+      saveLabel="Save name"
+      canWrite={canRename}
+      invalidReason={!next ? "Enter a name first." : undefined}
+      onSubmit={submit}
     >
-      <form id="workspace-name-form" onSubmit={submit} className="grid gap-3">
-        <TextField id="workspace-name" label="Workspace name" hideLabel required maxLength={80} readOnly={!canRename} value={name} onChange={(e) => setName(e.target.value)} />
-        <FixedField label="Short name" value={slug} hint="Create a new workspace to use a different address." />
-        <FormError message={error} />
-      </form>
-    </SettingsCard>
+      <TextField id="workspace-name" label="Workspace name" hideLabel required maxLength={80} readOnly={!canRename} value={name} onChange={(e) => setName(e.target.value)} />
+      <FixedField label="Short name" value={slug} hint="Create a new workspace to use a different address." />
+      <FormError message={error} />
+    </SettingsForm>
   );
 }
 
@@ -73,18 +68,17 @@ function GeneralPage() {
   return (
     <>
       <PageHeader crumbs={[{ label: "Settings", to: "/settings" }, { label: "General" }]} />
-      <div className="grid max-w-2xl gap-4 p-4">
+      <FormPanel>
         {suspended ? (
           <SettingsCard
             title="Workspace suspended"
             description="Sending and changes are paused while the workspace is suspended. Contact support to resume it."
-            tone="danger"
           />
         ) : null}
         {active ? <WorkspaceNameCard key={`${active.id}-${active.name}`} name={active.name} slug={active.slug} /> : null}
         <PasswordCard hasPassword={hasPassword} />
         {active ? <DeleteWorkspaceCard slug={active.slug} /> : null}
-      </div>
+      </FormPanel>
     </>
   );
 }

@@ -60,7 +60,7 @@ export function FormActions({
       ) : null}
       {onCancel ? (
         <Button type="button" variant="ghost" onClick={onCancel}>
-          Cancel
+          {cancelLabel}
         </Button>
       ) : cancel ? (
         <DialogClose render={<Button type="button" variant="ghost" />}>{cancelLabel}</DialogClose>
@@ -68,7 +68,7 @@ export function FormActions({
       {children}
       {submitLabel ? (
         <Tooltip disabled={!reason}>
-          <TooltipTrigger render={<span role="group" aria-label={submitLabel} tabIndex={reason ? 0 : undefined} className="inline-flex" />}>
+          <TooltipTrigger render={<span tabIndex={reason ? 0 : undefined} aria-label={reason ? submitLabel : undefined} className="inline-flex" />}>
             {primary}
           </TooltipTrigger>
           <TooltipContent>{reason}</TooltipContent>
@@ -78,7 +78,8 @@ export function FormActions({
   );
 }
 
+// The one body wrapper for every form and settings page: it matches the title row and the tables, so nothing floats alone at 1440.
 export function FormPanel({ as: Tag = "div", className, ...props }: ComponentProps<"div"> & { as?: "form" | "div" }) {
   const T = Tag as "div";
-  return <T className={cn("grid max-w-2xl gap-4 px-4 pb-4", className)} {...props} />;
+  return <T className={cn("grid w-full max-w-6xl gap-4 px-4 pb-8", className)} {...props} />;
 }

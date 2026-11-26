@@ -104,10 +104,10 @@ function FailuresPage() {
         offset={offset}
         columns={[
           { header: "Received", kind: "time", cell: (f) => formatWhen(f.receivedAt) },
-          { header: "From", cell: (f) => f.envelopeFrom ?? "—" },
+          { header: "From", secondary: true, cell: (f) => f.envelopeFrom ?? "—" },
           { header: "To", cell: (f) => f.envelopeTo },
           { header: "Error", cell: (f) => f.error },
-          { header: "Attempts", numeric: true, cell: (f) => f.attempts },
+          { header: "Attempts", secondary: true, numeric: true, cell: (f) => f.attempts },
         ]}
         rows={rows}
         rowKey={(f) => f.id}

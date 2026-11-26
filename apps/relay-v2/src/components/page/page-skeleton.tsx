@@ -3,6 +3,7 @@ import { Skeleton } from "@foundry/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@foundry/ui/table";
 import { Fragment } from "react";
 import { type Crumb, PageHeader } from "../shell/page-header";
+import { FormPanel } from "./form-parts";
 import { TableInset } from "./table-inset";
 import { Toolbar } from "./toolbar";
 
@@ -155,17 +156,16 @@ export function CardsSkeleton({ crumbs, tiles = 4, usage = true, days = 7 }: Pro
   );
 }
 
-// Stacked settings cards; `wide` is the app page's wider column, `action` its toolbar button.
-export function FormSkeleton({ crumbs, cards = 1, wide, action }: Props & { cards?: number; wide?: boolean; action?: boolean }) {
+// Stacked settings cards in the one form wrapper; `action` is the page primary beside the title.
+export function FormSkeleton({ crumbs, cards = 1, action }: Props & { cards?: number; action?: boolean }) {
   return (
     <>
-      <PageHeader crumbs={crumbs} />
-      <SkeletonToolbar action={action} />
-      <div className={`grid gap-4 ${wide ? "max-w-3xl px-4 pb-8" : "max-w-2xl p-4"}`}>
+      <PageHeader crumbs={crumbs} actions={action ? <Skeleton className="h-9 w-24" /> : undefined} />
+      <FormPanel>
         {Array.from({ length: cards }, (_, i) => (
           <CardSkeleton key={i} />
         ))}
-      </div>
+      </FormPanel>
     </>
   );
 }

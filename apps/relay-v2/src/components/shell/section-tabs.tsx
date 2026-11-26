@@ -2,9 +2,9 @@ import { Link } from "@tanstack/react-router";
 import type { SectionTab } from "./nav";
 import { navSearch } from "./scope";
 
-export function SectionTabs({ tabs, active, appId }: { tabs: SectionTab[]; active: string; appId?: string }) {
+export function SectionTabs({ tabs, active, appId, label = "Sections" }: { tabs: SectionTab[]; active: string; appId?: string; label?: string }) {
   return (
-    <nav aria-label="Section" className="flex gap-1 overflow-x-auto px-3 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+    <nav aria-label={label} className="flex gap-1 overflow-x-auto px-3 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       {tabs.map((tab) => (
         <Link
           key={tab.id}

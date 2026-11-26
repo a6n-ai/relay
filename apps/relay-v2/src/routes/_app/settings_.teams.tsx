@@ -6,7 +6,6 @@ import { CreateDialog } from "../../components/create-dialog";
 import { DeniedState, deniedReason } from "../../components/denied-state";
 import { EmptyState } from "../../components/page/empty-state";
 import { ListSkeleton } from "../../components/page/page-skeleton";
-import { Toolbar } from "../../components/page/toolbar";
 import { ResourceTable } from "../../components/resource-table";
 import { confirmAction, runAction } from "../../components/run-action";
 import { NewTeamForm } from "../../components/settings/new-team-form";
@@ -54,15 +53,17 @@ function TeamsPage() {
 
   return (
     <>
-      <PageHeader crumbs={crumbs} />
+      <PageHeader
+        crumbs={crumbs}
+        actions={
+          canCreateTeam ? (
+            <CreateDialog trigger="New team" title="New team">
+              {(done) => <NewTeamForm done={done} />}
+            </CreateDialog>
+          ) : null
+        }
+      />
       {suspended ? <SuspendedNotice /> : null}
-      <Toolbar>
-        {canCreateTeam ? (
-          <CreateDialog trigger="New team" title="New team">
-            {(done) => <NewTeamForm done={done} />}
-          </CreateDialog>
-        ) : null}
-      </Toolbar>
       <ResourceTable
         columns={[
           { header: "Team", cell: (t) => t.name },

@@ -13,7 +13,10 @@ const KIND = { name: "font-medium", mono: "font-mono text-xs", url: "break-all f
 const ROW_LINK =
   "relative hover:bg-muted/50 [&_td_:is(a,button,input,select,textarea,label,[role=switch],[role=checkbox],[role=combobox],[role=menuitem]):not([data-row-link])]:relative [&_td_:is(a,button,input,select,textarea,label,[role=switch],[role=checkbox],[role=combobox],[role=menuitem]):not([data-row-link])]:z-10";
 
-export type Column<T> = { header: string; cell: (row: T) => ReactNode; numeric?: boolean; kind?: keyof typeof KIND };
+export type Column<T> = { header: string; cell: (row: T) => ReactNode; numeric?: boolean; kind?: keyof typeof KIND; secondary?: boolean };
+
+// Secondary columns drop out under sm, so a phone never cuts a cell mid-word.
+const cellClass = (c: { numeric?: boolean; secondary?: boolean }) => [c.numeric && "text-right tabular-nums", c.secondary && "hidden sm:table-cell"].filter(Boolean).join(" ") || undefined;
 
 export function CellWhen({ when, text }: { when: string; text: string }) {
   return (
@@ -62,7 +65,7 @@ export function ResourceTable<T>({
         <TableRow>
           <TableHead className="w-10">#</TableHead>
           {columns.map((c) => (
-            <TableHead key={c.header} className={c.numeric ? "text-right tabular-nums" : undefined}>
+            <TableHead key={c.header} className={cellClass(c)}>
               {c.header}
             </TableHead>
           ))}
@@ -76,7 +79,7 @@ export function ResourceTable<T>({
             <TableRow key={rowKey(row)} className={href ? ROW_LINK : undefined}>
               <TableCell className="w-10 text-muted-foreground tabular-nums">{rowNumber(offset, index)}</TableCell>
               {columns.map((c, i) => (
-                <TableCell key={c.header} className={c.numeric ? "text-right tabular-nums" : undefined}>
+                <TableCell key={c.header} className={cellClass(c)}>
                   {c.kind ? <span className={KIND[c.kind]}>{c.cell(row)}</span> : c.cell(row)}
                   {href && i === 0 ? (
                     <Link
@@ -89,7 +92,7 @@ export function ResourceTable<T>({
                 </TableCell>
               ))}
               {menu ? (
-                <TableCell className="w-10 text-right">
+                <TableCell className="w-10 py-0 text-right">
                   <RowMenu actions={menu(row)} label="Row actions" />
                 </TableCell>
               ) : null}

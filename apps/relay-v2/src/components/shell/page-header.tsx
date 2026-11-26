@@ -52,7 +52,7 @@ export function PageHeader({ crumbs, badge, actions, description }: { crumbs: Cr
           </div>
           <AddNewMenu />
         </div>
-        {section ? <SectionTabs tabs={section.tabs} active={section.active} appId={appId} /> : null}
+        {section ? <SectionTabs tabs={section.tabs} active={section.active} appId={appId} label={`${title ?? "Page"} sections`} /> : null}
       </header>
       {title ? <PageTitle title={title} description={description ?? PAGE_COPY[tab ?? title] ?? PAGE_COPY[title]} badge={badge} actions={actions} /> : null}
     </>

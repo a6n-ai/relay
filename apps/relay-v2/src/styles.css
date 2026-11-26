@@ -254,3 +254,11 @@ body:has(.admin-ui) {
     overflow: hidden;
   }
 }
+/* A table inside a card is flush with the card edges: the card is the frame, so the table drops its own ring and inset. */
+[data-slot="card-content"]:has([data-slot="table-container"]) {
+  padding-inline: 0;
+}
+[data-slot="card-content"] [data-slot="table-container"] {
+  --ui-table-ring: transparent;
+  border-radius: 0;
+}
