@@ -1,6 +1,9 @@
 import { Children, useEffect, useState, type ComponentProps, type CSSProperties, type ReactNode } from 'react'
 import { ChevronRight, Globe, LayoutDashboard, List, Mail, Megaphone, Settings, AppWindow } from 'lucide-react'
-import { Badge, Button, Field, Stage } from '../stageshow'
+import { Badge } from '../stageshow/controls/Badge'
+import { Button } from '../stageshow/controls/Button'
+import { Field } from '../stageshow/controls/Field'
+import { Stage } from '../stageshow/stage'
 import './relay.css'
 
 type Tone = 'neutral' | 'accent' | 'success' | 'danger' | 'warning'

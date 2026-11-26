@@ -34,17 +34,6 @@
   /* A chip sits the same distance from every edge of the field: the box gives
      up its left padding to the chip's own, at the same pace, so the text
      inside never moves while the chip opens around it */
-  .ss-field__box:has(.ss-field__value[data-chip]) {
-    padding-left: calc((var(--ss-control) - 24px) / 2);
-  }
-
-  .ss-field[data-focused] .ss-field__box {
-    box-shadow: inset 0 0 0 1px var(--ss-accent), 0 0 0 3px var(--ss-accent-soft);
-  }
-
-  .ss-field[data-status="error"] .ss-field__box {
-    box-shadow: inset 0 0 0 1px var(--ss-danger), 0 0 0 3px var(--ss-danger-soft);
-  }
 
   .ss-field__text {
     position: relative;
@@ -70,10 +59,6 @@
   .ss-field[data-filled] .ss-field__placeholder {
     opacity: 0;
     transition: none;
-  }
-
-  .ss-field__value[data-password] {
-    letter-spacing: 1.5px;
   }
 
   /* Committed as a chip in place: the text never swaps or changes weight; the
@@ -105,97 +90,7 @@
     display: block;
   }
 
-  .ss-field__value[data-chip] {
-    padding: 0 calc(11px - (var(--ss-control) - 24px) / 2);
-    background-color: var(--ss-chip-bg, var(--ss-accent-soft));
-    color: var(--ss-chip-text, var(--ss-text-strong));
-    transition:
-      padding 0.35s cubic-bezier(0.45, 0, 0.1, 1),
-      background-color 0.3s ease,
-      color 0.3s ease;
-  }
-
-  .ss-field__value[data-chip][data-removable] {
-    padding-right: 4px;
-  }
-
-  .ss-field__value[data-leaving] {
-    opacity: 0;
-    transition: opacity 0.25s ease;
-  }
-
   /* The placeholder waits for a cleared chip to finish fading, never crossing it */
-  .ss-field:has(.ss-field__value[data-leaving]) .ss-field__placeholder {
-    opacity: 0;
-    transition: none;
-  }
-
-  .ss-field__x {
-    display: inline-grid;
-    flex: none;
-    place-items: center;
-    /* Always whole: it slides out from under the text's end by margin, so its
-       icon is never sliced while the chip opens */
-    width: 16px;
-    height: 16px;
-    margin-left: -16px;
-    border-radius: 50%;
-    color: inherit;
-    opacity: 0;
-    transition: background-color 0.15s ease;
-  }
-
-  .ss-field__value[data-chip] .ss-field__x {
-    margin-left: 4px;
-    opacity: 0.75;
-    transition:
-      margin 0.35s cubic-bezier(0.45, 0, 0.1, 1),
-      opacity 0.25s ease 0.12s,
-      background-color 0.15s ease;
-  }
-
-  .ss-field__x[data-hover] {
-    opacity: 1;
-    background-color: var(--ss-ink-2);
-    transition-duration: 0s;
-  }
-
-  .ss-field__value[data-chip] + .ss-field__caret {
-    margin-left: 6px;
-  }
 
   /* Solid while typing (each keystroke remounts it), blinking once it rests */
-  .ss-field__caret {
-    flex-shrink: 0;
-    transition: margin 0.35s cubic-bezier(0.45, 0, 0.1, 1);
-    width: 1.5px;
-    height: 16px;
-    margin-left: 1px;
-    border-radius: 1px;
-    background: var(--ss-accent);
-    animation: ss-caret 1.06s steps(1) 0.5s infinite;
-  }
-
-  @keyframes ss-caret {
-    50% { opacity: 0; }
-  }
-
-  .ss-field__ok {
-    flex-shrink: 0;
-  }
-
-  .ss-field__ok path {
-    fill: none;
-    stroke: var(--ss-success);
-    stroke-width: 2;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-    stroke-dasharray: 1;
-    /* Drawn at rest, so a still (animations off) still shows it */
-    animation: ss-draw 0.35s cubic-bezier(0.65, 0, 0.35, 1) both;
-  }
-
-  @keyframes ss-draw {
-    from { stroke-dashoffset: 1; }
-  }
 }

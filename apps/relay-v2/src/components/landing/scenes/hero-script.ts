@@ -1,4 +1,4 @@
-import type { Act } from '../stageshow'
+import { Act } from '../stageshow/act'
 import { CMD, REST, type S } from './hero'
 
 let first = true

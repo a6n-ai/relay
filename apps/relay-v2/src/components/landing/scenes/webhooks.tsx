@@ -1,5 +1,9 @@
 import { Clock } from 'lucide-react'
-import { Collapse, Roll, States, Window, type Act } from '../stageshow'
+import { Collapse } from '../stageshow/motion/Collapse'
+import { Roll } from '../stageshow/motion/Roll'
+import { States } from '../stageshow/motion/States'
+import { Window } from '../stageshow/window'
+import { type Act } from '../stageshow/act'
 import { Crumbs, RStage, Status } from './common'
 import './webhooks.css'
 

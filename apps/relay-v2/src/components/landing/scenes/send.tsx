@@ -1,4 +1,8 @@
-import { Collapse, Segmented, States, Window, type Act } from '../stageshow'
+import { Collapse } from '../stageshow/motion/Collapse'
+import { Segmented } from '../stageshow/controls/Segmented'
+import { States } from '../stageshow/motion/States'
+import { Window } from '../stageshow/window'
+import { type Act } from '../stageshow/act'
 import { Crumbs, MsgHead, MsgRow, MsgTools, RStage, Side, Status, Track } from './common'
 import './send.css'
 

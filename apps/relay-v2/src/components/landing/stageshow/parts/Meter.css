@@ -32,12 +32,6 @@
     transition: opacity 0.4s ease, background-color 0.4s ease;
   }
 
-  .ss-meter[data-tone="danger"] { --ss-meter-tone: var(--ss-danger); }
-
-  .ss-meter[data-tone="warning"] { --ss-meter-tone: var(--ss-warning); }
-
-  .ss-meter[data-tone="success"] { --ss-meter-tone: var(--ss-success); }
-
   .ss-meter[data-tone="ink"] { --ss-meter-tone: var(--ss-ink-5); }
 
   .ss-meter:not([data-tone="accent"]) .ss-meter__fill::after {

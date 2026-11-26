@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Collapse, States, Window, type Act } from '../stageshow'
+import { Collapse } from '../stageshow/motion/Collapse'
+import { States } from '../stageshow/motion/States'
+import { Window } from '../stageshow/window'
+import { type Act } from '../stageshow/act'
 import { Crumbs, RStage, Side, Status } from './common'
 import './hero.css'
 

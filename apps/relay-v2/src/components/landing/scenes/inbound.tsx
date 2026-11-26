@@ -1,5 +1,7 @@
 import { ArrowRight } from 'lucide-react'
-import { Collapse, Window, type Act } from '../stageshow'
+import { Collapse } from '../stageshow/motion/Collapse'
+import { Window } from '../stageshow/window'
+import { type Act } from '../stageshow/act'
 import { Crumbs, MsgHead, MsgRow, MsgTools, RStage, Side, Status } from './common'
 import './inbound.css'
 

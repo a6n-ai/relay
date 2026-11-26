@@ -1,5 +1,12 @@
 import { Check, Ellipsis } from 'lucide-react'
-import { Button, Collapse, Field, Menu, States, Toast, Window, type Act } from '../stageshow'
+import { Button } from '../stageshow/controls/Button'
+import { Collapse } from '../stageshow/motion/Collapse'
+import { Field } from '../stageshow/controls/Field'
+import { Menu } from '../stageshow/parts/Menu'
+import { States } from '../stageshow/motion/States'
+import { Toast } from '../stageshow/parts/Toast'
+import { Window } from '../stageshow/window'
+import { type Act } from '../stageshow/act'
 import { Crumbs, RStage, Side, Status } from './common'
 import './domains.css'
 
