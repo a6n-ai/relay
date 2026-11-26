@@ -37,7 +37,7 @@ The address is on the suppression list. Open **Messages**, then **Suppressions**
 
 ## A message shows failed
 
-Open the message and read its timeline. Relay retries a send up to 5 times before it marks the message `failed`.
+Open the message and read its timeline. Relay tries a send up to 5 attempts in total (the first try plus 4 retries) before it marks the message `failed`.
 
 ## I cannot schedule a campaign
 

@@ -52,7 +52,7 @@ Send the same `idempotencyKey` twice for one app and Relay sends one message. Th
 | `failed` | Relay could not send it. |
 | `suppressed` | The address is suppressed, so nothing was sent. |
 
-Relay retries a failed send up to 5 times, waiting longer each time, before it marks the message `failed`.
+Relay tries a send up to 5 attempts in total (the first try plus 4 retries), waiting longer between each, before it marks the message `failed`.
 
 Delivery events arrive after `sent`: delivery, bounce, complaint, open and click. You see them on the message's timeline in the console.
 
