@@ -44,6 +44,10 @@
   width: 372px;
 }
 .rlw .ss-stage[data-layout='compact'] .rlw-chip {
-  top: 112px;
-  left: 209px;
+  top: 114px;
+  left: 226px;
+  gap: 6px;
+  padding: 0 10px;
+  height: 32px;
+  font-size: 12px;
 }

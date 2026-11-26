@@ -1,8 +1,6 @@
-import { Children, useEffect, useState, type ComponentProps, type CSSProperties, type ReactNode } from 'react'
-import { ChevronRight, Globe, LayoutDashboard, List, Mail, Megaphone, Settings, AppWindow } from 'lucide-react'
+import { useEffect, useState, type ComponentProps } from 'react'
+import { AppWindow, ChevronRight, Globe, LayoutDashboard, List, Mail, Megaphone, Settings } from 'lucide-react'
 import { Badge } from '../stageshow/controls/Badge'
-import { Button } from '../stageshow/controls/Button'
-import { Field } from '../stageshow/controls/Field'
 import { Stage } from '../stageshow/stage'
 import './relay.css'
 
@@ -92,53 +90,6 @@ export function Crumbs({ items }: { items: string[] }) {
           {i === items.length - 1 ? <b>{c}</b> : c}
         </span>
       ))}
-    </div>
-  )
-}
-
-/** Panes side by side; the one at `at` slides in and the rest slide out. Panes move, never crossfade. */
-export function Track({ at, children }: { at: number; children: ReactNode }) {
-  return (
-    <div className="rl-viewport">
-      <div className="rl-track" style={{ ['--at' as string]: at } as CSSProperties}>
-        {Children.toArray(children).map((c, i) => (
-          <div key={i} className="rl-slot" data-on={i === at || undefined}>
-            {c}
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-/** The Messages table's own columns: When, From / To, Subject, Status. The phone design drops When. */
-export function MsgHead({ wide }: { wide: boolean }) {
-  return (
-    <div className="rl-grid" data-head>
-      {wide ? <span>When</span> : null}
-      <span>From / To</span>
-      <span>Subject</span>
-      <span>Status</span>
-    </div>
-  )
-}
-
-export function MsgRow({ wide, when, who, subject, status, hot, ...rest }: { wide: boolean; when: string; who: string; subject: string; status: ReactNode; hot?: boolean } & Record<`data-${string}`, unknown>) {
-  return (
-    <div className="rl-grid" data-sel={hot || undefined} {...rest}>
-      {wide ? <span className="rl-mute">{when}</span> : null}
-      <span>{who}</span>
-      <span className="rl-name">{subject}</span>
-      <span className="rl-st">{status}</span>
-    </div>
-  )
-}
-
-export function MsgTools() {
-  return (
-    <div className="rl-tools">
-      <Field value="" placeholder="From or to address" />
-      <Button>Status</Button>
     </div>
   )
 }

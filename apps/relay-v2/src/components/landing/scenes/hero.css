@@ -70,7 +70,7 @@
   height: 440px;
 }
 .rlh .ss-stage[data-layout='compact'] .rlh-app {
-  --cols: 118px minmax(0, 1fr) 76px;
+  --cols: minmax(0, 1fr) 76px;
   --side: 0px;
   grid-template-columns: minmax(0, 1fr);
 }

@@ -25,10 +25,122 @@
   }
 }
 @keyframes ld-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
   to {
     opacity: 1;
     transform: none;
   }
+}
+
+/* Text links: the underline draws in from the left; a trailing arrow nudges. Under 200 ms, none under reduced motion. */
+.ld-link {
+  position: relative;
+}
+.ld-link::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 3px 0;
+  height: 1px;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: left;
+}
+.ld-arrow {
+  display: inline-block;
+}
+.ld-link:hover::after,
+.ld-link:focus-visible::after {
+  transform: scaleX(1);
+}
+.ld-link:hover .ld-arrow {
+  transform: translateX(2px);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .ld-link::after {
+    transition: transform 180ms var(--ease-soft);
+  }
+  .ld-arrow {
+    transition: transform 180ms var(--ease-soft);
+  }
+}
+
+/* Lifecycle rail: Queued, Sent and Delivery tick as their chapters arrive. Reduced motion shows all three ticked, with no transition. */
+.ld-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 9999px;
+  border: 1px solid var(--muted-foreground);
+}
+.ld-stage {
+  color: var(--muted-foreground);
+}
+.ld-stage[data-on] {
+  color: var(--foreground);
+}
+.ld-stage[data-on] .ld-dot {
+  background: var(--foreground);
+  border-color: var(--foreground);
+}
+.ld-track {
+  position: relative;
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+.ld-fill {
+  position: absolute;
+  inset: 0;
+  background: var(--foreground);
+  transform: scaleX(0);
+  transform-origin: left;
+}
+.ld-track[data-on] .ld-fill {
+  transform: scaleX(1);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .ld-dot,
+  .ld-stage {
+    transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease;
+  }
+  .ld-fill {
+    transition: transform 300ms var(--ease-soft);
+  }
+}
+
+/* Send attempts: five steps on one hairline. */
+.ld-attempts {
+  position: relative;
+}
+.ld-attempts::before {
+  content: "";
+  position: absolute;
+  top: 15px;
+  left: 10%;
+  right: 10%;
+  border-top: 1px dashed var(--border);
+}
+.ld-attempt {
+  position: relative;
+  text-align: center;
+}
+.ld-attempt-dot {
+  display: inline-flex;
+  width: 32px;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  border: 1px solid var(--border);
+  background: var(--background);
+  color: var(--muted-foreground);
+}
+.ld-attempt[data-first] .ld-attempt-dot {
+  background: var(--foreground);
+  border-color: var(--foreground);
+  color: var(--background);
 }
 
 /* Hairline plus marks where the frame lines meet a section edge. */
@@ -80,23 +192,12 @@
     transition: opacity 0.2s ease;
   }
 }
-.ld-shape-lists,
-.ld-shape-wide,
-.ld-shape-tall {
+.ld-shape-card {
   aspect-ratio: 358 / 340;
 }
 @container (min-width: 520px) {
   .ld-shape-card {
     aspect-ratio: 520 / 340;
-  }
-  .ld-shape-lists {
-    aspect-ratio: 520 / 380;
-  }
-  .ld-shape-wide {
-    aspect-ratio: 600 / 340;
-  }
-  .ld-shape-tall {
-    aspect-ratio: 600 / 420;
   }
 }
 @container (min-width: 560px) {

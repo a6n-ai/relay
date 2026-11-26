@@ -18,6 +18,7 @@ const POSTER: S = { row: true, chip: true, ok: true }
 const OLD = [
   ['2 hours ago', 1, 200],
   ['yesterday', 1, 200],
+  ['last week', 1, 200],
 ] as const
 
 async function script(a: Act<S>) {
@@ -63,7 +64,7 @@ export function WebhooksStage({ animate = true }: { animate?: boolean }) {
                   <Crumbs items={wide ? ['Storefront', 'Webhooks', 'hooks.example.com'] : ['Webhooks', 'hooks.example.com']} />
                   <div className="rlw-url">
                     <b>Webhook</b>
-                    <span className="rl-mono">https://hooks.example.com/relay</span>
+                    <span className="rl-mono">{wide ? 'https://hooks.example.com/relay' : 'hooks.example.com/relay'}</span>
                   </div>
                   <div className="rl-grid" data-head style={st}>
                     {wide ? <span>When</span> : null}
@@ -83,7 +84,7 @@ export function WebhooksStage({ animate = true }: { animate?: boolean }) {
                       <span className="rl-mute"><States value={s.ok ? 'ok' : 'err'} align="start" states={{ err: 'HTTP 503', ok: '—' }} /></span>
                     </div>
                   </Collapse>
-                  {OLD.map(([when, n, code]) => (
+                  {OLD.slice(0, wide ? 2 : 3).map(([when, n, code]) => (
                     <div key={when} className="rl-grid" style={st}>
                       {wide ? <span className="rl-mute">{when}</span> : null}
                       <span className="rl-st"><Status s="sent" /></span>
