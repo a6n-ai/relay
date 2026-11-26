@@ -14,7 +14,7 @@ import { EmptyState } from "../../components/page/empty-state";
 import { SettingsCard } from "../../components/page/settings-card";
 import { SearchInput, Toolbar } from "../../components/page/toolbar";
 import { useUrlFilter } from "../../components/page/use-url-filter";
-import { TableSkeleton } from "../../components/page/table-skeleton";
+import { ListSkeleton } from "../../components/page/page-skeleton";
 import { ResourceTable } from "../../components/resource-table";
 import { confirmAction, runAction } from "../../components/run-action";
 import { PageHeader } from "../../components/shell/page-header";
@@ -50,7 +50,7 @@ export const Route = createFileRoute("/_app/admin")({
       throw err;
     }
   },
-  pendingComponent: () => <TableSkeleton columns={7} />,
+  pendingComponent: () => <ListSkeleton crumbs={[{ label: "Admin" }]} columns={7} search filter />,
   component: AdminPage,
 });
 

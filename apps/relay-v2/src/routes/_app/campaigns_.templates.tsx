@@ -18,7 +18,7 @@ import { Hint } from "../../components/page/text";
 import { type View, viewPref } from "../../components/page/view-pref";
 import { ViewToggle } from "../../components/page/view-toggle";
 import { LoadMore } from "../../components/page/load-more";
-import { TableSkeleton } from "../../components/page/table-skeleton";
+import { ListSkeleton } from "../../components/page/page-skeleton";
 import { SearchInput, Toolbar } from "../../components/page/toolbar";
 import { useUrlFilter } from "../../components/page/use-url-filter";
 import { ResourceTable } from "../../components/resource-table";
@@ -47,7 +47,7 @@ export const Route = createFileRoute("/_app/campaigns_/templates")({
     q: typeof search.q === "string" && search.q ? search.q : undefined,
   }),
   loaderDeps: ({ search }) => ({ appId: search.appId, cursor: search.cursor }),
-  pendingComponent: () => <TableSkeleton columns={5} />,
+  pendingComponent: () => <ListSkeleton crumbs={[{ label: "Campaigns", to: "/campaigns" }, { label: "Templates" }]} columns={5} search filter view action />,
   loader: async ({ deps }) => {
     const apps = await fetchApps();
     if (!apps) return null;

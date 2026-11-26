@@ -6,7 +6,7 @@ import { ConfirmDialog } from "../../components/confirm-dialog";
 import { CreateDialog } from "../../components/create-dialog";
 import { DeniedState, deniedReason } from "../../components/denied-state";
 import { EmptyState } from "../../components/page/empty-state";
-import { TableSkeleton } from "../../components/page/table-skeleton";
+import { ListSkeleton } from "../../components/page/page-skeleton";
 import { Toolbar } from "../../components/page/toolbar";
 import { ResourceTable } from "../../components/resource-table";
 import { type MemberRole, ROLE_LABEL } from "../../components/role-select";
@@ -27,7 +27,7 @@ export const Route = createFileRoute("/_app/settings_/invites")({
     new: search.new === 1 || search.new === "1" ? 1 : undefined,
   }),
   loader: () => fetchPeople(),
-  pendingComponent: () => <TableSkeleton columns={4} />,
+  pendingComponent: () => <ListSkeleton crumbs={[{ label: "Settings", to: "/settings" }, { label: "Invites" }]} columns={4} action />,
   component: InvitesPage,
 });
 

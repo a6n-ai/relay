@@ -7,7 +7,7 @@ import { EmptyState } from "../../components/page/empty-state";
 import { LoadMore } from "../../components/page/load-more";
 import { SearchInput, Toolbar } from "../../components/page/toolbar";
 import { useUrlFilter } from "../../components/page/use-url-filter";
-import { TableSkeleton } from "../../components/page/table-skeleton";
+import { ListSkeleton } from "../../components/page/page-skeleton";
 import { ResourceTable } from "../../components/resource-table";
 import { PageHeader } from "../../components/shell/page-header";
 import { StatusBadge } from "../../components/status-badge";
@@ -25,7 +25,7 @@ export const Route = createFileRoute("/_app/messages")({
     const [page, apps] = await Promise.all([fetchMessages({ data: { ...rest, app: appId } }), fetchApps()]);
     return page ? { ...page, apps: apps ?? [] } : null;
   },
-  pendingComponent: () => <TableSkeleton columns={4} />,
+  pendingComponent: () => <ListSkeleton crumbs={[{ label: "Messages" }, { label: "Sent" }]} columns={4} search filter />,
   component: MessagesPage,
 });
 

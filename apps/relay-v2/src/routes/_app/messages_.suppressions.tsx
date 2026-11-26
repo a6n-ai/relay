@@ -11,7 +11,7 @@ import { errorText } from "../../components/error-text";
 import { ChoiceField } from "../../components/form/choice-field";
 import { FilterMenu } from "../../components/page/filter-menu";
 import { LoadMore } from "../../components/page/load-more";
-import { TableSkeleton } from "../../components/page/table-skeleton";
+import { ListSkeleton } from "../../components/page/page-skeleton";
 import { Hint } from "../../components/page/text";
 import { SearchInput, Toolbar } from "../../components/page/toolbar";
 import { useUrlFilter } from "../../components/page/use-url-filter";
@@ -37,7 +37,7 @@ export const Route = createFileRoute("/_app/messages_/suppressions")({
   }),
   loaderDeps: ({ search }) => ({ prefix: search.prefix, cursor: search.cursor }),
   loader: ({ deps }) => fetchSuppressions({ data: deps }),
-  pendingComponent: () => <TableSkeleton columns={4} />,
+  pendingComponent: () => <ListSkeleton crumbs={[{ label: "Messages" }, { label: "Suppressions" }]} columns={4} search filter />,
   component: SuppressionsPage,
 });
 

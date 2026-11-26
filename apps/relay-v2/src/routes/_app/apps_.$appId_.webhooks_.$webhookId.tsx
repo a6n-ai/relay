@@ -9,7 +9,7 @@ import { errorText } from "../../components/error-text";
 import { EmptyState } from "../../components/page/empty-state";
 import { LoadMore } from "../../components/page/load-more";
 import { SettingsCard } from "../../components/page/settings-card";
-import { TableSkeleton } from "../../components/page/table-skeleton";
+import { ListSkeleton } from "../../components/page/page-skeleton";
 import { CellWhen, ResourceTable } from "../../components/resource-table";
 import { PageHeader } from "../../components/shell/page-header";
 import { runAction } from "../../components/run-action";
@@ -24,7 +24,7 @@ import { formatDate, formatWhen } from "../../lib/format-date";
 
 export const Route = createFileRoute("/_app/apps_/$appId_/webhooks_/$webhookId")({
   loader: ({ params }) => fetchDeliveries({ data: { appId: params.appId, webhookId: params.webhookId } }),
-  pendingComponent: () => <TableSkeleton columns={6} />,
+  pendingComponent: () => <ListSkeleton crumbs={[{ label: "Apps", to: "/apps" }, { label: "Webhooks" }]} columns={6} card />,
   component: DeliveriesPage,
 });
 

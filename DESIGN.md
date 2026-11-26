@@ -85,7 +85,7 @@ Foundry ships the shapes. Only `<body>` carries `admin-ui` (`apps/relay-v2/src/r
 - **Dialogs and forms**: creating something happens in a dialog over the list (`CreateDialog`), never in a side column. Fields are 32px. Focus ring is blue.
 - **Page header** (`PageHeader`): a full-width 48px bar with breadcrumb, scope switcher and actions. Every route renders it first.
 - **Lists** (`ResourceTable` in a `Toolbar` page): the empty state names the next action. No row stagger on filter or search.
-- **Feedback**: route `pendingComponent` with `TableSkeleton` for waits, toasts only for results that leave the screen.
+- **Feedback**: route `pendingComponent` with the skeleton that matches the page (`ListSkeleton`, `CardsSkeleton`, `FormSkeleton`, `DetailSkeleton`) for waits, toasts only for results that leave the screen.
 
 ## Components (reuse, never restyle ad hoc)
 
@@ -97,7 +97,7 @@ Build screens from these parts and the semantic tokens (`bg-card`, `text-muted-f
 | create menu, scope switcher | `CreateMenu`, `ScopeSwitcher` | shell/create-menu.tsx, shell/scope-switcher.tsx |
 | toolbar | `Toolbar` | page/toolbar.tsx |
 | table with frame | `ResourceTable` (Foundry `Table`, inset by `TableInset`) | resource-table.tsx, page/table-inset.tsx |
-| loading | `TableSkeleton` | page/table-skeleton.tsx |
+| loading | `ListSkeleton`, `CardsSkeleton`, `FormSkeleton`, `DetailSkeleton` | page/page-skeleton.tsx |
 | empty | `EmptyState` (passed as `empty` to `ResourceTable`) | page/empty-state.tsx |
 | row actions | `RowMenu` | page/row-menu.tsx |
 | settings card | `SettingsCard` | page/settings-card.tsx |

@@ -23,7 +23,7 @@ import { useCan } from "../../components/use-can";
 import { EmptyState } from "../../components/page/empty-state";
 import { FilterMenu } from "../../components/page/filter-menu";
 import { ResourceGrid } from "../../components/page/resource-grid";
-import { TableSkeleton } from "../../components/page/table-skeleton";
+import { ListSkeleton } from "../../components/page/page-skeleton";
 import { SearchInput, Toolbar } from "../../components/page/toolbar";
 import { useUrlFilter } from "../../components/page/use-url-filter";
 import { ViewToggle } from "../../components/page/view-toggle";
@@ -59,7 +59,7 @@ export const Route = createFileRoute("/_app/domains")({
     const [addresses, apps] = await Promise.all([fetchAddresses(), fetchApps()]);
     return { domains, addresses, apps: apps ?? [] };
   },
-  pendingComponent: () => <TableSkeleton columns={3} />,
+  pendingComponent: () => <ListSkeleton crumbs={[{ label: "Domains" }]} columns={3} sections={["Domains", "Addresses"]} search filter view action />,
   component: DomainsPage,
 });
 

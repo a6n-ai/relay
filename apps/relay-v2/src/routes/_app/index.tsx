@@ -5,6 +5,9 @@ import { fetchOverview } from "../../console/overview.fns";
 
 // Overview and its shell pieces load only when it renders, never on the signed-out landing page.
 const OverviewView = lazy(() => import("../../components/overview"));
+const OverviewSkeleton = lazy(() =>
+  import("../../components/page/page-skeleton").then(({ CardsSkeleton }) => ({ default: () => <CardsSkeleton crumbs={[{ label: "Overview" }]} /> })),
+);
 
 const SITE = "https://relay.a6n.ai";
 const DESCRIPTION = "One API for transactional email, campaigns and inbound mail, with signed webhooks and a console your whole team can read.";
@@ -53,6 +56,11 @@ export const Route = createFileRoute("/_app/")({
   head: ({ match }: { match: { context: { landing?: boolean } } }) => (match.context.landing ? landingHead() : {}),
   // A signed-out visitor sees the landing page, but child loaders still run; skip the fetch for them.
   loader: ({ context }) => (context.shell ? fetchOverview() : (null as never)),
+  pendingComponent: () => (
+    <Suspense fallback={null}>
+      <OverviewSkeleton />
+    </Suspense>
+  ),
   component: Overview,
 });
 

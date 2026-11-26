@@ -7,6 +7,7 @@ import { PageHeader } from "../../components/shell/page-header";
 import { StatusBadge } from "../../components/status-badge";
 import { fetchAudienceHook } from "../../console/apps.fns";
 import { fetchCampaign, fetchCampaignOptions, fetchCampaignStats } from "../../console/campaigns.fns";
+import { DetailSkeleton } from "../../components/page/page-skeleton";
 
 type CampaignSearch = { appId?: string };
 
@@ -33,6 +34,7 @@ export const Route = createFileRoute("/_app/campaigns_/$campaignId")({
     if (!options) return null;
     return { campaign, options, hookReady: hook?.enabled === true };
   },
+  pendingComponent: () => <DetailSkeleton crumbs={[{ label: "Campaigns", to: "/campaigns" }, { label: "Campaign" }]} />,
   component: CampaignPage,
 });
 

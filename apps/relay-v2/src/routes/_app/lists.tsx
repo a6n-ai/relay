@@ -21,7 +21,7 @@ import { useCan } from "../../components/use-can";
 import { EmptyState } from "../../components/page/empty-state";
 import { SearchInput, Toolbar } from "../../components/page/toolbar";
 import { useUrlFilter } from "../../components/page/use-url-filter";
-import { TableSkeleton } from "../../components/page/table-skeleton";
+import { ListSkeleton } from "../../components/page/page-skeleton";
 import { PageHeader } from "../../components/shell/page-header";
 import { useNewParam } from "../../components/shell/create-menu";
 import { fetchApps } from "../../console/apps.fns";
@@ -51,7 +51,7 @@ export const Route = createFileRoute("/_app/lists")({
     const lists = results.flatMap((r) => (r && !("missing" in r) ? r : []));
     return { apps, appId: deps.appId, lists };
   },
-  pendingComponent: () => <TableSkeleton columns={4} />,
+  pendingComponent: () => <ListSkeleton crumbs={[{ label: "Lists" }]} columns={4} search filter view action />,
   component: ListsPage,
 });
 

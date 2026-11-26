@@ -6,7 +6,7 @@ import { DeniedState, deniedReason } from "../../components/denied-state";
 import { EmptyState } from "../../components/page/empty-state";
 import { SearchInput, Toolbar } from "../../components/page/toolbar";
 import { useUrlFilter } from "../../components/page/use-url-filter";
-import { TableSkeleton } from "../../components/page/table-skeleton";
+import { ListSkeleton } from "../../components/page/page-skeleton";
 import { ResourceTable } from "../../components/resource-table";
 import { type MemberRole, ROLE_LABEL } from "../../components/role-select";
 import { confirmAction } from "../../components/run-action";
@@ -23,7 +23,7 @@ export const Route = createFileRoute("/_app/settings_/members")({
     q: typeof search.q === "string" && search.q ? search.q : undefined,
   }),
   loader: () => fetchPeople(),
-  pendingComponent: () => <TableSkeleton columns={3} />,
+  pendingComponent: () => <ListSkeleton crumbs={[{ label: "Settings", to: "/settings" }, { label: "Members" }]} columns={3} search action />,
   component: MembersPage,
 });
 

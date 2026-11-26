@@ -65,7 +65,7 @@ function ParentItem({ item, active }: { item: NavItem; active: Active }) {
         <ChevronRight className={open ? "rotate-90" : undefined} />
       </CollapsibleTrigger>
       <CollapsibleContent>
-        <SidebarMenuSub>
+        <SidebarMenuSub className="translate-x-0">
           {item.children?.map((child) => (
             <SidebarMenuSubItem key={child.id}>
               <SidebarMenuSubButton
@@ -158,7 +158,7 @@ export function AppShell({ shell, find, children }: { shell: Shell; find?: React
           <WorkspaceSwitcher active={shell.active} workspaces={shell.workspaces} />
           {find}
         </SidebarHeader>
-        <SidebarContent>
+        <SidebarContent className="overflow-x-hidden">
           {inSettings ? <SettingsNav groups={groups} active={active} /> : <Groups groups={groups} active={active} />}
         </SidebarContent>
         <SidebarFooter>

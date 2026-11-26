@@ -8,7 +8,7 @@ import { FilterMenu } from "../../components/page/filter-menu";
 import { LoadMore } from "../../components/page/load-more";
 import { Hint } from "../../components/page/text";
 import { Toolbar } from "../../components/page/toolbar";
-import { TableSkeleton } from "../../components/page/table-skeleton";
+import { ListSkeleton } from "../../components/page/page-skeleton";
 import { PageHeader } from "../../components/shell/page-header";
 import { formatWhen } from "../../lib/format-date";
 import { ResourceTable } from "../../components/resource-table";
@@ -30,7 +30,7 @@ export const Route = createFileRoute("/_app/messages_/failures")({
     const [page, apps] = await Promise.all([fetchFailures(), fetchApps()]);
     return page ? { ...page, apps: apps ?? [] } : null;
   },
-  pendingComponent: () => <TableSkeleton columns={5} />,
+  pendingComponent: () => <ListSkeleton crumbs={[{ label: "Messages" }, { label: "Failed to receive" }]} columns={5} filter />,
   component: FailuresPage,
 });
 

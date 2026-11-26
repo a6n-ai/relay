@@ -11,7 +11,7 @@ import { ResourceTable } from "../../components/resource-table";
 import { useCan } from "../../components/use-can";
 import { ChoiceField } from "../../components/form/choice-field";
 import { EmptyState } from "../../components/page/empty-state";
-import { TableSkeleton } from "../../components/page/table-skeleton";
+import { ListSkeleton } from "../../components/page/page-skeleton";
 import { Toolbar } from "../../components/page/toolbar";
 import { PageHeader } from "../../components/shell/page-header";
 import { addGrantFn, fetchAddressAccess, removeGrantFn } from "../../console/grants.fns";
@@ -20,7 +20,7 @@ import { Hint } from "../../components/page/text";
 
 export const Route = createFileRoute("/_app/domains_/addresses/$addressId")({
   loader: ({ params }) => fetchAddressAccess({ data: { addressId: params.addressId } }),
-  pendingComponent: () => <TableSkeleton columns={2} />,
+  pendingComponent: () => <ListSkeleton crumbs={[{ label: "Domains", to: "/domains" }, { label: "Access" }]} columns={2} action />,
   component: AddressAccessPage,
 });
 

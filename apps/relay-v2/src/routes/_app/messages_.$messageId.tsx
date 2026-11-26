@@ -11,6 +11,7 @@ import { fetchApps } from "../../console/apps.fns";
 import { previewHint } from "../../components/preview-hint";
 import { fetchMessage } from "../../console/messages.fns";
 import { Hint, SectionTitle } from "../../components/page/text";
+import { DetailSkeleton } from "../../components/page/page-skeleton";
 
 export const Route = createFileRoute("/_app/messages_/$messageId")({
   validateSearch: (search: Record<string, unknown>): { images?: boolean } => ({
@@ -19,6 +20,7 @@ export const Route = createFileRoute("/_app/messages_/$messageId")({
   loaderDeps: ({ search }) => ({ images: search.images }),
   loader: ({ params, deps }) =>
     Promise.all([fetchMessage({ data: { id: params.messageId, images: deps.images } }), fetchApps()]),
+  pendingComponent: () => <DetailSkeleton crumbs={[{ label: "Messages" }, { label: "Message" }]} action />,
   component: MessagePage,
 });
 

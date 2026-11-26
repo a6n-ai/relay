@@ -15,7 +15,7 @@ import { DeniedState, deniedReason } from "../../components/denied-state";
 import { errorText } from "../../components/error-text";
 import { EmptyState } from "../../components/page/empty-state";
 import { SettingsCard } from "../../components/page/settings-card";
-import { TableSkeleton } from "../../components/page/table-skeleton";
+import { FormSkeleton } from "../../components/page/page-skeleton";
 import { Toolbar } from "../../components/page/toolbar";
 import { CellWhen, ResourceTable } from "../../components/resource-table";
 import { PageHeader } from "../../components/shell/page-header";
@@ -40,7 +40,7 @@ import { RenameForm } from "../../components/form/rename-form";
 import { Hint } from "../../components/page/text";
 
 export const Route = createFileRoute("/_app/apps_/$appId")({
-  pendingComponent: () => <TableSkeleton columns={5} />,
+  pendingComponent: () => <FormSkeleton crumbs={[{ label: "Apps", to: "/apps" }, { label: "App" }]} cards={3} wide action />,
   loader: async ({ params }) => {
     const data = await fetchAppDetail({ data: { appId: params.appId } });
     if (!data) return null;

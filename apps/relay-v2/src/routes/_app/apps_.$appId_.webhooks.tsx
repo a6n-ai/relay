@@ -10,7 +10,7 @@ import { CreateDialog } from "../../components/create-dialog";
 import { DeniedState, deniedReason } from "../../components/denied-state";
 import { errorText } from "../../components/error-text";
 import { EmptyState } from "../../components/page/empty-state";
-import { TableSkeleton } from "../../components/page/table-skeleton";
+import { ListSkeleton } from "../../components/page/page-skeleton";
 import { Toolbar } from "../../components/page/toolbar";
 import { CellWhen, ResourceTable } from "../../components/resource-table";
 import { PageHeader } from "../../components/shell/page-header";
@@ -26,7 +26,7 @@ import { FormError, FormBody, FormActions } from "../../components/page/form-par
 
 export const Route = createFileRoute("/_app/apps_/$appId_/webhooks")({
   loader: ({ params }) => fetchWebhooks({ data: { appId: params.appId } }),
-  pendingComponent: () => <TableSkeleton columns={4} />,
+  pendingComponent: () => <ListSkeleton crumbs={[{ label: "Apps", to: "/apps" }, { label: "Webhooks" }]} columns={4} action />,
   component: WebhooksPage,
 });
 

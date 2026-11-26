@@ -5,7 +5,7 @@ import { ConfirmDialog } from "../../components/confirm-dialog";
 import { CreateDialog } from "../../components/create-dialog";
 import { DeniedState, deniedReason } from "../../components/denied-state";
 import { EmptyState } from "../../components/page/empty-state";
-import { TableSkeleton } from "../../components/page/table-skeleton";
+import { ListSkeleton } from "../../components/page/page-skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@foundry/ui/dialog";
 import { Toolbar } from "../../components/page/toolbar";
 import { ResourceTable } from "../../components/resource-table";
@@ -22,7 +22,7 @@ const crumbs = [{ label: "Settings", to: "/settings" }, { label: "Teams" }];
 
 export const Route = createFileRoute("/_app/settings_/teams")({
   loader: () => fetchPeople(),
-  pendingComponent: () => <TableSkeleton columns={2} />,
+  pendingComponent: () => <ListSkeleton crumbs={[{ label: "Settings", to: "/settings" }, { label: "Teams" }]} columns={2} action />,
   component: TeamsPage,
 });
 

@@ -22,7 +22,7 @@ import { EmptyState } from "../../components/page/empty-state";
 import { RowMenu } from "../../components/page/row-menu";
 import { SearchInput, Toolbar } from "../../components/page/toolbar";
 import { useUrlFilter } from "../../components/page/use-url-filter";
-import { TableSkeleton } from "../../components/page/table-skeleton";
+import { ListSkeleton } from "../../components/page/page-skeleton";
 import { PageHeader } from "../../components/shell/page-header";
 import { fetchApps } from "../../console/apps.fns";
 import type { ConsentSource, MemberView } from "../../do/lists";
@@ -61,7 +61,7 @@ export const Route = createFileRoute("/_app/lists_/$listId")({
     if ("missing" in members) return { missing: true as const };
     return { list: "missing" in lists ? undefined : lists.find((l) => l.id === params.listId), members, appName: apps?.find((a) => a.id === deps.appId)?.name };
   },
-  pendingComponent: () => <TableSkeleton columns={5} />,
+  pendingComponent: () => <ListSkeleton crumbs={[{ label: "Lists", to: "/lists" }, { label: "List" }]} columns={5} search action />,
   component: ListDetailPage,
 });
 

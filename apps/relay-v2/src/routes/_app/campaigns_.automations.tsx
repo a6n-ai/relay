@@ -21,7 +21,7 @@ import { Hint } from "../../components/page/text";
 import { type View, viewPref } from "../../components/page/view-pref";
 import { ViewToggle } from "../../components/page/view-toggle";
 import { EmptyState } from "../../components/page/empty-state";
-import { TableSkeleton } from "../../components/page/table-skeleton";
+import { ListSkeleton } from "../../components/page/page-skeleton";
 import { Toolbar } from "../../components/page/toolbar";
 import { ResourceTable } from "../../components/resource-table";
 import { useNewParam } from "../../components/shell/create-menu";
@@ -46,7 +46,7 @@ export const Route = createFileRoute("/_app/campaigns_/automations")({
     new: search.new === 1 || search.new === "1" ? 1 : undefined,
   }),
   loaderDeps: ({ search }) => ({ appId: search.appId }),
-  pendingComponent: () => <TableSkeleton columns={7} />,
+  pendingComponent: () => <ListSkeleton crumbs={[{ label: "Campaigns", to: "/campaigns" }, { label: "Automations" }]} columns={7} filter view action />,
   loader: async ({ deps }) => {
     const apps = await fetchApps();
     if (!apps) return null;

@@ -19,6 +19,7 @@ import { useCan } from "../../components/use-can";
 import { deleteTemplateFn, fetchTemplate, previewTemplateFn, updateTemplateFn } from "../../console/templates.fns";
 import type { TemplateView } from "../../do/templates";
 import { FormError, FormPanel, FormBody } from "../../components/page/form-parts";
+import { FormSkeleton } from "../../components/page/page-skeleton";
 
 export const Route = createFileRoute("/_app/campaigns_/templates_/$templateId")({
   loader: ({ params }) =>
@@ -26,6 +27,7 @@ export const Route = createFileRoute("/_app/campaigns_/templates_/$templateId")(
       if (isNotFound(err)) return { missing: true as const };
       throw err;
     }),
+  pendingComponent: () => <FormSkeleton crumbs={[{ label: "Campaigns", to: "/campaigns" }, { label: "Templates", to: "/campaigns/templates" }, { label: "Template" }]} cards={2} action />,
   component: TemplatePage,
 });
 

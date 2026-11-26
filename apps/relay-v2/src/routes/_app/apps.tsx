@@ -16,7 +16,7 @@ import { type View, viewPref } from "../../components/page/view-pref";
 import { SlugField } from "../../components/form/slug-field";
 import { splitSlugError } from "../../components/form/slugify";
 import { useUrlFilter } from "../../components/page/use-url-filter";
-import { TableSkeleton } from "../../components/page/table-skeleton";
+import { ListSkeleton } from "../../components/page/page-skeleton";
 import { ResourceTable } from "../../components/resource-table";
 import { useNewParam } from "../../components/shell/create-menu";
 import { PageHeader } from "../../components/shell/page-header";
@@ -30,7 +30,7 @@ export const Route = createFileRoute("/_app/apps")({
     q: typeof search.q === "string" && search.q ? search.q : undefined,
   }),
   loader: () => fetchApps(),
-  pendingComponent: () => <TableSkeleton columns={3} />,
+  pendingComponent: () => <ListSkeleton crumbs={[{ label: "Apps" }]} columns={3} search view action />,
   component: AppsPage,
 });
 
