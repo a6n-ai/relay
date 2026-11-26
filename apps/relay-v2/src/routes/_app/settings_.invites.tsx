@@ -59,6 +59,7 @@ function InvitesPage() {
     );
   }
 
+  const cancellingInvite = people.invites.find((i) => i.id === cancelling);
   const invite = canInvite ? (
     <CreateDialog trigger="Invite member" title="Invite a member" open={open} onOpenChange={setOpen}>
       {(done) => <InviteForm done={done} canGrantOwner={ownerActor} />}
@@ -91,9 +92,10 @@ function InvitesPage() {
       <ConfirmDialog
         open={cancelling !== null}
         onOpenChange={(o) => !o && setCancelling(null)}
-        title="Cancel this invite?"
+        title={`Cancel the invite for ${cancellingInvite?.email ?? "this person"}?`}
         description="The link stops working. You can invite them again later."
         confirmLabel="Cancel invite"
+        dismissLabel="Keep invite"
         onConfirm={async () => {
           const id = cancelling;
           if (id) await confirm(() => cancelInviteFn({ data: { id } }), "Invite cancelled");

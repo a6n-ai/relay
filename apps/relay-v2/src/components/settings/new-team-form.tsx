@@ -1,4 +1,3 @@
-import { Button } from "@foundry/ui/button";
 import { Input } from "@foundry/ui/input";
 import { Label } from "@foundry/ui/label";
 import { toast } from "@foundry/ui/toast";
@@ -32,14 +31,12 @@ export function NewTeamForm({ done }: { done: () => void }) {
 
   return (
     <FormBody onSubmit={submit}>
-      <Label htmlFor="team-name">Name</Label>
-      <Input id="team-name" required maxLength={80} value={name} onChange={(e) => setName(e.target.value)} />
+      <div className="grid gap-1.5">
+        <Label htmlFor="team-name">Name</Label>
+        <Input id="team-name" required autoFocus maxLength={80} placeholder="Support" value={name} onChange={(e) => setName(e.target.value)} />
+      </div>
       <FormError message={error} />
-      <FormActions>
-        <Button type="submit" disabled={pending}>
-          Create team
-        </Button>
-      </FormActions>
+      <FormActions cancel submitLabel="Create team" pending={pending} pendingLabel="Creating…" />
     </FormBody>
   );
 }

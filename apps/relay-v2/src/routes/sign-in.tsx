@@ -3,7 +3,7 @@ import { Input } from "@foundry/ui/input";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@foundry/ui/input-otp";
 import { Label } from "@foundry/ui/label";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 import { AuthCard } from "../components/auth-card";
 import { FormError } from "../components/page/form-parts";
 import { safeRedirect } from "../console/shell.fns";
@@ -17,6 +17,7 @@ export const Route = createFileRoute("/sign-in")({
 
 const json = { "content-type": "application/json" };
 const TOO_MANY = "Too many codes. Try again in a few minutes.";
+const RESEND_SECONDS = 30;
 
 function SignIn() {
   const router = useRouter();
@@ -26,9 +27,16 @@ function SignIn() {
   const [otp, setOtp] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [wait, setWait] = useState(0);
 
-  async function sendCode(event: FormEvent) {
-    event.preventDefault();
+  useEffect(() => {
+    if (wait <= 0) return;
+    const t = setTimeout(() => setWait(wait - 1), 1000);
+    return () => clearTimeout(t);
+  }, [wait]);
+
+  // The countdown is UX only: the server limits sends to 5 per 10 minutes and answers 429.
+  async function requestCode(): Promise<boolean> {
     setPending(true);
     setError(null);
     const res = await fetch("/api/auth/email-otp/send-verification-otp", {
@@ -37,9 +45,21 @@ function SignIn() {
       body: JSON.stringify({ email, type: "sign-in" }),
     });
     setPending(false);
-    if (res.status === 429) return setError(TOO_MANY);
-    if (!res.ok) return setError("Could not send a code. Check the address and try again.");
-    setStep("code");
+    if (res.status === 429) {
+      setError(TOO_MANY);
+      return false;
+    }
+    if (!res.ok) {
+      setError("Could not send a code. Check the address and try again.");
+      return false;
+    }
+    setWait(RESEND_SECONDS);
+    return true;
+  }
+
+  async function sendCode(event: FormEvent) {
+    event.preventDefault();
+    if (await requestCode()) setStep("code");
   }
 
   async function verify(code: string) {
@@ -67,6 +87,7 @@ function SignIn() {
             type="email"
             autoComplete="email"
             required
+            autoFocus
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
@@ -92,6 +113,9 @@ function SignIn() {
           </InputOTP>
           <Button type="submit" disabled={pending || otp.length !== 6}>
             Sign in
+          </Button>
+          <Button type="button" variant="outline" disabled={pending || wait > 0} onClick={() => void requestCode()}>
+            {wait > 0 ? `Resend code in ${wait}s` : "Resend code"}
           </Button>
           <Button
             type="button"
