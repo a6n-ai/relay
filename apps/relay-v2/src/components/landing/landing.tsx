@@ -9,7 +9,7 @@ const FEATURES = [
   { title: "Teams", line: "Invite people to a workspace and set what each can do." },
 ] as const;
 
-const SAMPLE = `curl https://relay.a6n.ai/v1/messages \\
+const SAMPLE = `curl https://relay.a6n.ai/api/v1/messages \\
   -H "Authorization: Bearer $RELAY_API_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{
@@ -64,7 +64,7 @@ export function Landing() {
           </ul>
         </Wrap>
         <Wrap className="pb-16">
-          <pre className="overflow-x-auto rounded-md border bg-card p-4 font-mono text-sm text-card-foreground">
+          <pre tabIndex={0} className="overflow-x-auto rounded-md border bg-card p-4 font-mono text-sm text-card-foreground">
             <code>{SAMPLE}</code>
           </pre>
         </Wrap>
