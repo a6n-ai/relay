@@ -1,116 +1,116 @@
 ---
 version: alpha
 name: Relay
-description: "Relay's console and public pages, built on Linear's design language (owner decision, 2026-11-10): a near-black canvas with a charcoal surface ladder, hairline borders, light gray ink and one lavender accent, plus a matching light theme. Radix primitives via @foundry/ui; Relay's own name and mark."
+description: "Relay's console in the Vercel dashboard style: monochrome, Geist type, 6px controls, pill badges, framed tables. Colour carries meaning only."
 
 colors:
-  primary: "#5e6ad2"          # lavender: primary buttons, active nav, focus, links, charts
-  on-primary: "#ffffff"        # 4.7:1 on primary
-  primary-hover: "#5561c9"     # darker, not Linear's #828fff (white text on it is 3.1:1)
-  primary-focus: "#5e69d1"     # focus ring
-  lavender-light: "#828fff"    # dark-theme icon tint, chart-2
-  lavender-pale: "#a5adff"     # dark chart-3
-  ink: "#f7f8f8"
-  ink-subtle: "#8a8f98"        # 5.8:1 on surface-1
-  # Elevation ladder (dark): stacked, darkest at the bottom; each layer on top is one step lighter.
-  level-0: "#08090a"           # sidebar and the frame around the page (base)
-  level-1: "#0f1011"           # page panel (--background)
-  level-2: "#161718"           # cards on the page (--card)
-  level-3: "#1c1d1f"           # menus, popovers, dialogs (--popover)
-  fill: "#1f2023"              # muted fills, secondary buttons
-  lavender-surface: "#1d2035"  # hover/selection tint, active nav
-  hairline: "#26282d"
-  hairline-strong: "#34343a"   # inputs
-  success: "#4cb782"
-  danger: "#ff6369"            # text-safe on dark tints
-  light-level-0: "#f2f2f4"     # sidebar (base)
-  light-canvas: "#fbfbfc"      # page panel
-  light-surface: "#ffffff"     # cards, popovers
-  light-ink: "#0f1011"
-  light-ink-subtle: "#63676e"
-  light-lavender-surface: "#eeeffa"
-  light-lavender-ink: "#2f3793"
-  light-hairline: "#e6e6ea"
-  light-danger: "#ce2c31"
+  # Source of truth for exact values: apps/relay-v2/src/styles.css. These are the Geist-scale values it ships.
+  background: "#ffffff"        # light page
+  surface: "#fafafa"           # light cards and muted fills (#f2f2f2 for deeper fills)
+  border: "#ebebeb"            # light hairline
+  foreground: "#171717"        # light ink
+  muted-foreground: "#666666"  # light secondary ink
+  dark-background: "#0a0a0a"
+  dark-surface: "#111111"      # dark cards and muted fills (#1a1a1a for deeper fills)
+  dark-border: "#2e2e2e"
+  dark-foreground: "#ededed"
+  dark-muted-foreground: "#a1a1a1"
+  primary: "foreground on background"   # black button in light, near-white in dark
+  ring: "Geist blue-700"       # focus ring and links
+  success: green
+  warning: amber
+  destructive: red
 
 typography:
-  family: "Inter, -apple-system, SF Pro, Geist, system-ui"   # Linear's faces are proprietary; Inter is the stated substitute
-  mono: "Geist Mono"
-  h1: { weight: 600, letterSpacing: "-0.022em" }
-  h2-h3: { weight: 600, letterSpacing: "-0.012em" }
+  sans: "Geist Sans"           # --font-sans and --font-heading
+  mono: "Geist Mono"           # ids, keys, code, shortcuts (--font-mono)
   body: { size: 14px, weight: 400 }
+  table: { size: 13px }
   caption: { size: 12px }
+  badge: { size: 11px, weight: 500 }
 
 rounded:
-  base: "--radius: 0.5rem"     # buttons/inputs 8px (rounded-lg), cards ~12px (rounded-xl), pills rounded-full
+  control: "6px"               # --ui-radius-control: buttons, inputs, selects, cards, tables
+  popup: "12px"                # --ui-radius-popup and --ui-radius-modal: menus, popovers, dialogs
+  badge: "pill"                # --ui-radius-badge
 
 rules:
-  - "Flat canvas. No dots, gradients or drop shadows on cards; hierarchy is the surface ladder plus 1px hairlines. Glass only on floating chrome (see Materials)."
-  - "Lavender carries interaction and data: primary actions, active nav (tint + lavender text/icon), hover/selection tint, focus ring, links, charts. Not decorative fills of whole sections."
-  - "Dark is the default theme; light mirrors it with the light-* tokens."
-  - "Every text/background pair clears 4.5:1; icons and graphics clear 3:1."
-  - "Icons are coloured, Linear-style, from the --tag-* tokens (purple, blue, green, orange, yellow, red): one colour per kind of thing (each sidebar link, each channel, each KPI). Colour never carries meaning alone; a label always sits beside it."
+  - "Monochrome. Primary is foreground on background. Colour carries meaning only: blue for links and focus, green for success, amber for warning, red for destructive."
+  - "No decorative hue. Active nav is a grey surface tint with full-foreground text. Charts use greys plus blue."
+  - "Every text and background pair clears 4.5:1. Borders on controls and icons clear 3:1. Text on primary clears 4.5:1 in both themes."
+  - "Focus uses the blue ring token, never --primary, so focus stays visible on black buttons."
+  - "Flat surfaces. No gradients or card shadows. Hierarchy is the surface tint plus 1px borders."
+  - "Hover and press change colour at once. No transitions on clickable elements."
 ---
 
-## Principles (from Linear's design writing, applied to Relay)
+## Style
 
-Sources: [A design reset](https://linear.app/now/a-design-reset), [How we redesigned the Linear UI](https://linear.app/now/how-we-redesigned-the-linear-ui), [A Linear spin on Liquid Glass](https://linear.app/now/linear-liquid-glass), [Design for the AI age](https://linear.app/now/design-for-the-ai-age). The rules below are Relay's reading of them, not quotes.
+Relay uses the Vercel dashboard style. It replaced the Linear design language on 2026-11-26 by owner decision.
 
-1. **Relay is a workbench.** Form follows function: every screen gives a message flow structure (who, which channel, what state) so operators act with little thought. Chat-style or free-form surfaces are not a substitute for a real view. AI features sit on the workbench as tools; their output lands in normal views (Inbox, Sends, Campaigns) where a person reviews and approves it.
-2. **Quiet chrome, loud content.** The sidebar and app header (the inverted-L) frame the work and stay neutral: accent colour is kept out of chrome surfaces and used on state (active item, focus, primary action). Content text and icons carry the contrast: darker in light mode, lighter in dark mode.
-3. **Alignment you feel.** Labels, icons and buttons in the sidebar, tabs and headers share one vertical and horizontal grid. A misaligned 1px is a bug. Density goes up through hierarchy (clear groups, compact rows), not through smaller text.
-4. **Theme from three inputs.** Base colour, accent and contrast generate every token (perceptually even, LCH-style), instead of hand-tuning dozens of variables. Contrast is a real setting, so a high-contrast theme falls out of the same system. Elevation is a lightness step, not a shadow: components stack and the bottom layer is the darkest (sidebar, then page, then cards, then popovers), in both themes.
-5. **Materials: ProKit, not Aqua.** Translucency is for floating chrome over scrolling content (menus, sheets, a future mobile tab bar): a precise blur, a mask and a faint top-edge light. No refraction and no glass over dense lists or tables; clarity beats effect in a professional tool. Respect `prefers-reduced-transparency` with solid fallbacks.
-6. **Pay design debt on purpose.** Shipping weekly unbalances the system; rebalance it every 2 to 3 years, and do a reset quickly so new features are not built on the old look. Prove a direction in Relay's main views (Home, Inbox, Campaigns, People, Sends, Apps, Channels, Settings) before rolling it out, behind a flag when risky.
+Foundry ships the shapes. The root element and `body` carry `admin-ui`, so the preset also styles portalled menus, popovers and dialogs. Relay sets only colour and font tokens in `apps/relay-v2/src/styles.css`. Do not add per-page colour or radius classes.
+
+## Palette
+
+`apps/relay-v2/src/styles.css` is the source of truth for exact values. The front matter above lists the Geist-scale values for both themes.
+
+- Light is the page on `#ffffff` with `#fafafa` cards, `#ebebeb` borders, `#171717` ink and `#666666` muted ink.
+- Dark is the page on `#0a0a0a` with `#111111` cards, `#2e2e2e` borders, `#ededed` ink and `#a1a1a1` muted ink.
+- Every `bg-primary text-primary-foreground` pair flips with the theme. Check both themes after a change.
+
+## Type
+
+- Geist Sans for all UI text and headings, Geist Mono for ids, keys and code. Both are self-hosted.
+- Body is 14px, table text 13px, captions 12px, badges 11px at weight 500.
+- Headings use weight 600 with slight negative tracking.
+
+## Shape
+
+- Controls and cards are 6px. Popups and modals are 12px.
+- Badges are pills, 20px tall, one tone fill with tone text and no border. Pass the tone through `--ui-badge-tone`.
+- Tables sit in a bordered, rounded frame with a muted header row. The frame is inset to the page padding so it lines up with the toolbar. The empty state sits in the same frame.
+- The page body is centred at a max width of about 1200px.
+
+## Buttons
+
+- Size is the Foundry default, 32px. No `size="sm"`. Icon buttons use `icon`, not `icon-sm`.
+- Primary: one per view, placed last.
+- Outline: secondary actions.
+- Ghost: tertiary actions such as Cancel, Back and icon buttons.
+- Destructive: only inside `confirm-dialog.tsx`.
+- Labels are a verb plus a noun, such as "Create campaign" or "Add contact". Never a bare "Create" or "Add".
 
 ## Component behaviour
 
-- **Sidebar** (`RelaySidebar`, `nav.ts`): at most 8 links in quiet groups; 28px rows, 13px labels, 14px icons; the active link is a lavender tint with lavender icon; collapses to an icon rail; never holds settings or tabs that belong inside a section.
-- **Tabs** (`SectionTabs`): compact 28px pills at the top of a section's pages; the active one is a lavender tint (`aria-current="page"`); they are links in a `nav`, not a Radix tablist, so back/forward work and no dangling `aria-controls`.
-- **Dialogs and forms**: creating something happens in a level-3 dialog over the list (`CreateDialog`), never in a side column. Fields are 32px on the surface below their container, labels 13px muted, focus ring lavender.
-- **App header**: none on desktop; pages run full height (Linear). The sidebar carries the collapse toggle (header) and the theme switch (footer) and collapses to an icon rail. On phones the CrmShell header stays, because it opens the sidebar.
-- **View header** (`ViewHeader`): one compact row (icon, title, actions) plus at most one muted line of description; never a hero.
-- **Lists** (`ListingTable` → Foundry `DataTable`, `ResourceRow`): search + filter chips above compact rows; empty state names the next action. Motion stays CSS-only on this surface (no row stagger on filter/search).
-- **Feedback**: `loading.tsx` skeletons for waits, `LoadingButton` for in-place saving/saved/try-again, toasts only for results that leave the screen.
-
-## Observed in Linear (workspace tour, 2026-11-10)
-
-Measured by using the product, not from screenshots of marketing pages.
-
-- **Panel title row** (~44px, hairline below): breadcrumb (`A6n › Issues › A6N-5 Title`), favourite star, `⋯`; right side: bell + "+ New issue" ghost button. On detail pages the right side becomes `1 / 5` with up/down arrows.
-- **View row** (~40px): filled pill tabs (Active, Backlog, All issues) + a "save view" icon; right side: round icon buttons for Filter, Display, Side panel.
-- **Lists**: rows ~40px, no card, full-width hover tint. Row = priority glyph or `⋯`, mono ID, status ring, title, then right-aligned label chip (coloured dot + name), avatar, date. Group header strip ("○ Todo 5", `+` at the end) on a slightly lighter fill. Right-click opens a context menu with every action + its key.
-- **Create dialog**: top-anchored (~110px from top, not centred), ~670px wide, light scrim. Breadcrumb chip (team › New issue), expand + close icons. Title input is borderless 18px semibold, description borderless muted. A row of property chips (Status, Priority, Assignee, Labels, `⋯`) each opens a searchable picker with number shortcuts. Footer: attach icon, "Create more" toggle, lavender "Create issue". On create: dialog closes, new row highlighted, toast bottom-right ("Issue created", item, "View issue" link).
-- **Pickers / menus**: level-3 surface, search input at top with its shortcut key on the right, rows 28px with icon, label, check for current, number key on the right.
-- **Display popover**: List/Board segmented toggle, then label-left / select-right rows (Grouping, Ordering), toggles, and "Display properties" as toggle pills.
-- **Detail page**: content column (title 24px semibold, inline-editable; description; Activity feed; comment box) + right properties rail with small muted headings (Properties, Labels, Project) and inline-editable chips. No boxes around either.
-- **Command menu (⌘K)**: top-anchored, context chip for the current item, every command with its key.
-- **Settings**: own sidebar ("‹ Back to app", search, grouped links). Content is a centred ~600px column: page title, section heading, then a rounded card of rows; each row is label + one muted line on the left, control (select, toggle, button) on the right, hairline between rows.
-- **Empty states**: line-art glyph, bold title, 2-3 muted lines, lavender pill CTA showing its shortcut, ghost "Documentation".
-- **Public site** (linear.app): sticky 64px nav, wordmark left, text links right, divider, "Docs", white pill "Open app". Hero left-aligned: two-line ~64px headline at tight tracking, one muted sentence, a "New · <feature> →" link on the right, then a real product frame (the app itself, sidebar and all) on a lit floor gradient. Then logo row, a large two-tone statement paragraph (bold first sentence, rest muted), three columns of line-art isometric drawings with title + two muted lines split by vertical hairlines, alternating "Heading / paragraph + Learn more →" sections each showing a live slice of the app, a centred closing CTA (white pill + dark pill), and a six-column footer of plain links.
+- **Sidebar** (`RelaySidebar`, `nav.ts`): at most 8 links in quiet groups. The active link is a grey tint with foreground text. It collapses to an icon rail and never holds settings or tabs.
+- **Tabs** (`SectionTabs`): links in a `nav`, not a Radix tablist, so back and forward work. The active tab sets `aria-current="page"`.
+- **Dialogs and forms**: creating something happens in a dialog over the list (`CreateDialog`), never in a side column. Fields are 32px. Focus ring is blue.
+- **View header** (`ViewHeader`): one compact row with title and actions, plus at most one muted line. Never a hero.
+- **Lists** (`ListingTable`, `ResourceRow`): search and filter chips above compact rows. The empty state names the next action. No row stagger on filter or search.
+- **Feedback**: `loading.tsx` skeletons for waits, `LoadingButton` for in-place saving, toasts only for results that leave the screen.
 
 ## Components (reuse, never restyle ad hoc)
 
-Every DESIGN.md surface maps to one Relay component. Build screens from these and the semantic tokens (`bg-card`, `text-muted-foreground`, `bg-primary`); a new pattern becomes a component in `apps/relay/components/ds/` before a second page uses it.
+Build screens from these parts and the semantic tokens (`bg-card`, `text-muted-foreground`, `bg-primary`). A pattern used twice becomes a component in `apps/relay/components/ds/`.
 
-| DESIGN.md role | Relay component | File |
+| Role | Relay component | File |
 |---|---|---|
-| surface-1 panel | `Panel` | components/ds/panel.tsx |
+| panel | `Panel` | components/ds/panel.tsx |
 | table frame | `DataSurface` (a `Panel`) | components/ds/data-surface.tsx |
-| list with search + filters | `ListingTable` (thin Relay adapter) → Foundry/Realm `DataTable` + `FilterPill` chips | components/ds/listing-controls.tsx → `@foundry/design-system` `DataTable` |
-| columnar / sortable CRM grid | Foundry `DataTable` directly (Beautiful UI Records Table ref) | `@foundry/design-system` |
-| collection page: full-width list, "New …" opens a dialog (`createLabel`); detail page: content left, edit panel right | `OperatorSplit`, `CreateDialog` | components/ds/operator-split.tsx, create-dialog.tsx |
-| status-badge (signed deltas get an arrow) | `StatusBadge` (tone: ok, bad, neutral) | components/ds/status-badge.tsx |
+| list with search and filters | `ListingTable` over Foundry `DataTable` + `FilterPill` chips | components/ds/listing-controls.tsx |
+| sortable grid | Foundry `DataTable` directly | `@foundry/design-system` |
+| collection page | `OperatorSplit`, `CreateDialog` | components/ds/operator-split.tsx, create-dialog.tsx |
+| status badge | `StatusBadge` (tone: ok, bad, neutral) | components/ds/status-badge.tsx |
 | send status | `OutboxStatusBadge` | components/outbox-status-badge.tsx |
-| icon square (optional colour: tinted square, coloured glyph) | `IconTile` | components/ds/icon-tile.tsx |
-| icon colours, channel colours | `IconColor`, `CHANNEL_ICON_COLOR` | components/ds/icon-color.ts |
+| icon square | `IconTile` | components/ds/icon-tile.tsx |
 | section tabs | `SectionTabs` (from `nav.ts`) | components/ds/section-tabs.tsx |
-| sidebar | `RelaySidebar` (8 links, `nav.ts`) | components/relay-sidebar.tsx |
+| sidebar | `RelaySidebar` | components/relay-sidebar.tsx |
 | async button | `LoadingButton` | components/interior/loading-button.tsx |
-| view header (16px icon, 18px title, one muted line, actions) | `ViewHeader` | components/ds/view-header.tsx |
+| view header | `ViewHeader` | components/ds/view-header.tsx |
 | page frame, card, tabs | `PageShell`, `SectionCard`, `Tabs` | @foundry/design-system |
-| primitives | `Button`, `Input`, `Select`, `Dialog`, `Badge`, `Skeleton`… | @foundry/ui (Radix) |
+| primitives | `Button`, `Input`, `Select`, `Dialog`, `Badge`, `Skeleton` | @foundry/ui |
 
-Buttons are `@foundry/ui` `Button`; `app/globals.css` maps its variants to DESIGN.md: `default` = button-primary (lavender), `outline`/`secondary` = button-secondary (surface-1 + hairline), `ghost` = button-tertiary; 8px corners, 14px/500 labels, 14px side padding.
+Styling lives in tokens and these components, never in one-off class strings on pages.
 
-Styling lives in tokens (`app/globals.css` `:root` and `.dark`) and these components, never in one-off class strings on pages.
+## Public pages
+
+The public landing is not yet in this style. It will be redesigned in Vercel style.
