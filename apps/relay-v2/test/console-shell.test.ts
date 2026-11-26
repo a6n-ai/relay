@@ -33,7 +33,7 @@ describe("console shell", { timeout: 60_000 }, () => {
   it("shows the landing page to a signed-out visit to /", async () => {
     const res = await getPage("/");
     expect(res.status).toBe(200);
-    expect(await res.text()).toContain("One API, one console.");
+    expect(await res.text()).toContain("Send email with one request");
   });
 
   it("redirects a signed-out deep link to sign-in with the path", async () => {
