@@ -1,6 +1,4 @@
 import { Button } from "@foundry/ui/button";
-import { Label } from "@foundry/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@foundry/ui/select";
 import { toast } from "@foundry/ui/toast";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { UsersIcon } from "lucide-react";
@@ -11,6 +9,7 @@ import { DeniedState, deniedReason } from "../../components/denied-state";
 import { errorText } from "../../components/error-text";
 import { ResourceTable } from "../../components/resource-table";
 import { useCan } from "../../components/use-can";
+import { ChoiceField } from "../../components/form/choice-field";
 import { EmptyState } from "../../components/page/empty-state";
 import { TableSkeleton } from "../../components/page/table-skeleton";
 import { Toolbar } from "../../components/page/toolbar";
@@ -31,7 +30,7 @@ function AddressAccessPage() {
   const router = useRouter();
   const canManage = useCan({ mailbox: ["manage"] });
   const [adding, setAdding] = useState(false);
-  const [removing, setRemoving] = useState<string | null>(null);
+  const [removing, setRemoving] = useState<{ id: string; label: string } | null>(null);
   if (!data) {
     return (
       <>
@@ -43,8 +42,8 @@ function AddressAccessPage() {
   const { address, grants, members, teams } = data;
   const granted = new Set(grants.map((g) => `${g.kind}:${g.targetId}`));
   const options = [
-    ...members.map((m) => ({ value: `member:${m.id}`, label: `${m.label} (member)` })),
-    ...teams.map((t) => ({ value: `team:${t.id}`, label: `${t.label} (team)` })),
+    ...teams.map((t) => ({ value: `team:${t.id}`, label: t.label, badge: "Team" })),
+    ...members.map((m) => ({ value: `member:${m.id}`, label: m.label, badge: "Member" })),
   ].filter((o) => !granted.has(o.value));
 
   async function remove(grantId: string) {
@@ -70,7 +69,7 @@ function AddressAccessPage() {
         ]}
         rows={grants}
         rowKey={(g) => g.id}
-        menu={(g) => [{ label: "Remove", hidden: !canManage, destructive: true, onSelect: () => setRemoving(g.id) }]}
+        menu={(g) => [{ label: "Remove", hidden: !canManage, destructive: true, onSelect: () => setRemoving({ id: g.id, label: g.label }) }]}
         empty={
           <EmptyState
             icon={UsersIcon}
@@ -88,11 +87,11 @@ function AddressAccessPage() {
       <ConfirmDialog
         open={removing !== null}
         onOpenChange={(o) => !o && setRemoving(null)}
-        title="Remove this access?"
-        description="This person or team can no longer read mail sent to this address."
+        title={`Remove access for ${removing?.label ?? "this person or team"}?`}
+        description={`${removing?.label ?? "They"} can no longer read mail sent to ${address.email}.`}
         confirmLabel="Remove access"
         onConfirm={async () => {
-          if (removing) await remove(removing);
+          if (removing) await remove(removing.id);
         }}
       />
     </>
@@ -105,16 +104,20 @@ function NewGrantForm({
   done,
 }: {
   addressId: string;
-  options: { value: string; label: string }[];
+  options: { value: string; label: string; badge?: string }[];
   done: () => void;
 }) {
   const router = useRouter();
-  const [choice, setChoice] = useState("");
+  const [choice, setChoice] = useState(options.length === 1 ? options[0]!.value : "");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
+    if (!choice) {
+      setError("Choose a person or team.");
+      return;
+    }
     setPending(true);
     setError(null);
     const [kind, targetId] = choice.split(":");
@@ -134,25 +137,9 @@ function NewGrantForm({
 
   return (
     <FormBody onSubmit={submit}>
-      <Label htmlFor="grant-who">Member or team</Label>
-      <Select value={choice} onValueChange={setChoice}>
-        <SelectTrigger id="grant-who">
-          <SelectValue placeholder="Choose who" />
-        </SelectTrigger>
-        <SelectContent>
-          {options.map((o) => (
-            <SelectItem key={o.value} value={o.value}>
-              {o.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      <ChoiceField id="grant-who" label="Member or team" value={choice} onChange={setChoice} options={options} people />
       <FormError message={error} />
-      <FormActions>
-        <Button type="submit" disabled={pending || !choice}>
-          Give access
-        </Button>
-      </FormActions>
+      <FormActions cancel submitLabel="Give access" pending={pending} pendingLabel="Giving access…" />
     </FormBody>
   );
 }

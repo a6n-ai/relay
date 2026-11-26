@@ -41,7 +41,7 @@ export const fetchAddresses = createServerFn({ method: "GET" }).handler(async ()
 });
 
 export const addDomainFn = createServerFn({ method: "POST" })
-  .validator(validate(z.object({ domain: z.string().min(1).max(253) })))
+  .validator(validate(z.object({ domain: z.string().min(1).max(253), sesRegion: z.string().max(40).optional() })))
   .handler(async ({ data }) => {
     try {
       const actor = await requireActor(env, getRequestHeaders(), WRITE);
