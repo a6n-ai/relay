@@ -2,7 +2,7 @@ import { Button } from "@foundry/ui/button";
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { DevTabs } from "./dev-tabs";
-import { LifecycleRail } from "./lifecycle-rail";
+import { LifecycleRail, RailSteps, STAGES } from "./lifecycle-rail";
 import { HeroScene, Scene } from "./scene";
 import "./landing.css";
 import { RelayMark } from "../relay-mark";
@@ -11,17 +11,16 @@ const Wrap = ({ children, className = "" }: { children: ReactNode; className?: s
   <div className={`mx-auto w-full max-w-6xl px-4 sm:px-8 ${className}`}>{children}</div>
 );
 
-const Docs = ({ href = "/docs/" }: { href?: string }) => (
-  <Button variant="outline" className="hover:border-foreground hover:bg-accent dark:hover:border-foreground dark:hover:bg-accent" render={<a href={href} />}>
+const big = (hero?: boolean) => (hero ? "h-11 px-5 text-base" : "");
+
+const Docs = ({ href = "/docs/", hero }: { href?: string; hero?: boolean }) => (
+  <Button variant="outline" size={hero ? "lg" : "default"} className={`ld-docs ${big(hero)}`} render={<a href={href} />}>
     Docs
   </Button>
 );
 
-const SignIn = () => (
-  <Button
-    className="border border-transparent hover:border-foreground hover:bg-background hover:text-foreground"
-    render={<Link to="/sign-in" search={{ redirect: undefined }} />}
-  >
+const SignIn = ({ hero }: { hero?: boolean }) => (
+  <Button size={hero ? "lg" : "default"} className={`ld-signin ${big(hero)}`} render={<Link to="/sign-in" search={{ redirect: undefined }} />}>
     Sign in
   </Button>
 );
@@ -51,13 +50,13 @@ const Facts = ({ items }: { items: readonly string[] }) => (
   </ul>
 );
 
-const ATTEMPTS = ["Sent", "retry", "retry", "retry", "retry"] as const;
+const ATTEMPTS = ["First", "Retry 1", "Retry 2", "Retry 3", "Retry 4"] as const;
 
 const NUMBERS = [
-  { n: "202", line: "The status Relay answers a send with" },
-  { n: "5", line: "Attempts a send makes in total, at most" },
-  { n: "6", line: "Attempts for each webhook delivery, at most" },
-  { n: "3 × 5 MB", line: "Files per message, and the size of each" },
+  { stage: "Queued", n: "202", line: "The status Relay answers a send with" },
+  { stage: "Sent", n: "5", line: "Attempts a send makes in total, at most" },
+  { stage: "Delivery", n: "6", line: "Attempts for each webhook delivery, at most" },
+  { stage: "Queued", n: "3 files", line: "Up to 3 files, 5 MB each" },
 ] as const;
 
 const DETAILS = [
@@ -89,16 +88,16 @@ export function Landing() {
               <h1 id="hero" className="max-w-5xl text-balance text-display-xl font-semibold leading-[0.98] tracking-tighter">
                 Send email with one request. See what happens next.
               </h1>
-              <div className="mt-6 flex flex-col gap-6 sm:mt-8 lg:flex-row lg:items-end lg:justify-between">
+              <div className="mt-6 sm:mt-8">
                 <div>
                   <p className="max-w-xl text-pretty text-lede text-muted-foreground">
                     Relay gives your apps one API for transactional email, campaigns and inbound mail, with a console your whole team can read.
                   </p>
                   <p className="mt-3 text-sm text-muted-foreground">Access is by invite. Ask your workspace owner.</p>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <Docs />
-                  <SignIn />
+                  <div className="mt-6 flex flex-wrap items-center gap-2">
+                    <Docs hero />
+                    <SignIn hero />
+                  </div>
                 </div>
               </div>
               <div className="mt-8 sm:mt-10">
@@ -145,19 +144,19 @@ export function Landing() {
                   ))}
                 </ol>
                 <figcaption className="mt-8 max-w-xl text-sm text-muted-foreground">
-                  A send stops at its first success. A failed attempt is retried, up to 5 attempts in total.
+                  A send stops at its first success. A failed attempt is retried, up to 5 attempts in total. A webhook delivery makes up to 6, doubling the wait from 1 minute.
                 </figcaption>
               </figure>
             </Chapter>
 
-            <Chapter id="delivery" stage="Delivery." line="Delivered, and answered.">
+            <Chapter id="delivery" stage="Delivery." line="Delivered, and what comes back.">
               <div className="mt-10 grid gap-10 lg:grid-cols-12 lg:gap-14">
                 <div className="lg:col-span-4">
                   <p className="text-pretty text-lede text-muted-foreground">
-                    Give an app an inbox address on your domain. Each letter that arrives is stored, then posted to your webhook as JSON with a signature you can verify.
+                    Delivery is also the way back. Give an app an inbox address on your domain: each letter that arrives is stored, then posted to your webhook as JSON with a signature you can verify. That post is its own record, with its own retries.
                   </p>
                   <div className="mt-6">
-                    <Facts items={["One event today: mailbox.received.", "Up to 6 attempts with backoff, then retry from the console.", "Webhook URLs must be public https."]} />
+                    <Facts items={["One event today: mailbox.received.", "Up to 6 attempts, doubling from 1 minute, then retry from the console.", "Webhook URLs must be public https."]} />
                   </div>
                 </div>
                 <div className="grid min-w-0 gap-4 lg:col-span-8">
@@ -165,7 +164,7 @@ export function Landing() {
                   <figure className="ld-reveal m-0 overflow-hidden rounded-md border bg-card text-card-foreground">
                     <div className="border-b bg-muted px-3 py-2 sm:px-4">
                       <span className="ld-code font-mono">
-                        <span className="text-muted-foreground">POST</span> https://hooks.example.com/relay
+                        <span className="text-muted-foreground">POST</span> https://hooks.northwind.test/relay
                       </span>
                     </div>
                     <pre tabIndex={0} className="ld-code m-0 overflow-x-auto p-3 sm:p-4" aria-label="Webhook delivery">
@@ -180,8 +179,8 @@ export function Landing() {
                         <span className="ld-k">"createdAt":</span> 1767225600000,{"\n  "}
                         <span className="ld-k">"data":</span> {"{"}
                         {"\n    "}
-                        <span className="ld-k">"from":</span> "ada@example.com",{"\n    "}
-                        <span className="ld-k">"to":</span> "support@mail.acme.test",{"\n    "}
+                        <span className="ld-k">"from":</span> "ada@northwind.test",{"\n    "}
+                        <span className="ld-k">"to":</span> "support@mail.northwind.test",{"\n    "}
                         <span className="ld-k">"subject":</span> "Re: Welcome aboard",{"\n    "}
                         <span className="ld-p">…</span>
                         {"\n  }\n}"}
@@ -196,12 +195,15 @@ export function Landing() {
           <section aria-labelledby="numbers" className="border-b">
             <Wrap className="py-16 sm:py-24">
               <h2 id="numbers" className="max-w-3xl text-balance text-display-s font-semibold leading-tight tracking-tighter">
-                The details that cost you a week.
+                The details, stated plainly.
               </h2>
               <dl className="mt-10 grid gap-px overflow-hidden rounded-md border bg-border sm:grid-cols-2 lg:grid-cols-4">
                 {NUMBERS.map((d) => (
                   <div key={d.n} className="bg-background p-5 sm:p-6">
-                    <dt className="text-display-m font-semibold leading-none tracking-tighter">{d.n}</dt>
+                    <dt className="text-display-m font-semibold leading-none tracking-tighter">
+                      <span className="block font-mono text-xs font-normal tracking-normal text-muted-foreground">{d.stage}</span>
+                      <span className="mt-3 block">{d.n}</span>
+                    </dt>
                     <dd className="mt-3 text-sm text-muted-foreground">{d.line}</dd>
                   </div>
                 ))}
@@ -218,14 +220,19 @@ export function Landing() {
           </section>
 
           <section aria-labelledby="start" className="border-b">
-            <Wrap className="py-20 sm:py-32">
-              <h2 id="start" className="max-w-4xl text-balance text-display-l font-semibold leading-none tracking-tighter">
-                Sign in and send your first message.
-              </h2>
-              <p className="mt-6 max-w-xl text-lede text-muted-foreground">Create an app, copy its key, and run the curl above.</p>
-              <div className="mt-8 flex flex-wrap gap-2">
-                <Docs href="/docs/quickstart/" />
-                <SignIn />
+            <Wrap className="grid gap-12 py-20 sm:py-32 lg:grid-cols-12 lg:items-end lg:gap-14">
+              <div className="lg:col-span-7">
+                <h2 id="start" className="max-w-4xl text-balance text-display-l font-semibold leading-none tracking-tighter">
+                  Sign in and send your first message.
+                </h2>
+                <p className="mt-6 max-w-xl text-lede text-muted-foreground">Create an app, copy its key, and run the curl above.</p>
+                <div className="mt-8 flex flex-wrap gap-2">
+                  <Docs href="/docs/quickstart/" hero />
+                  <SignIn hero />
+                </div>
+              </div>
+              <div className="lg:col-span-5">
+                <RailSteps ticked={STAGES.length} label="Message lifecycle, complete" />
               </div>
             </Wrap>
           </section>

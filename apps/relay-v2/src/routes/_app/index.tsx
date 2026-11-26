@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { lazy, Suspense } from "react";
+import geistLatin from "@fontsource-variable/geist/files/geist-latin-wght-normal.woff2?url";
 import { fetchOverview } from "../../console/overview.fns";
 
 // Overview and its shell pieces load only when it renders, never on the signed-out landing page.
@@ -26,7 +27,10 @@ const landingHead = () => ({
     { name: "twitter:description", content: DESCRIPTION },
     { name: "twitter:image", content: `${SITE}/landing/og.png` },
   ],
-  links: [{ rel: "canonical", href: SITE }],
+  links: [
+    { rel: "canonical", href: SITE },
+    { rel: "preload", as: "font", type: "font/woff2", href: geistLatin, crossOrigin: "anonymous" as const },
+  ],
   scripts: [
     {
       type: "application/ld+json",

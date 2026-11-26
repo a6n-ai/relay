@@ -5,7 +5,7 @@ const CURL = `curl https://relay.a6n.ai/api/v1/messages \\
   -H "Content-Type: application/json" \\
   -d '{
     "stream": "transactional",
-    "to": "ada@example.com",
+    "to": "ada@northwind.test",
     "subject": "Welcome aboard",
     "html": "<p>Your account is ready.</p>",
     "text": "Your account is ready."
@@ -19,7 +19,7 @@ const NODE = `const res = await fetch("https://relay.a6n.ai/api/v1/messages", {
   },
   body: JSON.stringify({
     stream: "transactional",
-    to: "ada@example.com",
+    to: "ada@northwind.test",
     subject: "Welcome aboard",
     html: "<p>Your account is ready.</p>",
     text: "Your account is ready.",
@@ -36,7 +36,7 @@ res = requests.post(
     headers={"Authorization": f"Bearer {os.environ['RELAY_API_KEY']}"},
     json={
         "stream": "transactional",
-        "to": "ada@example.com",
+        "to": "ada@northwind.test",
         "subject": "Welcome aboard",
         "html": "<p>Your account is ready.</p>",
         "text": "Your account is ready.",
@@ -53,7 +53,7 @@ const WORKER = `// wrangler.jsonc
 // worker.ts
 const sent = await env.RELAY.send(env.RELAY_API_KEY, {
   stream: "transactional",
-  to: "ada@example.com",
+  to: "ada@northwind.test",
   subject: "Welcome aboard",
   html: "<p>Your account is ready.</p>",
   text: "Your account is ready.",
@@ -96,7 +96,7 @@ export function DevTabs() {
             tabIndex={active === i ? 0 : -1}
             onClick={() => setActive(i)}
             className={`shrink-0 whitespace-nowrap border-b-2 px-4 py-2.5 text-sm font-medium outline-offset-[-2px] focus-visible:outline-2 focus-visible:outline-ring ${
-              active === i ? "border-foreground text-foreground hover:bg-card" : "border-transparent text-muted-foreground hover:border-border hover:bg-card hover:text-foreground"
+              active === i ? "border-foreground text-foreground hover:bg-background" : "border-transparent text-muted-foreground hover:border-foreground hover:bg-background hover:text-foreground"
             }`}
           >
             {t.label}

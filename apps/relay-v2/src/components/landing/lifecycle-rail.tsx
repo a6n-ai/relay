@@ -26,25 +26,34 @@ export function LifecycleRail() {
   return (
     <nav aria-label="Message lifecycle" className="ld-rail sticky top-0 z-20 border-b bg-background">
       <div className="mx-auto w-full max-w-6xl px-4 sm:px-8">
-        <ol className="flex h-12 items-center gap-3 sm:gap-5">
-          {STAGES.map((s, i) => (
-            <Fragment key={s.id}>
-              <li data-on={i < ticked || undefined} className="ld-stage">
-                <a href={`#${s.id}`} aria-current={i === ticked - 1 ? "step" : undefined} className="ld-link inline-flex min-h-6 items-center gap-2 font-mono text-xs">
-                  <span aria-hidden="true" className="ld-dot" />
-                  {s.label}
-                  <span className="ld-at hidden text-muted-foreground sm:inline">{s.at}</span>
-                </a>
-              </li>
-              {i < STAGES.length - 1 ? (
-                <li aria-hidden="true" data-on={i + 1 < ticked || undefined} className="ld-track">
-                  <span className="ld-fill" />
-                </li>
-              ) : null}
-            </Fragment>
-          ))}
-        </ol>
+        <RailSteps ticked={ticked} />
       </div>
     </nav>
+  );
+}
+
+/** The three stages on one hairline. Sample times, not a latency claim. */
+export function RailSteps({ ticked, label }: { ticked: number; label?: string }) {
+  return (
+    <ol aria-label={label} className="flex h-12 items-center gap-3 sm:gap-5">
+      {STAGES.map((s, i) => (
+        <Fragment key={s.id}>
+          <li data-on={i < ticked || undefined} className="ld-stage">
+            <a href={`#${s.id}`} aria-current={i === ticked - 1 ? "step" : undefined} className="ld-link inline-flex min-h-6 items-center gap-2 font-mono text-xs">
+              <span aria-hidden="true" className="ld-dot" />
+              {s.label}
+              <span aria-hidden="true" className="ld-at hidden text-muted-foreground sm:inline">
+                {s.at}
+              </span>
+            </a>
+          </li>
+          {i < STAGES.length - 1 ? (
+            <li aria-hidden="true" data-on={i + 1 < ticked || undefined} className="ld-track">
+              <span className="ld-fill" />
+            </li>
+          ) : null}
+        </Fragment>
+      ))}
+    </ol>
   );
 }

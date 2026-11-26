@@ -1,5 +1,4 @@
 import { Clock } from 'lucide-react'
-import { Collapse } from '../stageshow/motion/Collapse'
 import { Roll } from '../stageshow/motion/Roll'
 import { States } from '../stageshow/motion/States'
 import { Window } from '../stageshow/window'
@@ -18,8 +17,9 @@ const POSTER: S = { row: true, chip: true, ok: true }
 const OLD = [
   ['2 hours ago', 1, 200],
   ['yesterday', 1, 200],
-  ['last week', 1, 200],
 ] as const
+// Filler rows under the fade, drawn as placeholder bars.
+const GHOSTS = [0, 1, 2]
 
 async function script(a: Act<S>) {
   await a.wait(900)
@@ -54,45 +54,56 @@ export function WebhooksStage({ animate = true }: { animate?: boolean }) {
     >
       {(s, _r, layout) => {
         const wide = layout === 'wide'
-        const cols = wide ? '72px 78px 62px 66px minmax(0, 1fr)' : '78px 62px 66px minmax(0, 1fr)'
+        const cols = wide ? '88px 78px 62px 66px minmax(0, 1fr)' : '72px 70px 58px minmax(0, 1fr)'
         const st = { ['--cols' as string]: cols }
         return (
           <>
             <Window url="relay.a6n.ai/apps/webhooks" className="rlw-win">
               <div className="rl-app rlw-app">
                 <div className="rl-main">
-                  <Crumbs items={wide ? ['Storefront', 'Webhooks', 'hooks.example.com'] : ['Webhooks', 'hooks.example.com']} />
+                  <Crumbs items={wide ? ['Northwind', 'Webhooks', 'hooks.northwind.test'] : ['Webhooks', 'hooks.northwind.test']} />
                   <div className="rlw-url">
                     <b>Webhook</b>
-                    <span className="rl-mono">{wide ? 'https://hooks.example.com/relay' : 'hooks.example.com/relay'}</span>
+                    <span className="rl-mono">{wide ? 'https://hooks.northwind.test/relay' : 'hooks.northwind.test/relay'}</span>
                   </div>
                   <div className="rl-grid" data-head style={st}>
-                    {wide ? <span>When</span> : null}
+                    <span>When</span>
                     <span>Status</span>
                     <span className="rl-num">Attempts</span>
                     <span className="rl-num">Response</span>
-                    <span>Last error</span>
+                    {wide ? <span>Last error</span> : null}
                   </div>
-                  <Collapse open={s.row} reveal="drop">
-                    <div className="rl-grid" style={st} data-wash={s.ok || undefined}>
-                      {wide ? <span className="rl-mute">Just now</span> : null}
+                  <div className="rlw-rows">
+                    <div className="rl-grid rlw-new" style={st} data-show={s.row || undefined} data-wash={s.ok || undefined}>
+                      <span className="rl-mute">Just now</span>
                       <span className="rl-st">
                         <States value={s.ok ? 'sent' : 'pending'} align="start" states={{ pending: <Status s="pending" />, sent: <Status s="sent" /> }} />
                       </span>
                       <span className="rl-num"><Roll>{s.ok ? '2' : '1'}</Roll></span>
                       <span className="rl-num"><Roll>{s.ok ? '200' : '503'}</Roll></span>
-                      <span className="rl-mute"><States value={s.ok ? 'ok' : 'err'} align="start" states={{ err: 'HTTP 503', ok: '—' }} /></span>
+                      {wide ? <span className="rl-mute"><States value={s.ok ? 'ok' : 'err'} align="start" states={{ err: 'HTTP 503', ok: '—' }} /></span> : null}
                     </div>
-                  </Collapse>
-                  {OLD.slice(0, wide ? 2 : 3).map(([when, n, code]) => (
-                    <div key={when} className="rl-grid" style={st}>
-                      {wide ? <span className="rl-mute">{when}</span> : null}
-                      <span className="rl-st"><Status s="sent" /></span>
-                      <span className="rl-num">{n}</span>
-                      <span className="rl-num">{code}</span>
-                      <span className="rl-mute">—</span>
+                    <div className="rlw-old" data-shifted={s.row || undefined}>
+                      {OLD.map(([when, n, code]) => (
+                        <div key={when} className="rl-grid" style={st}>
+                          <span className="rl-mute">{when}</span>
+                          <span className="rl-st"><Status s="sent" /></span>
+                          <span className="rl-num">{n}</span>
+                          <span className="rl-num">{code}</span>
+                          {wide ? <span className="rl-mute">—</span> : null}
+                        </div>
+                      ))}
+                      {GHOSTS.map((g) => (
+                        <div key={g} className="rl-grid" style={st} data-ghost aria-hidden="true">
+                          <span />
+                          <span />
+                          <span />
+                          <span />
+                          {wide ? <span /> : null}
+                        </div>
+                      ))}
                     </div>
-                  ))}
+                  </div>
                 </div>
               </div>
             </Window>

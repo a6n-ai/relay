@@ -14,7 +14,7 @@ export const CMD = `curl -X POST \\
   relay.a6n.ai/api/v1/messages \\
   -H "Authorization: Bearer $KEY" \\
   -d '{"stream":"transactional",
-       "to":"ada@example.com", …}'`
+       "to":"ada@northwind.test", …}'`
 
 export type S = { term: boolean; typed: string; resp: boolean; row: boolean; stat: 'queued' | 'sent'; sel: boolean; tl: number }
 
@@ -23,10 +23,10 @@ const POSTER: S = { term: true, typed: CMD, resp: true, row: true, stat: 'sent',
 const initial: S = POSTER
 
 const ROWS = [
-  ['2 min ago', 'grace@example.com', 'Your receipt'],
-  ['14 min ago', 'linus@example.com', 'Password reset'],
-  ['1 hour ago', 'marie@example.com', 'Order shipped'],
-  ['3 hours ago', 'alan@example.com', 'Invoice ready'],
+  ['2 min ago', 'grace@northwind.test', 'Your receipt'],
+  ['14 min ago', 'linus@northwind.test', 'Password reset'],
+  ['1 hour ago', 'marie@northwind.test', 'Order shipped'],
+  ['3 hours ago', 'alan@northwind.test', 'Invoice ready'],
 ] as const
 
 export const REST = { wide: { x: 560, y: 120 }, compact: { x: 300, y: 80 } }
@@ -71,7 +71,7 @@ export function HeroStage({ script }: { script?: Script }) {
                   <Collapse open={s.row} reveal="drop">
                     <div className="rl-grid" data-sel={s.sel || undefined} data-target="row-new">
                       {layout === 'wide' ? <span className="rl-mute">Just now</span> : null}
-                      <span>ada@example.com</span>
+                      <span>ada@northwind.test</span>
                       {layout === 'wide' ? <span className="rl-name">Welcome aboard</span> : null}
                       <span className="rl-st"><States value={s.stat} align="start" states={{ queued: <Status s="queued" />, sent: <Status s="sent" /> }} /></span>
                     </div>
@@ -88,7 +88,7 @@ export function HeroStage({ script }: { script?: Script }) {
               </div>
             </Window>
 
-            <Window chrome="terminal" title="acme-api" className="rl-term rlh-term" data-show={term || undefined}>
+            <Window chrome="terminal" title="northwind-api" className="rl-term rlh-term" data-show={term || undefined}>
               <div data-typing>
                 {typedLines.map((l, i) => (
                   <div key={i}>{i === 0 ? '$ ' : ''}{l || ' '}</div>

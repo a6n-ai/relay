@@ -35,7 +35,7 @@
   }
 }
 
-/* Text links: the underline draws in from the left; a trailing arrow nudges. Under 200 ms, none under reduced motion. */
+/* Text links: the underline and the arrow nudge switch on at once, with no transition. */
 .ld-link {
   position: relative;
 }
@@ -58,15 +58,36 @@
 .ld-link:hover .ld-arrow {
   transform: translateX(2px);
 }
-@media (prefers-reduced-motion: no-preference) {
-  .ld-link::after {
-    transition: transform 180ms var(--ease-soft);
-  }
-  .ld-arrow {
-    transition: transform 180ms var(--ease-soft);
-  }
+/* Buttons: hover is instant (DESIGN.md). Docs floods with the foreground, Sign in inverts to an outline. */
+.ld-docs,
+.ld-signin {
+  transition: none;
 }
-
+.ld-docs:hover {
+  background: var(--foreground);
+  border-color: var(--foreground);
+  color: var(--background);
+}
+.ld-signin {
+  border-color: transparent;
+}
+.ld-signin:hover {
+  background: var(--background);
+  border-color: var(--foreground);
+  color: var(--foreground);
+}
+/* A fallback face metric-matched to Geist, so the h1 does not re-wrap when the font arrives. */
+@font-face {
+  font-family: "Geist Fallback";
+  src: local("Arial");
+  size-adjust: 104%;
+  ascent-override: 92%;
+  descent-override: 24%;
+  line-gap-override: 0%;
+}
+#hero {
+  font-family: "Geist Variable", "Geist Fallback", system-ui, sans-serif;
+}
 /* Lifecycle rail: Queued, Sent and Delivery tick as their chapters arrive. Reduced motion shows all three ticked, with no transition. */
 .ld-dot {
   width: 10px;
@@ -101,9 +122,8 @@
   transform: scaleX(1);
 }
 @media (prefers-reduced-motion: no-preference) {
-  .ld-dot,
-  .ld-stage {
-    transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease;
+  .ld-dot {
+    transition: background-color 180ms ease, border-color 180ms ease;
   }
   .ld-fill {
     transition: transform 300ms var(--ease-soft);
@@ -136,11 +156,6 @@
   border: 1px solid var(--border);
   background: var(--background);
   color: var(--muted-foreground);
-}
-.ld-attempt[data-first] .ld-attempt-dot {
-  background: var(--foreground);
-  border-color: var(--foreground);
-  color: var(--background);
 }
 
 /* Hairline plus marks where the frame lines meet a section edge. */
@@ -176,7 +191,16 @@
 .ld-cq {
   container-type: inline-size;
 }
+.ld-scene > div {
+  position: absolute;
+  inset: 0;
+}
+.ld-scene .ss-fit {
+  height: 100% !important;
+  max-width: none !important;
+}
 .ld-scene {
+  position: relative;
   width: 100%;
   aspect-ratio: 358 / 340;
 }
@@ -188,8 +212,12 @@
   .ld-shape-hero:not([data-ready]) {
     opacity: 0;
   }
-  .ld-shape-hero {
-    transition: opacity 0.2s ease;
+}
+@media (prefers-reduced-motion: no-preference) {
+  @container (max-width: 559px) {
+    .ld-shape-hero {
+      transition: opacity 0.2s ease;
+    }
   }
 }
 .ld-shape-card {

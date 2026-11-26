@@ -1,7 +1,6 @@
 import { flushSync } from 'react-dom'
 import type { Dispatch, SetStateAction } from 'react'
 import type { CursorKind } from './cursor'
-import { capsOf, type Keys } from './keys'
 import type { Layout } from './looks'
 import { EMPTY, drawnScale, nameOf, layoutRectOf, rectOf, thumb, type Point, type Rect, type Target } from './measure'
 import { bezier } from './ease'
@@ -66,12 +65,6 @@ export interface Act<S> {
    */
   snap(patch: Partial<S> | ((s: S) => Partial<S>), scope?: string): Promise<void>
   /**
-   * Show a keystroke as keycaps: 'cmd+k', 'enter', 'shift+cmd+p'. Resolves
-   * as the key comes back up, the moment an app would react; the caps fade
-   * on their own.
-   */
-  key(combo: string): Promise<void>
-  /**
    * Start fn for each item, `gap` ms apart (60 by default), and wait for them all. Staggered
    * starts read as organic where a single block reads as mechanical.
    */
@@ -116,7 +109,6 @@ export interface ActEnv<S> {
   pos: Ref<Point>
   hovered: Ref<Element | null>
   kindRef: Ref<CursorKind>
-  keysRef: Ref<Keys>
   dragging: Ref<boolean>
   autoUsed: Ref<boolean>
   autoRef: Ref<((p: Point) => void) | null>
@@ -130,14 +122,12 @@ export interface ActEnv<S> {
   ripple: (at: Point) => void
   setState: Dispatch<SetStateAction<S>>
   setKind: Dispatch<SetStateAction<CursorKind>>
-  setKeys: Dispatch<SetStateAction<Keys>>
-  setLastKeys: Dispatch<SetStateAction<Keys | null>>
 }
 
 // Each run gets its own act, bound to its own signal, so a canceled run can
 // never pick up the next run's signal and keep going.
 export function createAct<S>(signal: AbortSignal, env: ActEnv<S>): Act<S> {
-  const { rootRef, cursorRef, pos, hovered, kindRef, keysRef, dragging, autoUsed, autoRef, scaleRef, speed, layout, cursor, resolve, place, remeasure, ripple, setState, setKind, setKeys, setLastKeys } = env
+  const { rootRef, cursorRef, pos, hovered, kindRef, dragging, autoUsed, autoRef, scaleRef, speed, layout, cursor, resolve, place, remeasure, ripple, setState, setKind } = env
   const entering = bezier('enter')
   const check = () => {
     if (signal.aborted) throw new Stopped()
@@ -222,7 +212,7 @@ export function createAct<S>(signal: AbortSignal, env: ActEnv<S>): Act<S> {
     const stack = document.elementsFromPoint(box.left + p.x * s, box.top + p.y * s)
     root.removeAttribute('data-hit')
     const top = stack.find((el) => {
-      if (!root.contains(el) || el.closest('.ss-cursor, .ss-keys, .ss-ripple')) return false
+      if (!root.contains(el) || el.closest('.ss-cursor, .ss-ripple')) return false
       // A layer that turned pointer-events off counts only where it is a
       // control or a target; a bare overlay (connectors, a flight layer)
       // must not cover what is under it
@@ -264,8 +254,6 @@ export function createAct<S>(signal: AbortSignal, env: ActEnv<S>): Act<S> {
     next.forEach((n) => n.setAttribute('data-hover', ''))
     hovered.current = el
   }
-  // Stage keeps the last key row through resets; a new Act must not reuse its identity.
-  let keyId = keysRef.current.id
   let carets = 0
   const targetEl = (t: Target) => {
     const name = nameOf(t)
@@ -461,30 +449,6 @@ export function createAct<S>(signal: AbortSignal, env: ActEnv<S>): Act<S> {
       } finally {
         release()
       }
-    },
-    async key(combo) {
-      check()
-      const caps = capsOf(combo)
-      const id = ++keyId
-      const k = keysRef.current
-      setLastKeys(k.caps.length ? { ...k, show: false, down: false } : null)
-      setKeys({ id, caps, show: false, down: false })
-      await frame()
-      await frame()
-      check()
-      setKeys({ id, caps, show: true, down: false })
-      await wait(180)
-      check()
-      setKeys({ id, caps, show: true, down: true })
-      await wait(140)
-      check()
-      setKeys({ id, caps, show: true, down: false })
-      // The caps linger and fade without holding up the script.
-      void wait(600).then(() => {
-        if (keyId === id && !signal.aborted) setKeys({ id, caps, show: false, down: false })
-      }, (error) => {
-        if (!(error instanceof Stopped)) console.error('[stageshow] script error', error)
-      })
     },
     async stagger(items, fn, gap = 60) {
       await Promise.all(

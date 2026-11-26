@@ -1,11 +1,6 @@
-/* Window chrome (window.tsx): browser, app and sidebar app, plus the Bar and
-   Text placeholders. */
+/* Window chrome (window.tsx): browser and terminal frames. */
 
 @layer stageshow {
-  /* Drawn: lights and fields are outlines, not fills */
-
-  /* Traffic lights go gray too */
-
   :where(.ss-window) {
     position: relative;
     /* Where the lights sit: their center's distance from the window's top
@@ -53,11 +48,11 @@
     box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.12);
   }
 
-  .ss-window__dot:nth-child(1) { background: #ff5f57; }
+  .ss-window__dot:nth-child(1) { background: var(--ss-ink-3); }
 
-  .ss-window__dot:nth-child(2) { background: #febc2e; }
+  .ss-window__dot:nth-child(2) { background: var(--ss-ink-3); }
 
-  .ss-window__dot:nth-child(3) { background: #28c840; }
+  .ss-window__dot:nth-child(3) { background: var(--ss-ink-3); }
 
   .ss-window__url {
     flex: 1;
@@ -76,33 +71,11 @@
     text-overflow: ellipsis;
   }
 
-  /* urlShape="pill": the round address field of current Safari and Chrome */
-
   .ss-window__body {
     position: relative;
     flex: 1;
     min-height: 0;
   }
-
-  /* lights="grey": quiet lights for any chrome */
-
-  /* lights="white": translucent white lights remain distinct over a strong
-     color field, where gray lights can lose contrast. */
-
-  /* chrome="glass": a frosted frame that takes
-     the color behind it, no bar fill or rule, the address centered on the
-     window, and the page a white card inset in the frame. Nested radii: the
-     frame's 12 is the card's 6 plus the 6 inset */
-
-  /* The page is white, not the canvas tone: the step from frosted frame to
-     clean white page is what draws the card */
-
-  /* chrome="card": one white card. Pale dots and a wide pale address bar,
-     no bar fill and no rule, so the page runs straight up into the chrome;
-     the long, soft shadow lifts it */
-
-  /* chrome="hairline": a short bar over a 1px rule, tiny dots, the address
-     as bare centered text */
 
   /* chrome="terminal": one dark surface. The bar is the same color as the
      body with no rule, the title dim and centered on the window; a hairline
@@ -125,7 +98,7 @@
     position: absolute;
     left: 50%;
     translate: -50% 0;
-    color: rgba(255, 255, 255, 0.42);
+    color: rgba(255, 255, 255, 0.72);
     font-size: 11px;
     font-weight: 500;
     white-space: nowrap;
@@ -158,39 +131,4 @@
   .ss-term .ok { color: var(--ss-term-ok, #6ee7a8); }
   .ss-term .err { color: var(--ss-term-err, #f87171); }
   .ss-term .dim { color: var(--ss-term-dim, #63636b); }
-
-  /* With toolbar controls the bar becomes a unified toolbar, as in Notes or
-     Finder: the title goes left beside the lights and the controls go right. */
-
-  /* Browser with tabs: the strip holds the lights at the same 38px height; the
-     active tab is the toolbar's color and joins it, the strip sits a step back. */
-
-  /* Sidebar app: the sidebar runs the full height, the lights sit in its top
-     38px at the same spot as every other chrome, and the content column has
-     its own bar with a left-aligned title. */
-
-  .ss-bar {
-    display: block;
-    flex-shrink: 0;
-  }
-
-  /* A line gives way in a row too narrow for it, never past its container
-     (Bar shrink, on by default for lines). Where it fits, nothing changes */
-  .ss-bar[data-shrink] {
-    flex-shrink: 1;
-    min-width: 0;
-    max-width: 100%;
-  }
-
-  /* lightsSize="large": macOS 26's 12pt lights, 8pt apart */
-
-  /* barSize="tall": a 64px icon-and-label toolbar with no fill or rule.
-     Controls are 32px at the top, so they center 26px down, with their
-     labels under them; the lights and the title sit level with them */
-
-  /* The address field is shorter than a control: center it on their row */
-
-  /* sidebarStyle="floating": macOS 26's sidebar, a rounded panel inset on
-     the top, left and bottom with a faint edge and shadow. Nested radii: the
-     window's 24 is the panel's 16 plus the 8 inset */
 }

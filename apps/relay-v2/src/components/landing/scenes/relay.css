@@ -200,15 +200,6 @@
   --ss-accent-2: var(--ss-accent);
 }
 
-.rl .ss-stage[data-layout='compact'] .rl-head,
-.rl .ss-stage[data-layout='compact'] .rl-grid,
-.rl .ss-stage[data-layout='compact'] .rlw-url {
-  padding-right: 46px;
-}
-
 .rl .ss-window__url {
   color: var(--ss-text);
-}
-.rl .ss-term__title {
-  color: var(--chart-3);
 }

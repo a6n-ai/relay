@@ -9,6 +9,37 @@
 .rlw .rlw-app {
   grid-template-columns: minmax(0, 1fr);
   min-height: 360px;
+  /* The window runs off the stage foot: rows fade out where the stage ends. */
+  mask-image: linear-gradient(to bottom, #000 188px, transparent 278px);
+}
+/* The new row fades in at the top while the rows below slide down by one row: transform and opacity only. */
+.rlw .rlw-rows {
+  position: relative;
+}
+.rlw .rlw-new {
+  position: absolute;
+  inset: 0 0 auto 0;
+  opacity: 0;
+  transition: opacity 0.3s ease-out;
+}
+.rlw .rlw-new[data-show] {
+  opacity: 1;
+}
+.rlw .rlw-old {
+  transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+/* Rows past the first two are filler under the fade: placeholder bars, not words. */
+.rlw .rlw-old [data-ghost] > * {
+  background: var(--ss-ink-2);
+  height: 8px;
+  align-self: center;
+  border-radius: 4px;
+  width: 60%;
+}
+
+.rlw .rlw-old[data-shifted] {
+  transform: translateY(40px);
 }
 .rlw .rlw-url {
   display: grid;
@@ -41,13 +72,18 @@
 .rlw .ss-stage[data-layout='compact'] .rlw-win {
   top: 16px;
   left: 16px;
-  width: 372px;
+  width: 326px;
+  height: 440px;
+}
+.rlw .ss-stage[data-layout='compact'] .rlw-app {
+  min-height: 0;
+  mask-image: linear-gradient(to bottom, #000 170px, transparent 286px);
 }
 .rlw .ss-stage[data-layout='compact'] .rlw-chip {
-  top: 114px;
+  top: 100px;
   left: 226px;
   gap: 6px;
   padding: 0 10px;
-  height: 32px;
+  height: 28px;
   font-size: 12px;
 }

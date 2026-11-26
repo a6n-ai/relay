@@ -2,7 +2,6 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, typ
 import './stage.css'
 import { checkSeam, createAct, Stopped, type Script } from './act'
 import { Cursor, ripple as spawnRipple, type CursorKind, type CursorStyle } from './cursor'
-import { Keycaps, type Keys, type KeysAt } from './keys'
 import { LookContext, type Fidelity, type Layout, type Palette, type Theme } from './looks'
 import { EMPTY, nameOf, rectOf, sameRects, stageSpace, targetRectOf, thumb, type Point, type Rect, type Target } from './measure'
 import { StillContext, useReducedMotion } from './reduced-motion'
@@ -10,7 +9,7 @@ import { clock } from './clock'
 import { clamp, easeInOutCubic, isDev, warn } from './util'
 
 // The stage: fits a design-size scene into its container, runs the script
-// while it is on screen, and draws the cursor and keycaps over the scene.
+// while it is on screen, and draws the cursor over the scene.
 // The script API is act.ts, the cursor cursor.tsx, measuring measure.ts and
 // the look context looks.ts.
 
@@ -52,8 +51,6 @@ export interface StageProps<S> {
    * shrunk.
    */
   compact?: { below: number; width: number; height: number }
-  /** Where keycaps from act.key appear. */
-  keys?: KeysAt | { wide: KeysAt; compact: KeysAt }
   /** Targets shown hovered in a still, since no script is there to hover them. */
   hover?: string[]
   theme?: Theme
@@ -98,7 +95,6 @@ export function Stage<S extends object>({
   hover,
   play: playProp = 'loop',
   compact,
-  keys: keysAt = 'bottom',
   palette = 'accent',
   greys,
   fidelity = 'standard',
@@ -153,10 +149,6 @@ export function Stage<S extends object>({
   }
   const kindRef = useRef(kind)
   kindRef.current = kind
-  const [keys, setKeys] = useState<Keys>({ id: 0, caps: [], show: false, down: false })
-  const [lastKeys, setLastKeys] = useState<Keys | null>(null)
-  const keysRef = useRef(keys)
-  keysRef.current = keys
   const pos = useRef<Point>({ x: 0, y: 0 })
   // The cursor's kind follows what's under it after every commit too, so a
   // hand doesn't linger when the link it was over slides away. Not mid-drag:
@@ -349,8 +341,6 @@ export function Stage<S extends object>({
     dragging.current = false
     setState(initial)
     setKind(cursor?.kind ?? 'pointer')
-    setKeys((k) => ({ ...k, show: false, down: false }))
-    setLastKeys(null)
     rootRef.current?.querySelectorAll('[data-hover],[data-pressed]').forEach((el) => {
       el.removeAttribute('data-hover')
       el.removeAttribute('data-pressed')
@@ -400,8 +390,8 @@ export function Stage<S extends object>({
   const makeAct = useMemo(
     () => (signal: AbortSignal) =>
       createAct<S>(signal, {
-        rootRef, cursorRef, pos, hovered, kindRef, keysRef, dragging, autoUsed, autoRef, scaleRef,
-        speed, layout, cursor, resolve, place, remeasure, ripple, setState, setKind, setKeys, setLastKeys,
+        rootRef, cursorRef, pos, hovered, kindRef, dragging, autoUsed, autoRef, scaleRef,
+        speed, layout, cursor, resolve, place, remeasure, ripple, setState, setKind,
       }),
     [resolve, place, speed, layout], // eslint-disable-line react-hooks/exhaustive-deps
   )
@@ -604,7 +594,6 @@ export function Stage<S extends object>({
         <StillContext.Provider value={still}>
           <LookContext.Provider value={look}>{children(state, rectFor, layout)}</LookContext.Provider>
         </StillContext.Provider>
-        {script && <Keycaps rows={[lastKeys, keys]} at={typeof keysAt === 'string' ? keysAt : keysAt[layout]} />}
         {showCursor && <Cursor cursorRef={cursorRef} style={cursor!.style} kind={kind} />}
       </div>
     </div>

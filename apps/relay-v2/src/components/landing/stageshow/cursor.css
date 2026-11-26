@@ -43,63 +43,9 @@
     opacity: 1;
   }
 
-  /* Into and out of a resize cursor, the arrow and the triangles cross over
-     rather than pop: neither shrinks to nothing, and the ease is softer */
-  .ss-cursor__glyph[data-glyph^="resize"] {
-    transform: scale(calc(var(--ss-cursor-size, 1) * 0.5));
-  }
-
-  .ss-cursor[data-kind^="resize"] .ss-cursor__glyph:not([data-active="true"]) {
-    transform: scale(calc(var(--ss-cursor-size, 1) * 0.6));
-  }
-
-  .ss-cursor[data-kind^="resize"] .ss-cursor__glyph,
-  .ss-cursor__glyph[data-glyph^="resize"] {
-    transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s ease;
-  }
-
-  .ss-cursor__glyph[data-glyph^="resize"][data-active="true"] {
-    transform: scale(var(--ss-cursor-size, 1));
-  }
-
-  /* What it was leaves quickly, so no ghost of it trails the new shape */
-  .ss-cursor[data-kind^="resize"] .ss-cursor__glyph:not([data-active="true"]),
-  .ss-cursor:not([data-kind^="resize"]) .ss-cursor__glyph[data-glyph^="resize"] {
-    transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.1s ease;
-  }
-
-  /* The open and closed hand are one hand: between them it closes and opens in
-     place, and the press dip shows the grip, never one hand fading out as the
-     other grows in */
-  .ss-cursor:is([data-kind="open"], [data-kind="grab"]) .ss-cursor__glyph:is([data-glyph="open"], [data-glyph="grab"]) {
-    transform: scale(var(--ss-cursor-size, 1));
-    transition: opacity 0.08s linear;
-  }
-
-  /* The I-beam marks a text line, so it stays near the text's size */
-
-  /* Gestural: a soft dot, no cursor kinds. Shrinks on press, fills while held. */
-
-  /* Over text the glass circle narrows into an I-beam bar, as the iPad pointer does */
-
-  /* Touch: nothing between taps. A press lands a soft dot that fades as the
-     finger lifts; a drag keeps it while held (the kind is grab then). */
-
-  /* The trail a finger leaves while it swipes: one soft streak from where
-     it was a few frames ago to where it is, fading toward its tail. The
-     script sizes and turns it each frame; it fades once the finger lifts */
-
   .ss-cursor__glyph svg {
     display: block;
     filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
-  }
-
-  /* Arrow cursor: one solid, rounded arrowhead */
-
-  /* Line cursors (I-beam, crosshair) invert on a dark surface, as macOS's do */
-  .ss-stage[data-theme="dark"] .ss-cursor {
-    --ss-cursor-line: #fff;
-    --ss-cursor-edge: rgba(0, 0, 0, 0.75);
   }
 
   /* Ripple clicks: a ring spreads from the point and fades */

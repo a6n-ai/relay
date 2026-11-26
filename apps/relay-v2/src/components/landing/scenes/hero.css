@@ -66,18 +66,18 @@
 .rlh .ss-stage[data-layout='compact'] .rlh-win {
   top: 16px;
   left: 16px;
-  width: 372px;
+  width: 326px;
   height: 440px;
 }
 .rlh .ss-stage[data-layout='compact'] .rlh-app {
-  --cols: minmax(0, 1fr) 76px;
+  --cols: minmax(0, 1fr) 60px;
   --side: 0px;
   grid-template-columns: minmax(0, 1fr);
 }
 .rlh .ss-stage[data-layout='compact'] .rlh-app .rl-grid,
 .rlh .ss-stage[data-layout='compact'] .rlh-app .rl-head {
   padding-left: 12px;
-  padding-right: 40px;
+  padding-right: 12px;
 }
 .rlh .ss-stage[data-layout='compact'] .rlh-term {
   top: 104px;
