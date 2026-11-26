@@ -2,6 +2,7 @@ import { env } from "cloudflare:workers";
 import { ZodError } from "zod";
 import { resolveBearer, withinRateLimit, type KeyScope } from "./api-keys";
 import { ApiError } from "./api-error";
+import { logFailure } from "./log";
 import { SEND_REFUSAL_STATUS, TEMPLATE_ERROR_STATUS, TemplateError, sendRefusal } from "./messages";
 import type { Env } from "../env";
 
@@ -20,13 +21,22 @@ export function apiRoute(handler: (ctx: ApiCtx) => Promise<Response>) {
     try {
       return await handler({ env, scope, request, params });
     } catch (err) {
-      if (err instanceof ZodError) return json({ error: "invalid input" }, 400);
-      if (err instanceof ApiError) return json({ error: err.message }, err.status);
+      const where = `api ${request.method} ${new URL(request.url).pathname} key=${scope.keyId}`;
+      const fail = (error: string, status: number, cause: unknown = err) => {
+        logFailure(where, status, cause);
+        return json({ error }, status);
+      };
+      if (err instanceof ZodError) {
+        // Field paths and issue codes only: the submitted values stay out of the log.
+        return fail("invalid input", 400, `invalid input at ${err.issues.map((i) => `${i.path.join(".") || "(root)"}:${i.code}`).join(", ")}`);
+      }
+      if (err instanceof ApiError) return fail(err.message, err.status);
       if (err instanceof TemplateError && Object.hasOwn(TEMPLATE_ERROR_STATUS, err.message)) {
-        return json({ error: err.message }, TEMPLATE_ERROR_STATUS[err.message as keyof typeof TEMPLATE_ERROR_STATUS]);
+        return fail(err.message, TEMPLATE_ERROR_STATUS[err.message as keyof typeof TEMPLATE_ERROR_STATUS]);
       }
       const refusal = sendRefusal(err);
-      if (refusal) return json({ error: refusal }, SEND_REFUSAL_STATUS[refusal]);
+      if (refusal) return fail(refusal, SEND_REFUSAL_STATUS[refusal]);
+      logFailure(where, 500, err);
       throw err;
     }
   };

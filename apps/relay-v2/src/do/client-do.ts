@@ -43,6 +43,7 @@ import {
 } from "./console-reads";
 import { storeInbound, writeInboundFailure, type InboundDeps, type InboundResult } from "./inbound";
 import * as schema from "./client-schema";
+import { describeError } from "../core/log";
 import {
   bumpCampaign,
   type CampaignStats,
@@ -868,7 +869,7 @@ export class ClientDO extends DurableObject<Env> {
     try {
       await this.env.WEBHOOKS.send({ workspaceId, deliveryId });
     } catch (err) {
-      console.error("ClientDO: webhook retry enqueue failed", deliveryId, err instanceof Error ? err.name : "unknown");
+      console.error("ClientDO: webhook retry enqueue failed", deliveryId, describeError(err));
     }
     return outcome;
   }
@@ -1223,7 +1224,7 @@ export class ClientDO extends DurableObject<Env> {
         delta = this.ctx.storage.transactionSync(() => this.applySesEvent(workspaceId, job));
       } catch (err) {
         // Only this event rolls back; the rest of the group still commits.
-        console.error("ClientDO: ses event failed, retrying", job.snsMessageId, err instanceof Error ? err.name : "unknown");
+        console.error("ClientDO: ses event failed, retrying", job.snsMessageId, describeError(err));
         result.failed.push(index);
         continue;
       }
@@ -1452,7 +1453,7 @@ export class ClientDO extends DurableObject<Env> {
     const now = Date.now();
     // A failed automation pass must not stop the sweep. It retries on the next alarm.
     const outcome = await this.runDueAutomations(now).catch((err: unknown) => {
-      console.error("ClientDO: automation pass failed", err instanceof Error ? err.name : "unknown");
+      console.error("ClientDO: automation pass failed", describeError(err));
       return { sent: 0, skipped: 0, more: false, blocked: true };
     });
     await this.sweepQueued(now);

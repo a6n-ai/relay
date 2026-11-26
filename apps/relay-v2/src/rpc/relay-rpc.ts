@@ -2,6 +2,7 @@ import { WorkerEntrypoint } from "cloudflare:workers";
 import { z } from "zod";
 import { resolveApiKey, withinRateLimit, type KeyScope } from "../core/api-keys";
 import { ApiError } from "../core/api-error";
+import { logFailure } from "../core/log";
 import { deleteAudienceHookForScope, getAudienceHookForScope, setAudienceHookForScope } from "../core/audience-hook";
 import {
   campaignCreateInput,
@@ -69,6 +70,7 @@ async function withScope<T>(env: Env, apiKey: string, call: (scope: KeyScope) =>
   try {
     return await call(scope);
   } catch (err) {
+    logFailure(`rpc key=${scope.keyId}`, err instanceof ApiError ? err.status : 500, err);
     if (err instanceof ApiError) throw new Error(err.message);
     throw err;
   }

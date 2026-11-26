@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { env } from "cloudflare:workers";
 import { ConsoleError, requireActor } from "../console/actor";
 import { exportMembersFor } from "../console/lists";
+import { describeError } from "../core/log";
 
 export const Route = createFileRoute("/lists/$listId/export")({
   server: {
@@ -13,7 +14,7 @@ export const Route = createFileRoute("/lists/$listId/export")({
           return await exportMembersFor(env, actor, params.listId);
         } catch (err) {
           if (err instanceof ConsoleError) return Response.json({ error: err.message }, { status: err.status });
-          console.error("console export failed", err instanceof Error ? err.name : "unknown");
+          console.error("console export failed", describeError(err));
           return Response.json({ error: "internal error" }, { status: 500 });
         }
       },

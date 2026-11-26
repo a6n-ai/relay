@@ -1,6 +1,7 @@
 import type { Env, InboundJob } from "../env";
 import { clientFor } from "./messages";
 import { bumpUsage, utcDay } from "./usage";
+import { describeError } from "./log";
 
 export const MAX_INBOUND_ATTEMPTS = 5;
 
@@ -23,15 +24,15 @@ export async function handleInboundBatch(batch: MessageBatch<InboundJob>, env: E
         return message.ack();
       } catch (err) {
         if (message.attempts < MAX_INBOUND_ATTEMPTS) {
-          console.error("relay-inbound-mail:job failed, retrying", message.id, workspaceId, errorName(err));
+          console.error("relay-inbound-mail:job failed, retrying", message.id, workspaceId, describeError(err));
           return message.retry({ delaySeconds: 30 * message.attempts });
         }
         try {
           await clientFor(env, workspaceId).recordInboundFailure(workspaceId, job, "Processing failed");
-          console.error("relay-inbound-mail:job failed at last attempt, recorded", message.id, workspaceId, errorName(err));
+          console.error("relay-inbound-mail:job failed at last attempt, recorded", message.id, workspaceId, describeError(err));
           return message.ack();
         } catch (recordErr) {
-          console.error("relay-inbound-mail:failure record failed, retrying", message.id, workspaceId, errorName(recordErr));
+          console.error("relay-inbound-mail:failure record failed, retrying", message.id, workspaceId, describeError(recordErr));
           return message.retry({ delaySeconds: 30 * message.attempts });
         }
       }

@@ -7,6 +7,7 @@ import type { Env, InboundJob } from "../env";
 import { newId } from "../lib/ids";
 import * as schema from "./client-schema";
 import { listWebhookRows, toWebhookView } from "./webhooks";
+import { describeError } from "../core/log";
 
 export type InboundResult =
   | { outcome: "inserted"; messageId: string; deliveries: number }
@@ -74,7 +75,7 @@ async function putObject(env: Env, written: string[], key: string, body: string 
 async function removeObjects(env: Env, messageId: string, keys: string[]): Promise<void> {
   await Promise.all(
     keys.map((key) =>
-      env.MAIL.delete(key).catch((err: unknown) => console.error("inbound: failed to delete object", messageId, errorName(err))),
+      env.MAIL.delete(key).catch((err: unknown) => console.error("inbound: failed to delete object", messageId, describeError(err))),
     ),
   );
 }
@@ -270,7 +271,7 @@ export async function storeInbound(deps: InboundDeps, workspaceId: string, job: 
       await env.WEBHOOKS.sendBatch(stored.deliveryIds.map((deliveryId) => ({ body: { workspaceId, deliveryId } })));
     } catch (err) {
       // The rows stay pending; the ClientDO alarm sweep re-enqueues them.
-      console.error("inbound: webhook enqueue failed", stored.messageId, stored.deliveryIds.join(","), errorName(err));
+      console.error("inbound: webhook enqueue failed", stored.messageId, stored.deliveryIds.join(","), describeError(err));
     }
   }
   return { outcome: "inserted", messageId: stored.messageId, deliveries: stored.deliveryIds.length };

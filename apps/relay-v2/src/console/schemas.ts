@@ -1,5 +1,6 @@
 import { setResponseStatus } from "@tanstack/react-start/server";
 import { z } from "zod";
+import { recordFailure } from "../core/log";
 
 // Only .validator() calls use these. Top-level zod consts in .fns.ts survive the client compile and pull zod into the entry chunk.
 // A failed parse is a 400 with a fixed message; the issue JSON would otherwise reach the form as a raw 500.
@@ -9,7 +10,9 @@ export const validate =
     const parsed = schema.safeParse(raw);
     if (!parsed.success) {
       setResponseStatus(400);
-      throw new Error("invalid input");
+      // Field paths and issue codes only: the submitted values stay out of the log.
+      const where = parsed.error.issues.map((i) => `${i.path.join(".") || "(root)"}:${i.code}`).join(", ");
+      throw recordFailure(new Error("invalid input"), 400, new Error(`invalid input at ${where}`));
     }
     return parsed.data;
   };

@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { env } from "cloudflare:workers";
 import { ConsoleError, requireActor } from "../../../console/actor";
 import { messageFileFor } from "../../../console/messages";
+import { describeError } from "../../../core/log";
 
 export const Route = createFileRoute("/api/console/messages/$id/$part")({
   server: {
@@ -14,7 +15,7 @@ export const Route = createFileRoute("/api/console/messages/$id/$part")({
           return await messageFileFor(env, actor, params.id, params.part, view);
         } catch (err) {
           if (err instanceof ConsoleError) return Response.json({ error: err.message }, { status: err.status });
-          console.error("console download failed", params.id, err instanceof Error ? err.name : "unknown");
+          console.error("console download failed", params.id, describeError(err));
           return Response.json({ error: "internal error" }, { status: 500 });
         }
       },

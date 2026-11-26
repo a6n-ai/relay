@@ -1,5 +1,6 @@
 import type { Env, WebhookJob } from "../env";
 import { clientFor } from "./messages";
+import { describeError } from "./log";
 
 export const MAX_WEBHOOK_ATTEMPTS = 6;
 const FETCH_TIMEOUT_MS = 10_000;
@@ -62,7 +63,7 @@ export async function handleWebhookBatch(
         if (retryInSeconds === null) return message.ack();
         return message.retry({ delaySeconds: retryInSeconds });
       } catch (err) {
-        console.error("relay-webhooks: job failed, retrying", deliveryId, errorName(err));
+        console.error("relay-webhooks: job failed, retrying", deliveryId, describeError(err));
         message.retry({ delaySeconds: 30 });
       }
     }),

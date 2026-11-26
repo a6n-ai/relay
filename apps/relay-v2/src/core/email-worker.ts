@@ -3,6 +3,7 @@ import { INBOUND_GRACE_MS, inboxForRecipient } from "./addresses";
 import { securityDb } from "../db/security/client";
 import { workspace } from "../db/security/schema";
 import type { Env, InboundJob } from "../env";
+import { describeError } from "./log";
 
 export const MAX_INBOUND_BYTES = 26_214_400;
 
@@ -35,7 +36,7 @@ export async function receiveEmail(message: ForwardableEmailMessage, env: Env): 
     inbox = await inboxForRecipient(env, envelopeTo);
     accepting = inbox ? await acceptsInbound(env, inbox.workspaceId, Date.now()) : true;
   } catch (err) {
-    console.error("address lookup failed", (err as Error).name);
+    console.error("address lookup failed", describeError(err));
     message.setReject("Mailbox unavailable");
     return;
   }
@@ -65,7 +66,7 @@ export async function receiveEmail(message: ForwardableEmailMessage, env: Env): 
     await env.MAIL.put(rawKey, message.raw.pipeThrough(new FixedLengthStream(message.rawSize)));
     await env.INBOUND.send(job);
   } catch (err) {
-    console.error("inbound queueing failed", (err as Error).name);
+    console.error("inbound queueing failed", describeError(err));
     try {
       await env.MAIL.delete(rawKey);
     } catch {

@@ -5,6 +5,7 @@ import { member, workspace } from "../db/security/schema";
 import type { Env } from "../env";
 import { createAuth } from "../lib/auth";
 import { allows, orgRoles } from "../lib/auth/permissions";
+import { recordFailure } from "../core/log";
 
 export type OrgRole = "owner" | "admin" | "member" | "billing";
 export type ConsoleActor = {
@@ -97,12 +98,12 @@ export async function requirePlatformAdmin(
 }
 
 // Server functions call this from their catch: known errors keep their status and message, anything else is a 500 with no detail.
+// The browser sees only that copy; the log middleware in src/start.ts writes the status and real cause.
 export function toResponseError(err: unknown): never {
   if (err instanceof ConsoleError) {
     setResponseStatus(err.status);
-    throw new Error(err.message);
+    throw recordFailure(new Error(err.message), err.status, err);
   }
-  console.error("console handler failed", err instanceof Error ? err.name : "unknown");
   setResponseStatus(500);
-  throw new Error("internal error");
+  throw recordFailure(new Error("internal error"), 500, err);
 }
