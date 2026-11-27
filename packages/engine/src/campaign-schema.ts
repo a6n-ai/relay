@@ -32,7 +32,7 @@ export interface AudienceDef {
     lastOrderBefore?: number;
     minOrderCount?: number;
     minTotalSpend?: number;
-    /** Plan D: marketing to an unverified number reaches a stranger. */
+    /** Marketing to an unverified number reaches a stranger. */
     requireVerifiedPhone?: boolean;
   };
   /** contact_list public ids to union in. */

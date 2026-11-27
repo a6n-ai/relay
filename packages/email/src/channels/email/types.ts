@@ -9,7 +9,6 @@ const emailAttachmentSchema = z.object({
   contentType: z.string().trim().min(1),
 });
 
-/** A single email participant. `name` is optional display name. */
 const emailAddressSchema = z.object({
   email: emailSchema,
   name: z.string().trim().min(1).optional(),
@@ -25,7 +24,6 @@ export const emailMessageSchema = z
     to: z.union([emailAddressSchema, z.array(emailAddressSchema).min(1)]),
     cc: z.array(emailAddressSchema).optional(),
     bcc: z.array(emailAddressSchema).optional(),
-    /** Falls back to the provider's configured default sender when omitted. */
     from: emailAddressSchema.optional(),
     replyTo: emailAddressSchema.optional(),
     subject: z.string().trim().min(1, "Email subject is required"),
@@ -50,7 +48,6 @@ export const emailMessageSchema = z
     path: ["html"],
   });
 export type EmailMessage = z.input<typeof emailMessageSchema>;
-/** Validated + normalized message a provider actually delivers. */
 export type PreparedEmail = z.output<typeof emailMessageSchema> & { from: EmailAddress };
 
 export interface SendResult {

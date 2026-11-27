@@ -55,7 +55,6 @@ function DelayField({ value, onChange, error, onClearError }: { value: string; o
   );
 }
 
-// Create when `automation` is absent. The app and list are fixed once an automation exists.
 export function AutomationForm({
   apps,
   appId,
@@ -86,7 +85,6 @@ export function AutomationForm({
   const [pending, setPending] = useState(false);
   const leaving = useRef(false);
 
-  // Lists, templates and From addresses belong to one app, so they reload when the app changes.
   useEffect(() => {
     let live = true;
     setChoices(null);
@@ -104,7 +102,6 @@ export function AutomationForm({
     };
   }, [app]);
 
-  // Exactly one list or template needs no choosing.
   useEffect(() => {
     if (automation || !choices) return;
     if (choices.lists.length === 1) setListId(choices.lists[0]?.id ?? "");

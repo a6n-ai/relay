@@ -16,7 +16,6 @@ import { apiAction, apiFetch } from "./api-fetch";
 export function ContactListDeleteButton({
   publicId,
   name,
-  /** Icon-only, no label — for a dense row-actions cell (matches RowActionButton elsewhere). */
   compact,
   /** After a successful delete: "refresh" (stay on a list page) or navigate back to the list index. */
   onDeleted,

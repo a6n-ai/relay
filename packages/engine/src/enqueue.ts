@@ -9,7 +9,6 @@ import type { Channel, Kind } from "./types";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Db = PostgresJsDatabase<any>;
 
-/** Default channels per kind when the caller does not name them explicitly. */
 const DEFAULT_CHANNELS: Channel[] = ["in_app"];
 
 export interface EnqueueInput {
@@ -22,7 +21,6 @@ export interface EnqueueInput {
   title: string;
   body: string;
   href?: string;
-  /** Extra render data for templates. */
   data?: Record<string, unknown>;
   channels?: Channel[];
   kind?: Kind;

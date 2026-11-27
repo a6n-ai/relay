@@ -8,7 +8,6 @@ export const isAppScoped = (pathname: string, pageOf: PageOf) => Boolean(pageOf(
 // Pages with `scoped: "all"` read every app when none is picked; the others load the first app.
 export const showsAllApps = (pathname: string, pageOf: PageOf) => pageOf(trimSlash(pathname))?.scoped === "all";
 
-// The one default-app rule, for the switcher and for loaders.
 export const defaultApp = (apps: { id: string }[], all: boolean): string | undefined => (all ? undefined : apps[0]?.id);
 
 export const pickApp = (apps: { id: string }[], appId: string | undefined, all: boolean): string | undefined =>

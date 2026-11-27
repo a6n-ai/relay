@@ -30,7 +30,6 @@ export interface TemplateRow {
   attachments?: { filename: string; url: string; contentType: string }[];
 }
 
-/** Pure: pick the enabled row for `channel`, preferring `locale`, else `en`. */
 export function pickTemplate(rows: TemplateRow[], channel: string, locale: string): TemplateRow | null {
   const enabled = rows.filter((r) => r.channel === channel && r.enabled);
   return enabled.find((r) => r.locale === locale) ?? enabled.find((r) => r.locale === "en") ?? null;
@@ -44,7 +43,6 @@ async function loadRows(db: Db, tables: NotificationTables, event: string): Prom
   }).from(t).where(eq(t.event, event as never)) as unknown as Promise<TemplateRow[]>;
 }
 
-/** Resolve + render the email body for an event/locale, or null if no template. */
 export async function renderEmailForEvent(
   db: Db, tables: NotificationTables, event: string, locale: string, vars: Record<string, unknown>,
 ): Promise<{ subject: string; html: string; text: string } | null> {
@@ -57,7 +55,6 @@ export async function renderEmailForEvent(
   };
 }
 
-/** Resolve + render the in-app title/body for an event/locale, or null. */
 export async function renderInAppForEvent(
   db: Db, tables: NotificationTables, event: string, locale: string, vars: Record<string, unknown>,
 ): Promise<{ title: string; body: string } | null> {
@@ -186,7 +183,6 @@ export async function loadCampaignContent(db: Db, tables: CampaignTables, campai
     .where(eq(c.campaignId, campaignId)) as unknown as Promise<Omit<TemplateRow, "enabled">[]>;
 }
 
-/** Campaign email content for a locale, or null when the channel has none. */
 export async function renderCampaignEmail(
   db: Db,
   tables: CampaignTables,
@@ -212,7 +208,6 @@ export async function renderCampaignEmail(
   };
 }
 
-/** Campaign text content (sms/whatsapp/in_app) for a locale, or null. */
 export async function renderCampaignText(
   db: Db,
   tables: CampaignTables,

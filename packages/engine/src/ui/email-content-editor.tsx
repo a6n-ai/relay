@@ -81,7 +81,6 @@ interface Props {
   marketing?: boolean;
 }
 
-/** The one email editor for campaigns and event templates: HTML or React source + a sandboxed live preview. */
 export const EmailContentEditor = forwardRef<EmailContentEditorHandle, Props>(function EmailContentEditor(
   { initialBody, initialHtml, variables, samples, onChange, footer, marketing },
   ref,

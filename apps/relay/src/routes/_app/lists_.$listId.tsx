@@ -39,7 +39,6 @@ import { str, posInt } from "../../lib/route-search";
 
 type ListSearch = { appId?: string; cursor?: string; q?: string; offset?: number };
 
-// The list name comes from the app's list index, so the link carries appId.
 export const Route = createFileRoute("/_app/lists_/$listId")({
   validateSearch: (search: Record<string, unknown>): ListSearch => ({
     appId: str(search.appId),

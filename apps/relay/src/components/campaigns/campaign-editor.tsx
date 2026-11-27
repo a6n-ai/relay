@@ -80,7 +80,6 @@ export function CampaignEditor({
   const unsaved = dirty || from !== savedFrom;
   const leaving = useRef(false);
 
-  // The audience is counted from the saved campaign, so it reloads whenever the saved lists change.
   const savedLists = campaign.listIds.join(",");
   useEffect(() => {
     let live = true;
@@ -109,7 +108,6 @@ export function CampaignEditor({
     options.postalAddress,
   );
 
-  // Returns the error text when the save failed, null when it worked or nothing was unsaved.
   async function persist(): Promise<string | null> {
     setPending(true);
     setError(null);

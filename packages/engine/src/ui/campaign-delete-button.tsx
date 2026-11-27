@@ -15,7 +15,6 @@ import { apiAction, apiFetch } from "./api-fetch";
 export function CampaignDeleteButton({
   campaignPublicId,
   name,
-  /** Icon-only, no label — for a dense row-actions cell (matches RowActionButton elsewhere). */
   compact,
 }: {
   campaignPublicId: string;

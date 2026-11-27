@@ -26,8 +26,6 @@ import type { FooterInfo } from "../template";
 
 const MDEditor = dynamic(() => import("@uiw/react-md-editor"), { ssr: false });
 
-// Shared top-level layout shell — the real render and TemplateEditorSkeleton
-// both key off this so the loading state stays structurally in sync.
 const editorShell = {
   root: "space-y-4",
   toolbar: "flex flex-wrap items-center gap-4",
@@ -231,7 +229,6 @@ export function TemplateEditorSkeleton() {
   );
 }
 
-/** Mirrors renderInApp: interpolated title + plaintext body, no markdown/email chrome. */
 function InAppPreview({ title, body }: { title: string; body: string }) {
   return (
     <div className="rounded-xl border bg-card p-4">

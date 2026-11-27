@@ -22,7 +22,6 @@ export {
   type CampaignTables,
 } from "./campaign-schema";
 
-/** Delivery channels. email + in_app have handlers; sms/whatsapp are declared for later. */
 export const notificationChannel = pgEnum("notification_channel", [
   "email", "in_app", "sms", "whatsapp",
 ]);
@@ -37,7 +36,6 @@ export const messageKind = pgEnum("message_kind", ["transactional", "marketing"]
 /** How far a suppression reaches. See messageSuppression for why this is not a boolean. */
 export const suppressionScope = pgEnum("suppression_scope", ["all", "marketing"]);
 
-/** Mailbox letter travel. `in` is unused until inbound landing. */
 export const mailboxDirection = pgEnum("mailbox_direction", ["out", "in"]);
 
 /** Why Relay produced the letter. Distinct from outbox kind (consent). */
@@ -59,7 +57,7 @@ export function makeNotificationTables<
   users: AnyPgTable & { id: any };
   appEvent: PgEnum<E>;
   locale: PgEnum<L>;
-  /** Supplied once campaign tables exist (Plan C); omitted, campaign_id carries no FK. */
+  /** Supplied once campaign tables exist ; omitted, campaign_id carries no FK. */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   campaign?: any;
 }) {

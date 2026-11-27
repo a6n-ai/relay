@@ -8,9 +8,7 @@ interface Problem {
   status?: number;
 }
 
-// Copied from tiffin-grab's lib/http/api-fetch rather than imported: the package
-// must not reach into an app. Nothing here is app-specific — it is RFC 9457
-// problem+json plus a Sonner toast.
+// The package must not reach into an app, so this is its own copy.
 //
 // Client fetch that surfaces RFC 9457 problem+json failures as a Sonner toast.
 // On !ok: reads `detail` (falls back to title, then status), toasts it, throws

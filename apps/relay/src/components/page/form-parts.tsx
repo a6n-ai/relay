@@ -19,7 +19,7 @@ export function FormBody({ as: Tag = "form", className, ...props }: ComponentPro
   return <T className={cn("grid gap-3", className)} {...props} />;
 }
 
-// With `children` it is a plain row, as before. With `submitLabel` it renders Cancel then the primary.
+// With `children` it is a plain row. With `submitLabel` it renders Cancel then the primary.
 // Cancel is opt-in: `onCancel` for pages, `cancel` for a DialogClose inside a dialog.
 export function FormActions({
   className,

@@ -6,7 +6,6 @@ export function fieldDescribedBy(id: string, hint?: ReactNode, error?: string | 
   return [error ? `${id}-error` : null, hint ? `${id}-hint` : null].filter(Boolean).join(" ") || undefined;
 }
 
-// One place for label, control, hint and error, so every field reads the same.
 export function Field({
   id,
   label,

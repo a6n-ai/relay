@@ -10,9 +10,7 @@ import type { Channel } from "./types";
 type Db = PostgresJsDatabase<any>;
 
 interface RateLimiter {
-  /** Consume a token if one is available. Non-blocking. */
   tryTake(): boolean;
-  /** Consume a token, waiting for a refill if the bucket is empty. */
   take(): Promise<void>;
 }
 
@@ -207,7 +205,6 @@ async function process(
   }
 }
 
-/** Claim + deliver one batch. Returns how many rows were processed. */
 export async function drainOnce(deps: DrainDeps, limit = 25): Promise<number> {
   const maxAttempts = deps.maxAttempts ?? MAX_ATTEMPTS;
   const { deliver, exhausted, lease } = await claim(deps.db, deps.tables, limit, Date.now(), maxAttempts);
@@ -230,7 +227,6 @@ export async function drainOnce(deps: DrainDeps, limit = 25): Promise<number> {
   return deliver.length + exhausted.length;
 }
 
-/** Drain until the queue is empty or `maxBatches` is hit. */
 export async function drainPending(deps: DrainDeps, limit = 25, maxBatches = 20): Promise<number> {
   let total = 0;
   for (let i = 0; i < maxBatches; i++) {
@@ -252,7 +248,6 @@ interface SignalLoopOptions {
    * a Redis BLPOP in the apps; waiting must not touch Postgres.
    */
   waitForSignal: () => Promise<boolean>;
-  /** Bound drainPending call for the host app. */
   drain: () => Promise<number>;
   /**
    * Pause between a signal and the drain. Apps signal from inside the caller's

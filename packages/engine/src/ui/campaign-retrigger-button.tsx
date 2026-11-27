@@ -20,7 +20,6 @@ import type { ContactListOption } from "./audience-builder";
 export function CampaignRetriggerButton({
   campaignPublicId,
   lists,
-  /** Icon-only, no label — for a dense row-actions cell (matches RowActionButton elsewhere). */
   compact,
 }: {
   campaignPublicId: string;

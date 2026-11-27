@@ -5,7 +5,6 @@ import type { SaveState } from "./autosave";
 
 const time = (ms: number) => new Date(ms).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 
-/** Autosave state for an editor header: Saving… / Saved h:mm / Unable to save · Retry / changed elsewhere · Reload. */
 export function SaveStatus({ state, onRetry, onReload }: { state: SaveState; onRetry: () => void; onReload: () => void }) {
   if (state.status === "conflict")
     return (

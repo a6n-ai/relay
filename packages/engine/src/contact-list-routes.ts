@@ -234,9 +234,6 @@ export async function getContactListMember(
   return row ?? null;
 }
 
-// Manual, no-CSV path for adding a small handful of contacts by hand. Same
-// mandatory-name/email-or-phone rule as import, applied per contact by
-// manualContactSchema instead of mapRows' per-row CSV logic.
 export async function addContactListMembers(
   deps: CampaignRouteDeps,
   listPublicId: string,

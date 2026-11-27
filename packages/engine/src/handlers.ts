@@ -29,7 +29,6 @@ interface BroadcastInput {
   href: string | null;
 }
 
-/** Realtime push transport, injected by the app. */
 type BroadcastFn = (input: BroadcastInput) => Promise<void>;
 
 /**
@@ -154,7 +153,7 @@ export function buildHandlers(deps: HandlerDeps): Record<Channel, ChannelHandler
   const loadUser: LoadUser = async (id) => {
     const select: Record<string, unknown> = { email: users.columns.email };
     if (users.columns.phone) select.phone = users.columns.phone;
-    // `locale` is read off the users table by name; both apps have it after Plan B.
+    // `locale` is read off the users table by name.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     select.locale = (users.table as any).locale;
     const [row] = await db
@@ -170,7 +169,6 @@ export function buildHandlers(deps: HandlerDeps): Record<Channel, ChannelHandler
     };
   };
 
-  /** in_app: render the DB template; no template → skip. Insert feed row + broadcast. */
   const inApp: ChannelHandler = async (row) => {
     if (row.recipientId === null) return null; // no feed without an account
     const { href, vars } = payloadParts(row);

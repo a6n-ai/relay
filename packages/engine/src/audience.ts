@@ -65,7 +65,6 @@ export interface AudienceBreakdown {
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-/** Pure half of audience resolution: dedupe, drop invalid and suppressed, and say why each was dropped. */
 export function classifyAudience(input: {
   candidates: Recipient[];
   /** Members of lists whose implied consent lapsed — excluded before they became candidates. */
@@ -247,7 +246,6 @@ export async function resolveAudience(deps: AudienceDeps, def: AudienceDef): Pro
   return (await resolveAudienceDetailed(deps, def)).recipients;
 }
 
-/** Live count for the audience builder. Same exclusions as the real send. */
 export async function countAudience(deps: AudienceDeps, def: AudienceDef): Promise<number> {
   return (await resolveAudienceDetailed(deps, def)).breakdown.eligible;
 }

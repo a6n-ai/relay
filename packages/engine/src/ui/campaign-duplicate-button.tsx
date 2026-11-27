@@ -11,13 +11,11 @@ import { ResponsiveDialog } from "@foundry/design-system";
 import { apiAction, apiFetch } from "./api-fetch";
 import { AudienceBuilder, type AudienceValue, type ContactListOption } from "./audience-builder";
 
-/** Clone a campaign's content/channels into a new draft, optionally onto a different audience. */
 export function CampaignDuplicateButton({
   campaignPublicId,
   campaignName,
   lists,
   timeZone,
-  /** Icon-only, no label — for a dense row-actions cell (matches RowActionButton elsewhere). */
   compact,
 }: {
   campaignPublicId: string;

@@ -12,7 +12,6 @@ import { FormItem } from "@foundry/ui/form";
 export type ContentValue = { subject: string; html: string; text: string };
 export type LetterPreview = { htmlSafe: string; text: string; subject: string };
 
-// The caller decides how a preview is made: a campaign saves unsaved edits first, a template does the same.
 export function ContentFields({
   value,
   onChange,

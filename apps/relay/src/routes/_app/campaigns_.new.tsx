@@ -41,7 +41,6 @@ function NewCampaignPage() {
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
-  // Templates belong to one app, so they reload when the app changes.
   useEffect(() => {
     setTemplate("blank");
     if (!app) return;
