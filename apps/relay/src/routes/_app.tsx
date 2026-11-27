@@ -1,12 +1,12 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { lazy, Suspense } from "react";
-import { AppError } from "../components/denied-state";
+import { AppError } from "../components/page/denied-state";
 import { Landing } from "../components/landing/landing";
 import { getShell } from "../console/shell.fns";
 import { signInRedirect } from "../components/lib/sign-in-redirect";
 
 // Console code loads only for signed-in visitors, so the landing page ships none of it.
-const ConsoleLayout = lazy(() => import("../components/console-layout"));
+const ConsoleLayout = lazy(() => import("../components/shell/console-layout"));
 
 export const Route = createFileRoute("/_app")({
   beforeLoad: async ({ location, matches }) => {

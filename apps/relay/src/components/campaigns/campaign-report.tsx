@@ -3,19 +3,19 @@ import { useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { cancelCampaignFn, pauseCampaignFn, previewAudienceFn, resumeCampaignFn, unscheduleCampaignFn } from "../../console/campaigns.fns";
 import { copyOf } from "../../shared/errors";
-import { errorText } from "../error-text";
+import { errorText } from "../lib/error-text";
 
-import { ConfirmDialog } from "../confirm-dialog";
-import { FormError } from "../page/form-parts";
+import { ConfirmDialog } from "../page/confirm-dialog";
+import { FormError } from "../form/form-parts";
 import { formatWhen } from "../lib/format-date";
-import { MeterBar } from "../meter-bar";
-import { confirmAction, runAction } from "../run-action";
-import { StatTile } from "../stat-tile";
+import { MeterBar } from "../page/meter-bar";
+import { confirmAction, runAction } from "../lib/run-action";
+import { StatTile } from "../page/stat-tile";
 import { Toolbar } from "../page/toolbar";
-import { useCan } from "../use-can";
-import { Hint } from "../page/text";
+import { useCan } from "../lib/use-can";
+import { Hint } from "../form/text";
 import { type AudiencePreview, type CampaignStats, type CampaignView } from "../../shared/views";
-import { useLoad } from "../use-load";
+import { useLoad } from "../lib/use-load";
 
 // A paused campaign stores a code on its row, not an Error.
 export const reasonText = (code: string | null): string | null => (code ? (copyOf(code) ?? errorText(null)) : null);

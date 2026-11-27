@@ -1,5 +1,5 @@
 import { createRouter } from "@tanstack/react-router";
-import { AppError } from "./components/denied-state";
+import { AppError } from "./components/page/denied-state";
 import { routeTree } from "./routeTree.gen";
 
 export function getRouter() {

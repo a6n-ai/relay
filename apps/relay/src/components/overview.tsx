@@ -3,11 +3,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@foundry/ui/card";
 import { Link } from "@tanstack/react-router";
 import type { fetchOverview } from "../console/overview.fns";
 import { PageDenied } from "./page/page-denied";
-import { MeterBar } from "./meter-bar";
-import { Hint, SectionTitle } from "./page/text";
+import { MeterBar } from "./page/meter-bar";
+import { Hint, SectionTitle } from "./form/text";
 import { createItems } from "./shell/nav";
 import { PageHeader } from "./shell/page-header";
-import { StatTile } from "./stat-tile";
+import { StatTile } from "./page/stat-tile";
 import { type Shell } from "../shared/views";
 import { untyped } from "./lib/route-search";
 

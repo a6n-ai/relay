@@ -1,9 +1,9 @@
 import { Button } from "@foundry/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@foundry/ui/dialog";
 import { useEffect, useState } from "react";
-import { FormActions, FormBody, FormError } from "../page/form-parts";
-import { signInErrorText } from "../../auth/google";
-import { Hint } from "../page/text";
+import { FormActions, FormBody, FormError } from "../form/form-parts";
+import { signInErrorText } from "../../shared/sign-in";
+import { Hint } from "../form/text";
 import { authFetch } from "../lib/auth-fetch";
 
 export const LINK_MARKER = "sign-in-methods";

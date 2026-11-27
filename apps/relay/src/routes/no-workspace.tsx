@@ -1,6 +1,6 @@
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { AuthButton, AuthCard, AuthText } from "../components/auth-card";
-import { useSignOut } from "../components/sign-out-button";
+import { useSignOut } from "../components/shell/sign-out";
 import { getShell } from "../console/shell.fns";
 import { signInRedirect } from "../components/lib/sign-in-redirect";
 

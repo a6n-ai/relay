@@ -4,17 +4,17 @@ import { toast } from "@foundry/ui/toast";
 import { createFileRoute, Link, useRouter, useSearch } from "@tanstack/react-router";
 import { GlobeIcon } from "lucide-react";
 import { useState } from "react";
-import { ConfirmDialog } from "../../components/confirm-dialog";
+import { ConfirmDialog } from "../../components/page/confirm-dialog";
 import { PageDenied } from "../../components/page/page-denied";
 import { DnsRecords } from "../../components/domains/dns-records";
 import { DomainDeleteDialog } from "../../components/domains/domain-delete-dialog";
-import { errorText } from "../../components/error-text";
-import { ResourceTable } from "../../components/resource-table";
-import { StatusBadge } from "../../components/status-badge";
-import { useCan } from "../../components/use-can";
+import { errorText } from "../../components/lib/error-text";
+import { ResourceTable } from "../../components/page/resource-table";
+import { StatusBadge } from "../../components/page/status-badge";
+import { useCan } from "../../components/lib/use-can";
 import { EmptyState } from "../../components/page/empty-state";
 import { FilterMenu } from "../../components/page/filter-menu";
-import { FormPanel } from "../../components/page/form-parts";
+import { FormPanel } from "../../components/form/form-parts";
 import { SettingsCard } from "../../components/page/settings-card";
 import { ResourceCard, ResourceGrid } from "../../components/page/resource-grid";
 import { ListSkeleton } from "../../components/page/page-skeleton";
@@ -31,7 +31,7 @@ import {
   removeAddressFn,
   setDomainProtectedFn,
 } from "../../console/domains.fns";
-import { Hint, Mono } from "../../components/page/text";
+import { Hint, Mono } from "../../components/form/text";
 import { KIND_LABEL } from "../../components/lib/address-kinds";
 import { oneOf, str, untyped } from "../../components/lib/route-search";
 

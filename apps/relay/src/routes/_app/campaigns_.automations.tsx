@@ -3,7 +3,7 @@ import WorkflowIcon from "lucide-react/icons/workflow";
 import { Switch } from "@foundry/ui/switch";
 import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
-import { ConfirmDialog } from "../../components/confirm-dialog";
+import { ConfirmDialog } from "../../components/page/confirm-dialog";
 import { FilterMenu } from "../../components/page/filter-menu";
 import { ResourceCard, ResourceGrid } from "../../components/page/resource-grid";
 import { type View, viewPref } from "../../components/page/view-pref";
@@ -11,10 +11,10 @@ import { ViewToggle } from "../../components/page/view-toggle";
 import { EmptyState } from "../../components/page/empty-state";
 import { ListSkeleton } from "../../components/page/page-skeleton";
 import { Toolbar } from "../../components/page/toolbar";
-import { ResourceTable } from "../../components/resource-table";
+import { ResourceTable } from "../../components/page/resource-table";
 import { PageHeader } from "../../components/shell/page-header";
-import { confirmAction, runAction } from "../../components/run-action";
-import { useCan } from "../../components/use-can";
+import { confirmAction, runAction } from "../../components/lib/run-action";
+import { useCan } from "../../components/lib/use-can";
 import { deleteAutomationFn, enableAutomationFn, fetchAutomations } from "../../console/automations.fns";
 import { fetchCampaignOptions } from "../../console/campaigns.fns";
 import { fetchTemplates } from "../../console/templates.fns";
@@ -35,9 +35,10 @@ export const Route = createFileRoute("/_app/campaigns_/automations")({
   }),
   loaderDeps: ({ search }) => ({ appId: search.appId }),
   pendingComponent: () => <ListSkeleton columns={7} filter view action />,
-  loader: ({ deps }) =>
+  loader: ({ deps, context }) =>
     scopedLoad(
       deps.appId,
+      context.shell.apps,
       async (appId) => {
         const automations = await fetchAutomations({ data: { appId } });
         if (!automations || "missing" in automations) return automations;

@@ -2,7 +2,7 @@ import { useEffect, useState, type ComponentProps } from 'react'
 import { AppWindow, ChevronRight, Globe, LayoutDashboard, List, Mail, Megaphone, Settings } from 'lucide-react'
 import { Badge } from '../stageshow/controls/Badge'
 import { Stage } from '../stageshow/stage'
-import { STATUS } from '../../status-badge'
+import { STATUS } from '../../page/status-badge'
 import './relay.css'
 
 type Tone = 'neutral' | 'accent' | 'success' | 'danger' | 'warning'

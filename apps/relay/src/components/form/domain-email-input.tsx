@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from "@foundry/ui/input-group";
-import { Hint } from "../page/text";
+import { Hint } from "./text";
 import { Field, fieldDescribedBy } from "./field";
 import { ChoiceControl, type ChoiceOption } from "./choice-field";
 import { choiceMode } from "./choice-mode";

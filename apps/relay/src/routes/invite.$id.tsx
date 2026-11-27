@@ -3,10 +3,10 @@ import { getShell } from "../console/shell.fns";
 import { signInRedirect } from "../components/lib/sign-in-redirect";
 import { acceptInviteFn, getInviteFn } from "../console/members.fns";
 import { AuthButton, AuthCard, AuthText, AuthTitle } from "../components/auth-card";
-import { FormError } from "../components/page/form-parts";
+import { FormError } from "../components/form/form-parts";
 import { ROLE_LABEL, type OrgRole } from "../shared/roles";
-import { useSignOut } from "../components/sign-out-button";
-import { useSubmit } from "../components/use-submit";
+import { useSignOut } from "../components/shell/sign-out";
+import { useSubmit } from "../components/lib/use-submit";
 
 export const Route = createFileRoute("/invite/$id")({
   beforeLoad: async ({ location }) => {

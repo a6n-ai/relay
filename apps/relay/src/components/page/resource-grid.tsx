@@ -2,7 +2,7 @@ import { Card } from "@foundry/ui/card";
 import { Link, type LinkProps } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { type RowAction, RowMenu } from "./row-menu";
-import { Hint } from "./text";
+import { Hint } from "../form/text";
 
 // Same rule as ResourceTable rows: only real controls sit above the overlay link.
 const CARD_LINK =

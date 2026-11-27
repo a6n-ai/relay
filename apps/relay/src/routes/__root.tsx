@@ -2,7 +2,7 @@ import { InlineScript } from "@foundry/ui/inline-script";
 import { createRootRoute, HeadContent, Link, Outlet, Scripts } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { themeBootScript } from "../components/shell/theme";
-import { StateMessage } from "../components/denied-state";
+import { StateMessage } from "../components/page/denied-state";
 import appCss from "../styles.css?url";
 
 export const Route = createRootRoute({

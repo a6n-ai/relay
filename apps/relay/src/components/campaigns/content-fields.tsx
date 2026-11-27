@@ -4,9 +4,9 @@ import { Label } from "@foundry/ui/label";
 import { Textarea } from "@foundry/ui/textarea";
 import { toast } from "@foundry/ui/toast";
 import { useState } from "react";
-import { errorText } from "../error-text";
+import { errorText } from "../lib/error-text";
 import { LetterView } from "../letter-view";
-import { Hint, SectionTitle } from "../page/text";
+import { Hint, SectionTitle } from "../form/text";
 import { FormItem } from "@foundry/ui/form";
 
 export type ContentValue = { subject: string; html: string; text: string };

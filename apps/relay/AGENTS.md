@@ -10,3 +10,7 @@ skills:
   - task: "Router core: route tree, navigation, and not-found handling"
     load: "node_modules/.pnpm/@tanstack+router-core@*/node_modules/@tanstack/router-core/skills/router-core/SKILL.md"
 <!-- intent-skills:end -->
+
+## UI layering
+
+UI files (`src/components/`, UI routes) import only `shared/`, `components/` and `console/*.fns.ts`; `test/ui-boundary.test.ts` enforces it. Client hooks and helpers live in `components/lib/`, the console frame in `components/shell/`, page parts in `components/page/`.

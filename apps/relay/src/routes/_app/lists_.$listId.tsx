@@ -8,12 +8,12 @@ import { type FormEvent, useState } from "react";
 import { ConsentFields } from "../../components/lists/consent-fields";
 import { consentHint } from "../../components/lists/consent-labels";
 import { FixedField } from "../../components/form/fixed-field";
-import { ConfirmDialog } from "../../components/confirm-dialog";
-import { CreateDialog } from "../../components/create-dialog";
+import { ConfirmDialog } from "../../components/page/confirm-dialog";
+import { CreateDialog } from "../../components/page/create-dialog";
 import { PageDenied } from "../../components/page/page-denied";
-import { CellWhen, ResourceTable } from "../../components/resource-table";
-import { StatusBadge } from "../../components/status-badge";
-import { useCan } from "../../components/use-can";
+import { CellWhen, ResourceTable } from "../../components/page/resource-table";
+import { StatusBadge } from "../../components/page/status-badge";
+import { useCan } from "../../components/lib/use-can";
 import { LoadMore } from "../../components/page/load-more";
 import { EmptyState } from "../../components/page/empty-state";
 import { RowMenu } from "../../components/page/row-menu";
@@ -31,10 +31,11 @@ import {
   removeMemberFn,
   updateListFn,
 } from "../../console/lists.fns";
-import { FormError, FormBody, FormActions } from "../../components/page/form-parts";
+import { FormError, FormBody, FormActions } from "../../components/form/form-parts";
 import { type ConsentSource, type MemberView } from "../../shared/views";
 import { str, posInt } from "../../components/lib/route-search";
-import { useSubmit } from "../../components/use-submit";
+import { appName } from "../../shared/scope";
+import { useSubmit } from "../../components/lib/use-submit";
 
 type ListSearch = { appId?: string; cursor?: string; q?: string; offset?: number };
 
@@ -80,7 +81,7 @@ function ListDetailPage() {
     return <PageDenied crumbs={[listsCrumb, { label: "List" }]} reason="not-found" label="List not found" />;
   }
   const { list, members } = page;
-  const appName = shell.apps.find((a) => a.id === search.appId)?.name;
+  const appLabel = appName(shell.apps, search.appId, "This list's app");
   const offset = search.cursor ? (search.offset ?? 0) : 0;
   async function remove(memberId: string) {
     await removeMemberFn({ data: { listId, memberId } });
@@ -154,7 +155,7 @@ function ListDetailPage() {
         </CreateDialog>
       ) : null}
       <CreateDialog title="Edit list" open={editing} onOpenChange={setEditing}>
-        {(done) => <EditListForm list={list} appName={appName} done={done} />}
+        {(done) => <EditListForm list={list} appName={appLabel} done={done} />}
       </CreateDialog>
       <CreateDialog title="Edit contact" open={editingContact !== null} onOpenChange={(o) => !o && setEditingContact(null)}>
         {(done) => (editingContact ? <EditContactForm key={editingContact.id} listId={listId} member={editingContact} done={done} /> : null)}
@@ -231,10 +232,9 @@ function EditListForm({
   done,
 }: {
   list: { id: string; name: string; consentSource: ConsentSource; consentNote: string | null };
-  appName?: string;
+  appName: string;
   done: () => void;
 }) {
-  const router = useRouter();
   const [name, setName] = useState(list.name);
   const [consent, setConsent] = useState(list.consentSource);
   const [note, setNote] = useState(list.consentNote ?? "");
@@ -245,14 +245,11 @@ function EditListForm({
     await run(async () => {
       // An empty note clears it: the server keeps the old note only when consentNote is omitted.
       await updateListFn({ data: { id: list.id, patch: { name, consentSource: consent, consentNote: note.trim() } } });
-      toast.success("List updated");
-      done();
-      await router.invalidate();
-    }, "Could not update this list.");
+    }, "Could not update this list.", { success: "List updated", after: done });
   }
   return (
     <FormBody onSubmit={submit}>
-      <FixedField label="App" value={appName ?? "This list's app"} hint="Create a new list in the other app instead." />
+      <FixedField label="App" value={appName} hint="Create a new list in the other app instead." />
       <NameField id="list-rename" autoFocus value={name} onChange={(e) => setName(e.target.value)} />
       <ConsentFields idPrefix="list-edit" consent={consent} onConsent={setConsent} note={note} onNote={setNote} />
       <FormError message={error} />
@@ -269,7 +266,6 @@ function EditListForm({
 }
 
 function EditContactForm({ listId, member, done }: { listId: string; member: MemberView; done: () => void }) {
-  const router = useRouter();
   const [firstName, setFirstName] = useState(member.firstName ?? "");
   const [lastName, setLastName] = useState(member.lastName ?? "");
   const { pending, error, setError, run } = useSubmit();
@@ -278,10 +274,7 @@ function EditContactForm({ listId, member, done }: { listId: string; member: Mem
     event.preventDefault();
     await run(async () => {
       await updateContactFn({ data: { listId, contactId: member.id, firstName, lastName } });
-      toast.success("Contact updated");
-      done();
-      await router.invalidate();
-    }, "Could not update this contact.");
+    }, "Could not update this contact.", { success: "Contact updated", after: done });
   }
   return (
     <FormBody onSubmit={submit}>
@@ -297,7 +290,6 @@ function EditContactForm({ listId, member, done }: { listId: string; member: Mem
 }
 
 function AddContactForm({ listId, consent, done }: { listId: string; consent: ConsentSource; done: () => void }) {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -317,10 +309,7 @@ function AddContactForm({ listId, consent, done }: { listId: string; consent: Co
           member: { email, firstName: firstName.trim() || undefined, lastName: lastName.trim() || undefined },
         },
       });
-      toast.success("Contact added");
-      done();
-      await router.invalidate();
-    }, "Could not add this contact.");
+    }, "Could not add this contact.", { success: "Contact added", after: done });
   }
   return (
     <FormBody onSubmit={submit}>

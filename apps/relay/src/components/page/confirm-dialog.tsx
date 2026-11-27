@@ -10,9 +10,9 @@ import {
 } from "@foundry/ui/alert-dialog";
 import { Button } from "@foundry/ui/button";
 import { type ReactNode, useRef, useState } from "react";
-import { errorText } from "./error-text";
-import { TextField } from "./form/text-field";
-import { FormError } from "./page/form-parts";
+import { errorText } from "../lib/error-text";
+import { TextField } from "../form/text-field";
+import { FormError } from "../form/form-parts";
 
 // Exact and case-sensitive: the name is the safeguard.
 export const typedMatches = (typed: string | undefined, text: string) => typed === undefined || text === typed;

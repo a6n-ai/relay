@@ -5,14 +5,14 @@ import { type FormEvent, useState } from "react";
 import { consentHint } from "../../components/lists/consent-labels";
 import { PageDenied } from "../../components/page/page-denied";
 import { CreatePage } from "../../components/page/create-page";
-import { FormActions, FormError, FormPanel } from "../../components/page/form-parts";
+import { FormActions, FormError, FormPanel } from "../../components/form/form-parts";
 import { SettingsCard } from "../../components/page/settings-card";
 import { PageHeader } from "../../components/shell/page-header";
-import { useCan } from "../../components/use-can";
+import { useCan } from "../../components/lib/use-can";
 import { fetchLists, importCsvFn } from "../../console/lists.fns";
 import { str } from "../../components/lib/route-search";
 import { DefinitionList } from "../../components/page/definition-list";
-import { useSubmit } from "../../components/use-submit";
+import { useSubmit } from "../../components/lib/use-submit";
 
 const MAX_CSV_BYTES = 2_000_000;
 

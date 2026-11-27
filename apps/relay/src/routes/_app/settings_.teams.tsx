@@ -1,19 +1,19 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { UsersRound } from "lucide-react";
 import { useState } from "react";
-import { ConfirmDialog } from "../../components/confirm-dialog";
-import { CreateDialog } from "../../components/create-dialog";
+import { ConfirmDialog } from "../../components/page/confirm-dialog";
+import { CreateDialog } from "../../components/page/create-dialog";
 import { PageDenied } from "../../components/page/page-denied";
 import { EmptyState } from "../../components/page/empty-state";
 import { ListSkeleton } from "../../components/page/page-skeleton";
-import { ResourceTable } from "../../components/resource-table";
-import { confirmAction, runAction } from "../../components/run-action";
+import { ResourceTable } from "../../components/page/resource-table";
+import { confirmAction, runAction } from "../../components/lib/run-action";
 import { NewTeamForm } from "../../components/settings/new-team-form";
 import { RenameForm } from "../../components/form/rename-form";
 import { SuspendedNotice } from "../../components/settings/suspended-notice";
 import { TeamMembersDialog } from "../../components/settings/team-members-dialog";
 import { PageHeader } from "../../components/shell/page-header";
-import { useCan } from "../../components/use-can";
+import { useCan } from "../../components/lib/use-can";
 import { deleteTeamFn, fetchPeople, renameTeamFn, setTeamMemberFn } from "../../console/members.fns";
 
 

@@ -1,20 +1,20 @@
 import { createElement, isValidElement, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import { confirmReady, typedHint, typedMatches } from "../src/components/confirm-dialog";
+import { confirmReady, typedHint, typedMatches } from "../src/components/page/confirm-dialog";
 import { SettingsCard } from "../src/components/page/settings-card";
 import { EmptyChoice } from "../src/components/form/empty-choice";
 import { withoutKey } from "../src/components/form/field";
 import { TextField } from "../src/components/form/text-field";
 import { DangerCard } from "../src/components/page/danger-card";
-import { FormActions } from "../src/components/page/form-parts";
+import { FormActions } from "../src/components/form/form-parts";
 import { choiceMode } from "../src/components/form/choice-mode";
 import { addressDomains, defaultDomain, normaliseLocal, splitEmail } from "../src/components/form/domain-email";
 import { slugify, splitSlugError } from "../src/components/form/slugify";
 
 const dialog = vi.hoisted(() => ({ props: null as Record<string, unknown> | null }));
-vi.mock("../src/components/confirm-dialog", async (orig) => ({
-  ...(await orig<typeof import("../src/components/confirm-dialog")>()),
+vi.mock("../src/components/page/confirm-dialog", async (orig) => ({
+  ...(await orig<typeof import("../src/components/page/confirm-dialog")>()),
   ConfirmDialog: (props: Record<string, unknown>) => {
     dialog.props = props;
     return null;

@@ -1,5 +1,5 @@
 import { Card, CardContent } from "@foundry/ui/card";
-import { Hint } from "./page/text";
+import { Hint } from "../form/text";
 
 export function StatTile({ label, value }: { label: string; value: string }) {
   return (

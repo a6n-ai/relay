@@ -3,7 +3,7 @@ import { Skeleton } from "@foundry/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@foundry/ui/table";
 import { Fragment } from "react";
 import { type Crumb, PageHeader } from "../shell/page-header";
-import { FormPanel } from "./form-parts";
+import { FormPanel } from "../form/form-parts";
 import { TableInset } from "./table-inset";
 import { Toolbar } from "./toolbar";
 

@@ -4,7 +4,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { createFileRoute, notFound, useNavigate, useRouter } from "@tanstack/react-router";
 import { BuildingIcon } from "lucide-react";
 import { type FormEvent, useState } from "react";
-import { ConfirmDialog } from "../../components/confirm-dialog";
+import { ConfirmDialog } from "../../components/page/confirm-dialog";
 import { isNotFound } from "../../components/lib/scoped-load";
 import { TextField } from "../../components/form/text-field";
 import { ChoiceControl } from "../../components/form/choice-field";
@@ -15,13 +15,13 @@ import { SettingsCard } from "../../components/page/settings-card";
 import { SearchInput, Toolbar } from "../../components/page/toolbar";
 import { useUrlFilter } from "../../components/page/use-url-filter";
 import { ListSkeleton } from "../../components/page/page-skeleton";
-import { ResourceTable } from "../../components/resource-table";
-import { confirmAction, runAction } from "../../components/run-action";
+import { ResourceTable } from "../../components/page/resource-table";
+import { confirmAction, runAction } from "../../components/lib/run-action";
 import { PageHeader } from "../../components/shell/page-header";
 import { fetchWorkspaces, setWorkspaceInviteCapFn, setWorkspaceQuotaFn, setWorkspaceRegionFn, setWorkspaceStatusFn } from "../../console/admin.fns";
 import { SES_REGIONS } from "../../shared/regions";
 import { formatDate } from "../../components/lib/format-date";
-import { Hint } from "../../components/page/text";
+import { Hint } from "../../components/form/text";
 import { MAX_INVITES_PER_DAY } from "../../shared/limits";
 import { oneOf, str, untyped } from "../../components/lib/route-search";
 

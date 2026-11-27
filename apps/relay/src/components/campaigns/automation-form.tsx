@@ -13,13 +13,13 @@ import { FixedField } from "../form/fixed-field";
 import { SenderField } from "../form/sender-field";
 import { NameField } from "../form/text-field";
 import { DangerCard } from "../page/danger-card";
-import { FormActions, FormError, FormPanel } from "../page/form-parts";
+import { FormActions, FormError, FormPanel } from "../form/form-parts";
 import { SettingsCard } from "../page/settings-card";
-import { UnsavedGuard } from "../unsaved-guard";
+import { UnsavedGuard } from "../page/unsaved-guard";
 import { type AutomationView } from "../../shared/views";
 import { AUTOMATION_DELAY_MAX } from "../../shared/limits";
-import { useSubmit } from "../use-submit";
-import { useLoad } from "../use-load";
+import { useSubmit } from "../lib/use-submit";
+import { useLoad } from "../lib/use-load";
 
 const PRESETS = ["0", "1", "24"];
 
@@ -121,16 +121,17 @@ export function AutomationForm({
     if (Object.keys(missing).length > 0) return;
     await run(async () => {
       const delayHours = Number(delay);
-      if (automation) {
-        await updateAutomationFn({ data: { id: automation.id, patch: { name: name.trim(), templateId, fromEmail, delayHours } } });
-        toast.success("Automation saved", { description: name.trim() });
-      } else {
-        await createAutomationFn({ data: { appId: app, automation: { name, listId, templateId, fromEmail, delayHours } } });
-        toast.success("Automation created", { description: name.trim() });
-      }
-      leaving.current = true;
-      await navigate({ to: "/campaigns/automations", search: { appId: app } });
-    }, automation ? "Could not save this automation." : "Could not create this automation.");
+      if (automation) await updateAutomationFn({ data: { id: automation.id, patch: { name: name.trim(), templateId, fromEmail, delayHours } } });
+      else await createAutomationFn({ data: { appId: app, automation: { name, listId, templateId, fromEmail, delayHours } } });
+    }, automation ? "Could not save this automation." : "Could not create this automation.", {
+      success: automation ? "Automation saved" : "Automation created",
+      description: name.trim(),
+      invalidate: false,
+      after: async () => {
+        leaving.current = true;
+        await navigate({ to: "/campaigns/automations", search: { appId: app } });
+      },
+    });
   }
 
   const listOptions = (choices?.lists ?? []).map((l) => ({ value: l.id, label: l.name }));

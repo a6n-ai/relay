@@ -4,7 +4,7 @@ import { Kbd } from "@foundry/ui/kbd";
 import { localStore } from "@foundry/ui/safe-storage";
 import SearchIcon from "lucide-react/icons/search";
 import { useEffect, useMemo, useState } from "react";
-import { isTypingTarget } from "../page/keys";
+import { isTypingTarget } from "../lib/keys";
 import { usePageOf } from "./page-data";
 import { type FindEntry, findEntries, pushRecent, readRecent } from "./find";
 import { withNew } from "./scope";

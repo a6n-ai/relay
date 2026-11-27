@@ -1,4 +1,4 @@
-import { Hint } from "./text";
+import { Hint } from "../form/text";
 
 // Facets built from the loaded rows narrow this page only, so say so while older pages exist.
 export function PageLocalHint({ active, hasMore }: { active: boolean; hasMore: boolean }) {

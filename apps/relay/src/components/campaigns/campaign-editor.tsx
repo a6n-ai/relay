@@ -20,17 +20,17 @@ import { PROBLEM_LABEL } from "./campaign-problems";
 import { ChoiceControl } from "../form/choice-field";
 import { SenderField } from "../form/sender-field";
 import { ContentFields, type LetterPreview } from "./content-fields";
-import { errorText } from "../error-text";
+import { errorText } from "../lib/error-text";
 import { ScheduleDialog } from "./schedule-dialog";
 import { SettingsCard } from "../page/settings-card";
 import { Toolbar } from "../page/toolbar";
-import { UnsavedGuard } from "../unsaved-guard";
-import { useCan } from "../use-can";
-import { FormError, FormActions, FormPanel, FormBody } from "../page/form-parts";
-import { Hint } from "../page/text";
+import { UnsavedGuard } from "../page/unsaved-guard";
+import { useCan } from "../lib/use-can";
+import { FormError, FormActions, FormPanel, FormBody } from "../form/form-parts";
+import { Hint } from "../form/text";
 import { FixedField } from "../form/fixed-field";
 import { type CampaignView, type ListView } from "../../shared/views";
-import { useLoad } from "../use-load";
+import { useLoad } from "../lib/use-load";
 
 type CampaignOptions = { senders: string[]; lists: ListView[]; postalAddress: string | null };
 

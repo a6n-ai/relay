@@ -16,7 +16,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@foundry/ui/tooltip";
 import Ellipsis from "lucide-react/icons/ellipsis";
 import { useEffect, useState } from "react";
 import { authOptionsFn } from "../../console/shell.fns";
-import { useSignOut } from "../sign-out-button";
+import { useSignOut } from "./sign-out";
 import { LINK_MARKER, SignInMethodsDialog } from "./sign-in-methods-dialog";
 import { resolveTheme, THEME_KEY, type ThemePref } from "./theme";
 

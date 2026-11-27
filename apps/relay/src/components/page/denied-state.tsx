@@ -1,8 +1,8 @@
 import { useMatch } from "@tanstack/react-router";
 import type { ReactNode } from "react";
-import { isDenied } from "../shared/errors";
-import type { Shell } from "../shared/views";
-import { Hint, Title } from "./page/text";
+import { isDenied } from "../../shared/errors";
+import type { Shell } from "../../shared/views";
+import { Hint, Title } from "../form/text";
 
 type DeniedReason = "no-workspace" | "suspended" | "not-allowed" | "not-found";
 

@@ -14,14 +14,15 @@ import { NameField, TextField } from "../../components/form/text-field";
 import { SettingsCard } from "../../components/page/settings-card";
 import { Toolbar } from "../../components/page/toolbar";
 import { PageHeader } from "../../components/shell/page-header";
-import { UnsavedGuard } from "../../components/unsaved-guard";
-import { useCan } from "../../components/use-can";
+import { UnsavedGuard } from "../../components/page/unsaved-guard";
+import { useCan } from "../../components/lib/use-can";
 import { deleteTemplateFn, fetchTemplate, previewTemplateFn, updateTemplateFn } from "../../console/templates.fns";
-import { FormError, FormPanel, FormBody } from "../../components/page/form-parts";
+import { FormError, FormPanel, FormBody } from "../../components/form/form-parts";
 import { FormSkeleton } from "../../components/page/page-skeleton";
 import { type TemplateView } from "../../shared/views";
 import { TEMPLATE_NAME_MAX } from "../../shared/limits";
-import { useSubmit } from "../../components/use-submit";
+import { appName } from "../../shared/scope";
+import { useSubmit } from "../../components/lib/use-submit";
 
 export const Route = createFileRoute("/_app/campaigns_/templates_/$templateId")({
   loader: ({ params }) => orMissing(fetchTemplate({ data: { id: params.templateId } })),
@@ -49,7 +50,7 @@ function TemplatePage() {
   return (
     <>
       <PageHeader crumbs={crumbs(page.appId, page.name)} />
-      <TemplateForm template={page} canWrite={canWrite} appName={shell.apps.find((a) => a.id === page.appId)?.name ?? "—"} />
+      <TemplateForm template={page} canWrite={canWrite} appName={appName(shell.apps, page.appId, "—")} />
     </>
   );
 }
@@ -88,8 +89,7 @@ function TemplateForm({ template, canWrite, appName }: { template: TemplateView;
     e.preventDefault();
     await run(async () => {
       await persist();
-      toast.success("Template saved");
-    }, "Could not save this template.");
+    }, "Could not save this template.", { success: "Template saved", invalidate: false });
   }
 
   async function remove() {

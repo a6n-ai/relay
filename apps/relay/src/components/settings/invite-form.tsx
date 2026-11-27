@@ -1,15 +1,12 @@
-import { toast } from "@foundry/ui/toast";
-import { useRouter } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
 import { TextField } from "../form/text-field";
 import { RoleChoice } from "./role-select";
 import { type OrgRole } from "../../shared/roles";
 import { inviteMemberFn } from "../../console/members.fns";
-import { FormError, FormBody, FormActions } from "../page/form-parts";
-import { useSubmit } from "../use-submit";
+import { FormError, FormBody, FormActions } from "../form/form-parts";
+import { useSubmit } from "../lib/use-submit";
 
 export function InviteForm({ done, canGrantOwner }: { done: () => void; canGrantOwner: boolean }) {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<OrgRole>("member");
   const { pending, error, setError, run } = useSubmit();
@@ -18,10 +15,7 @@ export function InviteForm({ done, canGrantOwner }: { done: () => void; canGrant
     event.preventDefault();
     await run(async () => {
       await inviteMemberFn({ data: { email, role } });
-      toast.success("Invite sent", { description: email });
-      done();
-      await router.invalidate();
-    }, "Could not send the invite.");
+    }, "Could not send the invite.", { success: "Invite sent", description: email, after: done });
   }
 
   return (

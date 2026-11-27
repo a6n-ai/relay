@@ -1,4 +1,4 @@
-import { copyOf } from "../shared/errors";
+import { copyOf } from "../../shared/errors";
 
 const FALLBACK = "Something went wrong. Try again.";
 

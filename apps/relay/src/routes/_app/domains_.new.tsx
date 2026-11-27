@@ -1,17 +1,16 @@
-import { toast } from "@foundry/ui/toast";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
 import { PageDenied } from "../../components/page/page-denied";
 import { ChoiceField } from "../../components/form/choice-field";
 import { TextField } from "../../components/form/text-field";
 import { CreatePage } from "../../components/page/create-page";
-import { FormActions, FormError } from "../../components/page/form-parts";
+import { FormActions, FormError } from "../../components/form/form-parts";
 import { SettingsCard } from "../../components/page/settings-card";
-import { useCan } from "../../components/use-can";
+import { useCan } from "../../components/lib/use-can";
 import { addDomainFn } from "../../console/domains.fns";
 import { SES_REGIONS } from "../../shared/regions";
 import { looksLikeDomain, normaliseDomainInput } from "../../components/lib/domain-input";
-import { useSubmit } from "../../components/use-submit";
+import { useSubmit } from "../../components/lib/use-submit";
 
 export const Route = createFileRoute("/_app/domains_/new")({
   component: AddDomainPage,
@@ -43,9 +42,12 @@ function AddDomainPage() {
     }
     await run(async () => {
       await addDomainFn({ data: { domain: clean, ...(region === "default" ? {} : { sesRegion: region }) } });
-      toast.success("Domain added", { description: "Add its DNS records to verify it." });
-      await navigate({ to: "/domains", search: { q: undefined, status: undefined } });
-    }, "Could not add the domain.");
+    }, "Could not add the domain.", {
+      success: "Domain added",
+      description: "Add its DNS records to verify it.",
+      invalidate: false,
+      after: () => navigate({ to: "/domains", search: { q: undefined, status: undefined } }),
+    });
   }
 
   return (

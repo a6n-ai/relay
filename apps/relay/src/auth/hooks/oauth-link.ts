@@ -4,7 +4,8 @@ import { securityDb } from "../../db/security/client";
 import { user } from "../../db/security/schema";
 import type { Env } from "../../env";
 import { writeAudit } from "../audit";
-import { ADMIN_LINK_CODE, auditKindFor, refusesImplicitLink } from "../google";
+import { ADMIN_LINK_CODE } from "../../shared/sign-in";
+import { auditKindFor, refusesImplicitLink } from "../google";
 import type { AdminLinkState, HookCtx } from "./types";
 
 // Both Google flows insert the account row here. A banned user gets none, and a platform admin gets none from the sign-in callback:

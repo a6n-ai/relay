@@ -4,10 +4,10 @@ import { toast } from "@foundry/ui/toast";
 import { useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { deleteDomainFn, domainDeletePreview } from "../../console/domains.fns";
-import { ConfirmDialog } from "../confirm-dialog";
+import { ConfirmDialog } from "../page/confirm-dialog";
 import { DnsRecords } from "./dns-records";
-import { errorText } from "../error-text";
-import { Mono } from "../page/text";
+import { errorText } from "../lib/error-text";
+import { Mono } from "../form/text";
 
 type Preview = Awaited<ReturnType<typeof domainDeletePreview>>;
 

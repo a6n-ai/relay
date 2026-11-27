@@ -1,4 +1,3 @@
-import { toast } from "@foundry/ui/toast";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
 import { PageDenied } from "../../components/page/page-denied";
@@ -6,11 +5,11 @@ import { SlugField } from "../../components/form/slug-field";
 import { splitSlugError } from "../../components/form/slugify";
 import { NameField } from "../../components/form/text-field";
 import { CreatePage } from "../../components/page/create-page";
-import { FormActions, FormError } from "../../components/page/form-parts";
+import { FormActions, FormError } from "../../components/form/form-parts";
 import { SettingsCard } from "../../components/page/settings-card";
-import { useCan } from "../../components/use-can";
+import { useCan } from "../../components/lib/use-can";
 import { createAppFn } from "../../console/apps.fns";
-import { useSubmit } from "../../components/use-submit";
+import { useSubmit } from "../../components/lib/use-submit";
 
 export const Route = createFileRoute("/_app/apps_/new")({
   component: NewAppPage,
@@ -32,10 +31,13 @@ function NewAppPage() {
   async function submit(event: FormEvent) {
     event.preventDefault();
     await run(async () => {
-      const created = await createAppFn({ data: { name, slug } });
-      toast.success("App created", { description: name });
-      await navigate({ to: "/apps/$appId", params: { appId: created.id } });
-    }, "Could not create the app.");
+      return createAppFn({ data: { name, slug } });
+    }, "Could not create the app.", {
+      success: "App created",
+      description: name,
+      invalidate: false,
+      after: (created) => navigate({ to: "/apps/$appId", params: { appId: created.id } }),
+    });
   }
 
   const split = splitSlugError(error);

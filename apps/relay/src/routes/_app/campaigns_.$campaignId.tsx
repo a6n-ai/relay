@@ -4,10 +4,11 @@ import { CampaignReport } from "../../components/campaigns/campaign-report";
 import { PageDenied } from "../../components/page/page-denied";
 import { orMissing } from "../../components/lib/scoped-load";
 import { PageHeader } from "../../components/shell/page-header";
-import { StatusBadge } from "../../components/status-badge";
+import { StatusBadge } from "../../components/page/status-badge";
 import { fetchAudienceHook } from "../../console/apps.fns";
 import { fetchCampaign, fetchCampaignOptions, fetchCampaignStats } from "../../console/campaigns.fns";
 import { DetailSkeleton } from "../../components/page/page-skeleton";
+import { appName } from "../../shared/scope";
 import { str } from "../../components/lib/route-search";
 
 type CampaignSearch = { appId?: string };
@@ -60,7 +61,7 @@ function CampaignPage() {
           campaign={campaign}
           options={page.options}
           hookReady={page.hookReady}
-          appName={shell.apps.find((a) => a.id === campaign.appId)?.name ?? "—"}
+          appName={appName(shell.apps, campaign.appId, "—")}
         />
       )}
     </>

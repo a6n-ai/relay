@@ -2,25 +2,25 @@ import { TextField } from "../../components/form/text-field";
 import { toast } from "@foundry/ui/toast";
 import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
-import { ConfirmDialog } from "../../components/confirm-dialog";
-import { CreateDialog } from "../../components/create-dialog";
+import { ConfirmDialog } from "../../components/page/confirm-dialog";
+import { CreateDialog } from "../../components/page/create-dialog";
 import { PageDenied } from "../../components/page/page-denied";
 import { ChoiceField } from "../../components/form/choice-field";
 import { FilterMenu } from "../../components/page/filter-menu";
 import { LoadMore } from "../../components/page/load-more";
 import { ListSkeleton } from "../../components/page/page-skeleton";
-import { Hint } from "../../components/page/text";
+import { Hint } from "../../components/form/text";
 import { SearchInput, Toolbar } from "../../components/page/toolbar";
 import { useUrlFilter } from "../../components/page/use-url-filter";
 import { PageHeader } from "../../components/shell/page-header";
-import { ResourceTable } from "../../components/resource-table";
-import { useCan } from "../../components/use-can";
+import { ResourceTable } from "../../components/page/resource-table";
+import { useCan } from "../../components/lib/use-can";
 import { formatWhen } from "../../components/lib/format-date";
 import { addSuppressionFn, fetchSuppressions, removeSuppressionFn } from "../../console/suppressions.fns";
-import { FormError, FormBody, FormActions } from "../../components/page/form-parts";
+import { FormError, FormBody, FormActions } from "../../components/form/form-parts";
 import { STREAMS } from "../../shared/mail";
 import { oneOf, posInt, str, untyped } from "../../components/lib/route-search";
-import { useSubmit } from "../../components/use-submit";
+import { useSubmit } from "../../components/lib/use-submit";
 
 type SuppressionsSearch = { prefix?: string; cursor?: string; stream?: StreamFilter; offset?: number };
 
@@ -147,7 +147,6 @@ function PrefixSearch() {
 }
 
 function AddForm({ done }: { done: () => void }) {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [stream, setStream] = useState<StreamFilter>("all");
   const { pending, error, setError, run } = useSubmit();
@@ -155,10 +154,7 @@ function AddForm({ done }: { done: () => void }) {
     event.preventDefault();
     await run(async () => {
       await addSuppressionFn({ data: { email, stream: stream === "all" ? undefined : stream } });
-      toast.success("Suppression added");
-      done();
-      await router.invalidate();
-    }, "Could not add this suppression.");
+    }, "Could not add this suppression.", { success: "Suppression added", after: done });
   }
   return (
     <FormBody onSubmit={submit}>

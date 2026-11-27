@@ -6,11 +6,12 @@ import { formatWhen } from "../../components/lib/format-date";
 import { LetterView } from "../../components/letter-view";
 import { Toolbar } from "../../components/page/toolbar";
 import { PageHeader } from "../../components/shell/page-header";
-import { StatusBadge } from "../../components/status-badge";
+import { StatusBadge } from "../../components/page/status-badge";
 import { previewHint } from "../../components/messages/preview-hint";
 import { fetchMessage } from "../../console/messages.fns";
-import { Hint, SectionTitle } from "../../components/page/text";
+import { Hint, SectionTitle } from "../../components/form/text";
 import { DetailSkeleton } from "../../components/page/page-skeleton";
+import { appName } from "../../shared/scope";
 import { DefinitionList } from "../../components/page/definition-list";
 
 const crumbs = [{ label: "Messages", to: "/messages" }, { label: "Message" }];
@@ -39,7 +40,7 @@ function MessagePage() {
     return <PageDenied crumbs={crumbs} reason="not-found" label="Message not found" />;
   }
   const m = result.message;
-  const appName = shell.apps.find((a) => a.id === m.appId)?.name ?? "App";
+  const appLabel = appName(shell.apps, m.appId, "App");
   const timeline: TimelineItem[] = [
     ...(m.direction === "in"
       ? [{ label: "Received", at: m.createdAt }]
@@ -80,7 +81,7 @@ function MessagePage() {
             items={[
               { term: "From", value: m.fromEmail ?? "—", wrap: true },
               { term: "To", value: m.toEmail ?? "—", wrap: true },
-              { term: "App", value: appName },
+              { term: "App", value: appLabel },
               { term: "Status", value: <StatusBadge status={m.status} direction={m.direction} /> },
             ]}
           />

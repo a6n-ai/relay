@@ -3,11 +3,11 @@ import { toast } from "@foundry/ui/toast";
 import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
 import { UsersIcon } from "lucide-react";
 import { type FormEvent, type RefObject, useRef, useState } from "react";
-import { ConfirmDialog } from "../../components/confirm-dialog";
-import { CreateDialog } from "../../components/create-dialog";
+import { ConfirmDialog } from "../../components/page/confirm-dialog";
+import { CreateDialog } from "../../components/page/create-dialog";
 import { PageDenied } from "../../components/page/page-denied";
-import { ResourceTable } from "../../components/resource-table";
-import { useCan } from "../../components/use-can";
+import { ResourceTable } from "../../components/page/resource-table";
+import { useCan } from "../../components/lib/use-can";
 import { ChoiceField } from "../../components/form/choice-field";
 import { EmptyChoice } from "../../components/form/empty-choice";
 import { useFieldErrors } from "../../components/form/field";
@@ -20,10 +20,10 @@ import { SettingsCard, SettingsForm } from "../../components/page/settings-card"
 import { PageHeader } from "../../components/shell/page-header";
 import { fetchAddresses, fetchDomains, removeAddressFn, updateAddressFn } from "../../console/domains.fns";
 import { addGrantFn, fetchAddressAccess, removeGrantFn } from "../../console/grants.fns";
-import { FormError, FormBody, FormActions, FormPanel } from "../../components/page/form-parts";
+import { FormError, FormBody, FormActions, FormPanel } from "../../components/form/form-parts";
 import { KIND_LABEL, KINDS } from "../../components/lib/address-kinds";
 import { EMAIL_MAX } from "../../shared/limits";
-import { useSubmit } from "../../components/use-submit";
+import { useSubmit } from "../../components/lib/use-submit";
 
 export const Route = createFileRoute("/_app/domains_/addresses/$addressId")({
   loader: async ({ params }) => {
@@ -142,7 +142,6 @@ function AddressPage() {
 }
 
 function AddressDetailsCard({ address, canWrite, bypass }: { address: Address; canWrite: boolean; bypass: RefObject<boolean> }) {
-  const router = useRouter();
   const [name, setName] = useState(address.displayName ?? "");
   const [replyTo, setReplyTo] = useState(address.replyTo ?? "");
   const [replyError, setReplyError] = useState<string | null>(null);
@@ -158,9 +157,7 @@ function AddressDetailsCard({ address, canWrite, bypass }: { address: Address; c
     }
     await run(async () => {
       await updateAddressFn({ data: { id: address.id, displayName: name.trim() || null, replyTo: reply || null } });
-      toast.success("Address updated", { description: address.email });
-      await router.invalidate();
-    }, "Could not update the address.");
+    }, "Could not update the address.", { success: "Address updated", description: address.email });
   }
 
   return (
@@ -201,7 +198,6 @@ function NewGrantForm({
   options: { value: string; label: string; badge?: string }[];
   done: () => void;
 }) {
-  const router = useRouter();
   const [choice, setChoice] = useState(options.length === 1 ? options[0]!.value : "");
   const fe = useFieldErrors<"who">();
   const { pending, error, setError, run } = useSubmit();
@@ -215,10 +211,7 @@ function NewGrantForm({
     const [kind, targetId] = choice.split(":");
     await run(async () => {
       await addGrantFn({ data: { addressId, ...(kind === "team" ? { teamId: targetId } : { memberId: targetId }) } });
-      toast.success("Access added");
-      done();
-      await router.invalidate();
-    }, "Could not add access.");
+    }, "Could not add access.", { success: "Access added", after: done });
   }
 
   if (options.length === 0) {

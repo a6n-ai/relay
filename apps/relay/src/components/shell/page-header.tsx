@@ -3,7 +3,7 @@ import { SidebarTrigger } from "@foundry/ui/sidebar";
 import { Link, useLocation, useRouteContext } from "@tanstack/react-router";
 import ChevronLeft from "lucide-react/icons/chevron-left";
 import { type ReactNode, useEffect } from "react";
-import { PageTitle } from "../page/page-title";
+import { PageTitle } from "./page-title";
 import { AddNewMenu } from "./add-new";
 import { sectionTabs } from "./nav";
 import { focusRing } from "../lib/focus";

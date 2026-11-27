@@ -3,7 +3,7 @@ import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, Di
 import { Input } from "@foundry/ui/input";
 import { Switch } from "@foundry/ui/switch";
 import { useState } from "react";
-import { Hint } from "../page/text";
+import { Hint } from "../form/text";
 
 export type Person = { id: string; name: string; email: string };
 export type Team = { id: string; name: string; memberIds: string[] };

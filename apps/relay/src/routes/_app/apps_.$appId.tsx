@@ -10,16 +10,16 @@ import { type FormEvent, useState } from "react";
 import { ChoiceField, type ChoiceOption } from "../../components/form/choice-field";
 import { NameField } from "../../components/form/text-field";
 import { FixedField } from "../../components/form/fixed-field";
-import { ConfirmDialog } from "../../components/confirm-dialog";
-import { CreateDialog } from "../../components/create-dialog";
+import { ConfirmDialog } from "../../components/page/confirm-dialog";
+import { CreateDialog } from "../../components/page/create-dialog";
 import { PageDenied } from "../../components/page/page-denied";
 import { EmptyState } from "../../components/page/empty-state";
 import { SettingsCard, SettingsForm } from "../../components/page/settings-card";
 import { FormSkeleton } from "../../components/page/page-skeleton";
-import { CellWhen, ResourceTable } from "../../components/resource-table";
+import { CellWhen, ResourceTable } from "../../components/page/resource-table";
 import { PageHeader } from "../../components/shell/page-header";
-import { SecretOnce } from "../../components/secret-once";
-import { useCan } from "../../components/use-can";
+import { SecretOnce } from "../../components/page/secret-once";
+import { useCan } from "../../components/lib/use-can";
 import {
   createKeyFn,
   deleteKeyFn,
@@ -34,11 +34,11 @@ import {
 } from "../../console/apps.fns";
 import { setAudienceBindingFn } from "../../console/admin.fns";
 import { formatDate, formatWhen } from "../../components/lib/format-date";
-import { FormError, FormBody, FormActions, FormPanel } from "../../components/page/form-parts";
+import { FormError, FormBody, FormActions, FormPanel } from "../../components/form/form-parts";
 import { RenameForm } from "../../components/form/rename-form";
-import { Hint } from "../../components/page/text";
+import { Hint } from "../../components/form/text";
 import { hostOf } from "../../components/lib/path";
-import { useSubmit } from "../../components/use-submit";
+import { useSubmit } from "../../components/lib/use-submit";
 
 export const Route = createFileRoute("/_app/apps_/$appId")({
   pendingComponent: () => <FormSkeleton crumbs={[{ label: "Apps", to: "/apps" }, { label: "App" }]} cards={3} action />,
@@ -170,7 +170,6 @@ function AppPage() {
 }
 
 function AppDetailsPanel({ appId, name, slug, canWrite }: { appId: string; name: string; slug: string; canWrite: boolean }) {
-  const router = useRouter();
   const [value, setValue] = useState(name);
   const { pending, error, setError, run } = useSubmit();
   const dirty = value.trim() !== name;
@@ -180,9 +179,7 @@ function AppDetailsPanel({ appId, name, slug, canWrite }: { appId: string; name:
     if (!dirty || !value.trim()) return;
     await run(async () => {
       await updateAppFn({ data: { id: appId, name: value.trim() } });
-      toast.success("App renamed");
-      await router.invalidate();
-    }, "Could not rename the app.");
+    }, "Could not rename the app.", { success: "App renamed" });
   }
 
   return (
@@ -211,7 +208,6 @@ const BINDING = "TIFFIN_AUDIENCE";
 const BINDING_NAME = "TiffinGrab";
 
 function DefaultSendersPanel({ appId, senders, canWrite }: { appId: string; senders: DefaultSenders; canWrite: boolean }) {
-  const router = useRouter();
   const known = new Set(senders.options.map((o) => o.id));
   // A default whose address can no longer send is shown as None; saving then clears it.
   const only = senders.options.length === 1 ? senders.options[0].id : NONE;
@@ -229,9 +225,7 @@ function DefaultSendersPanel({ appId, senders, canWrite }: { appId: string; send
       await setAppDefaultSendersFn({
         data: { appId, transactionalId: transactional === NONE ? null : transactional, marketingId: marketing === NONE ? null : marketing },
       });
-      toast.success("Default senders saved");
-      await router.invalidate();
-    }, "Could not save the default senders.");
+    }, "Could not save the default senders.", { success: "Default senders saved" });
   }
 
   const choices: ChoiceOption[] = [{ value: NONE, label: "None" }, ...senders.options.map((o) => ({ value: o.id, label: o.email }))];
@@ -299,9 +293,7 @@ function AudiencePanel({
     await run(async () => {
       const result = await setAudienceHookFn({ data: { appId, url: trimmed, enabled } });
       setSecret(result.secret);
-      toast.success("App audience saved");
-      await router.invalidate();
-    }, "Could not save the App audience.");
+    }, "Could not save the App audience.", { success: "App audience saved" });
   }
 
   async function remove() {
@@ -405,7 +397,6 @@ function AudiencePanel({
 }
 
 function NewKeyForm({ appId, first, done, lock }: { appId: string; first: boolean; done: () => void; lock: (locked: boolean) => void }) {
-  const router = useRouter();
   const [name, setName] = useState(first ? "Production" : "");
   const [created, setCreated] = useState<string | null>(null);
   const { pending, error, setError, run } = useSubmit();
@@ -416,9 +407,7 @@ function NewKeyForm({ appId, first, done, lock }: { appId: string; first: boolea
       const key = await createKeyFn({ data: { appId, name } });
       setCreated(key.secret);
       lock(true);
-      toast.success("Key created");
-      await router.invalidate();
-    }, "Could not create the key.");
+    }, "Could not create the key.", { success: "Key created" });
   }
 
   if (created) return <SecretOnce secret={created} label="Your new API key" onDone={done} />;

@@ -5,7 +5,7 @@ import { DevTabs } from "./dev-tabs";
 import { LifecycleRail, RailSteps, STAGES } from "./lifecycle-rail";
 import { HeroScene, Scene } from "./scene";
 import "./landing.css";
-import { Docs, SiteHeader, Wrap, big } from "../site-header";
+import { Docs, SiteHeader, Wrap, big } from "./site-header";
 import { DOCS_BASE } from "../../shared/site";
 
 const SignIn = ({ hero }: { hero?: boolean }) => (

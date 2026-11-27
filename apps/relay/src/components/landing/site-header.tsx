@@ -1,8 +1,8 @@
 import { Button } from "@foundry/ui/button";
 import type { ReactNode } from "react";
-import "./landing/landing.css";
-import { DOCS_BASE } from "../shared/site";
-import { RelayMark } from "./relay-mark";
+import "./landing.css";
+import { DOCS_BASE } from "../../shared/site";
+import { RelayMark } from "../relay-mark";
 
 export const Wrap = ({ children, className = "" }: { children: ReactNode; className?: string }) => (
   <div className={`mx-auto w-full max-w-6xl px-4 sm:px-8 ${className}`}>{children}</div>

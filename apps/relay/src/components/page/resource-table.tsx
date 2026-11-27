@@ -2,10 +2,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tooltip, TooltipContent, TooltipTrigger } from "@foundry/ui/tooltip";
 import { Link, type LinkProps } from "@tanstack/react-router";
 import type { ReactNode } from "react";
-import { Hint } from "./page/text";
-import { TableInset } from "./page/table-inset";
-import { RowMenu, type RowAction } from "./page/row-menu";
-import { rowNumber } from "./page/row-number";
+import { Hint } from "../form/text";
+import { TableInset } from "./table-inset";
+import { RowMenu, type RowAction } from "./row-menu";
+import { rowNumber } from "./row-number";
 
 const KIND = { name: "font-medium", mono: "font-mono text-xs", url: "break-all font-mono text-xs", time: "text-xs tabular-nums" } as const;
 

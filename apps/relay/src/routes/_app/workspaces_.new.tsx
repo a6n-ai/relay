@@ -1,14 +1,13 @@
-import { toast } from "@foundry/ui/toast";
 import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
 import { SlugField } from "../../components/form/slug-field";
 import { splitSlugError } from "../../components/form/slugify";
 import { NameField } from "../../components/form/text-field";
 import { CreatePage } from "../../components/page/create-page";
-import { FormActions, FormError } from "../../components/page/form-parts";
+import { FormActions, FormError } from "../../components/form/form-parts";
 import { SettingsCard } from "../../components/page/settings-card";
 import { createWorkspaceFn } from "../../console/workspaces.fns";
-import { useSubmit } from "../../components/use-submit";
+import { useSubmit } from "../../components/lib/use-submit";
 
 export const Route = createFileRoute("/_app/workspaces_/new")({
   staticData: { allowsNoWorkspace: true },
@@ -29,10 +28,15 @@ function NewWorkspacePage() {
     event.preventDefault();
     await run(async () => {
       await createWorkspaceFn({ data: { name, slug } });
-      toast.success("Workspace created", { description: name });
-      await router.invalidate();
-      await navigate({ to: "/apps" });
-    }, "Could not create the workspace.");
+    }, "Could not create the workspace.", {
+      success: "Workspace created",
+      description: name,
+      invalidate: false,
+      after: async () => {
+        await router.invalidate();
+        await navigate({ to: "/apps" });
+      },
+    });
   }
 
   const split = splitSlugError(error);

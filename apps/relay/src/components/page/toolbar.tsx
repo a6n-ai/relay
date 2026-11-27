@@ -2,7 +2,7 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from "@foundry/ui/input-
 import { Kbd } from "@foundry/ui/kbd";
 import { SearchIcon } from "lucide-react";
 import { type ReactNode, useEffect, useRef } from "react";
-import { isTypingTarget } from "./keys";
+import { isTypingTarget } from "../lib/keys";
 
 export function Toolbar({ search, filters, view, children }: { search?: ReactNode; filters?: ReactNode; view?: ReactNode; children?: ReactNode }) {
   return (

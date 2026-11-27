@@ -1,18 +1,18 @@
-import { toast } from "@foundry/ui/toast";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
 import { PageDenied } from "../../components/page/page-denied";
 import { AppField, needsAppChoice } from "../../components/form/app-field";
 import { NameField } from "../../components/form/text-field";
 import { CreatePage } from "../../components/page/create-page";
-import { FormActions, FormError } from "../../components/page/form-parts";
+import { FormActions, FormError } from "../../components/form/form-parts";
 import { NoAppState } from "../../components/page/no-app-state";
 import { SettingsCard } from "../../components/page/settings-card";
-import { useCan } from "../../components/use-can";
+import { useCan } from "../../components/lib/use-can";
 import { createTemplateFn } from "../../console/templates.fns";
 import { TEMPLATE_NAME_MAX } from "../../shared/limits";
 import { str } from "../../components/lib/route-search";
-import { useSubmit } from "../../components/use-submit";
+import { startApp } from "../../shared/scope";
+import { useSubmit } from "../../components/lib/use-submit";
 
 export const Route = createFileRoute("/_app/campaigns_/templates_/new")({
   validateSearch: (search: Record<string, unknown>): { appId?: string } => ({
@@ -34,7 +34,7 @@ function NewTemplatePage() {
   const canWrite = useCan({ template: ["write"] });
   const navigate = useNavigate();
   const scopedAppId = apps.some((a) => a.id === scopeParam) ? scopeParam : undefined;
-  const [app, setApp] = useState(scopedAppId ?? apps[0]?.id ?? "");
+  const [app, setApp] = useState(startApp(apps, scopedAppId) ?? "");
   const [name, setName] = useState("");
   const { pending, error, setError, run } = useSubmit();
 
@@ -46,10 +46,13 @@ function NewTemplatePage() {
   async function submit(event: FormEvent) {
     event.preventDefault();
     await run(async () => {
-      const template = await createTemplateFn({ data: { appId: app, input: { name } } });
-      toast.success("Template created", { description: name });
-      await navigate({ to: "/campaigns/templates/$templateId", params: { templateId: template.id }, search: { appId: app } });
-    }, "Could not create this template.");
+      return createTemplateFn({ data: { appId: app, input: { name } } });
+    }, "Could not create this template.", {
+      success: "Template created",
+      description: name,
+      invalidate: false,
+      after: (template) => navigate({ to: "/campaigns/templates/$templateId", params: { templateId: template.id }, search: { appId: app } }),
+    });
   }
 
   const choose = needsAppChoice(apps, scopedAppId);

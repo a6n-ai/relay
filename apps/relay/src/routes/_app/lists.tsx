@@ -3,21 +3,21 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ListIcon } from "lucide-react";
 import { useState } from "react";
 import { CONSENT_SHORT } from "../../components/lists/consent-labels";
-import { ResourceTable } from "../../components/resource-table";
+import { ResourceTable } from "../../components/page/resource-table";
 import { FilterMenu } from "../../components/page/filter-menu";
 import { ResourceGrid } from "../../components/page/resource-grid";
 import { ViewToggle } from "../../components/page/view-toggle";
 import { type View, viewPref } from "../../components/page/view-pref";
-import { Hint } from "../../components/page/text";
-import { useCan } from "../../components/use-can";
+import { Hint } from "../../components/form/text";
+import { useCan } from "../../components/lib/use-can";
 import { EmptyState } from "../../components/page/empty-state";
 import { SearchInput, Toolbar } from "../../components/page/toolbar";
 import { useUrlFilter } from "../../components/page/use-url-filter";
 import { ListSkeleton } from "../../components/page/page-skeleton";
 import { PageHeader } from "../../components/shell/page-header";
-import { fetchApps } from "../../console/apps.fns";
 import { fetchLists } from "../../console/lists.fns";
 import { str, untyped } from "../../components/lib/route-search";
+import { appName, startApp } from "../../shared/scope";
 import { loaded, ScopedDenied } from "../../components/page/scoped-page";
 
 type ListsSearch = { appId?: string; q?: string };
@@ -29,9 +29,8 @@ export const Route = createFileRoute("/_app/lists")({
     q: str(search.q),
   }),
   loaderDeps: ({ search }) => ({ appId: search.appId }),
-  loader: async ({ deps }) => {
-    const apps = await fetchApps();
-    if (!apps) return null;
+  loader: async ({ deps, context }) => {
+    const apps = context.shell.apps;
     const scoped = deps.appId ? apps.filter((a) => a.id === deps.appId) : apps;
     if (deps.appId && scoped.length === 0) return { missing: true as const };
     const settled = await Promise.allSettled(scoped.map((a) => fetchLists({ data: { appId: a.id } })));
@@ -56,11 +55,9 @@ function ListsPage() {
   const [view, setView] = useState<View>(() => viewPref.read("/lists"));
   if (!loaded(page)) return <ScopedDenied page={page} />;
   const { apps, appId, lists } = page;
-  const defaultApp = appId ?? apps[0]?.id;
-  const canCreate = canWrite && !!defaultApp;
+  const canCreate = canWrite && !!startApp(apps, appId);
   const q = query.trim().toLowerCase();
   const shown = q ? lists.filter((l) => l.name.toLowerCase().includes(q)) : lists;
-  const appName = (id: string) => apps.find((a) => a.id === id)?.name ?? "—";
   const empty = (
     <EmptyState
       icon={ListIcon}
@@ -104,7 +101,7 @@ function ListsPage() {
           card={(l) => (
             <div className="grid gap-1">
               <p className="font-medium">{l.name}</p>
-              <Hint size="xs">{appName(l.appId)}</Hint>
+              <Hint size="xs">{appName(apps, l.appId, "—")}</Hint>
               <Hint>
                 {l.members} {l.members === 1 ? "contact" : "contacts"} · {CONSENT_SHORT[l.consentSource]}
               </Hint>
@@ -115,7 +112,7 @@ function ListsPage() {
         <ResourceTable
           columns={[
             { header: "Name", kind: "name", cell: (l) => l.name },
-            { header: "App", secondary: true, cell: (l) => appName(l.appId) },
+            { header: "App", secondary: true, cell: (l) => appName(apps, l.appId, "—") },
             { header: "Contacts", cell: (l) => l.members, numeric: true },
             { header: "Consent", secondary: true, cell: (l) => CONSENT_SHORT[l.consentSource] },
           ]}

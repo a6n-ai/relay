@@ -1,9 +1,7 @@
-import { toast } from "@foundry/ui/toast";
-import { useRouter } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
-import { FormActions, FormBody, FormError } from "../page/form-parts";
+import { FormActions, FormBody, FormError } from "./form-parts";
 import { NameField } from "./text-field";
-import { useSubmit } from "../use-submit";
+import { useSubmit } from "../lib/use-submit";
 
 export function RenameForm({
   id,
@@ -22,7 +20,6 @@ export function RenameForm({
   save: (name: string) => Promise<unknown>;
   done: () => void;
 }) {
-  const router = useRouter();
   const [name, setName] = useState(initial);
   const { pending, error, setError, run } = useSubmit();
   const dirty = !!name.trim() && name.trim() !== initial;
@@ -32,10 +29,7 @@ export function RenameForm({
     if (!dirty) return;
     await run(async () => {
       await save(name.trim());
-      toast.success(`${noun} renamed`, { description: name.trim() });
-      done();
-      await router.invalidate();
-    }, `Could not rename the ${noun.toLowerCase()}.`);
+    }, `Could not rename the ${noun.toLowerCase()}.`, { success: `${noun} renamed`, description: name.trim(), after: done });
   }
 
   return (

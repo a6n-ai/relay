@@ -1,6 +1,6 @@
 import type { FormEvent, ReactNode } from "react";
 import { type Crumb, PageHeader } from "../shell/page-header";
-import { FormPanel } from "./form-parts";
+import { FormPanel } from "../form/form-parts";
 
 // A create flow on its own page: back link and title from the header, one card per section, the primary last.
 export function CreatePage({ crumbs, description, onSubmit, children }: { crumbs: Crumb[]; description: string; onSubmit: (event: FormEvent) => void; children: ReactNode }) {

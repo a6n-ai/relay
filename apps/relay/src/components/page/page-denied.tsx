@@ -1,6 +1,6 @@
 import { useRouteContext } from "@tanstack/react-router";
 import type { ComponentProps } from "react";
-import { DeniedState, deniedReason } from "../denied-state";
+import { DeniedState, deniedReason } from "./denied-state";
 import { PageHeader } from "../shell/page-header";
 
 type Reason = ComponentProps<typeof DeniedState>["reason"];

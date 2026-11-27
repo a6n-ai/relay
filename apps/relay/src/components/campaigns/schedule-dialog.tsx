@@ -4,9 +4,9 @@ import { type FormEvent, useState } from "react";
 import { scheduleCampaignFn } from "../../console/campaigns.fns";
 import { ChoiceControl } from "../form/choice-field";
 import { Field } from "../form/field";
-import { CreateDialog } from "../create-dialog";
-import { FormError, FormBody, FormActions } from "../page/form-parts";
-import { useSubmit } from "../use-submit";
+import { CreateDialog } from "../page/create-dialog";
+import { FormError, FormBody, FormActions } from "../form/form-parts";
+import { useSubmit } from "../lib/use-submit";
 
 export function ScheduleDialog({
   campaignId,

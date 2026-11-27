@@ -1,28 +1,28 @@
 import { Badge } from "@foundry/ui/badge";
 import { Button } from "@foundry/ui/button";
 import { Switch } from "@foundry/ui/switch";
-import { toast } from "@foundry/ui/toast";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { WebhookIcon } from "lucide-react";
 import { type FormEvent, useState } from "react";
-import { ConfirmDialog } from "../../components/confirm-dialog";
-import { CreateDialog } from "../../components/create-dialog";
+import { ConfirmDialog } from "../../components/page/confirm-dialog";
+import { CreateDialog } from "../../components/page/create-dialog";
 import { PageDenied } from "../../components/page/page-denied";
 import { EmptyState } from "../../components/page/empty-state";
 import { ListSkeleton } from "../../components/page/page-skeleton";
-import { CellWhen, ResourceTable } from "../../components/resource-table";
+import { CellWhen, ResourceTable } from "../../components/page/resource-table";
 import { PageHeader } from "../../components/shell/page-header";
-import { confirmAction, runAction } from "../../components/run-action";
-import { SecretOnce } from "../../components/secret-once";
-import { useCan } from "../../components/use-can";
+import { confirmAction, runAction } from "../../components/lib/run-action";
+import { SecretOnce } from "../../components/page/secret-once";
+import { useCan } from "../../components/lib/use-can";
 import { WEBHOOK_EVENT_LABELS, WEBHOOK_EVENT_LIST } from "../../components/webhooks/webhook-events";
 import { EditWebhookForm, WebhookEventsField, WebhookUrlField } from "../../components/webhooks/webhook-form";
 import { createWebhookFn, deleteWebhookFn, fetchWebhooks, updateWebhookFn } from "../../console/webhooks.fns";
 import { formatDate, formatWhen } from "../../components/lib/format-date";
-import { FormError, FormBody, FormActions } from "../../components/page/form-parts";
+import { FormError, FormBody, FormActions } from "../../components/form/form-parts";
 import { type WebhookEvent } from "../../shared/mail";
 import { hostOf } from "../../components/lib/path";
-import { useSubmit } from "../../components/use-submit";
+import { appName } from "../../shared/scope";
+import { useSubmit } from "../../components/lib/use-submit";
 
 const DESCRIPTION = "Where Relay tells your app about message events.";
 
@@ -41,10 +41,10 @@ function WebhooksPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [editId, setEditId] = useState<string | null>(null);
-  const appName = shell.apps?.find((a) => a.id === appId)?.name ?? "App";
+  const appLabel = appName(shell.apps, appId, "App");
   const crumbs = [
     { label: "Apps", to: "/apps" },
-    { label: appName, to: "/apps/$appId", params: { appId } },
+    { label: appLabel, to: "/apps/$appId", params: { appId } },
     { label: "Webhooks" },
   ];
   const editing = webhooks?.find((w) => w.id === editId);
@@ -136,7 +136,6 @@ function WebhooksPage() {
 
 
 function NewWebhookForm({ appId, done, lock }: { appId: string; done: () => void; lock: (locked: boolean) => void }) {
-  const router = useRouter();
   const [url, setUrl] = useState("");
   const [events, setEvents] = useState<WebhookEvent[]>(WEBHOOK_EVENT_LIST);
   const [created, setCreated] = useState<string | null>(null);
@@ -149,9 +148,7 @@ function NewWebhookForm({ appId, done, lock }: { appId: string; done: () => void
       const result = await createWebhookFn({ data: { appId, url, events } });
       setCreated(result.secret);
       lock(true);
-      toast.success("Webhook created");
-      await router.invalidate();
-    }, "Could not create the webhook.");
+    }, "Could not create the webhook.", { success: "Webhook created" });
   }
 
   if (created) return <SecretOnce secret={created} label="Signing secret" onDone={done} />;

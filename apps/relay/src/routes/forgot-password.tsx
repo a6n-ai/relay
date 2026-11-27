@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
 import { AuthButton, AuthCard, AuthField, AuthForm, AuthLink, AuthText } from "../components/auth-card";
-import { FormError } from "../components/page/form-parts";
+import { FormError } from "../components/form/form-parts";
 import { authFetch } from "../components/lib/auth-fetch";
 
 export const Route = createFileRoute("/forgot-password")({

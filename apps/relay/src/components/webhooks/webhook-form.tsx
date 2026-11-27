@@ -1,17 +1,15 @@
 import { Checkbox } from "@foundry/ui/checkbox";
 import { Label } from "@foundry/ui/label";
-import { toast } from "@foundry/ui/toast";
-import { useRouter } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
 import { updateWebhookFn } from "../../console/webhooks.fns";
 import { TextField } from "../form/text-field";
-import { FormActions, FormBody, FormError } from "../page/form-parts";
-import { Hint, SectionTitle } from "../page/text";
+import { FormActions, FormBody, FormError } from "../form/form-parts";
+import { Hint, SectionTitle } from "../form/text";
 import { webhookUrlForInput, webhookUrlFromInput, WEBHOOK_URL_PREFIX } from "./webhook-url";
 import { WEBHOOK_EVENT_LABELS, WEBHOOK_EVENT_LIST } from "./webhook-events";
 import { type WebhookEvent } from "../../shared/mail";
 import { URL_MAX } from "../../shared/limits";
-import { useSubmit } from "../use-submit";
+import { useSubmit } from "../lib/use-submit";
 
 export function WebhookUrlField({ value, onChange, hint = "Must be public. Called when a letter arrives." }: { value: string; onChange: (url: string) => void; hint?: string }) {
   return (
@@ -62,7 +60,6 @@ export function EditWebhookForm({
   webhook: { id: string; url: string; events: WebhookEvent[] };
   done: () => void;
 }) {
-  const router = useRouter();
   const [url, setUrl] = useState(webhook.url);
   const [events, setEvents] = useState<WebhookEvent[]>(webhook.events);
   const { pending, error, setError, run } = useSubmit();
@@ -76,10 +73,7 @@ export function EditWebhookForm({
       await updateWebhookFn({
         data: { appId, id: webhook.id, ...(url !== webhook.url ? { url } : {}), ...(same ? {} : { events }) },
       });
-      toast.success("Webhook updated");
-      done();
-      await router.invalidate();
-    }, "Could not update the webhook.");
+    }, "Could not update the webhook.", { success: "Webhook updated", after: done });
   }
 
   return (

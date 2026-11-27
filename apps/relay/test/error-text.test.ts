@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { errorText } from "../src/components/error-text";
+import { errorText } from "../src/components/lib/error-text";
 
 describe("errorText", () => {
   it("maps a known server message to plain copy, not the raw message", () => {

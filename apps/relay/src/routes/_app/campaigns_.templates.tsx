@@ -13,9 +13,9 @@ import { LoadMore } from "../../components/page/load-more";
 import { ListSkeleton } from "../../components/page/page-skeleton";
 import { SearchInput, Toolbar } from "../../components/page/toolbar";
 import { useUrlFilter } from "../../components/page/use-url-filter";
-import { ResourceTable } from "../../components/resource-table";
+import { ResourceTable } from "../../components/page/resource-table";
 import { PageHeader } from "../../components/shell/page-header";
-import { useCan } from "../../components/use-can";
+import { useCan } from "../../components/lib/use-can";
 import { fetchTemplates } from "../../console/templates.fns";
 import { formatWhen } from "../../components/lib/format-date";
 import { PAGE_SIZE } from "../../shared/limits";
@@ -40,8 +40,8 @@ export const Route = createFileRoute("/_app/campaigns_/templates")({
   }),
   loaderDeps: ({ search }) => ({ appId: search.appId, cursor: search.cursor }),
   pendingComponent: () => <ListSkeleton columns={5} search filter view action />,
-  loader: ({ deps }) =>
-    scopedLoad(deps.appId, async (appId) => {
+  loader: ({ deps, context }) =>
+    scopedLoad(deps.appId, context.shell.apps, async (appId) => {
       const templates = await fetchTemplates({ data: { appId, cursor: deps.cursor } });
       return templates && { templates };
     }, {

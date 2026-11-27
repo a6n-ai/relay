@@ -1,18 +1,18 @@
 import { toast } from "@foundry/ui/toast";
 import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
-import { ConfirmDialog } from "../../components/confirm-dialog";
+import { ConfirmDialog } from "../../components/page/confirm-dialog";
 import { PageDenied } from "../../components/page/page-denied";
-import { errorText } from "../../components/error-text";
+import { errorText } from "../../components/lib/error-text";
 import { FilterMenu } from "../../components/page/filter-menu";
 import { LoadMore } from "../../components/page/load-more";
-import { Hint } from "../../components/page/text";
+import { Hint } from "../../components/form/text";
 import { Toolbar } from "../../components/page/toolbar";
 import { ListSkeleton } from "../../components/page/page-skeleton";
 import { PageHeader } from "../../components/shell/page-header";
 import { formatWhen } from "../../components/lib/format-date";
-import { ResourceTable } from "../../components/resource-table";
-import { useCan } from "../../components/use-can";
+import { ResourceTable } from "../../components/page/resource-table";
+import { useCan } from "../../components/lib/use-can";
 import { deleteFailureFn, fetchFailures, replayFailureFn } from "../../console/failures.fns";
 import { posInt, str, untyped } from "../../components/lib/route-search";
 

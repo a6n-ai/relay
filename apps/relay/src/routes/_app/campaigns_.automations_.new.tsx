@@ -3,7 +3,8 @@ import { AutomationForm } from "../../components/campaigns/automation-form";
 import { PageDenied } from "../../components/page/page-denied";
 import { NoAppState } from "../../components/page/no-app-state";
 import { PageHeader } from "../../components/shell/page-header";
-import { useCan } from "../../components/use-can";
+import { useCan } from "../../components/lib/use-can";
+import { startApp } from "../../shared/scope";
 import { str } from "../../components/lib/route-search";
 
 export const Route = createFileRoute("/_app/campaigns_/automations_/new")({
@@ -32,7 +33,7 @@ function NewAutomationPage() {
   return (
     <>
       <PageHeader crumbs={crumbs} description="Send a template automatically when someone joins a list." />
-      <AutomationForm apps={apps} appId={scopedAppId ?? apps[0]?.id ?? ""} scopedAppId={scopedAppId} />
+      <AutomationForm apps={apps} appId={startApp(apps, scopedAppId) ?? ""} scopedAppId={scopedAppId} />
     </>
   );
 }

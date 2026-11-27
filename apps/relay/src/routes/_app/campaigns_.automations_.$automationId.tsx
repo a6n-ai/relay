@@ -4,7 +4,7 @@ import { PageDenied } from "../../components/page/page-denied";
 import { isNotFound } from "../../components/lib/scoped-load";
 import { FormSkeleton } from "../../components/page/page-skeleton";
 import { PageHeader } from "../../components/shell/page-header";
-import { useCan } from "../../components/use-can";
+import { useCan } from "../../components/lib/use-can";
 import { fetchAutomation } from "../../console/automations.fns";
 import { fetchCampaignOptions } from "../../console/campaigns.fns";
 import { str } from "../../components/lib/route-search";

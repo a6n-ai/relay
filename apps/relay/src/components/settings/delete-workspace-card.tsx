@@ -1,6 +1,6 @@
 import { useNavigate } from "@tanstack/react-router";
 import { DangerCard } from "../page/danger-card";
-import { useCan } from "../use-can";
+import { useCan } from "../lib/use-can";
 import { deleteWorkspaceFn } from "../../console/workspaces.fns";
 
 export function DeleteWorkspaceCard({ slug }: { slug: string }) {

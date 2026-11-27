@@ -1,4 +1,3 @@
-import { toast } from "@foundry/ui/toast";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { type FormEvent, useEffect, useState } from "react";
 import { PageDenied } from "../../components/page/page-denied";
@@ -7,14 +6,15 @@ import { ChoiceField } from "../../components/form/choice-field";
 import { NameField } from "../../components/form/text-field";
 import { CreatePage } from "../../components/page/create-page";
 import { NoAppState } from "../../components/page/no-app-state";
-import { FormActions, FormError } from "../../components/page/form-parts";
+import { FormActions, FormError } from "../../components/form/form-parts";
 import { SettingsCard } from "../../components/page/settings-card";
-import { useCan } from "../../components/use-can";
+import { useCan } from "../../components/lib/use-can";
 import { createCampaignFn } from "../../console/campaigns.fns";
 import { fetchTemplates } from "../../console/templates.fns";
 import { str } from "../../components/lib/route-search";
-import { useSubmit } from "../../components/use-submit";
-import { useLoad } from "../../components/use-load";
+import { useSubmit } from "../../components/lib/use-submit";
+import { startApp } from "../../shared/scope";
+import { useLoad } from "../../components/lib/use-load";
 
 export const Route = createFileRoute("/_app/campaigns_/new")({
   validateSearch: (search: Record<string, unknown>): { appId?: string } => ({
@@ -32,7 +32,7 @@ function NewCampaignPage() {
   const canWrite = useCan({ campaign: ["write"] });
   const navigate = useNavigate();
   const scopedAppId = apps.some((a) => a.id === scopeParam) ? scopeParam : undefined;
-  const [app, setApp] = useState(scopedAppId ?? apps[0]?.id ?? "");
+  const [app, setApp] = useState(startApp(apps, scopedAppId) ?? "");
   const [name, setName] = useState("");
   const [template, setTemplate] = useState("blank");
   const [choices, setChoices] = useState<{ id: string; name: string; subject?: string }[]>([]);
@@ -57,10 +57,13 @@ function NewCampaignPage() {
     event.preventDefault();
     await run(async () => {
       const templateId = template !== "blank" ? template : undefined;
-      const campaign = await createCampaignFn({ data: { appId: app, name, templateId } });
-      toast.success("Campaign created", { description: name });
-      await navigate({ to: "/campaigns/$campaignId", params: { campaignId: campaign.id }, search: { appId: app } });
-    }, "Could not create this campaign.");
+      return createCampaignFn({ data: { appId: app, name, templateId } });
+    }, "Could not create this campaign.", {
+      success: "Campaign created",
+      description: name,
+      invalidate: false,
+      after: (campaign) => navigate({ to: "/campaigns/$campaignId", params: { campaignId: campaign.id }, search: { appId: app } }),
+    });
   }
 
   const describe = choices.length <= 2;

@@ -1,4 +1,3 @@
-import { toast } from "@foundry/ui/toast";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
 import { ConsentFields } from "../../components/lists/consent-fields";
@@ -6,14 +5,15 @@ import { PageDenied } from "../../components/page/page-denied";
 import { AppField, needsAppChoice } from "../../components/form/app-field";
 import { NameField } from "../../components/form/text-field";
 import { CreatePage } from "../../components/page/create-page";
-import { FormActions, FormError } from "../../components/page/form-parts";
+import { FormActions, FormError } from "../../components/form/form-parts";
 import { NoAppState } from "../../components/page/no-app-state";
 import { SettingsCard } from "../../components/page/settings-card";
-import { useCan } from "../../components/use-can";
+import { useCan } from "../../components/lib/use-can";
 import { createListFn } from "../../console/lists.fns";
 import { type ConsentSource } from "../../shared/views";
 import { str } from "../../components/lib/route-search";
-import { useSubmit } from "../../components/use-submit";
+import { startApp } from "../../shared/scope";
+import { useSubmit } from "../../components/lib/use-submit";
 
 export const Route = createFileRoute("/_app/lists_/new")({
   validateSearch: (search: Record<string, unknown>): { appId?: string } => ({
@@ -31,7 +31,7 @@ function NewListPage() {
   const canWrite = useCan({ list: ["write"] });
   const navigate = useNavigate();
   const scopedAppId = apps.some((a) => a.id === scopeParam) ? scopeParam : undefined;
-  const [app, setApp] = useState(scopedAppId ?? apps[0]?.id ?? "");
+  const [app, setApp] = useState(startApp(apps, scopedAppId) ?? "");
   const [name, setName] = useState("");
   const [consent, setConsent] = useState<ConsentSource>("express_optin");
   const [note, setNote] = useState("");
@@ -45,10 +45,13 @@ function NewListPage() {
   async function submit(event: FormEvent) {
     event.preventDefault();
     await run(async () => {
-      const list = await createListFn({ data: { appId: app, list: { name, consentSource: consent, consentNote: note.trim() || undefined } } });
-      toast.success("List created", { description: name });
-      await navigate({ to: "/lists/$listId", params: { listId: list.id }, search: { appId: app } });
-    }, "Could not create this list.");
+      return createListFn({ data: { appId: app, list: { name, consentSource: consent, consentNote: note.trim() || undefined } } });
+    }, "Could not create this list.", {
+      success: "List created",
+      description: name,
+      invalidate: false,
+      after: (list) => navigate({ to: "/lists/$listId", params: { listId: list.id }, search: { appId: app } }),
+    });
   }
 
   const choose = needsAppChoice(apps, scopedAppId);

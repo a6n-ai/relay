@@ -1,8 +1,8 @@
 import { Button } from "@foundry/ui/button";
 import { useState } from "react";
-import { FormError } from "./page/form-parts";
-import { FormBody, FormActions } from "./page/form-parts";
-import { Hint, SectionTitle } from "./page/text";
+import { FormError } from "../form/form-parts";
+import { FormBody, FormActions } from "../form/form-parts";
+import { Hint, SectionTitle } from "../form/text";
 
 export function SecretOnce({ secret, label, onDone }: { secret: string; label: string; onDone: () => void }) {
   const [copied, setCopied] = useState(false);
