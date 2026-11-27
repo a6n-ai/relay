@@ -6,18 +6,12 @@ import { securityDb } from "../db/security/client";
 import { addressGrant, member, team, user } from "../db/security/schema";
 import type { Env } from "../env";
 import { writeAudit } from "../lib/auth/audit";
-import { allows } from "../lib/auth/permissions";
 import { type ConsoleActor, parseRoles, uniqueViolation } from "../core/session";
 import { RelayError, codeOf } from "../shared/errors";
 
 type GrantView = { id: string; kind: "member" | "team"; targetId: string; label: string };
 
-const requireManage = (actor: ConsoleActor): void => {
-  if (!allows(actor.roles, { mailbox: ["manage"] })) throw new RelayError("forbidden");
-};
-
 export async function getAddressAccess(env: Env, actor: ConsoleActor, addressId: string) {
-  requireManage(actor);
   const [owned] = await coreDb(env)
     .select({ id: address.id, email: address.email })
     .from(address)
@@ -83,7 +77,6 @@ export async function addGrant(
   actor: ConsoleActor,
   input: { addressId: string; memberId?: string; teamId?: string },
 ): Promise<void> {
-  requireManage(actor);
   let grantId: string;
   try {
     grantId = await createAddressGrant(env, { ...input, workspaceId: actor.workspaceId });
@@ -100,7 +93,6 @@ export async function addGrant(
 }
 
 export async function removeGrant(env: Env, actor: ConsoleActor, grantId: string): Promise<void> {
-  requireManage(actor);
   const rows = await securityDb(env)
     .delete(addressGrant)
     .where(and(eq(addressGrant.id, grantId), eq(addressGrant.workspaceId, actor.workspaceId)))

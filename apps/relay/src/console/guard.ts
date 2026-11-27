@@ -3,22 +3,33 @@ import { AppError } from "@foundry/commons/errors";
 import { createGuard } from "@foundry/commons/guard";
 import { env } from "cloudflare:workers";
 import { recordFailure } from "../core/log";
-import { requireActor } from "./actor";
+import { requireActor, requirePlatformAdmin } from "./actor";
 import type { ConsoleActor } from "../core/session";
 
 export type Need = { permission?: Record<string, string[]>; write?: boolean };
 
 // A known error keeps its status and message, anything else is a 500 with no detail. The browser sees only that copy;
 // the log middleware in src/start.ts writes the status and the real cause.
-const guard = createGuard<Need, ConsoleActor>({
-  actor: (need) => requireActor(env, getRequestHeaders(), need),
+const shared = {
   setStatus: setResponseStatus,
-  onFailure: (sent, status, cause) => {
+  onFailure: (sent: Error, status: number, cause: unknown) => {
     recordFailure(sent, status, cause);
   },
-});
+};
 
+const guard = createGuard<Need, ConsoleActor>({ actor: (need) => requireActor(env, getRequestHeaders(), need), ...shared });
 export const { run, read } = guard;
+
+const admin = createGuard<{ write?: boolean }, { userId: string }>({
+  actor: (need) => requirePlatformAdmin(env, getRequestHeaders(), need),
+  ...shared,
+});
+export const runAdmin = <T>(fn: (admin: { userId: string }) => Promise<T>, write = true) => admin.run({ write }, fn);
+
+// Functions that check the session themselves (sign-in state, workspace create, password) still share the error copy and logging.
+export function fail(err: unknown): never {
+  return guard.fail(err);
+}
 
 export const READ = (resource: string, ...actions: string[]): Need => ({ permission: { [resource]: actions } });
 export const WRITE = (resource: string, ...actions: string[]): Need => ({ permission: { [resource]: actions }, write: true });

@@ -154,8 +154,8 @@ describe("console default senders", () => {
     const mk = await t.sender("news");
     await t.defaults(tx.id, mk.id);
 
-    const memberActor = await requireActor(env, headersFor(await addMember(t.workspaceId, "ds-clear-m@example.com", "member")));
-    await expect(setDefaultSendersFor(env, memberActor, t.appId, { transactionalId: null, marketingId: null })).rejects.toMatchObject({ status: 403 });
+    const memberCookie = await addMember(t.workspaceId, "ds-clear-m@example.com", "member");
+    await expect(requireActor(env, headersFor(memberCookie), { permission: { tenant: ["write"] }, write: true })).rejects.toMatchObject({ status: 403 });
 
     await removeAddress(env, t.actor, tx.id);
     const [row] = await securityDb(env).select().from(app).where(eq(app.id, t.appId));

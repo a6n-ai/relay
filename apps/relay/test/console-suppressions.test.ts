@@ -126,8 +126,8 @@ describe("suppressions console", () => {
     const billing = await roleActor(workspaceId, "sup-roles-b@example.com", "billing");
     const page = await listSuppressionsFor(env, member.actor, {});
     expect(page.rows.map((r) => r.email)).toEqual(["seen@x.test"]);
-    await expect(addSuppressionFor(env, member.actor, { email: "no@x.test" })).rejects.toMatchObject({ status: 403 });
-    await expect(listSuppressionsFor(env, billing.actor, {})).rejects.toMatchObject({ status: 403 });
+    await expect(requireActor(env, headersFor(member.cookie), { permission: { sending: ["write"] }, write: true })).rejects.toMatchObject({ status: 403 });
+    await expect(requireActor(env, headersFor(billing.cookie), { permission: { sending: ["read"] } })).rejects.toMatchObject({ status: 403 });
   });
 
   it("lists in a suspended workspace and refuses an add with workspace suspended", async () => {
@@ -136,7 +136,7 @@ describe("suppressions console", () => {
     const actor = await requireActor(env, headersFor(cookie));
     expect(actor.workspaceStatus).toBe("suspended");
     await expect(listSuppressionsFor(env, actor, {})).resolves.toMatchObject({ rows: [] });
-    await expect(addSuppressionFor(env, actor, { email: "s@x.test" })).rejects.toMatchObject({
+    await expect(requireActor(env, headersFor(cookie), { permission: { sending: ["write"] }, write: true })).rejects.toMatchObject({
       status: 403,
       message: "workspace suspended",
     });

@@ -5,13 +5,14 @@ import type { KeyScope } from "../shared/scope";
 import { getApp } from "./apps";
 
 // Who is acting: a console user (userId) or an API key (keyId, pinned to one app). Permission and suspension are checked by the transport.
-export type Principal = { workspaceId: string; appId: string | null; userId: string | null; keyId: string | null };
+export type Principal = { workspaceId: string; appId: string | null; userId: string | null; keyId: string | null; platformAdmin?: boolean };
 
-export const fromActor = (a: { workspaceId: string; userId: string }): Principal => ({
+export const fromActor = (a: { workspaceId: string; userId: string; platformAdmin?: boolean }): Principal => ({
   workspaceId: a.workspaceId,
   appId: null,
   userId: a.userId,
   keyId: null,
+  platformAdmin: a.platformAdmin,
 });
 
 export const fromScope = (s: KeyScope): Principal => ({ workspaceId: s.workspaceId, appId: s.appId, userId: null, keyId: s.keyId });

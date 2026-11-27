@@ -1,11 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { apiRoute, data } from "../../../api/route";
-import { campaignStatsForScope } from "../../../services/campaign-scope";
+import { campaignStats } from "../../../services/campaigns";
 
 export const Route = createFileRoute("/api/v1/campaigns/$id/stats")({
   server: {
     handlers: {
-      GET: apiRoute(async ({ env, scope, params }) => data(await campaignStatsForScope(env, scope, params.id))),
+      GET: apiRoute(async ({ env, p, params }) => data(await campaignStats(env, p, params.id))),
     },
   },
 });

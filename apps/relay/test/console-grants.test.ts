@@ -105,11 +105,9 @@ describe("console address access grants", { timeout: 60_000 }, () => {
     await addGrant(env, ownerActor, { addressId, memberId });
     const [grantId] = await grantIdsFor(addressId);
     const memberCookie = await addMember(owner.workspaceId, "grant-ro-member@example.com", "member");
-    const memberActor = await requireActor(env, headersFor(memberCookie), {});
 
-    await expect(getAddressAccess(env, memberActor, addressId)).rejects.toMatchObject({ status: 403 });
-    await expect(addGrant(env, memberActor, { addressId, memberId })).rejects.toMatchObject({ status: 403 });
-    await expect(removeGrant(env, memberActor, grantId)).rejects.toMatchObject({ status: 403 });
+    await expect(requireActor(env, headersFor(memberCookie), { permission: { mailbox: ["manage"] } })).rejects.toMatchObject({ status: 403 });
+    await expect(requireActor(env, headersFor(memberCookie), MANAGE)).rejects.toMatchObject({ status: 403 });
     expect(await grantIdsFor(addressId)).toEqual([grantId]);
   });
 

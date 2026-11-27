@@ -4,14 +4,8 @@ import { beforeAll, beforeEach, describe, expect, it, vi, type MockInstance } fr
 import { requireActor } from "../src/console/actor";
 import { type ConsoleActor } from "../src/core/session";
 import { addApp } from "../src/services/apps";
-import {
-  createWebhookFor,
-  deleteWebhookFor,
-  listDeliveriesFor,
-  listWebhooksFor,
-  retryDeliveryFor,
-  updateWebhookFor,
-} from "../src/console/webhooks";
+import { createWebhook, deleteWebhook, listDeliveries, listWebhooks, retryDelivery, updateWebhook } from "../src/services/webhooks";
+import { fromActor } from "../src/services/principal";
 import { createAddress, createAddressGrant } from "../src/core/addresses";
 import { createApp } from "../src/core/apps";
 import { clientFor } from "../src/do/client";
@@ -82,9 +76,9 @@ describe("console webhooks: create, list, update, delete", { timeout: 60_000 }, 
   it("returns the secret once on create and never lists it", async () => {
     const { owner } = await workspaceFor("hook-owner@example.com", "Hook Owner Co");
     const { id: appId } = await addApp(env, owner, { name: "Web", slug: "web" });
-    const { webhook, secret } = await createWebhookFor(env, owner, appId, { url: HOOK_URL, events: ["mailbox.received"] });
+    const { webhook, secret } = await createWebhook(env, fromActor(owner), appId, { url: HOOK_URL, events: ["mailbox.received"] });
     expect(secret).toMatch(/^[0-9a-f]{64}$/);
-    const [listed] = await listWebhooksFor(env, owner, appId);
+    const [listed] = await listWebhooks(env, fromActor(owner), appId);
     expect(listed).toEqual(webhook);
     expect(listed).not.toHaveProperty("secret");
     expect(listed).not.toHaveProperty("secretEnc");
@@ -96,7 +90,7 @@ describe("console webhooks: create, list, update, delete", { timeout: 60_000 }, 
     const saved = env.WEBHOOK_SECRET_KEY;
     env.WEBHOOK_SECRET_KEY = undefined;
     try {
-      await expect(createWebhookFor(env, owner, appId, { url: HOOK_URL, events: ["mailbox.received"] })).rejects.toMatchObject({
+      await expect(createWebhook(env, fromActor(owner), appId, { url: HOOK_URL, events: ["mailbox.received"] })).rejects.toMatchObject({
         status: 503,
         message: "webhooks unavailable",
       });
@@ -132,8 +126,8 @@ describe("console webhooks: create, list, update, delete", { timeout: 60_000 }, 
   it("disables a webhook with PATCH enabled false", async () => {
     const { owner } = await workspaceFor("hook-patch@example.com", "Hook Patch Co");
     const { id: appId } = await addApp(env, owner, { name: "Web", slug: "web" });
-    const { webhook } = await createWebhookFor(env, owner, appId, { url: HOOK_URL, events: ["mailbox.received"] });
-    const updated = await updateWebhookFor(env, owner, appId, webhook.id, { enabled: false });
+    const { webhook } = await createWebhook(env, fromActor(owner), appId, { url: HOOK_URL, events: ["mailbox.received"] });
+    const updated = await updateWebhook(env, fromActor(owner), appId, webhook.id, { enabled: false });
     expect(updated).toMatchObject({ id: webhook.id, enabled: false });
   });
 
@@ -144,28 +138,28 @@ describe("console webhooks: create, list, update, delete", { timeout: 60_000 }, 
     // Self-serve workspaces cap at one app through addApp, so the second app is created below that gate.
     const { id: appB } = await createApp(env, { workspaceId: owner.workspaceId, name: "Api", slug: "api" });
     const { id: foreignApp } = await addApp(env, other.owner, { name: "Foreign", slug: "foreign" });
-    const { webhook } = await createWebhookFor(env, owner, appA, { url: HOOK_URL, events: ["mailbox.received"] });
+    const { webhook } = await createWebhook(env, fromActor(owner), appA, { url: HOOK_URL, events: ["mailbox.received"] });
 
-    await expect(updateWebhookFor(env, owner, appB, webhook.id, { enabled: false })).rejects.toMatchObject({ status: 404 });
-    await expect(deleteWebhookFor(env, owner, appB, webhook.id)).rejects.toMatchObject({ status: 404 });
-    await expect(listDeliveriesFor(env, owner, appB, webhook.id)).rejects.toMatchObject({ status: 404 });
-    await expect(listWebhooksFor(env, other.owner, appA)).rejects.toMatchObject({ status: 404 });
-    await expect(createWebhookFor(env, other.owner, foreignApp, { url: HOOK_URL, events: ["mailbox.received"] })).resolves.toMatchObject({
+    await expect(updateWebhook(env, fromActor(owner), appB, webhook.id, { enabled: false })).rejects.toMatchObject({ status: 404 });
+    await expect(deleteWebhook(env, fromActor(owner), appB, webhook.id)).rejects.toMatchObject({ status: 404 });
+    await expect(listDeliveries(env, owner, appB, webhook.id)).rejects.toMatchObject({ status: 404 });
+    await expect(listWebhooks(env, fromActor(other.owner), appA)).rejects.toMatchObject({ status: 404 });
+    await expect(createWebhook(env, fromActor(other.owner), foreignApp, { url: HOOK_URL, events: ["mailbox.received"] })).resolves.toMatchObject({
       webhook: { appId: foreignApp },
     });
-    await expect(createWebhookFor(env, other.owner, appA, { url: HOOK_URL, events: ["mailbox.received"] })).rejects.toMatchObject({
+    await expect(createWebhook(env, fromActor(other.owner), appA, { url: HOOK_URL, events: ["mailbox.received"] })).rejects.toMatchObject({
       status: 404,
     });
-    expect(await updateWebhookFor(env, owner, appA, webhook.id, { enabled: false })).toMatchObject({ enabled: false });
+    expect(await updateWebhook(env, fromActor(owner), appA, webhook.id, { enabled: false })).toMatchObject({ enabled: false });
   });
 
   it("refuses a member's write and a suspended workspace's write, but lets a member read", async () => {
     const { cookie: ownerCookie, workspaceId, owner } = await workspaceFor("hook-role@example.com", "Hook Role Co");
     const { id: appId } = await addApp(env, owner, { name: "Web", slug: "web" });
-    await createWebhookFor(env, owner, appId, { url: HOOK_URL, events: ["mailbox.received"] });
+    await createWebhook(env, fromActor(owner), appId, { url: HOOK_URL, events: ["mailbox.received"] });
     const memberCookie = await addMember(workspaceId, "hook-role-member@example.com", "member");
     const member: ConsoleActor = await requireActor(env, headersFor(memberCookie), { permission: { webhook: ["read"] } });
-    expect(await listWebhooksFor(env, member, appId)).toHaveLength(1);
+    expect(await listWebhooks(env, fromActor(member), appId)).toHaveLength(1);
     await expect(requireActor(env, headersFor(memberCookie), { permission: { webhook: ["write"] }, write: true })).rejects.toMatchObject({
       status: 403,
     });
@@ -181,9 +175,9 @@ describe("console webhooks: delivery log and retry", { timeout: 60_000 }, () => 
   it("lists a pending delivery without its payload key", async () => {
     const { owner, workspaceId } = await workspaceFor("hook-log@example.com", "Hook Log Co");
     const { id: appId } = await addApp(env, owner, { name: "Web", slug: "web" });
-    const { webhook } = await createWebhookFor(env, owner, appId, { url: HOOK_URL, events: ["mailbox.received"] });
+    const { webhook } = await createWebhook(env, fromActor(owner), appId, { url: HOOK_URL, events: ["mailbox.received"] });
     const messageId = await ingestLetter(workspaceId, appId, "in@hook-log.test");
-    const { rows, webhook: listed, nextCursor } = await listDeliveriesFor(env, owner, appId, webhook.id);
+    const { rows, webhook: listed, nextCursor } = await listDeliveries(env, owner, appId, webhook.id);
     expect(listed.id).toBe(webhook.id);
     expect(nextCursor).toBeNull();
     expect(rows).toHaveLength(1);
@@ -194,7 +188,7 @@ describe("console webhooks: delivery log and retry", { timeout: 60_000 }, () => 
   it("shows a member only deliveries for their granted addresses, and every delivery to log_all", async () => {
     const { owner, workspaceId } = await workspaceFor("hook-grant@example.com", "Hook Grant Co");
     const { id: appId } = await addApp(env, owner, { name: "Web", slug: "web" });
-    const { webhook } = await createWebhookFor(env, owner, appId, { url: HOOK_URL, events: ["mailbox.received"] });
+    const { webhook } = await createWebhook(env, fromActor(owner), appId, { url: HOOK_URL, events: ["mailbox.received"] });
     const messageA = await ingestLetter(workspaceId, appId, "a@hook-grant.test");
     const messageB = await ingestLetter(workspaceId, appId, "b@hook-grant.test");
     const [{ id: addressA }] = await coreDb(env).select({ id: address.id }).from(address).where(eq(address.email, "a@hook-grant.test"));
@@ -203,18 +197,18 @@ describe("console webhooks: delivery log and retry", { timeout: 60_000 }, () => 
     const none = await addMember(workspaceId, "hook-grant-none@example.com", "member");
     const grantedActor = await requireActor(env, headersFor(granted), { permission: { webhook: ["read"] } });
     const noneActor = await requireActor(env, headersFor(none), { permission: { webhook: ["read"] } });
-    expect((await listDeliveriesFor(env, grantedActor, appId, webhook.id)).rows.map((r) => r.messageId)).toEqual([messageA]);
-    expect((await listDeliveriesFor(env, noneActor, appId, webhook.id)).rows).toEqual([]);
-    expect((await listDeliveriesFor(env, owner, appId, webhook.id)).rows.map((r) => r.messageId).sort()).toEqual([messageA, messageB].sort());
+    expect((await listDeliveries(env, grantedActor, appId, webhook.id)).rows.map((r) => r.messageId)).toEqual([messageA]);
+    expect((await listDeliveries(env, noneActor, appId, webhook.id)).rows).toEqual([]);
+    expect((await listDeliveries(env, owner, appId, webhook.id)).rows.map((r) => r.messageId).sort()).toEqual([messageA, messageB].sort());
   });
 
   it("refuses a retry of a pending delivery with 409 delivery not failed", async () => {
     const { owner, workspaceId } = await workspaceFor("hook-pending@example.com", "Hook Pending Co");
     const { id: appId } = await addApp(env, owner, { name: "Web", slug: "web" });
-    const { webhook } = await createWebhookFor(env, owner, appId, { url: HOOK_URL, events: ["mailbox.received"] });
+    const { webhook } = await createWebhook(env, fromActor(owner), appId, { url: HOOK_URL, events: ["mailbox.received"] });
     await ingestLetter(workspaceId, appId, "in@hook-pending.test");
-    const { rows } = await listDeliveriesFor(env, owner, appId, webhook.id);
-    await expect(retryDeliveryFor(env, owner, appId, rows[0].id)).rejects.toMatchObject({
+    const { rows } = await listDeliveries(env, owner, appId, webhook.id);
+    await expect(retryDelivery(env, fromActor(owner), appId, rows[0].id)).rejects.toMatchObject({
       status: 409,
       message: "delivery not failed",
     });
@@ -223,9 +217,9 @@ describe("console webhooks: delivery log and retry", { timeout: 60_000 }, () => 
   it("re-queues a failed delivery in place and sends the same job", async () => {
     const { owner, workspaceId } = await workspaceFor("hook-retry@example.com", "Hook Retry Co");
     const { id: appId } = await addApp(env, owner, { name: "Web", slug: "web" });
-    const { webhook } = await createWebhookFor(env, owner, appId, { url: HOOK_URL, events: ["mailbox.received"] });
+    const { webhook } = await createWebhook(env, fromActor(owner), appId, { url: HOOK_URL, events: ["mailbox.received"] });
     await ingestLetter(workspaceId, appId, "in@hook-retry.test");
-    const { rows } = await listDeliveriesFor(env, owner, appId, webhook.id);
+    const { rows } = await listDeliveries(env, owner, appId, webhook.id);
     const deliveryId = rows[0].id;
     await runInDurableObject(stub(workspaceId), (_i, state) => {
       state.storage.sql.exec(
@@ -235,7 +229,7 @@ describe("console webhooks: delivery log and retry", { timeout: 60_000 }, () => 
     });
 
     sendSpy.mockClear();
-    await expect(retryDeliveryFor(env, owner, appId, deliveryId)).resolves.toBeUndefined();
+    await expect(retryDelivery(env, fromActor(owner), appId, deliveryId)).resolves.toBeUndefined();
     const [row] = await rowsOf(
       workspaceId,
       "SELECT status, attempts, claimed_until, last_error, response_status FROM webhook_delivery WHERE id = ?",
@@ -251,9 +245,9 @@ describe("console webhooks: delivery log and retry", { timeout: 60_000 }, () => 
     const DAY = 86_400_000;
     const { owner, workspaceId } = await workspaceFor("hook-expiry@example.com", "Hook Expiry Co");
     const { id: appId } = await addApp(env, owner, { name: "Web", slug: "web" });
-    const { webhook } = await createWebhookFor(env, owner, appId, { url: HOOK_URL, events: ["mailbox.received"] });
+    const { webhook } = await createWebhook(env, fromActor(owner), appId, { url: HOOK_URL, events: ["mailbox.received"] });
     await ingestLetter(workspaceId, appId, "in@hook-expiry.test");
-    const { rows } = await listDeliveriesFor(env, owner, appId, webhook.id);
+    const { rows } = await listDeliveries(env, owner, appId, webhook.id);
     const deliveryId = rows[0].id;
     const now = Date.now();
     await runInDurableObject(stub(workspaceId), (_i, state) => {
@@ -279,14 +273,14 @@ describe("console webhooks: delivery log and retry", { timeout: 60_000 }, () => 
   it("refuses a retry while the webhook is disabled with 409 webhook disabled", async () => {
     const { owner, workspaceId } = await workspaceFor("hook-disabled@example.com", "Hook Disabled Co");
     const { id: appId } = await addApp(env, owner, { name: "Web", slug: "web" });
-    const { webhook } = await createWebhookFor(env, owner, appId, { url: HOOK_URL, events: ["mailbox.received"] });
+    const { webhook } = await createWebhook(env, fromActor(owner), appId, { url: HOOK_URL, events: ["mailbox.received"] });
     await ingestLetter(workspaceId, appId, "in@hook-disabled.test");
-    const { rows } = await listDeliveriesFor(env, owner, appId, webhook.id);
+    const { rows } = await listDeliveries(env, owner, appId, webhook.id);
     await runInDurableObject(stub(workspaceId), (_i, state) => {
       state.storage.sql.exec("UPDATE webhook_delivery SET status = 'failed', attempts = 6 WHERE id = ?", rows[0].id);
     });
-    await updateWebhookFor(env, owner, appId, webhook.id, { enabled: false });
-    await expect(retryDeliveryFor(env, owner, appId, rows[0].id)).rejects.toMatchObject({
+    await updateWebhook(env, fromActor(owner), appId, webhook.id, { enabled: false });
+    await expect(retryDelivery(env, fromActor(owner), appId, rows[0].id)).rejects.toMatchObject({
       status: 409,
       message: "webhook disabled",
     });
@@ -295,10 +289,10 @@ describe("console webhooks: delivery log and retry", { timeout: 60_000 }, () => 
   it("marks a delivery failed with the fixed reason when its webhook was deleted while pending", async () => {
     const { owner, workspaceId } = await workspaceFor("hook-deleted@example.com", "Hook Deleted Co");
     const { id: appId } = await addApp(env, owner, { name: "Web", slug: "web" });
-    const { webhook } = await createWebhookFor(env, owner, appId, { url: HOOK_URL, events: ["mailbox.received"] });
+    const { webhook } = await createWebhook(env, fromActor(owner), appId, { url: HOOK_URL, events: ["mailbox.received"] });
     await ingestLetter(workspaceId, appId, "in@hook-deleted.test");
-    const { rows } = await listDeliveriesFor(env, owner, appId, webhook.id);
-    await deleteWebhookFor(env, owner, appId, webhook.id);
+    const { rows } = await listDeliveries(env, owner, appId, webhook.id);
+    await deleteWebhook(env, fromActor(owner), appId, webhook.id);
 
     expect(await stub(workspaceId).claimWebhookDelivery(workspaceId, rows[0].id)).toEqual({ kind: "skip" });
     const [row] = await rowsOf(workspaceId, "SELECT status, last_error FROM webhook_delivery WHERE id = ?", rows[0].id);
@@ -308,7 +302,7 @@ describe("console webhooks: delivery log and retry", { timeout: 60_000 }, () => 
   it("renders the webhook list and delivery log for an owner, and hides write controls from a member", async () => {
     const { cookie, workspaceId, owner } = await workspaceFor("hook-ssr@example.com", "Hook Ssr Co");
     const { id: appId } = await addApp(env, owner, { name: "Web", slug: "web" });
-    const { webhook } = await createWebhookFor(env, owner, appId, { url: HOOK_URL, events: ["mailbox.received"] });
+    const { webhook } = await createWebhook(env, fromActor(owner), appId, { url: HOOK_URL, events: ["mailbox.received"] });
     const messageId = await ingestLetter(workspaceId, appId, "in@hook-ssr.test");
     const memberCookie = await addMember(workspaceId, "hook-ssr-member@example.com", "member");
 

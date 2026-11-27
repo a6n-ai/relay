@@ -12,7 +12,7 @@ import { clientFor } from "../src/do/client";
 import { coreDb } from "../src/db/core/client";
 import { usageDaily } from "../src/db/core/schema";
 import { securityDb } from "../src/db/security/client";
-import { member, user } from "../src/db/security/schema";
+import { member, user, workspace } from "../src/db/security/schema";
 import type { InboundJob } from "../src/core/jobs";
 import { utcDay } from "../src/core/usage";
 import { addMember, cookieFor, createWorkspace, headersFor, ORIGIN, setActive } from "./console-helpers";
@@ -200,7 +200,7 @@ describe("inbound failures console", () => {
     const rows = await listFailuresFor(env, memberActor);
     expect(rows.map((r) => r.id)).toEqual([id]);
     expect(Object.keys(rows[0])).not.toContain("rawKey");
-    await expect(replayFailureFor(env, memberActor, id)).rejects.toMatchObject({ status: 403 });
+    await expect(requireActor(env, headersFor(memberCookie), { permission: { mailbox: ["manage"] }, write: true })).rejects.toMatchObject({ status: 403 });
   });
 
   it("an id from another workspace is 404", async () => {
@@ -216,14 +216,17 @@ describe("inbound failures console", () => {
   });
 
   it("a suspended workspace lists failures but refuses replay", async () => {
-    const { owner, workspaceId } = await workspaceFor("fail-susp@example.com", "Fail Susp Co");
+    const { cookie, owner, workspaceId } = await workspaceFor("fail-susp@example.com", "Fail Susp Co");
     const inbox = await inboxFor(owner, "failures-susp.test");
     const job = await stage(workspaceId, inbox);
     await stub(workspaceId).recordInboundFailure(workspaceId, job, "Processing failed");
     const id = await failureIdOf(workspaceId, job.rawKey);
-    const suspended: ConsoleActor = { ...owner, workspaceStatus: "suspended" };
+    await securityDb(env).update(workspace).set({ status: "suspended" }).where(eq(workspace.id, workspaceId));
+    const suspended = await requireActor(env, headersFor(cookie), { permission: { mailbox: ["read"] } });
     expect(await listFailuresFor(env, suspended)).toHaveLength(1);
-    await expect(replayFailureFor(env, suspended, id)).rejects.toMatchObject({ status: 403, message: "workspace suspended" });
-    await expect(deleteFailureFor(env, suspended, id)).rejects.toMatchObject({ status: 403 });
+    await expect(requireActor(env, headersFor(cookie), { permission: { mailbox: ["manage"] }, write: true })).rejects.toMatchObject({
+      status: 403,
+      message: "workspace suspended",
+    });
   });
 });

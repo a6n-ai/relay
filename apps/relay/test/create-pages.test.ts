@@ -3,7 +3,8 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { requireActor } from "../src/console/actor";
 import { addApp } from "../src/services/apps";
 import { addAddress, addDomain } from "../src/services/domains";
-import { createListFor } from "../src/console/lists";
+import { createList } from "../src/services/lists";
+import { fromActor } from "../src/services/principal";
 import { addMember, cookieFor, createWorkspace, headersFor, ORIGIN, setActive } from "./console-helpers";
 import { applyMigrations } from "./migrate";
 
@@ -133,7 +134,7 @@ describe("campaign, template, automation, list and import pages", { timeout: 60_
     await setActive(cookie, workspaceId);
     const actor = await requireActor(env, headersFor(cookie), { permission: { tenant: ["write"] }, write: true });
     const { id: appId } = await addApp(env, actor, { name: "Web", slug: "web" });
-    const list = await createListFor(env, actor, appId, { name: "Newsletter", consentSource: "express_optin" });
+    const list = await createList(env, fromActor(actor), appId, { name: "Newsletter", consentSource: "express_optin" });
     const member = await addMember(workspaceId, "create-pages-t4b-member@example.com", "member");
     const billing = await addMember(workspaceId, "create-pages-t4b-billing@example.com", "billing");
 

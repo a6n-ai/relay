@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { ZodType } from "zod";
 import { campaignPatch, listInput, listPatch, templateInput, templatePatch } from "../src/services/schemas";
 import { hookInputSchema } from "../src/core/audience-hook";
-import { campaignCreateInput } from "../src/services/campaign-scope";
+import { campaignCreateInput } from "../src/services/campaigns";
 import { membersImportInput } from "../src/services/lists";
 import { memberInput } from "../src/core/member-input";
 import { sendBody, templateSendSchema } from "../src/core/send-input";

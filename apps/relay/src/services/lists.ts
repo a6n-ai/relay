@@ -97,7 +97,7 @@ export async function removeMember(env: Env, p: Principal, listId: string, membe
 export const MEMBERS_IMPORT_MAX = 1000;
 export const membersImportInput = z.object({ rows: z.array(memberInput).max(MEMBERS_IMPORT_MAX) });
 
-async function importRows(env: Env, p: Principal, listId: string, rows: MemberInput[], extra: Record<string, number> = {}) {
+async function importRows<E extends Record<string, number>>(env: Env, p: Principal, listId: string, rows: MemberInput[], extra = {} as E) {
   await checkList(env, p, listId);
   const result = await clientFor(env, p.workspaceId).importMembers(p.workspaceId, listId, rows);
   if (!result) throw new RelayError("not found");
@@ -123,9 +123,7 @@ export async function importCsv(
   } catch (err) {
     throw new RelayError("invalid input", 400, err instanceof Error ? err.message : "invalid csv");
   }
-  return importRows(env, p, input.listId, parsed.rows, { invalid: parsed.invalid, duplicates: parsed.duplicates }) as Promise<
-    ImportResult & { invalid: number; duplicates: number }
-  >;
+  return importRows(env, p, input.listId, parsed.rows, { invalid: parsed.invalid, duplicates: parsed.duplicates });
 }
 
 const memberCsvLine = (m: MemberView): string =>

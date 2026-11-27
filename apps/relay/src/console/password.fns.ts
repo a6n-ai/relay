@@ -7,7 +7,7 @@ import { z } from "zod";
 import { securityDb } from "../db/security/client";
 import { account } from "../db/security/schema";
 import { createAuth, isFreshSession, recordPasswordChange, STALE_SESSION_MESSAGE } from "../lib/auth";
-import { toResponseError } from "./actor";
+import { fail } from "./guard";
 import { assertSameOrigin, requireSession } from "../core/session";
 import { validate } from "./schemas";
 import { RelayError } from "../shared/errors";
@@ -23,7 +23,7 @@ export const passwordStatusFn = createServerFn({ method: "GET" }).handler(async 
       .limit(1);
     return { hasPassword: rows.length > 0 };
   } catch (err) {
-    toResponseError(err);
+    fail(err);
   }
 });
 
@@ -49,6 +49,6 @@ export const setPasswordFn = createServerFn({ method: "POST" })
         userAgent: headers.get("user-agent"),
       });
     } catch (err) {
-      toResponseError(err);
+      fail(err);
     }
   });

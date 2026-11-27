@@ -3,24 +3,11 @@ import { getWorkspaceProfile } from "../core/workspace-profile";
 import type { AutomationInput, AutomationPatch } from "../do/automations";
 import type { Env } from "../env";
 import { writeAudit } from "../lib/auth/audit";
-import { allows } from "../lib/auth/permissions";
 import { type ConsoleActor } from "../core/session";
 import { getApp } from "./apps";
 import { verifiedSenders } from "./campaign-run";
 import { RelayError } from "../shared/errors";
 import { type AutomationView } from "../shared/views";
-
-const READ = { campaign: ["read"] };
-const SEND = { campaign: ["send"] };
-
-function requireRead(actor: ConsoleActor): void {
-  if (!allows(actor.roles, READ)) throw new RelayError("forbidden");
-}
-
-function requireSend(actor: ConsoleActor): void {
-  if (!allows(actor.roles, SEND)) throw new RelayError("forbidden");
-  if (actor.workspaceStatus === "suspended") throw new RelayError("workspace suspended");
-}
 
 async function requireVerifiedSender(env: Env, actor: ConsoleActor, appId: string, fromEmail: string): Promise<void> {
   if (!(await verifiedSenders(env, actor.workspaceId, appId)).includes(fromEmail)) throw new RelayError("sender not verified");
@@ -28,14 +15,12 @@ async function requireVerifiedSender(env: Env, actor: ConsoleActor, appId: strin
 
 // Audit rows carry the automation id and counts only, never a contact address.
 export async function listAutomationsFor(env: Env, actor: ConsoleActor, appId: string): Promise<AutomationView[]> {
-  requireRead(actor);
   await getApp(env, actor, appId);
   return clientFor(env, actor.workspaceId).listAutomations(actor.workspaceId, appId);
 }
 
 // Looked up across the workspace, then the app check keeps an app hidden from this reader hidden.
 export async function getAutomationFor(env: Env, actor: ConsoleActor, id: string): Promise<AutomationView> {
-  requireRead(actor);
   const found = (await clientFor(env, actor.workspaceId).listAutomations(actor.workspaceId)).find((a) => a.id === id);
   if (!found) throw new RelayError("not found");
   await getApp(env, actor, found.appId);
@@ -43,7 +28,6 @@ export async function getAutomationFor(env: Env, actor: ConsoleActor, id: string
 }
 
 export async function createAutomationFor(env: Env, actor: ConsoleActor, appId: string, input: AutomationInput): Promise<AutomationView> {
-  requireSend(actor);
   await getApp(env, actor, appId);
   await requireVerifiedSender(env, actor, appId, input.fromEmail);
   const outcome = await clientFor(env, actor.workspaceId).createAutomation(actor.workspaceId, appId, input);
@@ -59,7 +43,6 @@ export async function createAutomationFor(env: Env, actor: ConsoleActor, appId: 
 }
 
 export async function updateAutomationFor(env: Env, actor: ConsoleActor, id: string, patch: AutomationPatch): Promise<AutomationView> {
-  requireSend(actor);
   const client = clientFor(env, actor.workspaceId);
   if (patch.fromEmail !== undefined) {
     const current = (await client.listAutomations(actor.workspaceId)).find((a) => a.id === id);
@@ -74,7 +57,6 @@ export async function updateAutomationFor(env: Env, actor: ConsoleActor, id: str
 }
 
 export async function enableAutomationFor(env: Env, actor: ConsoleActor, id: string, on: boolean): Promise<AutomationView> {
-  requireSend(actor);
   const profile = await getWorkspaceProfile(env, actor.workspaceId);
   const outcome = await clientFor(env, actor.workspaceId).setAutomationEnabled(actor.workspaceId, id, on, profile.physicalAddress ?? null);
   if (outcome === "missing") throw new RelayError("not found");
@@ -93,7 +75,6 @@ export async function enableAutomationFor(env: Env, actor: ConsoleActor, id: str
 }
 
 export async function deleteAutomationFor(env: Env, actor: ConsoleActor, id: string): Promise<void> {
-  requireSend(actor);
   const outcome = await clientFor(env, actor.workspaceId).deleteAutomation(actor.workspaceId, id);
   if (outcome === "missing") throw new RelayError("not found");
   await writeAudit(env, { action: "automation.delete", actorUserId: actor.userId, workspaceId: actor.workspaceId, target: id });

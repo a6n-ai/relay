@@ -4,20 +4,21 @@ import { resolveApiKey, withinRateLimit } from "../services/api-keys";
 import { fromScope } from "../services/principal";
 import { type KeyScope } from "../shared/scope";
 import { logFailure } from "../core/log";
-import { deleteAudienceHookForScope, getAudienceHookForScope, setAudienceHookForScope } from "../services/audience-hook";
+import { deleteAudienceHook, getAudienceHook, setAudienceHook } from "../services/audience-hook";
 import {
   campaignCreateInput,
-  cancelCampaignForScope,
-  campaignStatsForScope,
-  createCampaignForScope,
-  deleteCampaignForScope,
-  getCampaignForScope,
-  listCampaignsForScope,
-  pauseCampaignForScope,
-  resumeCampaignForScope,
-  scheduleCampaignForScope,
-  updateCampaignForScope,
-} from "../services/campaign-scope";
+  campaignStats,
+  cancelCampaign,
+  createCampaign,
+  deleteCampaign,
+  getCampaign,
+  listCampaigns,
+  pauseCampaign,
+  resumeCampaign,
+  scheduleCampaign,
+  updateCampaign,
+  withConsoleUrl,
+} from "../services/campaigns";
 import { memberInput } from "../core/member-input";
 import { messagesByKeysForScope, suppressForScope, suppressionStatusForScope } from "../services/lookups";
 import {
@@ -121,43 +122,43 @@ export class RelayRpc extends WorkerEntrypoint<Env> {
   }
 
   async listCampaigns(apiKey: string, cursor?: string) {
-    return withScope(this.env, apiKey, (s) => listCampaignsForScope(this.env, s, cursor));
+    return withScope(this.env, apiKey, (s) => listCampaigns(this.env, fromScope(s), s.appId, cursor));
   }
 
   async getCampaign(apiKey: string, id: string) {
-    return withScope(this.env, apiKey, (s) => getCampaignForScope(this.env, s, id));
+    return withScope(this.env, apiKey, (s) => getCampaign(this.env, fromScope(s), id));
   }
 
   async createCampaign(apiKey: string, input: unknown) {
-    return withScope(this.env, apiKey, (s) => createCampaignForScope(this.env, s, campaignCreateInput.parse(input)));
+    return withScope(this.env, apiKey, (s) => createCampaign(this.env, fromScope(s), s.appId, campaignCreateInput.parse(input)).then((c) => withConsoleUrl(this.env, c)));
   }
 
   async updateCampaign(apiKey: string, id: string, patch: unknown) {
-    return withScope(this.env, apiKey, (s) => updateCampaignForScope(this.env, s, id, campaignPatch.parse(patch)));
+    return withScope(this.env, apiKey, (s) => updateCampaign(this.env, fromScope(s), id, campaignPatch.parse(patch)).then((c) => withConsoleUrl(this.env, c)));
   }
 
   async deleteCampaign(apiKey: string, id: string) {
-    return withScope(this.env, apiKey, (s) => deleteCampaignForScope(this.env, s, id));
+    return withScope(this.env, apiKey, (s) => deleteCampaign(this.env, fromScope(s), id));
   }
 
   async scheduleCampaign(apiKey: string, id: string, at: number) {
-    return withScope(this.env, apiKey, (s) => scheduleCampaignForScope(this.env, s, id, z.number().int().parse(at)));
+    return withScope(this.env, apiKey, (s) => scheduleCampaign(this.env, fromScope(s), id, z.number().int().parse(at)));
   }
 
   async pauseCampaign(apiKey: string, id: string) {
-    return withScope(this.env, apiKey, (s) => pauseCampaignForScope(this.env, s, id));
+    return withScope(this.env, apiKey, (s) => pauseCampaign(this.env, fromScope(s), id));
   }
 
   async resumeCampaign(apiKey: string, id: string) {
-    return withScope(this.env, apiKey, (s) => resumeCampaignForScope(this.env, s, id));
+    return withScope(this.env, apiKey, (s) => resumeCampaign(this.env, fromScope(s), id));
   }
 
   async cancelCampaign(apiKey: string, id: string) {
-    return withScope(this.env, apiKey, (s) => cancelCampaignForScope(this.env, s, id));
+    return withScope(this.env, apiKey, (s) => cancelCampaign(this.env, fromScope(s), id));
   }
 
   async campaignStats(apiKey: string, id: string) {
-    return withScope(this.env, apiKey, (s) => campaignStatsForScope(this.env, s, id));
+    return withScope(this.env, apiKey, (s) => campaignStats(this.env, fromScope(s), id));
   }
 
   async listTemplates(apiKey: string, cursor?: string) {
@@ -185,15 +186,15 @@ export class RelayRpc extends WorkerEntrypoint<Env> {
   }
 
   async setAudienceHook(apiKey: string, input: unknown) {
-    return withScope(this.env, apiKey, (s) => setAudienceHookForScope(this.env, s, input));
+    return withScope(this.env, apiKey, (s) => setAudienceHook(this.env, fromScope(s), s.appId, input));
   }
 
   async getAudienceHook(apiKey: string) {
-    return withScope(this.env, apiKey, (s) => getAudienceHookForScope(this.env, s));
+    return withScope(this.env, apiKey, (s) => getAudienceHook(this.env, fromScope(s), s.appId));
   }
 
   async deleteAudienceHook(apiKey: string) {
-    return withScope(this.env, apiKey, (s) => deleteAudienceHookForScope(this.env, s));
+    return withScope(this.env, apiKey, (s) => deleteAudienceHook(this.env, fromScope(s), s.appId));
   }
 
   async isSuppressed(apiKey: string, email: string, stream: string, from?: string) {

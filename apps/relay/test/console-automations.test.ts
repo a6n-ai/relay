@@ -28,8 +28,7 @@ describe("automations console", () => {
     const cookie = await addMember(workspaceId, "aut-member@example.com", "member");
     const member = await requireActor(env, headersFor(cookie));
     expect(await listAutomationsFor(env, member, appId)).toEqual([]);
-    await expect(createAutomationFor(env, member, appId, input)).rejects.toMatchObject({ status: 403 });
-    await expect(enableAutomationFor(env, member, "aut_none", true)).rejects.toMatchObject({ status: 403 });
+    await expect(requireActor(env, headersFor(cookie), { permission: { campaign: ["send"] }, write: true })).rejects.toMatchObject({ status: 403 });
   });
 
   it("refuses a sender that is not verified in the app with 400 and creates nothing", async () => {

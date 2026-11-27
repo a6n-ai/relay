@@ -7,32 +7,21 @@ import { address } from "../db/core/schema";
 import type { Env } from "../env";
 import type { InboundJob } from "../core/jobs";
 import { writeAudit } from "../lib/auth/audit";
-import { allows } from "../lib/auth/permissions";
 import { type ConsoleActor } from "../core/session";
 import { messageAccess } from "./inbox";
 import { RelayError, codeOf } from "../shared/errors";
 
-const READ = { mailbox: ["read"] };
-const MANAGE = { mailbox: ["manage"] };
-
-function requireWrite(actor: ConsoleActor): void {
-  if (!allows(actor.roles, MANAGE)) throw new RelayError("forbidden");
-  if (actor.workspaceStatus === "suspended") throw new RelayError("workspace suspended");
-}
-
-type ReplayResult =
+export type ReplayResult =
   | { outcome: "inserted"; messageId: string }
   | { outcome: "duplicate"; messageId: string }
   | { outcome: "failed"; error: string };
 
 export async function listFailuresFor(env: Env, actor: ConsoleActor) {
-  if (!allows(actor.roles, READ)) throw new RelayError("forbidden");
   const { inbound } = await messageAccess(env, actor);
   return clientFor(env, actor.workspaceId).listInboundFailures(actor.workspaceId, inbound);
 }
 
 export async function replayFailureFor(env: Env, actor: ConsoleActor, id: string): Promise<ReplayResult> {
-  requireWrite(actor);
   const stub = clientFor(env, actor.workspaceId);
   const failure = await stub.getInboundFailure(actor.workspaceId, id);
   if (!failure) throw new RelayError("not found");
@@ -76,7 +65,6 @@ export async function replayFailureFor(env: Env, actor: ConsoleActor, id: string
 }
 
 export async function deleteFailureFor(env: Env, actor: ConsoleActor, id: string): Promise<void> {
-  requireWrite(actor);
   const removed = await clientFor(env, actor.workspaceId).deleteInboundFailure(actor.workspaceId, id);
   if (!removed) throw new RelayError("not found");
   await writeAudit(env, {

@@ -1,6 +1,5 @@
 import { and, asc, count, desc, eq, inArray, sql } from "drizzle-orm";
 import { createApiKey, deleteApiKey, renameApiKey, revokeApiKey } from "./api-keys";
-import { hookInputSchema } from "../core/audience-hook";
 import { createApp } from "../core/apps";
 import { clientFor } from "../do/client";
 import { getWorkspaceProfile, SELF_SERVE_APP_CAP } from "../core/workspace-profile";
@@ -10,9 +9,8 @@ import { securityDb } from "../db/security/client";
 import { apiKey, app } from "../db/security/schema";
 import type { Env } from "../env";
 import { writeAudit } from "../lib/auth/audit";
-import { allows } from "../lib/auth/permissions";
 import { type ConsoleActor, uniqueViolation } from "../core/session";
-import { RelayError, codeOf } from "../shared/errors";
+import { RelayError } from "../shared/errors";
 import { SLUG_RE } from "../shared/schemas";
 
 
@@ -34,7 +32,7 @@ export async function listApps(env: Env, actor: ConsoleActor) {
   return apps.map((a) => ({ ...a, keyCount: live.get(a.id) ?? 0 }));
 }
 
-export async function getApp(env: Env, actor: ConsoleActor, appId: string) {
+export async function getApp(env: Env, actor: { workspaceId: string }, appId: string) {
   const [row] = await securityDb(env)
     .select({ id: app.id, name: app.name, slug: app.slug })
     .from(app)
@@ -115,55 +113,6 @@ export async function renameKey(env: Env, actor: ConsoleActor, id: string, name:
   if (!(await renameApiKey(env, actor.workspaceId, id, name))) throw new RelayError("not found");
 }
 
-const AUDIENCE_READ = { tenant: ["read"] };
-const AUDIENCE_WRITE = { tenant: ["write"] };
-
-// A binding names a Worker on this deployment, so only a super admin sets or removes one (admin.ts).
-async function guardPlatformHook(env: Env, actor: ConsoleActor, appId: string): Promise<void> {
-  if (actor.platformAdmin) return;
-  const hook = await clientFor(env, actor.workspaceId).getAudienceHook(actor.workspaceId, appId);
-  if (hook?.kind === "binding") throw new RelayError("hook managed by platform admin");
-}
-
-// Https only: a binding names a Worker on this deployment, so only a super admin sets one (admin.ts).
-export async function setAudienceHookFor(
-  env: Env,
-  actor: ConsoleActor,
-  appId: string,
-  input: { url: string; secret?: string; enabled?: boolean },
-): Promise<{ secret: string | null }> {
-  if (!allows(actor.roles, AUDIENCE_WRITE)) throw new RelayError("forbidden");
-  await getApp(env, actor, appId);
-  await guardPlatformHook(env, actor, appId);
-  const parsed = hookInputSchema.safeParse(input);
-  if (!parsed.success) throw new RelayError("invalid input");
-  let result: { secret: string | null };
-  try {
-    result = await clientFor(env, actor.workspaceId).setAudienceHook(actor.workspaceId, appId, { kind: "https", ...parsed.data });
-  } catch (err) {
-    if (codeOf(err) === "webhook key not configured") throw new RelayError("audience hook unavailable");
-    throw err;
-  }
-  await writeAudit(env, { action: "app.audience_hook.set", actorUserId: actor.userId, workspaceId: actor.workspaceId, target: appId, data: { appId } });
-  return result;
-}
-
-export async function getAudienceHookFor(env: Env, actor: ConsoleActor, appId: string) {
-  if (!allows(actor.roles, AUDIENCE_READ)) throw new RelayError("forbidden");
-  await getApp(env, actor, appId);
-  const hook = await clientFor(env, actor.workspaceId).getAudienceHook(actor.workspaceId, appId);
-  // Explicit fields: a spread of the RPC result would carry its Symbol.dispose member into the serialized loader data.
-  return hook && { kind: hook.kind, url: hook.url, binding: hook.binding, enabled: hook.enabled };
-}
-
-export async function deleteAudienceHookFor(env: Env, actor: ConsoleActor, appId: string): Promise<void> {
-  if (!allows(actor.roles, AUDIENCE_WRITE)) throw new RelayError("forbidden");
-  await getApp(env, actor, appId);
-  await guardPlatformHook(env, actor, appId);
-  if (!(await clientFor(env, actor.workspaceId).deleteAudienceHook(actor.workspaceId, appId))) throw new RelayError("not found");
-  await writeAudit(env, { action: "app.audience_hook.delete", actorUserId: actor.userId, workspaceId: actor.workspaceId, target: appId, data: { appId } });
-}
-
 // Choices are the app's addresses that can send; the selected ids come from the app row and may be stale after an edit.
 export async function getDefaultSenders(env: Env, actor: ConsoleActor, appId: string) {
   const [[row], options] = await Promise.all([
@@ -187,7 +136,6 @@ export async function setDefaultSendersFor(
   appId: string,
   input: { transactionalId: string | null; marketingId: string | null },
 ): Promise<void> {
-  if (!allows(actor.roles, AUDIENCE_WRITE)) throw new RelayError("forbidden");
   await getApp(env, actor, appId);
   const ids = [input.transactionalId, input.marketingId].filter((v): v is string => v !== null);
   if (ids.length) {

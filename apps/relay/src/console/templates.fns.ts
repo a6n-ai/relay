@@ -1,89 +1,36 @@
 import { createServerFn } from "@tanstack/react-start";
-import { getRequestHeaders } from "@tanstack/react-start/server";
 import { env } from "cloudflare:workers";
 import { z } from "zod";
-import { requireActor, toResponseError } from "./actor";
-import {
-  createTemplateFor,
-  deleteTemplateFor,
-  getTemplateFor,
-  listTemplatesFor,
-  previewTemplateFor,
-  updateTemplateFor,
-} from "./templates";
+import { read, READ, run, WRITE } from "./guard";
 import { id, validate } from "./schemas";
 import { templateInput, templatePatch } from "../services/schemas";
-import { RelayError } from "../shared/errors";
+import { fromActor } from "../services/principal";
+import { createTemplate, deleteTemplate, getTemplate, listTemplates, previewTemplate, updateTemplate } from "../services/templates";
 
-const READ = { permission: { template: ["read"] } };
-const WRITE = { permission: { template: ["write"] }, write: true };
+const VIEW = READ("template", "read");
+const EDIT = WRITE("template", "write");
 
 // Null means the role cannot see templates: the page shows a denied state instead of an error.
 export const fetchTemplates = createServerFn({ method: "GET" })
   .validator(validate(z.object({ appId: id, cursor: z.string().max(254).optional() })))
-  .handler(async ({ data }) => {
-    try {
-      const actor = await requireActor(env, getRequestHeaders(), READ);
-      return await listTemplatesFor(env, actor, data.appId, data.cursor);
-    } catch (err) {
-      if (err instanceof RelayError && err.status === 403) return null;
-      toResponseError(err);
-    }
-  });
+  .handler(({ data }) => read(VIEW, (actor) => listTemplates(env, fromActor(actor), data.appId, data.cursor)));
 
 export const fetchTemplate = createServerFn({ method: "GET" })
   .validator(validate(z.object({ id })))
-  .handler(async ({ data }) => {
-    try {
-      const actor = await requireActor(env, getRequestHeaders(), READ);
-      return await getTemplateFor(env, actor, data.id);
-    } catch (err) {
-      if (err instanceof RelayError && err.status === 403) return null;
-      toResponseError(err);
-    }
-  });
+  .handler(({ data }) => read(VIEW, (actor) => getTemplate(env, fromActor(actor), data.id)));
 
 export const previewTemplateFn = createServerFn({ method: "GET" })
   .validator(validate(z.object({ id })))
-  .handler(async ({ data }) => {
-    try {
-      const actor = await requireActor(env, getRequestHeaders(), READ);
-      return await previewTemplateFor(env, actor, data.id);
-    } catch (err) {
-      if (err instanceof RelayError && err.status === 403) return null;
-      toResponseError(err);
-    }
-  });
+  .handler(({ data }) => read(VIEW, (actor) => previewTemplate(env, fromActor(actor), data.id)));
 
 export const createTemplateFn = createServerFn({ method: "POST" })
   .validator(validate(z.object({ appId: id, input: templateInput })))
-  .handler(async ({ data }) => {
-    try {
-      const actor = await requireActor(env, getRequestHeaders(), WRITE);
-      return await createTemplateFor(env, actor, data.appId, data.input);
-    } catch (err) {
-      toResponseError(err);
-    }
-  });
+  .handler(({ data }) => run(EDIT, (actor) => createTemplate(env, fromActor(actor), data.appId, data.input)));
 
 export const updateTemplateFn = createServerFn({ method: "POST" })
   .validator(validate(z.object({ id, patch: templatePatch })))
-  .handler(async ({ data }) => {
-    try {
-      const actor = await requireActor(env, getRequestHeaders(), WRITE);
-      return await updateTemplateFor(env, actor, data.id, data.patch);
-    } catch (err) {
-      toResponseError(err);
-    }
-  });
+  .handler(({ data }) => run(EDIT, (actor) => updateTemplate(env, fromActor(actor), data.id, data.patch)));
 
 export const deleteTemplateFn = createServerFn({ method: "POST" })
   .validator(validate(z.object({ id })))
-  .handler(async ({ data }) => {
-    try {
-      const actor = await requireActor(env, getRequestHeaders(), WRITE);
-      await deleteTemplateFor(env, actor, data.id);
-    } catch (err) {
-      toResponseError(err);
-    }
-  });
+  .handler(({ data }) => run(EDIT, (actor) => deleteTemplate(env, fromActor(actor), data.id)));

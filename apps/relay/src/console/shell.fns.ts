@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeaders, setResponseHeader } from "@tanstack/react-start/server";
 import { env } from "cloudflare:workers";
-import { toResponseError } from "./actor";
+import { fail } from "./guard";
 import { googleConfig } from "../lib/auth/google";
 import { loadShell } from "../services/shell";
 import { RelayError } from "../shared/errors";
@@ -23,7 +23,7 @@ export const getShell = createServerFn({ method: "GET" }).handler(async (): Prom
     return shell;
   } catch (err) {
     if (err instanceof RelayError && err.status === 401) return null;
-    toResponseError(err);
+    fail(err);
   }
 });
 

@@ -1,79 +1,37 @@
 import { createServerFn } from "@tanstack/react-start";
-import { getRequestHeaders } from "@tanstack/react-start/server";
 import { env } from "cloudflare:workers";
 import { z } from "zod";
-import { requirePlatformAdmin, toResponseError } from "./actor";
+import { runAdmin } from "./guard";
 import { AUDIENCE_BINDINGS } from "../core/audience-protocol";
 import {
   listWorkspaces,
   setAudienceBindingFor,
   setWorkspaceInviteCap,
-  setWorkspaceQuota, setWorkspaceRegion,
+  setWorkspaceQuota,
+  setWorkspaceRegion,
   setWorkspaceStatus,
 } from "../services/admin";
 import { MAX_INVITES_PER_DAY, MAX_MONTHLY_QUOTA } from "../shared/limits";
 import { validate } from "./schemas";
 
-export const fetchWorkspaces = createServerFn({ method: "GET" }).handler(async () => {
-  try {
-    await requirePlatformAdmin(env, getRequestHeaders());
-    return await listWorkspaces(env);
-  } catch (err) {
-    toResponseError(err);
-  }
-});
+export const fetchWorkspaces = createServerFn({ method: "GET" }).handler(() => runAdmin(() => listWorkspaces(env), false));
 
 export const setWorkspaceStatusFn = createServerFn({ method: "POST" })
   .validator(validate(z.object({ workspaceId: z.string().min(1), status: z.enum(["active", "suspended"]) })))
-  .handler(async ({ data }) => {
-    try {
-      const admin = await requirePlatformAdmin(env, getRequestHeaders(), { write: true });
-      await setWorkspaceStatus(env, admin, data.workspaceId, data.status);
-    } catch (err) {
-      toResponseError(err);
-    }
-  });
+  .handler(({ data }) => runAdmin((admin) => setWorkspaceStatus(env, admin, data.workspaceId, data.status)));
 
 export const setWorkspaceRegionFn = createServerFn({ method: "POST" })
   .validator(validate(z.object({ workspaceId: z.string().min(1), region: z.string().min(1).max(40) })))
-  .handler(async ({ data }) => {
-    try {
-      const admin = await requirePlatformAdmin(env, getRequestHeaders(), { write: true });
-      await setWorkspaceRegion(env, admin, data.workspaceId, data.region);
-    } catch (err) {
-      toResponseError(err);
-    }
-  });
+  .handler(({ data }) => runAdmin((admin) => setWorkspaceRegion(env, admin, data.workspaceId, data.region)));
 
 export const setWorkspaceQuotaFn = createServerFn({ method: "POST" })
   .validator(validate(z.object({ workspaceId: z.string().min(1), quota: z.number().int().min(0).max(MAX_MONTHLY_QUOTA) })))
-  .handler(async ({ data }) => {
-    try {
-      const admin = await requirePlatformAdmin(env, getRequestHeaders(), { write: true });
-      await setWorkspaceQuota(env, admin, data.workspaceId, data.quota);
-    } catch (err) {
-      toResponseError(err);
-    }
-  });
+  .handler(({ data }) => runAdmin((admin) => setWorkspaceQuota(env, admin, data.workspaceId, data.quota)));
 
 export const setWorkspaceInviteCapFn = createServerFn({ method: "POST" })
   .validator(validate(z.object({ workspaceId: z.string().min(1), cap: z.number().int().min(1).max(MAX_INVITES_PER_DAY) })))
-  .handler(async ({ data }) => {
-    try {
-      const admin = await requirePlatformAdmin(env, getRequestHeaders(), { write: true });
-      await setWorkspaceInviteCap(env, admin, data.workspaceId, data.cap);
-    } catch (err) {
-      toResponseError(err);
-    }
-  });
+  .handler(({ data }) => runAdmin((admin) => setWorkspaceInviteCap(env, admin, data.workspaceId, data.cap)));
 
 export const setAudienceBindingFn = createServerFn({ method: "POST" })
   .validator(validate(z.object({ workspaceId: z.string().min(1), appId: z.string().min(1), binding: z.enum(AUDIENCE_BINDINGS) })))
-  .handler(async ({ data }) => {
-    try {
-      const admin = await requirePlatformAdmin(env, getRequestHeaders(), { write: true });
-      return await setAudienceBindingFor(env, admin, data.workspaceId, data.appId, data.binding);
-    } catch (err) {
-      toResponseError(err);
-    }
-  });
+  .handler(({ data }) => runAdmin((admin) => setAudienceBindingFor(env, admin, data.workspaceId, data.appId, data.binding)));
