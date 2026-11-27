@@ -21,14 +21,12 @@ export const validate =
     return parsed.data;
   };
 
-export { id, name };
 export const slug = slugSchema;
 export const appId = idSchema;
 export const displayName = z.string().trim().max(NAME_MAX).optional();
 export const replyTo = emailSchema.nullable().optional();
 export const role = z.enum(ORG_ROLES);
 export const inviteInput = z.object({ email: emailSchema, role });
-export { memberInput } from "../core/member-input";
 export const postalAddress = z.string().trim().min(1).max(300);
 export const automationInput = z.object({
   name,

@@ -1,11 +1,11 @@
-import { z } from "zod";
 import { csvCell, membersCsvHeader, parseContactsCsv } from "../core/csv";
 import { decodeCursor } from "../core/cursor";
-import { memberInput, type MemberInput } from "../core/member-input";
 import { clientFor } from "../do/client";
 import type { ImportResult, ListInput } from "../do/lists";
 import type { Env } from "../env";
 import { RelayError } from "../shared/errors";
+import { MEMBERS_IMPORT_MAX } from "../shared/limits";
+import type { MemberInput } from "../shared/schemas";
 import { type ListView, type MemberView } from "../shared/views";
 import { ownApp, audit, type Principal } from "./principal";
 
@@ -89,9 +89,6 @@ export async function removeMember(env: Env, p: Principal, listId: string, membe
   if (!removed) throw new RelayError("not found");
   await audit(env, p, "list.member.remove", memberId, { listId });
 }
-
-export const MEMBERS_IMPORT_MAX = 1000;
-export const membersImportInput = z.object({ rows: z.array(memberInput).max(MEMBERS_IMPORT_MAX) });
 
 async function importRows<E extends Record<string, number>>(env: Env, p: Principal, listId: string, rows: MemberInput[], extra = {} as E) {
   await checkList(env, p, listId);

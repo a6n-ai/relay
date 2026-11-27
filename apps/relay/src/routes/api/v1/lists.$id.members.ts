@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { decodeCursor } from "../../../core/cursor";
 import { apiRoute, data, json, readJson } from "../../../api/route";
-import { memberInput } from "../../../core/member-input";
+import { memberInput } from "../../../shared/schemas";
 import { addMember, listMembers } from "../../../services/lists";
 
 export const Route = createFileRoute("/api/v1/lists/$id/members")({

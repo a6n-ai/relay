@@ -5,7 +5,9 @@ import { z } from "zod";
 const setResponseStatus = vi.hoisted(() => vi.fn());
 vi.mock("@tanstack/react-start/server", () => ({ setResponseStatus }));
 
-import { memberInput, name, validate, slug } from "../src/console/schemas";
+import { slug, validate } from "../src/console/schemas";
+import { memberInput } from "../src/shared/schemas";
+import { name } from "../src/services/schemas";
 import { campaignPatch } from "../src/services/schemas";
 import { errorText } from "../src/components/error-text";
 

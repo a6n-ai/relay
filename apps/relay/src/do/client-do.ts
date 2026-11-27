@@ -9,7 +9,7 @@ import { contactValues, fillUnsubscribe, hasMergeToken, MERGE_SAMPLES, renderMer
 import { sesSendRate } from "../core/send-rate";
 import type { SesAttachment, SesSendRequest } from "../core/ses";
 import { LIMITS_KEY, LIMITS_TTL_MS, loadWorkspaceLimits, SENDER_RETRY_MS, type WorkspaceLimits } from "../core/limits";
-import { resolvedSendSchema, type ResolvedSendInput } from "../core/send-input";
+import { resolvedSendSchema, type MemberInput, type ResolvedSendInput } from "../shared/schemas";
 import type { SesEventJob } from "../core/ses-events";
 import { listUnsubscribeHeaders, unsubscribeToken, unsubscribeUrl } from "../core/unsubscribe";
 import { recordDoState } from "../core/workspace-profile";
@@ -29,7 +29,6 @@ import { describeError } from "../core/log";
 import { bumpCampaign, campaignStatsRow, statsOf, createCampaignRow, deleteCampaignRow, getCampaignRow, listCampaignRows, previewAudienceRows, recipientQuery, updateCampaignRow, type CampaignPatch, type CampaignSummary } from "./campaigns";
 import { CLIENT_MIGRATIONS, migrate } from "./migrations";
 import { addMemberRow, createListRow, deleteListRow, listListRows, listMemberRows, exportMemberRows, IMPORT_CHUNK, importMemberRow, removeMemberRow, updateMemberRow, updateListRow, type ImportResult, type ListInput } from "./lists";
-import { type MemberInput } from "../core/member-input";
 import { maskEmails } from "../core/mask-emails";
 import { createTemplateRow, deleteTemplateRow, getTemplateRow, listTemplateRows, templateOverrideRows, updateTemplateRow, type TemplateInput, type RenderedTemplate, type TemplateOverride } from "./templates";
 import { deleteWebhookRow, failDeliveryRow, listWebhookRows, toWebhookView, updateWebhookRow, type WebhookRow } from "./webhooks";

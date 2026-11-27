@@ -8,7 +8,7 @@ import type { KeyPrincipal } from "./principal";
 import { clientFor } from "../do/client";
 import { loadWorkspaceLimits } from "../core/limits";
 import { contactValues, hasMergeToken } from "../shared/merge";
-import { templateSendSchema, type SendInput, type TemplateSendInput } from "../core/send-input";
+import { templateSendSchema, type SendInput, type TemplateSendInput } from "../shared/schemas";
 import { RelayError } from "../shared/errors";
 import { type Stream } from "../shared/mail";
 

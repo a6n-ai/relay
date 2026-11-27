@@ -85,17 +85,5 @@ export function isPublicWebhookUrl(value: string): boolean {
 
 export const httpsUrl = z.string().max(URL_MAX).refine(isPublicWebhookUrl, "url must be a public https URL without credentials");
 
-export const webhookInputSchema = z.object({
-  url: httpsUrl,
-  events: z
-    .array(z.enum(WEBHOOK_EVENTS))
-    .min(1)
-    .transform((events) => [...new Set(events)]),
-  secret: z.string().min(16).max(256).optional(),
-  enabled: z.boolean().optional(),
-});
-
-export const webhookPatchSchema = webhookInputSchema.omit({ secret: true }).partial();
-
-export type WebhookInput = z.output<typeof webhookInputSchema>;
-export type WebhookPatch = z.output<typeof webhookPatchSchema>;
+export type WebhookInput = { url: string; events: WebhookEvent[]; secret?: string; enabled?: boolean };
+export type WebhookPatch = Partial<Omit<WebhookInput, "secret">>;

@@ -3,8 +3,8 @@ import { env } from "cloudflare:workers";
 import { z } from "zod";
 import { read, run } from "./guard";
 import { READ, WRITE } from "./needs";
-import { id, validate } from "./schemas";
-import { templateInput, templatePatch } from "../services/schemas";
+import { validate } from "./schemas";
+import { id, templateInput, templatePatch } from "../services/schemas";
 import { createTemplate, deleteTemplate, getTemplate, listTemplates, previewTemplate, updateTemplate } from "../services/templates";
 
 const VIEW = READ("template", "read");

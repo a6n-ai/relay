@@ -12,20 +12,13 @@ import type { SendResult } from "../do/types";
 import type { Env } from "../env";
 import { hasDataToken } from "../shared/campaign-problems";
 import { RelayError } from "../shared/errors";
-import { AUDIENCE_QUERY_MAX, DAY_MS, NAME_MAX } from "../shared/limits";
+import { DAY_MS } from "../shared/limits";
 import { fillUnsubscribe, MERGE_SAMPLES, renderMerge, unknownMergeFields } from "../shared/merge";
-import { idSchema } from "../shared/schemas";
 import { type AudiencePreview, type CampaignStats, type CampaignView, type ListView } from "../shared/views";
 import { startCampaignRun, stopRun, verifiedSenders } from "./campaign-run";
 import { refreshWorkspaceLimits } from "./limits";
 import { ownApp, audit, owned, type Principal } from "./principal";
-
-export const campaignCreateInput = z.object({
-  name: z.string().trim().min(1).max(NAME_MAX),
-  templateId: idSchema.optional(),
-  audienceKind: z.enum(["lists", "hook"]).optional(),
-  audienceQuery: z.string().max(AUDIENCE_QUERY_MAX).nullable().optional(),
-});
+import type { campaignCreateInput } from "./schemas";
 
 // Lets TiffinGrab send staff straight to the editor for a campaign it created or changed.
 export const withConsoleUrl = (env: Env, campaign: CampaignView) => ({

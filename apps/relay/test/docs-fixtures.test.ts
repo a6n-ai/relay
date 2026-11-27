@@ -1,12 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { ZodType } from "zod";
-import { campaignPatch, listInput, listPatch, templateInput, templatePatch } from "../src/services/schemas";
+import { campaignCreateInput, campaignPatch, listInput, membersImportInput, listPatch, templateInput, templatePatch } from "../src/services/schemas";
 import { hookInputSchema } from "../src/core/audience-hook";
-import { campaignCreateInput } from "../src/services/campaigns";
-import { membersImportInput } from "../src/services/lists";
-import { memberInput } from "../src/core/member-input";
-import { sendBody, templateSendSchema } from "../src/core/send-input";
-import { webhookInputSchema, webhookPatchSchema } from "../src/core/webhooks";
+import { memberInput } from "../src/shared/schemas";
+import { sendBody, templateSendSchema } from "../src/shared/schemas";
+import { webhookInputSchema, webhookPatchSchema } from "../src/services/schemas";
 import { scheduleBody } from "../src/routes/api/v1/campaigns.$id.$action";
 
 type Endpoint = { route: string; title: string; method: string; path: string; schema?: string; body?: unknown };

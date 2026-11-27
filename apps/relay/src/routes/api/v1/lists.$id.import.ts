@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { apiRoute, data, readJson } from "../../../api/route";
-import { importMembers, membersImportInput } from "../../../services/lists";
+import { importMembers } from "../../../services/lists";
+import { membersImportInput } from "../../../services/schemas";
 
 export const Route = createFileRoute("/api/v1/lists/$id/import")({
   server: {

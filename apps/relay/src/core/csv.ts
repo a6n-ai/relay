@@ -1,5 +1,4 @@
-import { memberInput } from "./member-input";
-import type { MemberInput } from "./member-input";
+import { memberInput, type MemberInput } from "../shared/schemas";
 import { RelayError } from "../shared/errors";
 
 export type ParsedContacts = { rows: MemberInput[]; invalid: number; duplicates: number };

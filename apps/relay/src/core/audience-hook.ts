@@ -1,7 +1,7 @@
 import { NonRetryableError } from "cloudflare:workflows";
 import { z } from "zod";
 import type { Env } from "../env";
-import { mergeDataSchema } from "./send-input";
+import { emailSchema, mergeDataSchema } from "../shared/schemas";
 import { HOOK_PAGE_LIMIT, type AudiencePage, type HookCall, type HookRecipient } from "./audience-protocol";
 import { httpsUrl, isPublicWebhookUrl } from "./webhooks";
 import { RelayError, type ErrorCode } from "../shared/errors";
@@ -11,7 +11,7 @@ const HOOK_TIMEOUT_MS = 15_000;
 export const AUDIENCE_FAILED = "audience_failed" satisfies ErrorCode;
 
 const recipientSchema = z.object({
-  email: z.string().trim().toLowerCase().pipe(z.email()),
+  email: emailSchema,
   firstName: z.string().max(200).optional(),
   lastName: z.string().max(200).optional(),
   consent: z.enum(["express", "implied"]),

@@ -3,8 +3,8 @@ import { env } from "cloudflare:workers";
 import { z } from "zod";
 import { read, run } from "./guard";
 import { READ, WRITE } from "./needs";
-import { id, name, postalAddress, validate } from "./schemas";
-import { campaignPatch } from "../services/schemas";
+import { postalAddress, validate } from "./schemas";
+import { campaignPatch, id, name } from "../services/schemas";
 import {
   campaignOptions,
   campaignStats,

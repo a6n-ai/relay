@@ -17,7 +17,8 @@ import {
   renameTeam,
   setTeamMember,
 } from "../services/members";
-import { id, inviteInput, name, role, validate } from "./schemas";
+import { inviteInput, role, validate } from "./schemas";
+import { id, name } from "../services/schemas";
 
 // Null means no workspace or a suspended one: the page shows a denied state with a 200, not an error status.
 export const fetchPeople = createServerFn({ method: "GET" }).handler(() => read({}, (p) => listPeople(env, p)));

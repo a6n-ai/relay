@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { emailSchema } from "../shared/schemas";
 
 export type SeedInput = {
   ownerEmails: string[];
@@ -9,7 +10,7 @@ export type SeedInput = {
 
 const text = z.string().min(1);
 export const seedInputSchema = z.object({
-  ownerEmails: z.array(z.string().trim().toLowerCase().pipe(z.email())).min(1),
+  ownerEmails: z.array(emailSchema).min(1),
   workspace: z.object({ name: text, slug: text }),
   app: z.object({ name: text, slug: text }),
   domain: z.object({ domain: text, sesRegion: text }).optional(),

@@ -5,7 +5,8 @@ import { z } from "zod";
 import { fail, run } from "./guard";
 import { WRITE } from "./needs";
 import { createWorkspace, deleteWorkspace, renameWorkspace } from "../services/workspaces";
-import { name, slug, validate } from "./schemas";
+import { slug, validate } from "./schemas";
+import { name } from "../services/schemas";
 
 export const createWorkspaceFn = createServerFn({ method: "POST" })
   .validator(validate(z.object({ name, slug })))

@@ -4,7 +4,8 @@ import { z } from "zod";
 import { read, run } from "./guard";
 import { READ, WRITE } from "./needs";
 import { deleteFailure, listFailures, replayFailure } from "../services/failures";
-import { id, validate } from "./schemas";
+import { validate } from "./schemas";
+import { id } from "../services/schemas";
 
 const VIEW = READ("mailbox", "read");
 const MANAGE = WRITE("mailbox", "manage");

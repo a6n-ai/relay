@@ -16,7 +16,8 @@ import {
   setDomainProtected,
   updateAddress,
 } from "../services/domains";
-import { displayName, id, replyTo, validate } from "./schemas";
+import { displayName, replyTo, validate } from "./schemas";
+import { id } from "../services/schemas";
 
 const VIEW = READ("sending", "read");
 const EDIT = WRITE("sending", "write");

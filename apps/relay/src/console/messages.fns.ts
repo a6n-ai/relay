@@ -4,7 +4,8 @@ import { z } from "zod";
 import { orMissing, read } from "./guard";
 import { READ } from "./needs";
 import { getMessage, listMessages } from "../services/inbox";
-import { appId, id, validate } from "./schemas";
+import { appId, validate } from "./schemas";
+import { id } from "../services/schemas";
 import { MESSAGE_STATUSES } from "../shared/mail";
 
 const LOG_READ = READ("log", "read");

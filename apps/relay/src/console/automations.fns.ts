@@ -4,7 +4,8 @@ import { z } from "zod";
 import { orMissing, read, run } from "./guard";
 import { READ, WRITE } from "./needs";
 import { createAutomation, deleteAutomation, enableAutomation, getAutomation, listAutomations, updateAutomation } from "../services/automations";
-import { automationInput, automationPatch, id, validate } from "./schemas";
+import { automationInput, automationPatch, validate } from "./schemas";
+import { id } from "../services/schemas";
 
 const VIEW = READ("campaign", "read");
 const SEND = WRITE("campaign", "send");

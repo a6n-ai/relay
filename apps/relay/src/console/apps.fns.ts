@@ -5,7 +5,8 @@ import { read, run } from "./guard";
 import { READ, WRITE } from "./needs";
 import { addApp, createKey, deleteKey, getApp, getDefaultSenders, listApps, listKeys, renameApp, renameKey, revokeKey, setDefaultSenders } from "../services/apps";
 import { deleteAudienceHook, getAudienceHook, setAudienceHook } from "../services/audience-hook";
-import { appId, id, name, slug, validate } from "./schemas";
+import { appId, slug, validate } from "./schemas";
+import { id, name } from "../services/schemas";
 import { URL_MAX } from "../shared/limits";
 
 const VIEW = READ("tenant", "read");

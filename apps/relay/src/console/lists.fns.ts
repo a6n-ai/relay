@@ -3,8 +3,9 @@ import { env } from "cloudflare:workers";
 import { z } from "zod";
 import { read, orMissing, run } from "./guard";
 import { READ, WRITE } from "./needs";
-import { id, memberInput, validate } from "./schemas";
-import { listInput, listPatch } from "../services/schemas";
+import { validate } from "./schemas";
+import { memberInput } from "../shared/schemas";
+import { id, listInput, listPatch } from "../services/schemas";
 import {
   addMember,
   createList,

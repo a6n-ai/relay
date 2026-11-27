@@ -1,7 +1,7 @@
 import { newId } from "../shared/ids";
 import { keysetBefore, keysetSlice, parseCursor } from "../core/cursor";
 import { type ConsentSource, type ListView, type MemberView } from "../shared/views";
-import type { MemberInput } from "../core/member-input";
+import type { MemberInput } from "../shared/schemas";
 import { PAGE_SIZE } from "../shared/limits";
 import { RelayError } from "../shared/errors";
 

@@ -5,7 +5,6 @@ import type { KeyPrincipal } from "../services/principal";
 import { logFailure } from "../core/log";
 import { deleteAudienceHook, getAudienceHook, setAudienceHook } from "../services/audience-hook";
 import {
-  campaignCreateInput,
   campaignStats,
   cancelCampaign,
   createCampaign,
@@ -18,7 +17,6 @@ import {
   updateCampaign,
   withConsoleUrl,
 } from "../services/campaigns";
-import { memberInput } from "../core/member-input";
 import { messagesByKeys, suppress, suppressionStatus } from "../services/lookups";
 import {
   addMember,
@@ -27,7 +25,6 @@ import {
   importMembers,
   listLists,
   listMembers,
-  membersImportInput,
   removeMember,
   updateList,
 } from "../services/lists";
@@ -37,7 +34,7 @@ import {
   sendMessage,
   sendTemplateMessage,
 } from "../services/messages";
-import { sendBody, templateSendSchema } from "../core/send-input";
+import { memberInput, sendBody, templateSendSchema } from "../shared/schemas";
 import {
   createTemplate,
   deleteTemplate,
@@ -46,7 +43,7 @@ import {
   templateOverrides,
   updateTemplate,
 } from "../services/templates";
-import { campaignPatch, listInput, listPatch, templateInput, templatePatch } from "../services/schemas";
+import { campaignCreateInput, campaignPatch, listInput, listPatch, membersImportInput, templateInput, templatePatch } from "../services/schemas";
 import type { Env } from "../env";
 import { RelayError, statusOf } from "../shared/errors";
 import { STREAMS } from "../shared/mail";

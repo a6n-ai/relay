@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { apiRoute, readJson } from "../../../api/route";
 import { sendMessage } from "../../../services/messages";
-import { sendBody } from "../../../core/send-input";
+import { sendBody } from "../../../shared/schemas";
 
 export const Route = createFileRoute("/api/v1/messages")({
   server: {

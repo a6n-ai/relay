@@ -1,7 +1,7 @@
 import { campaignProblems, type CampaignProblem } from "../shared/campaign-problems";
 import { IMPLIED_CONSENT_MS } from "../core/campaigns";
 import { contactValues } from "../shared/merge";
-import type { ResolvedSendInput } from "../core/send-input";
+import type { ResolvedSendInput } from "../shared/schemas";
 import { newId } from "../shared/ids";
 import type { SendResult } from "./types";
 import { getTemplateRow, type RenderedTemplate } from "./templates";

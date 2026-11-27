@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { decodeCursor } from "../../../core/cursor";
 import { apiRoute, data, json, readJson } from "../../../api/route";
-import { campaignCreateInput, createCampaign, listCampaigns, withConsoleUrl } from "../../../services/campaigns";
+import { createCampaign, listCampaigns, withConsoleUrl } from "../../../services/campaigns";
+import { campaignCreateInput } from "../../../services/schemas";
 
 export const Route = createFileRoute("/api/v1/campaigns")({
   server: {

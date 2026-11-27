@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { apiRoute, data, readJson } from "../../../api/route";
 import { sendTemplateMessage } from "../../../services/messages";
-import { templateSendSchema } from "../../../core/send-input";
+import { templateSendSchema } from "../../../shared/schemas";
 
 export const Route = createFileRoute("/api/v1/templates/send")({
   server: {
