@@ -8,7 +8,7 @@ import { CHUNK_SIZE, ENQUEUE_BATCH } from "../core/campaign-run";
 import { contactValues, fillUnsubscribe, hasMergeToken, MERGE_SAMPLES, renderMerge, type MergeData } from "../shared/merge";
 import { sesSendRate } from "../core/send-rate";
 import type { SesAttachment, SesSendRequest } from "../core/ses";
-import { LIMITS_KEY, LIMITS_TTL_MS, loadWorkspaceLimits, SENDER_RETRY_MS, type WorkspaceLimits } from "../core/limits";
+import { LIMITS_KEY, LIMITS_TTL_MS, loadWorkspaceLimits, noLimitsSnapshot, SENDER_RETRY_MS, type WorkspaceLimits } from "../core/limits";
 import { resolvedSendSchema, type ResolvedSendInput } from "../core/send-input";
 import type { SesEventJob } from "../core/ses-events";
 import { listUnsubscribeHeaders, unsubscribeToken, unsubscribeUrl } from "../core/unsubscribe";
@@ -582,12 +582,7 @@ export class ClientDO extends DurableObject<Env> {
     const sql = this.ctx.storage.sql;
     let enqueued = 0;
     const stopped = () => ({ state: "stopped" as const, enqueued, paceMs: 0 });
-    const live = () => {
-      const head = this.campaignHead(id);
-      return head !== undefined && head.status === "sending" && head.runSeq === runSeq;
-    };
-    const setPaused = (error: string) =>
-      sql.exec("UPDATE campaign SET status = 'paused', error = ?, updated_at = ? WHERE id = ? AND status = 'sending' AND run_seq = ?", error, now, id, runSeq);
+    const live = () => this.runIsLive(id, runSeq);
     if (!live()) return stopped();
     const campaign = sql
       .exec<{ appId: string; fromEmail: string | null; subject: string; listIds: string; postalAddress: string | null; cursor: string | null }>(
@@ -595,20 +590,9 @@ export class ClientDO extends DurableObject<Env> {
         id,
       )
       .one();
-    const limits = await this.limits(workspaceId, { forSender: campaign.fromEmail ?? undefined });
-    // No snapshot yet: throw so the Workflow step retries. A missing snapshot must not look like a revoked sender.
-    if (limits.fetchedAt === 0) throw new RelayError("limits unavailable");
-    if (limits.status === "suspended") {
-      this.ctx.storage.transactionSync(() => setPaused("workspace_suspended"));
-      return stopped();
-    }
-    const sender = limits.senders[campaign.fromEmail ?? ""];
-    if (!sender || sender.appId !== campaign.appId) {
-      this.ctx.storage.transactionSync(() => setPaused("sender_not_verified"));
-      return stopped();
-    }
-    const rate = sesSendRate(this.env, sender.sesRegion);
-    if ((await this.ctx.storage.getAlarm()) === null) await this.ctx.storage.setAlarm(now + SWEEP_INTERVAL_MS);
+    const gate = await this.runGate(workspaceId, id, runSeq, campaign, now);
+    if (!gate) return stopped();
+    const { limits, sender, rate } = gate;
     let cursor = campaign.cursor ?? "";
     for (let sub = 0; sub < CHUNK_SIZE / ENQUEUE_BATCH; sub++) {
       if (!live()) return stopped();
@@ -640,9 +624,8 @@ export class ClientDO extends DurableObject<Env> {
         cursor = batch.lastEmail;
       }
       enqueued += batch.queued;
-      const quotaHit = batch.quotaHit;
-      if (quotaHit) {
-        this.ctx.storage.transactionSync(() => setPaused("quota_exceeded"));
+      if (batch.quotaHit) {
+        this.pauseRun(id, runSeq, "quota_exceeded", now);
         return stopped();
       }
     }
@@ -888,6 +871,17 @@ export class ClientDO extends DurableObject<Env> {
     this.ctx.storage.transactionSync(() => failDeliveryRow(this.db, deliveryId, error, now));
   }
 
+  // The one queued -> failed transition: it moves the row, and counts it on its campaign only when the row really moved.
+  private failMessage(messageId: string, error: string, now: number, extra: { htmlKey?: null } = {}): void {
+    const changed = this.db
+      .update(schema.message)
+      .set({ status: "failed", error, claimedUntil: null, updatedAt: now, ...extra })
+      .where(and(eq(schema.message.id, messageId), eq(schema.message.status, "queued")))
+      .returning({ campaignId: schema.message.campaignId })
+      .all();
+    if (changed.length) bumpCampaign(this.ctx.storage.sql, changed[0].campaignId, { queued: -1, failed: 1 });
+  }
+
   // A lease (claimed_until) stops a second job from sending while the first is in flight.
   async claimSend(workspaceId: string, messageId: string, now = Date.now()): Promise<SendClaim> {
     await this.ready(workspaceId);
@@ -911,7 +905,7 @@ export class ClientDO extends DurableObject<Env> {
     }
     // Only a row about to be sent needs limits. Read before the transaction. With no snapshot and no D1, the job retries: queued mail is never failed for an outage.
     const limits = await this.limits(workspaceId, { forSender: queued.fromEmail ?? undefined });
-    if (limits.fetchedAt === 0) return { kind: "busy", retryInSeconds: 60 };
+    if (noLimitsSnapshot(limits)) return { kind: "busy", retryInSeconds: 60 };
     // Minted before the claim transaction: a missing secret throws here, so attempts never moves.
     const url = queued.stream === "marketing" ? unsubscribeUrl(this.env.BETTER_AUTH_URL, await unsubscribeToken(this.env.UNSUBSCRIBE_SECRET, workspaceId, messageId)) : null;
     const fill = (s: string) => (url ? fillUnsubscribe(s, url) : s);
@@ -940,18 +934,7 @@ export class ClientDO extends DurableObject<Env> {
       }
       // A suspension or a revoked sender can land while the row waits in the queue; the message fails, it is not held.
       if (limits.status === "suspended" || limits.senders[row.fromEmail ?? ""]?.appId !== row.appId) {
-        this.db
-          .update(schema.message)
-          .set({
-            status: "failed",
-            error: limits.status === "suspended" ? "workspace_suspended" : "sender_not_verified",
-            htmlKey: null,
-            claimedUntil: null,
-            updatedAt: now,
-          })
-          .where(eq(schema.message.id, messageId))
-          .run();
-        bumpCampaign(this.ctx.storage.sql, row.campaignId, { queued: -1, failed: 1 });
+        this.failMessage(messageId, limits.status === "suspended" ? "workspace_suspended" : "sender_not_verified", now, { htmlKey: null });
         return { kind: "refused", htmlKey: row.htmlKey };
       }
       let body: MessageBody | null = null;
@@ -966,23 +949,13 @@ export class ClientDO extends DurableObject<Env> {
               ? "template missing"
               : null;
         if (error) {
-          this.db
-            .update(schema.message)
-            .set({ status: "failed", error, claimedUntil: null, updatedAt: now })
-            .where(eq(schema.message.id, messageId))
-            .run();
-          bumpCampaign(this.ctx.storage.sql, row.campaignId, { queued: -1, failed: 1 });
+          this.failMessage(messageId, error, now);
           return { kind: "skip", reason: "failed" };
         }
       }
       const region = row.sesRegion;
       if (!region) {
-        this.db
-          .update(schema.message)
-          .set({ status: "failed", error: "no SES region", claimedUntil: null, updatedAt: now })
-          .where(eq(schema.message.id, messageId))
-          .run();
-        bumpCampaign(this.ctx.storage.sql, row.campaignId, { queued: -1, failed: 1 });
+        this.failMessage(messageId, "no SES region", now);
         return { kind: "skip", reason: "failed" };
       }
       const attempt = row.attempts + 1;
@@ -1022,15 +995,7 @@ export class ClientDO extends DurableObject<Env> {
       attachments.push({ filename: a.filename, contentType: a.contentType, bytes: new Uint8Array(await file.arrayBuffer()) });
     }
     if ((row.htmlKey && !object) || attachmentMissing) {
-      this.ctx.storage.transactionSync(() => {
-        const changed = this.db
-          .update(schema.message)
-          .set({ status: "failed", error: attachmentMissing ? "attachment missing" : "html missing", claimedUntil: null, updatedAt: Date.now() })
-          .where(and(eq(schema.message.id, messageId), eq(schema.message.status, "queued")))
-          .returning({ id: schema.message.id })
-          .all();
-        if (changed.length) bumpCampaign(this.ctx.storage.sql, row.campaignId, { queued: -1, failed: 1 });
-      });
+      this.ctx.storage.transactionSync(() => this.failMessage(messageId, attachmentMissing ? "attachment missing" : "html missing", Date.now()));
       return { kind: "skip", reason: "failed" };
     }
     return {
@@ -1078,13 +1043,15 @@ export class ClientDO extends DurableObject<Env> {
     await this.ready(workspaceId);
     this.ctx.storage.transactionSync(() => {
       // Only a queued row is repainted: a claim that lost its lease may find the row already suppressed, sent or failed.
-      const changed = this.db
+      if (final) {
+        this.failMessage(messageId, maskEmails(error), Date.now());
+        return;
+      }
+      this.db
         .update(schema.message)
-        .set({ error: maskEmails(error), claimedUntil: null, updatedAt: Date.now(), ...(final ? { status: "failed" as const } : {}) })
+        .set({ error: maskEmails(error), claimedUntil: null, updatedAt: Date.now() })
         .where(and(eq(schema.message.id, messageId), eq(schema.message.status, "queued")))
-        .returning({ campaignId: schema.message.campaignId })
-        .all();
-      if (final && changed.length) bumpCampaign(this.ctx.storage.sql, changed[0].campaignId, { queued: -1, failed: 1 });
+        .run();
     });
   }
 
@@ -1459,7 +1426,7 @@ export class ClientDO extends DurableObject<Env> {
     try {
       return await this.loadLimits(workspaceId);
     } catch (err) {
-      console.error("ClientDO: failed to reload workspace limits, using the cached snapshot", err);
+      console.error("ClientDO: failed to reload workspace limits, using the cached snapshot", describeError(err));
       return cached ?? { monthlyQuota: DEFAULT_MONTHLY_QUOTA, postalAddress: null, status: "active", senders: {}, fetchedAt: 0 };
     }
   }
@@ -1636,6 +1603,44 @@ export class ClientDO extends DurableObject<Env> {
     await this.ready(workspaceId);
     return audienceCallFor(this.env, this.ctx.storage, workspaceId, campaignId, runSeq);
   }
+  private runIsLive(id: string, runSeq: number): boolean {
+    const head = this.campaignHead(id);
+    return head !== undefined && head.status === "sending" && head.runSeq === runSeq;
+  }
+
+  // Pauses only the run that is still sending: a newer run or a manual pause stays as it is.
+  private pauseRun(id: string, runSeq: number, error: string, now: number): void {
+    this.ctx.storage.transactionSync(() =>
+      this.ctx.storage.sql.exec(
+        "UPDATE campaign SET status = 'paused', error = ?, updated_at = ? WHERE id = ? AND status = 'sending' AND run_seq = ?",
+        error,
+        now,
+        id,
+        runSeq,
+      ),
+    );
+  }
+
+  // The start shared by list and hook run steps: limits, suspension and sender checks, send rate, sweep alarm.
+  // Null means the run was paused here and the caller reports it stopped.
+  private async runGate(workspaceId: string, id: string, runSeq: number, campaign: { appId: string; fromEmail: string | null }, now: number) {
+    const limits = await this.limits(workspaceId, { forSender: campaign.fromEmail ?? undefined });
+    // A run step throws so the Workflow retries: a missing snapshot must not look like a revoked sender (claimSend answers busy instead).
+    if (noLimitsSnapshot(limits)) throw new RelayError("limits unavailable");
+    if (limits.status === "suspended") {
+      this.pauseRun(id, runSeq, "workspace_suspended", now);
+      return null;
+    }
+    const sender = limits.senders[campaign.fromEmail ?? ""];
+    if (!sender || sender.appId !== campaign.appId) {
+      this.pauseRun(id, runSeq, "sender_not_verified", now);
+      return null;
+    }
+    const rate = sesSendRate(this.env, sender.sesRegion);
+    if ((await this.ctx.storage.getAlarm()) === null) await this.ctx.storage.setAlarm(now + SWEEP_INTERVAL_MS);
+    return { limits, sender, rate };
+  }
+
   // One page of a hook run. Replays are safe: rows are found by key, and the cursor moves only when p === n.
   async campaignHookPage(
     workspaceId: string,
@@ -1649,12 +1654,7 @@ export class ClientDO extends DurableObject<Env> {
     const sql = this.ctx.storage.sql;
     let enqueued = 0;
     const stopped = () => ({ state: "stopped" as const, enqueued, paceMs: 0 });
-    const live = () => {
-      const head = this.campaignHead(id);
-      return head !== undefined && head.status === "sending" && head.runSeq === runSeq;
-    };
-    const setPaused = (error: string) =>
-      sql.exec("UPDATE campaign SET status = 'paused', error = ?, updated_at = ? WHERE id = ? AND status = 'sending' AND run_seq = ?", error, now, id, runSeq);
+    const live = () => this.runIsLive(id, runSeq);
     if (!live()) return stopped();
     const campaign = sql
       .exec<{ appId: string; fromEmail: string | null; subject: string; postalAddress: string | null; cursor: string | null }>(
@@ -1665,19 +1665,9 @@ export class ClientDO extends DurableObject<Env> {
     const ingested = parseHookCursor(campaign.cursor).p;
     if (ingested > n) return { state: "more", enqueued: 0, paceMs: 0 };
     if (ingested < n) throw new Error("page out of order");
-    const limits = await this.limits(workspaceId, { forSender: campaign.fromEmail ?? undefined });
-    if (limits.fetchedAt === 0) throw new RelayError("limits unavailable");
-    if (limits.status === "suspended") {
-      this.ctx.storage.transactionSync(() => setPaused("workspace_suspended"));
-      return stopped();
-    }
-    const sender = limits.senders[campaign.fromEmail ?? ""];
-    if (!sender || sender.appId !== campaign.appId) {
-      this.ctx.storage.transactionSync(() => setPaused("sender_not_verified"));
-      return stopped();
-    }
-    const rate = sesSendRate(this.env, sender.sesRegion);
-    if ((await this.ctx.storage.getAlarm()) === null) await this.ctx.storage.setAlarm(now + SWEEP_INTERVAL_MS);
+    const gate = await this.runGate(workspaceId, id, runSeq, campaign, now);
+    if (!gate) return stopped();
+    const { limits, sender, rate } = gate;
     const seen = new Set<string>();
     const rows: EnqueueRow[] = [];
     for (const r of page.recipients) {
@@ -1701,7 +1691,7 @@ export class ClientDO extends DurableObject<Env> {
       if (batch.created > 0) sql.exec("UPDATE campaign SET recipients = recipients + ?, updated_at = ? WHERE id = ? AND run_seq = ?", batch.created, now, id, runSeq);
       enqueued += batch.queued;
       if (batch.quotaHit) {
-        this.ctx.storage.transactionSync(() => setPaused("quota_exceeded"));
+        this.pauseRun(id, runSeq, "quota_exceeded", now);
         return stopped();
       }
     }
