@@ -17,7 +17,11 @@ import {
 import { renameWorkspace } from "../src/services/workspaces";
 import { inviteInput } from "../src/console/schemas";
 import { securityDb } from "../src/db/security/client";
-import { invitation, member, user, workspace } from "../src/db/security/schema";
+import { app, invitation, member, user, workspace } from "../src/db/security/schema";
+import { coreDb } from "../src/db/core/client";
+import { address, sendingDomain } from "../src/db/core/schema";
+import { deliveryEmail } from "../src/auth/recovery";
+import { memoryOtpMailer } from "../src/auth/otp-mailer";
 import { memoryInviteMailer } from "../src/auth/invite-mailer";
 import { addMember, cookieFor, createWorkspace, ORIGIN, setActive, signIn } from "./console-helpers";
 import { applyMigrations } from "./migrate";
@@ -179,7 +183,7 @@ describe("console members, teams and invites", { timeout: 60_000 }, () => {
     expect(inviteInput.safeParse({ email: "not-an-email", role: "member" }).success).toBe(false);
     const [row] = await db.select().from(user).where(eq(user.email, "not-an-email"));
     expect(row).toBeUndefined();
-    expect(inviteInput.parse({ email: " Padded@X.test ", role: "member" }).email).toBe("padded@x.test");
+    expect(inviteInput.parse({ email: " Padded@X.test ", role: "member" })).toMatchObject({ kind: "plain", email: "padded@x.test" });
   });
 
   it("creates no user row for an invite refused by the daily cap", async () => {
@@ -271,5 +275,38 @@ describe("accepting an invite", { timeout: 60_000 }, () => {
     expect(row).toMatchObject({ name: "Renamed Co", slug: "Mem RW Co" });
     const memberCookie = await addMember(a.workspaceId, "mem-rw-member@example.com", "member");
     await expect(requireActor(env, headersFor(memberCookie), need)).rejects.toMatchObject({ status: 403 });
+  });
+
+  async function mailboxSetup(tag: string, status: "verified" | "pending" = "verified") {
+    const owner = await workspaceFor(`mb-${tag}-owner@example.com`, `Mb ${tag} Co`);
+    const actor = await requireActor(env, headersFor(owner.cookie), INVITE);
+    const domain = `mb-${tag}.test`;
+    await coreDb(env).insert(sendingDomain).values({ workspaceId: owner.workspaceId, domain, sesRegion: "us-east-1", status });
+    const [a] = await db.insert(app).values({ workspaceId: owner.workspaceId, name: tag, slug: tag }).returning();
+    const invite = (mailbox: string, recoveryEmail: string) =>
+      inviteMember(env, actor, headersFor(owner.cookie), { kind: "mailbox", name: "Ravi Kumar", recoveryEmail, mailbox, appId: a.id, role: "member" });
+    return { owner, actor, domain, appId: a.id, invite };
+  }
+
+  it("mailbox invite sends to recovery", async () => {
+    const { domain, appId, invite } = await mailboxSetup("send");
+    const mailbox = `ravi@${domain}`;
+    const { id } = await invite(mailbox, "ravi@gmail.test");
+    await expect.poll(() => memoryInviteMailer.lastInvite("ravi@gmail.test")?.mailbox).toBe(mailbox);
+    const [row] = await db.select().from(invitation).where(eq(invitation.id, id));
+    expect(row).toMatchObject({ email: mailbox, recoveryEmail: "ravi@gmail.test", mailboxName: "Ravi Kumar", appId });
+    const [u] = await db.select().from(user).where(eq(user.email, mailbox));
+    expect(u.name).toBe("Ravi Kumar");
+  });
+
+  it("refuses a taken mailbox", async () => {
+    const { owner, domain, appId, invite } = await mailboxSetup("taken");
+    await coreDb(env).insert(address).values({ workspaceId: owner.workspaceId, appId, email: `ravi@${domain}`, kind: "inbox" });
+    await expect(invite(`ravi@${domain}`, "ravi@gmail.test")).rejects.toMatchObject({ status: 409, message: "mailbox taken" });
+  });
+
+  it("refuses a mailbox on an unverified domain", async () => {
+    const { domain, invite } = await mailboxSetup("unver", "pending");
+    await expect(invite(`ravi@${domain}`, "ravi@gmail.test")).rejects.toMatchObject({ status: 400, message: "invalid input" });
   });
 });

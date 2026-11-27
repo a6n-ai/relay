@@ -26,7 +26,13 @@ export const appId = idSchema;
 export const displayName = z.string().trim().max(NAME_MAX).optional();
 export const replyTo = emailSchema.nullable().optional();
 export const role = z.enum(ORG_ROLES);
-export const inviteInput = z.object({ email: emailSchema, role });
+const plainInvite = z.object({ kind: z.literal("plain"), email: emailSchema, role });
+const mailboxInvite = z.object({ kind: z.literal("mailbox"), name, recoveryEmail: emailSchema, mailbox: emailSchema, appId, role });
+// A body without `kind` is a plain invite, the shape callers sent before mailbox invites.
+export const inviteInput = z.preprocess(
+  (v) => (v && typeof v === "object" && !("kind" in v) ? { ...v, kind: "plain" } : v),
+  z.discriminatedUnion("kind", [plainInvite, mailboxInvite]),
+);
 export const postalAddress = z.string().trim().min(1).max(300);
 export const automationInput = z.object({
   name,

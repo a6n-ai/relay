@@ -18,6 +18,7 @@ import {
   setTeamMember,
 } from "../services/members";
 import { inviteInput, role, validate } from "./schemas";
+import { suggestMailbox } from "../core/mailbox-name";
 import { id, name } from "../services/schemas";
 
 // Null means no workspace or no access: the page shows a denied state with a 200, not an error status. A suspended workspace still reads; only writes are refused.
@@ -26,6 +27,12 @@ export const fetchPeople = createServerFn({ method: "GET" }).handler(() => read(
 export const inviteMemberFn = createServerFn({ method: "POST" })
   .validator(validate(inviteInput))
   .handler(({ data }) => run(WRITE("invitation", "create"), (p) => inviteMember(env, p, getRequestHeaders(), data)));
+
+export const suggestMailboxFn = createServerFn({ method: "POST" })
+  .validator(validate(z.object({ name, domain: z.string().trim().toLowerCase().min(1).max(253) })))
+  .handler(({ data }) =>
+    run(WRITE("invitation", "create"), async () => ({ mailbox: await suggestMailbox(env, data.name, data.domain) })),
+  );
 
 export const cancelInviteFn = createServerFn({ method: "POST" })
   .validator(validate(z.object({ id })))

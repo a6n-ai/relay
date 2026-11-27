@@ -170,8 +170,9 @@ describe("admin and organization plugins", () => {
       body: JSON.stringify({ organizationId: orgId, email: "b@example.com", role: "member" }),
     });
     expect(invite.status).toBe(200);
+    // The mail goes out in the background after the response.
+    await expect.poll(() => memoryInviteMailer.lastInvite("b@example.com")?.id).toMatch(/^inv_/);
     const sent = memoryInviteMailer.lastInvite("b@example.com");
-    expect(sent?.id).toMatch(/^inv_/);
 
     await insertUser("b@example.com", "user");
     const bCookie = await signIn("b@example.com");
@@ -798,5 +799,18 @@ describe("audit rows never hold a raw address", () => {
     expect(rows.length).toBeGreaterThan(0);
     const raw = rows.filter((r) => /[^*]@/.test(r.target ?? "") || /[^*]@/.test(r.data ?? ""));
     expect(raw.map((r) => r.action)).toEqual([]);
+  });
+});
+
+describe("mailbox invite guard", () => {
+  it("refuses an HTTP invite that carries recoveryEmail", async () => {
+    const cookie = await cookieFor("guard-owner@example.com", "admin");
+    const organizationId = await createWorkspace(cookie, "guard-co");
+    const res = await SELF.fetch(`${BASE}/organization/invite-member`, {
+      method: "POST",
+      headers: { ...json, cookie, origin: ORIGIN },
+      body: JSON.stringify({ email: "x@x.test", role: "member", organizationId, recoveryEmail: "x@y.test" }),
+    });
+    expect(res.status).toBe(400);
   });
 });

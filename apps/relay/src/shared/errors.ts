@@ -35,6 +35,8 @@ export const ERRORS = {
   "domain cannot be released": { status: 409 },
   "domain name does not match": { status: 400, copy: "Type the domain name exactly to confirm the delete." },
   "invite limit reached": { status: 429, copy: "This workspace has reached its daily invite limit. Try again tomorrow." },
+  "mailbox taken": { status: 409, copy: "That mailbox address is already in use. Pick another." },
+  "personal mailbox": { status: 409, copy: "A personal mailbox can't be used for this." },
   "invite accepted": { status: 409, copy: "This invite is no longer open." },
   "invite rejected": { status: 409, copy: "This invite is no longer open." },
   "invite canceled": { status: 409, copy: "This invite is no longer open." },

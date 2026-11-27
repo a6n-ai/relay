@@ -145,8 +145,14 @@ export function createAuth(env: Env) {
         ac: orgAc,
         roles: orgRoles,
         teams: { enabled: true, defaultTeam: { enabled: false }, allowRemovingAllTeams: true },
-        sendInvitationEmail: async ({ id, email, role }) => {
-          await pickInviteMailer(env.INVITE_MAILER, env).send(email, { id, role });
+        // Better Auth passes the stored row, so recoveryEmail comes from the server-created invitation, never from a request body.
+        sendInvitationEmail: async ({ id, email, role, invitation }) => {
+          const recovery = (invitation as { recoveryEmail?: string | null }).recoveryEmail;
+          await pickInviteMailer(env.INVITE_MAILER, env).send(recovery ?? (await deliveryEmail(env, email)), {
+            id,
+            role,
+            ...(recovery ? { mailbox: email } : {}),
+          });
         },
         organizationHooks: organizationHooks(env),
         schema: {

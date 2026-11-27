@@ -47,14 +47,14 @@ export function sesOtpMailer(env: Env): OtpMailer {
   };
 }
 
-export type InviteMail = { id: string; role: string };
+export type InviteMail = { id: string; role: string; mailbox?: string };
 export type InviteMailer = { send(email: string, invite: InviteMail): Promise<void> };
 
 export function sesInviteMailer(env: Env): InviteMailer {
   return {
     async send(email, invite) {
       const link = `${env.BETTER_AUTH_URL}/invite/${invite.id}`;
-      const sentence = `You have been invited to join a Relay workspace as ${invite.role}.`;
+      const sentence = `You have been invited to join a Relay workspace as ${invite.role}.${invite.mailbox ? ` Your mailbox will be ${invite.mailbox}.` : ""}`;
       await systemSend(env)({
         to: email,
         subject: "You're invited to a Relay workspace",

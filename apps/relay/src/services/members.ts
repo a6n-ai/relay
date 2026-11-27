@@ -1,9 +1,12 @@
 import { and, asc, desc, eq } from "drizzle-orm";
+import { coreDb } from "../db/core/client";
+import { sendingDomain } from "../db/core/schema";
 import { securityDb } from "../db/security/client";
-import { invitation, member, team, teamMember, user, workspace } from "../db/security/schema";
+import { app, invitation, member, team, teamMember, user, workspace } from "../db/security/schema";
 import type { Env } from "../env";
 import { inviteCap, invitesInWindow } from "../core/workspace-profile";
 import { createAuth } from "../auth";
+import { mailboxFree } from "../core/mailbox-name";
 import { authError } from "../auth/errors";
 import { parseRoles } from "../auth/session";
 import type { Principal, Session } from "./principal";
@@ -76,19 +79,43 @@ export async function listPeople(env: Env, p: Principal) {
   };
 }
 
-export async function inviteMember(
-  env: Env,
-  p: Principal,
-  headers: Headers,
-  input: { email: string; role: OrgRole },
-): Promise<{ id: string }> {
+export type InviteInput =
+  | { kind?: "plain"; email: string; role: OrgRole }
+  | { kind: "mailbox"; name: string; recoveryEmail: string; mailbox: string; appId: string; role: OrgRole };
+
+// The mailbox must sit on one of this workspace's verified domains, with an app of this workspace.
+async function checkMailboxTarget(env: Env, p: Principal, mailbox: string, appId: string): Promise<void> {
+  const domain = mailbox.split("@")[1];
+  const [dom] = await coreDb(env)
+    .select({ id: sendingDomain.id })
+    .from(sendingDomain)
+    .where(and(eq(sendingDomain.domain, domain), eq(sendingDomain.workspaceId, p.workspaceId), eq(sendingDomain.status, "verified")));
+  const [owned] = await securityDb(env)
+    .select({ id: app.id })
+    .from(app)
+    .where(and(eq(app.id, appId), eq(app.workspaceId, p.workspaceId)));
+  if (!dom || !owned) throw new RelayError("invalid input");
+}
+
+export async function inviteMember(env: Env, p: Principal, headers: Headers, input: InviteInput): Promise<{ id: string }> {
   if (input.role === "owner" && !p.roles?.includes("owner")) throw new RelayError("forbidden");
   // beforeCreateInvitation refuses at the cap; the recount below catches concurrent requests that all passed it.
   const cap = await inviteCap(env, p.workspaceId);
-  const email = input.email.trim().toLowerCase();
+  const mailbox = input.kind === "mailbox" ? input : null;
+  const email = (input.kind === "mailbox" ? input.mailbox : input.email).trim().toLowerCase();
+  if (mailbox) {
+    await checkMailboxTarget(env, p, email, mailbox.appId);
+    if (!(await mailboxFree(env, email))) throw new RelayError("mailbox taken");
+  }
   const auth = createAuth(env);
   const cancel = (invitationId: string) => authCall(() => auth.api.cancelInvitation({ headers, body: { invitationId } }));
-  const { id } = await authCall(() => auth.api.createInvitation({ headers, body: { email, role: input.role } }));
+  const { id } = await authCall(() => auth.api.createInvitation({
+      headers,
+      body: mailbox
+        ? { email, role: input.role, recoveryEmail: mailbox.recoveryEmail.trim().toLowerCase(), mailboxName: mailbox.name, appId: mailbox.appId }
+        : { email, role: input.role },
+    }),
+  );
   // Concurrent requests can all pass the count above. Recounting after the insert keeps live invites at or under the cap.
   if ((await invitesInWindow(env, p.workspaceId)) > cap) {
     await cancel(id);
@@ -98,7 +125,7 @@ export async function inviteMember(
   try {
     await securityDb(env)
       .insert(user)
-      .values({ name: email.split("@")[0], email, role: "user", emailVerified: false })
+      .values({ name: mailbox?.name ?? email.split("@")[0], email, role: "user", emailVerified: false })
       .onConflictDoNothing({ target: user.email });
   } catch (err) {
     await cancel(id);
