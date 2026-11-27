@@ -16,7 +16,12 @@ td.addRule('hidden', { filter: (n) => n.getAttribute?.('aria-hidden') === 'true'
 td.addRule('dt', { filter: 'dt', replacement: (c) => `\n\n**${c.trim()}**: ` });
 td.addRule('dd', { filter: 'dd', replacement: (c) => `${c.trim()}\n` });
 
-const decode = (s) => s.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+// &amp; last, so "&amp;lt;" decodes to "&lt;" and is not unescaped twice.
+const decode = (s) => s.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
+const stripTags = (s) => {
+	for (let prev; prev !== s; ) [prev, s] = [s, s.replace(/<[^<>]*>/g, '')];
+	return s;
+};
 const entries = [];
 
 for (const page of PAGES) {
@@ -33,7 +38,7 @@ for (const page of PAGES) {
 		.trim();
 	await writeFile(`dist/${page.replace(/\.html$/, '.md')}`, `${body}\n`);
 	const dir = page.replace(/index\.html$/, '');
-	const title = decode(html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/)?.[1].replace(/<[^>]+>/g, '').trim() ?? dir);
+	const title = decode(stripTags(html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/)?.[1] ?? '').trim() || dir);
 	const description = decode(html.match(/<meta name="description" content="([^"]*)"/)?.[1] ?? '');
 	entries.push(`- [${title}](${SITE}${BASE}/${dir}): ${description}`);
 }

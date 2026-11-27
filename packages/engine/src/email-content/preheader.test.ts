@@ -61,3 +61,19 @@ describe("foreignPreheader", () => {
     expect(foreignPreheader(DOC)).toBe("");
   });
 });
+
+describe("preheader on hostile html", () => {
+  const fast = (fn: () => unknown) => {
+    const t = performance.now();
+    fn();
+    return performance.now() - t;
+  };
+  it("stays linear on many unclosed tags", () => {
+    expect(fast(() => foreignPreheader('<div style="display:none">'.repeat(20_000)))).toBeLessThan(500);
+    expect(fast(() => foreignPreheader("<".repeat(50_000)))).toBeLessThan(500);
+    expect(fast(() => withPreheader("<body".repeat(50_000), "x"))).toBeLessThan(500);
+  });
+  it("finds an upper-case hidden span", () => {
+    expect(foreignPreheader('<SPAN style="DISPLAY: none">Sale</SPAN><p>x</p>')).toBe("Sale");
+  });
+});

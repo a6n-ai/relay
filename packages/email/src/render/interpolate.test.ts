@@ -42,3 +42,15 @@ describe("interpolate", () => {
     });
   });
 });
+
+describe("interpolate on hostile input", () => {
+  it("stays linear on many unclosed '{{a|' openers", () => {
+    const evil = "{{{{.|" + "{{{{.||".repeat(20_000);
+    const t = performance.now();
+    expect(interpolate(evil, {})).toBe(evil);
+    expect(performance.now() - t).toBeLessThan(500);
+  });
+  it("still fills a fallback", () => {
+    expect(interpolate("Hi {{contact.first_name|there}}", {})).toBe("Hi there");
+  });
+});

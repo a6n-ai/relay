@@ -30,8 +30,13 @@ const SCHEMAS: Record<string, { route: string; schema: ZodType }> = {
 const files = import.meta.glob<Endpoint[]>("../../relay-docs/src/fixtures/*.json", { eager: true, import: "default" });
 const endpoints = Object.entries(files).flatMap(([file, list]) => list.map((e) => ({ file, ...e })));
 const pages = Object.values(import.meta.glob<string>("../../relay-docs/src/content/docs/docs/api/*.mdx", { eager: true, query: "?raw", import: "default" })).join("\n");
+// Repeated until stable, so a comment split by another cannot leave an opener behind.
+const stripComments = (s: string): string => {
+  for (let prev = ""; prev !== s; ) [prev, s] = [s, s.replace(/<!--[\s\S]*?-->|\{\/\*[\s\S]*?\*\/\}/g, "")];
+  return s;
+};
 const rendered = new Set(
-  [...pages.replace(/<!--[\s\S]*?-->|\{\/\*[\s\S]*?\*\/\}/g, "").matchAll(/<Endpoint file="([^"]+)" title=("(?:[^"\\]|\\.)*") \/>/g)].map((m) => `${m[1]}|${JSON.parse(m[2])}`),
+  [...stripComments(pages).matchAll(/<Endpoint file="([^"]+)" title=("(?:[^"\\]|\\.)*") \/>/g)].map((m) => `${m[1]}|${JSON.parse(m[2])}`),
 );
 const routeFiles = Object.keys(import.meta.glob("../src/routes/api/v1/*.ts")).map((p) => p.split("/").pop()!);
 
