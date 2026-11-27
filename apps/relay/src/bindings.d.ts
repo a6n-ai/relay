@@ -38,11 +38,11 @@ declare global {
       SYSTEM_FROM_NAME?: string;
       SYSTEM_SES_REGION?: string;
       SES_TRANSPORT?: "memory";
-      // Comma-separated; new sending_domain rows for these are inserted protected. Defaults to a6n.ai,tiffingrab.ca.
+      // Comma-separated; new sending_domain rows for these are inserted protected. Defaults to the list in core/protected-domains.ts.
       PROTECTED_DOMAINS?: string;
       WEBHOOK_SECRET_KEY?: string;
       UNSUBSCRIBE_SECRET?: string;
-      // Bound in Phase 6; optional so 5b deploys without the target Worker.
+      // Optional so a deploy works without the TiffinGrab Worker bound.
       TIFFIN_AUDIENCE?: { resolveAudience(request: AudienceRequest): Promise<unknown> };
     }
   }

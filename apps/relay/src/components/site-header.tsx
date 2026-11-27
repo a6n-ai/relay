@@ -1,6 +1,7 @@
 import { Button } from "@foundry/ui/button";
 import type { ReactNode } from "react";
 import "./landing/landing.css";
+import { DOCS_BASE } from "../shared/site";
 import { RelayMark } from "./relay-mark";
 
 export const Wrap = ({ children, className = "" }: { children: ReactNode; className?: string }) => (
@@ -9,7 +10,7 @@ export const Wrap = ({ children, className = "" }: { children: ReactNode; classN
 
 export const big = (hero?: boolean) => (hero ? "h-11 px-5 text-base" : "");
 
-export const Docs = ({ href = "/docs/", hero }: { href?: string; hero?: boolean }) => (
+export const Docs = ({ href = `${DOCS_BASE}/`, hero }: { href?: string; hero?: boolean }) => (
   <Button variant="outline" size={hero ? "lg" : "default"} className={`ld-docs ${big(hero)}`} render={<a href={href} />}>
     Docs
   </Button>

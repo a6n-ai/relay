@@ -1,6 +1,7 @@
 import { useRef, useState, type KeyboardEvent } from "react";
+import { DOCS_BASE, SITE_ORIGIN } from "../../shared/site";
 
-const CURL = `curl https://relay.a6n.ai/api/v1/messages \\
+const CURL = `curl ${SITE_ORIGIN}/api/v1/messages \\
   -H "Authorization: Bearer $RELAY_API_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{
@@ -11,7 +12,7 @@ const CURL = `curl https://relay.a6n.ai/api/v1/messages \\
     "text": "Your account is ready."
   }'`;
 
-const NODE = `const res = await fetch("https://relay.a6n.ai/api/v1/messages", {
+const NODE = `const res = await fetch("${SITE_ORIGIN}/api/v1/messages", {
   method: "POST",
   headers: {
     Authorization: \`Bearer \${process.env.RELAY_API_KEY}\`,
@@ -32,7 +33,7 @@ const PYTHON = `import os
 import requests
 
 res = requests.post(
-    "https://relay.a6n.ai/api/v1/messages",
+    "${SITE_ORIGIN}/api/v1/messages",
     headers={"Authorization": f"Bearer {os.environ['RELAY_API_KEY']}"},
     json={
         "stream": "transactional",
@@ -61,10 +62,10 @@ const sent = await env.RELAY.send(env.RELAY_API_KEY, {
 // { messageId: "msg_…", status: "queued", duplicate: false }`;
 
 const TABS = [
-  { id: "curl", label: "curl", code: CURL, href: "/docs/api/messages/", link: "Messages reference" },
-  { id: "node", label: "Node", code: NODE, href: "/docs/api/messages/", link: "Messages reference" },
-  { id: "python", label: "Python", code: PYTHON, href: "/docs/api/messages/", link: "Messages reference" },
-  { id: "worker", label: "Worker binding", code: WORKER, href: "/docs/worker-binding/", link: "Worker binding guide" },
+  { id: "curl", label: "curl", code: CURL, href: `${DOCS_BASE}/api/messages/`, link: "Messages reference" },
+  { id: "node", label: "Node", code: NODE, href: `${DOCS_BASE}/api/messages/`, link: "Messages reference" },
+  { id: "python", label: "Python", code: PYTHON, href: `${DOCS_BASE}/api/messages/`, link: "Messages reference" },
+  { id: "worker", label: "Worker binding", code: WORKER, href: `${DOCS_BASE}/worker-binding/`, link: "Worker binding guide" },
 ] as const;
 
 export function DevTabs() {

@@ -2,14 +2,9 @@ import { env } from "cloudflare:workers";
 import handler from "@tanstack/react-start/server-entry";
 import { DOCS_404_PATH, isDocsMiss } from "./docs-404";
 import { receiveEmail } from "./jobs/email-worker";
-import { handleInboundBatch } from "./jobs/inbound-consumer";
+import { handleQueue } from "./jobs/queues";
 import { sweepAll } from "./jobs/sweep-all";
-import { handleSendBatch } from "./jobs/send-consumer";
-import { handleSesEventBatch } from "./jobs/ses-event-consumer";
-import type { SesEventJob } from "./core/ses-events";
-import { handleWebhookBatch } from "./jobs/webhook-consumer";
 import type { Env } from "./env";
-import type { InboundJob, SendJob, WebhookJob } from "./core/jobs";
 
 export { CampaignWorkflow } from "./jobs/campaign-workflow";
 export { OpsWorkflow } from "./jobs/ops-workflow";
@@ -50,24 +45,5 @@ export default {
     const result = await sweepAll(env);
     console.log(`daily sweep: ${result.total} workspaces, ${result.behind.length} behind, ${result.failed.length} failed, ${result.releasedDomains} domains released`);
   },
-  async queue(batch: MessageBatch<unknown>, env: Env) {
-    if (batch.queue === "relay-send") {
-      await handleSendBatch(batch as MessageBatch<SendJob>, env);
-      return;
-    }
-    if (batch.queue === "relay-ses-events") {
-      await handleSesEventBatch(batch as MessageBatch<SesEventJob>, env);
-      return;
-    }
-    if (batch.queue === "relay-inbound-mail") {
-      await handleInboundBatch(batch as MessageBatch<InboundJob>, env);
-      return;
-    }
-    if (batch.queue === "relay-webhooks") {
-      await handleWebhookBatch(batch as MessageBatch<WebhookJob>, env);
-      return;
-    }
-    console.error(`queue ${batch.queue}: no handler, acked ${batch.messages.length} messages`);
-    batch.ackAll();
-  },
+  queue: handleQueue,
 };

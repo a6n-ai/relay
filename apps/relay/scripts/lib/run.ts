@@ -1,5 +1,6 @@
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { buildEnv } from "./build-env.ts";
 import { buildDocs } from "./docs.ts";
 
 export const APP_DIR = fileURLToPath(new URL("../../", import.meta.url));
@@ -23,6 +24,6 @@ export function wranglerJson<T>(args: string[]): T {
 
 export function build(): void {
   buildDocs();
-  const res = spawnSync("pnpm", ["exec", "vite", "build"], { cwd: APP_DIR, stdio: "inherit", env: { ...process.env, NODE_OPTIONS: "--max-old-space-size=4096" } });
+  const res = spawnSync("pnpm", ["exec", "vite", "build"], { cwd: APP_DIR, stdio: "inherit", env: buildEnv() });
   if (res.status !== 0) throw new Error(`vite build exited with ${res.status}`);
 }

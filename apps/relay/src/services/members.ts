@@ -78,9 +78,9 @@ export async function inviteMember(
   // beforeCreateInvitation refuses at the cap; the recount below catches concurrent requests that all passed it.
   const cap = await inviteCap(env, actor.workspaceId);
   const email = input.email.trim().toLowerCase();
-  const cancel = (invitationId: string) =>
-    authCall(() => createAuth(env).api.cancelInvitation({ headers, body: { invitationId } }));
-  const { id } = await authCall(() => createAuth(env).api.createInvitation({ headers, body: { email, role: input.role } }));
+  const auth = createAuth(env);
+  const cancel = (invitationId: string) => authCall(() => auth.api.cancelInvitation({ headers, body: { invitationId } }));
+  const { id } = await authCall(() => auth.api.createInvitation({ headers, body: { email, role: input.role } }));
   // Concurrent requests can all pass the count above. Recounting after the insert keeps live invites at or under the cap.
   if ((await invitesInWindow(env, actor.workspaceId)) > cap) {
     await cancel(id);

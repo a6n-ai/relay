@@ -2,9 +2,8 @@
 // dist is served at /docs by apps/relay, so a page at dist/api/messages/index.html lives at /docs/api/messages/.
 import { readFile, readdir, writeFile } from 'node:fs/promises';
 import TurndownService from 'turndown';
+import { BASE, SITE } from '../site.mjs';
 
-const SITE = 'https://relay.a6n.ai';
-const BASE = '/docs';
 // Every HTML page except the 404 and Starlight's search bundle.
 const PAGES = (await readdir('dist', { recursive: true }))
 	.filter((f) => f.endsWith('index.html') && !f.startsWith('pagefind') && !f.startsWith('_astro'))
