@@ -1,11 +1,12 @@
-import { count, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { isAPIError } from "better-auth/api";
 import { coreDb } from "../db/core/client";
-import { sendingDomain, usageDaily, workspaceProfile } from "../db/core/schema";
+import { usageDaily, workspaceProfile } from "../db/core/schema";
 import { securityDb } from "../db/security/client";
-import { app, workspace } from "../db/security/schema";
+import { workspace } from "../db/security/schema";
 import type { Env } from "../env";
 import { createAuth } from "../lib/auth";
+import { workspaceHoldings } from "../core/workspace-holdings";
 import { assertSameOrigin, type ConsoleActor } from "../core/session";
 import { RelayError } from "../shared/errors";
 
@@ -42,11 +43,8 @@ const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 export async function deleteWorkspace(env: Env, actor: ConsoleActor, headers: Headers, slug: string): Promise<void> {
   const [row] = await securityDb(env).select({ slug: workspace.slug }).from(workspace).where(eq(workspace.id, actor.workspaceId));
   if (!row || row.slug !== slug) throw new RelayError("slug does not match");
-  const [[apps], [domains]] = await Promise.all([
-    securityDb(env).select({ n: count() }).from(app).where(eq(app.workspaceId, actor.workspaceId)),
-    coreDb(env).select({ n: count() }).from(sendingDomain).where(eq(sendingDomain.workspaceId, actor.workspaceId)),
-  ]);
-  const left = [apps.n > 0 ? plural(apps.n, "app") : "", domains.n > 0 ? plural(domains.n, "domain") : ""].filter(Boolean);
+  const { apps, domains } = await workspaceHoldings(env, actor.workspaceId);
+  const left = [apps > 0 ? plural(apps, "app") : "", domains > 0 ? plural(domains, "domain") : ""].filter(Boolean);
   if (left.length > 0) throw new RelayError("invalid input", 409, `Remove its ${left.join(" and ")} first.`);
   try {
     await createAuth(env).api.deleteOrganization({ headers, body: { organizationId: actor.workspaceId } });

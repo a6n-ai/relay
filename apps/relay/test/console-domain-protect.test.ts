@@ -9,7 +9,7 @@ import { coreDb } from "../src/db/core/client";
 import { sendingDomain } from "../src/db/core/schema";
 import { securityDb } from "../src/db/security/client";
 import { securityAudit } from "../src/db/security/schema";
-import { allows, canDeleteProtectedDomain, roles } from "../src/lib/auth/permissions";
+import { allows, roles } from "../src/lib/auth/permissions";
 import { addMember, cookieFor, createWorkspace, headersFor, ORIGIN, setActive } from "./console-helpers";
 import { applyMigrations } from "./migrate";
 
@@ -77,8 +77,7 @@ describe("protected sending domains", { timeout: 60_000 }, () => {
   });
 
   it("grants domain:delete_protected to the super admin role only", async () => {
-    expect(canDeleteProtectedDomain(true)).toBe(true);
-    expect(canDeleteProtectedDomain(false)).toBe(false);
+    expect(roles.admin.authorize({ domain: ["delete_protected"] }).success).toBe(true);
     expect(roles.user.authorize({ domain: ["delete_protected"] }).success).toBe(false);
     expect(allows(["owner", "admin", "member", "billing"], { domain: ["delete_protected"] })).toBe(false);
   });

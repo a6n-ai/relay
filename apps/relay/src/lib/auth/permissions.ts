@@ -10,8 +10,8 @@ import {
   ownerAc,
 } from "better-auth/plugins/organization/access";
 
-export const statement = {
-  ...adminStatements,
+// Relay's platform resources; the super admin holds all of them.
+const platformStatement = {
   settings: ["read", "write"],
   audit: ["read"],
   tenant: ["read", "write"],
@@ -20,25 +20,16 @@ export const statement = {
   domain: ["delete_protected"],
 } as const;
 
+export const statement = { ...adminStatements, ...platformStatement } as const;
+
 export const ac = createAccessControl(statement);
 
 export const roles = {
   // Platform admin: better-auth's full admin set (ban, impersonate, list) plus Relay's resources.
-  admin: ac.newRole({
-    ...platformAdminAc.statements,
-    settings: ["read", "write"],
-    audit: ["read"],
-    tenant: ["read", "write"],
-    message: ["read", "write"],
-    sending: ["read", "write"],
-    domain: ["delete_protected"],
-  }),
+  admin: ac.newRole({ ...platformAdminAc.statements, ...platformStatement }),
+  // Held by every other user. The admin plugin checks a role name against this map, so it must exist even though it grants nothing.
   user: ac.newRole({}),
 };
-
-// Platform permission for deleting a protected sending domain; only the super admin role holds it.
-export const canDeleteProtectedDomain = (platformAdmin: boolean): boolean =>
-  (platformAdmin ? roles.admin : roles.user).authorize({ domain: ["delete_protected"] }).success;
 
 export const appStatement = {
   tenant: ["read", "write"],
@@ -55,10 +46,9 @@ export const appStatement = {
 } as const;
 const orgStatement = { ...defaultStatements, ...appStatement };
 export const orgAc = createAccessControl(orgStatement);
-const allApp = appStatement;
 export const orgRoles = {
-  owner: orgAc.newRole({ ...ownerAc.statements, ...allApp }),
-  admin: orgAc.newRole({ ...adminAc.statements, ...allApp }),
+  owner: orgAc.newRole({ ...ownerAc.statements, ...appStatement }),
+  admin: orgAc.newRole({ ...adminAc.statements, ...appStatement }),
   member: orgAc.newRole({
     ...memberAc.statements,
     mailbox: ["read", "send"],

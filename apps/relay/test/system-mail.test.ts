@@ -3,8 +3,7 @@ import { AwsError } from "@foundry/cloud";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { memorySesTransport } from "../src/core/ses";
 import type { Env } from "../src/env";
-import { pickMailer } from "../src/lib/auth";
-import { pickInviteMailer } from "../src/lib/auth/invite-mailer";
+import { pickInviteMailer, pickMailer } from "../src/lib/auth/mailers";
 
 const sesEnv = env as Env;
 const rejection = (p: Promise<unknown>) =>
