@@ -23,7 +23,7 @@ The `from` address is not a verified sender. Check **Domains**. The domain must 
 
 ## The API answers 400
 
-- `no default sender`: you left out `from` and the app has no default sender. Set one under **Default senders** on the app page, or pass `from`.
+- `no_default_sender` (422): you left out `from` and the app has no default sender. Set one under **Default senders** on the app page, or pass `from`.
 - `unsubscribe link required`: a `marketing` message needs `{{unsubscribe_url}}` in both `html` and `text`.
 - `invalid input`: a field is missing or the wrong shape. Compare your body with the [messages endpoint](/docs/api/messages/).
 

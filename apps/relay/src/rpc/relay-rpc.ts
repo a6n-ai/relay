@@ -33,7 +33,9 @@ import {
 import {
   getMessageForScope,
   isSuppressedForScope,
+  SEND_REFUSAL_STATUS,
   sendMessage,
+  sendRefusal,
   sendTemplateMessage,
 } from "../core/messages";
 import { sendBody, templateSendSchema } from "../core/send-input";
@@ -62,7 +64,8 @@ async function withScope<T>(env: Env, apiKey: string, call: (scope: KeyScope) =>
   try {
     return await call(scope);
   } catch (err) {
-    logFailure(`rpc key=${scope.keyId}`, err instanceof ApiError ? err.status : 500, err);
+    const refusal = sendRefusal(err);
+    logFailure(`rpc key=${scope.keyId}`, err instanceof ApiError ? err.status : refusal ? SEND_REFUSAL_STATUS[refusal] : 500, err);
     if (err instanceof ApiError) throw new Error(err.message);
     throw err;
   }

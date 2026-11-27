@@ -34,9 +34,9 @@
     "responseNote": "status is queued, sent, failed or suppressed. The body is not wrapped in data.",
     "errors": [
       { "status": 400, "message": "invalid input", "when": "The body is not valid JSON or fails validation." },
-      { "status": 400, "message": "no default sender", "when": "from is omitted and the app has no default sender for the stream." },
       { "status": 400, "message": "unsubscribe link required", "when": "A marketing message lacks {{unsubscribe_url}} in html or text." },
       { "status": 403, "message": "workspace_suspended", "when": "The workspace is suspended." },
+      { "status": 422, "message": "no_default_sender", "when": "from is omitted and the app has no default sender for the stream." },
       { "status": 422, "message": "sender_not_verified", "when": "from is not a verified sender." },
       { "status": 429, "message": "quota_exceeded", "when": "The monthly send quota is used up." }
     ]

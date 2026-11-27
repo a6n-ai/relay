@@ -46,4 +46,4 @@ Removing an address stops mail to it and stops the app sending from it.
 
 ## Default senders
 
-On the app page, **Default senders** sets which address Relay uses when a request leaves out `from`. Set one for transactional mail and one for marketing mail. If neither exists, the API answers `400` with `no default sender`.
+On the app page, **Default senders** sets which address Relay uses when a request leaves out `from`. Set one for transactional mail and one for marketing mail. If neither exists, the API answers `422` with `no_default_sender`.

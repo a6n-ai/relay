@@ -19,7 +19,6 @@ Match on the status first, then on the message. Messages never change between ca
 | `unknown merge field` | A template or campaign uses a merge field Relay does not know. |
 | `unknown list` | A campaign update names a list that is not in your app. |
 | `sender not verified` | A campaign update sets `fromEmail` to an address that is not a verified sender. |
-| `no default sender` | A send omits `from` and the app has no default sender for the stream. |
 | `unsubscribe link required` | A marketing message lacks `{{unsubscribe_url}}` in its html or text. |
 | `unsubscribe only on marketing` | A template with an unsubscribe link is sent on a stream other than marketing. |
 
@@ -64,6 +63,7 @@ Match on the status first, then on the message. Messages never change between ca
 
 | Message | When |
 | --- | --- |
+| `no_default_sender` | A send omits `from` and the app has no default sender for the stream. |
 | `sender_not_verified` | A send uses a `from` address that is not a verified sender. |
 
 ## 429 too many requests

@@ -23,7 +23,7 @@ export function clientFor(env: Env, workspaceId: string) {
   return env.CLIENT.get(env.CLIENT.idFromName(workspaceId));
 }
 
-export const SEND_REFUSAL_STATUS = { quota_exceeded: 429, workspace_suspended: 403, sender_not_verified: 422 } as const;
+export const SEND_REFUSAL_STATUS = { quota_exceeded: 429, workspace_suspended: 403, sender_not_verified: 422, no_default_sender: 422 } as const;
 export type SendRefusal = keyof typeof SEND_REFUSAL_STATUS;
 
 export function sendRefusal(err: unknown): SendRefusal | undefined {
@@ -43,7 +43,8 @@ async function defaultSender(env: Env, scope: Scope, stream: Stream): Promise<st
         .from(address)
         .where(and(eq(address.id, addressId), eq(address.workspaceId, scope.workspaceId)))
     : [];
-  if (!found) throw new ApiError(400, "no default sender");
+  // A refusal code, not an ApiError: HTTP maps it to 422 and RPC callers match the same string.
+  if (!found) throw new Error("no_default_sender");
   return found.email;
 }
 
