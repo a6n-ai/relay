@@ -314,6 +314,18 @@ describe("accepting an invite", { timeout: 60_000 }, () => {
     await expect(invite(`ravi@${domain}`, "ravi@gmail.test")).rejects.toMatchObject({ status: 400, message: "invalid input" });
   });
 
+  it("getInvite returns mailbox", async () => {
+    const { owner, domain, invite } = await mailboxSetup("getinv");
+    const mailbox = `ravi@${domain}`;
+    const { id } = await invite(mailbox, "ravi-gi@gmail.test");
+    const cookie = await signIn(mailbox, "ravi-gi@gmail.test");
+    await expect(getInvite(env, await requireUser(env, headersFor(cookie)), id)).resolves.toMatchObject({ state: "invite", mailbox });
+    const actor = await requireActor(env, headersFor(owner.cookie), INVITE);
+    const { id: plainId } = await inviteMember(env, actor, headersFor(owner.cookie), { email: "plain-gi@x.test", role: "member" });
+    const plainCookie = await signIn("plain-gi@x.test");
+    await expect(getInvite(env, await requireUser(env, headersFor(plainCookie)), plainId)).resolves.toMatchObject({ mailbox: null });
+  });
+
   it("accept creates personal mailbox", async () => {
     const { owner, domain, appId, invite } = await mailboxSetup("accept");
     const mailbox = `ravi@${domain}`;

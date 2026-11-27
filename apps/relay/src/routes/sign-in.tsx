@@ -183,7 +183,7 @@ function SignIn() {
           }}
         >
           <AuthText>
-            Enter the 6-digit code we sent to <span className="text-foreground">{email}</span>.
+            Check your email for a code. For a mailbox account, the code goes to your recovery email. Enter the 6-digit code.
           </AuthText>
           <InputOTP autoFocus maxLength={6} pattern="digits" value={otp} onChange={setOtp} onComplete={verify} aria-label="Sign-in code">
             <InputOTPGroup className="w-full">

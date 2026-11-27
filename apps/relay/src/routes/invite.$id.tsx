@@ -27,7 +27,7 @@ function InvitePage() {
   async function accept() {
     await run(async () => {
       await acceptInviteFn({ data: { id } });
-      await router.navigate({ to: "/" });
+      await router.navigate({ to: invite?.state === "invite" && invite.mailbox ? "/settings" : "/" });
     }, "Could not accept the invite.");
   }
 
@@ -56,6 +56,7 @@ function InvitePage() {
           <AuthTitle>Join {invite.workspaceName}</AuthTitle>
           <AuthText>
             You are invited as {ROLE_LABEL[invite.role as OrgRole] ?? invite.role} for {invite.email}.
+            {invite.mailbox ? " This is your new mailbox. After you accept, you can set a password for it." : null}
           </AuthText>
           <AuthButton onClick={accept} disabled={pending}>
             Accept invite

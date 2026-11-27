@@ -33,6 +33,7 @@ export default defineConfig({
 						{ label: 'Overview', slug: 'index', attrs: { 'data-icon': 'home' } },
 						{ label: 'Quickstart', slug: 'quickstart', attrs: { 'data-icon': 'start' } },
 						{ label: 'Concepts', slug: 'concepts', attrs: { 'data-icon': 'grid' } },
+						{ label: 'Mailboxes', slug: 'team/mailboxes', attrs: { 'data-icon': 'mail' } },
 					],
 				},
 				{

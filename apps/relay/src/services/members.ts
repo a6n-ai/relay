@@ -235,6 +235,7 @@ export async function getInvite(env: Env, { userId }: Session, id: string) {
       workspaceStatus: workspace.status,
       role: invitation.role,
       email: invitation.email,
+      recoveryEmail: invitation.recoveryEmail,
       status: invitation.status,
       expiresAt: invitation.expiresAt,
     })
@@ -250,6 +251,7 @@ export async function getInvite(env: Env, { userId }: Session, id: string) {
     workspaceName: row.workspaceName,
     role: row.role ?? "member",
     email: row.email,
+    mailbox: row.recoveryEmail ? row.email : null,
     status: effectiveStatus(row),
   };
 }

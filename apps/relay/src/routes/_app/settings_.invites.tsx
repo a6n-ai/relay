@@ -17,6 +17,7 @@ import { PageHeader } from "../../components/shell/page-header";
 import { StatusBadge } from "../../components/page/status-badge";
 import { useCan } from "../../components/lib/use-can";
 import { cancelInviteFn, fetchPeople } from "../../console/members.fns";
+import { fetchDomains } from "../../console/domains.fns";
 import { formatDate } from "../../components/lib/format-date";
 import { isSuspended } from "../../shared/limits";
 import { flag } from "../../components/lib/route-search";
@@ -27,7 +28,7 @@ export const Route = createFileRoute("/_app/settings_/invites")({
   validateSearch: (search: Record<string, unknown>): { new?: 1 } => ({
     new: flag(search.new, 1, "1") && 1,
   }),
-  loader: () => fetchPeople(),
+  loader: async () => ({ people: await fetchPeople(), domains: (await fetchDomains()) ?? [] }),
   pendingComponent: () => <ListSkeleton columns={4} action />,
   component: InvitesPage,
 });
@@ -40,7 +41,7 @@ function InviteStatus({ status }: { status: string }) {
 }
 
 function InvitesPage() {
-  const people = Route.useLoaderData();
+  const { people, domains } = Route.useLoaderData();
   const { shell } = Route.useRouteContext();
   const router = useRouter();
   const [open, setOpen] = useNewParam();
@@ -58,7 +59,7 @@ function InvitesPage() {
   const cancellingInvite = people.invites.find((i) => i.id === cancelling);
   const invite = canInvite ? (
     <CreateDialog trigger="Invite member" title="Invite member" open={open} onOpenChange={setOpen}>
-      {(done) => <InviteForm done={done} canGrantOwner={ownerActor} />}
+      {(done) => <InviteForm done={done} canGrantOwner={ownerActor} domains={domains} apps={shell.apps} />}
     </CreateDialog>
   ) : null;
 
