@@ -89,6 +89,15 @@ describe("send policy", () => {
     expect(sent.status).toBe("queued");
   });
 
+  it("personal mailbox is not a sender", async () => {
+    await seedWorkspace("wsp_pers");
+    await seedSender("wsp_pers", "pers.ca", "ops@pers.ca");
+    await coreDb(env)
+      .insert(address)
+      .values({ workspaceId: "wsp_pers", appId: "app_1", email: "ravi@pers.ca", kind: "personal", ownerUserId: "usr_ravi", canSend: true });
+    expect(await refusal(stubFor("wsp_pers"), "wsp_pers", { ...base, from: "ravi@pers.ca" })).toBe("sender_not_verified");
+  });
+
   it("refuses another workspace's address and an address on a pending domain", async () => {
     await seedWorkspace("wsp_q");
     await seedSender("wsp_q", "other.ca", "ops@other.ca");

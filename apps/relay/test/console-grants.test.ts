@@ -6,6 +6,8 @@ import { addApp } from "../src/services/apps";
 import { addAddress, addDomain } from "../src/services/domains";
 import { addGrant, getAddressAccess, removeGrant } from "../src/services/grants";
 import { messageAccess } from "../src/services/inbox";
+import { coreDb } from "../src/db/core/client";
+import { address } from "../src/db/core/schema";
 import { securityDb } from "../src/db/security/client";
 import { addressGrant, member, team, user } from "../src/db/security/schema";
 import { addMember, cookieFor, createWorkspace, headersFor, ORIGIN, setActive } from "./console-helpers";
@@ -170,5 +172,18 @@ describe("console address access grants", { timeout: 60_000 }, () => {
     });
     expect(memberRes.status).toBe(200);
     expect(await memberRes.text()).toContain("Not available to your role");
+  });
+});
+
+describe("personal mailbox grants", { timeout: 60_000 }, () => {
+  it("cannot be granted", async () => {
+    const owner = await workspaceFor("grant-pers@example.com", "Grant Pers Co");
+    const actor = await requireActor(env, headersFor(owner.cookie), MANAGE);
+    const addressId = await addressFor(owner.cookie, "grants-pers.test");
+    await coreDb(env).update(address).set({ kind: "personal", ownerUserId: "usr_ravi" }).where(eq(address.id, addressId));
+    await addMember(owner.workspaceId, "grant-pers-m@example.com", "member");
+    const memberId = await memberIdOf(owner.workspaceId, "grant-pers-m@example.com");
+    await expect(addGrant(env, actor, { addressId, memberId })).rejects.toMatchObject({ status: 409, message: "personal mailbox" });
+    expect(await grantIdsFor(addressId)).toEqual([]);
   });
 });

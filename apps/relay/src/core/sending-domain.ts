@@ -1,4 +1,4 @@
-import { and, eq, isNull, like, sql } from "drizzle-orm";
+import { and, eq, isNull, like, ne, sql } from "drizzle-orm";
 import { address, sendingDomain } from "../db/core/schema";
 import type { Env } from "../env";
 import { describeError } from "./log";
@@ -56,4 +56,4 @@ export const senderDomainJoin = and(
   eq(sendingDomain.domain, sql`substr(${address.email}, instr(${address.email}, '@') + 1)`),
 );
 export const verifiedSenderWhere = (workspaceId: string) =>
-  and(eq(address.workspaceId, workspaceId), eq(address.canSend, true), eq(sendingDomain.status, "verified"));
+  and(eq(address.workspaceId, workspaceId), eq(address.canSend, true), ne(address.kind, "personal"), eq(sendingDomain.status, "verified"));

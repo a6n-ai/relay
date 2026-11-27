@@ -173,3 +173,15 @@ describe("console default senders", () => {
     expect(await t.stub.getMessage(t.workspaceId, sent.messageId)).toMatchObject({ fromName: "Shop", replyTo: "help@ds-edit.test" });
   });
 });
+
+describe("personal mailbox", () => {
+  it("cannot be default", async () => {
+    const t = await setup("ds-pers");
+    const [personal] = await coreDb(env)
+      .insert(address)
+      .values({ workspaceId: t.workspaceId, appId: t.appId, email: `ravi@${t.domain}`, kind: "personal", ownerUserId: "usr_ravi", canSend: true })
+      .returning({ id: address.id });
+    await expect(t.defaults(personal.id, null)).rejects.toMatchObject({ status: 400, message: "sender not available" });
+    expect((await getDefaultSenders(env, t.actor, t.appId)).options.map((o) => o.id)).not.toContain(personal.id);
+  });
+});

@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, ne, sql } from "drizzle-orm";
 import { createApiKey, deleteApiKey, renameApiKey, revokeApiKey } from "./api-keys";
 import { createApp } from "../core/apps";
 import { getWorkspaceProfile, SELF_SERVE_APP_CAP } from "../core/workspace-profile";
@@ -122,7 +122,7 @@ export async function getDefaultSenders(env: Env, p: Principal, appId: string) {
     coreDb(env)
       .select({ id: address.id, email: address.email })
       .from(address)
-      .where(and(eq(address.workspaceId, p.workspaceId), eq(address.appId, appId), eq(address.canSend, true)))
+      .where(and(eq(address.workspaceId, p.workspaceId), eq(address.appId, appId), eq(address.canSend, true), ne(address.kind, "personal")))
       .orderBy(asc(address.email)),
   ]);
   if (!row) throw new RelayError("not found");
@@ -141,7 +141,7 @@ export async function setDefaultSenders(
     const owned = await coreDb(env)
       .select({ id: address.id })
       .from(address)
-      .where(and(inArray(address.id, ids), eq(address.workspaceId, p.workspaceId), eq(address.appId, appId), eq(address.canSend, true)));
+      .where(and(inArray(address.id, ids), eq(address.workspaceId, p.workspaceId), eq(address.appId, appId), eq(address.canSend, true), ne(address.kind, "personal")));
     if (owned.length !== new Set(ids).size) throw new RelayError("sender not available");
   }
   await securityDb(env)

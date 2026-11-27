@@ -47,10 +47,11 @@ export async function createAddressGrant(
 ): Promise<string> {
   if (Boolean(input.memberId) === Boolean(input.teamId)) throw new RelayError("exactly one grantee required");
   const [target] = await coreDb(env)
-    .select({ workspaceId: address.workspaceId })
+    .select({ workspaceId: address.workspaceId, kind: address.kind })
     .from(address)
     .where(eq(address.id, input.addressId));
   if (target?.workspaceId !== input.workspaceId) throw new RelayError("address does not belong to workspace");
+  if (target.kind === "personal") throw new RelayError("personal mailbox");
   const [grantee] = input.memberId
     ? await securityDb(env).select({ workspaceId: member.organizationId }).from(member).where(eq(member.id, input.memberId))
     : await securityDb(env).select({ workspaceId: team.organizationId }).from(team).where(eq(team.id, input.teamId ?? ""));
