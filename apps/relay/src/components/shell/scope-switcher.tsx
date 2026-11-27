@@ -10,6 +10,7 @@ import { useState } from "react";
 import { createItems } from "./nav";
 import { usePageOf } from "./page-data";
 import { pickApp, scopeLabel, scopeSearch, showsAllApps } from "./scope";
+import { untyped } from "../../lib/route-search";
 
 const row =
   "flex h-9 items-center justify-between gap-2 rounded-md px-2 text-sm hover:bg-muted focus-visible:bg-muted outline-none";
@@ -35,7 +36,7 @@ export function ScopeSwitcher() {
     <Link
       key={id ?? "all"}
       to={pathname as string}
-      search={((prev: Record<string, unknown>) => scopeSearch(prev, id)) as never}
+      search={untyped((prev: Record<string, unknown>) => scopeSearch(prev, id))}
       className={row}
       onClick={close}
     >

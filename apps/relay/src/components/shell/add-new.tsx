@@ -4,6 +4,7 @@ import { Link, useRouteContext } from "@tanstack/react-router";
 import ChevronDown from "lucide-react/icons/chevron-down";
 import { createItems } from "./nav";
 import { withNew } from "./scope";
+import { untyped } from "../../lib/route-search";
 
 export function AddNewMenu() {
   const { shell } = useRouteContext({ from: "/_app" });
@@ -20,7 +21,7 @@ export function AddNewMenu() {
         {items.map((c) => (
           <DropdownMenuItem
             key={c.id}
-            render={<Link to={c.to} search={((prev: Record<string, unknown>) => withNew(prev, c.new)) as never} />}
+            render={<Link to={c.to} search={untyped((prev: Record<string, unknown>) => withNew(prev, c.new))} />}
           >
             {c.label}
           </DropdownMenuItem>

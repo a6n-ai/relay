@@ -15,12 +15,13 @@ import { SuspendedNotice } from "../../components/settings/suspended-notice";
 import { PageHeader } from "../../components/shell/page-header";
 import { useCan } from "../../components/use-can";
 import { fetchPeople, removeMemberFn } from "../../console/members.fns";
+import { str } from "../../lib/route-search";
 
 
 export const Route = createFileRoute("/_app/settings_/members")({
   staticData: { title: "Members", copy: "People in this workspace and what they can do." },
   validateSearch: (search: Record<string, unknown>): { q?: string } => ({
-    q: typeof search.q === "string" && search.q ? search.q : undefined,
+    q: str(search.q),
   }),
   loader: () => fetchPeople(),
   pendingComponent: () => <ListSkeleton columns={3} search action />,

@@ -36,16 +36,17 @@ import {
 import { FormError, FormBody, FormActions } from "../../components/page/form-parts";
 import { Hint } from "../../components/page/text";
 import { type ConsentSource, type MemberView } from "../../shared/views";
+import { str, posInt } from "../../lib/route-search";
 
 type ListSearch = { appId?: string; cursor?: string; q?: string; offset?: number };
 
 // The list name comes from the app's list index, so the link carries appId.
 export const Route = createFileRoute("/_app/lists_/$listId")({
   validateSearch: (search: Record<string, unknown>): ListSearch => ({
-    appId: typeof search.appId === "string" && search.appId ? search.appId : undefined,
-    cursor: typeof search.cursor === "string" && search.cursor ? search.cursor : undefined,
-    q: typeof search.q === "string" && search.q ? search.q : undefined,
-    offset: Number.isInteger(search.offset) && (search.offset as number) > 0 ? (search.offset as number) : undefined,
+    appId: str(search.appId),
+    cursor: str(search.cursor),
+    q: str(search.q),
+    offset: posInt(search.offset),
   }),
   loaderDeps: ({ search }) => ({ appId: search.appId, cursor: search.cursor }),
   loader: async ({ deps, params }) => {

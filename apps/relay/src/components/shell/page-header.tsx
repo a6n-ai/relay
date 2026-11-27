@@ -10,6 +10,7 @@ import { usePageOf } from "./page-data";
 import { isAppScoped } from "./scope";
 import { ScopeSwitcher } from "./scope-switcher";
 import { SectionTabs } from "./section-tabs";
+import { untyped } from "../../lib/route-search";
 
 export type Crumb = { label: string; to?: string; params?: Record<string, string>; search?: Record<string, unknown> };
 
@@ -43,8 +44,8 @@ export function PageHeader({ crumbs, badge, actions, description }: { crumbs?: C
               <Link
                 aria-label={`Back to ${parent.label}`}
                 to={parent.to as string}
-                params={parent.params as never}
-                search={parent.search as never}
+                params={untyped(parent.params)}
+                search={untyped(parent.search)}
                 className="inline-flex h-9 items-center gap-1 rounded-md pr-3 pl-1.5 text-sm text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <ChevronLeft aria-hidden className="size-4" />

@@ -15,6 +15,7 @@ import { ResourceTable } from "../../components/resource-table";
 import { useCan } from "../../components/use-can";
 import { fetchApps } from "../../console/apps.fns";
 import { deleteFailureFn, fetchFailures, replayFailureFn } from "../../console/failures.fns";
+import { posInt, str, untyped } from "../../lib/route-search";
 
 type FailuresSearch = { appId?: string; offset?: number };
 
@@ -24,8 +25,8 @@ const PAGE = 25;
 export const Route = createFileRoute("/_app/messages_/failures")({
   staticData: { title: "Failed", copy: "Messages that reached Relay but could not be accepted." },
   validateSearch: (raw: Record<string, unknown>): FailuresSearch => ({
-    appId: typeof raw.appId === "string" && raw.appId ? raw.appId : undefined,
-    offset: typeof raw.offset === "number" && raw.offset > 0 ? Math.floor(raw.offset) : undefined,
+    appId: str(raw.appId),
+    offset: posInt(raw.offset),
   }),
   loader: async () => {
     const [page, apps] = await Promise.all([fetchFailures(), fetchApps()]);
@@ -93,7 +94,7 @@ function FailuresPage() {
           <FilterMenu
             facets={[{ key: "appId", label: "App", options: page.apps.map((a) => ({ value: a.id, label: a.name })) }]}
             value={search}
-            onChange={(next) => navigate({ search: next as never, replace: true })}
+            onChange={(next) => navigate({ search: untyped(next), replace: true })}
           />
         }
       />

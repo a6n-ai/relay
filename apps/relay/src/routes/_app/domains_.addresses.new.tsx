@@ -20,10 +20,11 @@ import { fetchApps } from "../../console/apps.fns";
 import { addAddressFn, fetchDomains } from "../../console/domains.fns";
 import { type Kind, KINDS, LOCAL_RE } from "../../lib/address-kinds";
 import { EMAIL_MAX, NAME_MAX } from "../../shared/limits";
+import { str } from "../../lib/route-search";
 
 export const Route = createFileRoute("/_app/domains_/addresses/new")({
   validateSearch: (search: Record<string, unknown>): { appId?: string } => ({
-    appId: typeof search.appId === "string" && search.appId ? search.appId : undefined,
+    appId: str(search.appId),
   }),
   loader: async () => {
     const [domains, apps] = await Promise.all([fetchDomains(), fetchApps()]);

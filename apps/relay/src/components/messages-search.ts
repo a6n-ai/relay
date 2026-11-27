@@ -1,4 +1,5 @@
-import { type MessageStatus, MESSAGE_STATUSES } from "../shared/mail";
+import { appId, cursor, status } from "../lib/route-search";
+import type { MessageStatus } from "../shared/mail";
 
 export type MessagesSearch = {
   dir: "out" | "in";
@@ -12,12 +13,11 @@ const text = (v: unknown): string | undefined => (typeof v === "string" && v.tri
 
 // Route validateSearch: a garbage value is dropped rather than failing the page. The server validates again at the fn boundary.
 export function parseMessagesSearch(raw: Record<string, unknown>): MessagesSearch {
-  const status = MESSAGE_STATUSES.find((s) => s === raw.status);
   return {
     dir: raw.dir === "in" ? "in" : "out",
-    appId: text(raw.appId),
-    status,
+    appId: appId(raw.appId),
+    status: status(raw.status),
     email: text(raw.email),
-    cursor: text(raw.cursor),
+    cursor: cursor(raw.cursor),
   };
 }

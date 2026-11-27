@@ -20,6 +20,7 @@ import { formatWhen } from "../../lib/format-date";
 import { addSuppressionFn, fetchSuppressions, removeSuppressionFn } from "../../console/suppressions.fns";
 import { FormError, FormBody, FormActions } from "../../components/page/form-parts";
 import { STREAMS } from "../../shared/mail";
+import { oneOf, posInt, str, untyped } from "../../lib/route-search";
 
 type SuppressionsSearch = { prefix?: string; cursor?: string; stream?: StreamFilter; offset?: number };
 
@@ -32,9 +33,9 @@ export const Route = createFileRoute("/_app/messages_/suppressions")({
   staticData: { title: "Suppressed", copy: "Addresses Relay will not send to." },
   validateSearch: (search: Record<string, unknown>): SuppressionsSearch => ({
     prefix: typeof search.prefix === "string" && search.prefix.trim() ? search.prefix.trim() : undefined,
-    cursor: typeof search.cursor === "string" && search.cursor ? search.cursor : undefined,
-    stream: STREAM_FILTERS.find((s) => s === search.stream),
-    offset: Number.isInteger(search.offset) && (search.offset as number) > 0 ? (search.offset as number) : undefined,
+    cursor: str(search.cursor),
+    stream: oneOf(STREAM_FILTERS, search.stream),
+    offset: posInt(search.offset),
   }),
   loaderDeps: ({ search }) => ({ prefix: search.prefix, cursor: search.cursor }),
   loader: ({ deps }) => fetchSuppressions({ data: deps }),
@@ -83,7 +84,7 @@ function SuppressionsPage() {
           <FilterMenu
             facets={[{ key: "stream", label: "Applies to", options: STREAM_FILTERS.map((s) => ({ value: s, label: streamLabel(s) })) }]}
             value={search}
-            onChange={(next) => void navigate({ to: ".", search: next as never })}
+            onChange={(next) => void navigate({ to: ".", search: untyped(next) })}
           />
         }
       >

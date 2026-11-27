@@ -16,12 +16,13 @@ import { fetchMessages } from "../../console/messages.fns";
 import { formatWhen } from "../../lib/format-date";
 import { MESSAGE_STATUSES } from "../../shared/mail";
 import { PAGE_SIZE } from "../../shared/limits";
+import { posInt, untyped } from "../../lib/route-search";
 
 export const Route = createFileRoute("/_app/messages")({
   staticData: { title: "Messages", copy: "Every email you send and receive, with its delivery status.", scoped: "all" },
   validateSearch: (raw: Record<string, unknown>): MessagesSearch & { offset?: number } => ({
     ...parseMessagesSearch(raw),
-    offset: typeof raw.offset === "number" && raw.offset > 0 ? Math.floor(raw.offset) : undefined,
+    offset: posInt(raw.offset),
   }),
   loaderDeps: ({ search }) => search,
   loader: async ({ deps: { appId, offset: _offset, ...rest } }) => {
@@ -80,7 +81,7 @@ function MessagesPage() {
               { key: "appId", label: "App", options: page.apps.map((a) => ({ value: a.id, label: a.name })) },
             ]}
             value={search}
-            onChange={(next) => navigate({ search: next as never })}
+            onChange={(next) => navigate({ search: untyped(next) })}
           />
         }
       />

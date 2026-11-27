@@ -3,8 +3,6 @@ import { Button } from "@foundry/ui/button";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import FileTextIcon from "lucide-react/icons/file-text";
 import { useState } from "react";
-import { DeniedState, deniedReason } from "../../components/denied-state";
-import { isNotFound } from "../../components/error-text";
 import { EmptyState } from "../../components/page/empty-state";
 import { PageLocalHint } from "../../components/page/page-local-hint";
 import { FilterMenu } from "../../components/page/filter-menu";
@@ -19,10 +17,12 @@ import { useUrlFilter } from "../../components/page/use-url-filter";
 import { ResourceTable } from "../../components/resource-table";
 import { PageHeader } from "../../components/shell/page-header";
 import { useCan } from "../../components/use-can";
-import { fetchApps } from "../../console/apps.fns";
 import { fetchTemplates } from "../../console/templates.fns";
 import { formatWhen } from "../../lib/format-date";
 import { PAGE_SIZE } from "../../shared/limits";
+import { posInt, str, untyped } from "../../lib/route-search";
+import { loaded, ScopedDenied } from "../../components/page/scoped-page";
+import { scopedLoad } from "../../lib/scoped-load";
 
 type TemplatesSearch = { appId?: string; cursor?: string; offset?: number; q?: string; event?: string; locale?: string };
 
@@ -32,27 +32,22 @@ const text = (v: unknown) => (typeof v === "string" && v ? v : undefined);
 export const Route = createFileRoute("/_app/campaigns_/templates")({
   staticData: { title: "Templates", copy: "Reusable layouts for your campaigns and app emails.", scoped: "first" },
   validateSearch: (search: Record<string, unknown>): TemplatesSearch => ({
-    appId: typeof search.appId === "string" && search.appId ? search.appId : undefined,
-    cursor: typeof search.cursor === "string" && search.cursor ? search.cursor : undefined,
-    offset: typeof search.offset === "number" && search.offset > 0 ? Math.floor(search.offset) : undefined,
+    appId: str(search.appId),
+    cursor: str(search.cursor),
+    offset: posInt(search.offset),
     event: text(search.event),
     locale: text(search.locale),
-    q: typeof search.q === "string" && search.q ? search.q : undefined,
+    q: str(search.q),
   }),
   loaderDeps: ({ search }) => ({ appId: search.appId, cursor: search.cursor }),
   pendingComponent: () => <ListSkeleton columns={5} search filter view action />,
-  loader: async ({ deps }) => {
-    const apps = await fetchApps();
-    if (!apps) return null;
-    const appId = deps.appId ?? apps[0]?.id;
-    if (!appId) return { apps, appId, templates: { rows: [], nextCursor: null } };
-    const templates = await fetchTemplates({ data: { appId, cursor: deps.cursor } }).catch((err) => {
-      if (isNotFound(err)) return { missing: true as const };
-      throw err;
-    });
-    if (!templates) return null;
-    return "missing" in templates ? templates : { apps, appId, templates };
-  },
+  loader: ({ deps }) =>
+    scopedLoad(deps.appId, async (appId) => {
+      const templates = await fetchTemplates({ data: { appId, cursor: deps.cursor } });
+      return templates && { templates };
+    }, {
+      templates: { rows: [], nextCursor: null },
+    }),
   component: TemplatesPage,
 });
 
@@ -65,22 +60,7 @@ function TemplatesPage() {
   const [query, setQuery] = useUrlFilter("q");
   const navigate = useNavigate({ from: "/campaigns/templates" });
   const [view, setView] = useState<View>(() => viewPref.read(ROUTE));
-  if (!page) {
-    return (
-      <>
-        <PageHeader />
-        <DeniedState reason={deniedReason(shell)} />
-      </>
-    );
-  }
-  if ("missing" in page) {
-    return (
-      <>
-        <PageHeader />
-        <DeniedState reason="not-found" label="App not found" />
-      </>
-    );
-  }
+  if (!loaded(page)) return <ScopedDenied page={page} shell={shell} />;
   const { apps, appId, templates } = page;
   const canCreate = canWrite && Boolean(appId);
   const newButton = canCreate ? <Button render={<Link to="/campaigns/templates/new" search={{ appId: search.appId }} />}>New template</Button> : null;
@@ -112,7 +92,7 @@ function TemplatesPage() {
       <PageHeader />
       <Toolbar
         search={<SearchInput value={query} onChange={setQuery} placeholder="Search templates" />}
-        filters={<FilterMenu facets={facets} value={search} onChange={(next) => navigate({ search: next as never, replace: true })} />}
+        filters={<FilterMenu facets={facets} value={search} onChange={(next) => navigate({ search: untyped(next), replace: true })} />}
         view={<ViewToggle route={ROUTE} value={view} onChange={setView} />}
       >
         {newButton}

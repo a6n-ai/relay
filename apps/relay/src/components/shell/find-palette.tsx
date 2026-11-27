@@ -9,6 +9,7 @@ import { usePageOf } from "./page-data";
 import { type FindEntry, findEntries, pushRecent, readRecent } from "./find";
 import { withNew } from "./scope";
 import { type Shell } from "../../shared/views";
+import { untyped } from "../../lib/route-search";
 
 const RECENT_KEY = "relay-find-recent";
 const GROUPS: FindEntry["group"][] = ["Pages", "Apps", "Actions"];
@@ -45,7 +46,7 @@ export function FindPalette({ shell }: { shell: Shell }) {
   const pick = (entry: FindEntry) => {
     localStore.setJson(RECENT_KEY, pushRecent(readRecent(localStore.getJson<unknown>(RECENT_KEY, [])), entry.id));
     setOpen(false);
-    void navigate({ to: entry.to, search: entry.id.startsWith("new:") ? (prev: Record<string, unknown>) => withNew(prev, entry.search?.new ? 1 : undefined) : entry.search } as never);
+    void navigate(untyped({ to: entry.to, search: entry.id.startsWith("new:") ? (prev: Record<string, unknown>) => withNew(prev, entry.search?.new ? 1 : undefined) : entry.search }));
   };
 
   const recentEntries = recent.flatMap((id) => entries.find((e) => e.id === id) ?? []);

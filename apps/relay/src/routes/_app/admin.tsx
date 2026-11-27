@@ -5,7 +5,7 @@ import { createFileRoute, notFound, useNavigate, useRouter } from "@tanstack/rea
 import { BuildingIcon } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { ConfirmDialog } from "../../components/confirm-dialog";
-import { isNotFound } from "../../components/error-text";
+import { isNotFound } from "../../lib/scoped-load";
 import { TextField } from "../../components/form/text-field";
 import { ChoiceControl } from "../../components/form/choice-field";
 import { type Facet } from "../../components/page/filters";
@@ -23,6 +23,7 @@ import { SES_REGIONS } from "../../shared/regions";
 import { formatDate } from "../../lib/format-date";
 import { Hint } from "../../components/page/text";
 import { MAX_INVITES_PER_DAY } from "../../shared/limits";
+import { oneOf, str, untyped } from "../../lib/route-search";
 
 type AdminSearch = { ws?: string; q?: string; status?: "active" | "suspended" };
 
@@ -39,9 +40,9 @@ const STATUS_FACET: Facet = {
 export const Route = createFileRoute("/_app/admin")({
   staticData: { title: "Admin", copy: "Every workspace on this Relay.", allowsNoWorkspace: "platform" },
   validateSearch: (search: Record<string, unknown>): AdminSearch => ({
-    ws: typeof search.ws === "string" && search.ws ? search.ws : undefined,
-    q: typeof search.q === "string" && search.q ? search.q : undefined,
-    status: search.status === "active" || search.status === "suspended" ? search.status : undefined,
+    ws: str(search.ws),
+    q: str(search.q),
+    status: oneOf(["active", "suspended"] as const, search.status),
   }),
   loader: async () => {
     try {
@@ -253,7 +254,7 @@ function AdminPage() {
       <ResourceTable
         rows={rows}
         rowKey={(w) => w.id}
-        rowHref={(w) => ({ to: "/admin", search: (prev: Record<string, unknown>) => ({ ...prev, ws: w.id }) as never })}
+        rowHref={(w) => ({ to: "/admin", search: (prev: Record<string, unknown>) => untyped({ ...prev, ws: w.id }) })}
         rowLabel={(w) => `Manage ${w.name}`}
         empty={
           <EmptyState

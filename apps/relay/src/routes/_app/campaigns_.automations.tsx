@@ -4,7 +4,6 @@ import { Switch } from "@foundry/ui/switch";
 import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { ConfirmDialog } from "../../components/confirm-dialog";
-import { DeniedState, deniedReason } from "../../components/denied-state";
 import { FilterMenu } from "../../components/page/filter-menu";
 import { ResourceGrid } from "../../components/page/resource-grid";
 import { Hint } from "../../components/page/text";
@@ -17,11 +16,13 @@ import { ResourceTable } from "../../components/resource-table";
 import { PageHeader } from "../../components/shell/page-header";
 import { confirmAction, runAction } from "../../components/run-action";
 import { useCan } from "../../components/use-can";
-import { fetchApps } from "../../console/apps.fns";
 import { deleteAutomationFn, enableAutomationFn, fetchAutomations } from "../../console/automations.fns";
 import { fetchCampaignOptions } from "../../console/campaigns.fns";
 import { fetchTemplates } from "../../console/templates.fns";
 import { type AutomationView } from "../../shared/views";
+import { oneOf, str, untyped } from "../../lib/route-search";
+import { loaded, ScopedDenied } from "../../components/page/scoped-page";
+import { scopedLoad } from "../../lib/scoped-load";
 
 type AutomationsSearch = { appId?: string; status?: "on" | "off" };
 
@@ -30,26 +31,23 @@ const ROUTE = "/campaigns/automations";
 export const Route = createFileRoute("/_app/campaigns_/automations")({
   staticData: { title: "Automations", copy: "Emails that send themselves when something happens in an app.", scoped: "first" },
   validateSearch: (search: Record<string, unknown>): AutomationsSearch => ({
-    appId: typeof search.appId === "string" && search.appId ? search.appId : undefined,
-    status: search.status === "on" || search.status === "off" ? search.status : undefined,
+    appId: str(search.appId),
+    status: oneOf(["on", "off"] as const, search.status),
   }),
   loaderDeps: ({ search }) => ({ appId: search.appId }),
   pendingComponent: () => <ListSkeleton columns={7} filter view action />,
-  loader: async ({ deps }) => {
-    const apps = await fetchApps();
-    if (!apps) return null;
-    const appId = deps.appId ?? apps[0]?.id;
-    if (!appId) return { apps, appId, automations: [], lists: [], templates: [] };
-    const automations = await fetchAutomations({ data: { appId } });
-    if (!automations) return null;
-    if ("missing" in automations) return automations;
-    // Names are only labels in the table, so a failed read leaves the ids visible instead of hiding the page.
-    const [options, templates] = await Promise.all([
-      fetchCampaignOptions({ data: { appId } }),
-      fetchTemplates({ data: { appId } }),
-    ]);
-    return { apps, appId, automations, lists: options?.lists ?? [], templates: templates?.rows ?? [] };
-  },
+  loader: ({ deps }) =>
+    scopedLoad(
+      deps.appId,
+      async (appId) => {
+        const automations = await fetchAutomations({ data: { appId } });
+        if (!automations || "missing" in automations) return automations;
+        // Names are only labels in the table, so a failed read leaves the ids visible instead of hiding the page.
+        const [options, templates] = await Promise.all([fetchCampaignOptions({ data: { appId } }), fetchTemplates({ data: { appId } })]);
+        return { automations, lists: options?.lists ?? [], templates: templates?.rows ?? [] };
+      },
+      { automations: [], lists: [], templates: [] },
+    ),
   component: AutomationsPage,
 });
 
@@ -63,22 +61,7 @@ function AutomationsPage() {
   const navigate = useNavigate({ from: "/campaigns/automations" });
   const [view, setView] = useState<View>(() => viewPref.read(ROUTE));
   const [deleting, setDeleting] = useState<AutomationView | null>(null);
-  if (!page) {
-    return (
-      <>
-        <PageHeader />
-        <DeniedState reason={deniedReason(shell)} />
-      </>
-    );
-  }
-  if ("missing" in page) {
-    return (
-      <>
-        <PageHeader />
-        <DeniedState reason="not-found" label="App not found" />
-      </>
-    );
-  }
+  if (!loaded(page)) return <ScopedDenied page={page} shell={shell} />;
   const { apps, appId, automations, lists, templates } = page;
   const canCreate = canSend && Boolean(appId);
   const newButton = canCreate ? <Button render={<Link to="/campaigns/automations/new" search={{ appId: search.appId }} />}>New automation</Button> : null;
@@ -132,7 +115,7 @@ function AutomationsPage() {
     <>
       <PageHeader />
       <Toolbar
-        filters={<FilterMenu facets={facets} value={search} onChange={(next) => navigate({ search: next as never, replace: true })} />}
+        filters={<FilterMenu facets={facets} value={search} onChange={(next) => navigate({ search: untyped(next), replace: true })} />}
         view={<ViewToggle route={ROUTE} value={view} onChange={setView} />}
       >
         {newButton}

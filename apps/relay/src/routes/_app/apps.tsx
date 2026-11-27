@@ -14,11 +14,12 @@ import { ResourceTable } from "../../components/resource-table";
 import { PageHeader } from "../../components/shell/page-header";
 import { useCan } from "../../components/use-can";
 import { fetchApps } from "../../console/apps.fns";
+import { str } from "../../lib/route-search";
 
 export const Route = createFileRoute("/_app/apps")({
   staticData: { title: "Apps", copy: "The products that send mail through Relay." },
   validateSearch: (search: Record<string, unknown>): { q?: string } => ({
-    q: typeof search.q === "string" && search.q ? search.q : undefined,
+    q: str(search.q),
   }),
   loader: () => fetchApps(),
   pendingComponent: () => <ListSkeleton columns={3} search view action />,

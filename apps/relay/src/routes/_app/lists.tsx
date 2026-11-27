@@ -3,7 +3,6 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ListIcon } from "lucide-react";
 import { useState } from "react";
 import { CONSENT_SHORT } from "../../components/consent-labels";
-import { DeniedState, deniedReason } from "../../components/denied-state";
 import { ResourceTable } from "../../components/resource-table";
 import { FilterMenu } from "../../components/page/filter-menu";
 import { ResourceGrid } from "../../components/page/resource-grid";
@@ -18,14 +17,16 @@ import { ListSkeleton } from "../../components/page/page-skeleton";
 import { PageHeader } from "../../components/shell/page-header";
 import { fetchApps } from "../../console/apps.fns";
 import { fetchLists } from "../../console/lists.fns";
+import { str, untyped } from "../../lib/route-search";
+import { loaded, ScopedDenied } from "../../components/page/scoped-page";
 
 type ListsSearch = { appId?: string; q?: string };
 
 export const Route = createFileRoute("/_app/lists")({
   staticData: { title: "Lists", copy: "People you send campaigns to.", scoped: "all" },
   validateSearch: (search: Record<string, unknown>): ListsSearch => ({
-    appId: typeof search.appId === "string" && search.appId ? search.appId : undefined,
-    q: typeof search.q === "string" && search.q ? search.q : undefined,
+    appId: str(search.appId),
+    q: str(search.q),
   }),
   loaderDeps: ({ search }) => ({ appId: search.appId }),
   loader: async ({ deps }) => {
@@ -53,22 +54,7 @@ function ListsPage() {
   const [query, setQuery] = useUrlFilter("q");
   const navigate = useNavigate();
   const [view, setView] = useState<View>(() => viewPref.read("/lists"));
-  if (!page) {
-    return (
-      <>
-        <PageHeader />
-        <DeniedState reason={deniedReason(shell)} />
-      </>
-    );
-  }
-  if ("missing" in page) {
-    return (
-      <>
-        <PageHeader />
-        <DeniedState reason="not-found" label="App not found" />
-      </>
-    );
-  }
+  if (!loaded(page)) return <ScopedDenied page={page} shell={shell} />;
   const { apps, appId, lists } = page;
   const defaultApp = appId ?? apps[0]?.id;
   const canCreate = canWrite && !!defaultApp;
@@ -100,7 +86,7 @@ function ListsPage() {
             <FilterMenu
               facets={[{ key: "appId", label: "App", options: apps.map((a) => ({ value: a.id, label: a.name })) }]}
               value={search}
-              onChange={(next) => void navigate({ to: ".", search: next as never })}
+              onChange={(next) => void navigate({ to: ".", search: untyped(next) })}
             />
           ) : undefined
         }

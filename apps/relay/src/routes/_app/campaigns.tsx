@@ -2,8 +2,6 @@ import { Button } from "@foundry/ui/button";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import MegaphoneIcon from "lucide-react/icons/megaphone";
 import { useState } from "react";
-import { DeniedState, deniedReason } from "../../components/denied-state";
-import { isNotFound } from "../../components/error-text";
 import { EmptyState } from "../../components/page/empty-state";
 import { PageLocalHint } from "../../components/page/page-local-hint";
 import { FilterMenu } from "../../components/page/filter-menu";
@@ -19,10 +17,12 @@ import { ResourceTable } from "../../components/resource-table";
 import { PageHeader } from "../../components/shell/page-header";
 import { StatusBadge } from "../../components/status-badge";
 import { useCan } from "../../components/use-can";
-import { fetchApps } from "../../console/apps.fns";
 import { fetchCampaigns } from "../../console/campaigns.fns";
 import { formatWhen } from "../../lib/format-date";
 import { PAGE_SIZE } from "../../shared/limits";
+import { posInt, str, untyped } from "../../lib/route-search";
+import { loaded, ScopedDenied } from "../../components/page/scoped-page";
+import { scopedLoad } from "../../lib/scoped-load";
 
 type CampaignsSearch = { appId?: string; cursor?: string; offset?: number; q?: string; status?: string };
 
@@ -31,27 +31,21 @@ const ROUTE = "/campaigns";
 export const Route = createFileRoute("/_app/campaigns")({
   staticData: { title: "Campaigns", copy: "Emails you send to a list, on a schedule or on demand.", scoped: "first" },
   validateSearch: (search: Record<string, unknown>): CampaignsSearch => ({
-    appId: typeof search.appId === "string" && search.appId ? search.appId : undefined,
-    cursor: typeof search.cursor === "string" && search.cursor ? search.cursor : undefined,
-    offset: typeof search.offset === "number" && search.offset > 0 ? Math.floor(search.offset) : undefined,
-    q: typeof search.q === "string" && search.q ? search.q : undefined,
-    status: typeof search.status === "string" && search.status ? search.status : undefined,
+    appId: str(search.appId),
+    cursor: str(search.cursor),
+    offset: posInt(search.offset),
+    q: str(search.q),
+    status: str(search.status),
   }),
   loaderDeps: ({ search }) => ({ appId: search.appId, cursor: search.cursor }),
   pendingComponent: () => <ListSkeleton columns={5} search filter view action />,
-  loader: async ({ deps }) => {
-    const apps = await fetchApps();
-    if (!apps) return null;
-    const appId = deps.appId ?? apps[0]?.id;
-    if (!appId) return { apps, appId, campaigns: { rows: [], nextCursor: null } };
-    const campaigns = await fetchCampaigns({ data: { appId, cursor: deps.cursor } }).catch((err) => {
-      if (isNotFound(err)) return { missing: true as const };
-      throw err;
-    });
-    if (!campaigns) return null;
-    if ("missing" in campaigns) return campaigns;
-    return { apps, appId, campaigns };
-  },
+  loader: ({ deps }) =>
+    scopedLoad(deps.appId, async (appId) => {
+      const campaigns = await fetchCampaigns({ data: { appId, cursor: deps.cursor } });
+      return campaigns && { campaigns };
+    }, {
+      campaigns: { rows: [], nextCursor: null },
+    }),
   component: CampaignsPage,
 });
 
@@ -64,22 +58,7 @@ function CampaignsPage() {
   const [query, setQuery] = useUrlFilter("q");
   const navigate = useNavigate({ from: "/campaigns" });
   const [view, setView] = useState<View>(() => viewPref.read(ROUTE));
-  if (!page) {
-    return (
-      <>
-        <PageHeader />
-        <DeniedState reason={deniedReason(shell)} />
-      </>
-    );
-  }
-  if ("missing" in page) {
-    return (
-      <>
-        <PageHeader />
-        <DeniedState reason="not-found" label="App not found" />
-      </>
-    );
-  }
+  if (!loaded(page)) return <ScopedDenied page={page} shell={shell} />;
   const { apps, appId, campaigns } = page;
   const empty =
     campaigns.rows.length === 0 ? (
@@ -106,7 +85,7 @@ function CampaignsPage() {
       <PageHeader />
       <Toolbar
         search={<SearchInput value={query} onChange={setQuery} placeholder="Search campaigns" />}
-        filters={<FilterMenu facets={facets} value={search} onChange={(next) => navigate({ search: next as never, replace: true })} />}
+        filters={<FilterMenu facets={facets} value={search} onChange={(next) => navigate({ search: untyped(next), replace: true })} />}
         view={<ViewToggle route={ROUTE} value={view} onChange={setView} />}
       >
         {newButton}

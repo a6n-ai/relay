@@ -1,17 +1,18 @@
 import { createFileRoute, useSearch } from "@tanstack/react-router";
 import { AutomationForm } from "../../components/automation-form";
 import { DeniedState, deniedReason } from "../../components/denied-state";
-import { isNotFound } from "../../components/error-text";
+import { isNotFound } from "../../lib/scoped-load";
 import { FormSkeleton } from "../../components/page/page-skeleton";
 import { PageHeader } from "../../components/shell/page-header";
 import { useCan } from "../../components/use-can";
 import { fetchApps } from "../../console/apps.fns";
 import { fetchAutomation } from "../../console/automations.fns";
 import { fetchCampaignOptions } from "../../console/campaigns.fns";
+import { str } from "../../lib/route-search";
 
 export const Route = createFileRoute("/_app/campaigns_/automations_/$automationId")({
   validateSearch: (search: Record<string, unknown>): { appId?: string } => ({
-    appId: typeof search.appId === "string" && search.appId ? search.appId : undefined,
+    appId: str(search.appId),
   }),
   loader: async ({ params }) => {
     const automation = await fetchAutomation({ data: { id: params.automationId } });

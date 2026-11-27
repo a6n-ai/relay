@@ -5,10 +5,11 @@ import { NoAppState } from "../../components/page/no-app-state";
 import { PageHeader } from "../../components/shell/page-header";
 import { useCan } from "../../components/use-can";
 import { fetchApps } from "../../console/apps.fns";
+import { str } from "../../lib/route-search";
 
 export const Route = createFileRoute("/_app/campaigns_/automations_/new")({
   validateSearch: (search: Record<string, unknown>): { appId?: string } => ({
-    appId: typeof search.appId === "string" && search.appId ? search.appId : undefined,
+    appId: str(search.appId),
   }),
   loader: async () => ({ apps: (await fetchApps()) ?? [] }),
   component: NewAutomationPage,

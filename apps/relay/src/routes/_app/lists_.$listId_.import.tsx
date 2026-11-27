@@ -11,12 +11,13 @@ import { SettingsCard } from "../../components/page/settings-card";
 import { PageHeader } from "../../components/shell/page-header";
 import { useCan } from "../../components/use-can";
 import { fetchLists, importCsvFn } from "../../console/lists.fns";
+import { str } from "../../lib/route-search";
 
 const MAX_CSV_BYTES = 2_000_000;
 
 export const Route = createFileRoute("/_app/lists_/$listId_/import")({
   validateSearch: (search: Record<string, unknown>): { appId?: string } => ({
-    appId: typeof search.appId === "string" && search.appId ? search.appId : undefined,
+    appId: str(search.appId),
   }),
   loaderDeps: ({ search }) => ({ appId: search.appId }),
   loader: async ({ deps, params }) => {

@@ -1,17 +1,18 @@
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { trimSlash } from "../../lib/path";
 import type { PageOf } from "./page-data";
+import { untyped } from "../../lib/route-search";
 
 export const isAppScoped = (pathname: string, pageOf: PageOf) => Boolean(pageOf(trimSlash(pathname))?.scoped);
 
 // Pages with `scoped: "all"` read every app when none is picked; the others load the first app.
 export const showsAllApps = (pathname: string, pageOf: PageOf) => pageOf(trimSlash(pathname))?.scoped === "all";
 
-// The one default-app rule, for the switcher and for list loaders.
-export function pickApp(apps: { id: string }[], appId: string | undefined, all: boolean): string | undefined {
-  if (apps.some((a) => a.id === appId)) return appId;
-  return all ? undefined : apps[0]?.id;
-}
+// The one default-app rule, for the switcher and for loaders.
+export const defaultApp = (apps: { id: string }[], all: boolean): string | undefined => (all ? undefined : apps[0]?.id);
+
+export const pickApp = (apps: { id: string }[], appId: string | undefined, all: boolean): string | undefined =>
+  apps.some((a) => a.id === appId) ? appId : defaultApp(apps, all);
 
 export const scopeLabel = (apps: { id: string; name: string }[], appId: string | undefined) =>
   apps.find((a) => a.id === appId)?.name ?? "All apps";
@@ -35,10 +36,10 @@ export function useNewParam(): [open: boolean, setOpen: (v: boolean) => void] {
   const setOpen = (v: boolean) => {
     void navigate({
       to: ".",
-      search: ((prev: Record<string, unknown>) => {
+      search: untyped((prev: Record<string, unknown>) => {
         const { new: _n, ...rest } = prev;
         return v ? { ...rest, new: 1 } : rest;
-      }) as never,
+      }),
       replace: true,
     });
   };

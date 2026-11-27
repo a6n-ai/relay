@@ -33,12 +33,13 @@ import {
 } from "../../console/domains.fns";
 import { Hint, Mono } from "../../components/page/text";
 import { KIND_LABEL } from "../../lib/address-kinds";
+import { oneOf, str, untyped } from "../../lib/route-search";
 
 export const Route = createFileRoute("/_app/domains")({
   staticData: { title: "Domains", copy: "Domains you send from and receive on, and the addresses on them." },
   validateSearch: (search: Record<string, unknown>) => ({
-    q: typeof search.q === "string" && search.q ? search.q : undefined,
-    status: search.status === "verified" || search.status === "pending" || search.status === "failed" ? search.status : undefined,
+    q: str(search.q),
+    status: oneOf(["verified", "pending", "failed"] as const, search.status),
   }),
   loader: async () => {
     const domains = await fetchDomains();
@@ -156,7 +157,7 @@ function DomainsPage() {
       <PageHeader />
       <Toolbar
         search={<SearchInput value={q} onChange={setQ} placeholder="Search domains and addresses" />}
-        filters={<FilterMenu facets={[STATUS_FACET]} value={search} onChange={(next) => void navigate({ to: ".", search: next as never })} />}
+        filters={<FilterMenu facets={[STATUS_FACET]} value={search} onChange={(next) => void navigate({ to: ".", search: untyped(next) })} />}
         view={<ViewToggle route="/domains" value={view} onChange={setView} />}
       >
         {canWrite ? (
