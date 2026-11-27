@@ -12,6 +12,7 @@ import {
   listApps,
   listKeys,
   renameApp,
+  deleteKey,
   renameKey,
   getDefaultSenders,
   revokeKey,
@@ -137,6 +138,17 @@ export const updateAppFn = createServerFn({ method: "POST" })
     try {
       const actor = await requireActor(env, getRequestHeaders(), WRITE);
       await renameApp(env, actor, data.id, data.name);
+    } catch (err) {
+      toResponseError(err);
+    }
+  });
+
+export const deleteKeyFn = createServerFn({ method: "POST" })
+  .validator(validate(z.object({ id })))
+  .handler(async ({ data }) => {
+    try {
+      const actor = await requireActor(env, getRequestHeaders(), WRITE);
+      await deleteKey(env, actor, data.id);
     } catch (err) {
       toResponseError(err);
     }

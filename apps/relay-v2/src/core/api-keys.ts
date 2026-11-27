@@ -35,6 +35,15 @@ export async function revokeApiKey(env: Env, workspaceId: string, id: string): P
   return rows.length > 0;
 }
 
+// Only a revoked key can go, so a delete never cuts off a live sender.
+export async function deleteRevokedApiKey(env: Env, workspaceId: string, id: string): Promise<boolean> {
+  const rows = await securityDb(env)
+    .delete(apiKey)
+    .where(and(eq(apiKey.id, id), eq(apiKey.referenceId, workspaceId), eq(apiKey.enabled, false)))
+    .returning({ id: apiKey.id });
+  return rows.length > 0;
+}
+
 export async function renameApiKey(env: Env, workspaceId: string, id: string, name: string): Promise<boolean> {
   const rows = await securityDb(env)
     .update(apiKey)

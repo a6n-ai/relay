@@ -1,7 +1,7 @@
 import { env, SELF } from "cloudflare:test";
 import { beforeAll, describe, expect, it } from "vitest";
 import { requireActor, uniqueViolation } from "../src/console/actor";
-import { addApp, createKey, deleteAudienceHookFor, getApp, listApps, listKeys, renameApp, renameKey, revokeKey, setAudienceHookFor } from "../src/console/apps";
+import { addApp, createKey, deleteAudienceHookFor, deleteKey, getApp, listApps, listKeys, renameApp, renameKey, revokeKey, setAudienceHookFor } from "../src/console/apps";
 import { createApp } from "../src/core/apps";
 import { clientFor } from "../src/core/messages";
 import { resolveApiKey } from "../src/core/api-keys";
@@ -89,6 +89,23 @@ describe("console apps and API keys", { timeout: 60_000 }, () => {
 
     await revokeKey(env, actor, key.id);
     expect(await resolveApiKey(env, key.secret)).toBeNull();
+  });
+
+  it("deletes only a revoked key, and only in its own workspace", async () => {
+    const { cookie } = await workspaceFor("apps-delete-key@example.com", "Apps Delete Key Co");
+    const actor = await requireActor(env, headersFor(cookie), WRITE);
+    const { id: appId } = await addApp(env, actor, { name: "Web", slug: "web" });
+    const key = await createKey(env, actor, { appId, name: "web" });
+
+    await expect(deleteKey(env, actor, key.id)).rejects.toMatchObject({ status: 409, message: "revoke the key first" });
+    const { cookie: otherCookie } = await workspaceFor("apps-delete-other@example.com", "Apps Delete Other Co");
+    const other = await requireActor(env, headersFor(otherCookie), WRITE);
+    await revokeKey(env, actor, key.id);
+    await expect(deleteKey(env, other, key.id)).rejects.toMatchObject({ status: 404 });
+
+    await deleteKey(env, actor, key.id);
+    expect(await listKeys(env, actor, appId)).toEqual([]);
+    await expect(deleteKey(env, actor, key.id)).rejects.toMatchObject({ status: 404 });
   });
 
   it("answers 409 for a duplicate slug and 400 for a bad slug", async () => {

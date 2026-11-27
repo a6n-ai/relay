@@ -23,6 +23,7 @@ import { SecretOnce } from "../../components/secret-once";
 import { useCan } from "../../components/use-can";
 import {
   createKeyFn,
+  deleteKeyFn,
   renameKeyFn,
   updateAppFn,
   deleteAudienceHookFn,
@@ -56,6 +57,7 @@ function AppPage() {
   const [keyOpen, setKeyOpen] = useState(false);
   const [revokeId, setRevokeId] = useState<string | null>(null);
   const [renameId, setRenameId] = useState<string | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
   if (!data) {
     return (
       <>
@@ -67,6 +69,7 @@ function AppPage() {
   const { app, keys, hook, senders } = data;
   const revoking = keys.find((k) => k.id === revokeId);
   const renaming = keys.find((k) => k.id === renameId);
+  const deleting = keys.find((k) => k.id === deleteId);
 
   async function revoke(id: string) {
     await revokeKeyFn({ data: { id } });
@@ -108,6 +111,7 @@ function AppPage() {
                 ? (k) => [
                     { label: "Rename key", onSelect: () => setRenameId(k.id) },
                     { label: "Revoke key", destructive: true, hidden: !k.enabled, onSelect: () => setRevokeId(k.id) },
+                    { label: "Delete key", destructive: true, hidden: k.enabled, onSelect: () => setDeleteId(k.id) },
                   ]
                 : undefined
             }
@@ -148,6 +152,21 @@ function AppPage() {
         confirmLabel="Revoke key"
         onConfirm={async () => {
           if (revokeId) await revoke(revokeId);
+        }}
+      />
+      <ConfirmDialog
+        open={deleteId !== null}
+        onOpenChange={(o) => {
+          if (!o) setDeleteId(null);
+        }}
+        title={deleting ? `Delete ${deleting.name ?? "this key"}${deleting.start ? ` (${deleting.start}…)` : ""}?` : "Delete this key?"}
+        description="The revoked key leaves this list for good. Messages it sent stay."
+        confirmLabel="Delete key"
+        onConfirm={async () => {
+          if (!deleteId) return;
+          await deleteKeyFn({ data: { id: deleteId } });
+          toast.success("Key deleted");
+          await router.invalidate();
         }}
       />
     </>
