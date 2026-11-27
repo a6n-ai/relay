@@ -39,7 +39,7 @@ function Combobox({ id, value, onChange, options, labelledBy, describedBy, inval
         <Command>
           <CommandInput placeholder="Search…" />
           <CommandList>
-            <CommandEmpty>No matches.</CommandEmpty>
+            <CommandEmpty className="empty:hidden">No matches.</CommandEmpty>
             {options.map((o) => (
               <CommandItem
                 key={o.value}

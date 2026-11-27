@@ -63,7 +63,7 @@ export function FindPalette({ shell }: { shell: Shell }) {
         <Command>
           <CommandInput placeholder="Find…" value={query} onValueChange={setQuery} />
           <CommandList>
-            <CommandEmpty>No results.</CommandEmpty>
+            <CommandEmpty className="empty:hidden">No results.</CommandEmpty>
             {query === "" && recentEntries.length > 0 ? (
               <>
                 <CommandGroup heading="Recent">

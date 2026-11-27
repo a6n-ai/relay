@@ -7,7 +7,7 @@ import { addressGrant, member, team, user } from "../db/security/schema";
 import type { Env } from "../env";
 import { writeAudit } from "../lib/auth/audit";
 import { allows } from "../lib/auth/permissions";
-import { type ConsoleActor, ConsoleError, uniqueViolation } from "./actor";
+import { type ConsoleActor, ConsoleError, parseRoles, uniqueViolation } from "./actor";
 
 export type GrantView = { id: string; kind: "member" | "team"; targetId: string; label: string };
 
@@ -40,7 +40,7 @@ export async function getAddressAccess(env: Env, actor: ConsoleActor, addressId:
       .leftJoin(team, eq(team.id, addressGrant.teamId))
       .where(and(eq(addressGrant.addressId, addressId), eq(addressGrant.workspaceId, actor.workspaceId))),
     db
-      .select({ id: member.id, name: user.name, email: user.email })
+      .select({ id: member.id, name: user.name, email: user.email, role: member.role })
       .from(member)
       .innerJoin(user, eq(user.id, member.userId))
       .where(eq(member.organizationId, actor.workspaceId)),
@@ -55,7 +55,10 @@ export async function getAddressAccess(env: Env, actor: ConsoleActor, addressId:
   return {
     address: owned,
     grants,
-    members: memberRows.map((m) => ({ id: m.id, label: m.name || m.email })),
+    // Owners and admins already read every address, so a grant would change nothing for them.
+    members: memberRows
+      .filter((m) => !parseRoles(m.role).some((r) => r === "owner" || r === "admin"))
+      .map((m) => ({ id: m.id, label: m.name || m.email })),
     teams: teamRows.map((t) => ({ id: t.id, label: t.name })),
   };
 }

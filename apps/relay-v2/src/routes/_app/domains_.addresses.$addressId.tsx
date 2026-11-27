@@ -85,7 +85,7 @@ function AddressPage() {
   const granted = new Set((access?.grants ?? []).map((g) => `${g.kind}:${g.targetId}`));
   const options = [
     ...(access?.teams ?? []).map((t) => ({ value: `team:${t.id}`, label: t.label, badge: "Team" })),
-    ...(access?.members ?? []).map((m) => ({ value: `member:${m.id}`, label: m.label, badge: "Member" })),
+    ...(access?.members ?? []).map((m) => ({ value: `member:${m.id}`, label: m.label })),
   ].filter((o) => !granted.has(o.value));
 
   return (

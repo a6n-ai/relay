@@ -71,6 +71,7 @@ describe("console address access grants", { timeout: 60_000 }, () => {
       ].sort(),
     );
     expect(access.members.map((m) => m.id)).toContain(memberId);
+    expect(access.members.map((m) => m.id)).not.toContain(await memberIdOf(owner.workspaceId, "grant-owner@example.com"));
     expect(access.teams.map((t) => t.id)).toContain(teamId);
 
     await expect(addGrant(env, actor, { addressId, memberId })).rejects.toMatchObject({
