@@ -1,7 +1,7 @@
 import { memberInput, type MemberInput } from "../shared/schemas";
 import { RelayError } from "../shared/errors";
 
-export type ParsedContacts = { rows: MemberInput[]; invalid: number; duplicates: number };
+type ParsedContacts = { rows: MemberInput[]; invalid: number; duplicates: number };
 
 const MAX_RECORDS = 10_001; // header + 10,000 data rows
 const CONSENT_DATE = /^\d{4}-\d{2}-\d{2}/;

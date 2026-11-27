@@ -21,7 +21,7 @@ export function AuthButton({ className, ...props }: ComponentProps<typeof Button
   return <Button size="lg" className={cn(authControl, className)} {...props} />;
 }
 
-export function AuthInput({ className, ...props }: ComponentProps<typeof Input>) {
+function AuthInput({ className, ...props }: ComponentProps<typeof Input>) {
   return <Input className={cn(authControl, "px-3", className)} {...props} />;
 }
 

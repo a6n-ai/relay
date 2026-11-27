@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { campaignProblems } from "../src/core/campaigns";
+import { campaignProblems } from "../src/shared/campaign-problems";
 import { contactValues, fillUnsubscribe, MERGE_SAMPLES, parseMergeData, renderMerge, unknownMergeFields } from "../src/shared/merge";
 
 describe("merge fields", () => {

@@ -6,7 +6,7 @@ import { HOOK_PAGE_LIMIT, type AudiencePage, type HookCall, type HookRecipient }
 import { httpsUrl, isPublicWebhookUrl } from "./webhooks";
 import { RelayError, type ErrorCode } from "../shared/errors";
 
-export const HOOK_RESPONSE_CAP = 1_000_000;
+const HOOK_RESPONSE_CAP = 1_000_000;
 const HOOK_TIMEOUT_MS = 15_000;
 export const AUDIENCE_FAILED = "audience_failed" satisfies ErrorCode;
 

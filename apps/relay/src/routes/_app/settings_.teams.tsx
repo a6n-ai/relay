@@ -15,6 +15,7 @@ import { TeamMembersDialog } from "../../components/settings/team-members-dialog
 import { PageHeader } from "../../components/shell/page-header";
 import { useCan } from "../../components/lib/use-can";
 import { deleteTeamFn, fetchPeople, renameTeamFn, setTeamMemberFn } from "../../console/members.fns";
+import { isSuspended } from "../../shared/limits";
 
 
 export const Route = createFileRoute("/_app/settings_/teams")({
@@ -31,7 +32,7 @@ function TeamsPage() {
   const [editing, setEditing] = useState<string | null>(null);
   const [renaming, setRenaming] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
-  const suspended = shell.active?.status === "suspended";
+  const suspended = isSuspended(shell.active?.status);
   const canCreateTeam = useCan({ team: ["create"] });
   const canEditTeam = useCan({ team: ["update"] });
   const canDeleteTeam = useCan({ team: ["delete"] });

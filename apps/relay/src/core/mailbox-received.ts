@@ -1,4 +1,4 @@
-export type MailboxReceivedData = {
+type MailboxReceivedData = {
   to: string;
   from: string;
   html: string;

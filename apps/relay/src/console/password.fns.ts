@@ -3,7 +3,7 @@ import { getRequestHeaders } from "@tanstack/react-start/server";
 import { env } from "cloudflare:workers";
 import { isAPIError } from "better-auth/api";
 import { z } from "zod";
-import { createAuth, isFreshSession, recordPasswordChange, STALE_SESSION_MESSAGE } from "../auth";
+import { createAuth, needsFreshSignIn, recordPasswordChange, STALE_SESSION_MESSAGE } from "../auth";
 import { fail, userSession } from "./guard";
 import { hasPassword } from "../services/password";
 import { assertSameOrigin } from "../auth/session";
@@ -29,7 +29,7 @@ export const setPasswordFn = createServerFn({ method: "POST" })
       const current = await auth.api.getSession({ headers, query: { disableCookieCache: true } });
       if (!current) throw new RelayError("unauthorized");
       assertSameOrigin(env, headers);
-      if (current.session.impersonatedBy || !isFreshSession(current.session.createdAt)) throw new RelayError("forbidden", 403, STALE_SESSION_MESSAGE);
+      if (needsFreshSignIn(current.session)) throw new RelayError("forbidden", 403, STALE_SESSION_MESSAGE);
       try {
         await auth.api.setPassword({ headers, body: { newPassword: data.newPassword } });
       } catch (err) {

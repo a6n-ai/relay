@@ -5,7 +5,8 @@ import type { Env } from "../env";
 import { allows } from "../shared/permissions";
 import { RelayError, codeOf } from "../shared/errors";
 import { grantedAddressIds } from "./inbox";
-import { ownApp, audit, type Principal } from "./principal";
+import { audit, type Principal } from "./principal";
+import { ownApp } from "./apps";
 
 export async function listWebhooks(env: Env, p: Principal, appId: string): Promise<WebhookView[]> {
   await ownApp(env, p, appId);

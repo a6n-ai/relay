@@ -2,7 +2,6 @@ import type { Env } from "../env";
 import { writeAudit } from "../auth/audit";
 import { RelayError } from "../shared/errors";
 import type { OrgRole } from "../shared/roles";
-import { getApp } from "./apps";
 
 // Who is acting: a console user (userId, roles) or an API key (keyId, pinned to one app). The transport checks permission and suspension, then builds this once.
 export type Principal = {
@@ -30,23 +29,8 @@ export const audit = (env: Env, p: Principal, action: string, target: string, da
     data: p.keyId ? { ...data, keyId: p.keyId } : data,
   });
 
-// A key reaches only its own app; a console user reaches any app of the workspace.
-export async function ownApp(env: Env, p: Principal, appId: string): Promise<void> {
-  if (p.appId !== null) {
-    if (appId !== p.appId) throw new RelayError("not found");
-    return;
-  }
-  await getApp(env, p, appId);
-}
-
 // A row of another app is a 404, the same as a missing one. A console principal has no app, so any row of the workspace passes.
 export function owned<T extends { appId: string }>(p: Principal, row: T | null): T {
   if (!row || (p.appId !== null && row.appId !== p.appId)) throw new RelayError("not found");
   return row;
-}
-
-// The app a key is pinned to. Console principals name the app per call.
-export function keyApp(p: Principal): string {
-  if (p.appId === null) throw new RelayError("forbidden");
-  return p.appId;
 }

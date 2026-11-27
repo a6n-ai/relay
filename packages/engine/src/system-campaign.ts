@@ -10,13 +10,13 @@ type Db = PostgresJsDatabase<any>;
 
 const BATCH = 500;
 
-export interface SystemCampaignDeps {
+interface SystemCampaignDeps {
   db: Db;
   tables: NotificationTables & CampaignTables;
   users: UsersRef;
 }
 
-export interface SystemCampaignSeed {
+interface SystemCampaignSeed {
   key: string;
   name: string;
   channels: Channel[];

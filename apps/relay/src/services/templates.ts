@@ -6,7 +6,8 @@ import type { Env } from "../env";
 import { RelayError } from "../shared/errors";
 import { fillUnsubscribe, MERGE_SAMPLES, renderMerge, unknownMergeFields } from "../shared/merge";
 import { type TemplateView } from "../shared/views";
-import { ownApp, audit, keyApp, owned, type Principal } from "./principal";
+import { audit, owned, type Principal } from "./principal";
+import { ownApp } from "./apps";
 
 function refuseUnknownFields(bodies: (string | null | undefined)[]): void {
   for (const body of bodies) {
@@ -14,7 +15,7 @@ function refuseUnknownFields(bodies: (string | null | undefined)[]): void {
   }
 }
 
-async function ownedTemplate(env: Env, p: Principal, id: string): Promise<TemplateView> {
+export async function getTemplate(env: Env, p: Principal, id: string): Promise<TemplateView> {
   return owned(p, await clientFor(env, p.workspaceId).getTemplate(p.workspaceId, id));
 }
 
@@ -29,8 +30,6 @@ export async function listTemplates(
   return clientFor(env, p.workspaceId).listTemplates(p.workspaceId, appId, cursor);
 }
 
-export const getTemplate = ownedTemplate;
-
 export async function createTemplate(env: Env, p: Principal, appId: string, input: TemplateInput): Promise<TemplateView> {
   await ownApp(env, p, appId);
   refuseUnknownFields([input.subject, input.intro, input.html, input.text]);
@@ -40,7 +39,7 @@ export async function createTemplate(env: Env, p: Principal, appId: string, inpu
 }
 
 export async function updateTemplate(env: Env, p: Principal, id: string, patch: Partial<TemplateInput>): Promise<TemplateView> {
-  await ownedTemplate(env, p, id);
+  await getTemplate(env, p, id);
   refuseUnknownFields([patch.subject, patch.intro, patch.html, patch.text]);
   const template = await clientFor(env, p.workspaceId).updateTemplate(p.workspaceId, id, patch);
   await audit(env, p, "template.update", id);
@@ -48,14 +47,15 @@ export async function updateTemplate(env: Env, p: Principal, id: string, patch: 
 }
 
 export async function deleteTemplate(env: Env, p: Principal, id: string): Promise<void> {
-  await ownedTemplate(env, p, id);
+  await getTemplate(env, p, id);
   await clientFor(env, p.workspaceId).deleteTemplate(p.workspaceId, id);
   await audit(env, p, "template.delete", id);
 }
 
 export function templateOverrides(env: Env, p: Principal): Promise<TemplateOverride[]> {
-  const appId = keyApp(p);
-  return clientFor(env, p.workspaceId).templateOverrides(p.workspaceId, appId);
+  // A key is pinned to one app; a console principal names the app per call and has none here.
+  if (p.appId === null) throw new RelayError("forbidden");
+  return clientFor(env, p.workspaceId).templateOverrides(p.workspaceId, p.appId);
 }
 
 // Data fields render as a fixed sample so the preview shows the layout, not a blank.
@@ -64,7 +64,7 @@ export async function previewTemplate(
   p: Principal,
   id: string,
 ): Promise<{ htmlSafe: string; text: string; subject: string }> {
-  const template = await ownedTemplate(env, p, id);
+  const template = await getTemplate(env, p, id);
   const samples: Record<string, string> = { ...MERGE_SAMPLES };
   for (const body of [template.subject, template.html, template.text]) {
     for (const [, name] of body.matchAll(/\{\{\s*(data\.[a-z0-9_]+)\s*\}\}/g)) samples[name!] = "sample";

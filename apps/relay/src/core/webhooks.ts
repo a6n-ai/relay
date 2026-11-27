@@ -63,7 +63,7 @@ function isPublicIPv6(addr: string): boolean {
   return (first & 0xffc0) !== 0xfe80 && (first & 0xfe00) !== 0xfc00 && (first & 0xff00) !== 0xff00;
 }
 
-export function isPublicWebhookHost(hostname: string): boolean {
+function isPublicWebhookHost(hostname: string): boolean {
   const host = hostname.replace(/\.+$/, "");
   if (PRIVATE_NAME.test(host)) return false;
   if (host.startsWith("[")) return isPublicIPv6(host.slice(1, -1));

@@ -74,6 +74,22 @@ describe("ClientDO send", () => {
     expect(enqueue).not.toHaveBeenCalled();
   });
 
+  it("answers limits unavailable, not sender_not_verified, for an unknown sender while D1 is down and the snapshot is stale", async () => {
+    const ws = "wsp_stale_d1_down";
+    const stub = await seededStub(ws);
+    await stub.send(ws, base);
+    await runInDurableObject(stub, (_i, state) => {
+      const snapshot = state.storage.kv.get<{ fetchedAt: number }>("limits:v2")!;
+      state.storage.kv.put("limits:v2", { ...snapshot, fetchedAt: Date.now() - 120_000 });
+    });
+    vi.spyOn(env.CORE_DB, "prepare").mockImplementation(() => {
+      throw new Error("D1 down");
+    });
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    expect(await refused(stub.send(ws, { ...base, from: "new@a6n.ai" }))).toBe("limits unavailable");
+    expect(await refused(stub.send(ws, { ...base, subject: "Order 2" }))).toBe("resolved");
+  });
+
   it("queues a message, stores html in R2 and enqueues one send job", async () => {
     const ws = "wsp_test";
     const stub = await seededStub(ws);

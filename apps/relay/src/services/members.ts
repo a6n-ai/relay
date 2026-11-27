@@ -9,6 +9,7 @@ import { parseRoles } from "../auth/session";
 import type { Principal, Session } from "./principal";
 import { type ErrorCode, RelayError } from "../shared/errors";
 import { type OrgRole } from "../shared/roles";
+import { isSuspended } from "../shared/limits";
 
 async function authCall<T>(call: () => Promise<T>): Promise<T> {
   try {
@@ -196,7 +197,7 @@ export async function getInvite(env: Env, { userId }: Session, id: string) {
   if (!row) return null;
   const [me] = await securityDb(env).select({ email: user.email }).from(user).where(eq(user.id, userId));
   if (me?.email !== row.email) return { state: "other-email" as const };
-  if (row.workspaceStatus === "suspended") return { state: "suspended" as const };
+  if (isSuspended(row.workspaceStatus)) return { state: "suspended" as const };
   return {
     state: "invite" as const,
     workspaceName: row.workspaceName,

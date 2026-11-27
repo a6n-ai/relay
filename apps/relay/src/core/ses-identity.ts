@@ -8,7 +8,7 @@ export type SesIdentity = {
   dkimTokens: string[];
 };
 
-export type SesIdentityApi = {
+type SesIdentityApi = {
   create(region: string, domain: string): Promise<{ alreadyExists: boolean }>;
   get(region: string, domain: string): Promise<SesIdentity | null>;
   delete(region: string, domain: string): Promise<void>;

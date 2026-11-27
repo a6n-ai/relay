@@ -1,7 +1,7 @@
 // Shapes the console UI and the server modules both read. Type-only: nothing here may import app code.
 import type { OrgRole } from "./roles";
 
-export type CampaignStatus = "draft" | "scheduled" | "sending" | "paused" | "sent" | "cancelled";
+type CampaignStatus = "draft" | "scheduled" | "sending" | "paused" | "sent" | "cancelled";
 
 export type CampaignView = {
   id: string;
@@ -43,7 +43,7 @@ export type CampaignStats = {
 
 export type ConsentSource = "purchase" | "express_optin" | "event_signup" | "import_other";
 
-export type MemberState = "subscribed" | "suppressed";
+type MemberState = "subscribed" | "suppressed";
 
 export type ListView = {
   id: string;

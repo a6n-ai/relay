@@ -7,6 +7,7 @@ import type { Env } from "../env";
 import type { InboundJob } from "../core/jobs";
 import { describeError } from "../core/log";
 import { MAX_INBOUND_BYTES } from "../core/inbound-limits";
+import { isSuspended } from "../shared/limits";
 
 // Fails closed: a missing workspace row is treated as not accepting mail.
 async function acceptsInbound(env: Env, workspaceId: string, now: number): Promise<boolean> {
@@ -15,7 +16,7 @@ async function acceptsInbound(env: Env, workspaceId: string, now: number): Promi
     .from(workspace)
     .where(eq(workspace.id, workspaceId));
   if (!ws) return false;
-  if (ws.status !== "suspended") return true;
+  if (!isSuspended(ws.status)) return true;
   return ws.suspendedAt !== null && now - ws.suspendedAt.getTime() <= INBOUND_GRACE_MS;
 }
 

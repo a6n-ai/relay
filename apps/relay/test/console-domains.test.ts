@@ -160,12 +160,12 @@ describe("console sending domains and addresses", { timeout: 60_000 }, () => {
     const a = await workspaceFor("dom-check@example.com", "Dom Check Co");
     const actor = await requireActor(env, headersFor(a.cookie), WRITE);
     const { id } = await addDomain(env, actor, { domain: "check-me.test" });
-    const before = (await snapshot(a.workspaceId))!.fetchedAt;
+    const aged = { ...(await snapshot(a.workspaceId))!, fetchedAt: 1 };
+    await runInDurableObject(stubFor(a.workspaceId), (_instance, state) => state.storage.kv.put(LIMITS_KEY, aged));
 
     memorySesIdentity.preset("ap-south-1", "check-me.test", { verified: true, dkimStatus: "SUCCESS", dkimTokens: [] });
-    await new Promise((resolve) => setTimeout(resolve, 5));
     await expect(checkDomain(env, actor, id)).resolves.toMatchObject({ status: "verified", dkimStatus: "success" });
-    expect((await snapshot(a.workspaceId))!.fetchedAt).toBeGreaterThan(before);
+    expect((await snapshot(a.workspaceId))!.fetchedAt).toBeGreaterThan(aged.fetchedAt);
   });
 
   it("lists a sender in the limits only while its domain is verified and it can send", async () => {

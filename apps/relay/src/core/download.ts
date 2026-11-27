@@ -42,7 +42,7 @@ export function downloadResponse(body: ReadableStream, size: number, name: strin
   });
 }
 
-export type PreviewType = "image/png" | "image/jpeg" | "image/gif" | "image/webp" | "application/pdf" | "text/plain; charset=utf-8";
+type PreviewType = "image/png" | "image/jpeg" | "image/gif" | "image/webp" | "application/pdf" | "text/plain; charset=utf-8";
 
 const SIGNATURES: [PreviewType, number[]][] = [
   ["image/png", [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]],

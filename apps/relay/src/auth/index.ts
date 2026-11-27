@@ -34,7 +34,7 @@ import { recordPasswordChange } from "./password";
 import { ac as platformAc, orgAc, orgRoles, roles as platformRoles } from "./permissions";
 import { customRules } from "./rate-limit";
 
-export { isFreshSession, recordPasswordChange, STALE_SESSION_MESSAGE } from "./password";
+export { isFreshSession, needsFreshSignIn, recordPasswordChange, STALE_SESSION_MESSAGE } from "./password";
 
 // better-auth asks for the organization model by plugin name or by our modelName, depending on the call.
 const ID_PREFIX: Record<string, string> = {

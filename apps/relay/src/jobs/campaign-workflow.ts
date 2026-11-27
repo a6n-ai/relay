@@ -15,6 +15,8 @@ const MAX_CHUNKS = MAX_RUN_RECIPIENTS / CHUNK_SIZE;
 const HOOK_MAX_PAGES = 300;
 const STEP_RETRY = { retries: { limit: 5, delay: "30 seconds", backoff: "exponential" }, timeout: "5 minutes" } as const;
 
+const pick = ({ state, enqueued, paceMs }: { state: "done" | "stopped" | "more"; enqueued: number; paceMs: number }) => ({ state, enqueued, paceMs });
+
 type Stub = ReturnType<typeof clientFor>;
 type HookPageResult = { kind: "stale" } | { kind: "page"; page: AudiencePage };
 
@@ -40,7 +42,7 @@ export async function runCampaign(env: Env, p: CampaignRunParams, step: Campaign
         const got = await step.do(`page-${n}`, STEP_RETRY, () => fetchHookPage(env, stub, p));
         if (got.kind === "stale") return "stopped";
         const r = await step.do(`ingest-${n}`, STEP_RETRY, () =>
-          stub.campaignHookPage(p.workspaceId, p.campaignId, p.runSeq, n, got.page).then(({ state, enqueued, paceMs }) => ({ state, enqueued, paceMs })),
+          stub.campaignHookPage(p.workspaceId, p.campaignId, p.runSeq, n, got.page).then(pick),
         );
         if (r.state === "done") return "done";
         if (r.state === "stopped") return "stopped";
@@ -49,7 +51,7 @@ export async function runCampaign(env: Env, p: CampaignRunParams, step: Campaign
     } else {
       for (let n = 0; n < MAX_CHUNKS; n++) {
         const r = await step.do(`chunk-${n}`, STEP_RETRY, () =>
-          stub.campaignChunk(p.workspaceId, p.campaignId, p.runSeq).then(({ state, enqueued, paceMs }) => ({ state, enqueued, paceMs })),
+          stub.campaignChunk(p.workspaceId, p.campaignId, p.runSeq).then(pick),
         );
         if (r.state === "done") return "done";
         if (r.state === "stopped") return "stopped";

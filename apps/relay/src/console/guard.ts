@@ -38,7 +38,7 @@ const admin = createGuard<{ write?: boolean }, { userId: string }>({
   actor: (need) => requirePlatformAdmin(env, getRequestHeaders(), need),
   ...shared,
 });
-export const runAdmin = <T>(fn: (admin: { userId: string }) => Promise<T>, write = true) => admin.run({ write }, fn);
+export const runAdmin = <T>(fn: (admin: { userId: string }) => Promise<T>, { write = true }: { write?: boolean } = {}) => admin.run({ write }, fn);
 
 // The signed-in user of this request, for the functions that run before a workspace is chosen. A write also checks the origin.
 export const userSession = (opts?: { write?: boolean }) => requireUser(env, getRequestHeaders(), opts);

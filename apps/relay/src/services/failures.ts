@@ -10,7 +10,7 @@ import { audit, type Principal } from "./principal";
 import { messageAccess } from "./inbox";
 import { RelayError, codeOf } from "../shared/errors";
 
-export type ReplayResult =
+type ReplayResult =
   | { outcome: "inserted"; messageId: string }
   | { outcome: "duplicate"; messageId: string }
   | { outcome: "failed"; error: string };

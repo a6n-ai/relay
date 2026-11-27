@@ -11,7 +11,7 @@ type ApiCtx = { env: Env; p: KeyPrincipal; request: Request; params: Record<stri
 export const json = (body: unknown, status = 200) => Response.json(body, { status });
 export const data = (value: unknown, status = 200) => Response.json({ data: value }, { status });
 // Fits three 5 MB attachments as base64 plus the bodies. A chunked body has no length, so the cap is counted while reading.
-export const MAX_API_BODY_BYTES = 25 * 1024 * 1024;
+const MAX_API_BODY_BYTES = 25 * 1024 * 1024;
 
 export async function readJson(request: Request, max = MAX_API_BODY_BYTES): Promise<unknown> {
   if (Number(request.headers.get("content-length") ?? 0) > max) throw new RelayError("body too large");

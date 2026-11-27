@@ -8,7 +8,7 @@ export type Channel = "email" | "in_app" | "sms" | "whatsapp";
 export type Kind = "transactional" | "marketing";
 
 /** An already-rendered message. Rendering happens upstream; a provider only transports. */
-export interface OutboundMessage {
+interface OutboundMessage {
   to: { email?: string; phone?: string; name?: string };
   /** email only */
   subject?: string;

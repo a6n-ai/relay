@@ -2,7 +2,7 @@ import { APIError, getAuthoritativeSessionFromCtx } from "better-auth/api";
 import { normalizeEmail } from "../../core/mask-emails";
 import type { Env } from "../../env";
 import { emailWithinCap } from "../rate-limit";
-import { isFreshSession, STALE_SESSION_MESSAGE } from "../password";
+import { needsFreshSignIn, STALE_SESSION_MESSAGE } from "../password";
 import type { HookCtx } from "./types";
 
 // Per-request refusals that run before any endpoint handler.
@@ -23,8 +23,7 @@ export async function guardRequest(env: Env, ctx: HookCtx): Promise<void> {
   if (ctx.path === "/request-password-reset" && ctx.body) ctx.body.redirectTo = "/reset-password";
   if (ctx.path === "/change-password") {
     const current = await getAuthoritativeSessionFromCtx(ctx);
-    if (current && (current.session.impersonatedBy || !isFreshSession(current.session.createdAt)))
-      throw new APIError("FORBIDDEN", { message: STALE_SESSION_MESSAGE });
+    if (current && needsFreshSignIn(current.session)) throw new APIError("FORBIDDEN", { message: STALE_SESSION_MESSAGE });
   }
   // Keys are created by the server only: over HTTP, metadata.appId would be client-set and skip the app check.
   if (ctx.request && ctx.path.startsWith("/api-key/")) throw new APIError("NOT_FOUND");

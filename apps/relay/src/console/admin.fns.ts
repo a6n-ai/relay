@@ -14,7 +14,7 @@ import {
 import { MAX_INVITES_PER_DAY, MAX_MONTHLY_QUOTA } from "../shared/limits";
 import { validate } from "./schemas";
 
-export const fetchWorkspaces = createServerFn({ method: "GET" }).handler(() => runAdmin(() => listWorkspaces(env), false));
+export const fetchWorkspaces = createServerFn({ method: "GET" }).handler(() => runAdmin(() => listWorkspaces(env), { write: false }));
 
 export const setWorkspaceStatusFn = createServerFn({ method: "POST" })
   .validator(validate(z.object({ workspaceId: z.string().min(1), status: z.enum(["active", "suspended"]) })))
