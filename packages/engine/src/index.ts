@@ -3,7 +3,7 @@ export * from "./policy";
 export * from "./compliance";
 export * from "./schema";
 export * from "./campaign-schema";
-export * from "./interpolate";
+export { interpolate } from "@relay/email/interpolate";
 export * from "./template";
 export * from "./preheader";
 export * from "./suppression";

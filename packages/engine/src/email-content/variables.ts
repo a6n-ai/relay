@@ -1,5 +1,4 @@
-// Same grammar as interpolate.ts, including `{{key|fallback}}`.
-const VAR_RE = /\{\{\s*([\w.]+)\s*(?:\|([^}]*))?\}\}/g;
+import { VARIABLE_RE } from "@relay/email/interpolate";
 
 export const CAMPAIGN_VARIABLES = ["contact.name", "contact.first_name", "contact.last_name", "contact.email"] as const;
 
@@ -11,7 +10,7 @@ export const CAMPAIGN_VARIABLE_SAMPLES: Record<string, string> = {
 };
 
 export function variableTokens(text: string): { key: string; from: number; to: number }[] {
-  return [...text.matchAll(VAR_RE)].map((m) => ({ key: m[1]!, from: m.index!, to: m.index! + m[0].length }));
+  return [...text.matchAll(VARIABLE_RE)].map((m) => ({ key: m[1]!, from: m.index!, to: m.index! + m[0].length }));
 }
 
 export function findUnknownVariables(text: string, known: readonly string[]): string[] {

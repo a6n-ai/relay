@@ -6,6 +6,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./events/types": "./src/events/types.ts",
+    "./interpolate": "./src/render/interpolate.ts",
     "./sanitize": "./src/sanitize.ts"
   },
   "types": "./src/index.ts",

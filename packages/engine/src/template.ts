@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
-import { interpolate } from "./interpolate";
+import { interpolate } from "@relay/email/interpolate";
 import type { CampaignTables } from "./campaign-schema";
 import type { NotificationTables } from "./schema";
 
