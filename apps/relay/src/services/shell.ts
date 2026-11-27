@@ -3,15 +3,14 @@ import { securityDb } from "../db/security/client";
 import { app, member, user, workspace } from "../db/security/schema";
 import type { Env } from "../env";
 import { createAuth } from "../auth";
-import { parseRoles, requireSession } from "../auth/session";
+import { parseRoles } from "../auth/session";
+import type { Session } from "./principal";
 import { type OrgRole } from "../shared/roles";
 import { type Shell } from "../shared/views";
 
-
 // A stale active workspace (removed member, or none yet) moves to the first active membership; its set-cookie goes to setCookies.
 // set-active refuses suspended workspaces, so when every membership is suspended the first one is shown without switching.
-export async function loadShell(env: Env, headers: Headers, setCookies: string[] = []): Promise<Shell> {
-  const { userId, platformAdmin, activeWorkspaceId } = await requireSession(env, headers);
+export async function loadShell(env: Env, { headers, userId, platformAdmin, activeWorkspaceId }: Session, setCookies: string[] = []): Promise<Shell> {
   const db = securityDb(env);
   const [u] = await db.select({ id: user.id, email: user.email, name: user.name }).from(user).where(eq(user.id, userId));
   const memberships = await db

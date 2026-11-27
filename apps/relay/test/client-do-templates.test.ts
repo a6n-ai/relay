@@ -67,9 +67,9 @@ describe("template library in the workspace DO", () => {
       text: "x {{unsubscribe_url}}",
       hasUnsubscribe: true,
     });
-    expect(await stub.renderTemplate(ws, "app_2", tpl.id, values)).toBe("missing");
+    await expect(stub.renderTemplate(ws, "app_2", tpl.id, values)).rejects.toThrow("template not found");
     await stub.updateTemplate(ws, tpl.id, { enabled: false });
-    expect(await stub.renderTemplate(ws, "app_1", tpl.id, values)).toBe("disabled");
+    await expect(stub.renderTemplate(ws, "app_1", tpl.id, values)).rejects.toThrow("template disabled");
   });
 
   it("copies a template into a campaign, which keeps it when the template changes", async () => {

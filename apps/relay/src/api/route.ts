@@ -3,7 +3,7 @@ import { ZodError } from "zod";
 import { resolveBearer, withinRateLimit } from "../services/api-keys";
 import type { KeyPrincipal } from "../services/principal";
 import { logFailure } from "../core/log";
-import { RelayError, statusOf } from "../shared/errors";
+import { ERRORS, RelayError, statusOf } from "../shared/errors";
 import type { Env } from "../env";
 
 type ApiCtx = { env: Env; p: KeyPrincipal; request: Request; params: Record<string, string> };
@@ -45,7 +45,7 @@ export function apiRoute(handler: (ctx: ApiCtx) => Promise<Response>) {
   return async ({ request, params }: { request: Request; params: Record<string, string> }): Promise<Response> => {
     const p = await resolveBearer(env, request);
     if (!p) return json({ error: "unauthorized" }, 401);
-    if (!(await withinRateLimit(env, p.keyId))) return json({ error: "rate limited" }, 429);
+    if (!(await withinRateLimit(env, p.keyId))) return json({ error: "rate limited" }, ERRORS["rate limited"].status);
     try {
       return await handler({ env, p, request, params });
     } catch (err) {

@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeaders } from "@tanstack/react-start/server";
 import { env } from "cloudflare:workers";
 import { z } from "zod";
-import { fail, read, run } from "./guard";
+import { fail, read, run, userSession } from "./guard";
 import { WRITE } from "./needs";
 import {
   acceptInvite,
@@ -62,7 +62,7 @@ export const getInviteFn = createServerFn({ method: "GET" })
   .validator(validate(z.object({ id })))
   .handler(async ({ data }) => {
     try {
-      return await getInvite(env, getRequestHeaders(), data.id);
+      return await getInvite(env, await userSession(), data.id);
     } catch (err) {
       fail(err);
     }
@@ -72,7 +72,7 @@ export const acceptInviteFn = createServerFn({ method: "POST" })
   .validator(validate(z.object({ id })))
   .handler(async ({ data }) => {
     try {
-      await acceptInvite(env, getRequestHeaders(), data.id);
+      await acceptInvite(env, await userSession({ write: true }), data.id);
     } catch (err) {
       fail(err);
     }

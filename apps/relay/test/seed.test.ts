@@ -107,7 +107,7 @@ describe("seed", () => {
   });
 
   it("creates the sending domain once and refuses a domain owned by another workspace", async () => {
-    const domainInput = { ...input, workspace: { name: "Dom", slug: "dom" }, domain: { domain: "Mail.Dom.test", sesRegion: "ca-central-1" } };
+    const domainInput = { ...input, workspace: { name: "Dom", slug: "dom" }, domain: { domain: "Mail.Dom.test", sesRegion: "us-east-1" as const } };
     const first = await seed(env, domainInput);
     await seed(env, domainInput);
 

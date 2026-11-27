@@ -66,8 +66,6 @@ export function visibleTo(access: MessageAccess): SQL {
 
 export type SuppressionView = { email: string; reason: SuppressionReason; stream: Stream | null; createdAt: number };
 
-const SUPPRESSION_PAGE = 50;
-
 // Range, not LIKE: the primary key serves it and no wildcard in an address needs escaping. char(1114111) is the largest code point.
 export function listSuppressionRows(
   db: Db,
@@ -84,11 +82,11 @@ export function listSuppressionRows(
       ),
     )
     .orderBy(asc(s.email))
-    .limit(SUPPRESSION_PAGE + 1)
+    .limit(PAGE_SIZE + 1)
     .all()
     .map((r): SuppressionView => ({ ...r, reason: r.reason as SuppressionReason, stream: r.stream as Stream | null }));
-  const page = rows.slice(0, SUPPRESSION_PAGE);
-  const nextCursor = rows.length > SUPPRESSION_PAGE ? page[SUPPRESSION_PAGE - 1].email : null;
+  const page = rows.slice(0, PAGE_SIZE);
+  const nextCursor = rows.length > PAGE_SIZE ? page[PAGE_SIZE - 1].email : null;
   return { rows: page, nextCursor };
 }
 

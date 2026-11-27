@@ -28,7 +28,7 @@ import * as schema from "./client-schema";
 import { describeError } from "../core/log";
 import { bumpCampaign, campaignStatsRow, statsOf, createCampaignRow, deleteCampaignRow, getCampaignRow, listCampaignRows, previewAudienceRows, recipientQuery, updateCampaignRow, type CampaignPatch, type CampaignSummary } from "./campaigns";
 import { CLIENT_MIGRATIONS, migrate } from "./migrations";
-import { addMemberRow, createListRow, deleteListRow, listListRows, listMemberRows, exportMemberRows, IMPORT_CHUNK, importMemberRow, removeMemberRow, updateMemberRow, updateListRow, type ImportResult, type ListInput } from "./lists";
+import { addMemberRow, createListRow, deleteListRow, listListRows, listMemberRows, listRow, exportMemberRows, IMPORT_CHUNK, importMemberRow, removeMemberRow, updateMemberRow, updateListRow, type ImportResult, type ListInput } from "./lists";
 import { maskEmails } from "../core/mask-emails";
 import { createTemplateRow, deleteTemplateRow, getTemplateRow, listTemplateRows, templateOverrideRows, updateTemplateRow, type TemplateInput, type RenderedTemplate, type TemplateOverride } from "./templates";
 import { deleteWebhookRow, failDeliveryRow, listWebhookRows, toWebhookView, updateWebhookRow, type WebhookRow } from "./webhooks";
@@ -45,7 +45,7 @@ import {
 import type { AttachmentView, MessageView, SendResult } from "./types";
 import type { AudiencePage, HookCall } from "../core/audience-protocol";
 import { createAutomationRow, deleteAutomationRow, earliestDue, enrolAutomations, listAutomationRows, nextAutomationAlarm, runDueAutomationRows, setAutomationEnabledRow, updateAutomationRow, type AutomationInput, type AutomationPatch } from "./automations";
-import { RelayError, codeOf } from "../shared/errors";
+import { RelayError, codeOf, fail } from "../shared/errors";
 import { type DeliveryView, type CampaignStats, type AudiencePreview, type CampaignView, type ListView, type MemberView, type TemplateView, type AutomationView } from "../shared/views";
 import { type Stream, type SuppressionReason } from "../shared/mail";
 import { DAY_MS } from "../shared/limits";
@@ -199,7 +199,7 @@ export class ClientDO extends DurableObject<Env> {
         this.db.delete(schema.attachment).where(eq(schema.attachment.messageId, id)).run();
       });
       await this.dropObjects([htmlKey, ...fileKeys]);
-      throw new Error("queue_failed", { cause: err });
+      throw new RelayError("queue_failed", undefined, undefined, { cause: err });
     }
     return { messageId: id, status: "queued", duplicate: false };
   }
@@ -212,7 +212,7 @@ export class ClientDO extends DurableObject<Env> {
       try {
         await this.env.MAIL.delete(part);
       } catch (err) {
-        console.error("ClientDO: failed to delete objects", part.length, err);
+        console.error("ClientDO: failed to delete objects", part.length, describeError(err));
       }
     }
   }
@@ -250,9 +250,9 @@ export class ClientDO extends DurableObject<Env> {
     id: string,
     part: string,
     access: MessageAccess,
-  ): Promise<MessageFile | null> {
+  ): Promise<MessageFile> {
     await this.ready(workspaceId);
-    return readMessageFile(this.db, id, part, access);
+    return readMessageFile(this.db, id, part, access) ?? fail("not found");
   }
 
   // The letter is already in R2 under job.rawKey. Idempotent on the raw key and on the app's Message-ID.
@@ -359,9 +359,14 @@ export class ClientDO extends DurableObject<Env> {
     return listListRows(this.ctx.storage.sql, appId);
   }
 
-  async updateList(workspaceId: string, id: string, patch: Partial<ListInput>): Promise<ListView | null> {
+  async getList(workspaceId: string, id: string): Promise<ListView | null> {
     await this.ready(workspaceId);
-    return this.ctx.storage.transactionSync(() => updateListRow(this.ctx.storage.sql, id, patch));
+    return listRow(this.ctx.storage.sql, id);
+  }
+
+  async updateList(workspaceId: string, id: string, patch: Partial<ListInput>): Promise<ListView> {
+    await this.ready(workspaceId);
+    return this.ctx.storage.transactionSync(() => updateListRow(this.ctx.storage.sql, id, patch) ?? fail("not found"));
   }
 
   async deleteList(workspaceId: string, id: string): Promise<void> {
@@ -369,9 +374,9 @@ export class ClientDO extends DurableObject<Env> {
     this.ctx.storage.transactionSync(() => deleteListRow(this.ctx.storage.sql, id));
   }
 
-  async listMembers(workspaceId: string, listId: string, cursor?: string): Promise<{ rows: MemberView[]; nextCursor: string | null } | null> {
+  async listMembers(workspaceId: string, listId: string, cursor?: string): Promise<{ rows: MemberView[]; nextCursor: string | null }> {
     await this.ready(workspaceId);
-    return listMemberRows(this.ctx.storage.sql, listId, (email) => this.suppressed(email, "marketing"), cursor);
+    return listMemberRows(this.ctx.storage.sql, listId, (email) => this.suppressed(email, "marketing"), cursor) ?? fail("not found");
   }
 
   async addMember(workspaceId: string, listId: string, input: MemberInput): Promise<"added" | "existing"> {
@@ -385,11 +390,11 @@ export class ClientDO extends DurableObject<Env> {
     return outcome;
   }
 
-  async importMembers(workspaceId: string, listId: string, rows: MemberInput[]): Promise<ImportResult | null> {
+  async importMembers(workspaceId: string, listId: string, rows: MemberInput[]): Promise<ImportResult> {
     await this.ready(workspaceId);
     const sql = this.ctx.storage.sql;
     const list = sql.exec<{ app_id: string }>("SELECT app_id FROM contact_list WHERE id = ?", listId).toArray()[0];
-    if (!list) return null;
+    if (!list) return fail("not found");
     const total: ImportResult = { added: 0, existing: 0, suppressed: 0 };
     for (let start = 0; start < rows.length; start += IMPORT_CHUNK) {
       this.ctx.storage.transactionSync(() => {
@@ -404,14 +409,14 @@ export class ClientDO extends DurableObject<Env> {
     return total;
   }
 
-  async updateMember(workspaceId: string, listId: string, memberId: string, input: { firstName: string; lastName: string }): Promise<boolean> {
+  async updateMember(workspaceId: string, listId: string, memberId: string, input: { firstName: string; lastName: string }): Promise<void> {
     await this.ready(workspaceId);
-    return this.ctx.storage.transactionSync(() => updateMemberRow(this.ctx.storage.sql, listId, memberId, input));
+    this.ctx.storage.transactionSync(() => updateMemberRow(this.ctx.storage.sql, listId, memberId, input) || fail("not found"));
   }
 
-  async removeMember(workspaceId: string, listId: string, memberId: string): Promise<boolean> {
+  async removeMember(workspaceId: string, listId: string, memberId: string): Promise<void> {
     await this.ready(workspaceId);
-    return this.ctx.storage.transactionSync(() => removeMemberRow(this.ctx.storage.sql, listId, memberId));
+    this.ctx.storage.transactionSync(() => removeMemberRow(this.ctx.storage.sql, listId, memberId) || fail("not found"));
   }
   async createCampaign(
     workspaceId: string,
@@ -631,21 +636,20 @@ export class ClientDO extends DurableObject<Env> {
     }
     return { state: "more", enqueued, paceMs: Math.ceil(enqueued / rate) * 1000 };
   }
-  async pauseCampaign(workspaceId: string, id: string, error: string | null = null, runSeq?: number): Promise<"paused" | "missing" | "not_sending"> {
+  // The user pause: refuses a missing or not-sending campaign.
+  async pauseCampaign(workspaceId: string, id: string): Promise<void> {
     await this.ready(workspaceId);
-    return this.ctx.storage.transactionSync((): "paused" | "missing" | "not_sending" => {
+    this.ctx.storage.transactionSync(() => {
       const head = this.campaignHead(id);
-      if (!head) return "missing";
-      if (head.status !== "sending" || (runSeq !== undefined && head.runSeq !== runSeq)) return "not_sending";
-      this.ctx.storage.sql.exec(
-        "UPDATE campaign SET status = 'paused', error = ?, updated_at = ? WHERE id = ? AND status = 'sending' AND run_seq = ?",
-        error,
-        Date.now(),
-        id,
-        head.runSeq,
-      );
-      return "paused";
+      if (!head) throw new RelayError("not found");
+      if (head.status !== "sending") throw new RelayError("campaign not sending");
+      this.pauseRun(id, head.runSeq, null, Date.now());
     });
+  }
+  // The workflow pause: never throws for a stale run, so its step does not retry. Returns whether it paused.
+  async pauseRunning(workspaceId: string, id: string, runSeq: number, error: string | null): Promise<boolean> {
+    await this.ready(workspaceId);
+    return this.pauseRun(id, runSeq, error, Date.now());
   }
   async resumeCampaign(workspaceId: string, id: string): Promise<{ runSeq: number }> {
     await this.ready(workspaceId);
@@ -1485,7 +1489,7 @@ export class ClientDO extends DurableObject<Env> {
       try {
         await recordDoState(this.env, workspaceId, { doMigrateError: this.migrateError.message });
       } catch (err) {
-        console.error("ClientDO: failed to record migrate error in D1", err);
+        console.error("ClientDO: failed to record migrate error in D1", describeError(err));
       }
       throw new Error("workspace storage migration failed");
     }
@@ -1501,7 +1505,7 @@ export class ClientDO extends DurableObject<Env> {
       // false: no profile row yet (or no workspace), so nothing is reported and KV stays unset for a retry.
       if (!(await recordDoState(this.env, workspaceId, { doSchemaVersion: version, doMigrateError: null }))) return;
     } catch (err) {
-      console.error("ClientDO: failed to report schema version to D1", err);
+      console.error("ClientDO: failed to report schema version to D1", describeError(err));
       return;
     }
     this.ctx.storage.kv.put("reported_version", version);
@@ -1574,13 +1578,15 @@ export class ClientDO extends DurableObject<Env> {
       .get();
     return row ? { messageId: row.id, status: row.status as SendResult["status"], duplicate: true } : undefined;
   }
-  async renderTemplate(
-    workspaceId: string,
-    appId: string,
-    templateId: string,
-    values: Record<string, string>,
-  ): Promise<RenderedTemplate | "missing" | "disabled"> {
+  async renderTemplate(workspaceId: string, appId: string, templateId: string, values: Record<string, string>): Promise<RenderedTemplate> {
     await this.ready(workspaceId);
+    const rendered = this.renderOrRefuse(appId, templateId, values);
+    if (rendered === "missing") return fail("template not found");
+    if (rendered === "disabled") return fail("template disabled");
+    return rendered;
+  }
+  // The automation pass maps these to its own skip codes, so it takes the outcome, not a throw.
+  private renderOrRefuse(appId: string, templateId: string, values: Record<string, string>): RenderedTemplate | "missing" | "disabled" {
     const tpl = getTemplateRow(this.ctx.storage.sql, templateId);
     if (!tpl || tpl.appId !== appId) return "missing";
     if (!tpl.enabled) return "disabled";
@@ -1613,15 +1619,16 @@ export class ClientDO extends DurableObject<Env> {
   }
 
   // Pauses only the run that is still sending: a newer run or a manual pause stays as it is.
-  private pauseRun(id: string, runSeq: number, error: string, now: number): void {
-    this.ctx.storage.transactionSync(() =>
-      this.ctx.storage.sql.exec(
-        "UPDATE campaign SET status = 'paused', error = ?, updated_at = ? WHERE id = ? AND status = 'sending' AND run_seq = ?",
-        error,
-        now,
-        id,
-        runSeq,
-      ),
+  private pauseRun(id: string, runSeq: number, error: string | null, now: number): boolean {
+    return this.ctx.storage.transactionSync(
+      () =>
+        this.ctx.storage.sql.exec(
+          "UPDATE campaign SET status = 'paused', error = ?, updated_at = ? WHERE id = ? AND status = 'sending' AND run_seq = ?",
+          error,
+          now,
+          id,
+          runSeq,
+        ).rowsWritten > 0,
     );
   }
 
@@ -1824,7 +1831,7 @@ export class ClientDO extends DurableObject<Env> {
       {
         senderRetried: this.senderRetried,
         send: (input) => this.send(workspaceId, input),
-        render: (appId, templateId, values) => this.renderTemplate(workspaceId, appId, templateId, values),
+        render: (appId, templateId, values) => this.renderOrRefuse(appId, templateId, values),
         refreshLimits: () => this.loadLimits(workspaceId),
         postalAddress: limits.postalAddress,
       },

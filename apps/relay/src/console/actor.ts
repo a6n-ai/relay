@@ -4,7 +4,7 @@ import { member, workspace } from "../db/security/schema";
 import type { Env } from "../env";
 import { allows } from "../shared/permissions";
 import { assertSameOrigin, parseRoles, requireSession } from "../auth/session";
-import type { Principal } from "../services/principal";
+import type { Principal, Session } from "../services/principal";
 import { RelayError } from "../shared/errors";
 import type { Need } from "./needs";
 
@@ -35,6 +35,12 @@ export async function requireActor(
   }
 
   return { userId, platformAdmin, workspaceId: activeWorkspaceId, appId: null, keyId: null, roles, workspaceStatus: row.status };
+}
+
+// A write checks the origin before the session, so a cross-origin request never learns whether it was signed in.
+export async function requireUser(env: Env, headers: Headers, { write = false }: { write?: boolean } = {}): Promise<Session> {
+  if (write) assertSameOrigin(env, headers);
+  return { headers, ...(await requireSession(env, headers)) };
 }
 
 export async function requirePlatformAdmin(

@@ -3,6 +3,7 @@ import { and, eq } from "drizzle-orm";
 import { beforeAll, describe, expect, it } from "vitest";
 import { reasonText } from "../src/components/campaigns/campaign-report";
 import { clientFor } from "../src/do/client";
+import { requireUser } from "../src/console/actor";
 import { loadShell } from "../src/services/shell";
 import { safeRedirect } from "../src/shared/redirect";
 import { securityDb } from "../src/db/security/client";
@@ -201,7 +202,7 @@ describe("shell apps", { timeout: 60_000 }, () => {
       { workspaceId: wsId, name: "Earlier App", slug: "earlier", createdAt: new Date(1000) },
     ]);
 
-    const shell = await loadShell(env, headersFor(owner));
+    const shell = await loadShell(env, await requireUser(env, headersFor(owner)));
     expect(shell.apps.map((a) => a.name)).toEqual(["Earlier App", "Later App"]);
     expect(Object.keys(shell.apps[0]).sort()).toEqual(["id", "name"]);
   });
@@ -211,7 +212,7 @@ describe("shell apps", { timeout: 60_000 }, () => {
     const wsId = await createWorkspace(owner, "Slug Shell Co");
     await setActive(owner, wsId);
     const [row] = await db.select().from(workspace).where(eq(workspace.id, wsId));
-    const shell = await loadShell(env, headersFor(owner));
+    const shell = await loadShell(env, await requireUser(env, headersFor(owner)));
     expect(shell.active?.slug).toBe(row.slug);
     expect(row.slug).toBeTruthy();
   });
@@ -226,13 +227,13 @@ describe("shell apps", { timeout: 60_000 }, () => {
       { workspaceId: otherId, name: "Foreign App", slug: "foreign" },
     ]);
 
-    const shell = await loadShell(env, headersFor(owner));
+    const shell = await loadShell(env, await requireUser(env, headersFor(owner)));
     expect(shell.apps.map((a) => a.name)).toEqual(["Mine App"]);
   });
 
   it("gives a user with no workspace an empty apps list", async () => {
     const lone = await cookieFor("apps-shell-lone@example.com", "user");
-    const shell = await loadShell(env, headersFor(lone));
+    const shell = await loadShell(env, await requireUser(env, headersFor(lone)));
     expect(shell.active).toBeNull();
     expect(shell.apps).toEqual([]);
   });

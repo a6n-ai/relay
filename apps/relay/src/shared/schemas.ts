@@ -20,7 +20,7 @@ export const memberInput = z.object({
   consentAt: z.number().int().positive().refine((at) => at <= Date.now(), "consentAt is in the future").optional(),
 });
 
-export type MemberInput = { email: string; firstName?: string; lastName?: string; consentAt?: number };
+export type MemberInput = z.output<typeof memberInput>;
 
 const streamSchema = z.enum(STREAMS);
 

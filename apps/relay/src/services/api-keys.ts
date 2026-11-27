@@ -3,8 +3,8 @@ import { securityDb } from "../db/security/client";
 import { apiKey, app, member, workspace } from "../db/security/schema";
 import type { Env } from "../env";
 import { createAuth } from "../auth";
+import { RelayError } from "../shared/errors";
 import type { KeyPrincipal } from "./principal";
-
 
 // Keys are created as the workspace owner, who holds the organization's apiKey create permission.
 export async function createApiKey(
@@ -13,7 +13,7 @@ export async function createApiKey(
 ): Promise<{ id: string; secret: string }> {
   const db = securityDb(env);
   const [owner] = await db.select({ workspaceId: app.workspaceId }).from(app).where(eq(app.id, input.appId));
-  if (owner?.workspaceId !== input.workspaceId) throw new Error("app does not belong to workspace");
+  if (owner?.workspaceId !== input.workspaceId) throw new RelayError("app does not belong to workspace");
   const [creator] = await db
     .select({ userId: member.userId })
     .from(member)

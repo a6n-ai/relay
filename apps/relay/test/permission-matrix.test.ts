@@ -45,13 +45,8 @@ describe("permission table", () => {
   });
 });
 
-// Before a workspace exists there is no actor, so these two check the origin inside their service; the preview only reads (POST carries the id).
-const EXEMPT: Record<string, string> = {
-  createWorkspaceFn: "../src/services/workspaces.ts",
-  acceptInviteFn: "../src/services/members.ts",
-  domainDeletePreview: "",
-};
-const services = import.meta.glob("../src/services/{workspaces,members}.ts", { query: "?raw", import: "default", eager: true }) as Record<string, string>;
+// The preview only reads (POST carries the id).
+const EXEMPT = new Set(["domainDeletePreview"]);
 
 const fnsFiles = import.meta.glob("../src/console/*.fns.ts", { query: "?raw", import: "default", eager: true }) as Record<string, string>;
 
@@ -67,8 +62,9 @@ describe("every POST server function is a write", () => {
           /\bWRITE\(/.test(p) ||
           writeNames.some((n) => new RegExp(`\\b${n}\\b`).test(p)) ||
           /\brunAdmin\((?![^;]*,\s*false\))/.test(p) ||
+          /\buserSession\(\{ write: true \}\)/.test(p) ||
           /\bassertSameOrigin\(/.test(p) ||
-          (name in EXEMPT && (!EXEMPT[name] || /\bassertSameOrigin\(/.test(services[EXEMPT[name]] ?? "")));
+          EXEMPT.has(name);
         return [`${path.split("/").pop()} ${name}`, guarded] as const;
       });
   });

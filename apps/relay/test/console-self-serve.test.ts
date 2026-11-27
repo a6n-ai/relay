@@ -1,7 +1,7 @@
 import { env, SELF } from "cloudflare:test";
 import { and, eq } from "drizzle-orm";
 import { beforeAll, describe, expect, it } from "vitest";
-import { requireActor } from "../src/console/actor";
+import { requireActor, requireUser } from "../src/console/actor";
 import { addApp } from "../src/services/apps";
 import { createWorkspace as createWorkspaceFromConsole } from "../src/services/workspaces";
 import { getWorkspaceProfile, recordDoState } from "../src/core/workspace-profile";
@@ -80,17 +80,17 @@ describe("self-serve workspaces", { timeout: 60_000 }, () => {
     const cookie = await cookieFor("ss-console@example.com", "user");
     const headers = new Headers({ cookie, origin: ORIGIN });
     for (const slug of ["ss-console-1", "ss-console-2", "ss-console-3"]) {
-      const { id } = await createWorkspaceFromConsole(env, headers, { name: slug, slug });
+      const { id } = await createWorkspaceFromConsole(env, await requireUser(env, headers, { write: true }), { name: slug, slug });
       expect(await profileOf(id)).toMatchObject({ selfServe: true, monthlyMessageQuota: 100 });
     }
-    await expect(createWorkspaceFromConsole(env, headers, { name: "ss-console-4", slug: "ss-console-4" })).rejects.toMatchObject({
+    await expect(createWorkspaceFromConsole(env, await requireUser(env, headers, { write: true }), { name: "ss-console-4", slug: "ss-console-4" })).rejects.toMatchObject({
       status: 403,
       message: "You can create up to 3 workspaces",
     });
 
     const other = await cookieFor("ss-cross@example.com", "user");
     const cross = new Headers({ cookie: other, origin: "https://evil.example" });
-    await expect(createWorkspaceFromConsole(env, cross, { name: "ss-cross", slug: "ss-cross" })).rejects.toMatchObject({ status: 403 });
+    await expect(requireUser(env, cross, { write: true })).rejects.toMatchObject({ status: 403, message: "cross-origin write" });
     expect(await securityDb(env).select({ id: workspace.id }).from(workspace).where(eq(workspace.slug, "ss-cross"))).toHaveLength(0);
   });
 

@@ -46,8 +46,6 @@ export async function sendTemplateMessage(env: Env, p: KeyPrincipal, input: Temp
     postalAddress ?? "",
   );
   const rendered = await clientFor(env, p.workspaceId).renderTemplate(p.workspaceId, p.appId, data.templateId, values);
-  if (rendered === "missing") throw new RelayError("template not found");
-  if (rendered === "disabled") throw new RelayError("template disabled");
   if (rendered.hasUnsubscribe && data.stream !== "marketing") throw new RelayError("unsubscribe only on marketing");
   return sendMessage(env, p, {
     stream: data.stream,

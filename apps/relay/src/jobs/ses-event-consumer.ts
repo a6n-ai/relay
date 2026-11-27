@@ -2,10 +2,7 @@ import type { Env } from "../env";
 import { clientFor } from "../do/client";
 import type { SesEventJob } from "../core/ses-events";
 import { bumpUsage } from "../core/usage";
-
-function errorText(err: unknown): string {
-  return err instanceof Error ? err.message : String(err);
-}
+import { describeError } from "../core/log";
 
 export async function handleSesEventBatch(batch: MessageBatch<SesEventJob>, env: Env): Promise<void> {
   const groups = new Map<string, Message<SesEventJob>[]>();
@@ -24,7 +21,7 @@ export async function handleSesEventBatch(batch: MessageBatch<SesEventJob>, env:
         const failedIndexes = new Set(failed);
         messages.forEach((message, i) => (failedIndexes.has(i) ? message.retry({ delaySeconds: 30 }) : message.ack()));
       } catch (err) {
-        console.error("relay-ses-events: apply failed, retrying", workspaceId, errorText(err));
+        console.error("relay-ses-events: apply failed, retrying", workspaceId, describeError(err));
         for (const message of messages) message.retry({ delaySeconds: 30 });
       }
     }),

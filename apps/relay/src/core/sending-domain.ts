@@ -1,6 +1,7 @@
 import { and, eq, isNull, like, sql } from "drizzle-orm";
 import { address, sendingDomain } from "../db/core/schema";
 import type { Env } from "../env";
+import { describeError } from "./log";
 import { type SesIdentity, sesIdentityApi } from "./ses-identity";
 
 export type DomainStatus = "pending" | "verified" | "failed";
@@ -30,8 +31,8 @@ export const sesRead = {
   logAndAssumeUnknown: (env: Env, region: string, domain: string, rowId: string) =>
     sesIdentityApi(env)
       .get(region, domain)
-      .catch(() => {
-        console.error("ses identity read failed", rowId);
+      .catch((err: unknown) => {
+        console.error("ses identity read failed", rowId, describeError(err));
         return null;
       }),
 };

@@ -4,7 +4,7 @@ import { campaignCreateInput, campaignPatch, listInput, membersImportInput, list
 import { hookInputSchema } from "../src/core/audience-hook";
 import { memberInput } from "../src/shared/schemas";
 import { sendBody, templateSendSchema } from "../src/shared/schemas";
-import { webhookInputSchema, webhookPatchSchema } from "../src/services/schemas";
+import { webhookInputSchema, webhookPatchSchema } from "../src/core/webhooks";
 import { scheduleBody } from "../src/routes/api/v1/campaigns.$id.$action";
 
 type Endpoint = { route: string; title: string; method: string; path: string; schema?: string; body?: unknown };

@@ -5,6 +5,8 @@ import type { ResolvedSendInput } from "../shared/schemas";
 import { newId } from "../shared/ids";
 import type { SendResult } from "./types";
 import { getTemplateRow, type RenderedTemplate } from "./templates";
+import { ZodError } from "zod";
+import { describeError } from "../core/log";
 import { codeOf, RelayError, type ErrorCode } from "../shared/errors";
 import { type TemplateView, type AutomationView } from "../shared/views";
 
@@ -14,7 +16,7 @@ export type AutomationPatch = Partial<Omit<AutomationInput, "listId">>;
 
 export type AutomationDeps = {
   send: (input: ResolvedSendInput) => Promise<SendResult>;
-  render: (appId: string, templateId: string, values: Record<string, string>) => Promise<RenderedTemplate | "missing" | "disabled">;
+  render: (appId: string, templateId: string, values: Record<string, string>) => RenderedTemplate | "missing" | "disabled";
   refreshLimits: () => Promise<unknown>;
   // Runs whose sender was refused once after a limits reload. In memory: a DO that restarts retries once more, never skips a run for good on a stale snapshot.
   senderRetried: Set<string>;
@@ -187,7 +189,7 @@ export async function sendTemplateForAutomation(
   template: TemplateView,
 ): Promise<SendResult> {
   const values = contactValues({ email: run.email, firstName: run.firstName, lastName: run.lastName }, deps.postalAddress ?? "");
-  const rendered = await deps.render(run.appId, template.id, values);
+  const rendered = deps.render(run.appId, template.id, values);
   if (rendered === "missing") throw new RelayError("template_missing");
   if (rendered === "disabled") throw new RelayError("template_disabled");
   // Thrown before the send, so a blank subject skips one run instead of failing the whole pass.
@@ -208,8 +210,11 @@ export async function sendTemplateForAutomation(
 type Due = { automationId: string; email: string; appId: string; listId: string; templateId: string; fromEmail: string };
 
 // Refusals that clear once the workspace or queue recovers leave the run pending. A refusal about this one run's content or sender skips it
-// with that code. Every other send error skips it as invalid_input.
-function sendRefusal(code: ErrorCode | undefined): { defer: true } | { skip: string } {
+// with that code, and so does any other refusal code or a send input that fails validation. An error that is no refusal (an R2 failure, a bug)
+// says nothing about this run, so it leaves the run pending for the next alarm.
+function sendRefusal(err: unknown): { defer: true } | { skip: string } {
+  const code: ErrorCode | undefined = codeOf(err);
+  if (code === undefined) return err instanceof ZodError ? { skip: "invalid_input" } : { defer: true };
   switch (code) {
     case "workspace_suspended":
     case "quota_exceeded":
@@ -309,11 +314,11 @@ export async function runDueAutomationRows(
         deps.senderRetried.add(retryKey);
         continue;
       }
-      const refusal = sendRefusal(code);
+      const refusal = sendRefusal(err);
       if ("defer" in refusal) {
-        // Quota, suspension and queue failures leave the run pending. Stop so the rest wait for the retry.
+        // Quota, suspension, queue and unexpected failures leave the run pending. Stop so the rest wait for the retry.
         blocked = true;
-        console.error("automation send deferred", code);
+        console.error("automation send deferred", describeError(err));
         break;
       }
       deps.senderRetried.delete(retryKey);

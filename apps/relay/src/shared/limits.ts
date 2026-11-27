@@ -1,6 +1,8 @@
 export const DAY_MS = 86_400_000;
 
 export const ID_MAX = 64;
+// A webhook create or patch body: a URL, a few events and a name.
+export const WEBHOOK_BODY_MAX = 65_536;
 export const NAME_MAX = 80;
 export const TEMPLATE_NAME_MAX = 120;
 export const EMAIL_MAX = 254;

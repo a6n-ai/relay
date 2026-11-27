@@ -1,31 +1,38 @@
-import { isAPIError } from "better-auth/api";
 import { and, asc, desc, eq } from "drizzle-orm";
 import { securityDb } from "../db/security/client";
 import { invitation, member, team, teamMember, user, workspace } from "../db/security/schema";
 import type { Env } from "../env";
 import { inviteCap, invitesInWindow } from "../core/workspace-profile";
 import { createAuth } from "../auth";
-import { assertSameOrigin, parseRoles, requireSession } from "../auth/session";
-import type { Principal } from "./principal";
+import { authError } from "../auth/errors";
+import { parseRoles } from "../auth/session";
+import type { Principal, Session } from "./principal";
 import { type ErrorCode, RelayError } from "../shared/errors";
 import { type OrgRole } from "../shared/roles";
 import { DAY_MS } from "../shared/limits";
 
-// better-auth refusals keep their message; only a 403, 404 or 429 keeps its status, every other refusal is a 400.
 async function authCall<T>(call: () => Promise<T>): Promise<T> {
   try {
     return await call();
   } catch (err) {
-    if (isAPIError(err) && err.statusCode < 500) {
-      const s = err.statusCode;
-      throw new RelayError("invalid input", s === 403 || s === 404 || s === 429 ? s : 400, err.message);
-    }
-    throw err;
+    throw authError(err, "member");
   }
 }
 
-const effectiveStatus = (i: { status: string; expiresAt: Date }) =>
-  i.status === "pending" && i.expiresAt.getTime() < Date.now() ? "expired" : i.status;
+type InviteStatus = "pending" | "accepted" | "rejected" | "canceled" | "expired";
+
+const INVITE_REFUSAL: Record<Exclude<InviteStatus, "pending">, ErrorCode> = {
+  accepted: "invite accepted",
+  rejected: "invite rejected",
+  canceled: "invite canceled",
+  expired: "invite expired",
+};
+
+// A status better-auth adds later reads as closed, so an invite is never accepted by accident.
+const effectiveStatus = (i: { status: string; expiresAt: Date }): InviteStatus => {
+  if (i.status === "pending") return i.expiresAt.getTime() < Date.now() ? "expired" : "pending";
+  return Object.hasOwn(INVITE_REFUSAL, i.status) ? (i.status as InviteStatus) : "canceled";
+};
 
 export async function listPeople(env: Env, p: Principal) {
   const db = securityDb(env);
@@ -174,8 +181,7 @@ export async function setTeamMember(
 
 // Any signed-in user may look at an invite; the id is the secret, so the page shows only what the invite already says.
 // A signed-in user for another email gets only the state, so the workspace name and invitee email never reach their page.
-export async function getInvite(env: Env, headers: Headers, id: string) {
-  const { userId } = await requireSession(env, headers);
+export async function getInvite(env: Env, { userId }: Session, id: string) {
   const [row] = await securityDb(env)
     .select({
       workspaceName: workspace.name,
@@ -201,9 +207,7 @@ export async function getInvite(env: Env, headers: Headers, id: string) {
   };
 }
 
-export async function acceptInvite(env: Env, headers: Headers, id: string): Promise<void> {
-  assertSameOrigin(env, headers);
-  const { userId } = await requireSession(env, headers);
+export async function acceptInvite(env: Env, { headers, userId }: Session, id: string): Promise<void> {
   const [row] = await securityDb(env)
     .select({ email: invitation.email, status: invitation.status, expiresAt: invitation.expiresAt })
     .from(invitation)
@@ -212,6 +216,6 @@ export async function acceptInvite(env: Env, headers: Headers, id: string): Prom
   const [me] = await securityDb(env).select({ email: user.email }).from(user).where(eq(user.id, userId));
   if (me?.email !== row.email) throw new RelayError("this invite is for another email");
   const status = effectiveStatus(row);
-  if (status !== "pending") throw new RelayError(`invite ${status}` as ErrorCode);
+  if (status !== "pending") throw new RelayError(INVITE_REFUSAL[status]);
   await authCall(() => createAuth(env).api.acceptInvitation({ headers, body: { invitationId: id } }));
 }

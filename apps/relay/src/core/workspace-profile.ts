@@ -4,8 +4,8 @@ import { workspaceProfile } from "../db/core/schema";
 import { securityDb } from "../db/security/client";
 import { invitation, workspace } from "../db/security/schema";
 import type { Env } from "../env";
+import { DAY_MS } from "../shared/limits";
 
-const DAY_MS = 86_400_000;
 export const INVITES_PER_DAY = 20;
 export const SELF_SERVE_WORKSPACE_CAP = 3;
 export const SELF_SERVE_QUOTA = 100;

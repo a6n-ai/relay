@@ -1,5 +1,7 @@
 import { z } from "zod";
+import { decodeCursor } from "../core/cursor";
 import { httpsUrl } from "../core/webhooks";
+import { RelayError } from "../shared/errors";
 import { AUDIENCE_QUERY_MAX, BODY_MAX, CONSENT_NOTE_MAX, MEMBERS_IMPORT_MAX, NAME_MAX, TEMPLATE_NAME_MAX } from "../shared/limits";
 import { WEBHOOK_EVENTS } from "../shared/mail";
 import { emailSchema, idSchema, memberInput, subjectSchema } from "../shared/schemas";
@@ -38,13 +40,10 @@ export const campaignCreateInput = z.object({
   audienceQuery: z.string().max(AUDIENCE_QUERY_MAX).nullable().optional(),
 });
 export const membersImportInput = z.object({ rows: z.array(memberInput).max(MEMBERS_IMPORT_MAX) });
-export const webhookInputSchema = z.object({
-  url: httpsUrl,
-  events: z
-    .array(z.enum(WEBHOOK_EVENTS))
-    .min(1)
-    .transform((events) => [...new Set(events)]),
-  secret: z.string().min(16).max(256).optional(),
-  enabled: z.boolean().optional(),
-});
-export const webhookPatchSchema = webhookInputSchema.omit({ secret: true }).partial();
+
+// The HTTP list routes answer a bad cursor as invalid input; the services behind them (and so RPC) answer invalid cursor.
+export function cursorParam(request: Request): string | undefined {
+  const cursor = new URL(request.url).searchParams.get("cursor") ?? undefined;
+  if (cursor !== undefined && !decodeCursor(cursor)) throw new RelayError("invalid input");
+  return cursor;
+}

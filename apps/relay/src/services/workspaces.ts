@@ -1,19 +1,17 @@
 import { eq } from "drizzle-orm";
-import { isAPIError } from "better-auth/api";
 import { coreDb } from "../db/core/client";
 import { usageDaily, workspaceProfile } from "../db/core/schema";
 import { securityDb } from "../db/security/client";
 import { workspace } from "../db/security/schema";
 import type { Env } from "../env";
 import { createAuth } from "../auth";
+import { authError } from "../auth/errors";
 import { workspaceHoldings } from "../core/workspace-holdings";
-import { assertSameOrigin } from "../auth/session";
-import type { Principal } from "./principal";
+import type { Principal, Session } from "./principal";
 import { RelayError } from "../shared/errors";
 
 // The cap and the self-serve profile are set by the better-auth hooks, so this path cannot skip them.
-export async function createWorkspace(env: Env, headers: Headers, input: { name: string; slug: string }): Promise<{ id: string }> {
-  assertSameOrigin(env, headers);
+export async function createWorkspace(env: Env, { headers }: Session, input: { name: string; slug: string }): Promise<{ id: string }> {
   const auth = createAuth(env);
   try {
     const org = await auth.api.createOrganization({ headers, body: input });
@@ -21,10 +19,7 @@ export async function createWorkspace(env: Env, headers: Headers, input: { name:
     await auth.api.setActiveOrganization({ headers, body: { organizationId: org.id } });
     return { id: org.id };
   } catch (err) {
-    if (isAPIError(err) && (err.statusCode === 400 || err.statusCode === 401 || err.statusCode === 403)) {
-      throw new RelayError("invalid input", err.statusCode, err.message);
-    }
-    throw err;
+    throw authError(err, "create");
   }
 }
 
@@ -33,8 +28,7 @@ export async function renameWorkspace(env: Env, p: Principal, headers: Headers, 
   try {
     await createAuth(env).api.updateOrganization({ headers, body: { organizationId: p.workspaceId, data: { name } } });
   } catch (err) {
-    if (isAPIError(err) && err.statusCode < 500) throw new RelayError("invalid input", err.statusCode === 403 || err.statusCode === 404 ? err.statusCode : 400, err.message);
-    throw err;
+    throw authError(err, "workspace");
   }
 }
 
@@ -46,12 +40,11 @@ export async function deleteWorkspace(env: Env, p: Principal, headers: Headers, 
   if (!row || row.slug !== slug) throw new RelayError("slug does not match");
   const { apps, domains } = await workspaceHoldings(env, p.workspaceId);
   const left = [apps > 0 ? plural(apps, "app") : "", domains > 0 ? plural(domains, "domain") : ""].filter(Boolean);
-  if (left.length > 0) throw new RelayError("invalid input", 409, `Remove its ${left.join(" and ")} first.`);
+  if (left.length > 0) throw new RelayError("workspace not empty", undefined, `Remove its ${left.join(" and ")} first.`);
   try {
     await createAuth(env).api.deleteOrganization({ headers, body: { organizationId: p.workspaceId } });
   } catch (err) {
-    if (isAPIError(err) && err.statusCode < 500) throw new RelayError("invalid input", err.statusCode === 403 || err.statusCode === 404 ? err.statusCode : 400, err.message);
-    throw err;
+    throw authError(err, "workspace");
   }
   // relay-core has no foreign keys to the workspace, so its rows go here.
   await coreDb(env).delete(workspaceProfile).where(eq(workspaceProfile.workspaceId, p.workspaceId));

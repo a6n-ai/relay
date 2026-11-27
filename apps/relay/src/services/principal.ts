@@ -15,6 +15,9 @@ export type Principal = {
   workspaceStatus?: "active" | "suspended";
 };
 
+// A signed-in user before any workspace is chosen (shell, invite, create workspace, password). The headers carry the cookie for better-auth calls.
+export type Session = { headers: Headers; userId: string; platformAdmin: boolean; activeWorkspaceId: string | null };
+
 // An API key reaches one app, so these two are always set.
 export type KeyPrincipal = Principal & { appId: string; keyId: string };
 

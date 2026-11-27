@@ -1,27 +1,19 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeaders } from "@tanstack/react-start/server";
 import { env } from "cloudflare:workers";
-import { and, eq, isNotNull } from "drizzle-orm";
 import { isAPIError } from "better-auth/api";
 import { z } from "zod";
-import { securityDb } from "../db/security/client";
-import { account } from "../db/security/schema";
 import { createAuth, isFreshSession, recordPasswordChange, STALE_SESSION_MESSAGE } from "../auth";
-import { fail } from "./guard";
-import { assertSameOrigin, requireSession } from "../auth/session";
+import { fail, userSession } from "./guard";
+import { hasPassword } from "../services/password";
+import { assertSameOrigin } from "../auth/session";
 import { validate } from "./schemas";
 import { RelayError } from "../shared/errors";
 import { PASSWORD_MAX, PASSWORD_MIN } from "../shared/limits";
 
 export const passwordStatusFn = createServerFn({ method: "GET" }).handler(async (): Promise<{ hasPassword: boolean }> => {
   try {
-    const { userId } = await requireSession(env, getRequestHeaders());
-    const rows = await securityDb(env)
-      .select({ id: account.id })
-      .from(account)
-      .where(and(eq(account.userId, userId), eq(account.providerId, "credential"), isNotNull(account.password)))
-      .limit(1);
-    return { hasPassword: rows.length > 0 };
+    return { hasPassword: await hasPassword(env, await userSession()) };
   } catch (err) {
     fail(err);
   }

@@ -3,10 +3,7 @@ import type { SendJob } from "../core/jobs";
 import { clientFor } from "../do/client";
 import { MAX_SEND_ATTEMPTS, isRetryableSesError, retryDelaySeconds, sesTransport, type SesTransport } from "../core/ses";
 import { bumpUsage, utcDay } from "../core/usage";
-
-function errorText(err: unknown): string {
-  return err instanceof Error ? err.message : String(err);
-}
+import { describeError } from "../core/log";
 
 export async function handleSendBatch(
   batch: MessageBatch<SendJob>,
@@ -45,7 +42,7 @@ export async function handleSendBatch(
           receipt = await transport.send(claim.request);
         } catch (err) {
           const final = !isRetryableSesError(err) || claim.attempt >= MAX_SEND_ATTEMPTS;
-          await stub.markSendFailed(workspaceId, messageId, errorText(err), final);
+          await stub.markSendFailed(workspaceId, messageId, err instanceof Error ? err.message : String(err), final);
           return final ? message.ack() : message.retry({ delaySeconds: retryDelaySeconds(claim.attempt) });
         }
 
@@ -64,7 +61,7 @@ export async function handleSendBatch(
         if (changed) countSent(workspaceId);
         message.ack();
       } catch (err) {
-        console.error("relay-send: job failed, retrying", body?.messageId, errorText(err));
+        console.error("relay-send: job failed, retrying", body?.messageId, describeError(err));
         message.retry({ delaySeconds: 30 });
       }
     }),

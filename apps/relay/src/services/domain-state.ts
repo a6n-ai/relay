@@ -1,10 +1,12 @@
 import { and, count, eq, lt } from "drizzle-orm";
 import { coreDb } from "../db/core/client";
+import { describeError } from "../core/log";
 import { address, sendingDomain } from "../db/core/schema";
 import { sesIdentityApi } from "../core/ses-identity";
 import { domainStateOf, onDomain, releasableWhere, sesRead } from "../core/sending-domain";
 import type { Env } from "../env";
 import { writeAudit } from "../auth/audit";
+import { DAY_MS } from "../shared/limits";
 import { refreshWorkspaceLimits } from "./limits";
 
 // The real SES state of an identity, for rows that start from an identity Relay did not create (seed, adopt).
@@ -12,7 +14,7 @@ export async function readDomainState(env: Env, region: string, domain: string) 
   return domainStateOf(await sesRead.assumeUnknown(env, region, domain));
 }
 
-const PENDING_RELEASE_MS = 14 * 24 * 60 * 60 * 1000;
+const PENDING_RELEASE_MS = 14 * DAY_MS;
 
 type DomainRow = { id: string; workspaceId: string; domain: string; sesRegion: string };
 
@@ -29,7 +31,7 @@ export async function releasePendingRow(env: Env, row: DomainRow, actorUserId: s
     .where(and(eq(sendingDomain.id, row.id), releasableWhere))
     .returning({ id: sendingDomain.id });
   if (gone.length === 0) return false;
-  await ses.delete(row.sesRegion, row.domain).catch(() => console.error("ses identity delete failed", row.id));
+  await ses.delete(row.sesRegion, row.domain).catch((err: unknown) => console.error("ses identity delete failed", row.id, describeError(err)));
   await writeAudit(env, { action: "domain.release", actorUserId, workspaceId: row.workspaceId, target: row.id });
   await refreshWorkspaceLimits(env, row.workspaceId);
   return true;
@@ -45,8 +47,8 @@ export async function releaseStalePendingDomains(env: Env, now = Date.now()): Pr
   for (const row of stale) {
     try {
       if (await releasePendingRow(env, row, null)) released++;
-    } catch {
-      console.error("domain release failed", row.id);
+    } catch (err) {
+      console.error("domain release failed", row.id, describeError(err));
     }
   }
   return released;

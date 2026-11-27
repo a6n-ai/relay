@@ -15,7 +15,6 @@ import {
   resumeCampaign,
   scheduleCampaign,
   updateCampaign,
-  withConsoleUrl,
 } from "../services/campaigns";
 import { messagesByKeys, suppress, suppressionStatus } from "../services/lookups";
 import {
@@ -52,7 +51,7 @@ import { STREAMS } from "../shared/mail";
 async function principalOf(env: Env, apiKey: string): Promise<KeyPrincipal> {
   const p = await resolveApiKey(env, apiKey);
   if (!p) throw new RelayError("unauthorized");
-  if (!(await withinRateLimit(env, p.keyId))) throw new Error("rate limited");
+  if (!(await withinRateLimit(env, p.keyId))) throw new RelayError("rate limited");
   return p;
 }
 
@@ -124,11 +123,11 @@ export class RelayRpc extends WorkerEntrypoint<Env> {
   }
 
   async createCampaign(apiKey: string, input: unknown) {
-    return withPrincipal(this.env, apiKey, (p) => createCampaign(this.env, p, p.appId, campaignCreateInput.parse(input)).then((c) => withConsoleUrl(this.env, c)));
+    return withPrincipal(this.env, apiKey, (p) => createCampaign(this.env, p, p.appId, campaignCreateInput.parse(input)));
   }
 
   async updateCampaign(apiKey: string, id: string, patch: unknown) {
-    return withPrincipal(this.env, apiKey, (p) => updateCampaign(this.env, p, id, campaignPatch.parse(patch)).then((c) => withConsoleUrl(this.env, c)));
+    return withPrincipal(this.env, apiKey, (p) => updateCampaign(this.env, p, id, campaignPatch.parse(patch)));
   }
 
   async deleteCampaign(apiKey: string, id: string) {

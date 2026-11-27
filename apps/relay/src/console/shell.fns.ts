@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
-import { getRequestHeaders, setResponseHeader } from "@tanstack/react-start/server";
+import { setResponseHeader } from "@tanstack/react-start/server";
 import { env } from "cloudflare:workers";
-import { fail } from "./guard";
+import { fail, userSession } from "./guard";
 import { googleConfig } from "../auth/google";
 import { loadShell } from "../services/shell";
 import { RelayError } from "../shared/errors";
@@ -11,7 +11,7 @@ import { type Shell } from "../shared/views";
 export const getShell = createServerFn({ method: "GET" }).handler(async (): Promise<Shell | null> => {
   const setCookies: string[] = [];
   try {
-    const shell = await loadShell(env, getRequestHeaders(), setCookies);
+    const shell = await loadShell(env, await userSession(), setCookies);
     if (setCookies.length > 0) setResponseHeader("set-cookie", setCookies);
     return shell;
   } catch (err) {

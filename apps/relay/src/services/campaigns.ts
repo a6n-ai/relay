@@ -20,11 +20,11 @@ import { refreshWorkspaceLimits } from "./limits";
 import { ownApp, audit, owned, type Principal } from "./principal";
 import type { campaignCreateInput } from "./schemas";
 
-// Lets TiffinGrab send staff straight to the editor for a campaign it created or changed.
-export const withConsoleUrl = (env: Env, campaign: CampaignView) => ({
-  ...campaign,
-  consoleUrl: `${env.BETTER_AUTH_URL}/campaigns/${campaign.id}?appId=${campaign.appId}`,
-});
+type CampaignResult = CampaignView & { consoleUrl?: string };
+
+// Lets TiffinGrab send staff straight to the editor for a campaign it created or changed. A console user is already in it.
+const resultFor = (env: Env, p: Principal, campaign: CampaignView): CampaignResult =>
+  p.keyId ? { ...campaign, consoleUrl: `${env.BETTER_AUTH_URL}/campaigns/${campaign.id}?appId=${campaign.appId}` } : campaign;
 
 async function ownedCampaign(env: Env, p: Principal, id: string): Promise<CampaignView> {
   return owned(p, await clientFor(env, p.workspaceId).getCampaign(p.workspaceId, id));
@@ -50,17 +50,17 @@ export async function campaignStats(env: Env, p: Principal, id: string): Promise
   return stats;
 }
 
-export async function createCampaign(env: Env, p: Principal, appId: string, input: z.infer<typeof campaignCreateInput>): Promise<CampaignView> {
+export async function createCampaign(env: Env, p: Principal, appId: string, input: z.infer<typeof campaignCreateInput>): Promise<CampaignResult> {
   await ownApp(env, p, appId);
   const audience = input.audienceKind ? { audienceKind: input.audienceKind, audienceQuery: input.audienceQuery ?? null } : undefined;
   const campaign = await clientFor(env, p.workspaceId).createCampaign(p.workspaceId, appId, input.name, input.templateId, audience);
   if (campaign === "template_missing") throw new RelayError("not found");
   await audit(env, p, "campaign.create", campaign.id, { appId });
-  return campaign;
+  return resultFor(env, p, campaign);
 }
 
 // Merge fields and the sender are checked here; the DO checks draft status and list ownership in its own transaction.
-export async function updateCampaign(env: Env, p: Principal, id: string, patch: CampaignPatch): Promise<CampaignView> {
+export async function updateCampaign(env: Env, p: Principal, id: string, patch: CampaignPatch): Promise<CampaignResult> {
   const current = await ownedCampaign(env, p, id);
   if (patch.audienceQuery && patch.audienceQuery.length > 1000) throw new RelayError("invalid input");
   // {{data.*}} is only valid where a hook supplies the data.
@@ -77,7 +77,7 @@ export async function updateCampaign(env: Env, p: Principal, id: string, patch: 
   }
   const updated = await clientFor(env, p.workspaceId).updateCampaign(p.workspaceId, id, patch);
   await audit(env, p, "campaign.update", id);
-  return updated;
+  return resultFor(env, p, updated);
 }
 
 export async function deleteCampaign(env: Env, p: Principal, id: string): Promise<void> {
@@ -145,9 +145,7 @@ export async function unscheduleCampaign(env: Env, p: Principal, id: string): Pr
 
 export async function pauseCampaign(env: Env, p: Principal, id: string): Promise<void> {
   const campaign = await ownedCampaign(env, p, id);
-  const outcome = await clientFor(env, p.workspaceId).pauseCampaign(p.workspaceId, id);
-  if (outcome === "missing") throw new RelayError("not found");
-  if (outcome === "not_sending") throw new RelayError("campaign not sending");
+  await clientFor(env, p.workspaceId).pauseCampaign(p.workspaceId, id);
   await stopRun(env, id, campaign.runSeq);
   await audit(env, p, "campaign.pause", id);
 }
@@ -163,7 +161,7 @@ export async function resumeCampaign(env: Env, p: Principal, id: string): Promis
     });
   } catch (err) {
     console.error("campaign run create failed", id, describeError(err));
-    await client.pauseCampaign(p.workspaceId, id);
+    await client.pauseRunning(p.workspaceId, id, outcome.runSeq, null);
     throw new RelayError("could not resume");
   }
   await audit(env, p, "campaign.resume", id);

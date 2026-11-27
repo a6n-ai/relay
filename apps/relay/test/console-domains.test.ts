@@ -227,7 +227,7 @@ describe("console sending domains and addresses", { timeout: 60_000 }, () => {
     expect(await coreDb(env).select().from(address).where(eq(address.id, id))).toHaveLength(0);
   });
 
-  it("swallows a failed limits refresh and leaks no address into the logs", async () => {
+  it("swallows a failed limits refresh, logs its cause and leaks no address into the logs", async () => {
     const failing = {
       ...env,
       CLIENT: {
@@ -239,7 +239,9 @@ describe("console sending domains and addresses", { timeout: 60_000 }, () => {
     const errors = vi.spyOn(console, "error").mockImplementation(() => {});
 
     await expect(refreshWorkspaceLimits(failing, "wsp_logs")).resolves.toBeUndefined();
-    expect(JSON.stringify(errors.mock.calls)).not.toContain("@");
+    const logged = JSON.stringify(errors.mock.calls);
+    expect(logged).toContain("boom");
+    expect(logged).not.toContain("g@leak.test");
   });
 
   it("requires a verified domain for an inbox or both address, but lets a sender go out on a pending one", async () => {

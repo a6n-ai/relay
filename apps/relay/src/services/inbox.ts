@@ -12,7 +12,7 @@ import { addressGrant, member, team, teamMember } from "../db/security/schema";
 import type { Env } from "../env";
 import { allows } from "../shared/permissions";
 import type { Principal } from "./principal";
-import { RelayError } from "../shared/errors";
+import { codeOf, RelayError } from "../shared/errors";
 import { type MessageStatus } from "../shared/mail";
 
 type ConsoleMessage = Omit<
@@ -126,7 +126,12 @@ async function inlineCidImages(
     const att = byCid.get(cid);
     if (!att || !INLINE_TYPES.has(att.contentType)) continue;
     if (att.sizeBytes > INLINE_MAX_BYTES || fetched + att.sizeBytes > INLINE_BUDGET_BYTES) continue;
-    const file = await clientFor(env, p.workspaceId).getMessageFile(p.workspaceId, messageId, att.id, access);
+    const file = await clientFor(env, p.workspaceId)
+      .getMessageFile(p.workspaceId, messageId, att.id, access)
+      .catch((err: unknown) => {
+        if (codeOf(err) === "not found") return null;
+        throw err;
+      });
     if (!file || !("key" in file) || !ownedBy(p.workspaceId, file.key)) continue;
     const object = await env.MAIL.get(file.key);
     if (!object) continue;
@@ -158,7 +163,6 @@ export async function messageFile(
 ): Promise<Response> {
   const access = await messageAccess(env, p);
   const file = await clientFor(env, p.workspaceId).getMessageFile(p.workspaceId, id, part, access);
-  if (!file) throw new RelayError("not found");
   if ("body" in file) {
     const bytes = new TextEncoder().encode(file.body);
     return downloadResponse(new Blob([bytes]).stream(), bytes.byteLength, file.name);

@@ -100,6 +100,10 @@ export const ERRORS = {
   "exactly one grantee required": { status: 400 },
   "address does not belong to workspace": { status: 404 },
   "grantee does not belong to workspace": { status: 404 },
+  "app does not belong to workspace": { status: 404 },
+  "auth refused": { status: 403 },
+  "workspace not empty": { status: 409 },
+  "rate limited": { status: 429 },
 } as const satisfies Record<string, Row>;
 
 export type ErrorCode = keyof typeof ERRORS;
@@ -110,8 +114,10 @@ export class RelayError extends AppError {
     readonly code: ErrorCode,
     status: Status = ERRORS[code].status,
     message: string = code,
+    options?: ErrorOptions,
   ) {
     super(message, status);
+    if (options?.cause !== undefined) this.cause = options.cause;
   }
 }
 

@@ -182,6 +182,13 @@ describe("campaign lifecycle console", () => {
     expect(second).not.toBe(first);
   });
 
+  it("refuses to pause a campaign that is not sending, and a campaign that does not exist", async () => {
+    const { owner, campaignId } = await readyFixture("cmp-pause-refuse@example.com", "Cmp Pause Refuse Co");
+    spyWorkflow();
+    await expect(pauseCampaign(env, owner, campaignId)).rejects.toMatchObject({ status: 409, message: "campaign not sending" });
+    await expect(pauseCampaign(env, owner, "cmp_missing")).rejects.toMatchObject({ status: 404, message: "not found" });
+  });
+
   it("cancels a paused campaign and reports the dropped count", async () => {
     const { owner, campaignId } = await readyFixture("cmp-cancel@example.com", "Cmp Cancel Co");
     spyWorkflow();

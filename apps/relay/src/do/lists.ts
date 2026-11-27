@@ -41,6 +41,8 @@ export function listListRows(sql: SqlStorage, appId?: string): ListView[] {
   return appId === undefined ? listViews(sql, "", []) : listViews(sql, "WHERE l.app_id = ?", [appId]);
 }
 
+export const listRow = (sql: SqlStorage, id: string): ListView | null => listViews(sql, "WHERE l.id = ?", [id])[0] ?? null;
+
 export function createListRow(sql: SqlStorage, appId: string, input: ListInput): ListView {
   const id = newId("ctl");
   const now = Date.now();

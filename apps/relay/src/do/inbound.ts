@@ -22,7 +22,7 @@ export type InboundDeps = { storage: DurableObjectStorage; db: DrizzleSqliteDODa
 
 // Keeps a DO row under 2 MB; the webhook payload keeps the full text.
 const INBOUND_TEXT_MAX = 262_144;
-const SUBJECT_MAX = 998;
+const RFC_SUBJECT_MAX = 998;
 const EVENT = MAILBOX_RECEIVED;
 
 function assertOwnRawKey(workspaceId: string, rawKey: string): void {
@@ -195,7 +195,7 @@ export async function storeInbound(deps: InboundDeps, workspaceId: string, job: 
           fromEmail: parsed.fromEmail,
           fromName: parsed.fromName,
           toEmail: job.envelopeTo,
-          subject: parsed.subject.slice(0, SUBJECT_MAX),
+          subject: parsed.subject.slice(0, RFC_SUBJECT_MAX),
           text: parsed.text.slice(0, INBOUND_TEXT_MAX),
           htmlKey,
           rawKey: job.rawKey,

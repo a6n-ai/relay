@@ -8,7 +8,7 @@ import { createWebhook, deleteWebhook, listDeliveries, listWebhooks, retryDelive
 import { createAddress, createAddressGrant } from "../src/core/addresses";
 import { createApp } from "../src/core/apps";
 import { clientFor } from "../src/do/client";
-import { webhookInputSchema, webhookPatchSchema } from "../src/services/schemas";
+import { webhookInputSchema, webhookPatchSchema } from "../src/core/webhooks";
 import { coreDb } from "../src/db/core/client";
 import { address } from "../src/db/core/schema";
 import { securityDb } from "../src/db/security/client";

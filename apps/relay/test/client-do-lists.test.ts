@@ -135,9 +135,13 @@ describe("contact lists in the workspace DO", () => {
     expect((await stub.listMembers(ws, list.id))?.rows.map((r) => r.email)).toEqual(["ok@x.com"]);
   });
 
-  it("returns null for a missing list", async () => {
+  it("refuses a missing list with not found", async () => {
     const ws = "ws_list_import_missing";
-    expect(await stubFor(ws).importMembers(ws, "ctl_missing00000", [{ email: "a@x.com" }])).toBeNull();
+    expect(await refused(stubFor(ws).importMembers(ws, "ctl_missing00000", [{ email: "a@x.com" }]))).toBe("not found");
+    expect(await refused(stubFor(ws).listMembers(ws, "ctl_missing00000"))).toBe("not found");
+    expect(await refused(stubFor(ws).updateList(ws, "ctl_missing00000", { name: "x" }))).toBe("not found");
+    expect(await refused(stubFor(ws).removeMember(ws, "ctl_missing00000", "clm_missing"))).toBe("not found");
+    expect(await refused(stubFor(ws).updateMember(ws, "ctl_missing00000", "clm_missing", { firstName: "a", lastName: "b" }))).toBe("not found");
   });
 });
 

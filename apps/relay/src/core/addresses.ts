@@ -5,6 +5,7 @@ import { securityDb } from "../db/security/client";
 import { addressGrant, app, member, team } from "../db/security/schema";
 import type { Env } from "../env";
 import { RelayError } from "../shared/errors";
+import { DAY_MS } from "../shared/limits";
 
 // relay-core and relay-security cannot foreign-key each other, so these checks are the only guard on those ids.
 export async function createAddress(
@@ -15,7 +16,7 @@ export async function createAddress(
     .select({ id: app.id })
     .from(app)
     .where(and(eq(app.id, input.appId), eq(app.workspaceId, input.workspaceId)));
-  if (!owner) throw new Error("app does not belong to workspace");
+  if (!owner) throw new RelayError("app does not belong to workspace");
   const [row] = await coreDb(env)
     .insert(address)
     .values({ ...input, email: input.email.trim().toLowerCase() })
@@ -85,7 +86,7 @@ export async function deleteAddress(env: Env, workspaceId: string, id: string): 
   return true;
 }
 
-export const INBOUND_GRACE_MS = 7 * 24 * 60 * 60 * 1000;
+export const INBOUND_GRACE_MS = 7 * DAY_MS;
 
 export async function inboxForRecipient(
   env: Env,

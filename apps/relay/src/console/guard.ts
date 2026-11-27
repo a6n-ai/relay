@@ -4,7 +4,7 @@ import { createGuard } from "@foundry/commons/guard";
 import { env } from "cloudflare:workers";
 import { recordFailure } from "../core/log";
 import { statusOf } from "../shared/errors";
-import { requireActor, requirePlatformAdmin } from "./actor";
+import { requireActor, requirePlatformAdmin, requireUser } from "./actor";
 import type { Principal } from "../services/principal";
 import type { Need } from "./needs";
 
@@ -40,11 +40,13 @@ const admin = createGuard<{ write?: boolean }, { userId: string }>({
 });
 export const runAdmin = <T>(fn: (admin: { userId: string }) => Promise<T>, write = true) => admin.run({ write }, fn);
 
+// The signed-in user of this request, for the functions that run before a workspace is chosen. A write also checks the origin.
+export const userSession = (opts?: { write?: boolean }) => requireUser(env, getRequestHeaders(), opts);
+
 // Functions that check the session themselves (sign-in state, workspace create, password) still share the error copy and logging.
 export function fail(err: unknown): never {
   return guard.fail(err);
 }
-
 
 // A page that can name a missing app or list renders its own empty state, so a 404 is data rather than an error.
 export const orMissing =

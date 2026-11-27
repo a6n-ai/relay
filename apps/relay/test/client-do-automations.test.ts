@@ -1,8 +1,9 @@
 import { env, runInDurableObject } from "cloudflare:test";
 import { eq } from "drizzle-orm";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi, type MockInstance } from "vitest";
+import { LIMITS_KEY } from "../src/core/limits";
 import { coreDb } from "../src/db/core/client";
-import { workspaceProfile } from "../src/db/core/schema";
+import { address, workspaceProfile } from "../src/db/core/schema";
 import { securityDb } from "../src/db/security/client";
 import { workspace } from "../src/db/security/schema";
 import { applyMigrations, seedVerifiedSender } from "./migrate";
@@ -286,7 +287,7 @@ describe("list automations in the workspace DO", () => {
     await stub.setAutomationEnabled(ws, aut.id, true, "1 Main St");
     await stub.addMember(ws, list.id, { email: "a@x.com" });
     const [{ due_at: due }] = await runs(stub);
-    await runInDurableObject(stub, (_i, state) => state.storage.kv.delete("limits:v2"));
+    await runInDurableObject(stub, (_i, state) => state.storage.kv.delete(LIMITS_KEY));
     const d1 = vi.spyOn(env.CORE_DB, "prepare").mockImplementation(() => {
       throw new Error("D1 down");
     });
@@ -295,5 +296,38 @@ describe("list automations in the workspace DO", () => {
     expect(await runs(stub)).toEqual([expect.objectContaining({ status: "pending", error: null })]);
     d1.mockRestore();
     expect(await stub.runDueAutomations(due)).toMatchObject({ sent: 1, blocked: false });
+  });
+
+  it("reloads the limits once for a sender verified after the snapshot, then sends on the next pass", async () => {
+    const ws = "ws_aut_sender_retry";
+    const { stub, list, aut } = await setup(ws);
+    await stub.setAutomationEnabled(ws, aut.id, true, "1 Main St");
+    await stub.addMember(ws, list.id, { email: "a@x.com" });
+    const [{ due_at: due }] = await runs(stub);
+    await coreDb(env).delete(address).where(eq(address.email, FROM));
+    await stub.refreshLimits(ws);
+    await seedVerifiedSender(ws);
+
+    expect(await stub.runDueAutomations(due)).toMatchObject({ sent: 0, skipped: 0, blocked: false });
+    expect(await runs(stub)).toEqual([expect.objectContaining({ status: "pending", error: null })]);
+    expect(await stub.runDueAutomations(due)).toMatchObject({ sent: 1, skipped: 0 });
+  });
+
+  it("logs an unexpected send error and leaves the run pending, never skipping it", async () => {
+    const ws = "ws_aut_unknown_error";
+    const { stub, list, aut } = await setup(ws);
+    await stub.setAutomationEnabled(ws, aut.id, true, "1 Main St");
+    await stub.addMember(ws, list.id, { email: "a@x.com" });
+    const [{ due_at: due }] = await runs(stub);
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.spyOn(env.MAIL, "put").mockRejectedValue(new Error("r2 down"));
+
+    const outcome = await runInDurableObject(stub, (instance) => instance.runDueAutomations(due));
+    expect(outcome).toMatchObject({ sent: 0, skipped: 0, blocked: true });
+    expect(log).toHaveBeenCalledWith("automation send deferred", expect.stringContaining("r2 down"));
+    expect(await runs(stub)).toEqual([expect.objectContaining({ status: "pending", error: null })]);
+
+    vi.restoreAllMocks();
+    expect(await stub.runDueAutomations(due)).toMatchObject({ sent: 1 });
   });
 });

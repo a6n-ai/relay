@@ -1,15 +1,16 @@
 import { WorkflowEntrypoint, type WorkflowEvent, type WorkflowStep } from "cloudflare:workers";
 import { NonRetryableError } from "cloudflare:workflows";
 import type { Env } from "../env";
-import type { CampaignRunParams } from "../core/campaign-run";
+import { CHUNK_SIZE, MAX_RUN_RECIPIENTS, type CampaignRunParams } from "../core/campaign-run";
 import { AUDIENCE_FAILED, fetchAudiencePage } from "../core/audience-hook";
 import { type AudiencePage } from "../core/audience-protocol";
 import { clientFor } from "../do/client";
+import { codeOf } from "../shared/errors";
 
 export type CampaignStep = Pick<WorkflowStep, "do" | "sleep" | "sleepUntil">;
 
 // Workflows allow 1,024 steps on Free and 10,000 on Paid (sleeps do not count). 1 start + 400 chunks fits both.
-const MAX_CHUNKS = 400;
+const MAX_CHUNKS = MAX_RUN_RECIPIENTS / CHUNK_SIZE;
 // A hook page is three steps (page, ingest, pace), so 300 pages plus the start step stays under the Free limit of 1,024.
 const HOOK_MAX_PAGES = 300;
 const STEP_RETRY = { retries: { limit: 5, delay: "30 seconds", backoff: "exponential" }, timeout: "5 minutes" } as const;
@@ -55,12 +56,12 @@ export async function runCampaign(env: Env, p: CampaignRunParams, step: Campaign
         if (r.paceMs > 0) await step.sleep(`pace-${n}`, r.paceMs);
       }
     }
-    await step.do("too-many", STEP_RETRY, () => stub.pauseCampaign(p.workspaceId, p.campaignId, "too_many_recipients", p.runSeq));
+    await step.do("too-many", STEP_RETRY, () => stub.pauseRunning(p.workspaceId, p.campaignId, p.runSeq, "too_many_recipients"));
     return "stopped";
   } catch (err) {
     // A step that exhausted its retries would leave the campaign sending forever; pause it so the operator sees why.
-    const reason = err instanceof Error && err.message === AUDIENCE_FAILED ? AUDIENCE_FAILED : "run_failed";
-    await step.do("fail", STEP_RETRY, () => stub.pauseCampaign(p.workspaceId, p.campaignId, reason, p.runSeq));
+    const reason = codeOf(err) === "audience_failed" ? "audience_failed" : "run_failed";
+    await step.do("fail", STEP_RETRY, () => stub.pauseRunning(p.workspaceId, p.campaignId, p.runSeq, reason));
     return "stopped";
   }
 }
