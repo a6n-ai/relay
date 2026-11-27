@@ -1,6 +1,5 @@
 import { newId } from "../shared/ids";
-import { decodeCursor, encodeCursor } from "../core/cursor";
-import { RelayError } from "../shared/errors";
+import { keysetBefore, keysetSlice, parseCursor } from "../core/cursor";
 import { type ConsentSource, type ListView, type MemberView } from "../shared/views";
 import type { MemberInput } from "../core/member-input";
 import { PAGE_SIZE } from "../shared/limits";
@@ -104,25 +103,22 @@ export function listMemberRows(
   isSuppressed: (email: string) => boolean,
   cursor?: string,
 ): { rows: MemberView[]; nextCursor: string | null } | null {
-  const after = cursor === undefined ? null : decodeCursor(cursor);
-  if (cursor !== undefined && !after) throw new RelayError("invalid cursor");
+  const after = parseCursor(cursor);
   if (sql.exec("SELECT id FROM contact_list WHERE id = ?", listId).toArray().length === 0) return null;
-  const keyset = after ? "AND (m.created_at < ? OR (m.created_at = ? AND m.id < ?))" : "";
-  const keysetBindings = after ? [after.createdAt, after.createdAt, after.id] : [];
+  const keyset = after ? keysetBefore(after, "m.created_at", "m.id") : null;
   const fetched = sql
     .exec<MemberRow>(
       `SELECT m.id, m.email, m.first_name AS firstName, m.last_name AS lastName, m.source,
               m.consent_at AS consentAt, m.created_at AS createdAt
        FROM contact_list_member m
-       WHERE m.list_id = ? ${keyset}
+       WHERE m.list_id = ? ${keyset ? `AND ${keyset.sql}` : ""}
        ORDER BY m.created_at DESC, m.id DESC LIMIT ?`,
       listId,
-      ...keysetBindings,
+      ...(keyset?.bindings ?? []),
       PAGE_SIZE + 1,
     )
     .toArray();
-  const page = fetched.slice(0, PAGE_SIZE);
-  const last = page[page.length - 1];
+  const { page, nextCursor } = keysetSlice(fetched, PAGE_SIZE);
   const optedOut = optedOutByEmail(sql, page.map((r) => r.email));
   const rows: MemberView[] = page.map((r) => ({
     id: r.id,
@@ -135,7 +131,7 @@ export function listMemberRows(
     optedOut: optedOut.get(r.email) ?? [],
     createdAt: r.createdAt,
   }));
-  return { rows, nextCursor: fetched.length > PAGE_SIZE && last ? encodeCursor(last.createdAt, last.id) : null };
+  return { rows, nextCursor };
 }
 
 // Keyset on email, so a resumed export never repeats or skips an address.

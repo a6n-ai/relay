@@ -1,3 +1,4 @@
+import { inChunks } from "../core/chunks";
 import { and, eq, inArray, like } from "drizzle-orm";
 import { clearDefaultSenders } from "../core/addresses";
 import { refreshWorkspaceLimits } from "./limits";
@@ -12,10 +13,6 @@ import { writeAudit } from "../lib/auth/audit";
 import { type ConsoleActor } from "../core/session";
 import { dkimRecords, domainRow } from "./domains";
 import { RelayError } from "../shared/errors";
-
-// D1 takes at most 100 bound parameters per statement, so id lists go out in chunks.
-const CHUNK = 90;
-const chunks = <T>(xs: T[]): T[][] => Array.from({ length: Math.ceil(xs.length / CHUNK) }, (_, i) => xs.slice(i * CHUNK, (i + 1) * CHUNK));
 
 const ownerCommand = (d: { sesRegion: string; domain: string }) =>
   `aws sesv2 delete-email-identity --region ${d.sesRegion} --email-identity ${d.domain}`;
@@ -32,15 +29,13 @@ async function addressesOf(env: Env, workspaceId: string, domain: string) {
 
 // Grants sit in relay-security, so they are looked up by the address ids that core returned.
 async function grantIdsOf(env: Env, workspaceId: string, addressIds: string[]): Promise<string[]> {
-  const ids: string[] = [];
-  for (const part of chunks(addressIds)) {
-    const rows = await securityDb(env)
+  const found = await inChunks(addressIds, (part) =>
+    securityDb(env)
       .select({ id: addressGrant.id })
       .from(addressGrant)
-      .where(and(eq(addressGrant.workspaceId, workspaceId), inArray(addressGrant.addressId, part)));
-    ids.push(...rows.map((r) => r.id));
-  }
-  return ids;
+      .where(and(eq(addressGrant.workspaceId, workspaceId), inArray(addressGrant.addressId, part))),
+  );
+  return found.flat().map((r) => r.id);
 }
 
 export async function domainDeletePreview(env: Env, actor: ConsoleActor, id: string) {
@@ -93,9 +88,9 @@ export async function deleteDomain(
   const detached = await client.detachDomain(row.workspaceId, row.domain);
   const history = input.deleteHistory ? await client.deleteDomainHistory(row.workspaceId, row.domain) : null;
   // Grants before addresses: a failure leaves an address without grants, never a grant to a missing address.
-  for (const part of chunks(grantIds)) await securityDb(env).delete(addressGrant).where(inArray(addressGrant.id, part));
-  for (const part of chunks(addressIds)) await clearDefaultSenders(env, row.workspaceId, part);
-  for (const part of chunks(addressIds)) await coreDb(env).delete(address).where(inArray(address.id, part));
+  await inChunks(grantIds, (part) => securityDb(env).delete(addressGrant).where(inArray(addressGrant.id, part)));
+  await inChunks(addressIds, (part) => clearDefaultSenders(env, row.workspaceId, part));
+  await inChunks(addressIds, (part) => coreDb(env).delete(address).where(inArray(address.id, part)));
   await coreDb(env).delete(sendingDomain).where(eq(sendingDomain.id, row.id));
 
   await refreshWorkspaceLimits(env, row.workspaceId);

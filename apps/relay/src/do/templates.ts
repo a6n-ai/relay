@@ -1,6 +1,5 @@
 import { newId } from "../shared/ids";
-import { decodeCursor, encodeCursor } from "../core/cursor";
-import { RelayError } from "../shared/errors";
+import { keysetBefore, keysetSlice, parseCursor } from "../core/cursor";
 import { type TemplateView } from "../shared/views";
 import { PAGE_SIZE } from "../shared/limits";
 
@@ -48,13 +47,13 @@ export function createTemplateRow(sql: SqlStorage, appId: string, input: Templat
 }
 
 export function listTemplateRows(sql: SqlStorage, cursor?: string, appId?: string): { rows: TemplateView[]; nextCursor: string | null } {
-  const after = cursor === undefined ? null : decodeCursor(cursor);
-  if (cursor !== undefined && !after) throw new RelayError("invalid cursor");
+  const after = parseCursor(cursor);
   const where: string[] = [];
   const bindings: unknown[] = [];
   if (after) {
-    where.push("(created_at < ? OR (created_at = ? AND id < ?))");
-    bindings.push(after.createdAt, after.createdAt, after.id);
+    const keyset = keysetBefore(after);
+    where.push(keyset.sql);
+    bindings.push(...keyset.bindings);
   }
   if (appId !== undefined) {
     where.push("app_id = ?");
@@ -64,9 +63,8 @@ export function listTemplateRows(sql: SqlStorage, cursor?: string, appId?: strin
   const fetched = sql
     .exec<Raw>(`SELECT ${COLUMNS} FROM template ${clause} ORDER BY created_at DESC, id DESC LIMIT ?`, ...bindings, PAGE_SIZE + 1)
     .toArray();
-  const page = fetched.slice(0, PAGE_SIZE).map(view);
-  const last = page[page.length - 1];
-  return { rows: page, nextCursor: fetched.length > PAGE_SIZE && last ? encodeCursor(last.createdAt, last.id) : null };
+  const { page, nextCursor } = keysetSlice(fetched, PAGE_SIZE);
+  return { rows: page.map(view), nextCursor };
 }
 
 export function updateTemplateRow(sql: SqlStorage, id: string, patch: Partial<TemplateInput>): TemplateView | "missing" | "event_taken" {

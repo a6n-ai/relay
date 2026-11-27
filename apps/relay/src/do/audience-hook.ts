@@ -80,6 +80,8 @@ export function deleteAudienceHookRow(sql: SqlStorage, appId: string): boolean {
 }
 
 // campaign.cursor for a hook run: `p` pages ingested so far, `c` the hook's next-page cursor.
+export const encodeHookCursor = (pages: number, next: string | null): string => JSON.stringify({ p: pages, c: next });
+
 export function parseHookCursor(raw: string | null): { p: number; c: string | null } {
   if (!raw) return { p: 0, c: null };
   const parsed = JSON.parse(raw) as { p?: unknown; c?: unknown };

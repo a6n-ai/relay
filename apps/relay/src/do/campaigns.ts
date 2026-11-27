@@ -1,8 +1,7 @@
 import { brandDomain, IMPLIED_CONSENT_MS } from "../core/campaigns";
 import { newId } from "../shared/ids";
-import { decodeCursor, encodeCursor } from "../core/cursor";
+import { keysetBefore, keysetSlice, parseCursor } from "../core/cursor";
 import { getTemplateRow } from "./templates";
-import { RelayError } from "../shared/errors";
 import { type CampaignView, type AudiencePreview, type CampaignStats } from "../shared/views";
 import { PAGE_SIZE } from "../shared/limits";
 
@@ -108,13 +107,13 @@ export function listCampaignRows(
   cursor?: string,
   appId?: string,
 ): { rows: CampaignSummary[]; nextCursor: string | null } {
-  const after = cursor === undefined ? null : decodeCursor(cursor);
-  if (cursor !== undefined && !after) throw new RelayError("invalid cursor");
+  const after = parseCursor(cursor);
   const where: string[] = [];
   const bindings: unknown[] = [];
   if (after) {
-    where.push("(created_at < ? OR (created_at = ? AND id < ?))");
-    bindings.push(after.createdAt, after.createdAt, after.id);
+    const keyset = keysetBefore(after);
+    where.push(keyset.sql);
+    bindings.push(...keyset.bindings);
   }
   if (appId !== undefined) {
     where.push("app_id = ?");
@@ -124,9 +123,8 @@ export function listCampaignRows(
   const fetched = sql
     .exec<Raw<CampaignSummary>>(`SELECT ${SUMMARY_COLUMNS} FROM campaign ${clause} ORDER BY created_at DESC, id DESC LIMIT ?`, ...bindings, PAGE_SIZE + 1)
     .toArray();
-  const page = fetched.slice(0, PAGE_SIZE).map((r) => parse(r) as CampaignSummary);
-  const last = page[page.length - 1];
-  return { rows: page, nextCursor: fetched.length > PAGE_SIZE && last ? encodeCursor(last.createdAt, last.id) : null };
+  const { page, nextCursor } = keysetSlice(fetched, PAGE_SIZE);
+  return { rows: page.map((r) => parse(r) as CampaignSummary), nextCursor };
 }
 
 export function updateCampaignRow(sql: SqlStorage, id: string, patch: CampaignPatch): CampaignView | "missing" | "not_draft" | "bad_list" {

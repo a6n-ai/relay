@@ -1,12 +1,12 @@
 import { and, asc, desc, eq, gt, lt, ne, or, sql, type SQL } from "drizzle-orm";
 import type { DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
+import type { SQLiteColumn } from "drizzle-orm/sqlite-core";
 import { safeDownloadName } from "../core/download";
 import { contactValues, parseMergeData, renderMerge } from "../shared/merge";
 import type { Env } from "../env";
 import type { AttachmentView, MessageView } from "./types";
 import * as schema from "./client-schema";
-import { decodeCursor, encodeCursor } from "../core/cursor";
-import { RelayError } from "../shared/errors";
+import { keysetSlice, parseCursor } from "../core/cursor";
 import { type DeliveryView } from "../shared/views";
 import { type Stream, type SuppressionReason, type MessageStatus } from "../shared/mail";
 import { PAGE_SIZE } from "../shared/limits";
@@ -52,6 +52,9 @@ type Db = DrizzleSqliteDODatabase<typeof schema>;
 const THREAD_LIMIT = 20;
 
 // Non-correlated: the granted ids reach SQL as one bound JSON array, so the bound-parameter limit never applies.
+const olderThan = (createdAt: SQLiteColumn, id: SQLiteColumn, after: { createdAt: number; id: string }) =>
+  or(lt(createdAt, after.createdAt), and(eq(createdAt, after.createdAt), lt(id, after.id)));
+
 export function visibleTo(access: MessageAccess): SQL {
   const m = schema.message;
   const inbound =
@@ -96,8 +99,7 @@ export function listDeliveryRows(
 ): { rows: DeliveryView[]; nextCursor: string | null } {
   const d = schema.webhookDelivery;
   const m = schema.message;
-  const cursor = q.cursor === undefined ? undefined : decodeCursor(q.cursor);
-  if (q.cursor !== undefined && !cursor) throw new RelayError("invalid cursor");
+  const cursor = parseCursor(q.cursor);
   const rows = db
     .select({
       id: d.id,
@@ -119,18 +121,14 @@ export function listDeliveryRows(
         eq(d.webhookId, q.webhookId),
         // Outbound-only deliveries have no address, so the restricted filter drops them.
         q.visible === "all" ? undefined : sql`${m.addressId} IN (SELECT value FROM json_each(${JSON.stringify(q.visible)}))`,
-        cursor
-          ? or(lt(d.createdAt, cursor.createdAt), and(eq(d.createdAt, cursor.createdAt), lt(d.id, cursor.id)))
-          : undefined,
+        cursor ? olderThan(d.createdAt, d.id, cursor) : undefined,
       ),
     )
     .orderBy(desc(d.createdAt), desc(d.id))
     .limit(PAGE_SIZE + 1)
     .all()
     .map((r): DeliveryView => ({ ...r, status: r.status as DeliveryView["status"] }));
-  const page = rows.slice(0, PAGE_SIZE);
-  const last = page.at(-1);
-  const nextCursor = rows.length > PAGE_SIZE && last ? encodeCursor(last.createdAt, last.id) : null;
+  const { page, nextCursor } = keysetSlice(rows, PAGE_SIZE);
   return { rows: page, nextCursor };
 }
 
@@ -197,8 +195,7 @@ export function listMessageRows(
   access: MessageAccess,
 ): { rows: MessageSummary[]; nextCursor: string | null } {
   const m = schema.message;
-  const cursor = q.cursor === undefined ? undefined : decodeCursor(q.cursor);
-  if (q.cursor !== undefined && !cursor) throw new RelayError("invalid cursor");
+  const cursor = parseCursor(q.cursor);
   const rows = db
     .select({
       id: m.id,
@@ -220,18 +217,14 @@ export function listMessageRows(
         q.appId ? eq(m.appId, q.appId) : undefined,
         q.status ? eq(m.status, q.status) : undefined,
         q.email ? eq(q.direction === "out" ? m.toEmail : m.fromEmail, q.email) : undefined,
-        cursor
-          ? or(lt(m.createdAt, cursor.createdAt), and(eq(m.createdAt, cursor.createdAt), lt(m.id, cursor.id)))
-          : undefined,
+        cursor ? olderThan(m.createdAt, m.id, cursor) : undefined,
       ),
     )
     .orderBy(desc(m.createdAt), desc(m.id))
     .limit(PAGE_SIZE + 1)
     .all()
     .map((r): MessageSummary => ({ ...r, direction: r.direction as "in" | "out", status: r.status as MessageStatus }));
-  const page = rows.slice(0, PAGE_SIZE);
-  const last = page.at(-1);
-  const nextCursor = rows.length > PAGE_SIZE && last ? encodeCursor(last.createdAt, last.id) : null;
+  const { page, nextCursor } = keysetSlice(rows, PAGE_SIZE);
   return { rows: page, nextCursor };
 }
 

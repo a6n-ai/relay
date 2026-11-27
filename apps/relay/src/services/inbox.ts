@@ -1,4 +1,6 @@
+import { toBase64 } from "../core/crypto";
 import { and, eq, inArray, or } from "drizzle-orm";
+import { ownedBy } from "../core/r2-keys";
 import { sanitizeEmailHtml } from "../core/sanitize-html";
 import { clientFor } from "../do/client";
 import { downloadResponse, PREVIEW_HEAD_BYTES, previewResponse, previewType } from "../core/download";
@@ -124,7 +126,7 @@ async function inlineCidImages(
     if (!att || !INLINE_TYPES.has(att.contentType)) continue;
     if (att.sizeBytes > INLINE_MAX_BYTES || fetched + att.sizeBytes > INLINE_BUDGET_BYTES) continue;
     const file = await clientFor(env, actor.workspaceId).getMessageFile(actor.workspaceId, messageId, att.id, access);
-    if (!file || !("key" in file) || !file.key.startsWith(`ws/${actor.workspaceId}/`)) continue;
+    if (!file || !("key" in file) || !ownedBy(actor.workspaceId, file.key)) continue;
     const object = await env.MAIL.get(file.key);
     if (!object) continue;
     if (object.size > INLINE_MAX_BYTES || fetched + object.size > INLINE_BUDGET_BYTES) {
@@ -133,7 +135,7 @@ async function inlineCidImages(
     }
     const bytes = new Uint8Array(await object.arrayBuffer());
     fetched += bytes.byteLength;
-    images.set(cid, { uri: `data:${att.contentType};base64,${base64(bytes)}`, size: bytes.byteLength });
+    images.set(cid, { uri: `data:${att.contentType};base64,${toBase64(bytes)}`, size: bytes.byteLength });
   }
   let total = 0;
   return html.replace(CID_SRC, (whole, lead: string, quote: string, cid: string) => {
@@ -144,11 +146,6 @@ async function inlineCidImages(
   });
 }
 
-function base64(bytes: Uint8Array): string {
-  let binary = "";
-  for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
-  return btoa(binary);
-}
 
 // view=1 previews only what the first bytes prove is safe to show; anything else falls through to the download.
 export async function messageFileFor(
@@ -165,7 +162,7 @@ export async function messageFileFor(
     const bytes = new TextEncoder().encode(file.body);
     return downloadResponse(new Blob([bytes]).stream(), bytes.byteLength, file.name);
   }
-  if (!file.key.startsWith(`ws/${actor.workspaceId}/`)) throw new RelayError("not found");
+  if (!ownedBy(actor.workspaceId, file.key)) throw new RelayError("not found");
   if (view && file.contentType !== null) {
     // A zero-byte object makes R2 reject the range read; that falls through to the download like any non-preview.
     const head = await env.MAIL.get(file.key, { range: { offset: 0, length: PREVIEW_HEAD_BYTES } }).catch(() => null);

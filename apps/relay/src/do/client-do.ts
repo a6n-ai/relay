@@ -1,4 +1,6 @@
+import { fromBase64 } from "../core/crypto";
 import { DurableObject } from "cloudflare:workers";
+import { ownedBy, ownedRaw, r2Keys } from "../core/r2-keys";
 import { and, eq, gte, inArray, isNotNull, isNull, lt, ne, or, sql, type SQLWrapper } from "drizzle-orm";
 import { drizzle, type DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
 import { brandDomain, campaignProblems, IMPLIED_CONSENT_MS, type CampaignProblem } from "../core/campaigns";
@@ -35,6 +37,7 @@ import {
   audienceCallFor,
   audienceHookView,
   deleteAudienceHookRow,
+  encodeHookCursor,
   parseHookCursor,
   setAudienceHookRow,
   type AudienceHookInput,
@@ -124,7 +127,7 @@ export class ClientDO extends DurableObject<Env> {
     const id = newId("msg");
     const preSuppressed = this.suppressed(data.to, data.stream, data.from);
     // shortcut: an R2 object orphaned by a crash between the put and the insert is never swept, add a sweeper when storage cost shows up.
-    const htmlKey = preSuppressed ? null : `ws/${workspaceId}/msg/${id}.html`;
+    const htmlKey = preSuppressed ? null : r2Keys.msgHtml(workspaceId, id);
     if (htmlKey) await this.env.MAIL.put(htmlKey, data.html);
     // Stored with the message, not in D1: a 5 MB file would not fit a SQLite row.
     const files = preSuppressed
@@ -133,8 +136,8 @@ export class ClientDO extends DurableObject<Env> {
           position,
           filename: a.filename,
           contentType: a.contentType,
-          r2Key: `ws/${workspaceId}/att/${id}/${position}-${a.filename}`,
-          bytes: Uint8Array.from(atob(a.content), (c) => c.charCodeAt(0)),
+          r2Key: r2Keys.attachment(workspaceId, id, position, a.filename),
+          bytes: fromBase64(a.content),
         }));
     for (const f of files) await this.env.MAIL.put(f.r2Key, f.bytes, { httpMetadata: { contentType: f.contentType } });
     const fileKeys = files.map((f) => f.r2Key);
@@ -291,7 +294,7 @@ export class ClientDO extends DurableObject<Env> {
       return { rawKey: row.rawKey, shared: shared !== undefined };
     });
     if (!removed) return false;
-    if (!removed.shared && removed.rawKey.startsWith(`ws/${workspaceId}/raw/`)) await this.env.MAIL.delete(removed.rawKey);
+    if (!removed.shared && ownedRaw(workspaceId, removed.rawKey)) await this.env.MAIL.delete(removed.rawKey);
     return true;
   }
 
@@ -1482,11 +1485,11 @@ export class ClientDO extends DurableObject<Env> {
   async deleteDomainHistory(workspaceId: string, domain: string): Promise<{ messages: number; objects: number }> {
     await this.ready(workspaceId);
     const sql = this.ctx.storage.sql;
-    const prefix = `ws/${workspaceId}/`;
+    const owned = (k: string) => ownedBy(workspaceId, k);
     let messages = 0;
     let objects = 0;
     const drop = async (keys: string[], rawKeys: string[]) => {
-      const gone = [...keys, ...rawKeys.filter((k) => !rawKeyInUse(sql, k))].filter((k) => k.startsWith(prefix));
+      const gone = [...keys, ...rawKeys.filter((k) => !rawKeyInUse(sql, k))].filter(owned);
       await this.dropObjects(gone);
       objects += gone.length;
     };
@@ -1708,7 +1711,7 @@ export class ClientDO extends DurableObject<Env> {
       const last = page.nextCursor === null;
       sql.exec(
         "UPDATE campaign SET cursor = ?, updated_at = ? WHERE id = ? AND run_seq = ?",
-        JSON.stringify({ p: n + 1, c: page.nextCursor }),
+        encodeHookCursor(n + 1, page.nextCursor),
         now,
         id,
         runSeq,

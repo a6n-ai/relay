@@ -1,4 +1,5 @@
 import { eq } from "drizzle-orm";
+import { r2Keys } from "../core/r2-keys";
 import { INBOUND_GRACE_MS, inboxForRecipient } from "../core/addresses";
 import { securityDb } from "../db/security/client";
 import { workspace } from "../db/security/schema";
@@ -51,7 +52,7 @@ export async function receiveEmail(message: ForwardableEmailMessage, env: Env): 
 
   const receivedAt = Date.now();
   const iso = new Date(receivedAt).toISOString();
-  const rawKey = `ws/${inbox.workspaceId}/raw/${iso.slice(0, 4)}/${iso.slice(5, 7)}/${crypto.randomUUID()}.eml`;
+  const rawKey = r2Keys.raw(inbox.workspaceId, iso, crypto.randomUUID());
   const job: InboundJob = {
     workspaceId: inbox.workspaceId,
     appId: inbox.appId,
