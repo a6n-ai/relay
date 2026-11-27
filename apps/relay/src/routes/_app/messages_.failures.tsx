@@ -1,6 +1,7 @@
 import { toast } from "@foundry/ui/toast";
 import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
+import { confirmAction } from "../../components/lib/run-action";
 import { ConfirmDialog } from "../../components/page/confirm-dialog";
 import { PageDenied } from "../../components/page/page-denied";
 import { errorText } from "../../components/lib/error-text";
@@ -68,9 +69,7 @@ function FailuresPage() {
   }
 
   async function remove(failureId: string) {
-    await deleteFailureFn({ data: { id: failureId } });
-    toast.success("Message deleted");
-    await router.invalidate();
+    await confirmAction(() => deleteFailureFn({ data: { id: failureId } }), "Message deleted", () => router.invalidate());
   }
 
   const offset = search.offset ?? 0;

@@ -88,6 +88,7 @@ export const ERRORS = {
     copy: "This template uses {{data.*}} fields, which only an app audience fills. Automations send to lists, so remove them.",
   },
   audience_failed: { status: 409, copy: "Your app's audience could not be read." },
+  "audience not saved": { status: 409, copy: "Save the audience settings first." },
   "unknown binding": { status: 400, copy: "That app audience connection is not available." },
   "audience hook unavailable": { status: 503, copy: "The app audience service is unavailable right now. Try again later." },
   "hook managed by platform admin": { status: 403, copy: "Relay manages this app audience, so it can't be changed here." },

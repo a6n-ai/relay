@@ -9,6 +9,7 @@ export const EMAIL_MAX = 254;
 export const URL_MAX = 2048;
 export const SUBJECT_MAX = 300;
 export const MEMBERS_IMPORT_MAX = 1000;
+export const CSV_IMPORT_MAX_BYTES = 2_000_000;
 export const BODY_MAX = 500_000;
 export const CONSENT_NOTE_MAX = 500;
 export const AUDIENCE_QUERY_MAX = 1000;

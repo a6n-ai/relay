@@ -3,6 +3,7 @@ import { toast } from "@foundry/ui/toast";
 import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
 import { UsersIcon } from "lucide-react";
 import { type FormEvent, type RefObject, useRef, useState } from "react";
+import { confirmAction } from "../../components/lib/run-action";
 import { ConfirmDialog } from "../../components/page/confirm-dialog";
 import { CreateDialog } from "../../components/page/create-dialog";
 import { PageDenied } from "../../components/page/page-denied";
@@ -23,6 +24,7 @@ import { addGrantFn, fetchAddressAccess, removeGrantFn } from "../../console/gra
 import { FormError, FormBody, FormActions, FormPanel } from "../../components/form/form-parts";
 import { KIND_LABEL, KINDS } from "../../components/lib/address-kinds";
 import { EMAIL_MAX } from "../../shared/limits";
+import { emailSchema } from "../../shared/schemas";
 import { useSubmit } from "../../components/lib/use-submit";
 
 export const Route = createFileRoute("/_app/domains_/addresses/$addressId")({
@@ -61,9 +63,7 @@ function AddressPage() {
   const { address, access } = data;
 
   async function removeAccess(grantId: string) {
-    await removeGrantFn({ data: { id: grantId } });
-    toast.success("Access removed");
-    await router.invalidate();
+    await confirmAction(() => removeGrantFn({ data: { id: grantId } }), "Access removed", () => router.invalidate());
   }
 
   async function removeAddress() {
@@ -151,7 +151,7 @@ function AddressDetailsCard({ address, canWrite, bypass }: { address: Address; c
   async function save(event: FormEvent) {
     event.preventDefault();
     const reply = replyTo.trim();
-    if (reply && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(reply)) {
+    if (reply && !emailSchema.safeParse(reply).success) {
       setReplyError("Enter a valid email address or leave it blank.");
       return;
     }

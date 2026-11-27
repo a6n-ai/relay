@@ -7,6 +7,7 @@ import { toast } from "@foundry/ui/toast";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { KeyRoundIcon } from "lucide-react";
 import { type FormEvent, useState } from "react";
+import { confirmAction } from "../../components/lib/run-action";
 import { ChoiceField, type ChoiceOption } from "../../components/form/choice-field";
 import { NameField } from "../../components/form/text-field";
 import { FixedField } from "../../components/form/fixed-field";
@@ -68,9 +69,7 @@ function AppPage() {
   const deleting = keys.find((k) => k.id === deleteId);
 
   async function revoke(id: string) {
-    await revokeKeyFn({ data: { id } });
-    toast.success("Key revoked");
-    await router.invalidate();
+    await confirmAction(() => revokeKeyFn({ data: { id } }), "Key revoked", () => router.invalidate());
   }
 
   return (
@@ -160,9 +159,7 @@ function AppPage() {
         confirmLabel="Delete key"
         onConfirm={async () => {
           if (!deleteId) return;
-          await deleteKeyFn({ data: { id: deleteId } });
-          toast.success("Key deleted");
-          await router.invalidate();
+          await confirmAction(() => deleteKeyFn({ data: { id: deleteId } }), "Key deleted", () => router.invalidate());
         }}
       />
     </>
@@ -297,16 +294,14 @@ function AudiencePanel({
   }
 
   async function remove() {
-    await deleteAudienceHookFn({ data: { appId } });
-    toast.success("App audience removed");
-    await router.invalidate();
+    await confirmAction(() => deleteAudienceHookFn({ data: { appId } }), "App audience removed", () => router.invalidate());
   }
 
   // The server only generates a secret on first save, so a rotation sends a fresh one and shows it here.
   // url and enabled are required by the save, so they come from a fresh read, not the loader data.
   async function rotate() {
     const current = await fetchAudienceHook({ data: { appId } });
-    if (!current?.url) throw new Error("Save the audience settings first.");
+    if (!current?.url) throw new Error("audience not saved");
     const fresh = Array.from(crypto.getRandomValues(new Uint8Array(32)), (b) => b.toString(16).padStart(2, "0")).join("");
     await setAudienceHookFn({ data: { appId, url: current.url, secret: fresh, enabled: current.enabled } });
     setSecret(fresh);
@@ -316,9 +311,7 @@ function AudiencePanel({
 
   async function connectBinding() {
     if (!bindWorkspaceId) return;
-    await setAudienceBindingFn({ data: { workspaceId: bindWorkspaceId, appId, binding: BINDING } });
-    toast.success("App audience connected");
-    await router.invalidate();
+    await confirmAction(() => setAudienceBindingFn({ data: { workspaceId: bindWorkspaceId, appId, binding: BINDING } }), "App audience connected", () => router.invalidate());
   }
 
   const editable = canWrite && hook && hook.kind !== "binding";

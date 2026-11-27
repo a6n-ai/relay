@@ -1,5 +1,5 @@
+import { confirmAction } from "../../components/lib/run-action";
 import { TextField } from "../../components/form/text-field";
-import { toast } from "@foundry/ui/toast";
 import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
 import { ConfirmDialog } from "../../components/page/confirm-dialog";
@@ -63,9 +63,7 @@ function SuppressionsPage() {
     return <PageDenied />;
   }
   async function remove(email: string) {
-    await removeSuppressionFn({ data: { email } });
-    toast.success("Suppression removed");
-    await router.invalidate();
+    await confirmAction(() => removeSuppressionFn({ data: { email } }), "Suppression removed", () => router.invalidate());
   }
   // The server has no stream filter, so the facet narrows the rows loaded on this page.
   const rows = search.stream ? page.rows.filter((s) => (search.stream === "all" ? !s.stream : s.stream === search.stream)) : page.rows;

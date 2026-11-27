@@ -19,6 +19,7 @@ import { useCan } from "../../components/lib/use-can";
 import { fetchCampaigns } from "../../console/campaigns.fns";
 import { formatWhen } from "../../components/lib/format-date";
 import { PAGE_SIZE } from "../../shared/limits";
+import { appName } from "../../shared/scope";
 import { posInt, str, untyped } from "../../components/lib/route-search";
 import { loaded, ScopedDenied } from "../../components/page/scoped-page";
 import { scopedLoad } from "../../components/lib/scoped-load";
@@ -73,7 +74,6 @@ function CampaignsPage() {
     { key: "appId", label: "App", options: apps.map((a) => ({ value: a.id, label: a.name })) },
   ];
   const showApp = !search.appId;
-  const appName = (id: string) => apps.find((a) => a.id === id)?.name ?? "—";
   const when = (c: (typeof rows)[number]) => {
     const at = c.finishedAt ?? c.scheduledAt;
     return at ? formatWhen(at) : "—";
@@ -102,7 +102,7 @@ function CampaignsPage() {
             <ResourceCard
               title={c.name}
               badge={<StatusBadge status={c.status} />}
-              hints={[showApp && appName(c.appId), `${when(c)} · ${c.recipients} recipients`]}
+              hints={[showApp && appName(apps, c.appId, "—"), `${when(c)} · ${c.recipients} recipients`]}
             />
           )}
         />
@@ -112,7 +112,7 @@ function CampaignsPage() {
           columns={[
             { header: "Name", kind: "name", cell: (c) => c.name },
             { header: "Status", cell: (c) => <StatusBadge status={c.status} /> },
-            ...(showApp ? [{ header: "App", cell: (c: (typeof rows)[number]) => appName(c.appId) }] : []),
+            ...(showApp ? [{ header: "App", cell: (c: (typeof rows)[number]) => appName(apps, c.appId, "—") }] : []),
             { header: "Scheduled or sent", secondary: true, cell: when },
             { header: "Recipients", secondary: true, numeric: true, cell: (c) => c.recipients },
           ]}

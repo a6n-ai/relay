@@ -10,11 +10,11 @@ import { SettingsCard } from "../../components/page/settings-card";
 import { PageHeader } from "../../components/shell/page-header";
 import { useCan } from "../../components/lib/use-can";
 import { fetchLists, importCsvFn } from "../../console/lists.fns";
+import { CSV_IMPORT_MAX_BYTES } from "../../shared/limits";
 import { str } from "../../components/lib/route-search";
 import { DefinitionList } from "../../components/page/definition-list";
 import { useSubmit } from "../../components/lib/use-submit";
 
-const MAX_CSV_BYTES = 2_000_000;
 
 export const Route = createFileRoute("/_app/lists_/$listId_/import")({
   validateSearch: (search: Record<string, unknown>): { appId?: string } => ({
@@ -99,7 +99,7 @@ function ImportPage() {
           <FileUpload
             accept=".csv,text/csv"
             maxFiles={1}
-            maxSize={MAX_CSV_BYTES}
+            maxSize={CSV_IMPORT_MAX_BYTES}
             value={files}
             onValueChange={(next) => {
               setFiles(next);

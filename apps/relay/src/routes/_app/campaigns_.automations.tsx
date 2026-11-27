@@ -18,6 +18,7 @@ import { useCan } from "../../components/lib/use-can";
 import { deleteAutomationFn, enableAutomationFn, fetchAutomations } from "../../console/automations.fns";
 import { fetchCampaignOptions } from "../../console/campaigns.fns";
 import { fetchTemplates } from "../../console/templates.fns";
+import { appName } from "../../shared/scope";
 import { type AutomationView } from "../../shared/views";
 import { oneOf, str, untyped } from "../../components/lib/route-search";
 import { loaded, ScopedDenied } from "../../components/page/scoped-page";
@@ -77,7 +78,6 @@ function AutomationsPage() {
     },
   ];
   const showApp = !search.appId;
-  const appName = (id: string) => apps.find((a) => a.id === id)?.name ?? "—";
   const listName = (id: string) => lists.find((l) => l.id === id)?.name ?? "—";
   const templateName = (id: string) => templates.find((t) => t.id === id)?.name ?? "—";
   const delayText = (a: AutomationView) => (a.delayHours === 0 ? "Right away" : `After ${a.delayHours} ${a.delayHours === 1 ? "hour" : "hours"}`);
@@ -139,7 +139,7 @@ function AutomationsPage() {
           card={(a) => (
             <ResourceCard
               title={a.name}
-              hints={[showApp && appName(a.appId), `${listName(a.listId)} · ${templateName(a.templateId)}`, `${delayText(a)} · ${a.pending} waiting · ${a.sent} sent`]}
+              hints={[showApp && appName(apps, a.appId, "—"), `${listName(a.listId)} · ${templateName(a.templateId)}`, `${delayText(a)} · ${a.pending} waiting · ${a.sent} sent`]}
             >
               <div>{toggle(a)}</div>
             </ResourceCard>
@@ -149,7 +149,7 @@ function AutomationsPage() {
         <ResourceTable
           columns={[
             { header: "Name", kind: "name", cell: (a) => a.name },
-            ...(showApp ? [{ header: "App", cell: (a: AutomationView) => appName(a.appId) }] : []),
+            ...(showApp ? [{ header: "App", cell: (a: AutomationView) => appName(apps, a.appId, "—") }] : []),
             { header: "List", secondary: true, cell: (a) => listName(a.listId) },
             { header: "Template", secondary: true, cell: (a) => templateName(a.templateId) },
             { header: "Send after", secondary: true, cell: delayText },

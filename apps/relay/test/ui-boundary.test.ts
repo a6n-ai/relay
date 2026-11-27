@@ -10,7 +10,7 @@ const ui = Object.entries(sources)
   .filter(([rel]) => rel.startsWith("components/") || !SERVER_ROUTES.some((s) => rel.startsWith(s)));
 
 // The UI layer imports only shared/, components/, the console/*.fns.ts server functions, the router and the generated route tree.
-const allowed = (rel: string) => /^(shared|components|routes)\//.test(rel) || /^console\/[^/]+\.fns(\.tsx?)?$/.test(rel) || rel === "router" || rel === "routeTree.gen";
+const allowed = (rel: string) => (/^(shared|components|routes)\//.test(rel) && !rel.startsWith("routes/api/")) || /^console\/[^/]+\.fns(\.tsx?)?$/.test(rel) || rel === "router" || rel === "routeTree.gen";
 
 describe("UI import boundary", () => {
   it("finds UI files", () => {

@@ -1,4 +1,5 @@
 import { Badge } from "@foundry/ui/badge";
+import { confirmAction } from "../../components/lib/run-action";
 import { NameField, TextField } from "../../components/form/text-field";
 import { Button } from "@foundry/ui/button";
 import { toast } from "@foundry/ui/toast";
@@ -84,9 +85,7 @@ function ListDetailPage() {
   const appLabel = appName(shell.apps, search.appId, "This list's app");
   const offset = search.cursor ? (search.offset ?? 0) : 0;
   async function remove(memberId: string) {
-    await removeMemberFn({ data: { listId, memberId } });
-    toast.success("Contact removed");
-    await router.invalidate();
+    await confirmAction(() => removeMemberFn({ data: { listId, memberId } }), "Contact removed", () => router.invalidate());
   }
   async function deleteList() {
     await deleteListFn({ data: { id: listId } });

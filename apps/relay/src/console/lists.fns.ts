@@ -17,7 +17,7 @@ import {
   updateContact,
   updateList,
 } from "../services/lists";
-import { NAME_MAX } from "../shared/limits";
+import { CSV_IMPORT_MAX_BYTES, NAME_MAX } from "../shared/limits";
 
 const VIEW = READ("list", "read");
 const EDIT = WRITE("list", "write");
@@ -50,7 +50,7 @@ export const addMemberFn = createServerFn({ method: "POST" })
   .handler(({ data }) => run(EDIT, (p) => addMember(env, p, data.listId, data.member)));
 
 export const importCsvFn = createServerFn({ method: "POST" })
-  .validator(validate(z.object({ listId: id, csv: z.string().max(2_000_000) })))
+  .validator(validate(z.object({ listId: id, csv: z.string().max(CSV_IMPORT_MAX_BYTES) })))
   .handler(({ data }) => run(IMPORT, (p) => importCsv(env, p, data)));
 
 export const removeMemberFn = createServerFn({ method: "POST" })

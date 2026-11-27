@@ -19,6 +19,7 @@ import { useCan } from "../../components/lib/use-can";
 import { fetchTemplates } from "../../console/templates.fns";
 import { formatWhen } from "../../components/lib/format-date";
 import { PAGE_SIZE } from "../../shared/limits";
+import { appName } from "../../shared/scope";
 import { posInt, str, untyped } from "../../components/lib/route-search";
 import { loaded, ScopedDenied } from "../../components/page/scoped-page";
 import { scopedLoad } from "../../components/lib/scoped-load";
@@ -73,7 +74,6 @@ function TemplatesPage() {
     { key: "locale", label: "Locale", options: distinct(templates.rows.map((t) => t.locale)) },
   ];
   const showApp = !search.appId;
-  const appName = (id: string) => apps.find((a) => a.id === id)?.name ?? "—";
   const openRow = (t: (typeof rows)[number]) => ({ to: "/campaigns/templates/$templateId" as const, params: { templateId: t.id }, search: { appId: t.appId } });
   const empty =
     templates.rows.length === 0 ? (
@@ -109,7 +109,7 @@ function TemplatesPage() {
             <ResourceCard
               title={t.name}
               badge={<Badge variant={t.enabled ? "secondary" : "outline"}>{t.enabled ? "On" : "Off"}</Badge>}
-              hints={[showApp && appName(t.appId), `${t.event ?? "No event"} · ${t.locale}`, `Updated ${formatWhen(t.updatedAt)}`]}
+              hints={[showApp && appName(apps, t.appId, "—"), `${t.event ?? "No event"} · ${t.locale}`, `Updated ${formatWhen(t.updatedAt)}`]}
             />
           )}
         />
@@ -118,7 +118,7 @@ function TemplatesPage() {
           offset={search.cursor ? search.offset : undefined}
           columns={[
             { header: "Name", kind: "name", cell: (t) => t.name },
-            ...(showApp ? [{ header: "App", cell: (t: (typeof rows)[number]) => appName(t.appId) }] : []),
+            ...(showApp ? [{ header: "App", cell: (t: (typeof rows)[number]) => appName(apps, t.appId, "—") }] : []),
             { header: "Event", secondary: true, cell: (t) => t.event ?? "—" },
             { header: "Enabled", cell: (t) => <Badge variant={t.enabled ? "secondary" : "outline"}>{t.enabled ? "On" : "Off"}</Badge> },
             { header: "Updated", secondary: true, cell: (t) => <span className="tabular-nums">{formatWhen(t.updatedAt)}</span> },

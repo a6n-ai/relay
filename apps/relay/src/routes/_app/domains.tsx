@@ -9,6 +9,7 @@ import { PageDenied } from "../../components/page/page-denied";
 import { DnsRecords } from "../../components/domains/dns-records";
 import { DomainDeleteDialog } from "../../components/domains/domain-delete-dialog";
 import { errorText } from "../../components/lib/error-text";
+import { confirmAction, runAction } from "../../components/lib/run-action";
 import { ResourceTable } from "../../components/page/resource-table";
 import { StatusBadge } from "../../components/page/status-badge";
 import { useCan } from "../../components/lib/use-can";
@@ -101,27 +102,10 @@ function DomainsPage() {
     }
   }
 
-  async function release(id: string) {
-    await releaseDomainFn({ data: { id } });
-    toast.success("Domain released");
-    await router.invalidate();
-  }
-
-  async function setProtected(id: string, protectedNow: boolean) {
-    try {
-      await setDomainProtectedFn({ data: { id, protected: protectedNow } });
-      toast.success(protectedNow ? "Domain protected" : "Domain unprotected");
-      await router.invalidate();
-    } catch (err) {
-      toast.error(errorText(err, "Could not change protection"));
-    }
-  }
-
-  async function remove(id: string) {
-    await removeAddressFn({ data: { id } });
-    toast.success("Address removed");
-    await router.invalidate();
-  }
+  const release = (id: string) => confirmAction(() => releaseDomainFn({ data: { id } }), "Domain released", () => router.invalidate());
+  const setProtected = (id: string, protectedNow: boolean) =>
+    runAction(() => setDomainProtectedFn({ data: { id, protected: protectedNow } }), protectedNow ? "Domain protected" : "Domain unprotected", () => router.invalidate());
+  const remove = (id: string) => confirmAction(() => removeAddressFn({ data: { id } }), "Address removed", () => router.invalidate());
 
   const domainMenu = (d: (typeof domains)[number]) => [
     { label: "Check now", hidden: !canWrite, onSelect: () => void check(d.id) },
