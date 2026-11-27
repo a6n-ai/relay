@@ -111,7 +111,7 @@ function AppPage() {
                 ? (k) => [
                     { label: "Rename key", onSelect: () => setRenameId(k.id) },
                     { label: "Revoke key", destructive: true, hidden: !k.enabled, onSelect: () => setRevokeId(k.id) },
-                    { label: "Delete key", destructive: true, hidden: k.enabled, onSelect: () => setDeleteId(k.id) },
+                    { label: "Delete key", destructive: true, onSelect: () => setDeleteId(k.id) },
                   ]
                 : undefined
             }
@@ -160,7 +160,7 @@ function AppPage() {
           if (!o) setDeleteId(null);
         }}
         title={deleting ? `Delete ${deleting.name ?? "this key"}${deleting.start ? ` (${deleting.start}…)` : ""}?` : "Delete this key?"}
-        description="The revoked key leaves this list for good. Messages it sent stay."
+        description={deleting?.enabled ? "Requests that use this key stop working right away. You can't restore it or use it again. Messages it sent stay." : "The key leaves this list for good. You can't restore it or use it again. Messages it sent stay."}
         confirmLabel="Delete key"
         onConfirm={async () => {
           if (!deleteId) return;

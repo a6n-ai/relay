@@ -1,5 +1,5 @@
 import { and, asc, count, desc, eq, inArray, sql } from "drizzle-orm";
-import { createApiKey, deleteRevokedApiKey, renameApiKey, revokeApiKey } from "../core/api-keys";
+import { createApiKey, deleteApiKey, renameApiKey, revokeApiKey } from "../core/api-keys";
 import { hookInputSchema } from "../core/audience-hook";
 import { createApp } from "../core/apps";
 import { clientFor } from "../core/messages";
@@ -108,12 +108,7 @@ export async function revokeKey(env: Env, actor: ConsoleActor, id: string): Prom
 }
 
 export async function deleteKey(env: Env, actor: ConsoleActor, id: string): Promise<void> {
-  if (await deleteRevokedApiKey(env, actor.workspaceId, id)) return;
-  const [live] = await securityDb(env)
-    .select({ id: apiKey.id })
-    .from(apiKey)
-    .where(and(eq(apiKey.id, id), eq(apiKey.referenceId, actor.workspaceId)));
-  throw live ? new ConsoleError(409, "revoke the key first") : new ConsoleError(404, "not found");
+  if (!(await deleteApiKey(env, actor.workspaceId, id))) throw new ConsoleError(404, "not found");
 }
 
 export async function renameKey(env: Env, actor: ConsoleActor, id: string, name: string): Promise<void> {

@@ -91,13 +91,15 @@ describe("console apps and API keys", { timeout: 60_000 }, () => {
     expect(await resolveApiKey(env, key.secret)).toBeNull();
   });
 
-  it("deletes only a revoked key, and only in its own workspace", async () => {
+  it("deletes a live or revoked key, only in its own workspace", async () => {
     const { cookie } = await workspaceFor("apps-delete-key@example.com", "Apps Delete Key Co");
     const actor = await requireActor(env, headersFor(cookie), WRITE);
     const { id: appId } = await addApp(env, actor, { name: "Web", slug: "web" });
     const key = await createKey(env, actor, { appId, name: "web" });
 
-    await expect(deleteKey(env, actor, key.id)).rejects.toMatchObject({ status: 409, message: "revoke the key first" });
+    const live = await createKey(env, actor, { appId, name: "live" });
+    await deleteKey(env, actor, live.id);
+    expect(await resolveApiKey(env, live.secret)).toBeNull();
     const { cookie: otherCookie } = await workspaceFor("apps-delete-other@example.com", "Apps Delete Other Co");
     const other = await requireActor(env, headersFor(otherCookie), WRITE);
     await revokeKey(env, actor, key.id);
