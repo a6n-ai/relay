@@ -20,7 +20,7 @@ type Db = PostgresJsDatabase<any>;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type OutboxRow = any;
 
-export interface BroadcastInput {
+interface BroadcastInput {
   userId: bigint;
   publicId: string;
   event: string | null;
@@ -30,7 +30,7 @@ export interface BroadcastInput {
 }
 
 /** Realtime push transport, injected: RabbitMQ/AppSync in tiffin-grab. */
-export type BroadcastFn = (input: BroadcastInput) => Promise<void>;
+type BroadcastFn = (input: BroadcastInput) => Promise<void>;
 
 /**
  * Delivers one outbox row. Returns the provider id on send, or `null` to SKIP

@@ -11,7 +11,7 @@ import { apiFetch } from "../api-fetch";
 import { openEmailPreview } from "../email-content-editor";
 import { fillSamples } from "../email-editor/samples";
 
-export const SEND_WARNING = "This emails real customers and can't be undone.";
+const SEND_WARNING = "This emails real customers and can't be undone.";
 
 /** Step 3: read-only summary, the server's checklist and a preview of exactly what will be sent. */
 export function ReviewStep({

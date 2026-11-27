@@ -158,7 +158,7 @@ function keepSheet(css: string): Scrubbed {
   return { out, dropped };
 }
 
-export type SanitizeOptions = { remoteImages?: "allow" | "block" };
+type SanitizeOptions = { remoteImages?: "allow" | "block" };
 
 export function sanitizeEmailHtml(
   html: string,

@@ -3,7 +3,7 @@ import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import { normalizeAddress } from "@foundry/commons";
 import type { NotificationTables } from "./schema";
-import type { Channel, Kind } from "./types";
+import type { Channel } from "./types";
 
 export { normalizeAddress };
 
@@ -14,7 +14,7 @@ export { normalizeAddress };
 type Db = PostgresJsDatabase<any>;
 
 export type SuppressionScope = "all" | "marketing";
-export type SuppressionSource = "link" | "one-click" | "admin";
+type SuppressionSource = "link" | "one-click" | "admin";
 
 /**
  * Record a bounce, complaint, unsubscribe or manual block. Idempotent.
@@ -66,32 +66,6 @@ export async function suppress(
 }
 
 /**
- * Channels blocked for ANY of the given addresses (a recipient's email + phone),
- * for a message of this kind. A "marketing"-scoped row blocks only marketing;
- * an "all"-scoped row blocks both.
- */
-export async function suppressedChannelsFor(
-  db: Db,
-  tables: NotificationTables,
-  addresses: string[],
-  kind: Kind = "transactional",
-): Promise<Channel[]> {
-  const normalized = addresses.filter(Boolean).map(normalizeAddress);
-  if (normalized.length === 0) return [];
-  const scopes: SuppressionScope[] = kind === "marketing" ? ["all", "marketing"] : ["all"];
-  const rows = await db
-    .select({ channel: tables.messageSuppression.channel })
-    .from(tables.messageSuppression)
-    .where(
-      and(
-        inArray(tables.messageSuppression.address, normalized),
-        inArray(tables.messageSuppression.scope, scopes),
-      ),
-    );
-  return [...new Set(rows.map((r) => r.channel as Channel))];
-}
-
-/**
  * Every suppression row for any of `addresses`, for callers that resolve many
  * recipients at once (enqueueMany) and filter by scope in memory.
  */
@@ -113,7 +87,7 @@ export async function suppressionRowsFor(
   return rows as { address: string; channel: Channel; scope: SuppressionScope }[];
 }
 
-export type SuppressionKind = "unsubscribe" | "bounce" | "complaint" | "manual" | "other";
+type SuppressionKind = "unsubscribe" | "bounce" | "complaint" | "manual" | "other";
 
 /**
  * `reason` is free text ("sms STOP keyword", "SES hard bounce", "SES complaint",

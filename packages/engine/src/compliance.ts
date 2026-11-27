@@ -9,7 +9,7 @@
 /** 24 months, counted as 730 days — same window as CASL commentary in campaign-schema. */
 export const IMPLIED_CONSENT_MS = 730 * 86_400_000;
 
-export type MailingCountry = "US" | "CA" | "GB" | "EU" | "AU" | "IN" | "OTHER";
+type MailingCountry = "US" | "CA" | "GB" | "EU" | "AU" | "IN" | "OTHER";
 
 const EU_ISO = new Set([
   "AT", "BE", "BG", "HR", "CY", "CZ", "DK", "EE", "FI", "FR", "DE", "GR", "HU",
@@ -24,7 +24,7 @@ export function mailingCountryFromIso(iso: string | null | undefined): MailingCo
   return "OTHER";
 }
 
-export interface ComplianceProfile {
+interface ComplianceProfile {
   country: MailingCountry;
   /** GDPR/CASL-style: marketing needs recorded opt-in. CAN-SPAM is opt-out. */
   marketingRequiresExpressOptIn: boolean;
@@ -80,7 +80,7 @@ export function complianceProfile(country: string | null | undefined): Complianc
   }
 }
 
-export interface MarketingConsentInput {
+interface MarketingConsentInput {
   country?: string | null;
   consentSource: string | null;
   consentAt: number | null;
@@ -120,15 +120,4 @@ export function marketingConsentBlockReason(input: MarketingConsentInput): strin
   }
 
   return "missing_consent";
-}
-
-export function tenantCanSendMarketing(input: {
-  country?: string | null;
-  physicalAddress?: string | null;
-}): string | null {
-  const profile = complianceProfile(input.country);
-  if (profile.requiresPhysicalPostalAddress && !(input.physicalAddress ?? "").trim()) {
-    return "missing_physical_address";
-  }
-  return null;
 }

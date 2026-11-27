@@ -15,7 +15,7 @@ export interface PrefRow {
   enabled: boolean;
 }
 
-export interface ResolveOpts {
+interface ResolveOpts {
   /** Defaults to "transactional" so a caller that forgets cannot silently mail marketing. */
   kind?: Kind;
   /** Addresses' suppressed channels, resolved from message_suppression by the caller. */

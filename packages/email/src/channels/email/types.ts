@@ -3,15 +3,14 @@ import { emailSchema } from "@foundry/commons";
 
 /** content is base64. SES Simple has no attachment support, so any attachment
  * forces the raw-MIME send path — see ses-provider.ts. */
-export const emailAttachmentSchema = z.object({
+const emailAttachmentSchema = z.object({
   filename: z.string().trim().min(1),
   content: z.string().min(1),
   contentType: z.string().trim().min(1),
 });
-export type EmailAttachment = z.infer<typeof emailAttachmentSchema>;
 
 /** A single email participant. `name` is optional display name. */
-export const emailAddressSchema = z.object({
+const emailAddressSchema = z.object({
   email: emailSchema,
   name: z.string().trim().min(1).optional(),
 });

@@ -6,7 +6,7 @@ import { Button } from "@foundry/ui/button";
 import { Input } from "@foundry/ui/input";
 import type { ContactListMemberRow as Member } from "../contact-list-routes";
 
-export interface ConvertResult {
+interface ConvertResult {
   alreadyExisted: boolean;
 }
 

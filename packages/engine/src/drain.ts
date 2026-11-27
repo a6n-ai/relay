@@ -9,7 +9,7 @@ import type { Channel } from "./types";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Db = PostgresJsDatabase<any>;
 
-export interface RateLimiter {
+interface RateLimiter {
   /** Consume a token if one is available. Non-blocking. */
   tryTake(): boolean;
   /** Consume a token, waiting for a refill if the bucket is empty. */
@@ -51,14 +51,14 @@ export function createRateLimiter(perSecond: number, now: () => number = Date.no
   };
 }
 
-export type DrainTerminal = {
+type DrainTerminal = {
   status: "sent" | "failed";
   skipped?: boolean;
   providerMessageId?: string | null;
   lastError?: string | null;
 };
 
-export interface DrainDeps {
+interface DrainDeps {
   db: Db;
   tables: NotificationTables;
   handlers: Record<Channel, ChannelHandler | undefined>;
@@ -111,7 +111,7 @@ export function leaseHeld(cols: { id: AnyPgColumn; status: AnyPgColumn; nextAtte
   return and(eq(cols.id, id), eq(cols.status, "processing"), eq(cols.nextAttemptAt, lease));
 }
 
-export const INTERRUPTED_ERROR = "Stopped after repeated interrupted sends";
+const INTERRUPTED_ERROR = "Stopped after repeated interrupted sends";
 
 async function claim(
   db: Db,
@@ -246,7 +246,7 @@ interface DrainLogger {
   error(obj: Record<string, unknown>, msg: string): void;
 }
 
-export interface SignalLoopOptions {
+interface SignalLoopOptions {
   /**
    * Block until work is signalled (true) or a wait times out (false). Backed by
    * a Redis BLPOP in the apps; waiting must not touch Postgres.

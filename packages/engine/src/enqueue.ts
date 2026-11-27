@@ -142,19 +142,19 @@ async function enqueueChunk(
   return rows.length;
 }
 
-export interface LookedUpUser {
+interface LookedUpUser {
   email?: string | null;
   phone?: string | null;
   notifyEmail?: boolean | null;
 }
 
-export interface SuppressionRow {
+interface SuppressionRow {
   address: string;
   channel: Channel;
   scope: SuppressionScope;
 }
 
-export interface PlannedOutboxRow {
+interface PlannedOutboxRow {
   recipientId: bigint | null;
   recipientEmail: string | null;
   recipientPhone: string | null;
