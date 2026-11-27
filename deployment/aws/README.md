@@ -8,7 +8,7 @@ Relay itself is the Cloudflare Worker `relay` (`apps/relay`); it signs its AWS c
 | `relay-ses-events.yaml` | `relay-ses-events` (us-east-1) | SNS topic for us-east-1 SES events, delivered to Relay |
 | `worker-iam.yaml` | `relay-workers-iam` | IAM user `relay-workers`; key in Secrets Manager `/relay/workers/aws-access-key` |
 
-Worker secrets are set with `apps/relay/scripts/set-secrets.sh`.
+Worker secrets are set with `npx wrangler secret put <NAME>` from `apps/relay`.
 
 ## DNS (zone a6n.ai)
 
