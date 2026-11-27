@@ -1,7 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { env } from "cloudflare:workers";
 import { z } from "zod";
-import { orMissing, read, READ } from "./guard";
+import { orMissing, read } from "./guard";
+import { READ } from "./needs";
 import { getMessageFor, listMessagesFor } from "../services/inbox";
 import { appId, id, validate } from "./schemas";
 import { MESSAGE_STATUSES } from "../shared/mail";

@@ -2,7 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeaders } from "@tanstack/react-start/server";
 import { env } from "cloudflare:workers";
 import { z } from "zod";
-import { fail, run, WRITE } from "./guard";
+import { fail, run } from "./guard";
+import { WRITE } from "./needs";
 import { createWorkspace, deleteWorkspace, renameWorkspace } from "../services/workspaces";
 import { name, slug, validate } from "./schemas";
 

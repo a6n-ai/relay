@@ -5,8 +5,7 @@ import { env } from "cloudflare:workers";
 import { recordFailure } from "../core/log";
 import { requireActor, requirePlatformAdmin } from "./actor";
 import type { ConsoleActor } from "../core/session";
-
-export type Need = { permission?: Record<string, string[]>; write?: boolean };
+import type { Need } from "./needs";
 
 // A known error keeps its status and message, anything else is a 500 with no detail. The browser sees only that copy;
 // the log middleware in src/start.ts writes the status and the real cause.
@@ -31,8 +30,6 @@ export function fail(err: unknown): never {
   return guard.fail(err);
 }
 
-export const READ = (resource: string, ...actions: string[]): Need => ({ permission: { [resource]: actions } });
-export const WRITE = (resource: string, ...actions: string[]): Need => ({ permission: { [resource]: actions }, write: true });
 
 // A page that can name a missing app or list renders its own empty state, so a 404 is data rather than an error.
 export const orMissing =

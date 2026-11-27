@@ -1,7 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { env } from "cloudflare:workers";
 import { z } from "zod";
-import { orMissing, read, READ, run, WRITE } from "./guard";
+import { orMissing, read, run } from "./guard";
+import { READ, WRITE } from "./needs";
 import { createAutomationFor, deleteAutomationFor, enableAutomationFor, getAutomationFor, listAutomationsFor, updateAutomationFor } from "../services/automations";
 import { automationInput, automationPatch, id, validate } from "./schemas";
 

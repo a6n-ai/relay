@@ -2,7 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { env } from "cloudflare:workers";
 import { z } from "zod";
 import { SES_REGION_IDS } from "../shared/regions";
-import { read, READ, run, WRITE } from "./guard";
+import { read, run } from "./guard";
+import { READ, WRITE } from "./needs";
 import { deleteDomain, domainDeletePreview as domainDeletePreviewFor } from "../services/domain-delete";
 import {
   addAddress,

@@ -1,4 +1,6 @@
 import { spawnSync } from "node:child_process";
+import { readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { buildEnv } from "./build-env.ts";
 import { buildDocs } from "./docs.ts";
@@ -22,8 +24,15 @@ export function wranglerJson<T>(args: string[]): T {
   return JSON.parse(out.slice(out.indexOf("["))) as T;
 }
 
+// A production build regenerates the route tree without the dev OTP route; the committed tree keeps it, so it is put back.
 export function build(): void {
   buildDocs();
-  const res = spawnSync("pnpm", ["exec", "vite", "build"], { cwd: APP_DIR, stdio: "inherit", env: buildEnv() });
-  if (res.status !== 0) throw new Error(`vite build exited with ${res.status}`);
+  const tree = join(APP_DIR, "src/routeTree.gen.ts");
+  const committed = readFileSync(tree, "utf8");
+  try {
+    const res = spawnSync("pnpm", ["exec", "vite", "build"], { cwd: APP_DIR, stdio: "inherit", env: buildEnv() });
+    if (res.status !== 0) throw new Error(`vite build exited with ${res.status}`);
+  } finally {
+    writeFileSync(tree, committed);
+  }
 }

@@ -2,7 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeaders } from "@tanstack/react-start/server";
 import { env } from "cloudflare:workers";
 import { z } from "zod";
-import { fail, read, run, WRITE } from "./guard";
+import { fail, read, run } from "./guard";
+import { WRITE } from "./needs";
 import {
   acceptInvite,
   cancelInvite,
