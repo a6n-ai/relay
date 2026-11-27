@@ -37,7 +37,7 @@ export async function mailboxFree(env: Env, email: string): Promise<boolean> {
   const [c] = await db
     .select({ id: account.id })
     .from(account)
-    .where(and(eq(account.userId, u.id), eq(account.providerId, "credential")))
+    .where(eq(account.userId, u.id))
     .limit(1);
   return !c;
 }

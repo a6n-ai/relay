@@ -61,7 +61,12 @@ export async function sendTemplateMessage(env: Env, p: KeyPrincipal, input: Temp
 
 export async function getMessage(env: Env, p: KeyPrincipal, id: string) {
   const view = await clientFor(env, p.workspaceId).getMessage(p.workspaceId, id);
-  return view?.appId === p.appId ? view : null;
+  if (view?.appId !== p.appId) return null;
+  if (view.direction === "in" && view.addressId) {
+    const [row] = await coreDb(env).select({ kind: address.kind }).from(address).where(eq(address.id, view.addressId));
+    if (row?.kind === "personal") return null;
+  }
+  return view;
 }
 
 // The brand opt-out applies when the sending address is given, so a request names its From to get the brand rule.

@@ -9,10 +9,10 @@ export async function deliveryEmail(env: Env, email: string): Promise<string> {
   const db = securityDb(env);
   const [u] = await db.select({ id: user.id, recoveryEmail: user.recoveryEmail }).from(user).where(eq(user.email, e));
   if (u?.recoveryEmail) return u.recoveryEmail;
-  // An account already in use (a membership or a password) never follows an invite's recovery email.
+  // An account already in use (a membership or any sign-in account) never follows an invite's recovery email.
   if (u) {
     const [m] = await db.select({ id: member.id }).from(member).where(eq(member.userId, u.id)).limit(1);
-    const [c] = await db.select({ id: account.id }).from(account).where(and(eq(account.userId, u.id), eq(account.providerId, "credential"))).limit(1);
+    const [c] = await db.select({ id: account.id }).from(account).where(eq(account.userId, u.id)).limit(1);
     if (m || c) return e;
   }
   const [inv] = await db

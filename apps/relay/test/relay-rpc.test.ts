@@ -1,5 +1,8 @@
-import { createExecutionContext, env } from "cloudflare:test";
+import { createExecutionContext, env, runInDurableObject } from "cloudflare:test";
 import { beforeAll, describe, expect, it } from "vitest";
+import { coreDb } from "../src/db/core/client";
+import { address } from "../src/db/core/schema";
+import { clientFor } from "../src/do/client";
 import { createApiKey } from "../src/services/api-keys";
 import { securityDb } from "../src/db/security/client";
 import { app, member, user, workspace } from "../src/db/security/schema";
@@ -71,6 +74,27 @@ describe("RelayRpc scope", () => {
     expect(sent).toMatchObject({ status: "queued" });
     expect(await rpc.getMessage(key1, sent.messageId)).not.toBeNull();
     expect(await rpc.getMessage(key2, sent.messageId)).toBeNull();
+  });
+
+  it("answers a personal mailbox letter as not found", async () => {
+    const { rpc, key1, ws, app1 } = await seed("rpc-personal");
+    const [row] = await coreDb(env)
+      .insert(address)
+      .values({ workspaceId: ws, appId: app1, email: "me@rpc-personal.test", kind: "personal", ownerUserId: "usr_x" })
+      .returning();
+    await runInDurableObject(clientFor(env, ws), (_i, state) => {
+      state.storage.sql.exec(
+        "INSERT INTO message (id, app_id, direction, stream, status, address_id, created_at, updated_at) VALUES ('msg_personal1', ?, 'in', 'transactional', 'sent', ?, 1, 1)",
+        app1,
+        row.id,
+      );
+      state.storage.sql.exec(
+        "INSERT INTO message (id, app_id, direction, stream, status, address_id, created_at, updated_at) VALUES ('msg_shared001', ?, 'in', 'transactional', 'sent', 'adr_other', 1, 1)",
+        app1,
+      );
+    });
+    expect(await rpc.getMessage(key1, "msg_personal1")).toBeNull();
+    expect(await rpc.getMessage(key1, "msg_shared001")).not.toBeNull();
   });
 
   it("refuses a campaign id with a bad campaign input", async () => {

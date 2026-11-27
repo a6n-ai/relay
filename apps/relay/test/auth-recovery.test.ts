@@ -62,6 +62,13 @@ describe("deliveryEmail", () => {
     expect(await deliveryEmail(env, "cred@a6n.ai")).toBe("cred@a6n.ai");
   });
 
+  it("google-only user without a member ignores a pending invite", async () => {
+    const [g] = await db().insert(user).values({ name: "G", email: "goog@a6n.ai" }).returning();
+    await db().insert(account).values({ userId: g.id, accountId: "g-123", providerId: "google" });
+    await seedInvite("goog@a6n.ai");
+    expect(await deliveryEmail(env, "goog@a6n.ai")).toBe("goog@a6n.ai");
+  });
+
   it("plain user unchanged", async () => {
     expect(await deliveryEmail(env, "a@b.test")).toBe("a@b.test");
   });

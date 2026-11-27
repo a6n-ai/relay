@@ -26,7 +26,8 @@ export function InviteForm({
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [mailbox, setMailbox] = useState({ local: "", domain: "" });
-  const [appId, setAppId] = useState("");
+  const [pickedApp, setAppId] = useState("");
+  const appId = apps.length === 1 ? apps[0].id : pickedApp;
   const [role, setRole] = useState<OrgRole>("member");
   const { pending, error, run } = useSubmit();
   const withMailbox = mode === "mailbox";
@@ -34,8 +35,12 @@ export function InviteForm({
 
   async function suggest() {
     if (!name.trim() || !mailbox.domain || mailbox.local) return;
-    const { mailbox: found } = await suggestMailboxFn({ data: { name, domain: mailbox.domain } });
-    if (found) setMailbox({ local: found.split("@")[0], domain: mailbox.domain });
+    try {
+      const { mailbox: found } = await suggestMailboxFn({ data: { name, domain: mailbox.domain } });
+      if (found) setMailbox({ local: found.split("@")[0], domain: mailbox.domain });
+    } catch {
+      // a suggestion is optional, the field stays as typed
+    }
   }
 
   async function submit(event: FormEvent) {

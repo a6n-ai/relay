@@ -222,6 +222,8 @@ export async function updateAddress(
 }
 
 export async function removeAddress(env: Env, p: Principal, id: string): Promise<void> {
+  const [row] = await coreDb(env).select({ kind: address.kind }).from(address).where(and(eq(address.id, id), eq(address.workspaceId, p.workspaceId)));
+  if (row?.kind === "personal") throw new RelayError("personal mailbox");
   if (!(await deleteAddressRow(env, p.workspaceId, id))) throw new RelayError("not found");
   await refreshWorkspaceLimits(env, p.workspaceId);
 }

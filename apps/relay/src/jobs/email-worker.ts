@@ -58,6 +58,7 @@ export async function receiveEmail(message: ForwardableEmailMessage, env: Env): 
     workspaceId: inbox.workspaceId,
     appId: inbox.appId,
     addressId: inbox.addressId,
+    personal: inbox.kind === "personal",
     rawKey,
     envelopeFrom: message.from,
     envelopeTo,

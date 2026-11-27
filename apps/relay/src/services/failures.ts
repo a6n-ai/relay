@@ -25,7 +25,7 @@ export async function replayFailure(env: Env, p: Principal, id: string): Promise
   if (!failure) throw new RelayError("not found");
   if (!failure.appId || !failure.addressId) throw new RelayError("cannot replay");
   const [inbox] = await coreDb(env)
-    .select({ id: address.id })
+    .select({ id: address.id, kind: address.kind })
     .from(address)
     .where(
       and(eq(address.id, failure.addressId), eq(address.workspaceId, p.workspaceId), eq(address.appId, failure.appId)),
@@ -35,6 +35,7 @@ export async function replayFailure(env: Env, p: Principal, id: string): Promise
     workspaceId: p.workspaceId,
     appId: failure.appId,
     addressId: failure.addressId,
+    personal: inbox.kind === "personal",
     rawKey: failure.rawKey,
     envelopeFrom: failure.envelopeFrom ?? "",
     envelopeTo: failure.envelopeTo,

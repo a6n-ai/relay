@@ -9,6 +9,15 @@ import { maskEmails } from "../../core/mask-emails";
 import type { Env } from "../../env";
 import { writeAudit } from "../audit";
 
+// Removal and leaving share this: Better Auth's leave endpoint skips afterRemoveMember.
+export async function closeMailboxes(env: Env, workspaceId: string, userId: string): Promise<void> {
+  await coreDb(env)
+    .update(address)
+    .set({ canSend: false, closedAt: new Date(), updatedAt: new Date() })
+    .where(and(eq(address.workspaceId, workspaceId), eq(address.ownerUserId, userId)));
+  await refreshWorkspaceLimits(env, workspaceId);
+}
+
 // Guards and audit rows for the organization plugin (a workspace is an organization).
 export const organizationHooks = (env: Env) => ({
   beforeCreateOrganization: async ({ user }: { user: { role?: string | null } & { id: string } }) => {
@@ -53,11 +62,7 @@ export const organizationHooks = (env: Env) => ({
     await writeAudit(env, { action: "member.add", workspaceId: organization.id, target: user.id, data: { role: member.role } });
   },
   afterRemoveMember: async ({ user, organization }: { user: { id: string }; organization: { id: string } }) => {
-    await coreDb(env)
-      .update(address)
-      .set({ canSend: false, closedAt: new Date(), updatedAt: new Date() })
-      .where(and(eq(address.workspaceId, organization.id), eq(address.ownerUserId, user.id)));
-    await refreshWorkspaceLimits(env, organization.id);
+    await closeMailboxes(env, organization.id, user.id);
     await writeAudit(env, { action: "member.remove", workspaceId: organization.id, target: user.id });
   },
 });

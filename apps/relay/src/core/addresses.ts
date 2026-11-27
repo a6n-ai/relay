@@ -109,9 +109,9 @@ export const INBOUND_GRACE_MS = 7 * DAY_MS;
 export async function inboxForRecipient(
   env: Env,
   email: string,
-): Promise<{ addressId: string; workspaceId: string; appId: string } | null> {
+): Promise<{ addressId: string; workspaceId: string; appId: string; kind: string } | null> {
   const [row] = await coreDb(env)
-    .select({ addressId: address.id, workspaceId: address.workspaceId, appId: address.appId })
+    .select({ addressId: address.id, workspaceId: address.workspaceId, appId: address.appId, kind: address.kind })
     .from(address)
     .where(and(eq(address.email, email.trim().toLowerCase()), inArray(address.kind, ["inbox", "both", "personal"]), isNull(address.closedAt)));
   return row ?? null;

@@ -134,9 +134,12 @@ export async function storeInbound(deps: InboundDeps, workspaceId: string, job: 
   }
 
   const messageId = newId("msg");
-  const webhooks = listWebhookRows(db, job.appId)
-    .map(toWebhookView)
-    .filter((w) => w.enabled && w.events.includes(EVENT));
+  // Personal mail never reaches an app integration.
+  const webhooks = job.personal
+    ? []
+    : listWebhookRows(db, job.appId)
+        .map(toWebhookView)
+        .filter((w) => w.enabled && w.events.includes(EVENT));
   const htmlKey = parsed.html ? r2Keys.msgHtml(workspaceId, messageId) : null;
   const payloadKey = r2Keys.payload(workspaceId, messageId);
   const attachments = parsed.attachments.map((a, position) => {

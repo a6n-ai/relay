@@ -8,6 +8,7 @@ export type InboundJob = {
   workspaceId: string;
   appId: string;
   addressId: string;
+  personal?: boolean;
   rawKey: string;
   envelopeFrom: string;
   envelopeTo: string;

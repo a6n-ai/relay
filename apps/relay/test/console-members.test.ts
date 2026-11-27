@@ -372,6 +372,24 @@ describe("accepting an invite", { timeout: 60_000 }, () => {
     await expect(getMessage(env, actor, letter, { images: false })).resolves.toMatchObject({ id: letter });
   });
 
+  it("leaving through Better Auth closes the mailbox", async () => {
+    const { owner, domain, invite } = await mailboxSetup("leave");
+    const mailbox = `ravi@${domain}`;
+    const { id } = await invite(mailbox, "ravi-leave@gmail.test");
+    const cookie = await signIn(mailbox, "ravi-leave@gmail.test");
+    await acceptInvite(env, await requireUser(env, headersFor(cookie), { write: true }), id);
+    const res = await SELF.fetch(`${ORIGIN}/api/auth/organization/leave`, {
+      method: "POST",
+      headers: { "content-type": "application/json", cookie, origin: ORIGIN },
+      body: JSON.stringify({ organizationId: owner.workspaceId }),
+    });
+    expect(res.status).toBe(200);
+    const [row] = await coreDb(env).select().from(address).where(eq(address.email, mailbox));
+    expect(row.closedAt).toBeInstanceOf(Date);
+    expect(row.canSend).toBe(false);
+    expect(await inboxForRecipient(env, mailbox)).toBeNull();
+  });
+
   it("mailbox taken at accept leaves no member", async () => {
     const { owner, domain, appId, invite } = await mailboxSetup("late");
     const mailbox = `ravi@${domain}`;

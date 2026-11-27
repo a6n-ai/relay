@@ -4,7 +4,7 @@ import { mailboxCandidates, mailboxFree, suggestMailbox } from "../src/core/mail
 import { coreDb } from "../src/db/core/client";
 import { address } from "../src/db/core/schema";
 import { securityDb } from "../src/db/security/client";
-import { invitation, user, workspace } from "../src/db/security/schema";
+import { account, invitation, user, workspace } from "../src/db/security/schema";
 import { applyMigrations } from "./migrate";
 
 beforeAll(async () => {
@@ -36,7 +36,13 @@ describe("mailboxFree", () => {
     expect(await mailboxFree(env, "stale@a6n.ai")).toBe(true);
   });
 
-  it("is true for a leftover user with no member and no credential", async () => {
+  it("is false for a google-only user with no member", async () => {
+    const [g] = await securityDb(env).insert(user).values({ name: "G", email: "goog-free@a6n.ai" }).returning();
+    await securityDb(env).insert(account).values({ userId: g.id, accountId: "g-1", providerId: "google" });
+    expect(await mailboxFree(env, "goog-free@a6n.ai")).toBe(false);
+  });
+
+  it("is true for a leftover user with no member and no account", async () => {
     await securityDb(env).insert(user).values({ name: "L", email: "left@a6n.ai" });
     expect(await mailboxFree(env, "left@a6n.ai")).toBe(true);
   });

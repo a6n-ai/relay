@@ -140,6 +140,19 @@ describe("ClientDO ingestInbound", () => {
     });
   });
 
+  it("enqueues no webhook for personal mail", async () => {
+    const ws = "wsp_in_personal";
+    const stub = stubFor(ws);
+    const sendBatch = vi.spyOn(env.WEBHOOKS, "sendBatch").mockResolvedValue(undefined as never);
+    await stub.createWebhook(ws, "app_A", { url, events: ["mailbox.received"] });
+    const job = { ...(await putLetter(ws, invoiceLetter())), personal: true };
+
+    const result = await stub.ingestInbound(ws, job);
+
+    expect(result).toEqual({ outcome: "inserted", messageId: expect.stringMatching(/^msg_/), deliveries: 0 });
+    expect(sendBatch).not.toHaveBeenCalled();
+  });
+
   it("returns the same message for a repeated job, with no new rows or deliveries", async () => {
     const ws = "wsp_in_repeat";
     const stub = stubFor(ws);

@@ -210,6 +210,18 @@ describe("console sending domains and addresses", { timeout: 60_000 }, () => {
     expect(row).toMatchObject({ canSend: false });
   });
 
+  it("refuses to remove a personal mailbox", async () => {
+    const a = await workspaceFor("addr-pers@example.com", "Addr Pers Co");
+    const actor = await requireActor(env, headersFor(a.cookie), WRITE);
+    const { id: appId } = await addApp(env, actor, { name: "Web", slug: "web" });
+    const [row] = await coreDb(env)
+      .insert(address)
+      .values({ workspaceId: a.workspaceId, appId, email: "p@pers-own.test", kind: "personal", ownerUserId: actor.userId })
+      .returning();
+    await expect(removeAddress(env, actor, row.id)).rejects.toThrow("personal mailbox");
+    expect(await coreDb(env).select().from(address).where(eq(address.id, row.id))).toHaveLength(1);
+  });
+
   it("removes an address's grants before the address", async () => {
     const a = await workspaceFor("addr-grant@example.com", "Addr Grant Co");
     const actor = await requireActor(env, headersFor(a.cookie), WRITE);

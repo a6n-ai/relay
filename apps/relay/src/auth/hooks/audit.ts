@@ -6,6 +6,7 @@ import { member } from "../../db/security/schema";
 import type { Env } from "../../env";
 import { writeAudit } from "../audit";
 import { recordPasswordChange } from "../password";
+import { closeMailboxes } from "./org";
 import { callbackAudit } from "./oauth-link";
 import type { AdminLinkState, HookCtx } from "./types";
 
@@ -67,6 +68,10 @@ export async function auditAfterRequest(env: Env, ctx: HookCtx, linkState: Admin
   if (isAPIError(result)) return;
 
   switch (ctx.path) {
+    case "/organization/leave": {
+      const left = result as { userId: string; organizationId: string };
+      return closeMailboxes(env, left.organizationId, left.userId);
+    }
     case "/admin/remove-user":
       return writeAudit(env, { action: "user.remove", actorUserId: await actorOf(ctx), target: body.userId, ...meta });
     case "/admin/ban-user":
