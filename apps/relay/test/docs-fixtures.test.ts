@@ -30,10 +30,20 @@ const SCHEMAS: Record<string, { route: string; schema: ZodType }> = {
 const files = import.meta.glob<Endpoint[]>("../../relay-docs/src/fixtures/*.json", { eager: true, import: "default" });
 const endpoints = Object.entries(files).flatMap(([file, list]) => list.map((e) => ({ file, ...e })));
 const pages = Object.values(import.meta.glob<string>("../../relay-docs/src/content/docs/docs/api/*.mdx", { eager: true, query: "?raw", import: "default" })).join("\n");
-// Repeated until stable, so a comment split by another cannot leave an opener behind.
+// Drops <!-- --> and {/* */} comments by scanning; an unclosed one drops the rest, so no opener survives.
 const stripComments = (s: string): string => {
-  for (let prev = ""; prev !== s; ) [prev, s] = [s, s.replace(/<!--[\s\S]*?-->|\{\/\*[\s\S]*?\*\/\}/g, "")];
-  return s.replace(/<!--/g, "");
+  let out = "";
+  for (let i = 0; i < s.length; ) {
+    const html = s.indexOf("<!--", i);
+    const jsx = s.indexOf("{/*", i);
+    const at = html < 0 ? jsx : jsx < 0 ? html : Math.min(html, jsx);
+    if (at < 0) return out + s.slice(i);
+    out += s.slice(i, at);
+    const close = at === html ? s.indexOf("-->", at + 4) : s.indexOf("*/}", at + 3);
+    if (close < 0) return out;
+    i = close + 3;
+  }
+  return out;
 };
 const rendered = new Set(
   [...stripComments(pages).matchAll(/<Endpoint file="([^"]+)" title=("(?:[^"\\]|\\.)*") \/>/g)].map((m) => `${m[1]}|${JSON.parse(m[2])}`),

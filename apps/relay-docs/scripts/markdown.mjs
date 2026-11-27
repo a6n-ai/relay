@@ -18,10 +18,16 @@ td.addRule('dd', { filter: 'dd', replacement: (c) => `${c.trim()}\n` });
 
 // &amp; last, so "&amp;lt;" decodes to "&lt;" and is not unescaped twice.
 const decode = (s) => s.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
+// Text outside tags, by a character scan: an unclosed < drops the rest, so no element can survive.
 const stripTags = (s) => {
-	for (let prev; prev !== s; ) [prev, s] = [s, s.replace(/<[^<>]*>/g, '')];
-	// A broken tag with no closing > is dropped too, so no element can survive.
-	return s.replace(/</g, '');
+	let out = '';
+	let inTag = false;
+	for (const c of s) {
+		if (c === '<') inTag = true;
+		else if (c === '>' && inTag) inTag = false;
+		else if (!inTag) out += c;
+	}
+	return out;
 };
 const entries = [];
 
