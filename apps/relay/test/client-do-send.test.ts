@@ -57,7 +57,20 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+const refused = (call: Promise<unknown>) => call.then(() => "resolved", (e: Error) => e.message);
+
 describe("ClientDO send", () => {
+  it("answers limits unavailable, not sender_not_verified, when a fresh DO cannot reach D1", async () => {
+    const ws = "wsp_fresh_d1_down";
+    const stub = await seededStub(ws);
+    vi.spyOn(env.CORE_DB, "prepare").mockImplementation(() => {
+      throw new Error("D1 down");
+    });
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    expect(await refused(stub.send(ws, base))).toBe("limits unavailable");
+    expect(enqueue).not.toHaveBeenCalled();
+  });
+
   it("queues a message, stores html in R2 and enqueues one send job", async () => {
     const ws = "wsp_test";
     const stub = await seededStub(ws);

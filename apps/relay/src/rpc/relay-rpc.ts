@@ -48,7 +48,7 @@ import {
 } from "../services/templates";
 import { campaignPatch, listInput, listPatch, templateInput, templatePatch } from "../services/schemas";
 import type { Env } from "../env";
-import { codeOf, ERRORS, RelayError } from "../shared/errors";
+import { RelayError, statusOf } from "../shared/errors";
 import { STREAMS } from "../shared/mail";
 
 // Module-level, not a method: WorkerEntrypoint exposes every method over RPC, private or not.
@@ -65,9 +65,7 @@ async function withPrincipal<T>(env: Env, apiKey: string, call: (p: KeyPrincipal
   try {
     return await call(p);
   } catch (err) {
-    // A refusal from ClientDO crosses RPC as a plain Error whose message is its code.
-    const code = codeOf(err);
-    logFailure(`rpc key=${p.keyId}`, err instanceof RelayError ? err.status : code ? ERRORS[code].status : 500, err);
+    logFailure(`rpc key=${p.keyId}`, statusOf(err) ?? 500, err);
     if (err instanceof RelayError) throw new Error(err.message);
     throw err;
   }

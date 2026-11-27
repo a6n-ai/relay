@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { workspaceProfile } from "../src/db/core/schema";
-import { codeOf, ERRORS, fail, RelayError } from "../src/shared/errors";
+import { codeOf, ERRORS, fail, RelayError, statusOf } from "../src/shared/errors";
 import { DEFAULT_MONTHLY_QUOTA } from "../src/shared/limits";
 
 const sources = import.meta.glob("../src/**/*.{ts,tsx}", { query: "?raw", import: "default", eager: true }) as Record<string, string>;
@@ -28,6 +28,16 @@ describe("error table", () => {
     expect(codeOf(new Error("forbidden"))).toBe("forbidden");
     expect(codeOf(new Error("constructor"))).toBeUndefined();
     expect(codeOf("forbidden")).toBeUndefined();
+  });
+});
+
+describe("statusOf", () => {
+  it("answers a RelayError's status and a plain Error that crossed RPC by its code", () => {
+    expect(statusOf(new RelayError("not found", 400))).toBe(400);
+    expect(statusOf(new Error("campaign not editable"))).toBe(409);
+    expect(statusOf(new Error("limits unavailable"))).toBe(503);
+    expect(statusOf(new Error("boom"))).toBeUndefined();
+    expect(statusOf("not found")).toBeUndefined();
   });
 });
 

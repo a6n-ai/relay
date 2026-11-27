@@ -3,7 +3,7 @@ import { env } from "cloudflare:workers";
 import { requireActor } from "../../../console/actor";
 import { messageFile } from "../../../services/inbox";
 import { describeError } from "../../../core/log";
-import { RelayError } from "../../../shared/errors";
+import { RelayError, statusOf } from "../../../shared/errors";
 
 export const Route = createFileRoute("/api/console/messages/$id/$part")({
   server: {
@@ -15,7 +15,8 @@ export const Route = createFileRoute("/api/console/messages/$id/$part")({
           const view = new URL(request.url).searchParams.get("view") === "1";
           return await messageFile(env, p, params.id, params.part, view);
         } catch (err) {
-          if (err instanceof RelayError) return Response.json({ error: err.message }, { status: err.status });
+          const status = statusOf(err);
+          if (status) return Response.json({ error: (err as Error).message }, { status });
           console.error("console download failed", params.id, describeError(err));
           return Response.json({ error: "internal error" }, { status: 500 });
         }

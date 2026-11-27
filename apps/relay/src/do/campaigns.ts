@@ -4,6 +4,7 @@ import { keysetBefore, keysetSlice, parseCursor } from "../core/cursor";
 import { getTemplateRow } from "./templates";
 import { type CampaignView, type AudiencePreview, type CampaignStats } from "../shared/views";
 import { PAGE_SIZE } from "../shared/limits";
+import { RelayError } from "../shared/errors";
 
 export type CampaignSummary = Omit<CampaignView, "html" | "text">;
 export type CampaignPatch = Partial<Pick<CampaignView, "name" | "fromEmail" | "subject" | "html" | "text" | "listIds" | "audienceKind" | "audienceQuery">>;
@@ -127,10 +128,10 @@ export function listCampaignRows(
   return { rows: page.map((r) => parse(r) as CampaignSummary), nextCursor };
 }
 
-export function updateCampaignRow(sql: SqlStorage, id: string, patch: CampaignPatch): CampaignView | "missing" | "not_draft" | "bad_list" {
+export function updateCampaignRow(sql: SqlStorage, id: string, patch: CampaignPatch): CampaignView {
   const current = getCampaignRow(sql, id);
-  if (!current) return "missing";
-  if (current.status !== "draft") return "not_draft";
+  if (!current) throw new RelayError("not found");
+  if (current.status !== "draft") throw new RelayError("campaign not editable");
   const audienceKind = patch.audienceKind ?? current.audienceKind;
   // A hook audience names no lists, so switching to it clears them.
   const listIds = audienceKind === "hook" ? [] : patch.listIds ? [...new Set(patch.listIds)] : current.listIds;
@@ -138,7 +139,7 @@ export function updateCampaignRow(sql: SqlStorage, id: string, patch: CampaignPa
     const owned = sql
       .exec<{ n: number }>("SELECT COUNT(*) AS n FROM contact_list WHERE app_id = ? AND id IN (SELECT value FROM json_each(?))", current.appId, JSON.stringify(listIds))
       .one().n;
-    if (owned !== listIds.length) return "bad_list";
+    if (owned !== listIds.length) throw new RelayError("unknown list");
   }
   sql.exec(
     "UPDATE campaign SET name = ?, from_email = ?, subject = ?, html = ?, text = ?, list_ids = ?, audience_kind = ?, audience_query = ?, updated_at = ? WHERE id = ?",
@@ -156,12 +157,11 @@ export function updateCampaignRow(sql: SqlStorage, id: string, patch: CampaignPa
   return getCampaignRow(sql, id)!;
 }
 
-export function deleteCampaignRow(sql: SqlStorage, id: string): "deleted" | "missing" | "not_draft" {
+export function deleteCampaignRow(sql: SqlStorage, id: string): void {
   const row = sql.exec<{ status: string }>("SELECT status FROM campaign WHERE id = ?", id).toArray()[0];
-  if (!row) return "missing";
-  if (row.status !== "draft") return "not_draft";
+  if (!row) throw new RelayError("not found");
+  if (row.status !== "draft") throw new RelayError("campaign not editable");
   sql.exec("DELETE FROM campaign WHERE id = ?", id);
-  return "deleted";
 }
 
 // shortcut: loads every opt-out on the sending domain, join against the audience once a domain has more than a few thousand.

@@ -58,9 +58,6 @@ export async function deleteWebhook(env: Env, p: Principal, appId: string, id: s
 
 export async function retryDelivery(env: Env, p: Principal, appId: string, deliveryId: string): Promise<void> {
   await ownApp(env, p, appId);
-  const outcome = await clientFor(env, p.workspaceId).retryWebhookDelivery(p.workspaceId, appId, deliveryId);
-  if (outcome === "missing") throw new RelayError("not found");
-  if (outcome === "not_failed") throw new RelayError("delivery not failed");
-  if (outcome === "webhook_disabled") throw new RelayError("webhook disabled");
+  await clientFor(env, p.workspaceId).retryWebhookDelivery(p.workspaceId, appId, deliveryId);
   await audit(env, p, "webhook.retry", deliveryId, { appId });
 }

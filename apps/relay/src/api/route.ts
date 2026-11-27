@@ -3,7 +3,7 @@ import { ZodError } from "zod";
 import { resolveBearer, withinRateLimit } from "../services/api-keys";
 import type { KeyPrincipal } from "../services/principal";
 import { logFailure } from "../core/log";
-import { codeOf, ERRORS, RelayError } from "../shared/errors";
+import { RelayError, statusOf } from "../shared/errors";
 import type { Env } from "../env";
 
 type ApiCtx = { env: Env; p: KeyPrincipal; request: Request; params: Record<string, string> };
@@ -58,10 +58,9 @@ export function apiRoute(handler: (ctx: ApiCtx) => Promise<Response>) {
         // Field paths and issue codes only: the submitted values stay out of the log.
         return fail("invalid input", 400, `invalid input at ${err.issues.map((i) => `${i.path.join(".") || "(root)"}:${i.code}`).join(", ")}`);
       }
-      if (err instanceof RelayError) return fail(err.message, err.status);
-      // ClientDO errors cross RPC as plain Errors that keep only the code.
-      const code = codeOf(err);
-      if (code) return fail(code, ERRORS[code].status);
+      // A ClientDO refusal crosses RPC as a plain Error that keeps only the code.
+      const status = statusOf(err);
+      if (status) return fail((err as Error).message, status);
       logFailure(where, 500, err);
       throw err;
     }

@@ -258,7 +258,7 @@ describe("console webhooks: delivery log and retry", { timeout: 60_000 }, () => 
     });
 
     sendSpy.mockClear();
-    await expect(stub(workspaceId).retryWebhookDelivery(workspaceId, appId, deliveryId, now)).resolves.toBe("queued");
+    await expect(stub(workspaceId).retryWebhookDelivery(workspaceId, appId, deliveryId, now)).resolves.toBeUndefined();
     await runInDurableObject(stub(workspaceId), (inst) => inst.sweepQueued(now));
     const [live] = await rowsOf(workspaceId, "SELECT status, last_error FROM webhook_delivery WHERE id = ?", deliveryId);
     expect(live).toEqual({ status: "pending", last_error: null });

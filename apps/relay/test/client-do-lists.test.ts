@@ -8,6 +8,8 @@ beforeAll(async () => {
 
 const stubFor = (ws: string) => env.CLIENT.get(env.CLIENT.idFromName(ws));
 
+const refused = (call: Promise<unknown>) => call.then(() => "resolved", (e: Error) => e.message);
+
 describe("contact lists in the workspace DO", () => {
   it("creates a list and lists it with a zero member count", async () => {
     const ws = "ws_list_create";
@@ -31,7 +33,7 @@ describe("contact lists in the workspace DO", () => {
     const stub = stubFor(ws);
     const list = await stub.createList(ws, "app_1", { name: "L", consentSource: "purchase" });
     await stub.addSuppression(ws, "s@x.com", "bounce");
-    expect(await stub.addMember(ws, list.id, { email: "s@x.com" })).toBe("suppressed");
+    expect(await refused(stub.addMember(ws, list.id, { email: "s@x.com" }))).toBe("address suppressed");
     expect((await stub.listMembers(ws, list.id))?.rows).toEqual([]);
   });
 
@@ -59,9 +61,9 @@ describe("contact lists in the workspace DO", () => {
         JSON.stringify([inUse.id]),
       );
     });
-    expect(await stub.deleteList(ws, inUse.id)).toBe("in_use");
-    expect(await stub.deleteList(ws, draft.id)).toBe("deleted");
-    expect(await stub.deleteList(ws, draft.id)).toBe("missing");
+    expect(await refused(stub.deleteList(ws, inUse.id))).toBe("list in use");
+    await stub.deleteList(ws, draft.id);
+    expect(await refused(stub.deleteList(ws, draft.id))).toBe("not found");
     expect(await stub.listLists(ws)).toMatchObject([{ name: "Busy" }]);
     const orphans = await runInDurableObject(stub, (_instance, state) =>
       state.storage.sql.exec<{ n: number }>("SELECT COUNT(*) AS n FROM contact_list_member WHERE list_id = ?", draft.id).one().n,

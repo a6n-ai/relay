@@ -8,7 +8,7 @@ import { CHUNK_SIZE, ENQUEUE_BATCH } from "../core/campaign-run";
 import { contactValues, fillUnsubscribe, hasMergeToken, MERGE_SAMPLES, renderMerge, type MergeData } from "../shared/merge";
 import { sesSendRate } from "../core/send-rate";
 import type { SesAttachment, SesSendRequest } from "../core/ses";
-import { LIMITS_KEY, LIMITS_TTL_MS, loadWorkspaceLimits, noLimitsSnapshot, SENDER_RETRY_MS, type WorkspaceLimits } from "../core/limits";
+import { LIMITS_KEY, LIMITS_TTL_MS, loadWorkspaceLimits, SENDER_RETRY_MS, type WorkspaceLimits } from "../core/limits";
 import { resolvedSendSchema, type ResolvedSendInput } from "../core/send-input";
 import type { SesEventJob } from "../core/ses-events";
 import { listUnsubscribeHeaders, unsubscribeToken, unsubscribeUrl } from "../core/unsubscribe";
@@ -49,7 +49,7 @@ import { createAutomationRow, deleteAutomationRow, earliestDue, enrolAutomations
 import { RelayError, codeOf } from "../shared/errors";
 import { type DeliveryView, type CampaignStats, type AudiencePreview, type CampaignView, type ListView, type MemberView, type TemplateView, type AutomationView } from "../shared/views";
 import { type Stream, type SuppressionReason } from "../shared/mail";
-import { DAY_MS, DEFAULT_MONTHLY_QUOTA } from "../shared/limits";
+import { DAY_MS } from "../shared/limits";
 
 // failed: indexes into the input whose transaction threw. They rolled back alone and must be retried.
 export type SesEventResult = {
@@ -83,6 +83,7 @@ export class ClientDO extends DurableObject<Env> {
   migrateError: Error | undefined;
   // Same-key sends share one in-flight promise, so a second caller never sees a row that is about to be rolled back.
   private readonly inFlight = new Map<string, Promise<SendResult>>();
+  private readonly senderRetried = new Set<string>();
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
@@ -119,7 +120,7 @@ export class ClientDO extends DurableObject<Env> {
   }
 
   private async create(workspaceId: string, data: ResolvedSendInput): Promise<SendResult> {
-    const limits = await this.limits(workspaceId, { forSender: data.from });
+    const limits = await this.limitsOrThrow(workspaceId, { forSender: data.from });
     if (limits.status === "suspended") throw new RelayError("workspace_suspended");
     const sender = limits.senders[data.from];
     // An address belongs to one app: another app's key in the same workspace may not send from it.
@@ -363,9 +364,9 @@ export class ClientDO extends DurableObject<Env> {
     return this.ctx.storage.transactionSync(() => updateListRow(this.ctx.storage.sql, id, patch));
   }
 
-  async deleteList(workspaceId: string, id: string): Promise<"deleted" | "missing" | "in_use"> {
+  async deleteList(workspaceId: string, id: string): Promise<void> {
     await this.ready(workspaceId);
-    return this.ctx.storage.transactionSync(() => deleteListRow(this.ctx.storage.sql, id));
+    this.ctx.storage.transactionSync(() => deleteListRow(this.ctx.storage.sql, id));
   }
 
   async listMembers(workspaceId: string, listId: string, cursor?: string): Promise<{ rows: MemberView[]; nextCursor: string | null } | null> {
@@ -373,7 +374,7 @@ export class ClientDO extends DurableObject<Env> {
     return listMemberRows(this.ctx.storage.sql, listId, (email) => this.suppressed(email, "marketing"), cursor);
   }
 
-  async addMember(workspaceId: string, listId: string, input: MemberInput): Promise<"added" | "existing" | "suppressed" | "missing"> {
+  async addMember(workspaceId: string, listId: string, input: MemberInput): Promise<"added" | "existing"> {
     await this.ready(workspaceId);
     const outcome = this.ctx.storage.transactionSync(() => {
       const result = addMemberRow(this.ctx.storage.sql, listId, input, (email) => this.suppressed(email, "marketing"));
@@ -484,15 +485,15 @@ export class ClientDO extends DurableObject<Env> {
       return { before, after: statsOf(afterRow) };
     });
   }
-  async updateCampaign(workspaceId: string, id: string, patch: CampaignPatch): Promise<CampaignView | "missing" | "not_draft" | "bad_list"> {
+  async updateCampaign(workspaceId: string, id: string, patch: CampaignPatch): Promise<CampaignView> {
     await this.ready(workspaceId);
     return this.ctx.storage.transactionSync(() => updateCampaignRow(this.ctx.storage.sql, id, patch));
   }
-  async deleteCampaign(workspaceId: string, id: string): Promise<"deleted" | "missing" | "not_draft"> {
+  async deleteCampaign(workspaceId: string, id: string): Promise<void> {
     await this.ready(workspaceId);
-    return this.ctx.storage.transactionSync(() => deleteCampaignRow(this.ctx.storage.sql, id));
+    this.ctx.storage.transactionSync(() => deleteCampaignRow(this.ctx.storage.sql, id));
   }
-  async createTemplate(workspaceId: string, appId: string, input: TemplateInput): Promise<TemplateView | "event_taken"> {
+  async createTemplate(workspaceId: string, appId: string, input: TemplateInput): Promise<TemplateView> {
     await this.ready(workspaceId);
     return this.ctx.storage.transactionSync(() => createTemplateRow(this.ctx.storage.sql, appId, input));
   }
@@ -504,13 +505,13 @@ export class ClientDO extends DurableObject<Env> {
     await this.ready(workspaceId);
     return getTemplateRow(this.ctx.storage.sql, id);
   }
-  async updateTemplate(workspaceId: string, id: string, patch: Partial<TemplateInput>): Promise<TemplateView | "missing" | "event_taken"> {
+  async updateTemplate(workspaceId: string, id: string, patch: Partial<TemplateInput>): Promise<TemplateView> {
     await this.ready(workspaceId);
     return this.ctx.storage.transactionSync(() => updateTemplateRow(this.ctx.storage.sql, id, patch));
   }
-  async deleteTemplate(workspaceId: string, id: string): Promise<"deleted" | "missing" | "in_use"> {
+  async deleteTemplate(workspaceId: string, id: string): Promise<void> {
     await this.ready(workspaceId);
-    return this.ctx.storage.transactionSync(() => deleteTemplateRow(this.ctx.storage.sql, id));
+    this.ctx.storage.transactionSync(() => deleteTemplateRow(this.ctx.storage.sql, id));
   }
   async templateOverrides(workspaceId: string, appId: string): Promise<TemplateOverride[]> {
     await this.ready(workspaceId);
@@ -522,12 +523,12 @@ export class ClientDO extends DurableObject<Env> {
     id: string,
     at: number,
     postalAddress: string | null,
-  ): Promise<{ runSeq: number } | { problems: CampaignProblem[] } | "missing" | "not_draft"> {
+  ): Promise<{ runSeq: number } | { problems: CampaignProblem[] }> {
     await this.ready(workspaceId);
-    return this.ctx.storage.transactionSync((): { runSeq: number } | { problems: CampaignProblem[] } | "missing" | "not_draft" => {
+    return this.ctx.storage.transactionSync((): { runSeq: number } | { problems: CampaignProblem[] } => {
       const row = getCampaignRow(this.ctx.storage.sql, id);
-      if (!row) return "missing";
-      if (row.status !== "draft") return "not_draft";
+      if (!row) throw new RelayError("not found");
+      if (row.status !== "draft") throw new RelayError("campaign not editable");
       const hookReady = this.ctx.storage.sql.exec("SELECT 1 FROM audience_hook WHERE app_id = ? AND enabled = 1", row.appId).toArray().length > 0;
       const problems = campaignProblems({ ...row, hookReady }, postalAddress);
       if (problems.length > 0) return { problems };
@@ -543,14 +544,13 @@ export class ClientDO extends DurableObject<Env> {
       return { runSeq };
     });
   }
-  async unscheduleCampaign(workspaceId: string, id: string): Promise<"draft" | "missing" | "not_scheduled"> {
+  async unscheduleCampaign(workspaceId: string, id: string): Promise<void> {
     await this.ready(workspaceId);
-    return this.ctx.storage.transactionSync((): "draft" | "missing" | "not_scheduled" => {
+    this.ctx.storage.transactionSync(() => {
       const head = this.campaignHead(id);
-      if (!head) return "missing";
-      if (head.status !== "scheduled") return "not_scheduled";
+      if (!head) throw new RelayError("not found");
+      if (head.status !== "scheduled") throw new RelayError("campaign not scheduled");
       this.ctx.storage.sql.exec("UPDATE campaign SET status = 'draft', scheduled_at = NULL, updated_at = ? WHERE id = ?", Date.now(), id);
-      return "draft";
     });
   }
   // Retries of the start step land here with status already sending, so they return go too.
@@ -647,24 +647,24 @@ export class ClientDO extends DurableObject<Env> {
       return "paused";
     });
   }
-  async resumeCampaign(workspaceId: string, id: string): Promise<{ runSeq: number } | "missing" | "not_paused"> {
+  async resumeCampaign(workspaceId: string, id: string): Promise<{ runSeq: number }> {
     await this.ready(workspaceId);
-    return this.ctx.storage.transactionSync((): { runSeq: number } | "missing" | "not_paused" => {
+    return this.ctx.storage.transactionSync(() => {
       const head = this.campaignHead(id);
-      if (!head) return "missing";
-      if (head.status !== "paused") return "not_paused";
+      if (!head) throw new RelayError("not found");
+      if (head.status !== "paused") throw new RelayError("campaign not paused");
       const runSeq = head.runSeq + 1;
       this.ctx.storage.sql.exec("UPDATE campaign SET status = 'sending', run_seq = ?, error = NULL, updated_at = ? WHERE id = ?", runSeq, Date.now(), id);
       return { runSeq };
     });
   }
   // Queued rows nobody has claimed fail here. Rows already claimed or handed to SES are left to finish.
-  async cancelCampaign(workspaceId: string, id: string, now = Date.now()): Promise<{ dropped: number } | "missing" | "not_cancellable"> {
+  async cancelCampaign(workspaceId: string, id: string, now = Date.now()): Promise<{ dropped: number }> {
     await this.ready(workspaceId);
-    return this.ctx.storage.transactionSync((): { dropped: number } | "missing" | "not_cancellable" => {
+    return this.ctx.storage.transactionSync(() => {
       const head = this.campaignHead(id);
-      if (!head) return "missing";
-      if (!["scheduled", "sending", "paused"].includes(head.status)) return "not_cancellable";
+      if (!head) throw new RelayError("not found");
+      if (!["scheduled", "sending", "paused"].includes(head.status)) throw new RelayError("campaign not cancellable");
       this.ctx.storage.sql.exec("UPDATE campaign SET status = 'cancelled', finished_at = ?, updated_at = ? WHERE id = ?", now, now, id);
       const dropped = this.db
         .update(schema.message)
@@ -684,10 +684,10 @@ export class ClientDO extends DurableObject<Env> {
     });
   }
   // Sent through the normal send path with the signed-in user's own address. No campaign id, so no counters move.
-  async testSendCampaign(workspaceId: string, id: string, to: string, postalAddress: string | null): Promise<SendResult | "missing"> {
+  async testSendCampaign(workspaceId: string, id: string, to: string, postalAddress: string | null): Promise<SendResult> {
     await this.ready(workspaceId);
     const c = getCampaignRow(this.ctx.storage.sql, id);
-    if (!c) return "missing";
+    if (!c) throw new RelayError("not found");
     if (!c.fromEmail) throw new RelayError("sender_not_verified");
     const values = { ...MERGE_SAMPLES, "contact.email": to, postal_address: postalAddress ?? MERGE_SAMPLES.postal_address };
     return this.send(workspaceId, {
@@ -728,22 +728,22 @@ export class ClientDO extends DurableObject<Env> {
     appId: string,
     deliveryId: string,
     now = Date.now(),
-  ): Promise<"queued" | "missing" | "not_failed" | "webhook_disabled"> {
+  ): Promise<void> {
     await this.ready(workspaceId);
-    const outcome = this.ctx.storage.transactionSync((): "queued" | "missing" | "not_failed" | "webhook_disabled" => {
+    this.ctx.storage.transactionSync(() => {
       const row = this.db
         .select()
         .from(schema.webhookDelivery)
         .where(and(eq(schema.webhookDelivery.id, deliveryId), eq(schema.webhookDelivery.appId, appId)))
         .get();
-      if (!row) return "missing";
-      if (row.status !== "failed") return "not_failed";
+      if (!row) throw new RelayError("not found");
+      if (row.status !== "failed") throw new RelayError("delivery not failed");
       const hook = this.db
         .select({ enabled: schema.webhook.enabled })
         .from(schema.webhook)
         .where(and(eq(schema.webhook.id, row.webhookId), eq(schema.webhook.appId, appId)))
         .get();
-      if (!hook || hook.enabled !== 1) return "webhook_disabled";
+      if (!hook || hook.enabled !== 1) throw new RelayError("webhook disabled");
       this.db
         .update(schema.webhookDelivery)
         .set({
@@ -758,9 +758,7 @@ export class ClientDO extends DurableObject<Env> {
         })
         .where(eq(schema.webhookDelivery.id, deliveryId))
         .run();
-      return "queued";
     });
-    if (outcome !== "queued") return outcome;
     // Armed so the sweep covers a failed enqueue below, as ingestInbound does.
     if ((await this.ctx.storage.getAlarm()) === null) await this.ctx.storage.setAlarm(now + SWEEP_INTERVAL_MS);
     try {
@@ -768,7 +766,6 @@ export class ClientDO extends DurableObject<Env> {
     } catch (err) {
       console.error("ClientDO: webhook retry enqueue failed", deliveryId, describeError(err));
     }
-    return outcome;
   }
 
   // The secret is decrypted here and only its HMAC signature leaves, inside the returned headers.
@@ -904,8 +901,13 @@ export class ClientDO extends DurableObject<Env> {
       return { kind: "busy", retryInSeconds: Math.ceil((queued.claimedUntil - now) / 1000) };
     }
     // Only a row about to be sent needs limits. Read before the transaction. With no snapshot and no D1, the job retries: queued mail is never failed for an outage.
-    const limits = await this.limits(workspaceId, { forSender: queued.fromEmail ?? undefined });
-    if (noLimitsSnapshot(limits)) return { kind: "busy", retryInSeconds: 60 };
+    let limits: WorkspaceLimits;
+    try {
+      limits = await this.limitsOrThrow(workspaceId, { forSender: queued.fromEmail ?? undefined });
+    } catch (err) {
+      if (codeOf(err) === "limits unavailable") return { kind: "busy", retryInSeconds: 60 };
+      throw err;
+    }
     // Minted before the claim transaction: a missing secret throws here, so attempts never moves.
     const url = queued.stream === "marketing" ? unsubscribeUrl(this.env.BETTER_AUTH_URL, await unsubscribeToken(this.env.UNSUBSCRIBE_SECRET, workspaceId, messageId)) : null;
     const fill = (s: string) => (url ? fillUnsubscribe(s, url) : s);
@@ -1272,15 +1274,14 @@ export class ClientDO extends DurableObject<Env> {
     return listSuppressionRows(this.db, { prefix: q.prefix?.trim().toLowerCase(), cursor: q.cursor });
   }
   // Unsubscribe and complaint rows are kept: a recipient who opted out cannot be re-enabled from the console.
-  async removeSuppression(workspaceId: string, email: string): Promise<"removed" | "missing" | "opted_out"> {
+  async removeSuppression(workspaceId: string, email: string): Promise<void> {
     await this.ready(workspaceId);
     const key = email.trim().toLowerCase();
-    return this.ctx.storage.transactionSync(() => {
+    this.ctx.storage.transactionSync(() => {
       const row = this.db.select({ reason: schema.suppression.reason }).from(schema.suppression).where(eq(schema.suppression.email, key)).get();
-      if (!row) return "missing";
-      if (row.reason !== "bounce" && row.reason !== "manual") return "opted_out";
+      if (!row) throw new RelayError("not found");
+      if (row.reason !== "bounce" && row.reason !== "manual") throw new RelayError("recipient opted out");
       this.db.delete(schema.suppression).where(eq(schema.suppression.email, key)).run();
-      return "removed";
     });
   }
   async refreshLimits(workspaceId: string): Promise<WorkspaceLimits> {
@@ -1417,8 +1418,10 @@ export class ClientDO extends DurableObject<Env> {
     return { requeued: stale.length, expired };
   }
 
-  // The snapshot lives in KV, so a stale copy survives eviction and a D1 outage. It is never stored when empty.
-  private async limits(workspaceId: string, { forSender }: { forSender?: string } = {}): Promise<WorkspaceLimits> {
+  // The one rule for every path that reads limits. The snapshot lives in KV, so a stale copy survives eviction and a D1 outage; with no copy
+  // and no D1 answer this throws "limits unavailable" (503) and never guesses. Queued mail is never failed for an outage: a campaign run step
+  // throws so its Workflow retries, a send claim answers busy for 60 seconds, and an automation pass defers its runs.
+  private async limitsOrThrow(workspaceId: string, { forSender }: { forSender?: string } = {}): Promise<WorkspaceLimits> {
     const cached = this.ctx.storage.kv.get<WorkspaceLimits>(LIMITS_KEY);
     const age = cached ? Date.now() - cached.fetchedAt : Infinity;
     const senderMiss = forSender !== undefined && !cached?.senders[forSender];
@@ -1427,7 +1430,8 @@ export class ClientDO extends DurableObject<Env> {
       return await this.loadLimits(workspaceId);
     } catch (err) {
       console.error("ClientDO: failed to reload workspace limits, using the cached snapshot", describeError(err));
-      return cached ?? { monthlyQuota: DEFAULT_MONTHLY_QUOTA, postalAddress: null, status: "active", senders: {}, fetchedAt: 0 };
+      if (!cached) throw new RelayError("limits unavailable");
+      return cached;
     }
   }
 
@@ -1623,9 +1627,7 @@ export class ClientDO extends DurableObject<Env> {
 
   // Null means the run was paused here and the caller reports it stopped.
   private async runGate(workspaceId: string, id: string, runSeq: number, campaign: { appId: string; fromEmail: string | null }, now: number) {
-    const limits = await this.limits(workspaceId, { forSender: campaign.fromEmail ?? undefined });
-    // A run step throws so the Workflow retries: a missing snapshot must not look like a revoked sender (claimSend answers busy instead).
-    if (noLimitsSnapshot(limits)) throw new RelayError("limits unavailable");
+    const limits = await this.limitsOrThrow(workspaceId, { forSender: campaign.fromEmail ?? undefined });
     if (limits.status === "suspended") {
       this.pauseRun(id, runSeq, "workspace_suspended", now);
       return null;
@@ -1778,7 +1780,7 @@ export class ClientDO extends DurableObject<Env> {
     return { handled, created, queued: queue.length, lastEmail, quotaHit };
   }
 
-  async createAutomation(workspaceId: string, appId: string, input: AutomationInput): Promise<AutomationView | "bad_list" | "bad_template"> {
+  async createAutomation(workspaceId: string, appId: string, input: AutomationInput): Promise<AutomationView> {
     await this.ready(workspaceId);
     return createAutomationRow(this.ctx.storage.sql, appId, input);
   }
@@ -1788,7 +1790,7 @@ export class ClientDO extends DurableObject<Env> {
     return listAutomationRows(this.ctx.storage.sql, appId);
   }
 
-  async updateAutomation(workspaceId: string, id: string, patch: AutomationPatch): Promise<AutomationView | "missing" | "bad_template"> {
+  async updateAutomation(workspaceId: string, id: string, patch: AutomationPatch): Promise<AutomationView> {
     await this.ready(workspaceId);
     return updateAutomationRow(this.ctx.storage.sql, id, patch);
   }
@@ -1800,9 +1802,9 @@ export class ClientDO extends DurableObject<Env> {
     return result;
   }
 
-  async deleteAutomation(workspaceId: string, id: string): Promise<"deleted" | "missing"> {
+  async deleteAutomation(workspaceId: string, id: string): Promise<void> {
     await this.ready(workspaceId);
-    return deleteAutomationRow(this.ctx.storage.sql, id);
+    deleteAutomationRow(this.ctx.storage.sql, id);
   }
 
   // Bound workspace only: the alarm has no id of its own, so an unbound DO has no automations to run.
@@ -1810,10 +1812,17 @@ export class ClientDO extends DurableObject<Env> {
     const workspaceId = this.ctx.storage.kv.get<string>("workspace_id");
     if (workspaceId === undefined) return { sent: 0, skipped: 0, more: false, blocked: false };
     await this.ready(workspaceId);
-    const limits = await this.limits(workspaceId);
+    let limits: WorkspaceLimits;
+    try {
+      limits = await this.limitsOrThrow(workspaceId);
+    } catch (err) {
+      if (codeOf(err) === "limits unavailable") return { sent: 0, skipped: 0, more: false, blocked: true };
+      throw err;
+    }
     return runDueAutomationRows(
       this.ctx.storage.sql,
       {
+        senderRetried: this.senderRetried,
         send: (input) => this.send(workspaceId, input),
         render: (appId, templateId, values) => this.renderTemplate(workspaceId, appId, templateId, values),
         refreshLimits: () => this.loadLimits(workspaceId),

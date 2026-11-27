@@ -230,7 +230,7 @@ describe("send policy", () => {
     });
 
     expect((await stale.send("wsp_stale", base)).status).toBe("queued");
-    expect(await refusal(stubFor("wsp_cold"), "wsp_cold", { ...base, from: "cold@cold.ca" })).toBe("sender_not_verified");
+    expect(await refusal(stubFor("wsp_cold"), "wsp_cold", { ...base, from: "cold@cold.ca" })).toBe("limits unavailable");
   });
 
   it("maps refusals to HTTP status codes", async () => {

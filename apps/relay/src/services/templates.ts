@@ -34,27 +34,22 @@ export const getTemplate = ownedTemplate;
 export async function createTemplate(env: Env, p: Principal, appId: string, input: TemplateInput): Promise<TemplateView> {
   await ownApp(env, p, appId);
   refuseUnknownFields([input.subject, input.intro, input.html, input.text]);
-  const outcome = await clientFor(env, p.workspaceId).createTemplate(p.workspaceId, appId, input);
-  if (outcome === "event_taken") throw new RelayError("template event taken");
-  await audit(env, p, "template.create", outcome.id, { appId });
-  return outcome;
+  const template = await clientFor(env, p.workspaceId).createTemplate(p.workspaceId, appId, input);
+  await audit(env, p, "template.create", template.id, { appId });
+  return template;
 }
 
 export async function updateTemplate(env: Env, p: Principal, id: string, patch: Partial<TemplateInput>): Promise<TemplateView> {
   await ownedTemplate(env, p, id);
   refuseUnknownFields([patch.subject, patch.intro, patch.html, patch.text]);
-  const outcome = await clientFor(env, p.workspaceId).updateTemplate(p.workspaceId, id, patch);
-  if (outcome === "missing") throw new RelayError("not found");
-  if (outcome === "event_taken") throw new RelayError("template event taken");
+  const template = await clientFor(env, p.workspaceId).updateTemplate(p.workspaceId, id, patch);
   await audit(env, p, "template.update", id);
-  return outcome;
+  return template;
 }
 
 export async function deleteTemplate(env: Env, p: Principal, id: string): Promise<void> {
   await ownedTemplate(env, p, id);
-  const outcome = await clientFor(env, p.workspaceId).deleteTemplate(p.workspaceId, id);
-  if (outcome === "missing") throw new RelayError("not found");
-  if (outcome === "in_use") throw new RelayError("template in use");
+  await clientFor(env, p.workspaceId).deleteTemplate(p.workspaceId, id);
   await audit(env, p, "template.delete", id);
 }
 

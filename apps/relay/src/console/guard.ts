@@ -3,6 +3,7 @@ import { AppError } from "@foundry/commons/errors";
 import { createGuard } from "@foundry/commons/guard";
 import { env } from "cloudflare:workers";
 import { recordFailure } from "../core/log";
+import { statusOf } from "../shared/errors";
 import { requireActor, requirePlatformAdmin } from "./actor";
 import type { Principal } from "../services/principal";
 import type { Need } from "./needs";
@@ -17,7 +18,21 @@ const shared = {
 };
 
 const guard = createGuard<Need, Principal>({ actor: (need) => requireActor(env, getRequestHeaders(), need), ...shared });
-export const { run, read } = guard;
+
+// A ClientDO refusal crosses RPC as a plain Error whose message is its code. The guard keeps only an AppError's status, so it becomes one here.
+const withStatus =
+  <T>(fn: (p: Principal) => Promise<T>) =>
+  async (p: Principal): Promise<T> => {
+    try {
+      return await fn(p);
+    } catch (err) {
+      const status = err instanceof AppError ? undefined : statusOf(err);
+      if (status) throw new AppError((err as Error).message, status);
+      throw err;
+    }
+  };
+export const run = <T>(need: Need, fn: (p: Principal) => Promise<T>) => guard.run(need, withStatus(fn));
+export const read = <T>(need: Need, fn: (p: Principal) => Promise<T>) => guard.read(need, withStatus(fn));
 
 const admin = createGuard<{ write?: boolean }, { userId: string }>({
   actor: (need) => requirePlatformAdmin(env, getRequestHeaders(), need),
@@ -38,7 +53,7 @@ export const orMissing =
     try {
       return await fn(p);
     } catch (err) {
-      if (err instanceof AppError && err.status === 404) return { missing: true as const };
+      if (statusOf(err) === 404) return { missing: true as const };
       throw err;
     }
   };

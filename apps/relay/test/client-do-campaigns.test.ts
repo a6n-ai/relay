@@ -13,6 +13,8 @@ beforeAll(async () => {
 const stubFor = (ws: string) => env.CLIENT.get(env.CLIENT.idFromName(ws));
 const DAY = 86_400_000;
 
+const refused = (call: Promise<unknown>) => call.then(() => "resolved", (e: Error) => e.message);
+
 describe("campaign drafts in the workspace DO", () => {
   it("creates a draft, then updates its lists from the same app", async () => {
     const ws = "ws_camp_update";
@@ -23,12 +25,12 @@ describe("campaign drafts in the workspace DO", () => {
     expect(updated).toMatchObject({ status: "draft", listIds: [list.id], subject: "Hi" });
   });
 
-  it("refuses a list that belongs to another app with bad_list", async () => {
+  it("refuses a list that belongs to another app with unknown list", async () => {
     const ws = "ws_camp_badlist";
     const stub = stubFor(ws);
     const campaign = ((await stub.createCampaign(ws, "app_1", "C")) as { id: string });
     const other = await stub.createList(ws, "app_2", { name: "Other", consentSource: "express_optin" });
-    expect(await stub.updateCampaign(ws, campaign.id, { listIds: [other.id] })).toBe("bad_list");
+    expect(await refused(stub.updateCampaign(ws, campaign.id, { listIds: [other.id] }))).toBe("unknown list");
   });
 
   it("refuses to edit a campaign that is no longer a draft", async () => {
@@ -39,7 +41,7 @@ describe("campaign drafts in the workspace DO", () => {
         "INSERT INTO campaign (id, app_id, name, status, created_at, updated_at) VALUES ('cmp_scheduled002', 'app_1', 'S', 'scheduled', 1, 1)",
       );
     });
-    expect(await stub.updateCampaign(ws, "cmp_scheduled002", { name: "Renamed" })).toBe("not_draft");
+    expect(await refused(stub.updateCampaign(ws, "cmp_scheduled002", { name: "Renamed" }))).toBe("campaign not editable");
     expect(await stub.getCampaign(ws, "cmp_scheduled002")).toMatchObject({ status: "scheduled", name: "S" });
   });
 

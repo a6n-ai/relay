@@ -11,7 +11,7 @@ import { clientFor } from "../do/client";
 import type { SendResult } from "../do/types";
 import type { Env } from "../env";
 import { hasDataToken } from "../shared/campaign-problems";
-import { codeOf, RelayError } from "../shared/errors";
+import { RelayError } from "../shared/errors";
 import { AUDIENCE_QUERY_MAX, DAY_MS, NAME_MAX } from "../shared/limits";
 import { fillUnsubscribe, MERGE_SAMPLES, renderMerge, unknownMergeFields } from "../shared/merge";
 import { idSchema } from "../shared/schemas";
@@ -82,19 +82,14 @@ export async function updateCampaign(env: Env, p: Principal, id: string, patch: 
   if (patch.fromEmail && !(await verifiedSenders(env, p.workspaceId, current.appId)).includes(patch.fromEmail)) {
     throw new RelayError("sender not verified");
   }
-  const outcome = await clientFor(env, p.workspaceId).updateCampaign(p.workspaceId, id, patch);
-  if (outcome === "missing") throw new RelayError("not found");
-  if (outcome === "not_draft") throw new RelayError("campaign not editable");
-  if (outcome === "bad_list") throw new RelayError("unknown list");
+  const updated = await clientFor(env, p.workspaceId).updateCampaign(p.workspaceId, id, patch);
   await audit(env, p, "campaign.update", id);
-  return outcome;
+  return updated;
 }
 
 export async function deleteCampaign(env: Env, p: Principal, id: string): Promise<void> {
   await ownedCampaign(env, p, id);
-  const outcome = await clientFor(env, p.workspaceId).deleteCampaign(p.workspaceId, id);
-  if (outcome === "missing") throw new RelayError("not found");
-  if (outcome === "not_draft") throw new RelayError("campaign not editable");
+  await clientFor(env, p.workspaceId).deleteCampaign(p.workspaceId, id);
   await audit(env, p, "campaign.delete", id);
 }
 
@@ -142,8 +137,6 @@ export async function scheduleCampaign(env: Env, p: Principal, id: string, at: n
   if (at < now - 60_000 || at > now + 365 * DAY_MS) throw new RelayError(p.keyId ? "invalid input" : "invalid schedule");
   await ownedCampaign(env, p, id);
   const outcome = await startCampaignRun(env, p.workspaceId, id, at);
-  if (outcome === "missing") throw new RelayError("not found");
-  if (outcome === "not_draft") throw new RelayError("campaign not editable");
   if (outcome === "could_not_schedule") throw new RelayError("could not schedule");
   if ("problems" in outcome) throw new RelayError("campaign not ready", 409, `campaign not ready: ${outcome.problems.join(", ")}`);
   await audit(env, p, "campaign.schedule", id);
@@ -152,9 +145,7 @@ export async function scheduleCampaign(env: Env, p: Principal, id: string, at: n
 
 export async function unscheduleCampaign(env: Env, p: Principal, id: string): Promise<void> {
   const campaign = await ownedCampaign(env, p, id);
-  const outcome = await clientFor(env, p.workspaceId).unscheduleCampaign(p.workspaceId, id);
-  if (outcome === "missing") throw new RelayError("not found");
-  if (outcome === "not_scheduled") throw new RelayError("campaign not scheduled");
+  await clientFor(env, p.workspaceId).unscheduleCampaign(p.workspaceId, id);
   await stopRun(env, id, campaign.runSeq);
   await audit(env, p, "campaign.unschedule", id);
 }
@@ -172,8 +163,6 @@ export async function resumeCampaign(env: Env, p: Principal, id: string): Promis
   await ownedCampaign(env, p, id);
   const client = clientFor(env, p.workspaceId);
   const outcome = await client.resumeCampaign(p.workspaceId, id);
-  if (outcome === "missing") throw new RelayError("not found");
-  if (outcome === "not_paused") throw new RelayError("campaign not paused");
   try {
     await env.CAMPAIGNS.create({
       id: `${id}-${outcome.runSeq}`,
@@ -191,8 +180,6 @@ export async function resumeCampaign(env: Env, p: Principal, id: string): Promis
 export async function cancelCampaign(env: Env, p: Principal, id: string): Promise<{ dropped: number }> {
   const campaign = await ownedCampaign(env, p, id);
   const outcome = await clientFor(env, p.workspaceId).cancelCampaign(p.workspaceId, id);
-  if (outcome === "missing") throw new RelayError("not found");
-  if (outcome === "not_cancellable") throw new RelayError("campaign not cancellable");
   await stopRun(env, id, campaign.runSeq);
   await audit(env, p, "campaign.cancel", id, { dropped: outcome.dropped });
   return outcome;
@@ -204,15 +191,7 @@ export async function testSendCampaign(env: Env, p: Principal, id: string): Prom
   const [me] = await securityDb(env).select({ email: securityUser.email }).from(securityUser).where(eq(securityUser.id, p.userId));
   if (!me) throw new RelayError("forbidden");
   const profile = await getWorkspaceProfile(env, p.workspaceId);
-  let result: SendResult | "missing";
-  try {
-    result = await clientFor(env, p.workspaceId).testSendCampaign(p.workspaceId, id, me.email, profile.physicalAddress ?? null);
-  } catch (err) {
-    const code = codeOf(err);
-    if (code) throw new RelayError(code);
-    throw err;
-  }
-  if (result === "missing") throw new RelayError("not found");
+  const result = await clientFor(env, p.workspaceId).testSendCampaign(p.workspaceId, id, me.email, profile.physicalAddress ?? null);
   await audit(env, p, "campaign.test", id);
   return result;
 }

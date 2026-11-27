@@ -47,9 +47,7 @@ export async function updateList(env: Env, p: Principal, id: string, patch: Part
 
 export async function deleteList(env: Env, p: Principal, id: string): Promise<void> {
   await checkList(env, p, id);
-  const outcome = await clientFor(env, p.workspaceId).deleteList(p.workspaceId, id);
-  if (outcome === "missing") throw new RelayError("not found");
-  if (outcome === "in_use") throw new RelayError("list in use");
+  await clientFor(env, p.workspaceId).deleteList(p.workspaceId, id);
   await audit(env, p, "list.delete", id);
 }
 
@@ -70,8 +68,6 @@ export async function listMembers(
 export async function addMember(env: Env, p: Principal, listId: string, input: MemberInput) {
   await checkList(env, p, listId);
   const outcome = await clientFor(env, p.workspaceId).addMember(p.workspaceId, listId, input);
-  if (outcome === "missing") throw new RelayError("not found");
-  if (outcome === "suppressed") throw new RelayError("address suppressed");
   if (outcome === "added") await audit(env, p, "list.member.add", listId);
   return outcome;
 }

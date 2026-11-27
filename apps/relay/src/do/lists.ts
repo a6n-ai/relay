@@ -3,6 +3,7 @@ import { keysetBefore, keysetSlice, parseCursor } from "../core/cursor";
 import { type ConsentSource, type ListView, type MemberView } from "../shared/views";
 import type { MemberInput } from "../core/member-input";
 import { PAGE_SIZE } from "../shared/limits";
+import { RelayError } from "../shared/errors";
 
 
 export type ListInput = { name: string; consentSource: ConsentSource; consentNote?: string };
@@ -71,18 +72,17 @@ export function updateListRow(sql: SqlStorage, id: string, patch: Partial<ListIn
 }
 
 // A scheduled, sending or paused campaign still needs its audience, so its lists cannot go.
-export function deleteListRow(sql: SqlStorage, id: string): "deleted" | "missing" | "in_use" {
-  if (sql.exec("SELECT id FROM contact_list WHERE id = ?", id).toArray().length === 0) return "missing";
+export function deleteListRow(sql: SqlStorage, id: string): void {
+  if (sql.exec("SELECT id FROM contact_list WHERE id = ?", id).toArray().length === 0) throw new RelayError("not found");
   const busy = sql
     .exec(
       "SELECT c.id FROM campaign c, json_each(c.list_ids) j WHERE c.status IN ('scheduled', 'sending', 'paused') AND j.value = ? LIMIT 1",
       id,
     )
     .toArray();
-  if (busy.length > 0) return "in_use";
+  if (busy.length > 0) throw new RelayError("list in use");
   sql.exec("DELETE FROM contact_list_member WHERE list_id = ?", id);
   sql.exec("DELETE FROM contact_list WHERE id = ?", id);
-  return "deleted";
 }
 
 type MemberRow = {
@@ -174,11 +174,11 @@ export function addMemberRow(
   listId: string,
   input: MemberInput,
   isSuppressed: (email: string) => boolean,
-): "added" | "existing" | "suppressed" | "missing" {
+): "added" | "existing" {
   const list = sql.exec<{ app_id: string }>("SELECT app_id FROM contact_list WHERE id = ?", listId).toArray()[0];
-  if (!list) return "missing";
+  if (!list) throw new RelayError("not found");
   const email = input.email.trim().toLowerCase();
-  if (isSuppressed(email)) return "suppressed";
+  if (isSuppressed(email)) throw new RelayError("address suppressed");
   if (sql.exec("SELECT id FROM contact_list_member WHERE list_id = ? AND email = ?", listId, email).toArray().length > 0) return "existing";
   const now = Date.now();
   sql.exec(

@@ -22,10 +22,6 @@ export type WorkspaceLimits = {
   fetchedAt: number;
 };
 
-// fetchedAt 0 is the "no snapshot and no D1 answer" value. Queued mail is never failed for an outage: a campaign run step throws so
-// its Workflow retries, and a send claim answers busy for 60 seconds. Both callers ask this one question.
-export const noLimitsSnapshot = (limits: WorkspaceLimits): boolean => limits.fetchedAt === 0;
-
 // A missing security row is suspended: a DO never sends for a workspace central does not know.
 export async function loadWorkspaceLimits(env: Env, workspaceId: string): Promise<WorkspaceLimits> {
   const [ws] = await securityDb(env).select({ status: workspace.status }).from(workspace).where(eq(workspace.id, workspaceId));

@@ -27,12 +27,12 @@ export async function verifiedSenders(env: Env, workspaceId: string, appId: stri
   return rows.map((r) => r.email);
 }
 
-// The caller maps each refusal to its own error.
+// A refusal throws from the DO; "problems" and could_not_schedule are the outcomes the caller maps.
 export async function startCampaignRun(env: Env, workspaceId: string, id: string, at: number) {
   const profile = await getWorkspaceProfile(env, workspaceId);
   const client = clientFor(env, workspaceId);
   const outcome = await client.scheduleCampaign(workspaceId, id, at, profile.physicalAddress ?? null);
-  if (outcome === "missing" || outcome === "not_draft" || "problems" in outcome) return outcome;
+  if ("problems" in outcome) return outcome;
   try {
     await env.CAMPAIGNS.create({
       id: `${id}-${outcome.runSeq}`,

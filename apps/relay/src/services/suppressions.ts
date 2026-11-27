@@ -16,8 +16,6 @@ export async function addSuppression(env: Env, p: Principal, input: { email: str
 }
 
 export async function removeSuppression(env: Env, p: Principal, email: string): Promise<void> {
-  const outcome = await clientFor(env, p.workspaceId).removeSuppression(p.workspaceId, email);
-  if (outcome === "missing") throw new RelayError("not found");
-  if (outcome === "opted_out") throw new RelayError("recipient opted out");
+  await clientFor(env, p.workspaceId).removeSuppression(p.workspaceId, email);
   await audit(env, p, "suppression.remove", maskEmails(email.trim().toLowerCase()));
 }

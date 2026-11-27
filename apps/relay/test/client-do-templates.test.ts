@@ -8,6 +8,8 @@ beforeAll(async () => {
 
 const stubFor = (ws: string) => env.CLIENT.get(env.CLIENT.idFromName(ws));
 
+const refused = (call: Promise<unknown>) => call.then(() => "resolved", (e: Error) => e.message);
+
 describe("template library in the workspace DO", () => {
   it("creates a template, then lists it", async () => {
     const ws = "ws_tpl_list";
@@ -23,7 +25,7 @@ describe("template library in the workspace DO", () => {
     const stub = stubFor(ws);
     const first = await stub.createTemplate(ws, "app_1", { name: "A", event: "order.confirmation", locale: "en" });
     expect(first).toMatchObject({ event: "order.confirmation" });
-    expect(await stub.createTemplate(ws, "app_1", { name: "B", event: "order.confirmation", locale: "en" })).toBe("event_taken");
+    expect(await refused(stub.createTemplate(ws, "app_1", { name: "B", event: "order.confirmation", locale: "en" }))).toBe("template event taken");
     expect(await stub.createTemplate(ws, "app_1", { name: "C", event: "order.confirmation", locale: "fr" })).toMatchObject({ locale: "fr" });
   });
 
@@ -46,7 +48,7 @@ describe("template library in the workspace DO", () => {
         "aut_inuse0000001", "app_1", "Auto", "ctl_x", tpl.id, "a@x.com", 0, 1, 1,
       );
     });
-    expect(await stub.deleteTemplate(ws, tpl.id)).toBe("in_use");
+    expect(await refused(stub.deleteTemplate(ws, tpl.id))).toBe("template in use");
   });
 
   it("renders a template for its own app, and reports missing or disabled", async () => {

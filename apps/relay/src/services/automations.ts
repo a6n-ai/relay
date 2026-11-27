@@ -29,10 +29,9 @@ export async function getAutomation(env: Env, p: Principal, id: string): Promise
 export async function createAutomation(env: Env, p: Principal, appId: string, input: AutomationInput): Promise<AutomationView> {
   await getApp(env, p, appId);
   await requireVerifiedSender(env, p, appId, input.fromEmail);
-  const outcome = await clientFor(env, p.workspaceId).createAutomation(p.workspaceId, appId, input);
-  if (outcome === "bad_list" || outcome === "bad_template") throw new RelayError("not found", 400);
-  await audit(env, p, "automation.create", outcome.id, { appId });
-  return outcome;
+  const automation = await clientFor(env, p.workspaceId).createAutomation(p.workspaceId, appId, input);
+  await audit(env, p, "automation.create", automation.id, { appId });
+  return automation;
 }
 
 export async function updateAutomation(env: Env, p: Principal, id: string, patch: AutomationPatch): Promise<AutomationView> {
@@ -42,17 +41,14 @@ export async function updateAutomation(env: Env, p: Principal, id: string, patch
     if (!current) throw new RelayError("not found");
     await requireVerifiedSender(env, p, current.appId, patch.fromEmail);
   }
-  const outcome = await client.updateAutomation(p.workspaceId, id, patch);
-  if (outcome === "missing") throw new RelayError("not found");
-  if (outcome === "bad_template") throw new RelayError("not found", 400);
+  const automation = await client.updateAutomation(p.workspaceId, id, patch);
   await audit(env, p, "automation.update", id);
-  return outcome;
+  return automation;
 }
 
 export async function enableAutomation(env: Env, p: Principal, id: string, on: boolean): Promise<AutomationView> {
   const profile = await getWorkspaceProfile(env, p.workspaceId);
   const outcome = await clientFor(env, p.workspaceId).setAutomationEnabled(p.workspaceId, id, on, profile.physicalAddress ?? null);
-  if (outcome === "missing") throw new RelayError("not found");
   if ("problems" in outcome) {
     // Automations send to lists, so {{data.*}} fields can never fill; say so instead of the generic checklist.
     if (outcome.problems.includes("data_fields_need_hook")) throw new RelayError("automation uses data fields");
@@ -63,7 +59,6 @@ export async function enableAutomation(env: Env, p: Principal, id: string, on: b
 }
 
 export async function deleteAutomation(env: Env, p: Principal, id: string): Promise<void> {
-  const outcome = await clientFor(env, p.workspaceId).deleteAutomation(p.workspaceId, id);
-  if (outcome === "missing") throw new RelayError("not found");
+  await clientFor(env, p.workspaceId).deleteAutomation(p.workspaceId, id);
   await audit(env, p, "automation.delete", id);
 }

@@ -5,7 +5,7 @@ import type { ResolvedSendInput } from "../core/send-input";
 import { newId } from "../shared/ids";
 import type { SendResult } from "./types";
 import { getTemplateRow, type RenderedTemplate } from "./templates";
-import { RelayError } from "../shared/errors";
+import { codeOf, RelayError, type ErrorCode } from "../shared/errors";
 import { type TemplateView, type AutomationView } from "../shared/views";
 
 export type AutomationInput = { name: string; listId: string; templateId: string; fromEmail: string; delayHours: number };
@@ -16,6 +16,8 @@ export type AutomationDeps = {
   send: (input: ResolvedSendInput) => Promise<SendResult>;
   render: (appId: string, templateId: string, values: Record<string, string>) => Promise<RenderedTemplate | "missing" | "disabled">;
   refreshLimits: () => Promise<unknown>;
+  // Runs whose sender was refused once after a limits reload. In memory: a DO that restarts retries once more, never skips a run for good on a stale snapshot.
+  senderRetried: Set<string>;
   postalAddress: string | null;
 };
 
@@ -63,10 +65,10 @@ export function listAutomationRows(sql: SqlStorage, appId?: string): AutomationV
 }
 
 // A template of another app is treated as missing, so an id from app B never reaches app A's automation.
-export function createAutomationRow(sql: SqlStorage, appId: string, input: AutomationInput): AutomationView | "bad_list" | "bad_template" {
-  if (sql.exec("SELECT id FROM contact_list WHERE id = ? AND app_id = ?", input.listId, appId).toArray().length === 0) return "bad_list";
+export function createAutomationRow(sql: SqlStorage, appId: string, input: AutomationInput): AutomationView {
+  if (sql.exec("SELECT id FROM contact_list WHERE id = ? AND app_id = ?", input.listId, appId).toArray().length === 0) throw new RelayError("unknown list");
   const template = getTemplateRow(sql, input.templateId);
-  if (!template || template.appId !== appId) return "bad_template";
+  if (!template || template.appId !== appId) throw new RelayError("unknown template");
   const id = newId("aut");
   const now = Date.now();
   sql.exec(
@@ -84,12 +86,12 @@ export function createAutomationRow(sql: SqlStorage, appId: string, input: Autom
   return viewOf(sql, id)!;
 }
 
-export function updateAutomationRow(sql: SqlStorage, id: string, patch: AutomationPatch): AutomationView | "missing" | "bad_template" {
+export function updateAutomationRow(sql: SqlStorage, id: string, patch: AutomationPatch): AutomationView {
   const current = viewOf(sql, id);
-  if (!current) return "missing";
+  if (!current) throw new RelayError("not found");
   if (patch.templateId !== undefined) {
     const template = getTemplateRow(sql, patch.templateId);
-    if (!template || template.appId !== current.appId) return "bad_template";
+    if (!template || template.appId !== current.appId) throw new RelayError("unknown template");
   }
   sql.exec(
     "UPDATE automation SET name = ?, template_id = ?, from_email = ?, delay_hours = ?, updated_at = ? WHERE id = ?",
@@ -128,9 +130,9 @@ export function setAutomationEnabledRow(
   id: string,
   on: boolean,
   postalAddress: string | null,
-): AutomationView | "missing" | { problems: CampaignProblem[] } {
+): AutomationView | { problems: CampaignProblem[] } {
   const current = viewOf(sql, id);
-  if (!current) return "missing";
+  if (!current) throw new RelayError("not found");
   if (on) {
     const problems = readinessProblems(current, getTemplateRow(sql, current.templateId), postalAddress);
     if (problems.length > 0) return { problems };
@@ -141,11 +143,10 @@ export function setAutomationEnabledRow(
   return viewOf(sql, id)!;
 }
 
-export function deleteAutomationRow(sql: SqlStorage, id: string): "deleted" | "missing" {
-  if (sql.exec("SELECT id FROM automation WHERE id = ?", id).toArray().length === 0) return "missing";
+export function deleteAutomationRow(sql: SqlStorage, id: string): void {
+  if (sql.exec("SELECT id FROM automation WHERE id = ?", id).toArray().length === 0) throw new RelayError("not found");
   sql.exec("DELETE FROM automation_run WHERE automation_id = ?", id);
   sql.exec("DELETE FROM automation WHERE id = ?", id);
-  return "deleted";
 }
 
 // Called inside the add-member transaction. Only enabled automations enrol, and a repeat add keeps its first run.
@@ -204,12 +205,26 @@ export async function sendTemplateForAutomation(
   });
 }
 
-type Due = { automationId: string; email: string; appId: string; listId: string; templateId: string; fromEmail: string; error: string | null };
+type Due = { automationId: string; email: string; appId: string; listId: string; templateId: string; fromEmail: string };
 
-// Refusals that clear once the workspace or queue recovers. Every other send error skips its run.
-const TRANSIENT_SEND_ERRORS = new Set(["workspace_suspended", "quota_exceeded", "limits unavailable", "queue_failed"]);
-// Refusals about this one run's content or sender. The run is skipped with this reason.
-const SKIP_SEND_ERRORS = new Set(["sender_not_verified", "empty_subject", "template_missing", "template_disabled"]);
+// Refusals that clear once the workspace or queue recovers leave the run pending. A refusal about this one run's content or sender skips it
+// with that code. Every other send error skips it as invalid_input.
+function sendRefusal(code: ErrorCode | undefined): { defer: true } | { skip: string } {
+  switch (code) {
+    case "workspace_suspended":
+    case "quota_exceeded":
+    case "limits unavailable":
+    case "queue_failed":
+      return { defer: true };
+    case "sender_not_verified":
+    case "empty_subject":
+    case "template_missing":
+    case "template_disabled":
+      return { skip: code };
+    default:
+      return { skip: "invalid_input" };
+  }
+}
 
 function markRun(sql: SqlStorage, run: Due, status: "sent" | "skipped", detail: { messageId?: string; error?: string }): void {
   sql.exec(
@@ -244,7 +259,7 @@ export async function runDueAutomationRows(
 ): Promise<{ sent: number; skipped: number; more: boolean; blocked: boolean }> {
   const due = sql
     .exec<Due>(
-      `SELECT r.automation_id AS automationId, r.email, a.app_id AS appId, a.list_id AS listId, a.template_id AS templateId, a.from_email AS fromEmail, r.error
+      `SELECT r.automation_id AS automationId, r.email, a.app_id AS appId, a.list_id AS listId, a.template_id AS templateId, a.from_email AS fromEmail
        FROM automation_run r JOIN automation a ON a.id = r.automation_id
        WHERE r.status = 'pending' AND a.enabled = 1 AND r.due_at <= ?
        ORDER BY r.due_at, r.automation_id, r.email LIMIT ?`,
@@ -286,24 +301,27 @@ export async function runDueAutomationRows(
     try {
       result = await sendTemplateForAutomation(deps, { automationId: run.automationId, appId: run.appId, fromEmail: run.fromEmail, email: run.email, ...member }, template);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "unknown";
-      if (message === "sender_not_verified" && run.error !== "sender_retry") {
+      const code = codeOf(err);
+      const retryKey = `${run.automationId}:${run.email}`;
+      if (code === "sender_not_verified" && !deps.senderRetried.has(retryKey)) {
         // A sender verified after our snapshot would look unverified here. Reload once and retry on the next pass.
         await deps.refreshLimits();
-        sql.exec("UPDATE automation_run SET error = 'sender_retry' WHERE automation_id = ? AND email = ?", run.automationId, run.email);
+        deps.senderRetried.add(retryKey);
         continue;
       }
-      if (TRANSIENT_SEND_ERRORS.has(message)) {
+      const refusal = sendRefusal(code);
+      if ("defer" in refusal) {
         // Quota, suspension and queue failures leave the run pending. Stop so the rest wait for the retry.
         blocked = true;
-        console.error("automation send deferred", message);
+        console.error("automation send deferred", code);
         break;
       }
-      const skipError = SKIP_SEND_ERRORS.has(message) ? message : "invalid_input";
-      markRun(sql, run, "skipped", { error: skipError });
+      deps.senderRetried.delete(retryKey);
+      markRun(sql, run, "skipped", { error: refusal.skip });
       skipped += 1;
       continue;
     }
+    deps.senderRetried.delete(`${run.automationId}:${run.email}`);
     markRun(sql, run, "sent", { messageId: result.messageId, error: result.status === "suppressed" ? "suppressed" : undefined });
     sent += 1;
   }

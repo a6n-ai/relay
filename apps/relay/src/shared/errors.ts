@@ -69,6 +69,7 @@ export const ERRORS = {
   sender_not_verified: { status: 422, copy: "Choose a From address on a verified domain." },
   workspace_suspended: { status: 403, copy: "This workspace is suspended, so sending is paused." },
   "unknown list": { status: 400, copy: "That list no longer exists. Refresh and try again." },
+  "unknown template": { status: 400, copy: "That template no longer exists. Refresh and try again." },
   too_many_recipients: { status: 409, copy: "This campaign has more recipients than one send allows." },
   run_failed: { status: 500, copy: "Sending hit an error and stopped. Resume to try again." },
   "template event taken": { status: 409, copy: "Another template already handles this event in this locale." },
@@ -117,6 +118,13 @@ export const fail = (code: ErrorCode, status?: Status, message?: string): never 
 // By message, so it also works for an error that crossed Workers RPC. Object.hasOwn keeps "constructor" out.
 export function codeOf(err: unknown): ErrorCode | undefined {
   return err instanceof Error && Object.hasOwn(ERRORS, err.message) ? (err.message as ErrorCode) : undefined;
+}
+
+// The status a refusal answers with: an AppError carries it, and a ClientDO refusal that crossed RPC as a plain Error whose message is its code.
+export function statusOf(err: unknown): Status | undefined {
+  if (err instanceof AppError) return err.status as Status;
+  const code = codeOf(err);
+  return code && ERRORS[code].status;
 }
 
 export const copyOf = (code: string | null | undefined): string | undefined => {
