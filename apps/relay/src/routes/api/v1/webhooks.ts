@@ -1,34 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { readJson } from "../../../core/api-route";
-import { env } from "cloudflare:workers";
-import { resolveBearer, withinRateLimit } from "../../../core/api-keys";
-import { KEY_ERROR } from "../../../core/webhook-crypto";
-import { createWebhookForScope, listWebhooksForScope, webhookInputSchema } from "../../../core/webhooks";
+import { apiRoute, json, readJson } from "../../../api/route";
+import { webhookInputSchema } from "../../../services/schemas";
+import { WEBHOOK_BODY_MAX } from "../../../shared/limits";
+import { createWebhook, listWebhooks } from "../../../services/webhooks";
 
 export const Route = createFileRoute("/api/v1/webhooks")({
   server: {
     handlers: {
-      GET: async ({ request }) => {
-        const scope = await resolveBearer(env, request);
-        if (!scope) return Response.json({ error: "unauthorized" }, { status: 401 });
-        if (!(await withinRateLimit(env, scope.keyId))) return Response.json({ error: "rate limited" }, { status: 429 });
-        return Response.json({ data: await listWebhooksForScope(env, scope) });
-      },
-      POST: async ({ request }) => {
-        const scope = await resolveBearer(env, request);
-        if (!scope) return Response.json({ error: "unauthorized" }, { status: 401 });
-        if (!(await withinRateLimit(env, scope.keyId))) return Response.json({ error: "rate limited" }, { status: 429 });
-        const body = webhookInputSchema.safeParse(await readJson(request, 65_536).catch(() => undefined));
-        if (!body.success) return Response.json({ error: "invalid input" }, { status: 400 });
-        try {
-          return Response.json(await createWebhookForScope(env, scope, body.data), { status: 201 });
-        } catch (err) {
-          if (err instanceof Error && err.message === KEY_ERROR) {
-            return Response.json({ error: "webhooks unavailable" }, { status: 503 });
-          }
-          throw err;
-        }
-      },
+      GET: apiRoute(async ({ env, p }) => json({ data: await listWebhooks(env, p, p.appId) })),
+      POST: apiRoute(async ({ env, p, request }) =>
+        json(await createWebhook(env, p, p.appId, webhookInputSchema.parse(await readJson(request, WEBHOOK_BODY_MAX))), 201),
+      ),
     },
   },
 });

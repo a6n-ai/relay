@@ -6,7 +6,7 @@ import type { NotificationTables } from "./schema";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Db = PostgresJsDatabase<any>;
 
-export interface CampaignStatsDeps {
+interface CampaignStatsDeps {
   db: Db;
   tables: NotificationTables & CampaignTables;
 }

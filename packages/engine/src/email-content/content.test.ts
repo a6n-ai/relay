@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { CAMPAIGN_VARIABLES, findUnknownVariables, htmlToText, prepareEmailContent, variableTokens } from "./index";
-import { readPreheader } from "../preheader";
+import { readPreheader } from "./preheader";
 
 describe("htmlToText", () => {
   it("drops style blocks and tags, collapses whitespace, decodes nbsp", () => {

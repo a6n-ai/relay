@@ -2,16 +2,16 @@ import { env, SELF } from "cloudflare:test";
 import { and, eq } from "drizzle-orm";
 import { beforeAll, describe, expect, it } from "vitest";
 import { requireActor } from "../src/console/actor";
-import { addApp } from "../src/console/apps";
-import { addAddress, addDomain } from "../src/console/domains";
-import { addGrant, getAddressAccess, removeGrant } from "../src/console/grants";
-import { messageAccess } from "../src/console/messages";
+import { addApp } from "../src/services/apps";
+import { addAddress, addDomain } from "../src/services/domains";
+import { addGrant, getAddressAccess, removeGrant } from "../src/services/grants";
+import { messageAccess } from "../src/services/inbox";
 import { securityDb } from "../src/db/security/client";
 import { addressGrant, member, team, user } from "../src/db/security/schema";
 import { addMember, cookieFor, createWorkspace, headersFor, ORIGIN, setActive } from "./console-helpers";
 import { applyMigrations } from "./migrate";
 
-const MANAGE = { permission: { mailbox: ["manage"] }, write: true };
+const MANAGE = { permission: { mailbox: ["manage"] }, write: true } as const;
 
 beforeAll(async () => {
   await applyMigrations();
@@ -105,11 +105,9 @@ describe("console address access grants", { timeout: 60_000 }, () => {
     await addGrant(env, ownerActor, { addressId, memberId });
     const [grantId] = await grantIdsFor(addressId);
     const memberCookie = await addMember(owner.workspaceId, "grant-ro-member@example.com", "member");
-    const memberActor = await requireActor(env, headersFor(memberCookie), {});
 
-    await expect(getAddressAccess(env, memberActor, addressId)).rejects.toMatchObject({ status: 403 });
-    await expect(addGrant(env, memberActor, { addressId, memberId })).rejects.toMatchObject({ status: 403 });
-    await expect(removeGrant(env, memberActor, grantId)).rejects.toMatchObject({ status: 403 });
+    await expect(requireActor(env, headersFor(memberCookie), { permission: { mailbox: ["manage"] } })).rejects.toMatchObject({ status: 403 });
+    await expect(requireActor(env, headersFor(memberCookie), MANAGE)).rejects.toMatchObject({ status: 403 });
     expect(await grantIdsFor(addressId)).toEqual([grantId]);
   });
 

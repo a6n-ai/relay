@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { ApiError } from "../src/core/api-error";
-import { readJson } from "../src/core/api-route";
+import { readJson } from "../src/api/route";
+import { RelayError } from "../src/shared/errors";
 
 const post = (body: BodyInit, headers: Record<string, string> = {}) =>
   new Request("https://relay.test/api/v1/messages", { method: "POST", body, headers });
 
-const status = (p: Promise<unknown>) => p.then(() => null, (e: unknown) => (e instanceof ApiError ? e.status : e));
+const status = (p: Promise<unknown>) => p.then(() => null, (e: unknown) => (e instanceof RelayError ? e.status : e));
 
 describe("readJson", () => {
   it("parses a body under the cap and returns undefined for bad JSON", async () => {

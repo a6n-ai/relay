@@ -7,7 +7,7 @@ import type { UsersRef } from "./enqueue";
 import { resolveAudienceDetailed, type AudienceBreakdown, type AudienceDeps } from "./audience";
 import { materializeCampaign } from "./campaign";
 import { CAMPAIGN_VARIABLES, campaignChecklist, prepareEmailContent, type ChecklistItem } from "./email-content";
-import type { CompatWarning } from "./ui/email-compat";
+import type { CompatWarning } from "./email-content/email-compat";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Db = PostgresJsDatabase<any>;
@@ -43,7 +43,7 @@ export function createCampaignSchema(channels: [string, ...string[]]) {
   });
 }
 
-export interface CampaignListRow {
+interface CampaignListRow {
   publicId: string;
   name: string;
   channels: string[];
@@ -72,7 +72,7 @@ export async function listCampaigns(deps: CampaignRouteDeps): Promise<CampaignLi
   return rows as CampaignListRow[];
 }
 
-export interface CreateCampaignInput {
+interface CreateCampaignInput {
   name: string;
   channels: string[];
   audience: AudienceDef;
@@ -123,7 +123,7 @@ export const setCampaignContentSchema = z.object({
   revision: z.number().int().min(0).default(0),
 });
 
-export interface SetCampaignContentInput {
+interface SetCampaignContentInput {
   channel: string;
   locale: string;
   subject: string;
@@ -442,7 +442,7 @@ export async function getAudienceCount(
   return { count: breakdown.eligible, breakdown };
 }
 
-export interface DuplicateCampaignInput {
+interface DuplicateCampaignInput {
   /** Defaults to "<original name> (copy)". */
   name?: string;
   /** Defaults to the original campaign's audience. Pass to duplicate onto a different list. */
@@ -557,7 +557,7 @@ export async function completeCampaign(
   return { ok: true };
 }
 
-export interface RetriggerCampaignInput {
+interface RetriggerCampaignInput {
   /** Restrict the resend to these contact lists only; omit to reuse the whole original audience. */
   listIds?: string[];
 }

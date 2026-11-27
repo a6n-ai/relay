@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { webhookUrlForInput, webhookUrlFromInput } from "../src/components/webhook-url";
+import { webhookUrlForInput, webhookUrlFromInput } from "../src/components/webhooks/webhook-url";
 
 describe("webhook url input", () => {
   it("adds https:// to a host", () => {

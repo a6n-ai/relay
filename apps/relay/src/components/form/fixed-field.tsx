@@ -1,5 +1,5 @@
 import { useId } from "react";
-import { Hint } from "../page/text";
+import { Hint } from "./text";
 import { Field } from "./field";
 
 export function FixedField({ label, value, hint, hideLabel }: { label: string; value: string; hint?: string; hideLabel?: boolean }) {

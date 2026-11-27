@@ -8,6 +8,7 @@ import { Button } from "@foundry/ui/button";
 import { Input } from "@foundry/ui/input";
 import { Label } from "@foundry/ui/label";
 import { ContactListMetaFields, type ListMeta } from "./contact-list-meta-fields";
+import { apiAction } from "./api-fetch";
 import { createListWithContacts, type ManualContactInput } from "./create-list-with-contacts";
 
 const emptyRow = (): ManualContactInput => ({ name: "", email: "", phone: "" });
@@ -34,20 +35,17 @@ export function ContactListManualAdd({ onCreated }: { onCreated?: (result: { nam
     if (missingContact) return toast.error(`${missingContact.name} needs an email or phone`);
 
     setBusy(true);
-    try {
-      const res = await createListWithContacts(meta, contacts);
-      if (onCreated) onCreated({ name: meta.name, imported: res.imported });
-      else {
-        toast.success(`Added ${res.imported} contact${res.imported === 1 ? "" : "s"}`);
-        router.refresh();
-      }
-      setMeta({ name: "", consentSource: "express_optin", consentNote: "" });
-      setRows([emptyRow()]);
-    } catch {
-      // apiFetch already toasted the failure detail.
-    } finally {
-      setBusy(false);
+    const res = await apiAction(createListWithContacts(meta, contacts));
+    setBusy(false);
+    if (!res) return;
+    const { imported } = res.data;
+    if (onCreated) onCreated({ name: meta.name, imported });
+    else {
+      toast.success(`Added ${imported} contact${imported === 1 ? "" : "s"}`);
+      router.refresh();
     }
+    setMeta({ name: "", consentSource: "express_optin", consentNote: "" });
+    setRows([emptyRow()]);
   }
 
   return (

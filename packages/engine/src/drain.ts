@@ -9,10 +9,8 @@ import type { Channel } from "./types";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Db = PostgresJsDatabase<any>;
 
-export interface RateLimiter {
-  /** Consume a token if one is available. Non-blocking. */
+interface RateLimiter {
   tryTake(): boolean;
-  /** Consume a token, waiting for a refill if the bucket is empty. */
   take(): Promise<void>;
 }
 
@@ -51,14 +49,14 @@ export function createRateLimiter(perSecond: number, now: () => number = Date.no
   };
 }
 
-export type DrainTerminal = {
+type DrainTerminal = {
   status: "sent" | "failed";
   skipped?: boolean;
   providerMessageId?: string | null;
   lastError?: string | null;
 };
 
-export interface DrainDeps {
+interface DrainDeps {
   db: Db;
   tables: NotificationTables;
   handlers: Record<Channel, ChannelHandler | undefined>;
@@ -111,7 +109,7 @@ export function leaseHeld(cols: { id: AnyPgColumn; status: AnyPgColumn; nextAtte
   return and(eq(cols.id, id), eq(cols.status, "processing"), eq(cols.nextAttemptAt, lease));
 }
 
-export const INTERRUPTED_ERROR = "Stopped after repeated interrupted sends";
+const INTERRUPTED_ERROR = "Stopped after repeated interrupted sends";
 
 async function claim(
   db: Db,
@@ -207,7 +205,6 @@ async function process(
   }
 }
 
-/** Claim + deliver one batch. Returns how many rows were processed. */
 export async function drainOnce(deps: DrainDeps, limit = 25): Promise<number> {
   const maxAttempts = deps.maxAttempts ?? MAX_ATTEMPTS;
   const { deliver, exhausted, lease } = await claim(deps.db, deps.tables, limit, Date.now(), maxAttempts);
@@ -230,7 +227,6 @@ export async function drainOnce(deps: DrainDeps, limit = 25): Promise<number> {
   return deliver.length + exhausted.length;
 }
 
-/** Drain until the queue is empty or `maxBatches` is hit. */
 export async function drainPending(deps: DrainDeps, limit = 25, maxBatches = 20): Promise<number> {
   let total = 0;
   for (let i = 0; i < maxBatches; i++) {
@@ -239,72 +235,4 @@ export async function drainPending(deps: DrainDeps, limit = 25, maxBatches = 20)
     if (n < limit) break;
   }
   return total;
-}
-
-interface DrainLogger {
-  info(obj: Record<string, unknown>, msg: string): void;
-  error(obj: Record<string, unknown>, msg: string): void;
-}
-
-export interface SignalLoopOptions {
-  /**
-   * Block until work is signalled (true) or a wait times out (false). Backed by
-   * a Redis BLPOP in the apps; waiting must not touch Postgres.
-   */
-  waitForSignal: () => Promise<boolean>;
-  /** Bound drainPending call for the host app. */
-  drain: () => Promise<number>;
-  /**
-   * Pause between a signal and the drain. Apps signal from inside the caller's
-   * transaction, so the row may not be committed yet when the signal lands.
-   */
-  settleMs?: number;
-  /** Pause after waitForSignal throws (signal store down) before waiting again. */
-  errorBackoffMs?: number;
-  signal?: AbortSignal;
-  log: DrainLogger;
-}
-
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
-/**
- * Drain the outbox when told to, never on a timer. The one loop every app runs
- * — kept here so tiffin-grab and puchkaman can't drift.
- *
- * Postgres stays the record (claiming, attempt counting, failed status); the
- * signal only says "look now", so an idle app sends zero queries and a
- * scale-to-zero database can sleep. Drains once on start so rows left pending
- * by a restart go out. Scheduled campaigns are not this loop's job: the host's
- * cron materializes them and signals.
- */
-export async function runSignalLoop(opts: SignalLoopOptions): Promise<void> {
-  const { drain, log } = opts;
-  const settleMs = opts.settleMs ?? 1000;
-  const errorBackoffMs = opts.errorBackoffMs ?? 5000;
-
-  const drainSafely = async () => {
-    try {
-      const n = await drain();
-      if (n > 0) log.info({ processed: n }, "drained");
-    } catch (err) {
-      // The loop must never die: a transient database error would otherwise
-      // leave every queued notification undelivered until the next deploy.
-      log.error({ err }, "drain failed");
-    }
-  };
-
-  await drainSafely();
-  while (!opts.signal?.aborted) {
-    let signalled: boolean;
-    try {
-      signalled = await opts.waitForSignal();
-    } catch (err) {
-      log.error({ err }, "waiting for outbox signal failed");
-      await sleep(errorBackoffMs);
-      continue;
-    }
-    if (!signalled || opts.signal?.aborted) continue;
-    await sleep(settleMs);
-    await drainSafely();
-  }
 }

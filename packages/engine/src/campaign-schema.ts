@@ -10,7 +10,7 @@ import {
   uniqueIndex,
   type PgEnum,
 } from "drizzle-orm/pg-core";
-import { notificationChannel } from "./schema";
+import { notificationChannel } from "./enums";
 
 export const campaignStatus = pgEnum("campaign_status", [
   "draft", "scheduled", "sending", "sent", "completed", "paused", "cancelled",
@@ -32,7 +32,7 @@ export interface AudienceDef {
     lastOrderBefore?: number;
     minOrderCount?: number;
     minTotalSpend?: number;
-    /** Plan D: marketing to an unverified number reaches a stranger. */
+    /** Marketing to an unverified number reaches a stranger. */
     requireVerifiedPhone?: boolean;
   };
   /** contact_list public ids to union in. */

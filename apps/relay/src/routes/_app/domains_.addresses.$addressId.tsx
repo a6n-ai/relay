@@ -3,17 +3,17 @@ import { toast } from "@foundry/ui/toast";
 import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
 import { UsersIcon } from "lucide-react";
 import { type FormEvent, type RefObject, useRef, useState } from "react";
-import { ConfirmDialog } from "../../components/confirm-dialog";
-import { CreateDialog } from "../../components/create-dialog";
-import { DeniedState, deniedReason } from "../../components/denied-state";
-import { errorText } from "../../components/error-text";
-import { ResourceTable } from "../../components/resource-table";
-import { useCan } from "../../components/use-can";
+import { confirmAction } from "../../components/lib/run-action";
+import { ConfirmDialog } from "../../components/page/confirm-dialog";
+import { CreateDialog } from "../../components/page/create-dialog";
+import { PageDenied } from "../../components/page/page-denied";
+import { ResourceTable } from "../../components/page/resource-table";
+import { useCan } from "../../components/lib/use-can";
 import { ChoiceField } from "../../components/form/choice-field";
 import { EmptyChoice } from "../../components/form/empty-choice";
 import { useFieldErrors } from "../../components/form/field";
 import { FixedField } from "../../components/form/fixed-field";
-import { TextField } from "../../components/form/text-field";
+import { NameField, TextField } from "../../components/form/text-field";
 import { DangerCard } from "../../components/page/danger-card";
 import { EmptyState } from "../../components/page/empty-state";
 import { ListSkeleton } from "../../components/page/page-skeleton";
@@ -21,8 +21,11 @@ import { SettingsCard, SettingsForm } from "../../components/page/settings-card"
 import { PageHeader } from "../../components/shell/page-header";
 import { fetchAddresses, fetchDomains, removeAddressFn, updateAddressFn } from "../../console/domains.fns";
 import { addGrantFn, fetchAddressAccess, removeGrantFn } from "../../console/grants.fns";
-import { FormError, FormBody, FormActions, FormPanel } from "../../components/page/form-parts";
-import { KIND_LABEL, KINDS } from "../../lib/address-kinds";
+import { FormError, FormBody, FormActions, FormPanel } from "../../components/form/form-parts";
+import { KIND_LABEL, KINDS } from "../../components/lib/address-kinds";
+import { EMAIL_MAX } from "../../shared/limits";
+import { emailSchema } from "../../shared/schemas";
+import { useSubmit } from "../../components/lib/use-submit";
 
 export const Route = createFileRoute("/_app/domains_/addresses/$addressId")({
   loader: async ({ params }) => {
@@ -42,7 +45,6 @@ type Address = NonNullable<NonNullable<ReturnType<typeof Route.useLoaderData>>["
 
 function AddressPage() {
   const data = Route.useLoaderData();
-  const { shell } = Route.useRouteContext();
   const router = useRouter();
   const navigate = useNavigate();
   const canWrite = useCan({ sending: ["write"] });
@@ -52,27 +54,15 @@ function AddressPage() {
   const [removing, setRemoving] = useState<{ id: string; label: string } | null>(null);
   const crumbs = [{ label: "Domains", to: "/domains" }, { label: "Address" }];
   if (!data || (!canWrite && !canManage)) {
-    return (
-      <>
-        <PageHeader crumbs={crumbs} />
-        <DeniedState reason={deniedReason(shell)} />
-      </>
-    );
+    return <PageDenied crumbs={crumbs} />;
   }
   if (!data.address) {
-    return (
-      <>
-        <PageHeader crumbs={crumbs} />
-        <DeniedState reason="not-found" />
-      </>
-    );
+    return <PageDenied crumbs={crumbs} reason="not-found" />;
   }
   const { address, access } = data;
 
   async function removeAccess(grantId: string) {
-    await removeGrantFn({ data: { id: grantId } });
-    toast.success("Access removed");
-    await router.invalidate();
+    await confirmAction(() => removeGrantFn({ data: { id: grantId } }), "Access removed", () => router.invalidate());
   }
 
   async function removeAddress() {
@@ -151,32 +141,22 @@ function AddressPage() {
 }
 
 function AddressDetailsCard({ address, canWrite, bypass }: { address: Address; canWrite: boolean; bypass: RefObject<boolean> }) {
-  const router = useRouter();
   const [name, setName] = useState(address.displayName ?? "");
   const [replyTo, setReplyTo] = useState(address.replyTo ?? "");
   const [replyError, setReplyError] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
+  const { pending, error, run } = useSubmit();
   const dirty = name.trim() !== (address.displayName ?? "") || replyTo.trim() !== (address.replyTo ?? "");
 
   async function save(event: FormEvent) {
     event.preventDefault();
     const reply = replyTo.trim();
-    if (reply && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(reply)) {
+    if (reply && !emailSchema.safeParse(reply).success) {
       setReplyError("Enter a valid email address or leave it blank.");
       return;
     }
-    setPending(true);
-    setError(null);
-    try {
+    await run(async () => {
       await updateAddressFn({ data: { id: address.id, displayName: name.trim() || null, replyTo: reply || null } });
-      toast.success("Address updated", { description: address.email });
-      await router.invalidate();
-    } catch (err) {
-      setError(errorText(err, "Could not update the address."));
-    } finally {
-      setPending(false);
-    }
+    }, "Could not update the address.", { success: "Address updated", description: address.email });
   }
 
   return (
@@ -191,12 +171,12 @@ function AddressDetailsCard({ address, canWrite, bypass }: { address: Address; c
       onSubmit={save}
     >
       <FixedField label="Address" value={address.email} hint="Remove it and add a new one to change it." />
-      <TextField id="edit-address-name" label="Name" hint="Shown to recipients as the sender name." maxLength={80} value={name} disabled={!canWrite} onChange={(e) => setName(e.target.value)} />
+      <NameField required={false} id="edit-address-name" hint="Shown to recipients as the sender name." value={name} disabled={!canWrite} onChange={(e) => setName(e.target.value)} />
       <TextField
         id="edit-address-reply-to"
         label="Reply-To"
         type="email"
-        maxLength={254}
+        maxLength={EMAIL_MAX}
         value={replyTo}
         error={replyError}
         disabled={!canWrite}
@@ -217,11 +197,9 @@ function NewGrantForm({
   options: { value: string; label: string; badge?: string }[];
   done: () => void;
 }) {
-  const router = useRouter();
   const [choice, setChoice] = useState(options.length === 1 ? options[0]!.value : "");
   const fe = useFieldErrors<"who">();
-  const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
+  const { pending, error, run } = useSubmit();
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -229,19 +207,10 @@ function NewGrantForm({
       fe.set({ who: "Choose a person or team." });
       return;
     }
-    setPending(true);
-    setError(null);
     const [kind, targetId] = choice.split(":");
-    try {
+    await run(async () => {
       await addGrantFn({ data: { addressId, ...(kind === "team" ? { teamId: targetId } : { memberId: targetId }) } });
-      toast.success("Access added");
-      done();
-      await router.invalidate();
-    } catch (err) {
-      setError(errorText(err, "Could not add access."));
-    } finally {
-      setPending(false);
-    }
+    }, "Could not add access.", { success: "Access added", after: done });
   }
 
   if (options.length === 0) {

@@ -1,7 +1,7 @@
 import { env, SELF } from "cloudflare:test";
 import { and, eq } from "drizzle-orm";
 import { beforeAll, describe, expect, it } from "vitest";
-import { requireActor } from "../src/console/actor";
+import { requireActor, requireUser } from "../src/console/actor";
 import {
   acceptInvite,
   cancelInvite,
@@ -13,18 +13,18 @@ import {
   removeMember,
   renameTeam,
   setTeamMember,
-} from "../src/console/members";
-import { renameWorkspace } from "../src/console/workspaces";
+} from "../src/services/members";
+import { renameWorkspace } from "../src/services/workspaces";
 import { inviteInput } from "../src/console/schemas";
 import { securityDb } from "../src/db/security/client";
 import { invitation, member, user, workspace } from "../src/db/security/schema";
-import { memoryInviteMailer } from "../src/lib/auth/invite-mailer";
+import { memoryInviteMailer } from "../src/auth/invite-mailer";
 import { addMember, cookieFor, createWorkspace, ORIGIN, setActive, signIn } from "./console-helpers";
 import { applyMigrations } from "./migrate";
 
 const db = securityDb(env);
 const headersFor = (cookie: string) => new Headers({ cookie });
-const INVITE = { permission: { invitation: ["create"] }, write: true };
+const INVITE = { permission: { invitation: ["create"] }, write: true } as const;
 const DAY_MS = 86_400_000;
 
 beforeAll(async () => {
@@ -77,7 +77,7 @@ describe("console members, teams and invites", { timeout: 60_000 }, () => {
     expect(memoryInviteMailer.lastInvite("new@x.test")?.id).toBe(id);
 
     const cookie = await signIn("new@x.test");
-    await acceptInvite(env, headersFor(cookie), id);
+    await acceptInvite(env, await requireUser(env, headersFor(cookie), { write: true }), id);
 
     const people = await listPeople(env, actor);
     expect(people.members.find((m) => m.email === "new@x.test")).toMatchObject({ roles: ["member"] });
@@ -132,11 +132,11 @@ describe("console members, teams and invites", { timeout: 60_000 }, () => {
     const actor = await requireActor(env, headersFor(owner.cookie), INVITE);
     const { id } = await inviteMember(env, actor, headersFor(owner.cookie), { email: "invitee@x.test", role: "member" });
     const otherCookie = await cookieFor("someone-else@example.com", "user");
-    await expect(acceptInvite(env, headersFor(otherCookie), id)).rejects.toMatchObject({
+    await expect(acceptInvite(env, await requireUser(env, headersFor(otherCookie), { write: true }), id)).rejects.toMatchObject({
       status: 403,
       message: "this invite is for another email",
     });
-    await expect(getInvite(env, headersFor(otherCookie), id)).resolves.toEqual({ state: "other-email" });
+    await expect(getInvite(env, await requireUser(env, headersFor(otherCookie)), id)).resolves.toEqual({ state: "other-email" });
   });
 
   it("redirects a signed-out visit to the invite page to sign-in with the invite path", async () => {
@@ -216,7 +216,7 @@ describe("console members, teams and invites", { timeout: 60_000 }, () => {
     await db.update(workspace).set({ status: "suspended" }).where(eq(workspace.id, owner.workspaceId));
     const cookie = await signIn("invsusp-invitee@x.test");
 
-    await expect(getInvite(env, headersFor(cookie), id)).resolves.toEqual({ state: "suspended" });
+    await expect(getInvite(env, await requireUser(env, headersFor(cookie)), id)).resolves.toEqual({ state: "suspended" });
     const res = await SELF.fetch(`${ORIGIN}/invite/${id}`, { redirect: "manual", headers: { cookie } });
     expect(res.status).toBe(200);
     expect(await res.text()).toContain("This workspace is suspended");
@@ -227,9 +227,9 @@ describe("accepting an invite", { timeout: 60_000 }, () => {
   it("refuses a cross-origin accept", async () => {
     const owner = await workspaceFor("mem-origin-owner@example.com", "Mem Origin Co");
     const actor = await requireActor(env, headersFor(owner.cookie), INVITE);
-    const { id } = await inviteMember(env, actor, headersFor(owner.cookie), { email: "origin-invitee@x.test", role: "member" });
+    await inviteMember(env, actor, headersFor(owner.cookie), { email: "origin-invitee@x.test", role: "member" });
     const cookie = await signIn("origin-invitee@x.test");
-    await expect(acceptInvite(env, new Headers({ cookie, origin: "https://evil.example" }), id)).rejects.toMatchObject({
+    await expect(requireUser(env, new Headers({ cookie, origin: "https://evil.example" }), { write: true })).rejects.toMatchObject({
       status: 403,
       message: "cross-origin write",
     });
@@ -241,7 +241,7 @@ describe("accepting an invite", { timeout: 60_000 }, () => {
     const { id } = await inviteMember(env, actor, headersFor(owner.cookie), { email: "susp-invitee@x.test", role: "member" });
     await db.update(workspace).set({ status: "suspended" }).where(eq(workspace.id, owner.workspaceId));
     const cookie = await signIn("susp-invitee@x.test");
-    await expect(acceptInvite(env, headersFor(cookie), id)).rejects.toMatchObject({
+    await expect(acceptInvite(env, await requireUser(env, headersFor(cookie), { write: true }), id)).rejects.toMatchObject({
       status: 403,
       message: "workspace suspended",
     });
@@ -250,7 +250,7 @@ describe("accepting an invite", { timeout: 60_000 }, () => {
   it("renames a team and refuses a member with 403 and another workspace with 404", async () => {
     const a = await workspaceFor("mem-rt-a@example.com", "Mem RT A Co");
     const b = await workspaceFor("mem-rt-b@example.com", "Mem RT B Co");
-    const need = { permission: { team: ["update"] }, write: true };
+    const need = { permission: { team: ["update"] }, write: true } as const;
     const actorA = await requireActor(env, headersFor(a.cookie), need);
     const actorB = await requireActor(env, headersFor(b.cookie), need);
     const { id: teamId } = await createTeam(env, headersFor(a.cookie), "Support");
@@ -264,7 +264,7 @@ describe("accepting an invite", { timeout: 60_000 }, () => {
 
   it("renames a workspace, keeps its slug, and refuses a member with 403", async () => {
     const a = await workspaceFor("mem-rw@example.com", "Mem RW Co");
-    const need = { permission: { organization: ["update"] }, write: true };
+    const need = { permission: { organization: ["update"] }, write: true } as const;
     const actor = await requireActor(env, headersFor(a.cookie), need);
     await renameWorkspace(env, actor, headersFor(a.cookie), "Renamed Co");
     const [row] = await db.select({ name: workspace.name, slug: workspace.slug }).from(workspace).where(eq(workspace.id, a.workspaceId));

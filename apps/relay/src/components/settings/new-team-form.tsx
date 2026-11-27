@@ -1,36 +1,23 @@
-import { toast } from "@foundry/ui/toast";
-import { useRouter } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
-import { errorText } from "../error-text";
-import { TextField } from "../form/text-field";
+import { NameField } from "../form/text-field";
 import { createTeamFn } from "../../console/members.fns";
-import { FormError, FormBody, FormActions } from "../page/form-parts";
+import { FormError, FormBody, FormActions } from "../form/form-parts";
+import { useSubmit } from "../lib/use-submit";
 
 export function NewTeamForm({ done }: { done: () => void }) {
-  const router = useRouter();
   const [name, setName] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
+  const { pending, error, run } = useSubmit();
 
   async function submit(event: FormEvent) {
     event.preventDefault();
-    setPending(true);
-    setError(null);
-    try {
+    await run(async () => {
       await createTeamFn({ data: { name } });
-      toast.success("Team created", { description: name });
-      done();
-      await router.invalidate();
-    } catch (err) {
-      setError(errorText(err, "Could not create the team."));
-    } finally {
-      setPending(false);
-    }
+    }, "Could not create the team.", { success: "Team created", description: name, after: done });
   }
 
   return (
     <FormBody onSubmit={submit}>
-      <TextField id="team-name" label="Name" required autoFocus maxLength={80} placeholder="Support" value={name} onChange={(e) => setName(e.target.value)} />
+      <NameField id="team-name" autoFocus placeholder="Support" value={name} onChange={(e) => setName(e.target.value)} />
       <FormError message={error} />
       <FormActions cancel submitLabel="Create team" pending={pending} pendingLabel="Creating…" disabled={!name.trim()} disabledReason="Enter a name first." />
     </FormBody>

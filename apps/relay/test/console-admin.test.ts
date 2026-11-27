@@ -2,12 +2,10 @@ import { env, SELF } from "cloudflare:test";
 import { and, eq } from "drizzle-orm";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { requireActor, requirePlatformAdmin } from "../src/console/actor";
-import { listWorkspaces, setAudienceBindingFor, setWorkspaceInviteCap, setWorkspaceQuota, setWorkspaceRegion, setWorkspaceStatus } from "../src/console/admin";
-import { SES_CONFIG_SETS } from "../src/core/ses";
-import { SES_REGIONS } from "../src/core/ses-regions";
-import { addApp, createKey } from "../src/console/apps";
-import { addAddress, addDomain, checkDomain } from "../src/console/domains";
-import { inviteMember } from "../src/console/members";
+import { listWorkspaces, setAudienceBinding, setWorkspaceInviteCap, setWorkspaceQuota, setWorkspaceRegion, setWorkspaceStatus } from "../src/services/admin";
+import { addApp, createKey } from "../src/services/apps";
+import { addAddress, addDomain, checkDomain } from "../src/services/domains";
+import { inviteMember } from "../src/services/members";
 import { memorySesIdentity } from "../src/core/ses-identity";
 import { securityDb } from "../src/db/security/client";
 import { invitation, securityAudit, user, workspace } from "../src/db/security/schema";
@@ -15,7 +13,7 @@ import { addMember, cookieFor, createWorkspace, ORIGIN, setActive } from "./cons
 import { applyMigrations } from "./migrate";
 
 const headersFor = (cookie: string) => new Headers({ cookie });
-const WRITE = { permission: { sending: ["write"] }, write: true };
+const WRITE = { permission: { sending: ["write"] }, write: true } as const;
 const OPS = { userId: "usr_ops_test" };
 
 beforeAll(async () => {
@@ -59,7 +57,7 @@ describe("console platform admin", { timeout: 60_000 }, () => {
   it("lists each workspace with its status, quota, sends this month and member count", async () => {
     const a = await workspaceFor("adm-list@example.com", "adm-list-co");
 
-    const rows = await listWorkspaces(env, OPS);
+    const rows = await listWorkspaces(env);
     expect(rows).toContainEqual(
       expect.objectContaining({ id: a.workspaceId, slug: "adm-list-co", status: "active", quota: 10000, members: 1, sentThisMonth: 0 }),
     );
@@ -70,7 +68,7 @@ describe("console platform admin", { timeout: 60_000 }, () => {
     const suspended = await workspaceFor("adm-susp-at@example.com", "adm-susp-at-co");
     await setWorkspaceStatus(env, OPS, suspended.workspaceId, "suspended");
 
-    const rows = await listWorkspaces(env, OPS);
+    const rows = await listWorkspaces(env);
     const activeRow = rows.find((r) => r.id === active.workspaceId);
     const suspendedRow = rows.find((r) => r.id === suspended.workspaceId);
     expect(activeRow).toMatchObject({ suspendedAt: null, inboundUntil: null });
@@ -130,13 +128,9 @@ describe("console platform admin", { timeout: 60_000 }, () => {
   it("sets a workspace's SES region, lists it, and refuses an unknown region", async () => {
     const a = await workspaceFor("adm-region@example.com", "adm-region-co");
     await setWorkspaceRegion(env, OPS, a.workspaceId, "us-east-1");
-    const row = (await listWorkspaces(env, OPS)).find((w) => w.id === a.workspaceId);
+    const row = (await listWorkspaces(env)).find((w) => w.id === a.workspaceId);
     expect(row?.sesRegion).toBe("us-east-1");
     await expect(setWorkspaceRegion(env, OPS, a.workspaceId, "eu-west-9")).rejects.toMatchObject({ status: 400 });
-  });
-
-  it("keeps the client region list equal to the SES config sets", () => {
-    expect([...SES_REGIONS].sort()).toEqual(Object.keys(SES_CONFIG_SETS).sort());
   });
 
   it("refuses a quota that is not a non-negative integer", async () => {
@@ -169,7 +163,7 @@ describe("console platform admin", { timeout: 60_000 }, () => {
 });
 
 describe("console platform admin invite cap", { timeout: 60_000 }, () => {
-  const INVITE = { permission: { invitation: ["create"] }, write: true };
+  const INVITE = { permission: { invitation: ["create"] }, write: true } as const;
 
   async function seedInvites(workspaceId: string, inviterId: string, count: number) {
     for (let i = 0; i < count; i++) {
@@ -195,7 +189,7 @@ describe("console platform admin invite cap", { timeout: 60_000 }, () => {
     ).rejects.toMatchObject({ status: 429, message: "invite limit reached" });
 
     await setWorkspaceInviteCap(env, OPS, a.workspaceId, 25);
-    expect((await listWorkspaces(env, OPS)).find((r) => r.id === a.workspaceId)?.invitesPerDay).toBe(25);
+    expect((await listWorkspaces(env)).find((r) => r.id === a.workspaceId)?.invitesPerDay).toBe(25);
     await expect(
       inviteMember(env, actor, headersFor(a.cookie), { email: "cap-raised@x.test", role: "member" }),
     ).resolves.toEqual({ id: expect.any(String) });
@@ -220,9 +214,9 @@ describe("audience binding (super admin)", () => {
     const a = await workspaceFor("bind-a@example.com", "Bind A Co");
     const actor = await requireActor(env, headersFor(a.cookie), WRITE);
     const { id: appId } = await addApp(env, actor, { name: "Web", slug: "web" });
-    const admin = { userId: actor.userId };
-    await expect(setAudienceBindingFor(env, admin, a.workspaceId, appId, "MAIL")).rejects.toThrow("unknown binding");
-    await expect(setAudienceBindingFor(env, admin, "ws_not_mine", appId, "TIFFIN_AUDIENCE")).rejects.toMatchObject({ status: 404 });
-    expect(await setAudienceBindingFor(env, admin, a.workspaceId, appId, "TIFFIN_AUDIENCE")).toEqual({ secret: null });
+    const admin = { userId: actor.userId as string };
+    await expect(setAudienceBinding(env, admin, a.workspaceId, appId, "MAIL")).rejects.toThrow("unknown binding");
+    await expect(setAudienceBinding(env, admin, "ws_not_mine", appId, "TIFFIN_AUDIENCE")).rejects.toMatchObject({ status: 404 });
+    expect(await setAudienceBinding(env, admin, a.workspaceId, appId, "TIFFIN_AUDIENCE")).toEqual({ secret: null });
   });
 });

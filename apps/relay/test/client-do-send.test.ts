@@ -1,6 +1,6 @@
 import { env, runInDurableObject } from "cloudflare:test";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi, type MockInstance } from "vitest";
-import { sendTemplateMessage } from "../src/core/messages";
+import { sendTemplateMessage } from "../src/services/messages";
 import { coreDb } from "../src/db/core/client";
 import { address } from "../src/db/core/schema";
 import { securityDb } from "../src/db/security/client";
@@ -40,6 +40,9 @@ function deferred() {
   return { promise, resolve, reject };
 }
 
+const messageCount = async (stub: ReturnType<typeof stubFor>, ws: string) =>
+  (await stub.listMessages(ws, { direction: "out" }, { out: true, inbound: "all" })).rows.length;
+
 const settle = <T>(p: Promise<T>) => p.then((value) => ({ value }), (e: Error) => ({ error: e.message }));
 const tick = () => new Promise<void>((r) => setTimeout(r, 0));
 
@@ -57,7 +60,20 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+const refused = (call: Promise<unknown>) => call.then(() => "resolved", (e: Error) => e.message);
+
 describe("ClientDO send", () => {
+  it("answers limits unavailable, not sender_not_verified, when a fresh DO cannot reach D1", async () => {
+    const ws = "wsp_fresh_d1_down";
+    const stub = await seededStub(ws);
+    vi.spyOn(env.CORE_DB, "prepare").mockImplementation(() => {
+      throw new Error("D1 down");
+    });
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    expect(await refused(stub.send(ws, base))).toBe("limits unavailable");
+    expect(enqueue).not.toHaveBeenCalled();
+  });
+
   it("queues a message, stores html in R2 and enqueues one send job", async () => {
     const ws = "wsp_test";
     const stub = await seededStub(ws);
@@ -127,9 +143,7 @@ describe("ClientDO send", () => {
     expect(failures[0]).toMatch(/^ZodError: .*"subject"/s);
     expect(failures[1]).toMatch(/^ZodError: .*"to"/s);
 
-    const rows = await runInDurableObject(stub, (_instance, state) =>
-      state.storage.sql.exec<{ n: number }>("SELECT count(*) AS n FROM message").toArray()[0].n,
-    );
+    const rows = await messageCount(stub, ws);
     expect(rows).toBe(0);
     expect(enqueue).not.toHaveBeenCalled();
   });
@@ -145,9 +159,7 @@ describe("ClientDO send", () => {
     );
     expect(failure).toBe("queue_failed");
 
-    const rows = await runInDurableObject(stub, (_instance, state) =>
-      state.storage.sql.exec<{ n: number }>("SELECT count(*) AS n FROM message").toArray()[0].n,
-    );
+    const rows = await messageCount(stub, ws);
     expect(rows).toBe(0);
     expect((await env.MAIL.list({ prefix: `ws/${ws}/msg/` })).objects).toHaveLength(0);
 
@@ -212,9 +224,7 @@ describe("ClientDO send", () => {
     expect(a).toEqual({ error: "queue_failed" });
     expect(b).toEqual({ error: "queue_failed" });
     expect(put).toHaveBeenCalledTimes(1);
-    const rows = await runInDurableObject(stub, (_instance, state) =>
-      state.storage.sql.exec<{ n: number }>("SELECT count(*) AS n FROM message").toArray()[0].n,
-    );
+    const rows = await messageCount(stub, ws);
     expect(rows).toBe(0);
     expect((await env.MAIL.list({ prefix: `ws/${ws}/msg/` })).objects).toHaveLength(0);
   });
@@ -282,17 +292,12 @@ describe("ClientDO send", () => {
       return instance.ping("wsp_b").then(() => "resolved", (e: Error) => e.message);
     });
     expect(other).toBe("workspace mismatch");
-    const bound = await runInDurableObject(stub, (_instance, state) => state.storage.kv.get("workspace_id"));
-    expect(bound).toBe("wsp_a");
   });
 
   it("keeps the higher-ranked suppression reason when an email is suppressed again", async () => {
     const ws = "wsp_reason";
     const stub = await seededStub(ws);
-    const reason = () =>
-      runInDurableObject(stub, (_instance, state) =>
-        state.storage.sql.exec<{ reason: string }>("SELECT reason FROM suppression WHERE email = ?", "r@x.com").one().reason,
-      );
+    const reason = async () => (await stub.listSuppressions(ws, { prefix: "r@x.com" })).rows[0].reason;
 
     await stub.addSuppression(ws, "r@x.com", "bounce");
     await stub.addSuppression(ws, "r@x.com", "manual");
@@ -310,7 +315,7 @@ describe("template sends", () => {
     return { stub, id: tpl.id };
   }
   const send = (ws: string, templateId: string, extra: Record<string, unknown> = {}) =>
-    sendTemplateMessage(env, { workspaceId: ws, appId: "app_1" }, { stream: "transactional", from: "Relay@A6n.ai", to: "a@x.com", templateId, ...extra });
+    sendTemplateMessage(env, { workspaceId: ws, appId: "app_1", userId: null, keyId: "key_1" }, { stream: "transactional", from: "Relay@A6n.ai", to: "a@x.com", templateId, ...extra });
 
   it("renders the template with the contact name escaped", async () => {
     const ws = "wsp_tpl_render_send";
@@ -331,7 +336,7 @@ describe("template sends", () => {
     const { stub, id } = await template(ws, { subject: "S", html: "<p>x</p>", text: "x", enabled: false });
     await expect(send(ws, id)).rejects.toThrow("template disabled");
     await stub.updateTemplate(ws, id, { enabled: true });
-    await expect(sendTemplateMessage(env, { workspaceId: ws, appId: "app_2" }, { stream: "transactional", from: "Relay@A6n.ai", to: "a@x.com", templateId: id })).rejects.toThrow(
+    await expect(sendTemplateMessage(env, { workspaceId: ws, appId: "app_2", userId: null, keyId: "key_1" }, { stream: "transactional", from: "Relay@A6n.ai", to: "a@x.com", templateId: id })).rejects.toThrow(
       "template not found",
     );
   });

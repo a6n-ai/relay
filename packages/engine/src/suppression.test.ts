@@ -1,8 +1,8 @@
+import { normalizeAddress } from "@foundry/commons";
 import { describe, expect, it, vi } from "vitest";
 import {
   canClearSuppression,
   clearSuppression,
-  normalizeAddress,
   suppress,
   suppressManually,
   suppressionKind,

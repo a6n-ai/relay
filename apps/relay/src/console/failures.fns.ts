@@ -1,43 +1,24 @@
 import { createServerFn } from "@tanstack/react-start";
-import { getRequestHeaders } from "@tanstack/react-start/server";
 import { env } from "cloudflare:workers";
 import { z } from "zod";
-import { ConsoleError, requireActor, toResponseError } from "./actor";
-import { deleteFailureFor, listFailuresFor, replayFailureFor } from "./failures";
-import { id, validate } from "./schemas";
+import { read, run } from "./guard";
+import { READ, WRITE } from "./needs";
+import { deleteFailure, listFailures, replayFailure } from "../services/failures";
+import { validate } from "./schemas";
+import { id } from "../services/schemas";
 
-const READ = { permission: { mailbox: ["read"] } };
-const MANAGE = { permission: { mailbox: ["manage"] }, write: true };
+const VIEW = READ("mailbox", "read");
+const MANAGE = WRITE("mailbox", "manage");
 
 // Null means the role cannot read inbound mail: the page shows a denied state instead of an error.
-export const fetchFailures = createServerFn({ method: "GET" }).handler(async () => {
-  try {
-    const actor = await requireActor(env, getRequestHeaders(), READ);
-    return { rows: await listFailuresFor(env, actor) };
-  } catch (err) {
-    if (err instanceof ConsoleError && err.status === 403) return null;
-    toResponseError(err);
-  }
-});
+export const fetchFailures = createServerFn({ method: "GET" }).handler(() =>
+  read(VIEW, async (p) => ({ rows: await listFailures(env, p) })),
+);
 
 export const replayFailureFn = createServerFn({ method: "POST" })
   .validator(validate(z.object({ id })))
-  .handler(async ({ data }) => {
-    try {
-      const actor = await requireActor(env, getRequestHeaders(), MANAGE);
-      return await replayFailureFor(env, actor, data.id);
-    } catch (err) {
-      toResponseError(err);
-    }
-  });
+  .handler(({ data }) => run(MANAGE, (p) => replayFailure(env, p, data.id)));
 
 export const deleteFailureFn = createServerFn({ method: "POST" })
   .validator(validate(z.object({ id })))
-  .handler(async ({ data }) => {
-    try {
-      const actor = await requireActor(env, getRequestHeaders(), MANAGE);
-      await deleteFailureFor(env, actor, data.id);
-    } catch (err) {
-      toResponseError(err);
-    }
-  });
+  .handler(({ data }) => run(MANAGE, (p) => deleteFailure(env, p, data.id)));

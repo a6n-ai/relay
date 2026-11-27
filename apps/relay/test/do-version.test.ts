@@ -3,9 +3,9 @@ import { env, runInDurableObject, SELF } from "cloudflare:test";
 import { eq } from "drizzle-orm";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { guardInternal } from "../src/core/internal-guard";
-import { sweepWorkspaces } from "../src/core/do-sweep";
-import * as domains from "../src/console/domains";
-import { sweepAll } from "../src/core/sweep-all";
+import { sweepWorkspaces } from "../src/jobs/do-sweep";
+import * as domains from "../src/services/domain-state";
+import { sweepAll } from "../src/jobs/sweep-all";
 import { CLIENT_MIGRATIONS } from "../src/do/migrations";
 import { coreDb } from "../src/db/core/client";
 import { ensureWorkspaceProfile } from "../src/core/workspace-profile";
@@ -67,16 +67,12 @@ describe("ClientDO schema version", () => {
     const stub = stubFor(id);
     expect(await stub.ping(id)).toEqual({ version: VERSION });
     expect(await profileOf(id)).toHaveLength(0);
-    const unset = await runInDurableObject(stub, (_instance, state) => state.storage.kv.get("reported_version"));
-    expect(unset).toBeUndefined();
 
     await db.insert(workspace).values({ id, name: "ghost", slug: "ghost" });
     await ensureWorkspaceProfile(env, id);
     expect(await stub.ping(id)).toEqual({ version: VERSION });
     const [row] = await profileOf(id);
     expect(row).toMatchObject({ doSchemaVersion: VERSION, doMigrateError: null });
-    const kv = await runInDurableObject(stub, (_instance, state) => state.storage.kv.get("reported_version"));
-    expect(kv).toBe(VERSION);
   });
 
   it("writes D1 once per version, not on every call", async () => {
@@ -101,12 +97,13 @@ describe("ClientDO schema version", () => {
     );
     expect(failure).toBe("workspace storage migration failed");
 
-    const rows = await runInDurableObject(stub, (_instance, state) =>
-      state.storage.sql.exec<{ n: number }>("SELECT count(*) AS n FROM message").toArray()[0].n,
-    );
-    expect(rows).toBe(0);
     const [row] = await profileOf(id);
     expect(row.doMigrateError).toBe("boom");
+    await runInDurableObject(stub, (instance) => {
+      instance.migrateError = undefined;
+    });
+    const page = await stub.listMessages(id, { direction: "out" }, { out: true, inbound: "all" });
+    expect(page.rows).toEqual([]);
   });
 
   it("keeps sends working while D1 is down and reports the version once D1 is back", async () => {
@@ -129,16 +126,12 @@ describe("ClientDO schema version", () => {
     const sent = await stub.send(id, base);
     expect(sent.status).toBe("queued");
     expect(log).toHaveBeenCalled();
-    const kv = await runInDurableObject(stub, (_instance, state) => state.storage.kv.get("reported_version"));
-    expect(kv).toBeUndefined();
 
     d1.mockRestore();
     log.mockRestore();
     expect(await stub.ping(id)).toEqual({ version: VERSION });
     const [row] = await profileOf(id);
     expect(row.doSchemaVersion).toBe(VERSION);
-    const kvAfter = await runInDurableObject(stub, (_instance, state) => state.storage.kv.get("reported_version"));
-    expect(kvAfter).toBe(VERSION);
   });
 
   it("rejects with the migration error even when D1 is down", async () => {

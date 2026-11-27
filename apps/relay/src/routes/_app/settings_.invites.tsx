@@ -2,31 +2,31 @@ import { Badge } from "@foundry/ui/badge";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { MailPlus } from "lucide-react";
 import { useState } from "react";
-import { ConfirmDialog } from "../../components/confirm-dialog";
-import { CreateDialog } from "../../components/create-dialog";
-import { DeniedState, deniedReason } from "../../components/denied-state";
+import { ConfirmDialog } from "../../components/page/confirm-dialog";
+import { CreateDialog } from "../../components/page/create-dialog";
+import { PageDenied } from "../../components/page/page-denied";
 import { EmptyState } from "../../components/page/empty-state";
 import { ListSkeleton } from "../../components/page/page-skeleton";
-import { ResourceTable } from "../../components/resource-table";
-import { type MemberRole, ROLE_LABEL } from "../../components/role-select";
-import { confirmAction } from "../../components/run-action";
+import { ResourceTable } from "../../components/page/resource-table";
+import { type OrgRole, ROLE_LABEL } from "../../shared/roles";
+import { confirmAction } from "../../components/lib/run-action";
 import { InviteForm } from "../../components/settings/invite-form";
 import { SuspendedNotice } from "../../components/settings/suspended-notice";
-import { useNewParam } from "../../components/shell/new-param";
+import { useNewParam } from "../../components/shell/scope";
 import { PageHeader } from "../../components/shell/page-header";
-import { StatusBadge } from "../../components/status-badge";
-import { useCan } from "../../components/use-can";
+import { StatusBadge } from "../../components/page/status-badge";
+import { useCan } from "../../components/lib/use-can";
 import { cancelInviteFn, fetchPeople } from "../../console/members.fns";
-import { formatDate } from "../../lib/format-date";
+import { formatDate } from "../../components/lib/format-date";
 
-const crumbs = [{ label: "Settings", to: "/settings" }, { label: "Invites" }];
 
 export const Route = createFileRoute("/_app/settings_/invites")({
+  staticData: { title: "Invites", copy: "People you have asked to join this workspace." },
   validateSearch: (search: Record<string, unknown>): { new?: 1 } => ({
     new: search.new === 1 || search.new === "1" ? 1 : undefined,
   }),
   loader: () => fetchPeople(),
-  pendingComponent: () => <ListSkeleton crumbs={[{ label: "Settings", to: "/settings" }, { label: "Invites" }]} columns={4} action />,
+  pendingComponent: () => <ListSkeleton columns={4} action />,
   component: InvitesPage,
 });
 
@@ -50,12 +50,7 @@ function InvitesPage() {
   const confirm = (action: () => Promise<unknown>, success: string) => confirmAction(action, success, () => router.invalidate());
 
   if (!people) {
-    return (
-      <>
-        <PageHeader crumbs={crumbs} />
-        <DeniedState reason={deniedReason(shell)} />
-      </>
-    );
+    return <PageDenied />;
   }
 
   const cancellingInvite = people.invites.find((i) => i.id === cancelling);
@@ -67,12 +62,12 @@ function InvitesPage() {
 
   return (
     <>
-      <PageHeader crumbs={crumbs} actions={invite} />
+      <PageHeader actions={invite} />
       {suspended ? <SuspendedNotice /> : null}
       <ResourceTable
         columns={[
           { header: "Email", kind: "mono", cell: (i) => i.email },
-          { header: "Role", secondary: true, cell: (i) => ROLE_LABEL[i.role as MemberRole] ?? i.role },
+          { header: "Role", secondary: true, cell: (i) => ROLE_LABEL[i.role as OrgRole] ?? i.role },
           { header: "Status", cell: (i) => <InviteStatus status={i.status} /> },
           { header: "Expires", secondary: true, cell: (i) => formatDate(i.expiresAt) },
         ]}

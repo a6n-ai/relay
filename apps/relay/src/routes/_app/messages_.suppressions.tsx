@@ -1,42 +1,45 @@
+import { confirmAction } from "../../components/lib/run-action";
 import { TextField } from "../../components/form/text-field";
-import { toast } from "@foundry/ui/toast";
 import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
-import { ConfirmDialog } from "../../components/confirm-dialog";
-import { CreateDialog } from "../../components/create-dialog";
-import { DeniedState, deniedReason } from "../../components/denied-state";
-import { errorText } from "../../components/error-text";
+import { ConfirmDialog } from "../../components/page/confirm-dialog";
+import { CreateDialog } from "../../components/page/create-dialog";
+import { PageDenied } from "../../components/page/page-denied";
 import { ChoiceField } from "../../components/form/choice-field";
 import { FilterMenu } from "../../components/page/filter-menu";
 import { LoadMore } from "../../components/page/load-more";
 import { ListSkeleton } from "../../components/page/page-skeleton";
-import { Hint } from "../../components/page/text";
+import { Hint } from "../../components/form/text";
 import { SearchInput, Toolbar } from "../../components/page/toolbar";
 import { useUrlFilter } from "../../components/page/use-url-filter";
 import { PageHeader } from "../../components/shell/page-header";
-import { ResourceTable } from "../../components/resource-table";
-import { useCan } from "../../components/use-can";
-import { formatWhen } from "../../lib/format-date";
+import { ResourceTable } from "../../components/page/resource-table";
+import { useCan } from "../../components/lib/use-can";
+import { formatWhen } from "../../components/lib/format-date";
 import { addSuppressionFn, fetchSuppressions, removeSuppressionFn } from "../../console/suppressions.fns";
-import { FormError, FormBody, FormActions } from "../../components/page/form-parts";
+import { FormError, FormBody, FormActions } from "../../components/form/form-parts";
+import { STREAMS } from "../../shared/mail";
+import { oneOf, posInt, str, untyped } from "../../components/lib/route-search";
+import { useSubmit } from "../../components/lib/use-submit";
 
 type SuppressionsSearch = { prefix?: string; cursor?: string; stream?: StreamFilter; offset?: number };
 
-const STREAM_FILTERS = ["all", "transactional", "tracked", "marketing"] as const;
+const STREAM_FILTERS = ["all", ...STREAMS] as const;
 type StreamFilter = (typeof STREAM_FILTERS)[number];
 const STREAM_LABEL: Record<StreamFilter, string> = { all: "All mail", transactional: "Receipts and alerts", tracked: "Tracked mail", marketing: "Campaigns" };
 const streamLabel = (s: string) => STREAM_LABEL[s as StreamFilter] ?? s;
 
 export const Route = createFileRoute("/_app/messages_/suppressions")({
+  staticData: { title: "Suppressed", copy: "Addresses Relay will not send to." },
   validateSearch: (search: Record<string, unknown>): SuppressionsSearch => ({
     prefix: typeof search.prefix === "string" && search.prefix.trim() ? search.prefix.trim() : undefined,
-    cursor: typeof search.cursor === "string" && search.cursor ? search.cursor : undefined,
-    stream: STREAM_FILTERS.find((s) => s === search.stream),
-    offset: Number.isInteger(search.offset) && (search.offset as number) > 0 ? (search.offset as number) : undefined,
+    cursor: str(search.cursor),
+    stream: oneOf(STREAM_FILTERS, search.stream),
+    offset: posInt(search.offset),
   }),
   loaderDeps: ({ search }) => ({ prefix: search.prefix, cursor: search.cursor }),
   loader: ({ deps }) => fetchSuppressions({ data: deps }),
-  pendingComponent: () => <ListSkeleton crumbs={[{ label: "Messages" }, { label: "Suppressions" }]} columns={4} search filter />,
+  pendingComponent: () => <ListSkeleton columns={4} search filter />,
   component: SuppressionsPage,
 });
 
@@ -51,38 +54,29 @@ const OPTED_OUT = new Set(["unsubscribe", "complaint"]);
 function SuppressionsPage() {
   const page = Route.useLoaderData();
   const search = Route.useSearch();
-  const { shell } = Route.useRouteContext();
   const router = useRouter();
   const navigate = useNavigate();
   const canWrite = useCan({ sending: ["write"] });
   const [removing, setRemoving] = useState<string | null>(null);
-  const crumbs = [{ label: "Messages" }, { label: "Suppressions" }];
   if (!page) {
-    return (
-      <>
-        <PageHeader crumbs={crumbs} />
-        <DeniedState reason={deniedReason(shell)} />
-      </>
-    );
+    return <PageDenied />;
   }
   async function remove(email: string) {
-    await removeSuppressionFn({ data: { email } });
-    toast.success("Suppression removed");
-    await router.invalidate();
+    await confirmAction(() => removeSuppressionFn({ data: { email } }), "Suppression removed", () => router.invalidate());
   }
   // The server has no stream filter, so the facet narrows the rows loaded on this page.
   const rows = search.stream ? page.rows.filter((s) => (search.stream === "all" ? !s.stream : s.stream === search.stream)) : page.rows;
   const offset = search.cursor ? (search.offset ?? 0) : 0;
   return (
     <>
-      <PageHeader crumbs={crumbs} />
+      <PageHeader />
       <Toolbar
         search={<PrefixSearch />}
         filters={
           <FilterMenu
             facets={[{ key: "stream", label: "Applies to", options: STREAM_FILTERS.map((s) => ({ value: s, label: streamLabel(s) })) }]}
             value={search}
-            onChange={(next) => void navigate({ to: ".", search: next as never })}
+            onChange={(next) => void navigate({ to: ".", search: untyped(next) })}
           />
         }
       >
@@ -150,25 +144,14 @@ function PrefixSearch() {
 }
 
 function AddForm({ done }: { done: () => void }) {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [stream, setStream] = useState<StreamFilter>("all");
-  const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
+  const { pending, error, run } = useSubmit();
   async function submit(event: FormEvent) {
     event.preventDefault();
-    setPending(true);
-    setError(null);
-    try {
+    await run(async () => {
       await addSuppressionFn({ data: { email, stream: stream === "all" ? undefined : stream } });
-      toast.success("Suppression added");
-      done();
-      await router.invalidate();
-    } catch (err) {
-      setError(errorText(err, "Could not add this suppression."));
-    } finally {
-      setPending(false);
-    }
+    }, "Could not add this suppression.", { success: "Suppression added", after: done });
   }
   return (
     <FormBody onSubmit={submit}>

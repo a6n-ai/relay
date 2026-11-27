@@ -1,6 +1,6 @@
 import { createExecutionContext, env, runInDurableObject } from "cloudflare:test";
 import { beforeAll, describe, expect, it } from "vitest";
-import { createApiKey } from "../src/core/api-keys";
+import { createApiKey } from "../src/services/api-keys";
 import { coreDb } from "../src/db/core/client";
 import { address } from "../src/db/core/schema";
 import { securityDb } from "../src/db/security/client";

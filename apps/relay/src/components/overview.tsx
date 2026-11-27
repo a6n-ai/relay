@@ -1,29 +1,20 @@
 import { Button } from "@foundry/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@foundry/ui/card";
 import { Link } from "@tanstack/react-router";
-import Globe from "lucide-react/icons/globe";
-import LayoutGrid from "lucide-react/icons/layout-grid";
-import UserPlus from "lucide-react/icons/user-plus";
-import type { Shell } from "../console/shell";
 import type { fetchOverview } from "../console/overview.fns";
-import { DeniedState, deniedReason } from "./denied-state";
-import { MeterBar } from "./meter-bar";
-import { Hint, SectionTitle } from "./page/text";
+import { PageDenied } from "./page/page-denied";
+import { MeterBar } from "./page/meter-bar";
+import { Hint, SectionTitle } from "./form/text";
 import { createItems } from "./shell/nav";
 import { PageHeader } from "./shell/page-header";
-import { StatTile } from "./stat-tile";
+import { StatTile } from "./page/stat-tile";
+import { type Shell } from "../shared/views";
+import { untyped } from "./lib/route-search";
 
 type OverviewData = NonNullable<Awaited<ReturnType<typeof fetchOverview>>>;
 
-const START = [
-  { id: "app", icon: LayoutGrid, title: "Create an app", line: "An app groups the messages, lists and campaigns you send.", cta: "Create app", to: "/apps/new" },
-  { id: "domain", icon: Globe, title: "Add a domain", line: "Verify a domain to send from your own address.", cta: "Add domain", to: "/domains/new" },
-  { id: "invite", icon: UserPlus, title: "Invite your team", line: "Give teammates access to this workspace.", cta: "Invite member", to: "/settings/invites" },
-] as const;
-
 function GetStarted({ shell }: { shell: Shell }) {
-  const allowed = new Set(createItems(shell.active?.roles ?? [], shell.active?.status === "suspended").map((c) => c.id));
-  const rows = START.filter((r) => allowed.has(r.id));
+  const rows = createItems(shell.active?.roles ?? [], shell.active?.status === "suspended").flatMap((c) => (c.start ? [{ ...c, ...c.start }] : []));
   if (rows.length === 0) return null;
   return (
     <Card>
@@ -38,7 +29,7 @@ function GetStarted({ shell }: { shell: Shell }) {
               <SectionTitle as="p">{r.title}</SectionTitle>
               <Hint>{r.line}</Hint>
             </div>
-            <Button variant="outline" render={<Link to={r.to as string} search={r.id === "invite" ? ({ new: 1 } as never) : undefined} />}>
+            <Button variant="outline" render={<Link to={r.to} search={untyped(r.new ? { new: r.new } : undefined)} />}>
               {r.cta}
             </Button>
           </div>
@@ -52,19 +43,14 @@ const fmt = (n: number) => n.toLocaleString("en-CA");
 
 export default function Overview({ overview, shell }: { overview: OverviewData | null; shell: Shell }) {
   if (!overview) {
-    return (
-      <>
-        <PageHeader crumbs={[{ label: "Overview" }]} />
-        <DeniedState reason={deniedReason(shell)} />
-      </>
-    );
+    return <PageDenied />;
   }
 
   const { month, quota, sent, delivered, bounced, inbound, days } = overview;
   const busiest = Math.max(1, ...days.map((d) => d.sent));
   return (
     <>
-      <PageHeader crumbs={[{ label: "Overview" }]} />
+      <PageHeader />
       <div className="grid gap-4 p-4">
         {shell.apps.length === 0 ? (
           <GetStarted shell={shell} />

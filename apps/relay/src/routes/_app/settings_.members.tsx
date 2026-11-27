@@ -1,29 +1,30 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { Users } from "lucide-react";
-import { ConfirmDialog } from "../../components/confirm-dialog";
-import { DeniedState, deniedReason } from "../../components/denied-state";
+import { ConfirmDialog } from "../../components/page/confirm-dialog";
+import { PageDenied } from "../../components/page/page-denied";
 import { EmptyState } from "../../components/page/empty-state";
 import { SearchInput, Toolbar } from "../../components/page/toolbar";
 import { useUrlFilter } from "../../components/page/use-url-filter";
 import { ListSkeleton } from "../../components/page/page-skeleton";
-import { ResourceTable } from "../../components/resource-table";
-import { type MemberRole, ROLE_LABEL } from "../../components/role-select";
-import { confirmAction } from "../../components/run-action";
+import { ResourceTable } from "../../components/page/resource-table";
+import { type OrgRole, ROLE_LABEL } from "../../shared/roles";
+import { confirmAction } from "../../components/lib/run-action";
 import { ChangeRoleDialog } from "../../components/settings/change-role-dialog";
 import { SuspendedNotice } from "../../components/settings/suspended-notice";
 import { PageHeader } from "../../components/shell/page-header";
-import { useCan } from "../../components/use-can";
+import { useCan } from "../../components/lib/use-can";
 import { fetchPeople, removeMemberFn } from "../../console/members.fns";
+import { str } from "../../components/lib/route-search";
 
-const crumbs = [{ label: "Settings", to: "/settings" }, { label: "Members" }];
 
 export const Route = createFileRoute("/_app/settings_/members")({
+  staticData: { title: "Members", copy: "People in this workspace and what they can do." },
   validateSearch: (search: Record<string, unknown>): { q?: string } => ({
-    q: typeof search.q === "string" && search.q ? search.q : undefined,
+    q: str(search.q),
   }),
   loader: () => fetchPeople(),
-  pendingComponent: () => <ListSkeleton crumbs={[{ label: "Settings", to: "/settings" }, { label: "Members" }]} columns={3} search action />,
+  pendingComponent: () => <ListSkeleton columns={3} search action />,
   component: MembersPage,
 });
 
@@ -41,12 +42,7 @@ function MembersPage() {
   const confirm = (action: () => Promise<unknown>, success: string) => confirmAction(action, success, () => router.invalidate());
 
   if (!people) {
-    return (
-      <>
-        <PageHeader crumbs={crumbs} />
-        <DeniedState reason={deniedReason(shell)} />
-      </>
-    );
+    return <PageDenied />;
   }
   const needle = q.trim().toLowerCase();
   const rows = needle ? people.members.filter((m) => `${m.name} ${m.email}`.toLowerCase().includes(needle)) : people.members;
@@ -56,7 +52,7 @@ function MembersPage() {
 
   return (
     <>
-      <PageHeader crumbs={crumbs} />
+      <PageHeader />
       {suspended ? <SuspendedNotice /> : null}
       <Toolbar
         search={
@@ -73,7 +69,7 @@ function MembersPage() {
           { header: "Email", kind: "mono", cell: (m) => m.email },
           {
             header: "Role",
-            cell: (m) => m.roles.map((r) => ROLE_LABEL[r as MemberRole]).join(", "),
+            cell: (m) => m.roles.map((r) => ROLE_LABEL[r as OrgRole]).join(", "),
           },
         ]}
         rows={rows}
@@ -97,7 +93,7 @@ function MembersPage() {
       {changingMember ? (
         <ChangeRoleDialog
           key={changingMember.id}
-          member={{ id: changingMember.id, name: changingMember.name, role: (changingMember.roles[0] ?? "member") as MemberRole }}
+          member={{ id: changingMember.id, name: changingMember.name, role: (changingMember.roles[0] ?? "member") as OrgRole }}
           canGrantOwner={ownerActor}
           onOpenChange={(o) => !o && setChanging(null)}
         />

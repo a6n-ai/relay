@@ -1,8 +1,9 @@
-import { AUDIENCE_BINDINGS, HOOK_PAGE_LIMIT, type AudienceRequest, type HookCall } from "../core/audience-hook";
+import { AUDIENCE_BINDINGS, HOOK_PAGE_LIMIT, type AudienceRequest, type HookCall } from "../core/audience-protocol";
 import { webhookHeaders } from "../core/mailbox-received";
 import { decryptSecret, encryptSecret, newWebhookSecret, signBody } from "../core/webhook-crypto";
 import { isPublicWebhookUrl } from "../core/webhooks";
 import type { Env } from "../env";
+import { RelayError } from "../shared/errors";
 
 export type AudienceHookInput =
   | { kind: "https"; url: string; secret?: string; enabled?: boolean }
@@ -35,7 +36,7 @@ export async function setAudienceHookRow(
 ): Promise<{ secret: string | null }> {
   const enabled = input.enabled === false ? 0 : 1;
   if (input.kind === "binding") {
-    if (!(AUDIENCE_BINDINGS as readonly string[]).includes(input.binding)) throw new Error("unknown binding");
+    if (!(AUDIENCE_BINDINGS as readonly string[]).includes(input.binding)) throw new RelayError("unknown binding");
     storage.transactionSync(() => upsertHook(storage.sql, appId, "binding", null, input.binding, null, enabled, now));
     return { secret: null };
   }
@@ -79,6 +80,8 @@ export function deleteAudienceHookRow(sql: SqlStorage, appId: string): boolean {
 }
 
 // campaign.cursor for a hook run: `p` pages ingested so far, `c` the hook's next-page cursor.
+export const encodeHookCursor = (pages: number, next: string | null): string => JSON.stringify({ p: pages, c: next });
+
 export function parseHookCursor(raw: string | null): { p: number; c: string | null } {
   if (!raw) return { p: 0, c: null };
   const parsed = JSON.parse(raw) as { p?: unknown; c?: unknown };

@@ -1,4 +1,3 @@
-/** Delivery channels. email + in_app ship now; sms/whatsapp are handler-only additions. */
 export type Channel = "email" | "in_app" | "sms" | "whatsapp";
 
 /**

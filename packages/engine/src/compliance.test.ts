@@ -4,7 +4,6 @@ import {
   complianceProfile,
   mailingCountryFromIso,
   marketingConsentBlockReason,
-  tenantCanSendMarketing,
 } from "./compliance";
 
 const DAY = 86_400_000;
@@ -97,13 +96,6 @@ describe("marketingConsentBlockReason", () => {
         now,
       }),
     ).toBe("unsubscribed");
-  });
-});
-
-describe("tenantCanSendMarketing", () => {
-  it("requires a physical address where the profile says so", () => {
-    expect(tenantCanSendMarketing({ country: "US", physicalAddress: "" })).toBe("missing_physical_address");
-    expect(tenantCanSendMarketing({ country: "US", physicalAddress: "1 King St W, Toronto" })).toBeNull();
   });
 });
 

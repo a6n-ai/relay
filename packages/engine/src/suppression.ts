@@ -3,9 +3,8 @@ import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import { normalizeAddress } from "@foundry/commons";
 import type { NotificationTables } from "./schema";
-import type { Channel, Kind } from "./types";
-
-export { normalizeAddress };
+import type { Channel } from "./types";
+import { isEmailAddress } from "./email-address";
 
 // Schema generic is loose (matches @foundry/database's Database type): these
 // helpers only use the core query builder, and pinning a concrete schema would
@@ -14,7 +13,7 @@ export { normalizeAddress };
 type Db = PostgresJsDatabase<any>;
 
 export type SuppressionScope = "all" | "marketing";
-export type SuppressionSource = "link" | "one-click" | "admin";
+type SuppressionSource = "link" | "one-click" | "admin";
 
 /**
  * Record a bounce, complaint, unsubscribe or manual block. Idempotent.
@@ -66,32 +65,6 @@ export async function suppress(
 }
 
 /**
- * Channels blocked for ANY of the given addresses (a recipient's email + phone),
- * for a message of this kind. A "marketing"-scoped row blocks only marketing;
- * an "all"-scoped row blocks both.
- */
-export async function suppressedChannelsFor(
-  db: Db,
-  tables: NotificationTables,
-  addresses: string[],
-  kind: Kind = "transactional",
-): Promise<Channel[]> {
-  const normalized = addresses.filter(Boolean).map(normalizeAddress);
-  if (normalized.length === 0) return [];
-  const scopes: SuppressionScope[] = kind === "marketing" ? ["all", "marketing"] : ["all"];
-  const rows = await db
-    .select({ channel: tables.messageSuppression.channel })
-    .from(tables.messageSuppression)
-    .where(
-      and(
-        inArray(tables.messageSuppression.address, normalized),
-        inArray(tables.messageSuppression.scope, scopes),
-      ),
-    );
-  return [...new Set(rows.map((r) => r.channel as Channel))];
-}
-
-/**
  * Every suppression row for any of `addresses`, for callers that resolve many
  * recipients at once (enqueueMany) and filter by scope in memory.
  */
@@ -113,7 +86,7 @@ export async function suppressionRowsFor(
   return rows as { address: string; channel: Channel; scope: SuppressionScope }[];
 }
 
-export type SuppressionKind = "unsubscribe" | "bounce" | "complaint" | "manual" | "other";
+type SuppressionKind = "unsubscribe" | "bounce" | "complaint" | "manual" | "other";
 
 /**
  * `reason` is free text ("sms STOP keyword", "SES hard bounce", "SES complaint",
@@ -164,7 +137,6 @@ export async function clearSuppression(db: Db, tables: NotificationTables, publi
   } as const;
 }
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_RE = /^\+?[0-9]{7,15}$/;
 
 export async function suppressManually(
@@ -173,7 +145,7 @@ export async function suppressManually(
   input: { address: string; channel: Channel },
 ): Promise<Outcome> {
   const address = input.address.trim();
-  if (input.channel === "email" ? !EMAIL_RE.test(address) : !PHONE_RE.test(address.replace(/[\s()-]/g, ""))) {
+  if (input.channel === "email" ? !isEmailAddress(address) : !PHONE_RE.test(address.replace(/[\s()-]/g, ""))) {
     return {
       error: input.channel === "email" ? "Enter a valid email address" : "Enter a valid phone number",
       status: 422,

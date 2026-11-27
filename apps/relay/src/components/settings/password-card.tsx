@@ -6,13 +6,12 @@ import { toast } from "@foundry/ui/toast";
 import { useRouter } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
 import { setPasswordFn } from "../../console/password.fns";
-import { errorText } from "../error-text";
-import { FormError } from "../page/form-parts";
+import { errorText } from "../lib/error-text";
+import { FormError } from "../form/form-parts";
 import { SettingsCard } from "../page/settings-card";
+import { PASSWORD_MAX, PASSWORD_MIN } from "../../shared/limits";
+import { authFetch } from "../lib/auth-fetch";
 
-const json = { "content-type": "application/json" };
-const MIN = 8;
-const MAX = 128;
 
 // Setting goes through a server function (setPassword has no HTTP route); changing goes through Better Auth with the current password.
 export function PasswordCard({ hasPassword }: { hasPassword: boolean }) {
@@ -27,17 +26,13 @@ export function PasswordCard({ hasPassword }: { hasPassword: boolean }) {
   async function submit(event: FormEvent) {
     event.preventDefault();
     setError(null);
-    if (next.length < MIN || next.length > MAX) return setError(`Use ${MIN} to ${MAX} characters.`);
+    if (next.length < PASSWORD_MIN || next.length > PASSWORD_MAX) return setError(`Use ${PASSWORD_MIN} to ${PASSWORD_MAX} characters.`);
     if (next !== confirm) return setError("The passwords do not match.");
     setPending(true);
     try {
       if (hasPassword) {
-        const res = await fetch("/api/auth/change-password", {
-          method: "POST",
-          headers: json,
-          body: JSON.stringify({ currentPassword: current, newPassword: next, revokeOtherSessions: others }),
-        });
-        if (res.status === 429) return setError("Too many tries. Try again in a few minutes.");
+        const res = await authFetch("/change-password", { currentPassword: current, newPassword: next, revokeOtherSessions: others });
+        if (res.error) return setError(res.error);
         if (res.status === 403) return setError("Sign in again to set a password.");
         if (!res.ok) return setError(res.status === 400 ? "Your current password is wrong." : "Could not change the password. Try again.");
       } else {
@@ -61,7 +56,7 @@ export function PasswordCard({ hasPassword }: { hasPassword: boolean }) {
   return (
     <SettingsCard
       title="Password"
-      footer={`At least ${MIN} characters.`}
+      footer={`At least ${PASSWORD_MIN} characters.`}
       disabledReason={blocked && !pending ? (hasPassword && !current ? "Enter your current password." : "Enter and confirm the new password.") : undefined}
       description={
         hasPassword
@@ -76,10 +71,10 @@ export function PasswordCard({ hasPassword }: { hasPassword: boolean }) {
     >
       <form id="password-form" onSubmit={submit} className="grid gap-3">
         {hasPassword ? (
-          <TextField id="current-password" label="Current password" type="password" autoComplete="current-password" maxLength={MAX} value={current} onChange={(e) => setCurrent(e.target.value)} />
+          <TextField id="current-password" label="Current password" type="password" autoComplete="current-password" maxLength={PASSWORD_MAX} value={current} onChange={(e) => setCurrent(e.target.value)} />
         ) : null}
-        <TextField id="new-password" label="New password" type="password" autoComplete="new-password" minLength={MIN} maxLength={MAX} value={next} onChange={(e) => setNext(e.target.value)} />
-        <TextField id="confirm-password" label="Confirm new password" type="password" autoComplete="new-password" maxLength={MAX} value={confirm} onChange={(e) => setConfirm(e.target.value)} />
+        <TextField id="new-password" label="New password" type="password" autoComplete="new-password" minLength={PASSWORD_MIN} maxLength={PASSWORD_MAX} value={next} onChange={(e) => setNext(e.target.value)} />
+        <TextField id="confirm-password" label="Confirm new password" type="password" autoComplete="new-password" maxLength={PASSWORD_MAX} value={confirm} onChange={(e) => setConfirm(e.target.value)} />
         {hasPassword ? (
           <Label className="font-normal">
             <Checkbox checked={others} onCheckedChange={(on) => setOthers(on === true)} />

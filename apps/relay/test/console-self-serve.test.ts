@@ -1,11 +1,9 @@
-import { env, runInDurableObject, SELF } from "cloudflare:test";
+import { env, SELF } from "cloudflare:test";
 import { and, eq } from "drizzle-orm";
 import { beforeAll, describe, expect, it } from "vitest";
-import { setSelfServe } from "../src/console/admin";
-import { requireActor } from "../src/console/actor";
-import { addApp } from "../src/console/apps";
-import { createWorkspace as createWorkspaceFromConsole } from "../src/console/workspaces";
-import { LIMITS_KEY, type WorkspaceLimits } from "../src/core/limits";
+import { requireActor, requireUser } from "../src/console/actor";
+import { addApp } from "../src/services/apps";
+import { createWorkspace as createWorkspaceFromConsole } from "../src/services/workspaces";
 import { getWorkspaceProfile, recordDoState } from "../src/core/workspace-profile";
 import { coreDb } from "../src/db/core/client";
 import { workspaceProfile } from "../src/db/core/schema";
@@ -15,8 +13,7 @@ import { addMember, BASE, cookieFor, createWorkspace, json, ORIGIN, setActive } 
 import { applyMigrations } from "./migrate";
 
 const headersFor = (cookie: string) => new Headers({ cookie });
-const WRITE = { permission: { tenant: ["write"] }, write: true };
-const OPS = { userId: "usr_ops_test" };
+const WRITE = { permission: { tenant: ["write"] }, write: true } as const;
 
 beforeAll(async () => {
   await applyMigrations();
@@ -25,11 +22,6 @@ beforeAll(async () => {
 
 const profileOf = async (workspaceId: string) =>
   (await coreDb(env).select().from(workspaceProfile).where(eq(workspaceProfile.workspaceId, workspaceId)))[0];
-
-const snapshot = (workspaceId: string) =>
-  runInDurableObject(env.CLIENT.get(env.CLIENT.idFromName(workspaceId)), (_instance, state) =>
-    state.storage.kv.get<WorkspaceLimits>(LIMITS_KEY),
-  );
 
 function postCreate(cookie: string, slug: string) {
   return SELF.fetch(`${BASE}/organization/create`, {
@@ -84,36 +76,21 @@ describe("self-serve workspaces", { timeout: 60_000 }, () => {
     });
   });
 
-  it("setSelfServe(false) lifts the app cap and refreshes the limits", async () => {
-    const cookie = await cookieFor("ss-lift@example.com", "user");
-    const id = await createWorkspace(cookie, "ss-lift-co");
-    await setActive(cookie, id);
-    const actor = await requireActor(env, headersFor(cookie), WRITE);
-    await addApp(env, actor, { name: "Web", slug: "web" });
-    const before = (await snapshot(id))?.fetchedAt ?? 0;
-    await new Promise((resolve) => setTimeout(resolve, 5));
-
-    await setSelfServe(env, OPS, id, false);
-    expect(await profileOf(id)).toMatchObject({ selfServe: false });
-    await expect(addApp(env, actor, { name: "Mail", slug: "mail" })).resolves.toMatchObject({ id: expect.stringMatching(/^app_/) });
-    expect((await snapshot(id))!.fetchedAt).toBeGreaterThan(before);
-  });
-
   it("creates through the console path with the same cap, and refuses a cross-origin write", async () => {
     const cookie = await cookieFor("ss-console@example.com", "user");
     const headers = new Headers({ cookie, origin: ORIGIN });
     for (const slug of ["ss-console-1", "ss-console-2", "ss-console-3"]) {
-      const { id } = await createWorkspaceFromConsole(env, headers, { name: slug, slug });
+      const { id } = await createWorkspaceFromConsole(env, await requireUser(env, headers, { write: true }), { name: slug, slug });
       expect(await profileOf(id)).toMatchObject({ selfServe: true, monthlyMessageQuota: 100 });
     }
-    await expect(createWorkspaceFromConsole(env, headers, { name: "ss-console-4", slug: "ss-console-4" })).rejects.toMatchObject({
+    await expect(createWorkspaceFromConsole(env, await requireUser(env, headers, { write: true }), { name: "ss-console-4", slug: "ss-console-4" })).rejects.toMatchObject({
       status: 403,
       message: "You can create up to 3 workspaces",
     });
 
     const other = await cookieFor("ss-cross@example.com", "user");
     const cross = new Headers({ cookie: other, origin: "https://evil.example" });
-    await expect(createWorkspaceFromConsole(env, cross, { name: "ss-cross", slug: "ss-cross" })).rejects.toMatchObject({ status: 403 });
+    await expect(requireUser(env, cross, { write: true })).rejects.toMatchObject({ status: 403, message: "cross-origin write" });
     expect(await securityDb(env).select({ id: workspace.id }).from(workspace).where(eq(workspace.slug, "ss-cross"))).toHaveLength(0);
   });
 

@@ -1,16 +1,16 @@
-import { toast } from "@foundry/ui/toast";
 import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
-import { errorText } from "../../components/error-text";
 import { SlugField } from "../../components/form/slug-field";
 import { splitSlugError } from "../../components/form/slugify";
-import { TextField } from "../../components/form/text-field";
+import { NameField } from "../../components/form/text-field";
 import { CreatePage } from "../../components/page/create-page";
-import { FormActions, FormError } from "../../components/page/form-parts";
+import { FormActions, FormError } from "../../components/form/form-parts";
 import { SettingsCard } from "../../components/page/settings-card";
 import { createWorkspaceFn } from "../../console/workspaces.fns";
+import { useSubmit } from "../../components/lib/use-submit";
 
 export const Route = createFileRoute("/_app/workspaces_/new")({
+  staticData: { allowsNoWorkspace: true },
   component: NewWorkspacePage,
 });
 
@@ -21,24 +21,22 @@ function NewWorkspacePage() {
   const navigate = useNavigate();
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
+  const { pending, error, run } = useSubmit();
   const back = shell.active ? { label: "Settings", to: "/settings" as const } : { label: "Workspaces", to: "/no-workspace" as const };
 
   async function submit(event: FormEvent) {
     event.preventDefault();
-    setPending(true);
-    setError(null);
-    try {
+    await run(async () => {
       await createWorkspaceFn({ data: { name, slug } });
-      toast.success("Workspace created", { description: name });
-      await router.invalidate();
-      await navigate({ to: "/apps" });
-    } catch (err) {
-      setError(errorText(err, "Could not create the workspace."));
-    } finally {
-      setPending(false);
-    }
+    }, "Could not create the workspace.", {
+      success: "Workspace created",
+      description: name,
+      invalidate: false,
+      after: async () => {
+        await router.invalidate();
+        await navigate({ to: "/apps" });
+      },
+    });
   }
 
   const split = splitSlugError(error);
@@ -46,7 +44,7 @@ function NewWorkspacePage() {
     <CreatePage crumbs={[back, { label: "New workspace" }]} description="A separate space with its own apps and people." onSubmit={submit}>
       <SettingsCard title="Details" description="Name the team or company that will send mail.">
         <div className="grid gap-4">
-          <TextField id="workspace-name" label="Name" required autoFocus maxLength={80} placeholder="Your company" value={name} onChange={(e) => setName(e.target.value)} />
+          <NameField id="workspace-name" autoFocus placeholder="Your company" value={name} onChange={(e) => setName(e.target.value)} />
           <SlugField id="workspace-slug" name={name} value={slug} onChange={setSlug} error={split.slug} />
         </div>
       </SettingsCard>

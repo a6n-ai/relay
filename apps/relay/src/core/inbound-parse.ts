@@ -1,3 +1,4 @@
+import { describeError } from "./log";
 import PostalMime from "postal-mime";
 
 export class InboundParseError extends Error {
@@ -42,7 +43,8 @@ export async function parseInboundEml(raw: ArrayBuffer): Promise<ParsedInbound> 
   let mail: Awaited<ReturnType<typeof PostalMime.parse>>;
   try {
     mail = await PostalMime.parse(raw);
-  } catch {
+  } catch (err) {
+    console.warn("inbound parse failed", describeError(err));
     throw new InboundParseError("Unreadable letter");
   }
   const from = mail.from?.address ? parseMailboxAddress(mail.from.address) : null;

@@ -3,7 +3,8 @@ import { and, eq, isNull } from "drizzle-orm";
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import type { CampaignTables } from "./campaign-schema";
 import type { NotificationTables } from "./schema";
-import { normalizeAddress, suppress } from "./suppression";
+import { normalizeAddress } from "@foundry/commons";
+import { suppress } from "./suppression";
 import type { Channel } from "./types";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -20,12 +21,7 @@ export function signUnsubscribeToken(secret: string, address: string): string {
 
 export function verifyUnsubscribeToken(secret: string, address: string, token: string): boolean {
   const expected = Buffer.from(signUnsubscribeToken(secret, address), "hex");
-  let given: Buffer;
-  try {
-    given = Buffer.from(token, "hex");
-  } catch {
-    return false;
-  }
+  const given = Buffer.from(token, "hex");
   return expected.length === given.length && timingSafeEqual(expected, given);
 }
 

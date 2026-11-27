@@ -2,84 +2,62 @@ import { Button } from "@foundry/ui/button";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import MegaphoneIcon from "lucide-react/icons/megaphone";
 import { useState } from "react";
-import { DeniedState, deniedReason } from "../../components/denied-state";
-import { isNotFound } from "../../components/error-text";
 import { EmptyState } from "../../components/page/empty-state";
 import { PageLocalHint } from "../../components/page/page-local-hint";
 import { FilterMenu } from "../../components/page/filter-menu";
-import { ResourceGrid } from "../../components/page/resource-grid";
+import { ResourceCard, ResourceGrid } from "../../components/page/resource-grid";
 import { ViewToggle } from "../../components/page/view-toggle";
 import { type View, viewPref } from "../../components/page/view-pref";
-import { Hint } from "../../components/page/text";
 import { LoadMore } from "../../components/page/load-more";
 import { ListSkeleton } from "../../components/page/page-skeleton";
 import { SearchInput, Toolbar } from "../../components/page/toolbar";
 import { useUrlFilter } from "../../components/page/use-url-filter";
-import { ResourceTable } from "../../components/resource-table";
+import { ResourceTable } from "../../components/page/resource-table";
 import { PageHeader } from "../../components/shell/page-header";
-import { StatusBadge } from "../../components/status-badge";
-import { useCan } from "../../components/use-can";
-import { fetchApps } from "../../console/apps.fns";
+import { StatusBadge } from "../../components/page/status-badge";
+import { useCan } from "../../components/lib/use-can";
 import { fetchCampaigns } from "../../console/campaigns.fns";
-import { formatWhen } from "../../lib/format-date";
+import { formatWhen } from "../../components/lib/format-date";
+import { PAGE_SIZE } from "../../shared/limits";
+import { appName } from "../../shared/scope";
+import { posInt, str, untyped } from "../../components/lib/route-search";
+import { loaded, ScopedDenied } from "../../components/page/scoped-page";
+import { scopedLoad } from "../../components/lib/scoped-load";
 
 type CampaignsSearch = { appId?: string; cursor?: string; offset?: number; q?: string; status?: string };
 
-const PAGE = 50;
 const ROUTE = "/campaigns";
 
 export const Route = createFileRoute("/_app/campaigns")({
+  staticData: { title: "Campaigns", copy: "Emails you send to a list, on a schedule or on demand.", scoped: "first" },
   validateSearch: (search: Record<string, unknown>): CampaignsSearch => ({
-    appId: typeof search.appId === "string" && search.appId ? search.appId : undefined,
-    cursor: typeof search.cursor === "string" && search.cursor ? search.cursor : undefined,
-    offset: typeof search.offset === "number" && search.offset > 0 ? Math.floor(search.offset) : undefined,
-    q: typeof search.q === "string" && search.q ? search.q : undefined,
-    status: typeof search.status === "string" && search.status ? search.status : undefined,
+    appId: str(search.appId),
+    cursor: str(search.cursor),
+    offset: posInt(search.offset),
+    q: str(search.q),
+    status: str(search.status),
   }),
   loaderDeps: ({ search }) => ({ appId: search.appId, cursor: search.cursor }),
-  pendingComponent: () => <ListSkeleton crumbs={[{ label: "Campaigns" }]} columns={5} search filter view action />,
-  loader: async ({ deps }) => {
-    const apps = await fetchApps();
-    if (!apps) return null;
-    const appId = deps.appId ?? apps[0]?.id;
-    if (!appId) return { apps, appId, campaigns: { rows: [], nextCursor: null } };
-    const campaigns = await fetchCampaigns({ data: { appId, cursor: deps.cursor } }).catch((err) => {
-      if (isNotFound(err)) return { missing: true as const };
-      throw err;
-    });
-    if (!campaigns) return null;
-    if ("missing" in campaigns) return campaigns;
-    return { apps, appId, campaigns };
-  },
+  pendingComponent: () => <ListSkeleton columns={5} search filter view action />,
+  loader: ({ deps, context }) =>
+    scopedLoad(deps.appId, context.shell, async (appId) => {
+      const campaigns = await fetchCampaigns({ data: { appId, cursor: deps.cursor } });
+      return campaigns && { campaigns };
+    }, {
+      campaigns: { rows: [], nextCursor: null },
+    }),
   component: CampaignsPage,
 });
 
-const CRUMBS = [{ label: "Campaigns" }];
 
 function CampaignsPage() {
   const page = Route.useLoaderData();
-  const { shell } = Route.useRouteContext();
   const search = Route.useSearch();
   const canWrite = useCan({ campaign: ["write"] });
   const [query, setQuery] = useUrlFilter("q");
   const navigate = useNavigate({ from: "/campaigns" });
   const [view, setView] = useState<View>(() => viewPref.read(ROUTE));
-  if (!page) {
-    return (
-      <>
-        <PageHeader crumbs={CRUMBS} />
-        <DeniedState reason={deniedReason(shell)} />
-      </>
-    );
-  }
-  if ("missing" in page) {
-    return (
-      <>
-        <PageHeader crumbs={CRUMBS} />
-        <DeniedState reason="not-found" label="App not found" />
-      </>
-    );
-  }
+  if (!loaded(page)) return <ScopedDenied page={page} />;
   const { apps, appId, campaigns } = page;
   const empty =
     campaigns.rows.length === 0 ? (
@@ -95,7 +73,6 @@ function CampaignsPage() {
     { key: "appId", label: "App", options: apps.map((a) => ({ value: a.id, label: a.name })) },
   ];
   const showApp = !search.appId;
-  const appName = (id: string) => apps.find((a) => a.id === id)?.name ?? "—";
   const when = (c: (typeof rows)[number]) => {
     const at = c.finishedAt ?? c.scheduledAt;
     return at ? formatWhen(at) : "—";
@@ -103,10 +80,10 @@ function CampaignsPage() {
   const openRow = (c: (typeof rows)[number]) => ({ to: "/campaigns/$campaignId" as const, params: { campaignId: c.id }, search: { appId: c.appId } });
   return (
     <>
-      <PageHeader crumbs={CRUMBS} />
+      <PageHeader />
       <Toolbar
         search={<SearchInput value={query} onChange={setQuery} placeholder="Search campaigns" />}
-        filters={<FilterMenu facets={facets} value={search} onChange={(next) => navigate({ search: next as never, replace: true })} />}
+        filters={<FilterMenu facets={facets} value={search} onChange={(next) => navigate({ search: untyped(next), replace: true })} />}
         view={<ViewToggle route={ROUTE} value={view} onChange={setView} />}
       >
         {newButton}
@@ -121,16 +98,11 @@ function CampaignsPage() {
           menu={(c) => [{ label: "Open", ...openRow(c) }]}
           empty={empty}
           card={(c) => (
-            <div className="grid gap-1.5 pr-8">
-              <span className="font-medium">{c.name}</span>
-              <span>
-                <StatusBadge status={c.status} />
-              </span>
-              {showApp ? <Hint size="xs">{appName(c.appId)}</Hint> : null}
-              <Hint size="xs">
-                {when(c)} · {c.recipients} recipients
-              </Hint>
-            </div>
+            <ResourceCard
+              title={c.name}
+              badge={<StatusBadge status={c.status} />}
+              hints={[showApp && appName(apps, c.appId, "—"), `${when(c)} · ${c.recipients} recipients`]}
+            />
           )}
         />
       ) : (
@@ -139,7 +111,7 @@ function CampaignsPage() {
           columns={[
             { header: "Name", kind: "name", cell: (c) => c.name },
             { header: "Status", cell: (c) => <StatusBadge status={c.status} /> },
-            ...(showApp ? [{ header: "App", cell: (c: (typeof rows)[number]) => appName(c.appId) }] : []),
+            ...(showApp ? [{ header: "App", cell: (c: (typeof rows)[number]) => appName(apps, c.appId, "—") }] : []),
             { header: "Scheduled or sent", secondary: true, cell: when },
             { header: "Recipients", secondary: true, numeric: true, cell: (c) => c.recipients },
           ]}
@@ -155,7 +127,7 @@ function CampaignsPage() {
         hasMore={Boolean(campaigns.nextCursor)}
         to="/campaigns"
         offset={search.cursor ? search.offset : undefined}
-        pageSize={PAGE}
+        pageSize={PAGE_SIZE}
         search={{ appId: search.appId, q: search.q, status: search.status, cursor: campaigns.nextCursor }}
         resetTo={search.cursor ? "/campaigns" : undefined}
         resetSearch={{ appId: search.appId, q: search.q, status: search.status }}

@@ -1,7 +1,8 @@
 import { and, asc, eq } from "drizzle-orm";
 import type { DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
-import type { WebhookEvent, WebhookView } from "../core/webhooks";
+import type { WebhookView } from "../core/webhooks";
 import * as schema from "./client-schema";
+import { type WebhookEvent } from "../shared/mail";
 
 export type WebhookRow = typeof schema.webhook.$inferSelect;
 

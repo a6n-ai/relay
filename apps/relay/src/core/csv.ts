@@ -1,5 +1,5 @@
-import { memberInput } from "./member-input";
-import type { MemberInput } from "../do/lists";
+import { memberInput, type MemberInput } from "../shared/schemas";
+import { RelayError } from "../shared/errors";
 
 export type ParsedContacts = { rows: MemberInput[]; invalid: number; duplicates: number };
 
@@ -11,7 +11,7 @@ function records(text: string): string[][] {
   const out: string[][] = [];
   const push = (r: string[]) => {
     if (r.length === 1 && r[0].trim() === "") return;
-    if (out.length === MAX_RECORDS) throw new Error("too many rows");
+    if (out.length === MAX_RECORDS) throw new RelayError("too many rows");
     out.push(r);
   };
   let row: string[] = [];
@@ -49,7 +49,7 @@ export function parseContactsCsv(text: string): ParsedContacts {
   const columns = header.map((h) => h.trim().toLowerCase());
   const at = (name: string) => columns.indexOf(name);
   const emailAt = at("email");
-  if (emailAt < 0) throw new Error("missing email column");
+  if (emailAt < 0) throw new RelayError("missing email column");
   const cell = (r: string[], i: number) => (i < 0 ? "" : (r[i] ?? "").trim());
   const firstAt = at("first_name");
   const lastAt = at("last_name");

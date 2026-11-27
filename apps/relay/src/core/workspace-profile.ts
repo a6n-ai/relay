@@ -4,8 +4,8 @@ import { workspaceProfile } from "../db/core/schema";
 import { securityDb } from "../db/security/client";
 import { invitation, workspace } from "../db/security/schema";
 import type { Env } from "../env";
+import { DAY_MS } from "../shared/limits";
 
-const DAY_MS = 86_400_000;
 export const INVITES_PER_DAY = 20;
 export const SELF_SERVE_WORKSPACE_CAP = 3;
 export const SELF_SERVE_QUOTA = 100;
@@ -27,6 +27,19 @@ export async function ensureWorkspaceProfile(
         : { workspaceId, createdBy: init?.createdBy },
     )
     .onConflictDoNothing();
+}
+
+// The one write path for profile settings: repairs a missing row first, then stamps updatedAt.
+export async function updateWorkspaceProfile(
+  env: Env,
+  workspaceId: string,
+  patch: Partial<Omit<typeof workspaceProfile.$inferInsert, "workspaceId" | "updatedAt">>,
+): Promise<void> {
+  await ensureWorkspaceProfile(env, workspaceId);
+  await coreDb(env)
+    .update(workspaceProfile)
+    .set({ ...patch, updatedAt: new Date() })
+    .where(eq(workspaceProfile.workspaceId, workspaceId));
 }
 
 // Counts creations, not current ownership: a user who adds a second owner and leaves cannot create again.

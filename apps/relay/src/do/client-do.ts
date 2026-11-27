@@ -1,136 +1,54 @@
+import { fromBase64 } from "../core/crypto";
 import { DurableObject } from "cloudflare:workers";
+import { ownedBy, ownedRaw, r2Keys } from "../core/r2-keys";
 import { and, eq, gte, inArray, isNotNull, isNull, lt, ne, or, sql, type SQLWrapper } from "drizzle-orm";
 import { drizzle, type DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
 import { brandDomain, campaignProblems, IMPLIED_CONSENT_MS, type CampaignProblem } from "../core/campaigns";
-import { CHUNK_SIZE, ENQUEUE_BATCH } from "../core/campaign-workflow";
-import { contactValues, fillUnsubscribe, hasMergeToken, MERGE_SAMPLES, renderMerge, type MergeData } from "../core/merge";
+import { CHUNK_SIZE, ENQUEUE_BATCH } from "../core/campaign-run";
+import { contactValues, fillUnsubscribe, hasMergeToken, MERGE_SAMPLES, renderMerge, type MergeData } from "../shared/merge";
 import { sesSendRate } from "../core/send-rate";
 import type { SesAttachment, SesSendRequest } from "../core/ses";
-import { DEFAULT_MONTHLY_QUOTA, LIMITS_KEY, LIMITS_TTL_MS, loadWorkspaceLimits, SENDER_RETRY_MS, type WorkspaceLimits } from "../core/limits";
-import { resolvedSendSchema, type ResolvedSendInput, type Stream, type SuppressionReason } from "../core/send-input";
+import { LIMITS_KEY, LIMITS_TTL_MS, loadWorkspaceLimits, SENDER_RETRY_MS, type WorkspaceLimits } from "../core/limits";
+import { resolvedSendSchema, type MemberInput, type ResolvedSendInput } from "../shared/schemas";
 import type { SesEventJob } from "../core/ses-events";
 import { listUnsubscribeHeaders, unsubscribeToken, unsubscribeUrl } from "../core/unsubscribe";
 import { recordDoState } from "../core/workspace-profile";
 import { utcDay } from "../core/usage";
-import { decryptSecret, encryptSecret, KEY_ERROR, newWebhookSecret, signBody } from "../core/webhook-crypto";
+import { decryptSecret, encryptSecret, newWebhookSecret, signBody } from "../core/webhook-crypto";
 import { webhookBody, webhookHeaders } from "../core/mailbox-received";
 import { deleteFailureRows, deleteHistoryRows, detachDomainSenders, domainUsage, failureBatch, historyBatch, rawKeyInUse } from "./domain-cleanup";
-import { MAX_WEBHOOK_ATTEMPTS, webhookRetryDelaySeconds, type WebhookClaim, type WebhookOutcome } from "../core/webhook-consumer";
+import { MAX_WEBHOOK_ATTEMPTS, webhookRetryDelaySeconds, type WebhookClaim, type WebhookOutcome } from "../core/webhook-retry";
 import { isPublicWebhookUrl, type WebhookInput, type WebhookPatch, type WebhookView } from "../core/webhooks";
-import type { Env, InboundJob } from "../env";
-import { newId } from "../lib/ids";
-import {
-  attachmentViews,
-  type DeliveryView,
-  getInboundFailureRow,
-  listDeliveryRows,
-  listInboundFailureRows,
-  listMessageRows,
-  listSuppressionRows,
-  messagesByKeyRows,
-  type MessageByKey,
-  type FailureView,
-  type SuppressionView,
-  messageBody,
-  readMessageDetail,
-  readMessageFile,
-  type MessageAccess,
-  type MessageBody,
-  type MessageFile,
-  type MessageDetail,
-  type MessageQuery,
-  type MessageSummary,
-} from "./console-reads";
+import type { Env } from "../env";
+import type { InboundJob } from "../core/jobs";
+import { newId } from "../shared/ids";
+import { attachmentViews, getInboundFailureRow, listDeliveryRows, listInboundFailureRows, listMessageRows, listSuppressionRows, messagesByKeyRows, type MessageByKey, type FailureView, type SuppressionView, messageBody, readMessageDetail, readMessageFile, type MessageAccess, type MessageBody, type MessageFile, type MessageDetail, type MessageQuery, type MessageSummary } from "./console-reads";
 import { storeInbound, writeInboundFailure, type InboundDeps, type InboundResult } from "./inbound";
 import * as schema from "./client-schema";
 import { describeError } from "../core/log";
-import {
-  bumpCampaign,
-  type CampaignStats,
-  campaignStatsRow,
-  statsOf,
-  createCampaignRow,
-  deleteCampaignRow,
-  getCampaignRow,
-  listCampaignRows,
-  previewAudienceRows,
-  recipientQuery,
-  updateCampaignRow,
-  type AudiencePreview,
-  type CampaignPatch,
-  type CampaignSummary,
-  type CampaignView,
-} from "./campaigns";
+import { bumpCampaign, campaignStatsRow, statsOf, createCampaignRow, deleteCampaignRow, getCampaignRow, listCampaignRows, previewAudienceRows, recipientQuery, updateCampaignRow, type CampaignPatch, type CampaignSummary } from "./campaigns";
 import { CLIENT_MIGRATIONS, migrate } from "./migrations";
-import {
-  addMemberRow,
-  createListRow,
-  deleteListRow,
-  listListRows,
-  listMemberRows,
-  exportMemberRows,
-  IMPORT_CHUNK,
-  importMemberRow,
-  removeMemberRow,
-  updateMemberRow,
-  updateListRow,
-  type ImportResult,
-  type ListInput,
-  type ListView,
-  type MemberInput,
-  type MemberView,
-} from "./lists";
+import { addMemberRow, createListRow, deleteListRow, listListRows, listMemberRows, listRow, exportMemberRows, IMPORT_CHUNK, importMemberRow, removeMemberRow, updateMemberRow, updateListRow, type ImportResult, type ListInput } from "./lists";
 import { maskEmails } from "../core/mask-emails";
-import {
-  createTemplateRow,
-  deleteTemplateRow,
-  getTemplateRow,
-  listTemplateRows,
-  templateOverrideRows,
-  updateTemplateRow,
-  type TemplateInput,
-  type RenderedTemplate,
-  type TemplateOverride,
-  type TemplateView,
-} from "./templates";
+import { createTemplateRow, deleteTemplateRow, getTemplateRow, listTemplateRows, templateOverrideRows, updateTemplateRow, type TemplateInput, type RenderedTemplate, type TemplateOverride } from "./templates";
 import { deleteWebhookRow, failDeliveryRow, listWebhookRows, toWebhookView, updateWebhookRow, type WebhookRow } from "./webhooks";
 import {
   audienceCallFor,
   audienceHookView,
   deleteAudienceHookRow,
+  encodeHookCursor,
   parseHookCursor,
   setAudienceHookRow,
   type AudienceHookInput,
   type AudienceHookView,
 } from "./audience-hook";
-import type { AudiencePage, HookCall } from "../core/audience-hook";
-import {
-  createAutomationRow,
-  deleteAutomationRow,
-  earliestDue,
-  enrolAutomations,
-  listAutomationRows,
-  nextAutomationAlarm,
-  runDueAutomationRows,
-  setAutomationEnabledRow,
-  updateAutomationRow,
-  type AutomationInput,
-  type AutomationPatch,
-  type AutomationView,
-} from "./automations";
-
-export type AttachmentView = {
-  id: string;
-  filename: string;
-  contentType: string;
-  sizeBytes: number;
-  contentId: string | null;
-  position: number;
-};
-
-export type MessageView = typeof schema.message.$inferSelect & { html: string | null; attachments: AttachmentView[] };
-
-export type SendResult = { messageId: string; status: "queued" | "sent" | "failed" | "suppressed"; duplicate: boolean };
+import type { MessageView, SendResult } from "./types";
+import type { AudiencePage, HookCall } from "../core/audience-protocol";
+import { createAutomationRow, deleteAutomationRow, earliestDue, enrolAutomations, listAutomationRows, nextAutomationAlarm, runDueAutomationRows, setAutomationEnabledRow, updateAutomationRow, type AutomationInput, type AutomationPatch } from "./automations";
+import { RelayError, codeOf, fail } from "../shared/errors";
+import { type DeliveryView, type CampaignStats, type AudiencePreview, type CampaignView, type ListView, type MemberView, type TemplateView, type AutomationView } from "../shared/views";
+import { type Stream, type SuppressionReason } from "../shared/mail";
+import { DAY_MS } from "../shared/limits";
 
 // failed: indexes into the input whose transaction threw. They rolled back alone and must be retried.
 export type SesEventResult = {
@@ -149,8 +67,8 @@ const CLAIM_LEASE_MS = 60_000;
 const SWEEP_INTERVAL_MS = 600_000;
 // Longer than the largest retry backoff, so a row still waiting on a retry is never re-sent.
 const STALE_MS = 1_200_000;
-const EXPIRE_MS = 86_400_000;
-const ATTACHMENT_TTL_MS = 7 * 86_400_000;
+const EXPIRE_MS = DAY_MS;
+const ATTACHMENT_TTL_MS = 7 * DAY_MS;
 const SWEEP_BATCH = 500;
 const SWEEP_CHUNK = 100;
 
@@ -164,6 +82,9 @@ export class ClientDO extends DurableObject<Env> {
   migrateError: Error | undefined;
   // Same-key sends share one in-flight promise, so a second caller never sees a row that is about to be rolled back.
   private readonly inFlight = new Map<string, Promise<SendResult>>();
+  // shortcut: in memory, so an evicted DO forgets it and a run gets one more sender retry; persist on the run row if that matters.
+  private readonly senderRetried = new Set<string>();
+  private readonly unknownFailures = new Map<string, number>();
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
@@ -200,15 +121,15 @@ export class ClientDO extends DurableObject<Env> {
   }
 
   private async create(workspaceId: string, data: ResolvedSendInput): Promise<SendResult> {
-    const limits = await this.limits(workspaceId, { forSender: data.from });
-    if (limits.status === "suspended") throw new Error("workspace_suspended");
+    const limits = await this.limitsOrThrow(workspaceId, { forSender: data.from });
+    if (limits.status === "suspended") throw new RelayError("workspace_suspended");
     const sender = limits.senders[data.from];
     // An address belongs to one app: another app's key in the same workspace may not send from it.
-    if (!sender || sender.appId !== data.appId) throw new Error("sender_not_verified");
+    if (!sender || sender.appId !== data.appId) throw new RelayError("sender_not_verified");
     const id = newId("msg");
     const preSuppressed = this.suppressed(data.to, data.stream, data.from);
     // shortcut: an R2 object orphaned by a crash between the put and the insert is never swept, add a sweeper when storage cost shows up.
-    const htmlKey = preSuppressed ? null : `ws/${workspaceId}/msg/${id}.html`;
+    const htmlKey = preSuppressed ? null : r2Keys.msgHtml(workspaceId, id);
     if (htmlKey) await this.env.MAIL.put(htmlKey, data.html);
     // Stored with the message, not in D1: a 5 MB file would not fit a SQLite row.
     const files = preSuppressed
@@ -217,8 +138,8 @@ export class ClientDO extends DurableObject<Env> {
           position,
           filename: a.filename,
           contentType: a.contentType,
-          r2Key: `ws/${workspaceId}/att/${id}/${position}-${a.filename}`,
-          bytes: Uint8Array.from(atob(a.content), (c) => c.charCodeAt(0)),
+          r2Key: r2Keys.attachment(workspaceId, id, position, a.filename),
+          bytes: fromBase64(a.content),
         }));
     for (const f of files) await this.env.MAIL.put(f.r2Key, f.bytes, { httpMetadata: { contentType: f.contentType } });
     const fileKeys = files.map((f) => f.r2Key);
@@ -229,7 +150,7 @@ export class ClientDO extends DurableObject<Env> {
     try {
       this.ctx.storage.transactionSync(() => {
         // Counted in the same synchronous transaction as the insert, so concurrent sends cannot both take the last slot.
-        if (limits.monthlyQuota > 0 && this.monthUsed(now) >= limits.monthlyQuota) throw new Error("quota_exceeded");
+        if (limits.monthlyQuota > 0 && this.monthUsed(now) >= limits.monthlyQuota) throw new RelayError("quota_exceeded");
         // Re-checked here: an unsubscribe can land during the R2 put above.
         suppressed = this.suppressed(data.to, data.stream, data.from);
         this.db
@@ -279,7 +200,7 @@ export class ClientDO extends DurableObject<Env> {
         this.db.delete(schema.attachment).where(eq(schema.attachment.messageId, id)).run();
       });
       await this.dropObjects([htmlKey, ...fileKeys]);
-      throw new Error("queue_failed", { cause: err });
+      throw new RelayError("queue_failed", undefined, undefined, { cause: err });
     }
     return { messageId: id, status: "queued", duplicate: false };
   }
@@ -292,7 +213,7 @@ export class ClientDO extends DurableObject<Env> {
       try {
         await this.env.MAIL.delete(part);
       } catch (err) {
-        console.error("ClientDO: failed to delete objects", part.length, err);
+        console.error("ClientDO: failed to delete objects", part.length, describeError(err));
       }
     }
   }
@@ -330,9 +251,9 @@ export class ClientDO extends DurableObject<Env> {
     id: string,
     part: string,
     access: MessageAccess,
-  ): Promise<MessageFile | null> {
+  ): Promise<MessageFile> {
     await this.ready(workspaceId);
-    return readMessageFile(this.db, id, part, access);
+    return readMessageFile(this.db, id, part, access) ?? fail("not found");
   }
 
   // The letter is already in R2 under job.rawKey. Idempotent on the raw key and on the app's Message-ID.
@@ -375,7 +296,7 @@ export class ClientDO extends DurableObject<Env> {
       return { rawKey: row.rawKey, shared: shared !== undefined };
     });
     if (!removed) return false;
-    if (!removed.shared && removed.rawKey.startsWith(`ws/${workspaceId}/raw/`)) await this.env.MAIL.delete(removed.rawKey);
+    if (!removed.shared && ownedRaw(workspaceId, removed.rawKey)) await this.env.MAIL.delete(removed.rawKey);
     return true;
   }
 
@@ -439,22 +360,27 @@ export class ClientDO extends DurableObject<Env> {
     return listListRows(this.ctx.storage.sql, appId);
   }
 
-  async updateList(workspaceId: string, id: string, patch: Partial<ListInput>): Promise<ListView | null> {
+  async getList(workspaceId: string, id: string): Promise<ListView | null> {
     await this.ready(workspaceId);
-    return this.ctx.storage.transactionSync(() => updateListRow(this.ctx.storage.sql, id, patch));
+    return listRow(this.ctx.storage.sql, id);
   }
 
-  async deleteList(workspaceId: string, id: string): Promise<"deleted" | "missing" | "in_use"> {
+  async updateList(workspaceId: string, id: string, patch: Partial<ListInput>): Promise<ListView> {
     await this.ready(workspaceId);
-    return this.ctx.storage.transactionSync(() => deleteListRow(this.ctx.storage.sql, id));
+    return this.ctx.storage.transactionSync(() => updateListRow(this.ctx.storage.sql, id, patch) ?? fail("not found"));
   }
 
-  async listMembers(workspaceId: string, listId: string, cursor?: string): Promise<{ rows: MemberView[]; nextCursor: string | null } | null> {
+  async deleteList(workspaceId: string, id: string): Promise<void> {
     await this.ready(workspaceId);
-    return listMemberRows(this.ctx.storage.sql, listId, (email) => this.suppressed(email, "marketing"), cursor);
+    this.ctx.storage.transactionSync(() => deleteListRow(this.ctx.storage.sql, id));
   }
 
-  async addMember(workspaceId: string, listId: string, input: MemberInput): Promise<"added" | "existing" | "suppressed" | "missing"> {
+  async listMembers(workspaceId: string, listId: string, cursor?: string): Promise<{ rows: MemberView[]; nextCursor: string | null }> {
+    await this.ready(workspaceId);
+    return listMemberRows(this.ctx.storage.sql, listId, (email) => this.suppressed(email, "marketing"), cursor) ?? fail("not found");
+  }
+
+  async addMember(workspaceId: string, listId: string, input: MemberInput): Promise<"added" | "existing"> {
     await this.ready(workspaceId);
     const outcome = this.ctx.storage.transactionSync(() => {
       const result = addMemberRow(this.ctx.storage.sql, listId, input, (email) => this.suppressed(email, "marketing"));
@@ -465,11 +391,11 @@ export class ClientDO extends DurableObject<Env> {
     return outcome;
   }
 
-  async importMembers(workspaceId: string, listId: string, rows: MemberInput[]): Promise<ImportResult | null> {
+  async importMembers(workspaceId: string, listId: string, rows: MemberInput[]): Promise<ImportResult> {
     await this.ready(workspaceId);
     const sql = this.ctx.storage.sql;
     const list = sql.exec<{ app_id: string }>("SELECT app_id FROM contact_list WHERE id = ?", listId).toArray()[0];
-    if (!list) return null;
+    if (!list) return fail("not found");
     const total: ImportResult = { added: 0, existing: 0, suppressed: 0 };
     for (let start = 0; start < rows.length; start += IMPORT_CHUNK) {
       this.ctx.storage.transactionSync(() => {
@@ -484,14 +410,14 @@ export class ClientDO extends DurableObject<Env> {
     return total;
   }
 
-  async updateMember(workspaceId: string, listId: string, memberId: string, input: { firstName: string; lastName: string }): Promise<boolean> {
+  async updateMember(workspaceId: string, listId: string, memberId: string, input: { firstName: string; lastName: string }): Promise<void> {
     await this.ready(workspaceId);
-    return this.ctx.storage.transactionSync(() => updateMemberRow(this.ctx.storage.sql, listId, memberId, input));
+    this.ctx.storage.transactionSync(() => updateMemberRow(this.ctx.storage.sql, listId, memberId, input) || fail("not found"));
   }
 
-  async removeMember(workspaceId: string, listId: string, memberId: string): Promise<boolean> {
+  async removeMember(workspaceId: string, listId: string, memberId: string): Promise<void> {
     await this.ready(workspaceId);
-    return this.ctx.storage.transactionSync(() => removeMemberRow(this.ctx.storage.sql, listId, memberId));
+    this.ctx.storage.transactionSync(() => removeMemberRow(this.ctx.storage.sql, listId, memberId) || fail("not found"));
   }
   async createCampaign(
     workspaceId: string,
@@ -565,15 +491,15 @@ export class ClientDO extends DurableObject<Env> {
       return { before, after: statsOf(afterRow) };
     });
   }
-  async updateCampaign(workspaceId: string, id: string, patch: CampaignPatch): Promise<CampaignView | "missing" | "not_draft" | "bad_list"> {
+  async updateCampaign(workspaceId: string, id: string, patch: CampaignPatch): Promise<CampaignView> {
     await this.ready(workspaceId);
     return this.ctx.storage.transactionSync(() => updateCampaignRow(this.ctx.storage.sql, id, patch));
   }
-  async deleteCampaign(workspaceId: string, id: string): Promise<"deleted" | "missing" | "not_draft"> {
+  async deleteCampaign(workspaceId: string, id: string): Promise<void> {
     await this.ready(workspaceId);
-    return this.ctx.storage.transactionSync(() => deleteCampaignRow(this.ctx.storage.sql, id));
+    this.ctx.storage.transactionSync(() => deleteCampaignRow(this.ctx.storage.sql, id));
   }
-  async createTemplate(workspaceId: string, appId: string, input: TemplateInput): Promise<TemplateView | "event_taken"> {
+  async createTemplate(workspaceId: string, appId: string, input: TemplateInput): Promise<TemplateView> {
     await this.ready(workspaceId);
     return this.ctx.storage.transactionSync(() => createTemplateRow(this.ctx.storage.sql, appId, input));
   }
@@ -585,13 +511,13 @@ export class ClientDO extends DurableObject<Env> {
     await this.ready(workspaceId);
     return getTemplateRow(this.ctx.storage.sql, id);
   }
-  async updateTemplate(workspaceId: string, id: string, patch: Partial<TemplateInput>): Promise<TemplateView | "missing" | "event_taken"> {
+  async updateTemplate(workspaceId: string, id: string, patch: Partial<TemplateInput>): Promise<TemplateView> {
     await this.ready(workspaceId);
     return this.ctx.storage.transactionSync(() => updateTemplateRow(this.ctx.storage.sql, id, patch));
   }
-  async deleteTemplate(workspaceId: string, id: string): Promise<"deleted" | "missing" | "in_use"> {
+  async deleteTemplate(workspaceId: string, id: string): Promise<void> {
     await this.ready(workspaceId);
-    return this.ctx.storage.transactionSync(() => deleteTemplateRow(this.ctx.storage.sql, id));
+    this.ctx.storage.transactionSync(() => deleteTemplateRow(this.ctx.storage.sql, id));
   }
   async templateOverrides(workspaceId: string, appId: string): Promise<TemplateOverride[]> {
     await this.ready(workspaceId);
@@ -603,12 +529,12 @@ export class ClientDO extends DurableObject<Env> {
     id: string,
     at: number,
     postalAddress: string | null,
-  ): Promise<{ runSeq: number } | { problems: CampaignProblem[] } | "missing" | "not_draft"> {
+  ): Promise<{ runSeq: number } | { problems: CampaignProblem[] }> {
     await this.ready(workspaceId);
-    return this.ctx.storage.transactionSync((): { runSeq: number } | { problems: CampaignProblem[] } | "missing" | "not_draft" => {
+    return this.ctx.storage.transactionSync((): { runSeq: number } | { problems: CampaignProblem[] } => {
       const row = getCampaignRow(this.ctx.storage.sql, id);
-      if (!row) return "missing";
-      if (row.status !== "draft") return "not_draft";
+      if (!row) throw new RelayError("not found");
+      if (row.status !== "draft") throw new RelayError("campaign not editable");
       const hookReady = this.ctx.storage.sql.exec("SELECT 1 FROM audience_hook WHERE app_id = ? AND enabled = 1", row.appId).toArray().length > 0;
       const problems = campaignProblems({ ...row, hookReady }, postalAddress);
       if (problems.length > 0) return { problems };
@@ -624,18 +550,17 @@ export class ClientDO extends DurableObject<Env> {
       return { runSeq };
     });
   }
-  async unscheduleCampaign(workspaceId: string, id: string): Promise<"draft" | "missing" | "not_scheduled"> {
+  async unscheduleCampaign(workspaceId: string, id: string): Promise<void> {
     await this.ready(workspaceId);
-    return this.ctx.storage.transactionSync((): "draft" | "missing" | "not_scheduled" => {
+    this.ctx.storage.transactionSync(() => {
       const head = this.campaignHead(id);
-      if (!head) return "missing";
-      if (head.status !== "scheduled") return "not_scheduled";
+      if (!head) throw new RelayError("not found");
+      if (head.status !== "scheduled") throw new RelayError("campaign not scheduled");
       this.ctx.storage.sql.exec("UPDATE campaign SET status = 'draft', scheduled_at = NULL, updated_at = ? WHERE id = ?", Date.now(), id);
-      return "draft";
     });
   }
   // Retries of the start step land here with status already sending, so they return go too.
-  // A hook campaign also returns the page it resumes from; a list campaign returns "go" as before.
+  // A hook campaign also returns the page it resumes from.
   async startCampaign(workspaceId: string, id: string, runSeq: number, now = Date.now()): Promise<"go" | "stale" | { go: "go"; page: number }> {
     await this.ready(workspaceId);
     return this.ctx.storage.transactionSync((): "go" | "stale" | { go: "go"; page: number } => {
@@ -663,12 +588,7 @@ export class ClientDO extends DurableObject<Env> {
     const sql = this.ctx.storage.sql;
     let enqueued = 0;
     const stopped = () => ({ state: "stopped" as const, enqueued, paceMs: 0 });
-    const live = () => {
-      const head = this.campaignHead(id);
-      return head !== undefined && head.status === "sending" && head.runSeq === runSeq;
-    };
-    const setPaused = (error: string) =>
-      sql.exec("UPDATE campaign SET status = 'paused', error = ?, updated_at = ? WHERE id = ? AND status = 'sending' AND run_seq = ?", error, now, id, runSeq);
+    const live = () => this.runIsLive(id, runSeq);
     if (!live()) return stopped();
     const campaign = sql
       .exec<{ appId: string; fromEmail: string | null; subject: string; listIds: string; postalAddress: string | null; cursor: string | null }>(
@@ -676,20 +596,9 @@ export class ClientDO extends DurableObject<Env> {
         id,
       )
       .one();
-    const limits = await this.limits(workspaceId, { forSender: campaign.fromEmail ?? undefined });
-    // No snapshot yet: throw so the Workflow step retries. A missing snapshot must not look like a revoked sender.
-    if (limits.fetchedAt === 0) throw new Error("limits unavailable");
-    if (limits.status === "suspended") {
-      this.ctx.storage.transactionSync(() => setPaused("workspace_suspended"));
-      return stopped();
-    }
-    const sender = limits.senders[campaign.fromEmail ?? ""];
-    if (!sender || sender.appId !== campaign.appId) {
-      this.ctx.storage.transactionSync(() => setPaused("sender_not_verified"));
-      return stopped();
-    }
-    const rate = sesSendRate(this.env, sender.sesRegion);
-    if ((await this.ctx.storage.getAlarm()) === null) await this.ctx.storage.setAlarm(now + SWEEP_INTERVAL_MS);
+    const gate = await this.runGate(workspaceId, id, runSeq, campaign, now);
+    if (!gate) return stopped();
+    const { limits, sender, rate } = gate;
     let cursor = campaign.cursor ?? "";
     for (let sub = 0; sub < CHUNK_SIZE / ENQUEUE_BATCH; sub++) {
       if (!live()) return stopped();
@@ -721,48 +630,46 @@ export class ClientDO extends DurableObject<Env> {
         cursor = batch.lastEmail;
       }
       enqueued += batch.queued;
-      const quotaHit = batch.quotaHit;
-      if (quotaHit) {
-        this.ctx.storage.transactionSync(() => setPaused("quota_exceeded"));
+      if (batch.quotaHit) {
+        this.pauseRun(id, runSeq, "quota_exceeded", now);
         return stopped();
       }
     }
     return { state: "more", enqueued, paceMs: Math.ceil(enqueued / rate) * 1000 };
   }
-  async pauseCampaign(workspaceId: string, id: string, error: string | null = null, runSeq?: number): Promise<"paused" | "missing" | "not_sending"> {
+  // The user pause: refuses a missing or not-sending campaign.
+  async pauseCampaign(workspaceId: string, id: string): Promise<void> {
     await this.ready(workspaceId);
-    return this.ctx.storage.transactionSync((): "paused" | "missing" | "not_sending" => {
+    this.ctx.storage.transactionSync(() => {
       const head = this.campaignHead(id);
-      if (!head) return "missing";
-      if (head.status !== "sending" || (runSeq !== undefined && head.runSeq !== runSeq)) return "not_sending";
-      this.ctx.storage.sql.exec(
-        "UPDATE campaign SET status = 'paused', error = ?, updated_at = ? WHERE id = ? AND status = 'sending' AND run_seq = ?",
-        error,
-        Date.now(),
-        id,
-        head.runSeq,
-      );
-      return "paused";
+      if (!head) throw new RelayError("not found");
+      if (head.status !== "sending") throw new RelayError("campaign not sending");
+      this.pauseRun(id, head.runSeq, null, Date.now());
     });
   }
-  async resumeCampaign(workspaceId: string, id: string): Promise<{ runSeq: number } | "missing" | "not_paused"> {
+  // The workflow pause: never throws for a stale run, so its step does not retry. Returns whether it paused.
+  async pauseRunning(workspaceId: string, id: string, runSeq: number, error: string | null): Promise<boolean> {
     await this.ready(workspaceId);
-    return this.ctx.storage.transactionSync((): { runSeq: number } | "missing" | "not_paused" => {
+    return this.pauseRun(id, runSeq, error, Date.now());
+  }
+  async resumeCampaign(workspaceId: string, id: string): Promise<{ runSeq: number }> {
+    await this.ready(workspaceId);
+    return this.ctx.storage.transactionSync(() => {
       const head = this.campaignHead(id);
-      if (!head) return "missing";
-      if (head.status !== "paused") return "not_paused";
+      if (!head) throw new RelayError("not found");
+      if (head.status !== "paused") throw new RelayError("campaign not paused");
       const runSeq = head.runSeq + 1;
       this.ctx.storage.sql.exec("UPDATE campaign SET status = 'sending', run_seq = ?, error = NULL, updated_at = ? WHERE id = ?", runSeq, Date.now(), id);
       return { runSeq };
     });
   }
   // Queued rows nobody has claimed fail here. Rows already claimed or handed to SES are left to finish.
-  async cancelCampaign(workspaceId: string, id: string, now = Date.now()): Promise<{ dropped: number } | "missing" | "not_cancellable"> {
+  async cancelCampaign(workspaceId: string, id: string, now = Date.now()): Promise<{ dropped: number }> {
     await this.ready(workspaceId);
-    return this.ctx.storage.transactionSync((): { dropped: number } | "missing" | "not_cancellable" => {
+    return this.ctx.storage.transactionSync(() => {
       const head = this.campaignHead(id);
-      if (!head) return "missing";
-      if (!["scheduled", "sending", "paused"].includes(head.status)) return "not_cancellable";
+      if (!head) throw new RelayError("not found");
+      if (!["scheduled", "sending", "paused"].includes(head.status)) throw new RelayError("campaign not cancellable");
       this.ctx.storage.sql.exec("UPDATE campaign SET status = 'cancelled', finished_at = ?, updated_at = ? WHERE id = ?", now, now, id);
       const dropped = this.db
         .update(schema.message)
@@ -782,11 +689,11 @@ export class ClientDO extends DurableObject<Env> {
     });
   }
   // Sent through the normal send path with the signed-in user's own address. No campaign id, so no counters move.
-  async testSendCampaign(workspaceId: string, id: string, to: string, postalAddress: string | null): Promise<SendResult | "missing"> {
+  async testSendCampaign(workspaceId: string, id: string, to: string, postalAddress: string | null): Promise<SendResult> {
     await this.ready(workspaceId);
     const c = getCampaignRow(this.ctx.storage.sql, id);
-    if (!c) return "missing";
-    if (!c.fromEmail) throw new Error("sender_not_verified");
+    if (!c) throw new RelayError("not found");
+    if (!c.fromEmail) throw new RelayError("sender_not_verified");
     const values = { ...MERGE_SAMPLES, "contact.email": to, postal_address: postalAddress ?? MERGE_SAMPLES.postal_address };
     return this.send(workspaceId, {
       appId: c.appId,
@@ -826,22 +733,22 @@ export class ClientDO extends DurableObject<Env> {
     appId: string,
     deliveryId: string,
     now = Date.now(),
-  ): Promise<"queued" | "missing" | "not_failed" | "webhook_disabled"> {
+  ): Promise<void> {
     await this.ready(workspaceId);
-    const outcome = this.ctx.storage.transactionSync((): "queued" | "missing" | "not_failed" | "webhook_disabled" => {
+    this.ctx.storage.transactionSync(() => {
       const row = this.db
         .select()
         .from(schema.webhookDelivery)
         .where(and(eq(schema.webhookDelivery.id, deliveryId), eq(schema.webhookDelivery.appId, appId)))
         .get();
-      if (!row) return "missing";
-      if (row.status !== "failed") return "not_failed";
+      if (!row) throw new RelayError("not found");
+      if (row.status !== "failed") throw new RelayError("delivery not failed");
       const hook = this.db
         .select({ enabled: schema.webhook.enabled })
         .from(schema.webhook)
         .where(and(eq(schema.webhook.id, row.webhookId), eq(schema.webhook.appId, appId)))
         .get();
-      if (!hook || hook.enabled !== 1) return "webhook_disabled";
+      if (!hook || hook.enabled !== 1) throw new RelayError("webhook disabled");
       this.db
         .update(schema.webhookDelivery)
         .set({
@@ -856,9 +763,7 @@ export class ClientDO extends DurableObject<Env> {
         })
         .where(eq(schema.webhookDelivery.id, deliveryId))
         .run();
-      return "queued";
     });
-    if (outcome !== "queued") return outcome;
     // Armed so the sweep covers a failed enqueue below, as ingestInbound does.
     if ((await this.ctx.storage.getAlarm()) === null) await this.ctx.storage.setAlarm(now + SWEEP_INTERVAL_MS);
     try {
@@ -866,7 +771,6 @@ export class ClientDO extends DurableObject<Env> {
     } catch (err) {
       console.error("ClientDO: webhook retry enqueue failed", deliveryId, describeError(err));
     }
-    return outcome;
   }
 
   // The secret is decrypted here and only its HMAC signature leaves, inside the returned headers.
@@ -897,7 +801,7 @@ export class ClientDO extends DurableObject<Env> {
       secret = await decryptSecret(this.env.WEBHOOK_SECRET_KEY, hook.secretEnc, `${workspaceId}:${hook.id}`);
     } catch (err) {
       // A missing key is a config problem: throw so the consumer retries without spending an attempt.
-      if (err instanceof Error && err.message === KEY_ERROR) throw err;
+      if (codeOf(err) === "webhook key not configured") throw err;
       this.failDelivery(deliveryId, "Secret unreadable", now);
       return { kind: "skip" };
     }
@@ -969,6 +873,17 @@ export class ClientDO extends DurableObject<Env> {
     this.ctx.storage.transactionSync(() => failDeliveryRow(this.db, deliveryId, error, now));
   }
 
+  // The one queued -> failed transition: it moves the row, and counts it on its campaign only when the row really moved.
+  private failMessage(messageId: string, error: string, now: number, extra: { htmlKey?: null } = {}): void {
+    const changed = this.db
+      .update(schema.message)
+      .set({ status: "failed", error, claimedUntil: null, updatedAt: now, ...extra })
+      .where(and(eq(schema.message.id, messageId), eq(schema.message.status, "queued")))
+      .returning({ campaignId: schema.message.campaignId })
+      .all();
+    if (changed.length) bumpCampaign(this.ctx.storage.sql, changed[0].campaignId, { queued: -1, failed: 1 });
+  }
+
   // A lease (claimed_until) stops a second job from sending while the first is in flight.
   async claimSend(workspaceId: string, messageId: string, now = Date.now()): Promise<SendClaim> {
     await this.ready(workspaceId);
@@ -991,8 +906,13 @@ export class ClientDO extends DurableObject<Env> {
       return { kind: "busy", retryInSeconds: Math.ceil((queued.claimedUntil - now) / 1000) };
     }
     // Only a row about to be sent needs limits. Read before the transaction. With no snapshot and no D1, the job retries: queued mail is never failed for an outage.
-    const limits = await this.limits(workspaceId, { forSender: queued.fromEmail ?? undefined });
-    if (limits.fetchedAt === 0) return { kind: "busy", retryInSeconds: 60 };
+    let limits: WorkspaceLimits;
+    try {
+      limits = await this.limitsOrThrow(workspaceId, { forSender: queued.fromEmail ?? undefined });
+    } catch (err) {
+      if (codeOf(err) === "limits unavailable") return { kind: "busy", retryInSeconds: 60 };
+      throw err;
+    }
     // Minted before the claim transaction: a missing secret throws here, so attempts never moves.
     const url = queued.stream === "marketing" ? unsubscribeUrl(this.env.BETTER_AUTH_URL, await unsubscribeToken(this.env.UNSUBSCRIBE_SECRET, workspaceId, messageId)) : null;
     const fill = (s: string) => (url ? fillUnsubscribe(s, url) : s);
@@ -1021,18 +941,7 @@ export class ClientDO extends DurableObject<Env> {
       }
       // A suspension or a revoked sender can land while the row waits in the queue; the message fails, it is not held.
       if (limits.status === "suspended" || limits.senders[row.fromEmail ?? ""]?.appId !== row.appId) {
-        this.db
-          .update(schema.message)
-          .set({
-            status: "failed",
-            error: limits.status === "suspended" ? "workspace_suspended" : "sender_not_verified",
-            htmlKey: null,
-            claimedUntil: null,
-            updatedAt: now,
-          })
-          .where(eq(schema.message.id, messageId))
-          .run();
-        bumpCampaign(this.ctx.storage.sql, row.campaignId, { queued: -1, failed: 1 });
+        this.failMessage(messageId, limits.status === "suspended" ? "workspace_suspended" : "sender_not_verified", now, { htmlKey: null });
         return { kind: "refused", htmlKey: row.htmlKey };
       }
       let body: MessageBody | null = null;
@@ -1047,23 +956,13 @@ export class ClientDO extends DurableObject<Env> {
               ? "template missing"
               : null;
         if (error) {
-          this.db
-            .update(schema.message)
-            .set({ status: "failed", error, claimedUntil: null, updatedAt: now })
-            .where(eq(schema.message.id, messageId))
-            .run();
-          bumpCampaign(this.ctx.storage.sql, row.campaignId, { queued: -1, failed: 1 });
+          this.failMessage(messageId, error, now);
           return { kind: "skip", reason: "failed" };
         }
       }
       const region = row.sesRegion;
       if (!region) {
-        this.db
-          .update(schema.message)
-          .set({ status: "failed", error: "no SES region", claimedUntil: null, updatedAt: now })
-          .where(eq(schema.message.id, messageId))
-          .run();
-        bumpCampaign(this.ctx.storage.sql, row.campaignId, { queued: -1, failed: 1 });
+        this.failMessage(messageId, "no SES region", now);
         return { kind: "skip", reason: "failed" };
       }
       const attempt = row.attempts + 1;
@@ -1103,15 +1002,7 @@ export class ClientDO extends DurableObject<Env> {
       attachments.push({ filename: a.filename, contentType: a.contentType, bytes: new Uint8Array(await file.arrayBuffer()) });
     }
     if ((row.htmlKey && !object) || attachmentMissing) {
-      this.ctx.storage.transactionSync(() => {
-        const changed = this.db
-          .update(schema.message)
-          .set({ status: "failed", error: attachmentMissing ? "attachment missing" : "html missing", claimedUntil: null, updatedAt: Date.now() })
-          .where(and(eq(schema.message.id, messageId), eq(schema.message.status, "queued")))
-          .returning({ id: schema.message.id })
-          .all();
-        if (changed.length) bumpCampaign(this.ctx.storage.sql, row.campaignId, { queued: -1, failed: 1 });
-      });
+      this.ctx.storage.transactionSync(() => this.failMessage(messageId, attachmentMissing ? "attachment missing" : "html missing", Date.now()));
       return { kind: "skip", reason: "failed" };
     }
     return {
@@ -1159,13 +1050,15 @@ export class ClientDO extends DurableObject<Env> {
     await this.ready(workspaceId);
     this.ctx.storage.transactionSync(() => {
       // Only a queued row is repainted: a claim that lost its lease may find the row already suppressed, sent or failed.
-      const changed = this.db
+      if (final) {
+        this.failMessage(messageId, maskEmails(error), Date.now());
+        return;
+      }
+      this.db
         .update(schema.message)
-        .set({ error: maskEmails(error), claimedUntil: null, updatedAt: Date.now(), ...(final ? { status: "failed" as const } : {}) })
+        .set({ error: maskEmails(error), claimedUntil: null, updatedAt: Date.now() })
         .where(and(eq(schema.message.id, messageId), eq(schema.message.status, "queued")))
-        .returning({ campaignId: schema.message.campaignId })
-        .all();
-      if (final && changed.length) bumpCampaign(this.ctx.storage.sql, changed[0].campaignId, { queued: -1, failed: 1 });
+        .run();
     });
   }
 
@@ -1386,15 +1279,14 @@ export class ClientDO extends DurableObject<Env> {
     return listSuppressionRows(this.db, { prefix: q.prefix?.trim().toLowerCase(), cursor: q.cursor });
   }
   // Unsubscribe and complaint rows are kept: a recipient who opted out cannot be re-enabled from the console.
-  async removeSuppression(workspaceId: string, email: string): Promise<"removed" | "missing" | "opted_out"> {
+  async removeSuppression(workspaceId: string, email: string): Promise<void> {
     await this.ready(workspaceId);
     const key = email.trim().toLowerCase();
-    return this.ctx.storage.transactionSync(() => {
+    this.ctx.storage.transactionSync(() => {
       const row = this.db.select({ reason: schema.suppression.reason }).from(schema.suppression).where(eq(schema.suppression.email, key)).get();
-      if (!row) return "missing";
-      if (row.reason !== "bounce" && row.reason !== "manual") return "opted_out";
+      if (!row) throw new RelayError("not found");
+      if (row.reason !== "bounce" && row.reason !== "manual") throw new RelayError("recipient opted out");
       this.db.delete(schema.suppression).where(eq(schema.suppression.email, key)).run();
-      return "removed";
     });
   }
   async refreshLimits(workspaceId: string): Promise<WorkspaceLimits> {
@@ -1531,8 +1423,10 @@ export class ClientDO extends DurableObject<Env> {
     return { requeued: stale.length, expired };
   }
 
-  // The snapshot lives in KV, so a stale copy survives eviction and a D1 outage. It is never stored when empty.
-  private async limits(workspaceId: string, { forSender }: { forSender?: string } = {}): Promise<WorkspaceLimits> {
+  // The one rule for every path that reads limits. The snapshot lives in KV, so a stale copy survives eviction and a D1 outage; with no copy
+  // and no D1 answer this throws "limits unavailable" (503) and never guesses. Queued mail is never failed for an outage: a campaign run step
+  // throws so its Workflow retries, a send claim answers busy for 60 seconds, and an automation pass defers its runs.
+  private async limitsOrThrow(workspaceId: string, { forSender }: { forSender?: string } = {}): Promise<WorkspaceLimits> {
     const cached = this.ctx.storage.kv.get<WorkspaceLimits>(LIMITS_KEY);
     const age = cached ? Date.now() - cached.fetchedAt : Infinity;
     const senderMiss = forSender !== undefined && !cached?.senders[forSender];
@@ -1540,8 +1434,9 @@ export class ClientDO extends DurableObject<Env> {
     try {
       return await this.loadLimits(workspaceId);
     } catch (err) {
-      console.error("ClientDO: failed to reload workspace limits, using the cached snapshot", err);
-      return cached ?? { monthlyQuota: DEFAULT_MONTHLY_QUOTA, postalAddress: null, status: "active", senders: {}, fetchedAt: 0 };
+      console.error("ClientDO: failed to reload workspace limits, using the cached snapshot", describeError(err));
+      if (!cached) throw new RelayError("limits unavailable");
+      return cached;
     }
   }
 
@@ -1566,11 +1461,11 @@ export class ClientDO extends DurableObject<Env> {
   async deleteDomainHistory(workspaceId: string, domain: string): Promise<{ messages: number; objects: number }> {
     await this.ready(workspaceId);
     const sql = this.ctx.storage.sql;
-    const prefix = `ws/${workspaceId}/`;
+    const owned = (k: string) => ownedBy(workspaceId, k);
     let messages = 0;
     let objects = 0;
     const drop = async (keys: string[], rawKeys: string[]) => {
-      const gone = [...keys, ...rawKeys.filter((k) => !rawKeyInUse(sql, k))].filter((k) => k.startsWith(prefix));
+      const gone = [...keys, ...rawKeys.filter((k) => !rawKeyInUse(sql, k))].filter(owned);
       await this.dropObjects(gone);
       objects += gone.length;
     };
@@ -1595,7 +1490,7 @@ export class ClientDO extends DurableObject<Env> {
       try {
         await recordDoState(this.env, workspaceId, { doMigrateError: this.migrateError.message });
       } catch (err) {
-        console.error("ClientDO: failed to record migrate error in D1", err);
+        console.error("ClientDO: failed to record migrate error in D1", describeError(err));
       }
       throw new Error("workspace storage migration failed");
     }
@@ -1611,7 +1506,7 @@ export class ClientDO extends DurableObject<Env> {
       // false: no profile row yet (or no workspace), so nothing is reported and KV stays unset for a retry.
       if (!(await recordDoState(this.env, workspaceId, { doSchemaVersion: version, doMigrateError: null }))) return;
     } catch (err) {
-      console.error("ClientDO: failed to report schema version to D1", err);
+      console.error("ClientDO: failed to report schema version to D1", describeError(err));
       return;
     }
     this.ctx.storage.kv.put("reported_version", version);
@@ -1684,13 +1579,15 @@ export class ClientDO extends DurableObject<Env> {
       .get();
     return row ? { messageId: row.id, status: row.status as SendResult["status"], duplicate: true } : undefined;
   }
-  async renderTemplate(
-    workspaceId: string,
-    appId: string,
-    templateId: string,
-    values: Record<string, string>,
-  ): Promise<RenderedTemplate | "missing" | "disabled"> {
+  async renderTemplate(workspaceId: string, appId: string, templateId: string, values: Record<string, string>): Promise<RenderedTemplate> {
     await this.ready(workspaceId);
+    const rendered = this.renderOrRefuse(appId, templateId, values);
+    if (rendered === "missing") return fail("template not found");
+    if (rendered === "disabled") return fail("template disabled");
+    return rendered;
+  }
+  // The automation pass maps these to its own skip codes, so it takes the outcome, not a throw.
+  private renderOrRefuse(appId: string, templateId: string, values: Record<string, string>): RenderedTemplate | "missing" | "disabled" {
     const tpl = getTemplateRow(this.ctx.storage.sql, templateId);
     if (!tpl || tpl.appId !== appId) return "missing";
     if (!tpl.enabled) return "disabled";
@@ -1717,6 +1614,42 @@ export class ClientDO extends DurableObject<Env> {
     await this.ready(workspaceId);
     return audienceCallFor(this.env, this.ctx.storage, workspaceId, campaignId, runSeq);
   }
+  private runIsLive(id: string, runSeq: number): boolean {
+    const head = this.campaignHead(id);
+    return head !== undefined && head.status === "sending" && head.runSeq === runSeq;
+  }
+
+  // Pauses only the run that is still sending: a newer run or a manual pause stays as it is.
+  private pauseRun(id: string, runSeq: number, error: string | null, now: number): boolean {
+    return this.ctx.storage.transactionSync(
+      () =>
+        this.ctx.storage.sql.exec(
+          "UPDATE campaign SET status = 'paused', error = ?, updated_at = ? WHERE id = ? AND status = 'sending' AND run_seq = ?",
+          error,
+          now,
+          id,
+          runSeq,
+        ).rowsWritten > 0,
+    );
+  }
+
+  // Null means the run was paused here and the caller reports it stopped.
+  private async runGate(workspaceId: string, id: string, runSeq: number, campaign: { appId: string; fromEmail: string | null }, now: number) {
+    const limits = await this.limitsOrThrow(workspaceId, { forSender: campaign.fromEmail ?? undefined });
+    if (limits.status === "suspended") {
+      this.pauseRun(id, runSeq, "workspace_suspended", now);
+      return null;
+    }
+    const sender = limits.senders[campaign.fromEmail ?? ""];
+    if (!sender || sender.appId !== campaign.appId) {
+      this.pauseRun(id, runSeq, "sender_not_verified", now);
+      return null;
+    }
+    const rate = sesSendRate(this.env, sender.sesRegion);
+    if ((await this.ctx.storage.getAlarm()) === null) await this.ctx.storage.setAlarm(now + SWEEP_INTERVAL_MS);
+    return { limits, sender, rate };
+  }
+
   // One page of a hook run. Replays are safe: rows are found by key, and the cursor moves only when p === n.
   async campaignHookPage(
     workspaceId: string,
@@ -1730,12 +1663,7 @@ export class ClientDO extends DurableObject<Env> {
     const sql = this.ctx.storage.sql;
     let enqueued = 0;
     const stopped = () => ({ state: "stopped" as const, enqueued, paceMs: 0 });
-    const live = () => {
-      const head = this.campaignHead(id);
-      return head !== undefined && head.status === "sending" && head.runSeq === runSeq;
-    };
-    const setPaused = (error: string) =>
-      sql.exec("UPDATE campaign SET status = 'paused', error = ?, updated_at = ? WHERE id = ? AND status = 'sending' AND run_seq = ?", error, now, id, runSeq);
+    const live = () => this.runIsLive(id, runSeq);
     if (!live()) return stopped();
     const campaign = sql
       .exec<{ appId: string; fromEmail: string | null; subject: string; postalAddress: string | null; cursor: string | null }>(
@@ -1746,19 +1674,9 @@ export class ClientDO extends DurableObject<Env> {
     const ingested = parseHookCursor(campaign.cursor).p;
     if (ingested > n) return { state: "more", enqueued: 0, paceMs: 0 };
     if (ingested < n) throw new Error("page out of order");
-    const limits = await this.limits(workspaceId, { forSender: campaign.fromEmail ?? undefined });
-    if (limits.fetchedAt === 0) throw new Error("limits unavailable");
-    if (limits.status === "suspended") {
-      this.ctx.storage.transactionSync(() => setPaused("workspace_suspended"));
-      return stopped();
-    }
-    const sender = limits.senders[campaign.fromEmail ?? ""];
-    if (!sender || sender.appId !== campaign.appId) {
-      this.ctx.storage.transactionSync(() => setPaused("sender_not_verified"));
-      return stopped();
-    }
-    const rate = sesSendRate(this.env, sender.sesRegion);
-    if ((await this.ctx.storage.getAlarm()) === null) await this.ctx.storage.setAlarm(now + SWEEP_INTERVAL_MS);
+    const gate = await this.runGate(workspaceId, id, runSeq, campaign, now);
+    if (!gate) return stopped();
+    const { limits, sender, rate } = gate;
     const seen = new Set<string>();
     const rows: EnqueueRow[] = [];
     for (const r of page.recipients) {
@@ -1782,7 +1700,7 @@ export class ClientDO extends DurableObject<Env> {
       if (batch.created > 0) sql.exec("UPDATE campaign SET recipients = recipients + ?, updated_at = ? WHERE id = ? AND run_seq = ?", batch.created, now, id, runSeq);
       enqueued += batch.queued;
       if (batch.quotaHit) {
-        this.ctx.storage.transactionSync(() => setPaused("quota_exceeded"));
+        this.pauseRun(id, runSeq, "quota_exceeded", now);
         return stopped();
       }
     }
@@ -1792,7 +1710,7 @@ export class ClientDO extends DurableObject<Env> {
       const last = page.nextCursor === null;
       sql.exec(
         "UPDATE campaign SET cursor = ?, updated_at = ? WHERE id = ? AND run_seq = ?",
-        JSON.stringify({ p: n + 1, c: page.nextCursor }),
+        encodeHookCursor(n + 1, page.nextCursor),
         now,
         id,
         runSeq,
@@ -1803,7 +1721,7 @@ export class ClientDO extends DurableObject<Env> {
     if (finished === null) return stopped();
     return finished ? { state: "done", enqueued, paceMs: 0 } : { state: "more", enqueued, paceMs: Math.ceil(enqueued / rate) * 1000 };
   }
-  // The sub-chunk body shared by lists and hooks: inserts the rows, then sends one batch. A row that lapsed is stored as suppressed.
+  // A row that lapsed is stored as suppressed.
   private async enqueueRecipients(
     ctx: EnqueueCtx,
     rows: EnqueueRow[],
@@ -1870,7 +1788,7 @@ export class ClientDO extends DurableObject<Env> {
     return { handled, created, queued: queue.length, lastEmail, quotaHit };
   }
 
-  async createAutomation(workspaceId: string, appId: string, input: AutomationInput): Promise<AutomationView | "bad_list" | "bad_template"> {
+  async createAutomation(workspaceId: string, appId: string, input: AutomationInput): Promise<AutomationView> {
     await this.ready(workspaceId);
     return createAutomationRow(this.ctx.storage.sql, appId, input);
   }
@@ -1880,7 +1798,7 @@ export class ClientDO extends DurableObject<Env> {
     return listAutomationRows(this.ctx.storage.sql, appId);
   }
 
-  async updateAutomation(workspaceId: string, id: string, patch: AutomationPatch): Promise<AutomationView | "missing" | "bad_template"> {
+  async updateAutomation(workspaceId: string, id: string, patch: AutomationPatch): Promise<AutomationView> {
     await this.ready(workspaceId);
     return updateAutomationRow(this.ctx.storage.sql, id, patch);
   }
@@ -1892,9 +1810,9 @@ export class ClientDO extends DurableObject<Env> {
     return result;
   }
 
-  async deleteAutomation(workspaceId: string, id: string): Promise<"deleted" | "missing"> {
+  async deleteAutomation(workspaceId: string, id: string): Promise<void> {
     await this.ready(workspaceId);
-    return deleteAutomationRow(this.ctx.storage.sql, id);
+    deleteAutomationRow(this.ctx.storage.sql, id);
   }
 
   // Bound workspace only: the alarm has no id of its own, so an unbound DO has no automations to run.
@@ -1902,12 +1820,20 @@ export class ClientDO extends DurableObject<Env> {
     const workspaceId = this.ctx.storage.kv.get<string>("workspace_id");
     if (workspaceId === undefined) return { sent: 0, skipped: 0, more: false, blocked: false };
     await this.ready(workspaceId);
-    const limits = await this.limits(workspaceId);
+    let limits: WorkspaceLimits;
+    try {
+      limits = await this.limitsOrThrow(workspaceId);
+    } catch (err) {
+      if (codeOf(err) === "limits unavailable") return { sent: 0, skipped: 0, more: false, blocked: true };
+      throw err;
+    }
     return runDueAutomationRows(
       this.ctx.storage.sql,
       {
+        senderRetried: this.senderRetried,
+        unknownFailures: this.unknownFailures,
         send: (input) => this.send(workspaceId, input),
-        render: (appId, templateId, values) => this.renderTemplate(workspaceId, appId, templateId, values),
+        render: (appId, templateId, values) => this.renderOrRefuse(appId, templateId, values),
         refreshLimits: () => this.loadLimits(workspaceId),
         postalAddress: limits.postalAddress,
       },

@@ -2,7 +2,7 @@ import { env, SELF } from "cloudflare:test";
 import { eq } from "drizzle-orm";
 import { beforeAll, describe, expect, it } from "vitest";
 import { requireActor } from "../src/console/actor";
-import { deleteWorkspace } from "../src/console/workspaces";
+import { deleteWorkspace } from "../src/services/workspaces";
 import { ensureWorkspaceProfile } from "../src/core/workspace-profile";
 import { coreDb } from "../src/db/core/client";
 import { sendingDomain, workspaceProfile } from "../src/db/core/schema";
@@ -12,7 +12,7 @@ import { addMember, cookieFor, createWorkspace, ORIGIN, setActive } from "./cons
 import { applyMigrations } from "./migrate";
 
 const db = securityDb(env);
-const OWNER = { permission: { organization: ["delete"] }, write: true };
+const OWNER = { permission: { organization: ["delete"] }, write: true } as const;
 
 beforeAll(async () => {
   await applyMigrations();

@@ -14,20 +14,16 @@ import {
   type PgEnum,
 } from "drizzle-orm/pg-core";
 
+import { notificationChannel } from "./enums";
+export { notificationChannel };
+
 // Re-exported so an app can build both table sets from one import path
 // (`@relay/engine/schema`), which is what drizzle.config resolves.
 export {
   makeCampaignTables,
-  campaignStatus,
-  consentSource,
   type AudienceDef,
   type CampaignTables,
 } from "./campaign-schema";
-
-/** Delivery channels. email + in_app have handlers; sms/whatsapp are declared for later. */
-export const notificationChannel = pgEnum("notification_channel", [
-  "email", "in_app", "sms", "whatsapp",
-]);
 
 export const outboxStatus = pgEnum("notification_outbox_status", [
   "pending", "processing", "sent", "failed",
@@ -39,18 +35,11 @@ export const messageKind = pgEnum("message_kind", ["transactional", "marketing"]
 /** How far a suppression reaches. See messageSuppression for why this is not a boolean. */
 export const suppressionScope = pgEnum("suppression_scope", ["all", "marketing"]);
 
-/** Mailbox letter travel. `in` is unused until inbound landing. */
-export const mailboxDirection = pgEnum("mailbox_direction", ["out", "in"]);
-
-/** Why Relay produced the letter. Distinct from outbox kind (consent). */
-export const mailboxOrigin = pgEnum("mailbox_origin", ["automatic", "campaign", "test", "manual"]);
-
 /**
  * Build the notification tables against one app's `users` table and event enum.
  *
  * The tables cannot be shared as values: they FK to `users.id` and use a per-app
- * `app_event` enum (tiffin-grab has 18 subscription events, puchkaman has pickup
- * and delivery ones). Each app calls this from its own schema barrel and
+ * `app_event` enum. Each app calls this from its own schema barrel and
  * re-exports, so drizzle-kit generates that app's migration — the same approach
  * `@foundry/google-reviews` uses for `review_nudges`.
  */
@@ -62,7 +51,7 @@ export function makeNotificationTables<
   users: AnyPgTable & { id: any };
   appEvent: PgEnum<E>;
   locale: PgEnum<L>;
-  /** Supplied once campaign tables exist (Plan C); omitted, campaign_id carries no FK. */
+  /** Supplied once campaign tables exist ; omitted, campaign_id carries no FK. */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   campaign?: any;
 }) {
@@ -246,8 +235,3 @@ export function makeNotificationTables<
 }
 
 export type NotificationTables = ReturnType<typeof makeNotificationTables>;
-
-export {
-  makeTenantNotificationTables,
-  type TenantNotificationTables,
-} from "./tenant-schema";

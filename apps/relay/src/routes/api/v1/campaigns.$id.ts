@@ -1,17 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { campaignPatch } from "../../../console/schemas";
-import { apiRoute, data, readJson } from "../../../core/api-route";
-import { deleteCampaignForScope, getCampaignForScope, updateCampaignForScope } from "../../../core/campaign-scope";
+import { campaignPatch } from "../../../services/schemas";
+import { apiRoute, data, readJson } from "../../../api/route";
+import { deleteCampaign, getCampaign, updateCampaign } from "../../../services/campaigns";
 
 export const Route = createFileRoute("/api/v1/campaigns/$id")({
   server: {
     handlers: {
-      GET: apiRoute(async ({ env, scope, params }) => data(await getCampaignForScope(env, scope, params.id))),
-      PATCH: apiRoute(async ({ env, scope, params, request }) =>
-        data(await updateCampaignForScope(env, scope, params.id, campaignPatch.parse(await readJson(request)))),
+      GET: apiRoute(async ({ env, p, params }) => data(await getCampaign(env, p, params.id))),
+      PATCH: apiRoute(async ({ env, p, params, request }) =>
+        data(await updateCampaign(env, p, params.id, campaignPatch.parse(await readJson(request)))),
       ),
-      DELETE: apiRoute(async ({ env, scope, params }) => {
-        await deleteCampaignForScope(env, scope, params.id);
+      DELETE: apiRoute(async ({ env, p, params }) => {
+        await deleteCampaign(env, p, params.id);
         return new Response(null, { status: 204 });
       }),
     },

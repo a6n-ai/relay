@@ -1,7 +1,7 @@
 import { parseDocument } from "htmlparser2";
 import { isTag, type AnyNode } from "domhandler";
-import { foreignPreheader, readPreheader, withPreheader } from "../preheader";
-import { lintEmailHtml } from "../ui/email-compat";
+import { foreignPreheader, readPreheader, withPreheader } from "./preheader";
+import { lintEmailHtml } from "./email-compat";
 import { findUnknownVariables } from "./variables";
 
 export interface ChecklistItem {

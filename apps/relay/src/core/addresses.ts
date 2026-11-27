@@ -4,6 +4,8 @@ import { address } from "../db/core/schema";
 import { securityDb } from "../db/security/client";
 import { addressGrant, app, member, team } from "../db/security/schema";
 import type { Env } from "../env";
+import { RelayError } from "../shared/errors";
+import { DAY_MS } from "../shared/limits";
 
 // relay-core and relay-security cannot foreign-key each other, so these checks are the only guard on those ids.
 export async function createAddress(
@@ -14,7 +16,7 @@ export async function createAddress(
     .select({ id: app.id })
     .from(app)
     .where(and(eq(app.id, input.appId), eq(app.workspaceId, input.workspaceId)));
-  if (!owner) throw new Error("app does not belong to workspace");
+  if (!owner) throw new RelayError("app does not belong to workspace");
   const [row] = await coreDb(env)
     .insert(address)
     .values({ ...input, email: input.email.trim().toLowerCase() })
@@ -26,16 +28,16 @@ export async function createAddressGrant(
   env: Env,
   input: { workspaceId: string; addressId: string; memberId?: string; teamId?: string },
 ): Promise<string> {
-  if (Boolean(input.memberId) === Boolean(input.teamId)) throw new Error("exactly one grantee required");
+  if (Boolean(input.memberId) === Boolean(input.teamId)) throw new RelayError("exactly one grantee required");
   const [target] = await coreDb(env)
     .select({ workspaceId: address.workspaceId })
     .from(address)
     .where(eq(address.id, input.addressId));
-  if (target?.workspaceId !== input.workspaceId) throw new Error("address does not belong to workspace");
+  if (target?.workspaceId !== input.workspaceId) throw new RelayError("address does not belong to workspace");
   const [grantee] = input.memberId
     ? await securityDb(env).select({ workspaceId: member.organizationId }).from(member).where(eq(member.id, input.memberId))
     : await securityDb(env).select({ workspaceId: team.organizationId }).from(team).where(eq(team.id, input.teamId ?? ""));
-  if (grantee?.workspaceId !== input.workspaceId) throw new Error("grantee does not belong to workspace");
+  if (grantee?.workspaceId !== input.workspaceId) throw new RelayError("grantee does not belong to workspace");
   const [row] = await securityDb(env)
     .insert(addressGrant)
     .values({ workspaceId: input.workspaceId, addressId: input.addressId, memberId: input.memberId ?? null, teamId: input.teamId ?? null })
@@ -84,7 +86,7 @@ export async function deleteAddress(env: Env, workspaceId: string, id: string): 
   return true;
 }
 
-export const INBOUND_GRACE_MS = 7 * 24 * 60 * 60 * 1000;
+export const INBOUND_GRACE_MS = 7 * DAY_MS;
 
 export async function inboxForRecipient(
   env: Env,

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { contentDisposition, previewType, safeDownloadName } from "../src/core/download";
-import { previewHint } from "../src/components/preview-hint";
+import { previewHint } from "../src/components/messages/preview-hint";
 
 const bytes = (s: string) => new TextEncoder().encode(s);
 

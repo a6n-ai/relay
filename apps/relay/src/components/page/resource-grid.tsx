@@ -2,7 +2,7 @@ import { Card } from "@foundry/ui/card";
 import { Link, type LinkProps } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { type RowAction, RowMenu } from "./row-menu";
-import { Hint } from "./text";
+import { Hint } from "../form/text";
 
 // Same rule as ResourceTable rows: only real controls sit above the overlay link.
 const CARD_LINK =
@@ -49,6 +49,18 @@ export function ResourceGrid<T>({
           </Card>
         );
       })}
+    </div>
+  );
+}
+
+// The body every ResourceGrid card shares: a title, an optional badge row, hint lines, and any extra control below.
+export function ResourceCard({ title, badge, hints = [], children }: { title: ReactNode; badge?: ReactNode; hints?: ReactNode[]; children?: ReactNode }) {
+  return (
+    <div className="grid gap-1.5 pr-8">
+      <span className="font-medium">{title}</span>
+      {badge ? <div>{badge}</div> : null}
+      {hints.map((hint, i) => (hint ? <Hint key={i} size="xs">{hint}</Hint> : null))}
+      {children}
     </div>
   );
 }

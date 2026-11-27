@@ -1,7 +1,7 @@
 import { createExecutionContext, env, runInDurableObject, SELF } from "cloudflare:test";
 import { eq } from "drizzle-orm";
 import { beforeAll, describe, expect, it, vi } from "vitest";
-import { createApiKey, resolveApiKey, revokeApiKey } from "../src/core/api-keys";
+import { createApiKey, resolveApiKey, revokeApiKey } from "../src/services/api-keys";
 import { ensureWorkspaceProfile } from "../src/core/workspace-profile";
 import { coreDb } from "../src/db/core/client";
 import { address, sendingDomain } from "../src/db/core/schema";
@@ -38,7 +38,7 @@ describe("API keys", () => {
     const { id, secret } = await createApiKey(env, { workspaceId, appId, name: "web" });
 
     expect(secret).toMatch(/^rk_[A-Za-z]{64}$/);
-    expect(await resolveApiKey(env, secret)).toEqual({ workspaceId, appId, keyId: id });
+    expect(await resolveApiKey(env, secret)).toEqual({ workspaceId, appId, userId: null, keyId: id });
   });
 
   it("resolves a wrong secret to null", async () => {

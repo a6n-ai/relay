@@ -4,7 +4,8 @@ import type { AudienceDef, CampaignTables } from "./campaign-schema";
 import type { NotificationTables } from "./schema";
 import type { UsersRef } from "./enqueue";
 import { marketingConsentBlockReason } from "./compliance";
-import { normalizeAddress } from "./suppression";
+import { normalizeAddress } from "@foundry/commons";
+import { isEmailAddress } from "./email-address";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Db = PostgresJsDatabase<any>;
@@ -63,9 +64,7 @@ export interface AudienceBreakdown {
   excluded: { unsubscribed: number; suppressed: number; noConsent: number; invalid: number; duplicates: number };
 }
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-/** Pure half of audience resolution: dedupe, drop invalid and suppressed, and say why each was dropped. */
 export function classifyAudience(input: {
   candidates: Recipient[];
   /** Members of lists whose implied consent lapsed — excluded before they became candidates. */
@@ -75,7 +74,7 @@ export function classifyAudience(input: {
   suppressions: { address: string; reason: string }[];
 }): { recipients: Recipient[]; breakdown: AudienceBreakdown } {
   const valid = input.candidates.filter(
-    (r) => normalizeAddress(r.email ?? r.phone ?? "") && (!r.email || EMAIL_RE.test(r.email.trim()) || !!r.phone),
+    (r) => normalizeAddress(r.email ?? r.phone ?? "") && (!r.email || isEmailAddress(r.email.trim()) || !!r.phone),
   );
   const invalid = input.candidates.length - valid.length;
   const deduped = dedupeRecipients(valid);
@@ -247,7 +246,6 @@ export async function resolveAudience(deps: AudienceDeps, def: AudienceDef): Pro
   return (await resolveAudienceDetailed(deps, def)).recipients;
 }
 
-/** Live count for the audience builder. Same exclusions as the real send. */
 export async function countAudience(deps: AudienceDeps, def: AudienceDef): Promise<number> {
   return (await resolveAudienceDetailed(deps, def)).breakdown.eligible;
 }

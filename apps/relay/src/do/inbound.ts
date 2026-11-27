@@ -1,13 +1,17 @@
 import { and, eq, or, sql } from "drizzle-orm";
+import { ownedRaw, r2Keys } from "../core/r2-keys";
 import type { DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
-import { MAX_INBOUND_BYTES } from "../core/email-worker";
+import { MAX_INBOUND_BYTES } from "../core/inbound-limits";
 import { InboundParseError, parseInboundEml, safeFilename, type ParsedInbound } from "../core/inbound-parse";
 import { mailboxReceivedJson } from "../core/mailbox-received";
-import type { Env, InboundJob } from "../env";
-import { newId } from "../lib/ids";
+import type { Env } from "../env";
+import type { InboundJob } from "../core/jobs";
+import { newId } from "../shared/ids";
 import * as schema from "./client-schema";
 import { listWebhookRows, toWebhookView } from "./webhooks";
 import { describeError } from "../core/log";
+import { RelayError } from "../shared/errors";
+import { MAILBOX_RECEIVED } from "../shared/mail";
 
 export type InboundResult =
   | { outcome: "inserted"; messageId: string; deliveries: number }
@@ -18,11 +22,11 @@ export type InboundDeps = { storage: DurableObjectStorage; db: DrizzleSqliteDODa
 
 // Keeps a DO row under 2 MB; the webhook payload keeps the full text.
 const INBOUND_TEXT_MAX = 262_144;
-const SUBJECT_MAX = 998;
-const EVENT = "mailbox.received";
+const RFC_SUBJECT_MAX = 998;
+const EVENT = MAILBOX_RECEIVED;
 
 function assertOwnRawKey(workspaceId: string, rawKey: string): void {
-  if (!rawKey.startsWith(`ws/${workspaceId}/raw/`)) throw new Error("raw key outside workspace");
+  if (!ownedRaw(workspaceId, rawKey)) throw new Error("raw key outside workspace");
 }
 
 // Stored without angle brackets so threading lookups match rfc_message_id.
@@ -80,10 +84,6 @@ async function removeObjects(env: Env, messageId: string, keys: string[]): Promi
   );
 }
 
-function errorName(err: unknown): string {
-  return err instanceof Error ? err.name : "unknown";
-}
-
 function fail(deps: InboundDeps, workspaceId: string, job: InboundJob, error: string): InboundResult {
   writeInboundFailure(deps, workspaceId, job, error);
   return { outcome: "failed", error };
@@ -104,7 +104,7 @@ export async function storeInbound(deps: InboundDeps, workspaceId: string, job: 
   if (sameLetter) return { outcome: "duplicate", messageId: sameLetter.id };
 
   const object = await env.MAIL.get(job.rawKey);
-  if (!object) throw new Error("raw mail missing");
+  if (!object) throw new RelayError("raw mail missing");
   if (object.size > MAX_INBOUND_BYTES) return fail(deps, workspaceId, job, "Letter too large");
 
   let parsed: ParsedInbound;
@@ -137,8 +137,8 @@ export async function storeInbound(deps: InboundDeps, workspaceId: string, job: 
   const webhooks = listWebhookRows(db, job.appId)
     .map(toWebhookView)
     .filter((w) => w.enabled && w.events.includes(EVENT));
-  const htmlKey = parsed.html ? `ws/${workspaceId}/msg/${messageId}.html` : null;
-  const payloadKey = `ws/${workspaceId}/msg/${messageId}.received.json`;
+  const htmlKey = parsed.html ? r2Keys.msgHtml(workspaceId, messageId) : null;
+  const payloadKey = r2Keys.payload(workspaceId, messageId);
   const attachments = parsed.attachments.map((a, position) => {
     const filename = safeFilename(a.filename);
     return {
@@ -149,7 +149,7 @@ export async function storeInbound(deps: InboundDeps, workspaceId: string, job: 
       contentType: a.mimeType,
       sizeBytes: a.content.byteLength,
       contentId: a.contentId,
-      r2Key: `ws/${workspaceId}/att/${messageId}/${position}-${filename}`,
+      r2Key: r2Keys.attachment(workspaceId, messageId, position, filename),
       createdAt: job.receivedAt,
     };
   });
@@ -195,7 +195,7 @@ export async function storeInbound(deps: InboundDeps, workspaceId: string, job: 
           fromEmail: parsed.fromEmail,
           fromName: parsed.fromName,
           toEmail: job.envelopeTo,
-          subject: parsed.subject.slice(0, SUBJECT_MAX),
+          subject: parsed.subject.slice(0, RFC_SUBJECT_MAX),
           text: parsed.text.slice(0, INBOUND_TEXT_MAX),
           htmlKey,
           rawKey: job.rawKey,

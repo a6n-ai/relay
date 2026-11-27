@@ -1,7 +1,7 @@
 import { Button } from "@foundry/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@foundry/ui/card";
 import { type FormEvent, type ReactNode, type RefObject, useId } from "react";
-import { UnsavedGuard } from "../unsaved-guard";
+import { UnsavedGuard } from "./unsaved-guard";
 
 // Vercel's card: title row with a hairline under it, the body, then a muted footer strip.
 export function SettingsCard({

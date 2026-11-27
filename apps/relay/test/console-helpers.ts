@@ -1,11 +1,11 @@
 import { env, SELF } from "cloudflare:test";
 import { eq } from "drizzle-orm";
 import { expect } from "vitest";
-import type { OrgRole } from "../src/console/actor";
 import { securityDb } from "../src/db/security/client";
 import { member, user } from "../src/db/security/schema";
-import { memoryOtpMailer } from "../src/lib/auth/otp-mailer";
-import { newId } from "../src/lib/ids";
+import { memoryOtpMailer } from "../src/auth/otp-mailer";
+import { newId } from "../src/shared/ids";
+import { type OrgRole } from "../src/shared/roles";
 
 export const ORIGIN = "http://localhost";
 export const BASE = `${ORIGIN}/api/auth`;

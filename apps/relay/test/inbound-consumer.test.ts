@@ -1,11 +1,11 @@
 import { env, runInDurableObject } from "cloudflare:test";
 import { and, eq } from "drizzle-orm";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { handleInboundBatch, MAX_INBOUND_ATTEMPTS } from "../src/core/inbound-consumer";
+import { handleInboundBatch, MAX_INBOUND_ATTEMPTS } from "../src/jobs/inbound-consumer";
 import { utcDay } from "../src/core/usage";
 import { coreDb } from "../src/db/core/client";
 import { usageDaily } from "../src/db/core/schema";
-import type { InboundJob } from "../src/env";
+import type { InboundJob } from "../src/core/jobs";
 import { applyMigrations } from "./migrate";
 
 beforeAll(async () => {

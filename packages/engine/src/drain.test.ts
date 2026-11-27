@@ -1,7 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createRateLimiter, runSignalLoop } from "./drain";
-
-const noopLog = { info: () => {}, error: () => {} };
+import { createRateLimiter } from "./drain";
 
 describe("createRateLimiter", () => {
   it("allows a full bucket to drain without waiting", async () => {
@@ -32,79 +30,21 @@ describe("createRateLimiter", () => {
   });
 });
 
-describe("runSignalLoop", () => {
-  const fast = { settleMs: 0, errorBackoffMs: 0, log: noopLog };
-
-  it("drains once on start, before any signal", async () => {
-    const controller = new AbortController();
-    const drain = vi.fn(async () => 0);
-    const waitForSignal = vi.fn(async () => {
-      controller.abort();
-      return false;
-    });
-    await runSignalLoop({ ...fast, signal: controller.signal, drain, waitForSignal });
-    expect(drain).toHaveBeenCalledTimes(1);
+async function outboxTables() {
+  const { bigint, pgEnum, pgTable } = await import("drizzle-orm/pg-core");
+  const { makeNotificationTables } = await import("./schema");
+  return makeNotificationTables({
+    users: pgTable("users", { id: bigint("id", { mode: "bigint" }).primaryKey() }),
+    appEvent: pgEnum("app_event", ["test"]),
+    locale: pgEnum("locale", ["en"]),
   });
-
-  it("drains on a signal and not on a timeout", async () => {
-    const controller = new AbortController();
-    const waits = [true, false, false, true];
-    const waitForSignal = vi.fn(async () => {
-      const next = waits.shift();
-      if (waits.length === 0) controller.abort();
-      return next ?? false;
-    });
-    const drain = vi.fn(async () => 0);
-    await runSignalLoop({ ...fast, signal: controller.signal, drain, waitForSignal });
-    // startup drain + the first signal; the last signal lands after abort.
-    expect(drain).toHaveBeenCalledTimes(2);
-  });
-
-  it("keeps waiting after a drain throws", async () => {
-    const controller = new AbortController();
-    let calls = 0;
-    const drain = vi.fn(async () => {
-      calls += 1;
-      if (calls === 1) throw new Error("transient database blip");
-      if (calls >= 3) controller.abort();
-      return 0;
-    });
-    await runSignalLoop({ ...fast, signal: controller.signal, drain, waitForSignal: async () => true });
-    expect(calls).toBe(3);
-  });
-
-  it("survives the signal store being down", async () => {
-    const controller = new AbortController();
-    let waits = 0;
-    const waitForSignal = vi.fn(async () => {
-      waits += 1;
-      if (waits === 1) throw new Error("ECONNREFUSED");
-      controller.abort();
-      return true;
-    });
-    const drain = vi.fn(async () => 0);
-    await runSignalLoop({ ...fast, signal: controller.signal, drain, waitForSignal });
-    expect(waitForSignal).toHaveBeenCalledTimes(2);
-  });
-
-  it("does not wait at all once aborted", async () => {
-    const controller = new AbortController();
-    controller.abort();
-    const waitForSignal = vi.fn(async () => true);
-    await runSignalLoop({ ...fast, signal: controller.signal, drain: async () => 0, waitForSignal });
-    expect(waitForSignal).not.toHaveBeenCalled();
-  });
-});
+}
 
 describe("claim lease", () => {
   it("claims pending rows and rows whose processing lease ran out, once due", async () => {
     const { PgDialect } = await import("drizzle-orm/pg-core");
     const { claimableWhere } = await import("./drain");
-    const { bigint, pgTable, text } = await import("drizzle-orm/pg-core");
-    const { makeTenantNotificationTables } = await import("./tenant-schema");
-    const tenants = pgTable("tenants", { id: bigint("id", { mode: "bigint" }).primaryKey() });
-    const mailboxes = pgTable("tenant_mailboxes", { id: bigint("id", { mode: "bigint" }).primaryKey(), tenantId: bigint("tenant_id", { mode: "bigint" }), email: text("email") });
-    const o = makeTenantNotificationTables({ tenants, mailboxes }).notificationOutbox;
+    const o = (await outboxTables()).notificationOutbox;
     const { sql, params } = new PgDialect().sqlToQuery(claimableWhere(o, 1000)!);
     expect(sql).toMatch(/"status" in \(\$\d+, \$\d+\)/);
     expect(params).toEqual(expect.arrayContaining(["pending", "processing", 1000]));
@@ -132,12 +72,9 @@ describe("claim retry cap and fencing", () => {
   });
 
   it("writes a send's outcome only while this tick still holds the row's lease", async () => {
-    const { PgDialect, bigint, pgTable, text } = await import("drizzle-orm/pg-core");
+    const { PgDialect } = await import("drizzle-orm/pg-core");
     const { leaseHeld } = await import("./drain");
-    const { makeTenantNotificationTables } = await import("./tenant-schema");
-    const tenants = pgTable("tenants", { id: bigint("id", { mode: "bigint" }).primaryKey() });
-    const mailboxes = pgTable("tenant_mailboxes", { id: bigint("id", { mode: "bigint" }).primaryKey(), tenantId: bigint("tenant_id", { mode: "bigint" }), email: text("email") });
-    const o = makeTenantNotificationTables({ tenants, mailboxes }).notificationOutbox;
+    const o = (await outboxTables()).notificationOutbox;
     const { sql, params } = new PgDialect().sqlToQuery(leaseHeld(o, 7n, 301_000)!);
     expect(sql).toContain('"id" =');
     expect(sql).toContain('"status" =');
@@ -148,12 +85,8 @@ describe("claim retry cap and fencing", () => {
 
 describe("beforeSend", () => {
   async function drainOneRow(beforeSend: () => Promise<string | null>) {
-    const { bigint, pgTable, text } = await import("drizzle-orm/pg-core");
     const { drainOnce } = await import("./drain");
-    const { makeTenantNotificationTables } = await import("./tenant-schema");
-    const tenants = pgTable("tenants", { id: bigint("id", { mode: "bigint" }).primaryKey() });
-    const mailboxes = pgTable("tenant_mailboxes", { id: bigint("id", { mode: "bigint" }).primaryKey(), tenantId: bigint("tenant_id", { mode: "bigint" }), email: text("email") });
-    const tables = makeTenantNotificationTables({ tenants, mailboxes });
+    const tables = await outboxTables();
     const row = { id: 1n, tenantId: 1n, channel: "email", kind: "transactional", status: "pending", attempts: 0, nextAttemptAt: 0 };
     const writes: Record<string, unknown>[] = [];
     const rowsOf = (value: unknown[]) => {

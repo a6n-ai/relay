@@ -2,16 +2,17 @@ import { AwsError } from "@foundry/cloud";
 import { env, runInDurableObject } from "cloudflare:test";
 import { and, eq } from "drizzle-orm";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi, type MockInstance } from "vitest";
-import { setWorkspaceStatus } from "../src/console/admin";
-import { LIMITS_KEY, refreshWorkspaceLimits } from "../src/core/limits";
-import { handleSendBatch } from "../src/core/send-consumer";
+import { setWorkspaceStatus } from "../src/services/admin";
+import { LIMITS_KEY } from "../src/core/limits";
+import { refreshWorkspaceLimits } from "../src/services/limits";
+import { handleSendBatch } from "../src/jobs/send-consumer";
 import { memorySesTransport } from "../src/core/ses";
 import { utcDay } from "../src/core/usage";
 import { coreDb } from "../src/db/core/client";
 import { address, sendingDomain, usageDaily } from "../src/db/core/schema";
 import { securityDb } from "../src/db/security/client";
 import { workspace } from "../src/db/security/schema";
-import type { SendJob } from "../src/env";
+import type { SendJob } from "../src/core/jobs";
 import { applyMigrations } from "./migrate";
 
 const base = {

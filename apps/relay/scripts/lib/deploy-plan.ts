@@ -1,5 +1,7 @@
 // Pure: no Node or Workers imports, so the vitest workers pool can load it.
-export const DEFAULT_BASE_URL = "https://relay.a6n.ai";
+import { SITE_ORIGIN } from "../../src/shared/site.ts";
+
+export const DEFAULT_BASE_URL = SITE_ORIGIN;
 
 export type DeployStep =
   | { name: string; kind: "build" }

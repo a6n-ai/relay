@@ -1,16 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { AutomationForm } from "../../components/automation-form";
-import { DeniedState, deniedReason } from "../../components/denied-state";
+import { AutomationForm } from "../../components/campaigns/automation-form";
+import { PageDenied } from "../../components/page/page-denied";
 import { NoAppState } from "../../components/page/no-app-state";
 import { PageHeader } from "../../components/shell/page-header";
-import { useCan } from "../../components/use-can";
-import { fetchApps } from "../../console/apps.fns";
+import { useCan } from "../../components/lib/use-can";
+import { startApp } from "../../shared/scope";
+import { str } from "../../components/lib/route-search";
 
 export const Route = createFileRoute("/_app/campaigns_/automations_/new")({
   validateSearch: (search: Record<string, unknown>): { appId?: string } => ({
-    appId: typeof search.appId === "string" && search.appId ? search.appId : undefined,
+    appId: str(search.appId),
   }),
-  loader: async () => ({ apps: (await fetchApps()) ?? [] }),
   component: NewAutomationPage,
 });
 
@@ -21,24 +21,19 @@ const crumbs = [
 ];
 
 function NewAutomationPage() {
-  const { apps } = Route.useLoaderData();
   const { appId: scopeParam } = Route.useSearch();
   const { shell } = Route.useRouteContext();
+  const { apps } = shell;
   const canSend = useCan({ campaign: ["send"] });
   if (!canSend) {
-    return (
-      <>
-        <PageHeader crumbs={crumbs} />
-        <DeniedState reason={deniedReason(shell)} />
-      </>
-    );
+    return <PageDenied crumbs={crumbs} />;
   }
   if (apps.length === 0) return <NoAppState crumbs={crumbs} what="Automations" />;
   const scopedAppId = apps.some((a) => a.id === scopeParam) ? scopeParam : undefined;
   return (
     <>
       <PageHeader crumbs={crumbs} description="Send a template automatically when someone joins a list." />
-      <AutomationForm apps={apps} appId={scopedAppId ?? apps[0]?.id ?? ""} scopedAppId={scopedAppId} />
+      <AutomationForm apps={apps} appId={startApp(apps, scopedAppId) ?? ""} scopedAppId={scopedAppId} />
     </>
   );
 }

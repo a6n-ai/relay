@@ -1,9 +1,9 @@
 import { env, runInDurableObject, SELF } from "cloudflare:test";
-import { and, eq, like } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { requireActor } from "../src/console/actor";
-import { domainDeletePreview, deleteDomain } from "../src/console/domain-delete";
-import { addAddress, addDomain, setDomainProtected } from "../src/console/domains";
+import { previewDomainDelete, deleteDomain } from "../src/services/domain-delete";
+import { addAddress, addDomain, setDomainProtected } from "../src/services/domains";
 import { createApp } from "../src/core/apps";
 import { createAddressGrant } from "../src/core/addresses";
 import { memorySesIdentity } from "../src/core/ses-identity";
@@ -14,7 +14,7 @@ import { addressGrant, member, securityAudit } from "../src/db/security/schema";
 import { addMember, cookieFor, createWorkspace, headersFor, ORIGIN, setActive } from "./console-helpers";
 import { applyMigrations } from "./migrate";
 
-const WRITE = { permission: { sending: ["write"] }, write: true };
+const WRITE = { permission: { sending: ["write"] }, write: true } as const;
 
 beforeAll(async () => {
   await applyMigrations();
@@ -98,7 +98,7 @@ describe("sending domain delete", { timeout: 60_000 }, () => {
     const { id: campaignId } = (await stubFor(workspaceId).createCampaign(workspaceId, appId, "Spring")) as { id: string };
     await seedMail(workspaceId, appId, "del-a.test", campaignId);
 
-    expect(await domainDeletePreview(env, actor, dom.id)).toMatchObject({
+    expect(await previewDomainDelete(env, actor, dom.id)).toMatchObject({
       addresses: { total: 2, senders: 1, inboxes: 1 },
       grants: 1,
       campaigns: 1,
@@ -143,7 +143,7 @@ describe("sending domain delete", { timeout: 60_000 }, () => {
         );
       }
     });
-    expect((await domainDeletePreview(env, actor, dom.id)).messages).toBe(152);
+    expect((await previewDomainDelete(env, actor, dom.id)).messages).toBe(152);
 
     await deleteDomain(env, actor, dom.id, { confirm: "del-b.test", deleteHistory: true });
 
@@ -160,7 +160,7 @@ describe("sending domain delete", { timeout: 60_000 }, () => {
     const dom = await addDomain(env, actor, { domain: "del-c.test" });
     await setDomainProtected(env, actor, dom.id, true);
     const command = "aws sesv2 delete-email-identity --region ap-south-1 --email-identity del-c.test";
-    expect(await domainDeletePreview(env, actor, dom.id)).toMatchObject({ protected: true, sesDelete: false, ownerCommand: command });
+    expect(await previewDomainDelete(env, actor, dom.id)).toMatchObject({ protected: true, sesDelete: false, ownerCommand: command });
 
     const sesDelete = vi.spyOn(memorySesIdentity, "delete");
     expect(await deleteDomain(env, actor, dom.id, { confirm: "del-c.test", deleteHistory: false })).toEqual({ ownerCommand: command });
@@ -176,7 +176,7 @@ describe("sending domain delete", { timeout: 60_000 }, () => {
     const ownerCookie = await addMember(workspaceId, "del-owner@example.com", "owner");
     const owner = await requireActor(env, headersFor(ownerCookie), WRITE);
 
-    await expect(domainDeletePreview(env, owner, dom.id)).rejects.toMatchObject({ status: 403 });
+    await expect(previewDomainDelete(env, owner, dom.id)).rejects.toMatchObject({ status: 403 });
     await expect(deleteDomain(env, owner, dom.id, { confirm: "del-d.test", deleteHistory: false })).rejects.toMatchObject({ status: 403 });
     expect(await domainRow(dom.id)).toBeDefined();
   });

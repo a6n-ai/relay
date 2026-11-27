@@ -1,0 +1,122 @@
+import { Button } from "@foundry/ui/button";
+import { useRouter } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import { cancelCampaignFn, pauseCampaignFn, previewAudienceFn, resumeCampaignFn, unscheduleCampaignFn } from "../../console/campaigns.fns";
+import { copyOf } from "../../shared/errors";
+import { errorText } from "../lib/error-text";
+
+import { ConfirmDialog } from "../page/confirm-dialog";
+import { FormError } from "../form/form-parts";
+import { formatWhen } from "../lib/format-date";
+import { MeterBar } from "../page/meter-bar";
+import { confirmAction, runAction } from "../lib/run-action";
+import { StatTile } from "../page/stat-tile";
+import { Toolbar } from "../page/toolbar";
+import { useCan } from "../lib/use-can";
+import { Hint } from "../form/text";
+import { type AudiencePreview, type CampaignStats, type CampaignView } from "../../shared/views";
+import { useLoad } from "../lib/use-load";
+
+// A paused campaign stores a code on its row, not an Error.
+export const reasonText = (code: string | null): string | null => (code ? (copyOf(code) ?? errorText(null)) : null);
+
+const LIVE = 10_000;
+
+export function CampaignReport({ campaign, stats }: { campaign: CampaignView; stats: CampaignStats }) {
+  const router = useRouter();
+  const canSend = useCan({ campaign: ["send"] });
+  const { id, status } = campaign;
+  // The audience is counted once for the meter; the polled loader would re-run the whole audience count every tick.
+  const [audience, setAudience] = useState<AudiencePreview | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  useLoad(() => previewAudienceFn({ data: { id } }), [id], {
+    onData: (a) => setAudience(a ?? null),
+    onError: (copy) => {
+      setAudience(null);
+      setLoadError(copy);
+    },
+    fallback: "Could not count the audience.",
+  });
+
+  // Counters move while a send runs, so the loader re-reads them on an interval until the campaign settles.
+  // Queued mail can still be waiting after the status reads sent, so polling continues while anything is queued.
+  const waiting = stats.queued > 0;
+  useEffect(() => {
+    if (status !== "scheduled" && status !== "sending" && !waiting) return;
+    const timer = setInterval(() => void router.invalidate(), LIVE);
+    return () => clearInterval(timer);
+  }, [status, waiting, router]);
+
+  const act = (action: () => Promise<unknown>, success: string) => runAction(action, success, () => router.invalidate());
+  const cancel = (
+    <ConfirmDialog
+      trigger="Cancel campaign"
+      title={`Cancel ${campaign.name}?`}
+      dismissLabel="Keep campaign"
+      description="Mail not yet sent will not be sent. Mail already sent is unaffected."
+      confirmLabel="Cancel campaign"
+      onConfirm={() => confirmAction(() => cancelCampaignFn({ data: { id } }), "Campaign cancelled", () => router.invalidate())}
+    />
+  );
+  const sendable = audience?.sendable ?? 0;
+  const percent = sendable > 0 ? (campaign.recipients / sendable) * 100 : 0;
+  const tiles: [string, number][] = [
+    ["Recipients", campaign.recipients],
+    ["Waiting", stats.queued],
+    ["Sent", stats.sent],
+    ["Delivered", stats.delivered],
+    ["Opened", stats.opened],
+    ["Clicked", stats.clicked],
+    ["Bounced", stats.bounced],
+    ["Complaints", stats.complained],
+    ["Unsubscribed", stats.unsubscribed],
+    ["Suppressed", stats.suppressed],
+    ["Failed", stats.failed],
+  ];
+  const times = [
+    campaign.scheduledAt !== null ? `Scheduled ${formatWhen(campaign.scheduledAt)}` : null,
+    campaign.startedAt !== null ? `Started ${formatWhen(campaign.startedAt)}` : null,
+    campaign.finishedAt !== null ? `Finished ${formatWhen(campaign.finishedAt)}` : null,
+  ].filter((t): t is string => t !== null);
+
+  const canAct = canSend && (status === "scheduled" || status === "sending" || status === "paused");
+  return (
+    <>
+      <Toolbar>
+        {canAct && status === "scheduled" && (
+          <Button variant="outline" onClick={() => void act(() => unscheduleCampaignFn({ data: { id } }), "Schedule removed")}>
+            Unschedule
+          </Button>
+        )}
+        {canAct && status === "sending" && (
+          <Button variant="outline" onClick={() => void act(() => pauseCampaignFn({ data: { id } }), "Campaign paused")}>
+            Pause
+          </Button>
+        )}
+        {canAct && status === "paused" && (
+          <Button variant="outline" onClick={() => void act(() => resumeCampaignFn({ data: { id } }), "Campaign resumed")}>
+            Resume
+          </Button>
+        )}
+        {canAct && cancel}
+      </Toolbar>
+      <div className="grid gap-4 px-4 pb-4">
+        {times.length > 0 && <Hint>{times.join(" · ")}</Hint>}
+        <FormError message={loadError ?? (status === "paused" ? reasonText(campaign.error) : null)} />
+        {status === "sending" && (
+          <div className="flex items-center gap-3">
+            <MeterBar percent={percent} />
+            <span className="text-xs tabular-nums text-muted-foreground">
+              {campaign.recipients} of {audience ? audience.sendable : "..."}
+            </span>
+          </div>
+        )}
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          {tiles.map(([label, value]) => (
+            <StatTile key={label} label={label} value={String(value)} />
+          ))}
+        </div>
+      </div>
+    </>
+  );
+}

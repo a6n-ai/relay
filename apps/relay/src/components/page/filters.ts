@@ -1,5 +1,5 @@
 export type Facet = { key: string; label: string; options: { value: string; label: string }[] };
-export type Chip = { key: string; label: string; valueLabel: string };
+type Chip = { key: string; label: string; valueLabel: string };
 
 export function chipsFrom(search: Record<string, unknown>, facets: Facet[]): Chip[] {
   return facets.flatMap((f) => {

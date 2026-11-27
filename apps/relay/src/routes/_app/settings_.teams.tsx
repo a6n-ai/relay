@@ -1,26 +1,26 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { UsersRound } from "lucide-react";
 import { useState } from "react";
-import { ConfirmDialog } from "../../components/confirm-dialog";
-import { CreateDialog } from "../../components/create-dialog";
-import { DeniedState, deniedReason } from "../../components/denied-state";
+import { ConfirmDialog } from "../../components/page/confirm-dialog";
+import { CreateDialog } from "../../components/page/create-dialog";
+import { PageDenied } from "../../components/page/page-denied";
 import { EmptyState } from "../../components/page/empty-state";
 import { ListSkeleton } from "../../components/page/page-skeleton";
-import { ResourceTable } from "../../components/resource-table";
-import { confirmAction, runAction } from "../../components/run-action";
+import { ResourceTable } from "../../components/page/resource-table";
+import { confirmAction, runAction } from "../../components/lib/run-action";
 import { NewTeamForm } from "../../components/settings/new-team-form";
 import { RenameForm } from "../../components/form/rename-form";
 import { SuspendedNotice } from "../../components/settings/suspended-notice";
 import { TeamMembersDialog } from "../../components/settings/team-members-dialog";
 import { PageHeader } from "../../components/shell/page-header";
-import { useCan } from "../../components/use-can";
+import { useCan } from "../../components/lib/use-can";
 import { deleteTeamFn, fetchPeople, renameTeamFn, setTeamMemberFn } from "../../console/members.fns";
 
-const crumbs = [{ label: "Settings", to: "/settings" }, { label: "Teams" }];
 
 export const Route = createFileRoute("/_app/settings_/teams")({
+  staticData: { title: "Teams", copy: "Groups of members you can give access together." },
   loader: () => fetchPeople(),
-  pendingComponent: () => <ListSkeleton crumbs={[{ label: "Settings", to: "/settings" }, { label: "Teams" }]} columns={2} action />,
+  pendingComponent: () => <ListSkeleton columns={2} action />,
   component: TeamsPage,
 });
 
@@ -39,12 +39,7 @@ function TeamsPage() {
   const confirm = (action: () => Promise<unknown>, success: string) => confirmAction(action, success, () => router.invalidate());
 
   if (!people) {
-    return (
-      <>
-        <PageHeader crumbs={crumbs} />
-        <DeniedState reason={deniedReason(shell)} />
-      </>
-    );
+    return <PageDenied />;
   }
   const namesById = new Map(people.members.map((m) => [m.id, m.name]));
   const editingTeam = people.teams.find((t) => t.id === editing);
@@ -54,7 +49,6 @@ function TeamsPage() {
   return (
     <>
       <PageHeader
-        crumbs={crumbs}
         actions={
           canCreateTeam ? (
             <CreateDialog trigger="New team" title="New team">

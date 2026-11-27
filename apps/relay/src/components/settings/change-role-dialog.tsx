@@ -1,11 +1,10 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@foundry/ui/dialog";
-import { toast } from "@foundry/ui/toast";
-import { useRouter } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
 import { changeRoleFn } from "../../console/members.fns";
-import { errorText } from "../error-text";
-import { FormActions, FormBody, FormError } from "../page/form-parts";
-import { type MemberRole, RoleChoice } from "../role-select";
+import { FormActions, FormBody, FormError } from "../form/form-parts";
+import { RoleChoice } from "./role-select";
+import { type OrgRole } from "../../shared/roles";
+import { useSubmit } from "../lib/use-submit";
 
 // Opened from a row menu, so the parent owns open state.
 export function ChangeRoleDialog({
@@ -13,29 +12,18 @@ export function ChangeRoleDialog({
   canGrantOwner,
   onOpenChange,
 }: {
-  member: { id: string; name: string; role: MemberRole };
+  member: { id: string; name: string; role: OrgRole };
   canGrantOwner: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
-  const router = useRouter();
-  const [role, setRole] = useState<MemberRole>(member.role);
-  const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
+  const [role, setRole] = useState<OrgRole>(member.role);
+  const { pending, error, run } = useSubmit();
 
   async function submit(event: FormEvent) {
     event.preventDefault();
-    setPending(true);
-    setError(null);
-    try {
+    await run(async () => {
       await changeRoleFn({ data: { memberId: member.id, role } });
-      toast.success("Role updated", { description: member.name });
-      onOpenChange(false);
-      await router.invalidate();
-    } catch (err) {
-      setError(errorText(err, "Could not change the role."));
-    } finally {
-      setPending(false);
-    }
+    }, "Could not change the role.", { success: "Role updated", description: member.name, after: () => onOpenChange(false) });
   }
 
   return (

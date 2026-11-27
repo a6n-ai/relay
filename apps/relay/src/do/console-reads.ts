@@ -1,14 +1,17 @@
 import { and, asc, desc, eq, gt, lt, ne, or, sql, type SQL } from "drizzle-orm";
 import type { DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
+import type { SQLiteColumn } from "drizzle-orm/sqlite-core";
 import { safeDownloadName } from "../core/download";
-import { contactValues, parseMergeData, renderMerge } from "../core/merge";
+import { contactValues, parseMergeData, renderMerge } from "../shared/merge";
 import type { Env } from "../env";
-import type { Stream, SuppressionReason } from "../core/send-input";
-import type { AttachmentView, MessageView } from "./client-do";
+import type { AttachmentView, MessageView } from "./types";
 import * as schema from "./client-schema";
+import { keysetSlice, parseCursor } from "../core/cursor";
+import { type DeliveryView } from "../shared/views";
+import { type Stream, type SuppressionReason, type MessageStatus } from "../shared/mail";
+import { PAGE_SIZE } from "../shared/limits";
 
 export type MessageAccess = { out: boolean; inbound: "all" | string[] };
-export type MessageStatus = "queued" | "sent" | "failed" | "suppressed";
 
 export type MessageSummary = {
   id: string;
@@ -46,24 +49,12 @@ export type MessageDetail = MessageView & { events: EventView[]; thread: ThreadI
 
 type Db = DrizzleSqliteDODatabase<typeof schema>;
 
-const PAGE_SIZE = 50;
 const THREAD_LIMIT = 20;
-const ID_SHAPE = /^[a-z]{3}_[0-9A-Za-z_-]{12}$/;
-
-export function encodeCursor(createdAt: number, id: string): string {
-  return `${createdAt}.${id}`;
-}
-
-export function decodeCursor(raw: string): { createdAt: number; id: string } | null {
-  const dot = raw.indexOf(".");
-  if (dot < 1) return null;
-  const ts = raw.slice(0, dot);
-  const id = raw.slice(dot + 1);
-  if (!/^\d{1,15}$/.test(ts) || !ID_SHAPE.test(id)) return null;
-  return { createdAt: Number(ts), id };
-}
 
 // Non-correlated: the granted ids reach SQL as one bound JSON array, so the bound-parameter limit never applies.
+const olderThan = (createdAt: SQLiteColumn, id: SQLiteColumn, after: { createdAt: number; id: string }) =>
+  or(lt(createdAt, after.createdAt), and(eq(createdAt, after.createdAt), lt(id, after.id)));
+
 export function visibleTo(access: MessageAccess): SQL {
   const m = schema.message;
   const inbound =
@@ -74,8 +65,6 @@ export function visibleTo(access: MessageAccess): SQL {
 }
 
 export type SuppressionView = { email: string; reason: SuppressionReason; stream: Stream | null; createdAt: number };
-
-const SUPPRESSION_PAGE = 50;
 
 // Range, not LIKE: the primary key serves it and no wildcard in an address needs escaping. char(1114111) is the largest code point.
 export function listSuppressionRows(
@@ -93,27 +82,14 @@ export function listSuppressionRows(
       ),
     )
     .orderBy(asc(s.email))
-    .limit(SUPPRESSION_PAGE + 1)
+    .limit(PAGE_SIZE + 1)
     .all()
     .map((r): SuppressionView => ({ ...r, reason: r.reason as SuppressionReason, stream: r.stream as Stream | null }));
-  const page = rows.slice(0, SUPPRESSION_PAGE);
-  const nextCursor = rows.length > SUPPRESSION_PAGE ? page[SUPPRESSION_PAGE - 1].email : null;
+  const page = rows.slice(0, PAGE_SIZE);
+  const nextCursor = rows.length > PAGE_SIZE ? page[PAGE_SIZE - 1].email : null;
   return { rows: page, nextCursor };
 }
 
-// No payloadKey and no response body: the console shows status, attempts and the fixed reason only.
-export type DeliveryView = {
-  id: string;
-  messageId: string;
-  event: string;
-  status: "pending" | "sent" | "failed";
-  attempts: number;
-  responseStatus: number | null;
-  lastError: string | null;
-  nextAttemptAt: number;
-  createdAt: number;
-  updatedAt: number;
-};
 
 export function listDeliveryRows(
   db: Db,
@@ -121,8 +97,7 @@ export function listDeliveryRows(
 ): { rows: DeliveryView[]; nextCursor: string | null } {
   const d = schema.webhookDelivery;
   const m = schema.message;
-  const cursor = q.cursor === undefined ? undefined : decodeCursor(q.cursor);
-  if (q.cursor !== undefined && !cursor) throw new Error("invalid cursor");
+  const cursor = parseCursor(q.cursor);
   const rows = db
     .select({
       id: d.id,
@@ -144,18 +119,14 @@ export function listDeliveryRows(
         eq(d.webhookId, q.webhookId),
         // Outbound-only deliveries have no address, so the restricted filter drops them.
         q.visible === "all" ? undefined : sql`${m.addressId} IN (SELECT value FROM json_each(${JSON.stringify(q.visible)}))`,
-        cursor
-          ? or(lt(d.createdAt, cursor.createdAt), and(eq(d.createdAt, cursor.createdAt), lt(d.id, cursor.id)))
-          : undefined,
+        cursor ? olderThan(d.createdAt, d.id, cursor) : undefined,
       ),
     )
     .orderBy(desc(d.createdAt), desc(d.id))
     .limit(PAGE_SIZE + 1)
     .all()
     .map((r): DeliveryView => ({ ...r, status: r.status as DeliveryView["status"] }));
-  const page = rows.slice(0, PAGE_SIZE);
-  const last = page.at(-1);
-  const nextCursor = rows.length > PAGE_SIZE && last ? encodeCursor(last.createdAt, last.id) : null;
+  const { page, nextCursor } = keysetSlice(rows, PAGE_SIZE);
   return { rows: page, nextCursor };
 }
 
@@ -222,8 +193,7 @@ export function listMessageRows(
   access: MessageAccess,
 ): { rows: MessageSummary[]; nextCursor: string | null } {
   const m = schema.message;
-  const cursor = q.cursor === undefined ? undefined : decodeCursor(q.cursor);
-  if (q.cursor !== undefined && !cursor) throw new Error("invalid cursor");
+  const cursor = parseCursor(q.cursor);
   const rows = db
     .select({
       id: m.id,
@@ -245,18 +215,14 @@ export function listMessageRows(
         q.appId ? eq(m.appId, q.appId) : undefined,
         q.status ? eq(m.status, q.status) : undefined,
         q.email ? eq(q.direction === "out" ? m.toEmail : m.fromEmail, q.email) : undefined,
-        cursor
-          ? or(lt(m.createdAt, cursor.createdAt), and(eq(m.createdAt, cursor.createdAt), lt(m.id, cursor.id)))
-          : undefined,
+        cursor ? olderThan(m.createdAt, m.id, cursor) : undefined,
       ),
     )
     .orderBy(desc(m.createdAt), desc(m.id))
     .limit(PAGE_SIZE + 1)
     .all()
     .map((r): MessageSummary => ({ ...r, direction: r.direction as "in" | "out", status: r.status as MessageStatus }));
-  const page = rows.slice(0, PAGE_SIZE);
-  const last = page.at(-1);
-  const nextCursor = rows.length > PAGE_SIZE && last ? encodeCursor(last.createdAt, last.id) : null;
+  const { page, nextCursor } = keysetSlice(rows, PAGE_SIZE);
   return { rows: page, nextCursor };
 }
 

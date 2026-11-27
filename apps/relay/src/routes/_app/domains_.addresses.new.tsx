@@ -3,39 +3,39 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { MailIcon } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { Button } from "@foundry/ui/button";
-import { DeniedState, deniedReason } from "../../components/denied-state";
-import { errorText } from "../../components/error-text";
+import { PageDenied } from "../../components/page/page-denied";
+import { errorText } from "../../components/lib/error-text";
+import { codeOf } from "../../shared/errors";
 import { AppField, needsAppChoice } from "../../components/form/app-field";
 import { ChoiceField } from "../../components/form/choice-field";
 import { DomainEmailInput } from "../../components/form/domain-email-input";
 import { TextField } from "../../components/form/text-field";
 import { CreatePage } from "../../components/page/create-page";
 import { EmptyState } from "../../components/page/empty-state";
-import { FormActions, FormError } from "../../components/page/form-parts";
+import { FormActions, FormError } from "../../components/form/form-parts";
 import { SettingsCard } from "../../components/page/settings-card";
 import { PageHeader } from "../../components/shell/page-header";
-import { useCan } from "../../components/use-can";
-import { fetchApps } from "../../console/apps.fns";
+import { useCan } from "../../components/lib/use-can";
 import { addAddressFn, fetchDomains } from "../../console/domains.fns";
-import { type Kind, KINDS, LOCAL_RE } from "../../lib/address-kinds";
+import { type Kind, KINDS, LOCAL_RE } from "../../components/lib/address-kinds";
+import { EMAIL_MAX, NAME_MAX } from "../../shared/limits";
+import { str } from "../../components/lib/route-search";
 
 export const Route = createFileRoute("/_app/domains_/addresses/new")({
   validateSearch: (search: Record<string, unknown>): { appId?: string } => ({
-    appId: typeof search.appId === "string" && search.appId ? search.appId : undefined,
+    appId: str(search.appId),
   }),
-  loader: async () => {
-    const [domains, apps] = await Promise.all([fetchDomains(), fetchApps()]);
-    return { domains: domains ?? [], apps: apps ?? [] };
-  },
+  loader: async () => ({ domains: (await fetchDomains()) ?? [] }),
   component: AddAddressPage,
 });
 
 const crumbs = [{ label: "Domains", to: "/domains" }, { label: "Add address" }];
 
 function AddAddressPage() {
-  const { domains, apps } = Route.useLoaderData();
+  const { domains } = Route.useLoaderData();
   const { appId: scopeParam } = Route.useSearch();
   const { shell } = Route.useRouteContext();
+  const { apps } = shell;
   const canWrite = useCan({ sending: ["write"] });
   const navigate = useNavigate();
   const [address, setAddress] = useState({ local: "", domain: "" });
@@ -49,12 +49,7 @@ function AddAddressPage() {
   const [pending, setPending] = useState(false);
 
   if (!canWrite) {
-    return (
-      <>
-        <PageHeader crumbs={crumbs} />
-        <DeniedState reason={deniedReason(shell)} />
-      </>
-    );
+    return <PageDenied crumbs={crumbs} />;
   }
 
   const blocker =
@@ -110,8 +105,8 @@ function AddAddressPage() {
       await navigate({ to: "/domains/addresses/$addressId", params: { addressId: created.id } });
     } catch (err) {
       const text = errorText(err, "Could not add the address.");
-      if (err instanceof Error && err.message === "address already exists") setServerError("That address already exists.");
-      else if (err instanceof Error && err.message === "domain not verified") setServerError(`Verify ${address.domain} first to receive mail on it.`);
+      if (codeOf(err) === "address already exists") setServerError("That address already exists.");
+      else if (codeOf(err) === "domain not verified") setServerError(`Verify ${address.domain} first to receive mail on it.`);
       else setError(text);
     } finally {
       setPending(false);
@@ -157,7 +152,7 @@ function AddAddressPage() {
             id="address-name"
             label="Name (optional)"
             hint="Shown to recipients as the sender name."
-            maxLength={80}
+            maxLength={NAME_MAX}
             placeholder={appName ?? "Support"}
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -166,7 +161,7 @@ function AddAddressPage() {
             id="address-reply-to"
             label="Reply-To (optional)"
             type="email"
-            maxLength={254}
+            maxLength={EMAIL_MAX}
             placeholder={address.local && address.domain ? email : "Same as the address"}
             value={replyTo}
             onChange={(e) => setReplyTo(e.target.value)}

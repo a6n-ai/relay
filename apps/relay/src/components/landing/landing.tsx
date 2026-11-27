@@ -5,7 +5,8 @@ import { DevTabs } from "./dev-tabs";
 import { LifecycleRail, RailSteps, STAGES } from "./lifecycle-rail";
 import { HeroScene, Scene } from "./scene";
 import "./landing.css";
-import { Docs, SiteHeader, Wrap, big } from "../site-header";
+import { Docs, SiteHeader, Wrap, big } from "./site-header";
+import { DOCS_BASE } from "../../shared/site";
 
 const SignIn = ({ hero }: { hero?: boolean }) => (
   <Button size={hero ? "lg" : "default"} className={`ld-signin ${big(hero)}`} render={<Link to="/sign-in" search={{ redirect: undefined }} />}>
@@ -209,7 +210,7 @@ export function Landing() {
                 </h2>
                 <p className="mt-6 max-w-xl text-lede text-muted-foreground">Create an app, copy its key, and run the curl above.</p>
                 <div className="mt-8 flex flex-wrap gap-2">
-                  <Docs href="/docs/quickstart/" hero />
+                  <Docs href={`${DOCS_BASE}/quickstart/`} hero />
                   <SignIn hero />
                 </div>
               </div>
@@ -223,7 +224,7 @@ export function Landing() {
           <Wrap className="flex flex-col gap-4 py-8 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
             <span>Relay by a6n. © {new Date().getFullYear()}</span>
             <nav aria-label="Footer" className="flex flex-wrap gap-x-5 gap-y-1">
-              <a href="/docs/" className="ld-link inline-flex min-h-6 items-center hover:text-foreground">
+              <a href={`${DOCS_BASE}/`} className="ld-link inline-flex min-h-6 items-center hover:text-foreground">
                 Docs
               </a>
               <Link to="/sign-in" search={{ redirect: undefined }} className="ld-link inline-flex min-h-6 items-center hover:text-foreground">

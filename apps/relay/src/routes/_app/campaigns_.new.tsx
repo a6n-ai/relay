@@ -1,82 +1,69 @@
-import { toast } from "@foundry/ui/toast";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { type FormEvent, useEffect, useState } from "react";
-import { DeniedState, deniedReason } from "../../components/denied-state";
-import { errorText } from "../../components/error-text";
+import { PageDenied } from "../../components/page/page-denied";
 import { AppField, needsAppChoice } from "../../components/form/app-field";
 import { ChoiceField } from "../../components/form/choice-field";
-import { TextField } from "../../components/form/text-field";
+import { NameField } from "../../components/form/text-field";
 import { CreatePage } from "../../components/page/create-page";
 import { NoAppState } from "../../components/page/no-app-state";
-import { FormActions, FormError } from "../../components/page/form-parts";
+import { FormActions, FormError } from "../../components/form/form-parts";
 import { SettingsCard } from "../../components/page/settings-card";
-import { PageHeader } from "../../components/shell/page-header";
-import { useCan } from "../../components/use-can";
-import { fetchApps } from "../../console/apps.fns";
+import { useCan } from "../../components/lib/use-can";
 import { createCampaignFn } from "../../console/campaigns.fns";
 import { fetchTemplates } from "../../console/templates.fns";
+import { str } from "../../components/lib/route-search";
+import { useSubmit } from "../../components/lib/use-submit";
+import { startApp } from "../../shared/scope";
+import { useLoad } from "../../components/lib/use-load";
 
 export const Route = createFileRoute("/_app/campaigns_/new")({
   validateSearch: (search: Record<string, unknown>): { appId?: string } => ({
-    appId: typeof search.appId === "string" && search.appId ? search.appId : undefined,
+    appId: str(search.appId),
   }),
-  loader: async () => ({ apps: (await fetchApps()) ?? [] }),
   component: NewCampaignPage,
 });
 
 const crumbs = [{ label: "Campaigns", to: "/campaigns" }, { label: "New campaign" }];
 
 function NewCampaignPage() {
-  const { apps } = Route.useLoaderData();
   const { appId: scopeParam } = Route.useSearch();
   const { shell } = Route.useRouteContext();
+  const { apps } = shell;
   const canWrite = useCan({ campaign: ["write"] });
   const navigate = useNavigate();
   const scopedAppId = apps.some((a) => a.id === scopeParam) ? scopeParam : undefined;
-  const [app, setApp] = useState(scopedAppId ?? apps[0]?.id ?? "");
+  const [app, setApp] = useState(startApp(apps, scopedAppId) ?? "");
   const [name, setName] = useState("");
   const [template, setTemplate] = useState("blank");
   const [choices, setChoices] = useState<{ id: string; name: string; subject?: string }[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
+  const { pending, error, setError, run } = useSubmit();
 
-  // Templates belong to one app, so they reload when the app changes.
-  useEffect(() => {
-    setTemplate("blank");
-    if (!app) return;
-    let live = true;
-    fetchTemplates({ data: { appId: app } })
-      .then((t) => live && setChoices(t?.rows ?? []))
-      .catch(() => live && setChoices([]));
-    return () => {
-      live = false;
-    };
-  }, [app]);
+  useEffect(() => setTemplate("blank"), [app]);
+  useLoad(app ? () => fetchTemplates({ data: { appId: app } }) : null, [app], {
+    onData: (t) => setChoices(t?.rows ?? []),
+    onError: (copy) => {
+      setChoices([]);
+      setError(copy);
+    },
+    fallback: "Could not load the templates.",
+  });
 
   if (!canWrite) {
-    return (
-      <>
-        <PageHeader crumbs={crumbs} />
-        <DeniedState reason={deniedReason(shell)} />
-      </>
-    );
+    return <PageDenied crumbs={crumbs} />;
   }
   if (apps.length === 0) return <NoAppState crumbs={crumbs} what="Campaigns" />;
 
   async function submit(event: FormEvent) {
     event.preventDefault();
-    setPending(true);
-    setError(null);
-    try {
+    await run(async () => {
       const templateId = template !== "blank" ? template : undefined;
-      const campaign = await createCampaignFn({ data: { appId: app, name, templateId } });
-      toast.success("Campaign created", { description: name });
-      await navigate({ to: "/campaigns/$campaignId", params: { campaignId: campaign.id }, search: { appId: app } });
-    } catch (err) {
-      setError(errorText(err, "Could not create this campaign."));
-    } finally {
-      setPending(false);
-    }
+      return createCampaignFn({ data: { appId: app, name, templateId } });
+    }, "Could not create this campaign.", {
+      success: "Campaign created",
+      description: name,
+      invalidate: false,
+      after: (campaign) => navigate({ to: "/campaigns/$campaignId", params: { campaignId: campaign.id }, search: { appId: app } }),
+    });
   }
 
   const describe = choices.length <= 2;
@@ -86,7 +73,7 @@ function NewCampaignPage() {
       <SettingsCard title="Details" description="Name the campaign and pick where it starts.">
         <div className="grid gap-4">
           <AppField apps={apps} scopedAppId={scopedAppId} value={app} onChange={setApp} id="campaign-app" autoFocus={choose} />
-          <TextField id="campaign-name" label="Name" autoFocus={!choose} required maxLength={80} placeholder="Product update" value={name} onChange={(e) => setName(e.target.value)} />
+          <NameField id="campaign-name" autoFocus={!choose} placeholder="Product update" value={name} onChange={(e) => setName(e.target.value)} />
           <ChoiceField
             id="campaign-template"
             label="Start from"

@@ -1,5 +1,5 @@
 import { env, runInDurableObject, SELF } from "cloudflare:test";
-import { afterEach, beforeAll, beforeEach, describe, expect, it, vi, type MockInstance } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { brandDomain } from "../src/core/campaigns";
 import { readUnsubscribeToken, unsubscribeToken } from "../src/core/unsubscribe";
 import { coreDb } from "../src/db/core/client";
@@ -21,14 +21,13 @@ const marketing = {
 };
 const POST = { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: "List-Unsubscribe=One-Click" };
 
-let enqueue: MockInstance<typeof env.SEND.send>;
 
 beforeAll(async () => {
   await applyMigrations();
 });
 
 beforeEach(() => {
-  enqueue = vi.spyOn(env.SEND, "send").mockResolvedValue(undefined as never);
+  vi.spyOn(env.SEND, "send").mockResolvedValue(undefined as never);
 });
 
 afterEach(() => {

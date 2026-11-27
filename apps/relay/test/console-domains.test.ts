@@ -2,7 +2,7 @@ import { env, runInDurableObject, SELF } from "cloudflare:test";
 import { eq } from "drizzle-orm";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { requireActor } from "../src/console/actor";
-import { addApp } from "../src/console/apps";
+import { addApp } from "../src/services/apps";
 import {
   addAddress,
   addDomain,
@@ -11,9 +11,10 @@ import {
   listDomains,
   removeAddress,
   updateAddress,
-} from "../src/console/domains";
+} from "../src/services/domains";
 import { createAddressGrant } from "../src/core/addresses";
-import { LIMITS_KEY, refreshWorkspaceLimits, type WorkspaceLimits } from "../src/core/limits";
+import { LIMITS_KEY, type WorkspaceLimits } from "../src/core/limits";
+import { refreshWorkspaceLimits } from "../src/services/limits";
 import { memorySesIdentity } from "../src/core/ses-identity";
 import { coreDb } from "../src/db/core/client";
 import { address, sendingDomain } from "../src/db/core/schema";
@@ -23,7 +24,7 @@ import backfill from "../drizzle/core/0006_address_can_send_follows_kind.sql?raw
 import { addMember, cookieFor, createWorkspace, headersFor, ORIGIN, setActive } from "./console-helpers";
 import { applyMigrations } from "./migrate";
 
-const WRITE = { permission: { sending: ["write"] }, write: true };
+const WRITE = { permission: { sending: ["write"] }, write: true } as const;
 
 beforeAll(async () => {
   await applyMigrations();
@@ -226,17 +227,21 @@ describe("console sending domains and addresses", { timeout: 60_000 }, () => {
     expect(await coreDb(env).select().from(address).where(eq(address.id, id))).toHaveLength(0);
   });
 
-  it("logs only the workspace id when a limits refresh fails, and does not throw", async () => {
-    vi.spyOn(env.CLIENT, "get").mockReturnValue({
-      refreshLimits: async () => {
-        throw new Error("boom g@leak.test");
+  it("swallows a failed limits refresh, logs its cause and leaks no address into the logs", async () => {
+    const failing = {
+      ...env,
+      CLIENT: {
+        idFromName: () => {
+          throw new Error("boom g@leak.test");
+        },
       },
-    } as never);
+    } as unknown as typeof env;
     const errors = vi.spyOn(console, "error").mockImplementation(() => {});
 
-    await expect(refreshWorkspaceLimits(env, "wsp_logs")).resolves.toBeUndefined();
-    expect(errors).toHaveBeenCalledWith("refreshLimits failed", "wsp_logs");
-    expect(JSON.stringify(errors.mock.calls)).not.toContain("@");
+    await expect(refreshWorkspaceLimits(failing, "wsp_logs")).resolves.toBeUndefined();
+    const logged = JSON.stringify(errors.mock.calls);
+    expect(logged).toContain("boom");
+    expect(logged).not.toContain("g@leak.test");
   });
 
   it("requires a verified domain for an inbox or both address, but lets a sender go out on a pending one", async () => {

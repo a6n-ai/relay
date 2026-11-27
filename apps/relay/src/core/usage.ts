@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import { coreDb } from "../db/core/client";
 import { usageDaily } from "../db/core/schema";
 import type { Env } from "../env";
+import { describeError } from "./log";
 
 export function utcDay(ms: number): string {
   return new Date(ms).toISOString().slice(0, 10);
@@ -38,6 +39,6 @@ export async function bumpUsage(
         },
       });
   } catch (err) {
-    console.error("usage: failed to bump usage_daily", workspaceId, day, err);
+    console.error("usage: failed to bump usage_daily", workspaceId, day, describeError(err));
   }
 }

@@ -1,9 +1,9 @@
 import { env, SELF } from "cloudflare:test";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { beforeAll, describe, expect, it } from "vitest";
-import { resolveApiKey } from "../src/core/api-keys";
+import { resolveApiKey } from "../src/services/api-keys";
 import { guardInternal } from "../src/core/internal-guard";
-import { seed } from "../src/core/seed";
+import { seed } from "../src/jobs/seed";
 import { memorySesIdentity } from "../src/core/ses-identity";
 import { securityDb } from "../src/db/security/client";
 import { coreDb } from "../src/db/core/client";
@@ -45,6 +45,7 @@ describe("seed", () => {
     expect(await resolveApiKey(env, result.apiKey)).toEqual({
       workspaceId: result.workspaceId,
       appId: result.appId,
+      userId: null,
       keyId: expect.any(String),
     });
     const [owner] = await db.select().from(user).where(eq(user.email, "a@example.com"));
@@ -106,7 +107,7 @@ describe("seed", () => {
   });
 
   it("creates the sending domain once and refuses a domain owned by another workspace", async () => {
-    const domainInput = { ...input, workspace: { name: "Dom", slug: "dom" }, domain: { domain: "Mail.Dom.test", sesRegion: "ca-central-1" } };
+    const domainInput = { ...input, workspace: { name: "Dom", slug: "dom" }, domain: { domain: "Mail.Dom.test", sesRegion: "us-east-1" as const } };
     const first = await seed(env, domainInput);
     await seed(env, domainInput);
 

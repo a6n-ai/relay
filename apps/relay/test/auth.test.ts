@@ -5,11 +5,12 @@ import { coreDb } from "../src/db/core/client";
 import { address, sendingDomain, workspaceProfile } from "../src/db/core/schema";
 import { securityDb } from "../src/db/security/client";
 import { app, member, rateLimit, securityAudit, session, team, user, verification, workspace } from "../src/db/security/schema";
-import { createAuth, pickMailer } from "../src/lib/auth";
-import { writeAudit } from "../src/lib/auth/audit";
-import { consoleInviteMailer, memoryInviteMailer, pickInviteMailer } from "../src/lib/auth/invite-mailer";
-import { memoryOtpMailer } from "../src/lib/auth/otp-mailer";
-import { newId } from "../src/lib/ids";
+import { createAuth } from "../src/auth";
+import { pickInviteMailer, pickMailer } from "../src/auth/mailers";
+import { writeAudit } from "../src/auth/audit";
+import { consoleInviteMailer, memoryInviteMailer } from "../src/auth/invite-mailer";
+import { memoryOtpMailer } from "../src/auth/otp-mailer";
+import { newId } from "../src/shared/ids";
 import type { Env } from "../src/env";
 import { applyMigrations } from "./migrate";
 import { BASE, cookieFor, createWorkspace, freshIp, insertUser, json, ORIGIN, sendOtp, signIn } from "./console-helpers";
@@ -123,10 +124,11 @@ describe("better-auth on D1", () => {
     expect(rows).toHaveLength(0);
   });
 
-  it("fails closed when the OTP mailer is unset or unknown", () => {
+  it("fails closed when the OTP mailer is unset or unknown", async () => {
     expect(() => pickMailer(undefined, env as Env)).toThrow("no OTP mailer configured");
     expect(() => pickMailer("smtp" as Env["OTP_MAILER"], env as Env)).toThrow("no OTP mailer configured");
-    expect(pickMailer("memory", env as Env)).toBe(memoryOtpMailer);
+    await pickMailer("memory", env as Env).send("picked@example.com", "654321", "sign-in");
+    expect(memoryOtpMailer.lastOtp("picked@example.com")).toBe("654321");
   });
 
   it("throws when BETTER_AUTH_SECRET is missing", () => {
@@ -347,8 +349,7 @@ describe("admin and organization plugins", () => {
 describe("invite mailer", () => {
   it("fails closed when unset and stores the invite id for memory", async () => {
     expect(() => pickInviteMailer(undefined, env as Env)).toThrow("no invite mailer configured");
-    expect(pickInviteMailer("memory", env as Env)).toBe(memoryInviteMailer);
-    await memoryInviteMailer.send("Memo@Example.com", { id: "inv_abc", role: "member" });
+    await pickInviteMailer("memory", env as Env).send("Memo@Example.com", { id: "inv_abc", role: "member" });
     expect(memoryInviteMailer.lastInvite("memo@example.com")?.id).toBe("inv_abc");
   });
 

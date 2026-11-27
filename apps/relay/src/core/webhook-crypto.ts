@@ -1,32 +1,21 @@
-export const KEY_ERROR = "webhook key not configured";
+import { fromBase64, hmacSha256, toBase64, toHex } from "./crypto";
+import { RelayError } from "../shared/errors";
 const DECRYPT_ERROR = "webhook secret could not be decrypted";
 const encoder = new TextEncoder();
 
 let cachedKey: { keyB64: string; key: Promise<CryptoKey> } | undefined;
 
-function fromB64(value: string): Uint8Array<ArrayBuffer> {
-  return new Uint8Array(Array.from(atob(value), (c) => c.charCodeAt(0)));
-}
-
-function toB64(bytes: Uint8Array): string {
-  return btoa(String.fromCharCode(...bytes));
-}
-
-function toHex(bytes: Uint8Array): string {
-  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
-}
-
 // Imported once per isolate; a changed key string gets a fresh import.
 function aesKey(keyB64: string | undefined): Promise<CryptoKey> {
-  if (!keyB64) throw new Error(KEY_ERROR);
+  if (!keyB64) throw new RelayError("webhook key not configured");
   if (cachedKey?.keyB64 === keyB64) return cachedKey.key;
   let raw: Uint8Array<ArrayBuffer>;
   try {
-    raw = fromB64(keyB64);
+    raw = fromBase64(keyB64);
   } catch {
-    throw new Error(KEY_ERROR);
+    throw new RelayError("webhook key not configured");
   }
-  if (raw.length !== 32) throw new Error(KEY_ERROR);
+  if (raw.length !== 32) throw new RelayError("webhook key not configured");
   const key = crypto.subtle.importKey("raw", raw, "AES-GCM", false, ["encrypt", "decrypt"]);
   cachedKey = { keyB64, key };
   return key;
@@ -48,7 +37,7 @@ export async function encryptSecret(
     key,
     encoder.encode(plaintext),
   );
-  return `v1:${toB64(iv)}:${toB64(new Uint8Array(ciphertext))}`;
+  return `v1:${toBase64(iv)}:${toBase64(new Uint8Array(ciphertext))}`;
 }
 
 export async function decryptSecret(
@@ -63,9 +52,9 @@ export async function decryptSecret(
   }
   try {
     const plaintext = await crypto.subtle.decrypt(
-      { name: "AES-GCM", iv: fromB64(ivB64), additionalData: encoder.encode(aad) },
+      { name: "AES-GCM", iv: fromBase64(ivB64), additionalData: encoder.encode(aad) },
       key,
-      fromB64(ciphertextB64),
+      fromBase64(ciphertextB64),
     );
     return new TextDecoder().decode(plaintext);
   } catch {
@@ -74,13 +63,5 @@ export async function decryptSecret(
 }
 
 export async function signBody(secret: string, body: string): Promise<string> {
-  const key = await crypto.subtle.importKey(
-    "raw",
-    encoder.encode(secret),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"],
-  );
-  const signature = await crypto.subtle.sign("HMAC", key, encoder.encode(body));
-  return toHex(new Uint8Array(signature));
+  return toHex(await hmacSha256(secret, body));
 }

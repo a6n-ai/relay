@@ -14,7 +14,7 @@ import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { BellIcon, TriangleAlertIcon } from "lucide-react";
 import { toast } from "@foundry/ui/toast";
-import { apiFetch } from "./api-fetch";
+import { apiAction, apiFetch } from "./api-fetch";
 import "@uiw/react-md-editor/markdown-editor.css";
 import { Button } from "@foundry/ui/button";
 import { Input } from "@foundry/ui/input";
@@ -26,8 +26,6 @@ import type { FooterInfo } from "../template";
 
 const MDEditor = dynamic(() => import("@uiw/react-md-editor"), { ssr: false });
 
-// Shared top-level layout shell — the real render and TemplateEditorSkeleton
-// both key off this so the loading state stays structurally in sync.
 const editorShell = {
   root: "space-y-4",
   toolbar: "flex flex-wrap items-center gap-4",
@@ -109,20 +107,18 @@ export function TemplateEditor({
     } else {
       payload = { ...payload, body };
     }
-    try {
-      await apiFetch("/api/notifications/templates", {
+    const res = await apiAction(
+      apiFetch("/api/notifications/templates", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(payload),
-      });
-      toast.success("Template saved");
-      // Picks up the new revision for the next save (templates are live: explicit Save only, no autosave).
-      router.refresh();
-    } catch {
-      // apiFetch already toasted the failure detail.
-    } finally {
-      setBusy(false);
-    }
+      }),
+    );
+    setBusy(false);
+    if (!res) return;
+    toast.success("Template saved");
+    // Picks up the new revision for the next save (templates are live: explicit Save only, no autosave).
+    router.refresh();
   }
 
   return (
@@ -233,7 +229,6 @@ export function TemplateEditorSkeleton() {
   );
 }
 
-/** Mirrors renderInApp: interpolated title + plaintext body, no markdown/email chrome. */
 function InAppPreview({ title, body }: { title: string; body: string }) {
   return (
     <div className="rounded-xl border bg-card p-4">

@@ -5,7 +5,7 @@ import { PaperclipIcon, XIcon } from "lucide-react";
 import { toast } from "@foundry/ui/toast";
 import { Button, buttonVariants } from "@foundry/ui/button";
 import { FileUpload, FileUploadDropzone, FileUploadTrigger } from "@foundry/ui/file-upload";
-import { apiFetch } from "./api-fetch";
+import { apiAction, apiFetch } from "./api-fetch";
 
 export interface CampaignAttachment {
   filename: string;
@@ -33,19 +33,18 @@ export function CampaignAttachments({
   async function upload(file: File) {
     if (file.size > MAX_BYTES) return toast.error(`${file.name} is larger than 10MB`);
     setBusy(true);
-    try {
-      const body = new FormData();
-      body.set("file", file);
-      const detail = await apiFetch<{ url: string; fileName: string; type?: string }>(
-        "/api/notifications/campaigns/attachments",
-        { method: "POST", body },
-      );
-      onChange([...value, { filename: detail.fileName, url: detail.url, contentType: detail.type ?? file.type }]);
-    } catch {
-      // apiFetch already toasted the failure detail.
-    } finally {
-      setBusy(false);
-    }
+    const body = new FormData();
+    body.set("file", file);
+    const res = await apiAction(
+      apiFetch<{ url: string; fileName: string; type?: string }>("/api/notifications/campaigns/attachments", {
+        method: "POST",
+        body,
+      }),
+    );
+    setBusy(false);
+    if (!res) return;
+    const detail = res.data;
+    onChange([...value, { filename: detail.fileName, url: detail.url, contentType: detail.type ?? file.type }]);
   }
 
   return (

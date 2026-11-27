@@ -1,8 +1,8 @@
-import { LIMITS_KEY } from "../src/core/limits";
+import { LIMITS_KEY, LIMITS_TTL_MS, SENDER_RETRY_MS } from "../src/core/limits";
 import { env, runInDurableObject, SELF } from "cloudflare:test";
 import { eq } from "drizzle-orm";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { createApiKey } from "../src/core/api-keys";
+import { createApiKey } from "../src/services/api-keys";
 import { coreDb } from "../src/db/core/client";
 import { address, sendingDomain, workspaceProfile } from "../src/db/core/schema";
 import { securityDb } from "../src/db/security/client";
@@ -206,7 +206,7 @@ describe("send policy", () => {
 
     await runInDurableObject(stub, (_instance, state) => {
       const snapshot = state.storage.kv.get<{ fetchedAt: number }>(LIMITS_KEY)!;
-      state.storage.kv.put(LIMITS_KEY, { ...snapshot, fetchedAt: Date.now() - 61_000 });
+      state.storage.kv.put(LIMITS_KEY, { ...snapshot, fetchedAt: Date.now() - SENDER_RETRY_MS - 1_000 });
     });
     expect((await stub.send("wsp_late", { ...base, from: "hello@later.ca" })).status).toBe("queued");
   });
@@ -221,7 +221,7 @@ describe("send policy", () => {
     await stale.send("wsp_stale", base);
     await runInDurableObject(stale, (_instance, state) => {
       const snapshot = state.storage.kv.get<{ fetchedAt: number }>(LIMITS_KEY)!;
-      state.storage.kv.put(LIMITS_KEY, { ...snapshot, fetchedAt: Date.now() - 301_000 });
+      state.storage.kv.put(LIMITS_KEY, { ...snapshot, fetchedAt: Date.now() - LIMITS_TTL_MS - 1_000 });
     });
 
     vi.spyOn(console, "error").mockImplementation(() => {});
@@ -230,7 +230,7 @@ describe("send policy", () => {
     });
 
     expect((await stale.send("wsp_stale", base)).status).toBe("queued");
-    expect(await refusal(stubFor("wsp_cold"), "wsp_cold", { ...base, from: "cold@cold.ca" })).toBe("sender_not_verified");
+    expect(await refusal(stubFor("wsp_cold"), "wsp_cold", { ...base, from: "cold@cold.ca" })).toBe("limits unavailable");
   });
 
   it("maps refusals to HTTP status codes", async () => {

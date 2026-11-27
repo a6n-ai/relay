@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { looksLikeDomain, normaliseDomainInput } from "../src/lib/domain-input";
+import { looksLikeDomain, normaliseDomainInput } from "../src/components/lib/domain-input";
 
 describe("normaliseDomainInput", () => {
   it.each([

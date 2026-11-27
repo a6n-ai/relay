@@ -1,54 +1,44 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { MailIcon } from "lucide-react";
-import { DeniedState, deniedReason } from "../../components/denied-state";
-import { type MessagesSearch, parseMessagesSearch } from "../../components/messages-search";
+import { PageDenied } from "../../components/page/page-denied";
+import { type MessagesSearch, parseMessagesSearch } from "../../components/messages/messages-search";
 import { FilterMenu } from "../../components/page/filter-menu";
 import { EmptyState } from "../../components/page/empty-state";
 import { LoadMore } from "../../components/page/load-more";
 import { SearchInput, Toolbar } from "../../components/page/toolbar";
 import { useUrlFilter } from "../../components/page/use-url-filter";
 import { ListSkeleton } from "../../components/page/page-skeleton";
-import { ResourceTable } from "../../components/resource-table";
+import { ResourceTable } from "../../components/page/resource-table";
 import { PageHeader } from "../../components/shell/page-header";
-import { StatusBadge } from "../../components/status-badge";
-import { fetchApps } from "../../console/apps.fns";
+import { StatusBadge } from "../../components/page/status-badge";
 import { fetchMessages } from "../../console/messages.fns";
-import { formatWhen } from "../../lib/format-date";
+import { formatWhen } from "../../components/lib/format-date";
+import { MESSAGE_STATUSES } from "../../shared/mail";
+import { PAGE_SIZE } from "../../shared/limits";
+import { posInt, untyped } from "../../components/lib/route-search";
 
 export const Route = createFileRoute("/_app/messages")({
+  staticData: { title: "Messages", copy: "Every email you send and receive, with its delivery status.", scoped: "all" },
   validateSearch: (raw: Record<string, unknown>): MessagesSearch & { offset?: number } => ({
     ...parseMessagesSearch(raw),
-    offset: typeof raw.offset === "number" && raw.offset > 0 ? Math.floor(raw.offset) : undefined,
+    offset: posInt(raw.offset),
   }),
   loaderDeps: ({ search }) => search,
-  loader: async ({ deps: { appId, offset: _offset, ...rest } }) => {
-    const [page, apps] = await Promise.all([fetchMessages({ data: { ...rest, app: appId } }), fetchApps()]);
-    return page ? { ...page, apps: apps ?? [] } : null;
-  },
-  pendingComponent: () => <ListSkeleton crumbs={[{ label: "Messages" }, { label: "Sent" }]} columns={4} search filter />,
+  loader: ({ deps: { appId, offset: _offset, ...rest } }) => fetchMessages({ data: { ...rest, app: appId } }),
+  pendingComponent: () => <ListSkeleton columns={4} search filter />,
   component: MessagesPage,
 });
 
-type Status = NonNullable<MessagesSearch["status"]>;
-const STATUSES: Status[] = ["queued", "sent", "failed", "suppressed"];
-const PAGE = 50;
 
 function MessagesPage() {
   const page = Route.useLoaderData();
   const search = Route.useSearch();
   const { shell } = Route.useRouteContext();
   const navigate = useNavigate({ from: "/messages" });
-  const label = search.dir === "in" ? "Received" : "Sent";
-  const crumbs = [{ label: "Messages" }, { label }];
   const [email, setEmail] = useUrlFilter("email", { resetCursor: true });
 
   if (!page) {
-    return (
-      <>
-        <PageHeader crumbs={crumbs} />
-        <DeniedState reason={deniedReason(shell)} />
-      </>
-    );
+    return <PageDenied />;
   }
   const filtered = Boolean(search.status || search.email || search.appId);
   const empty =
@@ -65,7 +55,7 @@ function MessagesPage() {
     );
   return (
     <>
-      <PageHeader crumbs={crumbs} />
+      <PageHeader />
       <Toolbar
         search={
           <SearchInput
@@ -77,11 +67,11 @@ function MessagesPage() {
         filters={
           <FilterMenu
             facets={[
-              { key: "status", label: "Status", options: STATUSES.map((s) => ({ value: s, label: s[0].toUpperCase() + s.slice(1) })) },
-              { key: "appId", label: "App", options: page.apps.map((a) => ({ value: a.id, label: a.name })) },
+              { key: "status", label: "Status", options: MESSAGE_STATUSES.map((s) => ({ value: s, label: s[0].toUpperCase() + s.slice(1) })) },
+              { key: "appId", label: "App", options: shell.apps.map((a) => ({ value: a.id, label: a.name })) },
             ]}
             value={search}
-            onChange={(next) => navigate({ search: next as never })}
+            onChange={(next) => navigate({ search: untyped(next) })}
           />
         }
       />
@@ -103,7 +93,7 @@ function MessagesPage() {
         hasMore={Boolean(page.nextCursor)}
         to="/messages"
         offset={search.cursor ? search.offset : undefined}
-        pageSize={PAGE}
+        pageSize={PAGE_SIZE}
         search={{ ...search, cursor: page.nextCursor }}
         resetTo={search.cursor ? "/messages" : undefined}
         resetSearch={{ ...search, cursor: undefined }}

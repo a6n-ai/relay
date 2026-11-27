@@ -1,16 +1,18 @@
 import { env, SELF } from "cloudflare:test";
 import { beforeAll, describe, expect, it } from "vitest";
-import { requireActor, uniqueViolation } from "../src/console/actor";
-import { addApp, createKey, deleteAudienceHookFor, deleteKey, getApp, listApps, listKeys, renameApp, renameKey, revokeKey, setAudienceHookFor } from "../src/console/apps";
+import { requireActor } from "../src/console/actor";
+import { uniqueViolation } from "../src/auth/session";
+import { addApp, createKey, deleteKey, getApp, listApps, listKeys, renameApp, renameKey, revokeKey } from "../src/services/apps";
+import { deleteAudienceHook, setAudienceHook } from "../src/services/audience-hook";
 import { createApp } from "../src/core/apps";
-import { clientFor } from "../src/core/messages";
-import { resolveApiKey } from "../src/core/api-keys";
+import { clientFor } from "../src/do/client";
+import { resolveApiKey } from "../src/services/api-keys";
 import { addMember, cookieFor, createWorkspace, ORIGIN, setActive } from "./console-helpers";
 import { applyMigrations } from "./migrate";
 
 const headersFor = (cookie: string) => new Headers({ cookie });
-const READ = { permission: { tenant: ["read"] } };
-const WRITE = { permission: { tenant: ["write"] }, write: true };
+const READ = { permission: { tenant: ["read"] } } as const;
+const WRITE = { permission: { tenant: ["write"] }, write: true } as const;
 
 beforeAll(async () => {
   await applyMigrations();
@@ -151,11 +153,10 @@ describe("app audience hook", () => {
     const owner = await requireActor(env, headersFor(cookie));
     const { id: appId } = await addApp(env, owner, { name: "Web", slug: "web" });
     for (const url of ["https://169.254.169.254/x", "https://[::ffff:10.0.0.1]/", "http://x.com"]) {
-      await expect(setAudienceHookFor(env, owner, appId, { url })).rejects.toMatchObject({ status: 400 });
+      await expect(setAudienceHook(env, owner, appId, { url })).rejects.toMatchObject({ status: 400 });
     }
     const memberCookie = await addMember(workspaceId, "hook-member@example.com", "member");
-    const member = await requireActor(env, headersFor(memberCookie));
-    await expect(setAudienceHookFor(env, member, appId, { url: "https://hooks.example.com/a" })).rejects.toMatchObject({ status: 403 });
+    await expect(requireActor(env, headersFor(memberCookie), WRITE)).rejects.toMatchObject({ status: 403 });
   });
 
   it("keeps a super-admin binding hook from a tenant owner's save or delete", async () => {
@@ -164,11 +165,11 @@ describe("app audience hook", () => {
     const { id: appId } = await addApp(env, owner, { name: "Web", slug: "web" });
     await clientFor(env, workspaceId).setAudienceHook(workspaceId, appId, { kind: "binding", binding: "TIFFIN_AUDIENCE" });
     const tenantOwner = { ...owner, platformAdmin: false };
-    await expect(setAudienceHookFor(env, tenantOwner, appId, { url: "https://hooks.example.com/a" })).rejects.toMatchObject({
+    await expect(setAudienceHook(env, tenantOwner, appId, { url: "https://hooks.example.com/a" })).rejects.toMatchObject({
       status: 403,
       message: "hook managed by platform admin",
     });
-    await expect(deleteAudienceHookFor(env, tenantOwner, appId)).rejects.toMatchObject({ status: 403 });
+    await expect(deleteAudienceHook(env, tenantOwner, appId)).rejects.toMatchObject({ status: 403 });
     expect(await clientFor(env, workspaceId).getAudienceHook(workspaceId, appId)).toMatchObject({ kind: "binding" });
   });
 

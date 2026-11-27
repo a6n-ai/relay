@@ -3,24 +3,26 @@ import { toast } from "@foundry/ui/toast";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { SendIcon } from "lucide-react";
 import { useState } from "react";
-import { CreateDialog } from "../../components/create-dialog";
-import { DeniedState, deniedReason } from "../../components/denied-state";
-import { errorText } from "../../components/error-text";
+import { CreateDialog } from "../../components/page/create-dialog";
+import { PageDenied } from "../../components/page/page-denied";
+import { errorText } from "../../components/lib/error-text";
 import { EmptyState } from "../../components/page/empty-state";
 import { LoadMore } from "../../components/page/load-more";
 import { SettingsCard } from "../../components/page/settings-card";
 import { ListSkeleton } from "../../components/page/page-skeleton";
-import { CellWhen, ResourceTable } from "../../components/resource-table";
+import { CellWhen, ResourceTable } from "../../components/page/resource-table";
 import { PageHeader } from "../../components/shell/page-header";
-import { runAction } from "../../components/run-action";
-import { StatusBadge } from "../../components/status-badge";
-import { useCan } from "../../components/use-can";
-import { deliveryActions } from "../../components/webhook-delivery-actions";
-import { WEBHOOK_EVENT_LABELS } from "../../components/webhook-events";
-import { EditWebhookForm } from "../../components/webhook-form";
+import { runAction } from "../../components/lib/run-action";
+import { StatusBadge } from "../../components/page/status-badge";
+import { useCan } from "../../components/lib/use-can";
+import { deliveryActions } from "../../components/webhooks/webhook-delivery-actions";
+import { WEBHOOK_EVENT_LABELS } from "../../components/webhooks/webhook-events";
+import { EditWebhookForm } from "../../components/webhooks/webhook-form";
 import { fetchDeliveries, retryDeliveryFn } from "../../console/webhooks.fns";
-import type { DeliveryView } from "../../do/console-reads";
-import { formatDate, formatWhen } from "../../lib/format-date";
+import { formatDate, formatWhen } from "../../components/lib/format-date";
+import { type DeliveryView } from "../../shared/views";
+import { appName } from "../../shared/scope";
+import { hostOf } from "../../components/lib/path";
 
 export const Route = createFileRoute("/_app/apps_/$appId_/webhooks_/$webhookId")({
   loader: ({ params }) => fetchDeliveries({ data: { appId: params.appId, webhookId: params.webhookId } }),
@@ -39,31 +41,20 @@ function DeliveriesPage() {
   const [older, setOlder] = useState<Page | null>(null);
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
-  const appName = shell.apps?.find((a) => a.id === appId)?.name ?? "App";
+  const appLabel = appName(shell.apps, appId, "App");
   const base = [
     { label: "Apps", to: "/apps" },
-    { label: appName, to: "/apps/$appId", params: { appId } },
+    { label: appLabel, to: "/apps/$appId", params: { appId } },
     { label: "Webhooks", to: "/apps/$appId/webhooks", params: { appId } },
   ];
 
   if (!page) {
-    return (
-      <>
-        <PageHeader crumbs={[...base, { label: "Deliveries" }]} />
-        <DeniedState reason={deniedReason(shell)} />
-      </>
-    );
+    return <PageDenied crumbs={[...base, { label: "Deliveries" }]} />;
   }
 
   const rows = [...page.rows, ...(older?.rows ?? [])];
   const nextCursor = older ? older.nextCursor : page.nextCursor;
-  const host = (() => {
-    try {
-      return new URL(page.webhook.url).host;
-    } catch {
-      return page.webhook.url;
-    }
-  })();
+  const host = hostOf(page.webhook.url);
 
   async function loadOlder() {
     if (!nextCursor) return;

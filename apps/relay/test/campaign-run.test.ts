@@ -1,7 +1,7 @@
 import { env, runInDurableObject } from "cloudflare:test";
 import { eq } from "drizzle-orm";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi, type MockInstance } from "vitest";
-import { runCampaign, type CampaignStep } from "../src/core/campaign-workflow";
+import { runCampaign, type CampaignStep } from "../src/jobs/campaign-workflow";
 import { ensureWorkspaceProfile } from "../src/core/workspace-profile";
 import type { ClientDO } from "../src/do/client-do";
 import { coreDb } from "../src/db/core/client";
@@ -361,7 +361,7 @@ describe("hook-audience campaign runs", () => {
     const resolve = bindHook((req) => (req.cursor === null ? { recipients: people(0, 2), nextCursor: "a" } : { recipients: people(2, 4), nextCursor: null }));
     await stub.startCampaign(ws, id, runSeq);
     await stub.campaignHookPage(ws, id, runSeq, 0, { recipients: people(0, 2), nextCursor: "a", invalid: 0 });
-    await stub.pauseCampaign(ws, id, null, runSeq);
+    await stub.pauseRunning(ws, id, runSeq, null);
     const resumed = await stub.resumeCampaign(ws, id);
     if (typeof resumed === "string") throw new Error("not resumed");
     expect(await runCampaign(env, { workspaceId: ws, campaignId: id, runSeq: resumed.runSeq, at: 0 }, fakeStep().asStep)).toBe("done");

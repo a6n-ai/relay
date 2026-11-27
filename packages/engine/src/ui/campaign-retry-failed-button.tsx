@@ -6,7 +6,7 @@ import { toast } from "@foundry/ui/toast";
 import { RotateCcwIcon } from "lucide-react";
 import { Button } from "@foundry/ui/button";
 import { ResponsiveDialog } from "@foundry/design-system";
-import { apiFetch } from "./api-fetch";
+import { apiAction, apiFetch } from "./api-fetch";
 
 /**
  * Re-send this campaign's failed messages. Delivery never retries on its own,
@@ -25,19 +25,15 @@ export function CampaignRetryFailedButton({
 
   async function confirm() {
     setBusy(true);
-    try {
-      const res = await apiFetch<{ requeued: number }>(
-        `/api/notifications/campaigns/${campaignPublicId}/retry-failed`,
-        { method: "POST" },
-      );
-      toast.success(res.requeued === 1 ? "1 message queued again" : `${res.requeued} messages queued again`);
-      setOpen(false);
-      router.refresh();
-    } catch {
-      // apiFetch already toasted the failure detail.
-    } finally {
-      setBusy(false);
-    }
+    const res = await apiAction(
+      apiFetch<{ requeued: number }>(`/api/notifications/campaigns/${campaignPublicId}/retry-failed`, { method: "POST" }),
+    );
+    setBusy(false);
+    if (!res) return;
+    const { requeued } = res.data;
+    toast.success(requeued === 1 ? "1 message queued again" : `${requeued} messages queued again`);
+    setOpen(false);
+    router.refresh();
   }
 
   return (

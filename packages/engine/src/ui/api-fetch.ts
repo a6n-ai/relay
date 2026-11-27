@@ -8,9 +8,7 @@ interface Problem {
   status?: number;
 }
 
-// Copied from tiffin-grab's lib/http/api-fetch rather than imported: the package
-// must not reach into an app. Nothing here is app-specific — it is RFC 9457
-// problem+json plus a Sonner toast.
+// The package must not reach into an app, so this is its own copy.
 //
 // Client fetch that surfaces RFC 9457 problem+json failures as a Sonner toast.
 // On !ok: reads `detail` (falls back to title, then status), toasts it, throws
@@ -25,4 +23,13 @@ export async function apiFetch<T = unknown>(input: RequestInfo | URL, init?: Req
   }
   if (res.status === 204) return undefined as T;
   return (await res.json()) as T;
+}
+
+// For handlers: apiFetch already toasted the failure, so the caller only needs to know the action did not complete.
+export async function apiAction<T>(call: Promise<T>): Promise<{ data: T } | undefined> {
+  try {
+    return { data: await call };
+  } catch {
+    return undefined;
+  }
 }

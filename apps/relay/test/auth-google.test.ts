@@ -1,9 +1,10 @@
-import { env, SELF } from "cloudflare:test";
+import { env } from "cloudflare:test";
 import { BASE, json } from "./console-helpers";
 import { applyMigrations } from "./migrate";
 import { beforeAll, describe, expect, it } from "vitest";
-import { createAuth } from "../src/lib/auth";
-import { ADMIN_LINK_CODE, auditKindFor, googleConfig, refusesImplicitLink, signInErrorText } from "../src/lib/auth/google";
+import { createAuth } from "../src/auth";
+import { auditKindFor, googleConfig, refusesImplicitLink } from "../src/auth/google";
+import { ADMIN_LINK_CODE, signInErrorText } from "../src/shared/sign-in";
 import type { Env } from "../src/env";
 
 describe("googleConfig", () => {
@@ -52,7 +53,6 @@ describe("createAuth google provider", () => {
     // Invites pre-create users with emailVerified false; the default would refuse to link them.
     expect(linking?.requireLocalEmailVerified).toBe(false);
   });
-  it.todo("a mocked Google profile with no user row is refused and creates no user or account row (token exchange needs a Google network mock; covered in the browser pass)");
 });
 
 describe("refusesImplicitLink", () => {

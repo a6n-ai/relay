@@ -1,10 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
-import { getRequestHeaders } from "@tanstack/react-start/server";
 import { env } from "cloudflare:workers";
 import { z } from "zod";
-import { SES_REGIONS } from "../core/ses-regions";
-import { ConsoleError, requireActor, toResponseError } from "./actor";
-import { deleteDomain, domainDeletePreview as domainDeletePreviewFor } from "./domain-delete";
+import { SES_REGION_IDS } from "../shared/regions";
+import { read, run } from "./guard";
+import { READ, WRITE } from "./needs";
+import { deleteDomain, previewDomainDelete } from "../services/domain-delete";
 import {
   addAddress,
   addDomain,
@@ -15,97 +15,41 @@ import {
   removeAddress,
   setDomainProtected,
   updateAddress,
-} from "./domains";
-import { displayName, id, replyTo, validate } from "./schemas";
+} from "../services/domains";
+import { displayName, replyTo, validate } from "./schemas";
+import { id } from "../services/schemas";
 
-const READ = { permission: { sending: ["read"] } };
-const WRITE = { permission: { sending: ["write"] }, write: true };
+const VIEW = READ("sending", "read");
+const EDIT = WRITE("sending", "write");
 
 // Null means the role cannot read sending domains (billing): the page shows a denied state instead of an error.
-export const fetchDomains = createServerFn({ method: "GET" }).handler(async () => {
-  try {
-    const actor = await requireActor(env, getRequestHeaders(), READ);
-    return await listDomains(env, actor);
-  } catch (err) {
-    if (err instanceof ConsoleError && err.status === 403) return null;
-    toResponseError(err);
-  }
-});
+export const fetchDomains = createServerFn({ method: "GET" }).handler(() => read(VIEW, (p) => listDomains(env, p)));
 
-export const fetchAddresses = createServerFn({ method: "GET" }).handler(async () => {
-  try {
-    const actor = await requireActor(env, getRequestHeaders(), READ);
-    return await listAddresses(env, actor);
-  } catch (err) {
-    toResponseError(err);
-  }
-});
+export const fetchAddresses = createServerFn({ method: "GET" }).handler(() => run(VIEW, (p) => listAddresses(env, p)));
 
 export const addDomainFn = createServerFn({ method: "POST" })
-  .validator(validate(z.object({ domain: z.string().min(1).max(253), sesRegion: z.enum(SES_REGIONS).optional() })))
-  .handler(async ({ data }) => {
-    try {
-      const actor = await requireActor(env, getRequestHeaders(), WRITE);
-      return await addDomain(env, actor, data);
-    } catch (err) {
-      toResponseError(err);
-    }
-  });
+  .validator(validate(z.object({ domain: z.string().min(1).max(253), sesRegion: z.enum(SES_REGION_IDS).optional() })))
+  .handler(({ data }) => run(EDIT, (p) => addDomain(env, p, data)));
 
 export const checkDomainFn = createServerFn({ method: "POST" })
   .validator(validate(z.object({ id })))
-  .handler(async ({ data }) => {
-    try {
-      const actor = await requireActor(env, getRequestHeaders(), WRITE);
-      return await checkDomain(env, actor, data.id);
-    } catch (err) {
-      toResponseError(err);
-    }
-  });
+  .handler(({ data }) => run(EDIT, (p) => checkDomain(env, p, data.id)));
 
 export const releaseDomainFn = createServerFn({ method: "POST" })
   .validator(validate(z.object({ id })))
-  .handler(async ({ data }) => {
-    try {
-      const actor = await requireActor(env, getRequestHeaders(), WRITE);
-      await releaseDomain(env, actor, data.id);
-    } catch (err) {
-      toResponseError(err);
-    }
-  });
+  .handler(({ data }) => run(EDIT, (p) => releaseDomain(env, p, data.id)));
 
 export const setDomainProtectedFn = createServerFn({ method: "POST" })
   .validator(validate(z.object({ id, protected: z.boolean() })))
-  .handler(async ({ data }) => {
-    try {
-      const actor = await requireActor(env, getRequestHeaders(), WRITE);
-      await setDomainProtected(env, actor, data.id, data.protected);
-    } catch (err) {
-      toResponseError(err);
-    }
-  });
+  .handler(({ data }) => run(EDIT, (p) => setDomainProtected(env, p, data.id, data.protected)));
 
 export const domainDeletePreview = createServerFn({ method: "POST" })
   .validator(validate(z.object({ id })))
-  .handler(async ({ data }) => {
-    try {
-      const actor = await requireActor(env, getRequestHeaders(), READ);
-      return await domainDeletePreviewFor(env, actor, data.id);
-    } catch (err) {
-      toResponseError(err);
-    }
-  });
+  .handler(({ data }) => run(VIEW, (p) => previewDomainDelete(env, p, data.id)));
 
 export const deleteDomainFn = createServerFn({ method: "POST" })
   .validator(validate(z.object({ id, confirm: z.string().trim().min(1).max(253), deleteHistory: z.boolean() })))
-  .handler(async ({ data }) => {
-    try {
-      const actor = await requireActor(env, getRequestHeaders(), WRITE);
-      return await deleteDomain(env, actor, data.id, { confirm: data.confirm, deleteHistory: data.deleteHistory });
-    } catch (err) {
-      toResponseError(err);
-    }
-  });
+  .handler(({ data }) => run(EDIT, (p) => deleteDomain(env, p, data.id, { confirm: data.confirm, deleteHistory: data.deleteHistory })));
 
 export const addAddressFn = createServerFn({ method: "POST" })
   .validator(
@@ -119,34 +63,15 @@ export const addAddressFn = createServerFn({ method: "POST" })
       }),
     ),
   )
-  .handler(async ({ data }) => {
-    try {
-      const actor = await requireActor(env, getRequestHeaders(), WRITE);
-      return await addAddress(env, actor, data);
-    } catch (err) {
-      toResponseError(err);
-    }
-  });
+  .handler(({ data }) => run(EDIT, (p) => addAddress(env, p, data)));
 
 export const updateAddressFn = createServerFn({ method: "POST" })
   .validator(validate(z.object({ id, displayName: displayName.nullable(), replyTo })))
-  .handler(async ({ data }) => {
-    try {
-      const actor = await requireActor(env, getRequestHeaders(), WRITE);
-      const { id: addressId, ...patch } = data;
-      await updateAddress(env, actor, addressId, patch);
-    } catch (err) {
-      toResponseError(err);
-    }
+  .handler(({ data }) => {
+    const { id: addressId, ...patch } = data;
+    return run(EDIT, (p) => updateAddress(env, p, addressId, patch));
   });
 
 export const removeAddressFn = createServerFn({ method: "POST" })
   .validator(validate(z.object({ id })))
-  .handler(async ({ data }) => {
-    try {
-      const actor = await requireActor(env, getRequestHeaders(), WRITE);
-      await removeAddress(env, actor, data.id);
-    } catch (err) {
-      toResponseError(err);
-    }
-  });
+  .handler(({ data }) => run(EDIT, (p) => removeAddress(env, p, data.id)));

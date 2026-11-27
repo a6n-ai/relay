@@ -8,7 +8,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@foundry/ui/popover";
 import { RadioGroup, RadioGroupItem } from "@foundry/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@foundry/ui/select";
 import { ToggleGroup, ToggleGroupItem } from "@foundry/ui/toggle-group";
-import { Hint } from "../page/text";
+import { Hint } from "./text";
 import { Field, fieldDescribedBy } from "./field";
 import { choiceMode, type ChoiceModeName } from "./choice-mode";
 

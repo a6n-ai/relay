@@ -1,25 +1,13 @@
-import { newId } from "../lib/ids";
-import { decodeCursor, encodeCursor } from "./console-reads";
+import { newId } from "../shared/ids";
+import { keysetBefore, keysetSlice, parseCursor } from "../core/cursor";
+import { type TemplateView } from "../shared/views";
+import { PAGE_SIZE } from "../shared/limits";
+import { RelayError } from "../shared/errors";
 
-export type TemplateView = {
-  id: string;
-  appId: string;
-  name: string;
-  event: string | null;
-  locale: string;
-  subject: string;
-  intro: string | null;
-  html: string;
-  text: string;
-  enabled: boolean;
-  createdAt: number;
-  updatedAt: number;
-};
 export type TemplateInput = Partial<Omit<TemplateView, "id" | "appId" | "createdAt" | "updatedAt">> & { name: string };
 export type TemplateOverride = Pick<TemplateView, "event" | "locale" | "subject" | "intro" | "enabled">;
 export type RenderedTemplate = { subject: string; html: string; text: string; hasUnsubscribe: boolean };
 
-const PAGE = 50;
 const COLUMNS = `id, app_id AS appId, name, event, locale, subject, intro, html, text, enabled,
   created_at AS createdAt, updated_at AS updatedAt`;
 
@@ -35,9 +23,9 @@ function eventTaken(sql: SqlStorage, appId: string, event: string, locale: strin
   return sql.exec("SELECT id FROM template WHERE app_id = ? AND event = ? AND locale = ? AND id != ?", appId, event, locale, exceptId).toArray().length > 0;
 }
 
-export function createTemplateRow(sql: SqlStorage, appId: string, input: TemplateInput): TemplateView | "event_taken" {
+export function createTemplateRow(sql: SqlStorage, appId: string, input: TemplateInput): TemplateView {
   const locale = input.locale ?? "en";
-  if (input.event != null && eventTaken(sql, appId, input.event, locale, "")) return "event_taken";
+  if (input.event != null && eventTaken(sql, appId, input.event, locale, "")) throw new RelayError("template event taken");
   const id = newId("tpl");
   const now = Date.now();
   sql.exec(
@@ -60,13 +48,13 @@ export function createTemplateRow(sql: SqlStorage, appId: string, input: Templat
 }
 
 export function listTemplateRows(sql: SqlStorage, cursor?: string, appId?: string): { rows: TemplateView[]; nextCursor: string | null } {
-  const after = cursor === undefined ? null : decodeCursor(cursor);
-  if (cursor !== undefined && !after) throw new Error("invalid cursor");
+  const after = parseCursor(cursor);
   const where: string[] = [];
   const bindings: unknown[] = [];
   if (after) {
-    where.push("(created_at < ? OR (created_at = ? AND id < ?))");
-    bindings.push(after.createdAt, after.createdAt, after.id);
+    const keyset = keysetBefore(after);
+    where.push(keyset.sql);
+    bindings.push(...keyset.bindings);
   }
   if (appId !== undefined) {
     where.push("app_id = ?");
@@ -74,19 +62,18 @@ export function listTemplateRows(sql: SqlStorage, cursor?: string, appId?: strin
   }
   const clause = where.length > 0 ? `WHERE ${where.join(" AND ")}` : "";
   const fetched = sql
-    .exec<Raw>(`SELECT ${COLUMNS} FROM template ${clause} ORDER BY created_at DESC, id DESC LIMIT ?`, ...bindings, PAGE + 1)
+    .exec<Raw>(`SELECT ${COLUMNS} FROM template ${clause} ORDER BY created_at DESC, id DESC LIMIT ?`, ...bindings, PAGE_SIZE + 1)
     .toArray();
-  const page = fetched.slice(0, PAGE).map(view);
-  const last = page[page.length - 1];
-  return { rows: page, nextCursor: fetched.length > PAGE && last ? encodeCursor(last.createdAt, last.id) : null };
+  const { page, nextCursor } = keysetSlice(fetched, PAGE_SIZE);
+  return { rows: page.map(view), nextCursor };
 }
 
-export function updateTemplateRow(sql: SqlStorage, id: string, patch: Partial<TemplateInput>): TemplateView | "missing" | "event_taken" {
+export function updateTemplateRow(sql: SqlStorage, id: string, patch: Partial<TemplateInput>): TemplateView {
   const current = getTemplateRow(sql, id);
-  if (!current) return "missing";
+  if (!current) throw new RelayError("not found");
   const defined = Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== undefined));
   const next = { ...current, ...defined } as TemplateView;
-  if (next.event !== null && eventTaken(sql, current.appId, next.event, next.locale, id)) return "event_taken";
+  if (next.event !== null && eventTaken(sql, current.appId, next.event, next.locale, id)) throw new RelayError("template event taken");
   sql.exec(
     `UPDATE template SET name = ?, event = ?, locale = ?, subject = ?, intro = ?, html = ?, text = ?, enabled = ?, updated_at = ? WHERE id = ?`,
     next.name,
@@ -104,11 +91,10 @@ export function updateTemplateRow(sql: SqlStorage, id: string, patch: Partial<Te
 }
 
 // An automation names its template, so the template stays until the automation goes.
-export function deleteTemplateRow(sql: SqlStorage, id: string): "deleted" | "missing" | "in_use" {
-  if (sql.exec("SELECT id FROM template WHERE id = ?", id).toArray().length === 0) return "missing";
-  if (sql.exec("SELECT id FROM automation WHERE template_id = ? LIMIT 1", id).toArray().length > 0) return "in_use";
+export function deleteTemplateRow(sql: SqlStorage, id: string): void {
+  if (sql.exec("SELECT id FROM template WHERE id = ?", id).toArray().length === 0) throw new RelayError("not found");
+  if (sql.exec("SELECT id FROM automation WHERE template_id = ? LIMIT 1", id).toArray().length > 0) throw new RelayError("template in use");
   sql.exec("DELETE FROM template WHERE id = ?", id);
-  return "deleted";
 }
 
 export function templateOverrideRows(sql: SqlStorage, appId: string): TemplateOverride[] {

@@ -8,6 +8,8 @@ beforeAll(async () => {
 
 const stubFor = (ws: string) => env.CLIENT.get(env.CLIENT.idFromName(ws));
 
+const refused = (call: Promise<unknown>) => call.then(() => "resolved", (e: Error) => e.message);
+
 describe("contact lists in the workspace DO", () => {
   it("creates a list and lists it with a zero member count", async () => {
     const ws = "ws_list_create";
@@ -31,7 +33,7 @@ describe("contact lists in the workspace DO", () => {
     const stub = stubFor(ws);
     const list = await stub.createList(ws, "app_1", { name: "L", consentSource: "purchase" });
     await stub.addSuppression(ws, "s@x.com", "bounce");
-    expect(await stub.addMember(ws, list.id, { email: "s@x.com" })).toBe("suppressed");
+    expect(await refused(stub.addMember(ws, list.id, { email: "s@x.com" }))).toBe("address suppressed");
     expect((await stub.listMembers(ws, list.id))?.rows).toEqual([]);
   });
 
@@ -53,16 +55,18 @@ describe("contact lists in the workspace DO", () => {
     const inUse = await stub.createList(ws, "app_1", { name: "Busy", consentSource: "purchase" });
     const draft = await stub.createList(ws, "app_1", { name: "Draft", consentSource: "purchase" });
     await stub.addMember(ws, draft.id, { email: "d@x.com" });
+    // A scheduled campaign needs a verified sender and a workflow; raw insert is the only cheap way to get one.
     await runInDurableObject(stub, (_instance, state) => {
       state.storage.sql.exec(
         "INSERT INTO campaign (id, app_id, name, list_ids, status, created_at, updated_at) VALUES ('cmp_scheduled001', 'app_1', 'C', ?, 'scheduled', 1, 1)",
         JSON.stringify([inUse.id]),
       );
     });
-    expect(await stub.deleteList(ws, inUse.id)).toBe("in_use");
-    expect(await stub.deleteList(ws, draft.id)).toBe("deleted");
-    expect(await stub.deleteList(ws, draft.id)).toBe("missing");
+    expect(await refused(stub.deleteList(ws, inUse.id))).toBe("list in use");
+    await stub.deleteList(ws, draft.id);
+    expect(await refused(stub.deleteList(ws, draft.id))).toBe("not found");
     expect(await stub.listLists(ws)).toMatchObject([{ name: "Busy" }]);
+    // Orphan members are invisible through the RPC surface once the list is gone.
     const orphans = await runInDurableObject(stub, (_instance, state) =>
       state.storage.sql.exec<{ n: number }>("SELECT COUNT(*) AS n FROM contact_list_member WHERE list_id = ?", draft.id).one().n,
     );
@@ -131,9 +135,13 @@ describe("contact lists in the workspace DO", () => {
     expect((await stub.listMembers(ws, list.id))?.rows.map((r) => r.email)).toEqual(["ok@x.com"]);
   });
 
-  it("returns null for a missing list", async () => {
+  it("refuses a missing list with not found", async () => {
     const ws = "ws_list_import_missing";
-    expect(await stubFor(ws).importMembers(ws, "ctl_missing00000", [{ email: "a@x.com" }])).toBeNull();
+    expect(await refused(stubFor(ws).importMembers(ws, "ctl_missing00000", [{ email: "a@x.com" }]))).toBe("not found");
+    expect(await refused(stubFor(ws).listMembers(ws, "ctl_missing00000"))).toBe("not found");
+    expect(await refused(stubFor(ws).updateList(ws, "ctl_missing00000", { name: "x" }))).toBe("not found");
+    expect(await refused(stubFor(ws).removeMember(ws, "ctl_missing00000", "clm_missing"))).toBe("not found");
+    expect(await refused(stubFor(ws).updateMember(ws, "ctl_missing00000", "clm_missing", { firstName: "a", lastName: "b" }))).toBe("not found");
   });
 });
 

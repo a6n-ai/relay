@@ -1,35 +1,14 @@
 import { brandDomain, IMPLIED_CONSENT_MS } from "../core/campaigns";
-import { newId } from "../lib/ids";
-import { decodeCursor, encodeCursor } from "./console-reads";
+import { newId } from "../shared/ids";
+import { keysetBefore, keysetSlice, parseCursor } from "../core/cursor";
 import { getTemplateRow } from "./templates";
+import { type CampaignView, type AudiencePreview, type CampaignStats } from "../shared/views";
+import { PAGE_SIZE } from "../shared/limits";
+import { RelayError } from "../shared/errors";
 
-export type CampaignStatus = "draft" | "scheduled" | "sending" | "paused" | "sent" | "cancelled";
-export type CampaignView = {
-  id: string;
-  appId: string;
-  name: string;
-  status: CampaignStatus;
-  fromEmail: string | null;
-  subject: string;
-  html: string;
-  text: string;
-  listIds: string[];
-  audienceKind: "lists" | "hook";
-  audienceQuery: string | null;
-  scheduledAt: number | null;
-  runSeq: number;
-  startedAt: number | null;
-  finishedAt: number | null;
-  recipients: number;
-  error: string | null;
-  createdAt: number;
-  updatedAt: number;
-};
 export type CampaignSummary = Omit<CampaignView, "html" | "text">;
 export type CampaignPatch = Partial<Pick<CampaignView, "name" | "fromEmail" | "subject" | "html" | "text" | "listIds" | "audienceKind" | "audienceQuery">>;
-export type AudiencePreview = { members: number; suppressed: number; lapsed: number; sendable: number };
 
-const PAGE = 50;
 const SUMMARY_COLUMNS = `id, app_id AS appId, name, status, from_email AS fromEmail, subject, list_ids AS listIds, audience_kind AS audienceKind, audience_query AS audienceQuery,
   scheduled_at AS scheduledAt, run_seq AS runSeq, started_at AS startedAt, finished_at AS finishedAt, recipients, error,
   created_at AS createdAt, updated_at AS updatedAt`;
@@ -74,19 +53,6 @@ export function bumpCampaign(sql: SqlStorage, campaignId: string | null, delta: 
   );
 }
 
-export type CampaignStats = {
-  total: number;
-  queued: number;
-  sent: number;
-  failed: number;
-  suppressed: number;
-  delivered: number;
-  opened: number;
-  clicked: number;
-  bounced: number;
-  complained: number;
-  unsubscribed: number;
-};
 
 export function statsOf(s: Omit<CampaignStats, "total">): CampaignStats {
   return { ...s, total: s.queued + s.sent + s.failed + s.suppressed };
@@ -142,13 +108,13 @@ export function listCampaignRows(
   cursor?: string,
   appId?: string,
 ): { rows: CampaignSummary[]; nextCursor: string | null } {
-  const after = cursor === undefined ? null : decodeCursor(cursor);
-  if (cursor !== undefined && !after) throw new Error("invalid cursor");
+  const after = parseCursor(cursor);
   const where: string[] = [];
   const bindings: unknown[] = [];
   if (after) {
-    where.push("(created_at < ? OR (created_at = ? AND id < ?))");
-    bindings.push(after.createdAt, after.createdAt, after.id);
+    const keyset = keysetBefore(after);
+    where.push(keyset.sql);
+    bindings.push(...keyset.bindings);
   }
   if (appId !== undefined) {
     where.push("app_id = ?");
@@ -156,17 +122,16 @@ export function listCampaignRows(
   }
   const clause = where.length > 0 ? `WHERE ${where.join(" AND ")}` : "";
   const fetched = sql
-    .exec<Raw<CampaignSummary>>(`SELECT ${SUMMARY_COLUMNS} FROM campaign ${clause} ORDER BY created_at DESC, id DESC LIMIT ?`, ...bindings, PAGE + 1)
+    .exec<Raw<CampaignSummary>>(`SELECT ${SUMMARY_COLUMNS} FROM campaign ${clause} ORDER BY created_at DESC, id DESC LIMIT ?`, ...bindings, PAGE_SIZE + 1)
     .toArray();
-  const page = fetched.slice(0, PAGE).map((r) => parse(r) as CampaignSummary);
-  const last = page[page.length - 1];
-  return { rows: page, nextCursor: fetched.length > PAGE && last ? encodeCursor(last.createdAt, last.id) : null };
+  const { page, nextCursor } = keysetSlice(fetched, PAGE_SIZE);
+  return { rows: page.map((r) => parse(r) as CampaignSummary), nextCursor };
 }
 
-export function updateCampaignRow(sql: SqlStorage, id: string, patch: CampaignPatch): CampaignView | "missing" | "not_draft" | "bad_list" {
+export function updateCampaignRow(sql: SqlStorage, id: string, patch: CampaignPatch): CampaignView {
   const current = getCampaignRow(sql, id);
-  if (!current) return "missing";
-  if (current.status !== "draft") return "not_draft";
+  if (!current) throw new RelayError("not found");
+  if (current.status !== "draft") throw new RelayError("campaign not editable");
   const audienceKind = patch.audienceKind ?? current.audienceKind;
   // A hook audience names no lists, so switching to it clears them.
   const listIds = audienceKind === "hook" ? [] : patch.listIds ? [...new Set(patch.listIds)] : current.listIds;
@@ -174,7 +139,7 @@ export function updateCampaignRow(sql: SqlStorage, id: string, patch: CampaignPa
     const owned = sql
       .exec<{ n: number }>("SELECT COUNT(*) AS n FROM contact_list WHERE app_id = ? AND id IN (SELECT value FROM json_each(?))", current.appId, JSON.stringify(listIds))
       .one().n;
-    if (owned !== listIds.length) return "bad_list";
+    if (owned !== listIds.length) throw new RelayError("unknown list");
   }
   sql.exec(
     "UPDATE campaign SET name = ?, from_email = ?, subject = ?, html = ?, text = ?, list_ids = ?, audience_kind = ?, audience_query = ?, updated_at = ? WHERE id = ?",
@@ -192,12 +157,11 @@ export function updateCampaignRow(sql: SqlStorage, id: string, patch: CampaignPa
   return getCampaignRow(sql, id)!;
 }
 
-export function deleteCampaignRow(sql: SqlStorage, id: string): "deleted" | "missing" | "not_draft" {
+export function deleteCampaignRow(sql: SqlStorage, id: string): void {
   const row = sql.exec<{ status: string }>("SELECT status FROM campaign WHERE id = ?", id).toArray()[0];
-  if (!row) return "missing";
-  if (row.status !== "draft") return "not_draft";
+  if (!row) throw new RelayError("not found");
+  if (row.status !== "draft") throw new RelayError("campaign not editable");
   sql.exec("DELETE FROM campaign WHERE id = ?", id);
-  return "deleted";
 }
 
 // shortcut: loads every opt-out on the sending domain, join against the audience once a domain has more than a few thousand.

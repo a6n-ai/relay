@@ -2,7 +2,8 @@ import { env, SELF } from "cloudflare:test";
 import { and, eq } from "drizzle-orm";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { requireActor } from "../src/console/actor";
-import { addDomain, checkDomain, releaseDomain, releaseStalePendingDomains } from "../src/console/domains";
+import { addDomain, checkDomain, releaseDomain } from "../src/services/domains";
+import { releaseStalePendingDomains } from "../src/services/domain-state";
 import { memorySesIdentity } from "../src/core/ses-identity";
 import { coreDb } from "../src/db/core/client";
 import { sendingDomain } from "../src/db/core/schema";
@@ -11,7 +12,7 @@ import { securityAudit } from "../src/db/security/schema";
 import { addMember, cookieFor, createWorkspace, headersFor, ORIGIN, setActive } from "./console-helpers";
 import { applyMigrations } from "./migrate";
 
-const WRITE = { permission: { sending: ["write"] }, write: true };
+const WRITE = { permission: { sending: ["write"] }, write: true } as const;
 const DAY = 24 * 60 * 60 * 1000;
 
 beforeAll(async () => {

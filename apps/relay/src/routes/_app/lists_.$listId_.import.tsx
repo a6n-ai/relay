@@ -2,21 +2,23 @@ import { Button } from "@foundry/ui/button";
 import { FileUpload, FileUploadDropzone, FileUploadTrigger } from "@foundry/ui/file-upload";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
-import { consentHint } from "../../components/consent-labels";
-import { DeniedState, deniedReason } from "../../components/denied-state";
-import { errorText } from "../../components/error-text";
+import { consentHint } from "../../components/lists/consent-labels";
+import { PageDenied } from "../../components/page/page-denied";
 import { CreatePage } from "../../components/page/create-page";
-import { FormActions, FormError, FormPanel } from "../../components/page/form-parts";
+import { FormActions, FormError, FormPanel } from "../../components/form/form-parts";
 import { SettingsCard } from "../../components/page/settings-card";
 import { PageHeader } from "../../components/shell/page-header";
-import { useCan } from "../../components/use-can";
+import { useCan } from "../../components/lib/use-can";
 import { fetchLists, importCsvFn } from "../../console/lists.fns";
+import { CSV_IMPORT_MAX_BYTES } from "../../shared/limits";
+import { str } from "../../components/lib/route-search";
+import { DefinitionList } from "../../components/page/definition-list";
+import { useSubmit } from "../../components/lib/use-submit";
 
-const MAX_CSV_BYTES = 2_000_000;
 
 export const Route = createFileRoute("/_app/lists_/$listId_/import")({
   validateSearch: (search: Record<string, unknown>): { appId?: string } => ({
-    appId: typeof search.appId === "string" && search.appId ? search.appId : undefined,
+    appId: str(search.appId),
   }),
   loaderDeps: ({ search }) => ({ appId: search.appId }),
   loader: async ({ deps, params }) => {
@@ -33,32 +35,20 @@ function ImportPage() {
   const page = Route.useLoaderData();
   const { appId } = Route.useSearch();
   const { listId } = Route.useParams();
-  const { shell } = Route.useRouteContext();
   const canImport = useCan({ list: ["import"] });
   const navigate = useNavigate();
   const [files, setFiles] = useState<File[]>([]);
-  const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<Result | null>(null);
-  const [pending, setPending] = useState(false);
+  const { pending, error, setError, run } = useSubmit();
   const listsCrumb = { label: "Lists", to: "/lists", search: { appId } };
   const back = () => void navigate({ to: "/lists/$listId", params: { listId }, search: { appId } });
 
   if (!page || !canImport) {
-    return (
-      <>
-        <PageHeader crumbs={[listsCrumb, { label: "Import contacts" }]} />
-        <DeniedState reason={deniedReason(shell)} />
-      </>
-    );
+    return <PageDenied crumbs={[listsCrumb, { label: "Import contacts" }]} />;
   }
   const { list } = page;
   if (!list) {
-    return (
-      <>
-        <PageHeader crumbs={[listsCrumb, { label: "Import contacts" }]} />
-        <DeniedState reason="not-found" label="List not found" />
-      </>
-    );
+    return <PageDenied crumbs={[listsCrumb, { label: "Import contacts" }]} reason="not-found" label="List not found" />;
   }
   const crumbs = [listsCrumb, { label: list.name, to: "/lists/$listId", params: { listId }, search: { appId } }, { label: "Import contacts" }];
 
@@ -66,17 +56,11 @@ function ImportPage() {
     event.preventDefault();
     const file = files[0];
     if (!file) return;
-    setPending(true);
-    setError(null);
-    try {
+    await run(async () => {
       const counts = await importCsvFn({ data: { listId, csv: await file.text() } });
       if (counts) setResult(counts);
       else setError("Could not import this file.");
-    } catch (err) {
-      setError(errorText(err, "Could not import this file."));
-    } finally {
-      setPending(false);
-    }
+    }, "Could not import this file.");
   }
 
   if (result) {
@@ -97,19 +81,10 @@ function ImportPage() {
               <Button render={<Link to="/lists/$listId" params={{ listId }} search={{ appId }} />}>Back to list</Button>
             }
           >
-            <dl className="grid gap-2 text-sm">
-              {rows
-                .filter(([label, n]) => n > 0 || label === "Added")
-                .map(([label, n, note]) => (
-                  <div key={label} className="flex items-baseline justify-between gap-4 border-b py-1.5 last:border-b-0">
-                    <dt>
-                      {label}
-                      {note ? <span className="block text-xs text-muted-foreground">{note}</span> : null}
-                    </dt>
-                    <dd className="tabular-nums">{n}</dd>
-                  </div>
-                ))}
-            </dl>
+            <DefinitionList
+              layout="rows"
+              items={rows.filter(([label, n]) => n > 0 || label === "Added").map(([label, n, note]) => ({ term: label, value: n, note }))}
+            />
           </SettingsCard>
         </FormPanel>
       </>
@@ -123,7 +98,7 @@ function ImportPage() {
           <FileUpload
             accept=".csv,text/csv"
             maxFiles={1}
-            maxSize={MAX_CSV_BYTES}
+            maxSize={CSV_IMPORT_MAX_BYTES}
             value={files}
             onValueChange={(next) => {
               setFiles(next);

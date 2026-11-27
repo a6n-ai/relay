@@ -1,6 +1,6 @@
 import { Button } from "@foundry/ui/button";
 import { useState } from "react";
-import { ConfirmDialog } from "../confirm-dialog";
+import { ConfirmDialog } from "./confirm-dialog";
 import { SettingsCard } from "./settings-card";
 
 // The card states the consequence once. The dialog asks for the name only when `typed` is given.

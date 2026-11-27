@@ -1,9 +1,11 @@
 import { AwsError, createAwsClient } from "@foundry/cloud";
+import { toBase64 } from "./crypto";
 import type { Env } from "../env";
+import { type Stream } from "../shared/mail";
+import { isSesRegion, type SesRegion } from "../shared/regions";
 
-export type Stream = "transactional" | "tracked" | "marketing";
-
-export const SES_CONFIG_SETS = {
+// Keyed by SesRegion, so a region added to shared/regions.ts fails the build here until it has config sets.
+export const SES_CONFIG_SETS: Record<SesRegion, Record<Stream, string>> = {
   "ap-south-1": {
     transactional: "relay-prod",
     tracked: "relay-prod-tracked",
@@ -14,11 +16,11 @@ export const SES_CONFIG_SETS = {
     tracked: "tiffin-grab-transactional-tracked",
     marketing: "tiffin-grab-prod",
   },
-} as const;
+};
 
 export function configSetFor(region: string, stream: Stream): string {
-  if (!Object.hasOwn(SES_CONFIG_SETS, region)) throw new Error(`no SES config set for region ${region}`);
-  return SES_CONFIG_SETS[region as keyof typeof SES_CONFIG_SETS][stream];
+  if (!isSesRegion(region)) throw new Error(`no SES config set for region ${region}`);
+  return SES_CONFIG_SETS[region][stream];
 }
 
 export type SesSendRequest = {
@@ -54,13 +56,6 @@ function formatFrom(name: string | null, address: string): string {
   return `=?UTF-8?B?${btoa(String.fromCharCode(...bytes))}?= <${address}>`;
 }
 
-// Chunked: spreading a multi-megabyte array into one fromCharCode call overflows the stack.
-function base64(bytes: Uint8Array): string {
-  let binary = "";
-  for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
-  return btoa(binary);
-}
-
 export function sendEmailBody(req: SesSendRequest) {
   const headerText = (req.headers ?? []).flatMap((h) => [h.name, h.value]);
   if ([req.from, req.fromName, req.to, req.subject, req.replyTo, ...headerText].some((v) => v && /[\r\n]/.test(v))) {
@@ -88,7 +83,7 @@ export function sendEmailBody(req: SesSendRequest) {
         },
         ...(req.headers ? { Headers: req.headers.map((h) => ({ Name: h.name, Value: h.value })) } : {}),
         ...(req.attachments?.length
-          ? { Attachments: req.attachments.map((a) => ({ FileName: a.filename, ContentType: a.contentType, RawContent: base64(a.bytes) })) }
+          ? { Attachments: req.attachments.map((a) => ({ FileName: a.filename, ContentType: a.contentType, RawContent: toBase64(a.bytes) })) }
           : {}),
       },
     },

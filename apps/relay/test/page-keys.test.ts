@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isTypingTarget } from "../src/components/page/keys";
+import { isTypingTarget } from "../src/components/lib/keys";
 
 describe("isTypingTarget", () => {
   it("is true for form fields and editable content", () => {

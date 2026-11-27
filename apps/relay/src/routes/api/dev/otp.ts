@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { env } from "cloudflare:workers";
-import { memoryOtpMailer } from "../../../lib/auth/otp-mailer";
+import { memoryOtpMailer } from "../../../auth/otp-mailer";
 
 // Local-only sign-in helper: the code is readable only with the memory mailer, the DEV_OTP_PEEK flag and a localhost request.
 export const Route = createFileRoute("/api/dev/otp")({

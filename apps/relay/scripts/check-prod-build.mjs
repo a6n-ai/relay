@@ -3,11 +3,13 @@ import { execFileSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { buildEnv } from "./lib/build-env.ts";
+import { DEV_OTP_FLAG, DEV_OTP_ROUTE } from "./lib/dev-otp.ts";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const tree = join(root, "src/routeTree.gen.ts");
 const committed = readFileSync(tree, "utf8");
-const FORBIDDEN = ["/api/dev/otp", "DEV_OTP_PEEK"];
+const FORBIDDEN = [DEV_OTP_ROUTE, DEV_OTP_FLAG];
 
 // The router ignores files by basename only, so the route ids must differ by exactly the dev OTP route.
 const routeIds = (text) => {
@@ -16,15 +18,15 @@ const routeIds = (text) => {
 };
 
 try {
-  execFileSync(join(root, "node_modules/.bin/vite"), ["build"], { cwd: root, stdio: "inherit", env: { ...process.env, NODE_OPTIONS: "--max-old-space-size=4096" } });
+  execFileSync(join(root, "node_modules/.bin/vite"), ["build"], { cwd: root, stdio: "inherit", env: buildEnv() });
   const bad = [];
   const prodIds = routeIds(readFileSync(tree, "utf8"));
   const committedIds = routeIds(committed);
   const missing = [...committedIds].filter((r) => !prodIds.has(r));
   const extra = [...prodIds].filter((r) => !committedIds.has(r));
   if (committedIds.size === 0) bad.push("could not read route ids from src/routeTree.gen.ts");
-  if (missing.join() !== "/api/dev/otp" || extra.length) {
-    bad.push(`route ids differ from the committed tree: missing [${missing}], extra [${extra}]; expected only /api/dev/otp missing`);
+  if (missing.join() !== DEV_OTP_ROUTE || extra.length) {
+    bad.push(`route ids differ from the committed tree: missing [${missing}], extra [${extra}]; expected only ${DEV_OTP_ROUTE} missing`);
   }
   for (const [name, text] of [["src/routeTree.gen.ts", readFileSync(tree, "utf8")]]) {
     for (const s of FORBIDDEN) if (text.includes(s)) bad.push(`${name}: ${s}`);

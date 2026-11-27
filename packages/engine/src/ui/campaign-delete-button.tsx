@@ -6,7 +6,7 @@ import { toast } from "@foundry/ui/toast";
 import { Trash2Icon } from "lucide-react";
 import { Button } from "@foundry/ui/button";
 import { ResponsiveDialog } from "@foundry/design-system";
-import { apiFetch } from "./api-fetch";
+import { apiAction, apiFetch } from "./api-fetch";
 
 /**
  * Delete a draft/scheduled campaign that never sent. The route itself refuses
@@ -15,7 +15,6 @@ import { apiFetch } from "./api-fetch";
 export function CampaignDeleteButton({
   campaignPublicId,
   name,
-  /** Icon-only, no label — for a dense row-actions cell (matches RowActionButton elsewhere). */
   compact,
 }: {
   campaignPublicId: string;
@@ -28,16 +27,12 @@ export function CampaignDeleteButton({
 
   async function confirmDelete() {
     setBusy(true);
-    try {
-      await apiFetch(`/api/notifications/campaigns/${campaignPublicId}`, { method: "DELETE" });
-      toast.success("Campaign deleted");
-      setOpen(false);
-      router.push("/dashboard/notifications/campaigns");
-    } catch {
-      // apiFetch already toasted the failure detail (e.g. "already sending").
-    } finally {
-      setBusy(false);
-    }
+    const res = await apiAction(apiFetch(`/api/notifications/campaigns/${campaignPublicId}`, { method: "DELETE" }));
+    setBusy(false);
+    if (!res) return;
+    toast.success("Campaign deleted");
+    setOpen(false);
+    router.push("/dashboard/notifications/campaigns");
   }
 
   return (

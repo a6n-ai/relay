@@ -6,7 +6,9 @@
     "moduleResolution": "Bundler",
     "jsx": "react-jsx",
     "strict": true,
+    "noUnusedLocals": true,
     "noEmit": true,
+    "allowImportingTsExtensions": true,
     "skipLibCheck": true,
     "isolatedModules": true,
     "types": ["@cloudflare/workers-types", "@cloudflare/vitest-plugin/types", "vite/client"]

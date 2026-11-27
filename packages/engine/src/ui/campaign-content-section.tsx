@@ -9,7 +9,7 @@ import { Button } from "@foundry/ui/button";
 import { Input } from "@foundry/ui/input";
 import { Label } from "@foundry/ui/label";
 import { Textarea } from "@foundry/ui/textarea";
-import { apiFetch } from "./api-fetch";
+import { saveCampaignContent } from "./campaign-content-save";
 import { CampaignAttachments, type CampaignAttachment } from "./campaign-attachments";
 import { EmailTemplateBuilder, type EmailTemplateBuilderHandle } from "./email-template-builder";
 import { openEmailPreview } from "./email-content-editor";
@@ -86,31 +86,21 @@ function EmailRow({
       toast.error("Add a subject");
       throw new Error("subject required");
     }
-    if (!editor.current) return "ok"; // editor closed; nothing left to save
+    if (!editor.current) throw new Error("editor not ready");
     const exported = await editor.current.exportEmail();
-    const res = await fetch(`/api/notifications/campaigns/${campaignPublicId}/content`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        channel: row.channel,
-        locale: row.locale,
-        subject,
-        body: exported.body,
-        html: exported.html,
-        preheader: exported.preheader,
-        attachments: attachments.length > 0 ? attachments : undefined,
-        revision: revision.current,
-      }),
+    const out = await saveCampaignContent(campaignPublicId, {
+      channel: row.channel,
+      locale: row.locale,
+      subject,
+      body: exported.body,
+      html: exported.html,
+      preheader: exported.preheader,
+      attachments,
+      revision: revision.current,
     });
-    if (res.status === 409) return "conflict";
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      toast.error(data.detail ?? data.title ?? "Save failed");
-      throw new Error("save failed");
-    }
-    revision.current = data.revision;
+    if (out === "conflict") return "conflict";
+    revision.current = out.revision;
     autosaved.current = true;
-    if (data.removed?.length) toast.warning(`Removed ${data.removed.length} unsafe item(s): ${data.removed.join(", ")}`);
     return "ok";
   }
   const autosave = useAutosave({ enabled: editing && autosaveDraft, save: persist });
@@ -216,27 +206,28 @@ export function TextRow({
 
   async function save() {
     setSaving(true);
+    let out: Awaited<ReturnType<typeof saveCampaignContent>>;
     try {
-      await apiFetch(`/api/notifications/campaigns/${campaignPublicId}/content`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          channel: row.channel,
-          locale: row.locale,
-          subject: row.subject,
-          body,
-          providerTemplateId: templateId || undefined,
-          revision: row.revision,
-        }),
+      out = await saveCampaignContent(campaignPublicId, {
+        channel: row.channel,
+        locale: row.locale,
+        subject: row.subject,
+        body,
+        providerTemplateId: templateId || undefined,
+        revision: row.revision,
       });
-      toast.success("Content saved");
-      setEditing(false);
-      router.refresh();
     } catch {
-      // apiFetch already toasted the failure detail.
+      return;
     } finally {
       setSaving(false);
     }
+    if (out === "conflict") {
+      toast.error("Changed in another tab. Reload to continue.");
+      return;
+    }
+    toast.success("Content saved");
+    setEditing(false);
+    router.refresh();
   }
 
   return (

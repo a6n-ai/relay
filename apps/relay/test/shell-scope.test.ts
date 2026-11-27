@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { effectiveApp, isAppScoped, navSearch, scopeLabel, scopeSearch, showsAllApps, withNew } from "../src/components/shell/scope";
+import { pageOf } from "./shell-pages";
+import { isAppScoped, pickApp, navSearch, scopeLabel, scopeSearch, showsAllApps, withNew } from "../src/components/shell/scope";
 
 const apps = [{ id: "a", name: "Shop" }];
 
@@ -11,36 +12,36 @@ describe("scopeLabel", () => {
 
 describe("isAppScoped", () => {
   it.each(["/messages", "/campaigns", "/campaigns/templates", "/campaigns/automations", "/lists", "/lists/"])("matches %s", (p) =>
-    expect(isAppScoped(p)).toBe(true),
+    expect(isAppScoped(p, pageOf)).toBe(true),
   );
   it.each(["/", "/apps/a1", "/messagesx", "/messages/failures", "/messages/suppressions", "/messages/m1", "/lists/l1", "/campaigns/c1", "/campaigns/templates/t1"])(
     "rejects %s",
-    (p) => expect(isAppScoped(p)).toBe(false),
+    (p) => expect(isAppScoped(p, pageOf)).toBe(false),
   );
 });
 
-describe("effectiveApp", () => {
+describe("pickApp", () => {
   const two = [{ id: "a" }, { id: "b" }];
-  it("keeps a known app", () => expect(effectiveApp(two, "b", "/campaigns")).toBe("b"));
+  it("keeps a known app", () => expect(pickApp(two, "b", false)).toBe("b"));
   it("is all apps on Messages and Lists", () => {
-    expect(showsAllApps("/lists")).toBe(true);
-    expect(effectiveApp(two, undefined, "/messages")).toBeUndefined();
+    expect(showsAllApps("/lists", pageOf)).toBe(true);
+    expect(pickApp(two, undefined, showsAllApps("/messages", pageOf))).toBeUndefined();
   });
   it("falls back to the first app on Campaigns, Templates and Automations", () => {
-    for (const p of ["/campaigns", "/campaigns/templates", "/campaigns/automations"]) expect(effectiveApp(two, undefined, p)).toBe("a");
+    for (const p of ["/campaigns", "/campaigns/templates", "/campaigns/automations"]) expect(pickApp(two, undefined, showsAllApps(p, pageOf))).toBe("a");
   });
-  it("falls back when the id is unknown", () => expect(effectiveApp(two, "zzz", "/campaigns")).toBe("a"));
-  it("has no app when there are none", () => expect(effectiveApp([], undefined, "/campaigns")).toBeUndefined());
+  it("falls back when the id is unknown", () => expect(pickApp(two, "zzz", false)).toBe("a"));
+  it("has no app when there are none", () => expect(pickApp([], undefined, false)).toBeUndefined());
 });
 
 describe("navSearch", () => {
   it("adds appId to scoped targets and keeps their search", () => {
-    expect(navSearch("/messages", { dir: "in" }, "a")).toEqual({ dir: "in", appId: "a" });
-    expect(navSearch("/campaigns/templates", undefined, "a")).toEqual({ appId: "a" });
+    expect(navSearch("/messages", { dir: "in" }, "a", pageOf)).toEqual({ dir: "in", appId: "a" });
+    expect(navSearch("/campaigns/templates", undefined, "a", pageOf)).toEqual({ appId: "a" });
   });
   it("leaves other targets and unset scope alone", () => {
-    expect(navSearch("/messages/suppressions", undefined, "a")).toBeUndefined();
-    expect(navSearch("/lists", undefined, undefined)).toBeUndefined();
+    expect(navSearch("/messages/suppressions", undefined, "a", pageOf)).toBeUndefined();
+    expect(navSearch("/lists", undefined, undefined, pageOf)).toBeUndefined();
   });
 });
 

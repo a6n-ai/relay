@@ -2,8 +2,8 @@ import { env, SELF } from "cloudflare:test";
 import { eq } from "drizzle-orm";
 import { beforeAll, describe, expect, it } from "vitest";
 import { requireActor } from "../src/console/actor";
-import { addSuppressionFor, listSuppressionsFor, removeSuppressionFor } from "../src/console/suppressions";
-import { clientFor } from "../src/core/messages";
+import { addSuppression, listSuppressions, removeSuppression } from "../src/services/suppressions";
+import { clientFor } from "../src/do/client";
 import { securityDb } from "../src/db/security/client";
 import { securityAudit, workspace } from "../src/db/security/schema";
 import { addMember, cookieFor, createWorkspace, headersFor, ORIGIN, setActive } from "./console-helpers";
@@ -32,8 +32,8 @@ const stub = (workspaceId: string) => clientFor(env, workspaceId);
 describe("suppressions console", () => {
   it("normalises an added email and lists it as a manual, all-streams row", async () => {
     const { owner } = await workspaceFor("sup-add@example.com", "Sup Add Co");
-    await addSuppressionFor(env, owner, { email: "A@X.test " });
-    const page = await listSuppressionsFor(env, owner, {});
+    await addSuppression(env, owner, { email: "A@X.test " });
+    const page = await listSuppressions(env, owner, {});
     expect(page.rows).toEqual([{ email: "a@x.test", reason: "manual", stream: null, createdAt: expect.any(Number) }]);
     expect(page.nextCursor).toBeNull();
   });
@@ -41,32 +41,32 @@ describe("suppressions console", () => {
   it("keeps a bounce reason when a manual add lands on it", async () => {
     const { owner, workspaceId } = await workspaceFor("sup-rank@example.com", "Sup Rank Co");
     await stub(workspaceId).addSuppression(workspaceId, "b@x.test", "bounce");
-    await addSuppressionFor(env, owner, { email: "b@x.test" });
-    const page = await listSuppressionsFor(env, owner, {});
+    await addSuppression(env, owner, { email: "b@x.test" });
+    const page = await listSuppressions(env, owner, {});
     expect(page.rows).toEqual([expect.objectContaining({ email: "b@x.test", reason: "bounce" })]);
   });
 
   it("removes a manual row so later sends are not suppressed", async () => {
     const { owner, workspaceId } = await workspaceFor("sup-remove@example.com", "Sup Remove Co");
-    await addSuppressionFor(env, owner, { email: "m@x.test" });
+    await addSuppression(env, owner, { email: "m@x.test" });
     expect(await stub(workspaceId).isSuppressed(workspaceId, "m@x.test", "marketing")).toBe(true);
-    await expect(removeSuppressionFor(env, owner, "m@x.test")).resolves.toBeUndefined();
+    await expect(removeSuppression(env, owner, "m@x.test")).resolves.toBeUndefined();
     expect(await stub(workspaceId).isSuppressed(workspaceId, "m@x.test", "marketing")).toBe(false);
   });
 
   it("removes a bounce row", async () => {
     const { owner, workspaceId } = await workspaceFor("sup-bounce@example.com", "Sup Bounce Co");
     await stub(workspaceId).addSuppression(workspaceId, "r@x.test", "bounce");
-    await removeSuppressionFor(env, owner, "r@x.test");
-    expect((await listSuppressionsFor(env, owner, {})).rows).toEqual([]);
+    await removeSuppression(env, owner, "r@x.test");
+    expect((await listSuppressions(env, owner, {})).rows).toEqual([]);
   });
 
   it("audits add and remove with a masked address, and only a removal that happened", async () => {
     const { owner, workspaceId } = await workspaceFor("sup-audit@example.com", "Sup Audit Co");
-    await addSuppressionFor(env, owner, { email: "Secret.Person@Example.test", stream: "marketing" });
+    await addSuppression(env, owner, { email: "Secret.Person@Example.test", stream: "marketing" });
     await stub(workspaceId).addSuppression(workspaceId, "c@x.test", "complaint");
-    await expect(removeSuppressionFor(env, owner, "c@x.test")).rejects.toMatchObject({ status: 409 });
-    await removeSuppressionFor(env, owner, "secret.person@example.test");
+    await expect(removeSuppression(env, owner, "c@x.test")).rejects.toMatchObject({ status: 409 });
+    await removeSuppression(env, owner, "secret.person@example.test");
     const rows = await securityDb(env)
       .select({ action: securityAudit.action, target: securityAudit.target, data: securityAudit.data })
       .from(securityAudit)
@@ -81,15 +81,15 @@ describe("suppressions console", () => {
     const { owner, workspaceId } = await workspaceFor("sup-optout@example.com", "Sup Optout Co");
     await stub(workspaceId).addSuppression(workspaceId, "c@x.test", "complaint");
     await stub(workspaceId).addSuppression(workspaceId, "u@x.test", "unsubscribe");
-    await expect(removeSuppressionFor(env, owner, "c@x.test")).rejects.toMatchObject({ status: 409, message: "recipient opted out" });
-    await expect(removeSuppressionFor(env, owner, "u@x.test")).rejects.toMatchObject({ status: 409, message: "recipient opted out" });
-    const emails = (await listSuppressionsFor(env, owner, {})).rows.map((r) => r.email);
+    await expect(removeSuppression(env, owner, "c@x.test")).rejects.toMatchObject({ status: 409, message: "recipient opted out" });
+    await expect(removeSuppression(env, owner, "u@x.test")).rejects.toMatchObject({ status: 409, message: "recipient opted out" });
+    const emails = (await listSuppressions(env, owner, {})).rows.map((r) => r.email);
     expect(emails).toEqual(["c@x.test", "u@x.test"]);
   });
 
   it("returns 404 when removing an email that is not suppressed", async () => {
     const { owner } = await workspaceFor("sup-missing@example.com", "Sup Missing Co");
-    await expect(removeSuppressionFor(env, owner, "nobody@x.test")).rejects.toMatchObject({ status: 404, message: "not found" });
+    await expect(removeSuppression(env, owner, "nobody@x.test")).rejects.toMatchObject({ status: 404, message: "not found" });
   });
 
   it("pages 120 rows in 50, 50 and 20 with no repeats", async () => {
@@ -97,13 +97,13 @@ describe("suppressions console", () => {
     for (let i = 0; i < 120; i++) {
       await stub(workspaceId).addSuppression(workspaceId, `u${String(i).padStart(3, "0")}@x.test`, "manual");
     }
-    const first = await listSuppressionsFor(env, owner, {});
+    const first = await listSuppressions(env, owner, {});
     expect(first.rows).toHaveLength(50);
     expect(first.nextCursor).toBe(first.rows[49].email);
-    const second = await listSuppressionsFor(env, owner, { cursor: first.nextCursor ?? undefined });
+    const second = await listSuppressions(env, owner, { cursor: first.nextCursor ?? undefined });
     expect(second.rows).toHaveLength(50);
     expect(second.nextCursor).toBe(second.rows[49].email);
-    const third = await listSuppressionsFor(env, owner, { cursor: second.nextCursor ?? undefined });
+    const third = await listSuppressions(env, owner, { cursor: second.nextCursor ?? undefined });
     expect(third.rows).toHaveLength(20);
     expect(third.nextCursor).toBeNull();
     const all = [...first.rows, ...second.rows, ...third.rows].map((r) => r.email);
@@ -115,19 +115,19 @@ describe("suppressions console", () => {
     for (const email of ["a@x.test", "a@y.test", "ab@x.test", "ba@x.test"]) {
       await stub(workspaceId).addSuppression(workspaceId, email, "manual");
     }
-    const page = await listSuppressionsFor(env, owner, { prefix: "A@" });
+    const page = await listSuppressions(env, owner, { prefix: "A@" });
     expect(page.rows.map((r) => r.email)).toEqual(["a@x.test", "a@y.test"]);
   });
 
   it("lets a member list but refuses a member's add, and refuses billing's list", async () => {
     const { workspaceId, owner } = await workspaceFor("sup-roles@example.com", "Sup Roles Co");
-    await addSuppressionFor(env, owner, { email: "seen@x.test" });
+    await addSuppression(env, owner, { email: "seen@x.test" });
     const member = await roleActor(workspaceId, "sup-roles-m@example.com", "member");
     const billing = await roleActor(workspaceId, "sup-roles-b@example.com", "billing");
-    const page = await listSuppressionsFor(env, member.actor, {});
+    const page = await listSuppressions(env, member.actor, {});
     expect(page.rows.map((r) => r.email)).toEqual(["seen@x.test"]);
-    await expect(addSuppressionFor(env, member.actor, { email: "no@x.test" })).rejects.toMatchObject({ status: 403 });
-    await expect(listSuppressionsFor(env, billing.actor, {})).rejects.toMatchObject({ status: 403 });
+    await expect(requireActor(env, headersFor(member.cookie), { permission: { sending: ["write"] }, write: true })).rejects.toMatchObject({ status: 403 });
+    await expect(requireActor(env, headersFor(billing.cookie), { permission: { sending: ["read"] } })).rejects.toMatchObject({ status: 403 });
   });
 
   it("lists in a suspended workspace and refuses an add with workspace suspended", async () => {
@@ -135,8 +135,8 @@ describe("suppressions console", () => {
     await securityDb(env).update(workspace).set({ status: "suspended" }).where(eq(workspace.id, workspaceId));
     const actor = await requireActor(env, headersFor(cookie));
     expect(actor.workspaceStatus).toBe("suspended");
-    await expect(listSuppressionsFor(env, actor, {})).resolves.toMatchObject({ rows: [] });
-    await expect(addSuppressionFor(env, actor, { email: "s@x.test" })).rejects.toMatchObject({
+    await expect(listSuppressions(env, actor, {})).resolves.toMatchObject({ rows: [] });
+    await expect(requireActor(env, headersFor(cookie), { permission: { sending: ["write"] }, write: true })).rejects.toMatchObject({
       status: 403,
       message: "workspace suspended",
     });
@@ -144,7 +144,7 @@ describe("suppressions console", () => {
 
   it("renders Suppress address for an owner, and not for a member", async () => {
     const { cookie, workspaceId, owner } = await workspaceFor("sup-ssr@example.com", "Sup SSR Co");
-    await addSuppressionFor(env, owner, { email: "ssr-manual@x.test" });
+    await addSuppression(env, owner, { email: "ssr-manual@x.test" });
     await stub(workspaceId).addSuppression(workspaceId, "ssr-opt@x.test", "unsubscribe");
     const ownerRes = await SELF.fetch(`${ORIGIN}/messages/suppressions`, { redirect: "manual", headers: { cookie } });
     expect(ownerRes.status).toBe(200);

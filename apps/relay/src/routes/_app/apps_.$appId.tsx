@@ -7,20 +7,20 @@ import { toast } from "@foundry/ui/toast";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { KeyRoundIcon } from "lucide-react";
 import { type FormEvent, useState } from "react";
+import { confirmAction } from "../../components/lib/run-action";
 import { ChoiceField, type ChoiceOption } from "../../components/form/choice-field";
-import { TextField } from "../../components/form/text-field";
+import { NameField } from "../../components/form/text-field";
 import { FixedField } from "../../components/form/fixed-field";
-import { ConfirmDialog } from "../../components/confirm-dialog";
-import { CreateDialog } from "../../components/create-dialog";
-import { DeniedState, deniedReason } from "../../components/denied-state";
-import { errorText } from "../../components/error-text";
+import { ConfirmDialog } from "../../components/page/confirm-dialog";
+import { CreateDialog } from "../../components/page/create-dialog";
+import { PageDenied } from "../../components/page/page-denied";
 import { EmptyState } from "../../components/page/empty-state";
 import { SettingsCard, SettingsForm } from "../../components/page/settings-card";
 import { FormSkeleton } from "../../components/page/page-skeleton";
-import { CellWhen, ResourceTable } from "../../components/resource-table";
+import { CellWhen, ResourceTable } from "../../components/page/resource-table";
 import { PageHeader } from "../../components/shell/page-header";
-import { SecretOnce } from "../../components/secret-once";
-import { useCan } from "../../components/use-can";
+import { SecretOnce } from "../../components/page/secret-once";
+import { useCan } from "../../components/lib/use-can";
 import {
   createKeyFn,
   deleteKeyFn,
@@ -34,10 +34,12 @@ import {
   setAudienceHookFn,
 } from "../../console/apps.fns";
 import { setAudienceBindingFn } from "../../console/admin.fns";
-import { formatDate, formatWhen } from "../../lib/format-date";
-import { FormError, FormBody, FormActions, FormPanel } from "../../components/page/form-parts";
+import { formatDate, formatWhen } from "../../components/lib/format-date";
+import { FormError, FormBody, FormActions, FormPanel } from "../../components/form/form-parts";
 import { RenameForm } from "../../components/form/rename-form";
-import { Hint } from "../../components/page/text";
+import { Hint } from "../../components/form/text";
+import { hostOf } from "../../components/lib/path";
+import { useSubmit } from "../../components/lib/use-submit";
 
 export const Route = createFileRoute("/_app/apps_/$appId")({
   pendingComponent: () => <FormSkeleton crumbs={[{ label: "Apps", to: "/apps" }, { label: "App" }]} cards={3} action />,
@@ -59,12 +61,7 @@ function AppPage() {
   const [renameId, setRenameId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   if (!data) {
-    return (
-      <>
-        <PageHeader crumbs={[{ label: "Apps", to: "/apps" }, { label: "App" }]} />
-        <DeniedState reason={deniedReason(shell)} />
-      </>
-    );
+    return <PageDenied crumbs={[{ label: "Apps", to: "/apps" }, { label: "App" }]} />;
   }
   const { app, keys, hook, senders } = data;
   const revoking = keys.find((k) => k.id === revokeId);
@@ -72,9 +69,7 @@ function AppPage() {
   const deleting = keys.find((k) => k.id === deleteId);
 
   async function revoke(id: string) {
-    await revokeKeyFn({ data: { id } });
-    toast.success("Key revoked");
-    await router.invalidate();
+    await confirmAction(() => revokeKeyFn({ data: { id } }), "Key revoked", () => router.invalidate());
   }
 
   return (
@@ -164,9 +159,7 @@ function AppPage() {
         confirmLabel="Delete key"
         onConfirm={async () => {
           if (!deleteId) return;
-          await deleteKeyFn({ data: { id: deleteId } });
-          toast.success("Key deleted");
-          await router.invalidate();
+          await confirmAction(() => deleteKeyFn({ data: { id: deleteId } }), "Key deleted", () => router.invalidate());
         }}
       />
     </>
@@ -174,26 +167,16 @@ function AppPage() {
 }
 
 function AppDetailsPanel({ appId, name, slug, canWrite }: { appId: string; name: string; slug: string; canWrite: boolean }) {
-  const router = useRouter();
   const [value, setValue] = useState(name);
-  const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
+  const { pending, error, run } = useSubmit();
   const dirty = value.trim() !== name;
 
   async function save(event: FormEvent) {
     event.preventDefault();
     if (!dirty || !value.trim()) return;
-    setPending(true);
-    setError(null);
-    try {
+    await run(async () => {
       await updateAppFn({ data: { id: appId, name: value.trim() } });
-      toast.success("App renamed");
-      await router.invalidate();
-    } catch (err) {
-      setError(errorText(err, "Could not rename the app."));
-    } finally {
-      setPending(false);
-    }
+    }, "Could not rename the app.", { success: "App renamed" });
   }
 
   return (
@@ -206,7 +189,7 @@ function AppDetailsPanel({ appId, name, slug, canWrite }: { appId: string; name:
       invalidReason={!value.trim() ? "Enter a name first." : undefined}
       onSubmit={save}
     >
-      <TextField id="app-name" label="Name" required maxLength={80} value={value} disabled={!canWrite} onChange={(e) => setValue(e.target.value)} />
+      <NameField id="app-name" value={value} disabled={!canWrite} onChange={(e) => setValue(e.target.value)} />
       <FixedField label="Short name" value={slug} hint="Create a new app to use a different short name." />
       <FormError message={error} />
     </SettingsForm>
@@ -222,7 +205,6 @@ const BINDING = "TIFFIN_AUDIENCE";
 const BINDING_NAME = "TiffinGrab";
 
 function DefaultSendersPanel({ appId, senders, canWrite }: { appId: string; senders: DefaultSenders; canWrite: boolean }) {
-  const router = useRouter();
   const known = new Set(senders.options.map((o) => o.id));
   // A default whose address can no longer send is shown as None; saving then clears it.
   const only = senders.options.length === 1 ? senders.options[0].id : NONE;
@@ -230,26 +212,17 @@ function DefaultSendersPanel({ appId, senders, canWrite }: { appId: string; send
   const savedMarketing = senders.marketingId && known.has(senders.marketingId) ? senders.marketingId : NONE;
   const [transactional, setTransactional] = useState(savedTransactional === NONE ? only : savedTransactional);
   const [marketing, setMarketing] = useState(savedMarketing === NONE ? only : savedMarketing);
-  const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
+  const { pending, error, run } = useSubmit();
   const dirty = transactional !== savedTransactional || marketing !== savedMarketing;
 
   async function save(event: FormEvent) {
     event.preventDefault();
     if (!dirty) return;
-    setPending(true);
-    setError(null);
-    try {
+    await run(async () => {
       await setAppDefaultSendersFn({
         data: { appId, transactionalId: transactional === NONE ? null : transactional, marketingId: marketing === NONE ? null : marketing },
       });
-      toast.success("Default senders saved");
-      await router.invalidate();
-    } catch (err) {
-      setError(errorText(err, "Could not save the default senders."));
-    } finally {
-      setPending(false);
-    }
+    }, "Could not save the default senders.", { success: "Default senders saved" });
   }
 
   const choices: ChoiceOption[] = [{ value: NONE, label: "None" }, ...senders.options.map((o) => ({ value: o.id, label: o.email }))];
@@ -306,8 +279,7 @@ function AudiencePanel({
   const [url, setUrl] = useState(hook?.url ?? "");
   const [enabled, setEnabled] = useState(hook?.enabled ?? true);
   const [secret, setSecret] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
+  const { pending, error, run } = useSubmit();
   const trimmed = url.trim();
   const urlInvalid = trimmed !== "" && !/^https:\/\/\S+$/i.test(trimmed);
   const dirty = url !== (hook?.url ?? "") || enabled !== (hook?.enabled ?? true);
@@ -315,31 +287,21 @@ function AudiencePanel({
   async function save(event: FormEvent) {
     event.preventDefault();
     if (!dirty || !trimmed || urlInvalid) return;
-    setPending(true);
-    setError(null);
-    try {
+    await run(async () => {
       const result = await setAudienceHookFn({ data: { appId, url: trimmed, enabled } });
       setSecret(result.secret);
-      toast.success("App audience saved");
-      await router.invalidate();
-    } catch (err) {
-      setError(errorText(err, "Could not save the App audience."));
-    } finally {
-      setPending(false);
-    }
+    }, "Could not save the App audience.", { success: "App audience saved" });
   }
 
   async function remove() {
-    await deleteAudienceHookFn({ data: { appId } });
-    toast.success("App audience removed");
-    await router.invalidate();
+    await confirmAction(() => deleteAudienceHookFn({ data: { appId } }), "App audience removed", () => router.invalidate());
   }
 
   // The server only generates a secret on first save, so a rotation sends a fresh one and shows it here.
   // url and enabled are required by the save, so they come from a fresh read, not the loader data.
   async function rotate() {
     const current = await fetchAudienceHook({ data: { appId } });
-    if (!current?.url) throw new Error("Save the audience settings first.");
+    if (!current?.url) throw new Error("audience not saved");
     const fresh = Array.from(crypto.getRandomValues(new Uint8Array(32)), (b) => b.toString(16).padStart(2, "0")).join("");
     await setAudienceHookFn({ data: { appId, url: current.url, secret: fresh, enabled: current.enabled } });
     setSecret(fresh);
@@ -349,9 +311,7 @@ function AudiencePanel({
 
   async function connectBinding() {
     if (!bindWorkspaceId) return;
-    await setAudienceBindingFn({ data: { workspaceId: bindWorkspaceId, appId, binding: BINDING } });
-    toast.success("App audience connected");
-    await router.invalidate();
+    await confirmAction(() => setAudienceBindingFn({ data: { workspaceId: bindWorkspaceId, appId, binding: BINDING } }), "App audience connected", () => router.invalidate());
   }
 
   const editable = canWrite && hook && hook.kind !== "binding";
@@ -430,40 +390,27 @@ function AudiencePanel({
 }
 
 function NewKeyForm({ appId, first, done, lock }: { appId: string; first: boolean; done: () => void; lock: (locked: boolean) => void }) {
-  const router = useRouter();
   const [name, setName] = useState(first ? "Production" : "");
   const [created, setCreated] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
+  const { pending, error, run } = useSubmit();
 
   async function submit(event: FormEvent) {
     event.preventDefault();
-    setPending(true);
-    setError(null);
-    try {
+    await run(async () => {
       const key = await createKeyFn({ data: { appId, name } });
       setCreated(key.secret);
       lock(true);
-      toast.success("Key created");
-      await router.invalidate();
-    } catch (err) {
-      setError(errorText(err, "Could not create the key."));
-    } finally {
-      setPending(false);
-    }
+    }, "Could not create the key.", { success: "Key created" });
   }
 
   if (created) return <SecretOnce secret={created} label="Your new API key" onDone={done} />;
 
   return (
     <FormBody onSubmit={submit}>
-      <TextField
+      <NameField
         id="key-name"
-        label="Name"
         hint="Production, Staging or the service that uses it."
-        required
         autoFocus
-        maxLength={80}
         placeholder="Production"
         value={name}
         onChange={(e) => setName(e.target.value)}
@@ -472,12 +419,4 @@ function NewKeyForm({ appId, first, done, lock }: { appId: string; first: boolea
       <FormActions cancel submitLabel="Create key" pending={pending} pendingLabel="Creating…" disabled={!name.trim()} disabledReason="Enter a name first." />
     </FormBody>
   );
-}
-
-function hostOf(url: string) {
-  try {
-    return new URL(url).host;
-  } catch {
-    return url;
-  }
 }

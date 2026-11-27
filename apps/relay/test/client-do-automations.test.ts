@@ -1,8 +1,9 @@
 import { env, runInDurableObject } from "cloudflare:test";
 import { eq } from "drizzle-orm";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi, type MockInstance } from "vitest";
+import { LIMITS_KEY } from "../src/core/limits";
 import { coreDb } from "../src/db/core/client";
-import { workspaceProfile } from "../src/db/core/schema";
+import { address, workspaceProfile } from "../src/db/core/schema";
 import { securityDb } from "../src/db/security/client";
 import { workspace } from "../src/db/security/schema";
 import { applyMigrations, seedVerifiedSender } from "./migrate";
@@ -43,7 +44,6 @@ async function setup(ws: string, consentSource: "express_optin" | "purchase" = "
     fromEmail: FROM,
     delayHours,
   });
-  if (aut === "bad_list" || aut === "bad_template") throw new Error(aut);
   return { stub, list, aut, tpl };
 }
 
@@ -79,6 +79,8 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+const refused = (call: Promise<unknown>) => call.then(() => "resolved", (e: Error) => e.message);
+
 describe("list automations in the workspace DO", () => {
   it("refuses to enable without a postal address", async () => {
     const ws = "ws_aut_postal";
@@ -86,7 +88,6 @@ describe("list automations in the workspace DO", () => {
     const tpl = (await stub.createTemplate(ws, "app_1", TEMPLATE)) as { id: string };
     const list = await stub.createList(ws, "app_1", { name: "L", consentSource: "express_optin" });
     const aut = await stub.createAutomation(ws, "app_1", { name: "W", listId: list.id, templateId: tpl.id, fromEmail: FROM, delayHours: 0 });
-    if (aut === "bad_list" || aut === "bad_template") throw new Error(aut);
     expect(aut.enabled).toBe(false);
     expect(await stub.setAutomationEnabled(ws, aut.id, true, null)).toEqual({ problems: ["postal_address_missing"] });
   });
@@ -97,20 +98,15 @@ describe("list automations in the workspace DO", () => {
     const tpl = (await stub.createTemplate(ws, "app_1", { ...TEMPLATE, text: `${TEMPLATE.text} {{data.plan}}` })) as { id: string };
     const list = await stub.createList(ws, "app_1", { name: "L", consentSource: "express_optin" });
     const aut = await stub.createAutomation(ws, "app_1", { name: "W", listId: list.id, templateId: tpl.id, fromEmail: FROM, delayHours: 0 });
-    if (aut === "bad_list" || aut === "bad_template") throw new Error(aut);
     expect(await stub.setAutomationEnabled(ws, aut.id, true, "1 Main St")).toEqual({ problems: ["data_fields_need_hook"] });
   });
 
   it("refuses a list or template from another app", async () => {
     const ws = "ws_aut_foreign";
     const { stub, list, tpl } = await setup(ws);
-    expect(await stub.createAutomation(ws, "app_2", { name: "X", listId: list.id, templateId: tpl.id, fromEmail: FROM, delayHours: 0 })).toBe(
-      "bad_list",
-    );
+    expect(await refused(stub.createAutomation(ws, "app_2", { name: "X", listId: list.id, templateId: tpl.id, fromEmail: FROM, delayHours: 0 }))).toBe("unknown list");
     const other = (await stub.createTemplate(ws, "app_2", { ...TEMPLATE, name: "Other", event: null })) as { id: string };
-    expect(await stub.createAutomation(ws, "app_1", { name: "X", listId: list.id, templateId: other.id, fromEmail: FROM, delayHours: 0 })).toBe(
-      "bad_template",
-    );
+    expect(await refused(stub.createAutomation(ws, "app_1", { name: "X", listId: list.id, templateId: other.id, fromEmail: FROM, delayHours: 0 }))).toBe("unknown template");
   });
 
   it("enrols an added member once, due after the delay, and lowers the alarm to it", async () => {
@@ -197,7 +193,6 @@ describe("list automations in the workspace DO", () => {
     const tpl = (await stub.createTemplate(ws, "app_1", { ...TEMPLATE, subject: "{{contact.first_name}}" })) as { id: string };
     const list = await stub.createList(ws, "app_1", { name: "L", consentSource: "express_optin" });
     const aut = await stub.createAutomation(ws, "app_1", { name: "W", listId: list.id, templateId: tpl.id, fromEmail: FROM, delayHours: 1 });
-    if (aut === "bad_list" || aut === "bad_template") throw new Error(aut);
     await stub.setAutomationEnabled(ws, aut.id, true, "1 Main St");
     await stub.addMember(ws, list.id, { email: "a@x.com" });
     await stub.addMember(ws, list.id, { email: "b@x.com", firstName: "Bea" });
@@ -241,7 +236,6 @@ describe("list automations in the workspace DO", () => {
     const { stub, list, aut } = await setup(ws);
     const tpl = (await stub.createTemplate(ws, "app_1", { ...TEMPLATE, subject: "Hi\nthere" })) as { id: string };
     const broken = await stub.createAutomation(ws, "app_1", { name: "Broken", listId: list.id, templateId: tpl.id, fromEmail: FROM, delayHours: 2 });
-    if (broken === "bad_list" || broken === "bad_template") throw new Error(broken);
     await stub.setAutomationEnabled(ws, aut.id, true, "1 Main St");
     await stub.setAutomationEnabled(ws, broken.id, true, "1 Main St");
     await stub.addMember(ws, list.id, { email: "a@x.com" });
@@ -286,5 +280,80 @@ describe("list automations in the workspace DO", () => {
     expect(await stub.runDueAutomations(due)).toMatchObject({ sent: 0, skipped: 1 });
     expect(await runs(stub)).toEqual([expect.objectContaining({ email: "a@x.com", status: "skipped", error: "unsubscribe_missing" })]);
     expect(sendSpy).not.toHaveBeenCalled();
+  });
+  it("defers its runs, never skips them, when a fresh DO cannot reach D1", async () => {
+    const ws = "ws_aut_d1_down";
+    const { stub, list, aut } = await setup(ws);
+    await stub.setAutomationEnabled(ws, aut.id, true, "1 Main St");
+    await stub.addMember(ws, list.id, { email: "a@x.com" });
+    const [{ due_at: due }] = await runs(stub);
+    await runInDurableObject(stub, (_i, state) => state.storage.kv.delete(LIMITS_KEY));
+    const d1 = vi.spyOn(env.CORE_DB, "prepare").mockImplementation(() => {
+      throw new Error("D1 down");
+    });
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    expect(await stub.runDueAutomations(due)).toMatchObject({ sent: 0, skipped: 0, blocked: true });
+    expect(await runs(stub)).toEqual([expect.objectContaining({ status: "pending", error: null })]);
+    d1.mockRestore();
+    expect(await stub.runDueAutomations(due)).toMatchObject({ sent: 1, blocked: false });
+  });
+
+  it("reloads the limits once for a sender verified after the snapshot, then sends on the next pass", async () => {
+    const ws = "ws_aut_sender_retry";
+    const { stub, list, aut } = await setup(ws);
+    await stub.setAutomationEnabled(ws, aut.id, true, "1 Main St");
+    await stub.addMember(ws, list.id, { email: "a@x.com" });
+    const [{ due_at: due }] = await runs(stub);
+    await coreDb(env).delete(address).where(eq(address.email, FROM));
+    await stub.refreshLimits(ws);
+    await seedVerifiedSender(ws);
+
+    expect(await stub.runDueAutomations(due)).toMatchObject({ sent: 0, skipped: 0, blocked: false });
+    expect(await runs(stub)).toEqual([expect.objectContaining({ status: "pending", error: null })]);
+    expect(await stub.runDueAutomations(due)).toMatchObject({ sent: 1, skipped: 0 });
+  });
+
+  it("logs an unexpected send error and leaves the run pending, never skipping it", async () => {
+    const ws = "ws_aut_unknown_error";
+    const { stub, list, aut } = await setup(ws);
+    await stub.setAutomationEnabled(ws, aut.id, true, "1 Main St");
+    await stub.addMember(ws, list.id, { email: "a@x.com" });
+    const [{ due_at: due }] = await runs(stub);
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.spyOn(env.MAIL, "put").mockRejectedValue(new Error("r2 down"));
+
+    const outcome = await runInDurableObject(stub, (instance) => instance.runDueAutomations(due));
+    expect(outcome).toMatchObject({ sent: 0, skipped: 0, blocked: false });
+    expect(log).toHaveBeenCalledWith("automation send deferred", expect.stringContaining("r2 down"));
+    expect(await runs(stub)).toEqual([expect.objectContaining({ status: "pending", error: null })]);
+
+    vi.restoreAllMocks();
+    expect(await stub.runDueAutomations(due)).toMatchObject({ sent: 1 });
+  });
+
+  it("does not let one always-failing run block the next, and skips it as send_failed after 3 passes", async () => {
+    const ws = "ws_aut_unknown_3x";
+    const { stub, list, aut } = await setup(ws);
+    await stub.setAutomationEnabled(ws, aut.id, true, "1 Main St");
+    await stub.addMember(ws, list.id, { email: "a@x.com" });
+    await stub.addMember(ws, list.id, { email: "b@x.com" });
+    const rows = await runs(stub);
+    const due = Math.max(...rows.map((r) => r.due_at));
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const put = env.MAIL.put.bind(env.MAIL);
+    let calls = 0;
+    vi.spyOn(env.MAIL, "put").mockImplementation((...args: Parameters<typeof put>) => {
+      calls += 1;
+      if (calls !== 2) return Promise.reject(new Error("r2 down"));
+      return put(...args);
+    });
+
+    const first = await runInDurableObject(stub, (instance) => instance.runDueAutomations(due));
+    expect(first).toMatchObject({ sent: 1, skipped: 0, blocked: false });
+    await runInDurableObject(stub, (instance) => instance.runDueAutomations(due));
+    const third = await runInDurableObject(stub, (instance) => instance.runDueAutomations(due));
+    expect(third).toMatchObject({ skipped: 1 });
+    expect((await runs(stub)).filter((r) => r.error === "send_failed")).toHaveLength(1);
+    vi.restoreAllMocks();
   });
 });

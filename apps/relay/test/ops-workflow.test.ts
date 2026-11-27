@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { opsParamsSchema } from "../src/core/ops-workflow";
+import { opsParamsSchema } from "../src/core/ops-params";
 
 describe("relay-ops params", () => {
   it("accepts a seed with owners, workspace and app, and a bare sweep", () => {

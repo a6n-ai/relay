@@ -1,20 +1,20 @@
 import { Badge } from "@foundry/ui/badge";
-import { TextField } from "../../components/form/text-field";
+import { confirmAction } from "../../components/lib/run-action";
+import { NameField, TextField } from "../../components/form/text-field";
 import { Button } from "@foundry/ui/button";
 import { toast } from "@foundry/ui/toast";
 import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { UsersIcon } from "lucide-react";
 import { type FormEvent, useState } from "react";
-import { ConsentFields } from "../../components/consent-fields";
-import { consentHint } from "../../components/consent-labels";
+import { ConsentFields } from "../../components/lists/consent-fields";
+import { consentHint } from "../../components/lists/consent-labels";
 import { FixedField } from "../../components/form/fixed-field";
-import { ConfirmDialog } from "../../components/confirm-dialog";
-import { CreateDialog } from "../../components/create-dialog";
-import { DeniedState, deniedReason } from "../../components/denied-state";
-import { errorText } from "../../components/error-text";
-import { CellWhen, ResourceTable } from "../../components/resource-table";
-import { StatusBadge } from "../../components/status-badge";
-import { useCan } from "../../components/use-can";
+import { ConfirmDialog } from "../../components/page/confirm-dialog";
+import { CreateDialog } from "../../components/page/create-dialog";
+import { PageDenied } from "../../components/page/page-denied";
+import { CellWhen, ResourceTable } from "../../components/page/resource-table";
+import { StatusBadge } from "../../components/page/status-badge";
+import { useCan } from "../../components/lib/use-can";
 import { LoadMore } from "../../components/page/load-more";
 import { EmptyState } from "../../components/page/empty-state";
 import { RowMenu } from "../../components/page/row-menu";
@@ -22,9 +22,7 @@ import { SearchInput, Toolbar } from "../../components/page/toolbar";
 import { useUrlFilter } from "../../components/page/use-url-filter";
 import { ListSkeleton } from "../../components/page/page-skeleton";
 import { PageHeader } from "../../components/shell/page-header";
-import { fetchApps } from "../../console/apps.fns";
-import type { ConsentSource, MemberView } from "../../do/lists";
-import { formatDate, formatWhen } from "../../lib/format-date";
+import { formatDate, formatWhen } from "../../components/lib/format-date";
 import {
   addMemberFn,
   deleteListFn,
@@ -34,27 +32,28 @@ import {
   removeMemberFn,
   updateListFn,
 } from "../../console/lists.fns";
-import { FormError, FormBody, FormActions } from "../../components/page/form-parts";
-import { Hint } from "../../components/page/text";
+import { FormError, FormBody, FormActions } from "../../components/form/form-parts";
+import { type ConsentSource, type MemberView } from "../../shared/views";
+import { str, posInt } from "../../components/lib/route-search";
+import { appName } from "../../shared/scope";
+import { useSubmit } from "../../components/lib/use-submit";
 
 type ListSearch = { appId?: string; cursor?: string; q?: string; offset?: number };
 
-// The list name comes from the app's list index, so the link carries appId.
 export const Route = createFileRoute("/_app/lists_/$listId")({
   validateSearch: (search: Record<string, unknown>): ListSearch => ({
-    appId: typeof search.appId === "string" && search.appId ? search.appId : undefined,
-    cursor: typeof search.cursor === "string" && search.cursor ? search.cursor : undefined,
-    q: typeof search.q === "string" && search.q ? search.q : undefined,
-    offset: Number.isInteger(search.offset) && (search.offset as number) > 0 ? (search.offset as number) : undefined,
+    appId: str(search.appId),
+    cursor: str(search.cursor),
+    q: str(search.q),
+    offset: posInt(search.offset),
   }),
   loaderDeps: ({ search }) => ({ appId: search.appId, cursor: search.cursor }),
   loader: async ({ deps, params }) => {
     const lists = deps.appId ? await fetchLists({ data: { appId: deps.appId } }) : [];
-    const apps = await fetchApps();
     const members = await fetchListMembers({ data: { listId: params.listId, cursor: deps.cursor } });
     if (!lists || !members) return null;
     if ("missing" in members) return { missing: true as const };
-    return { list: "missing" in lists ? undefined : lists.find((l) => l.id === params.listId), members, appName: apps?.find((a) => a.id === deps.appId)?.name };
+    return { list: "missing" in lists ? undefined : lists.find((l) => l.id === params.listId), members };
   },
   pendingComponent: () => <ListSkeleton crumbs={[{ label: "Lists", to: "/lists" }, { label: "List" }]} columns={5} search action />,
   component: ListDetailPage,
@@ -77,27 +76,16 @@ function ListDetailPage() {
   const [adding, setAdding] = useState(false);
   const listsCrumb = { label: "Lists", to: "/lists", search: { appId: search.appId } };
   if (!page) {
-    return (
-      <>
-        <PageHeader crumbs={[listsCrumb, { label: "List" }]} />
-        <DeniedState reason={deniedReason(shell)} />
-      </>
-    );
+    return <PageDenied crumbs={[listsCrumb, { label: "List" }]} />;
   }
   if ("missing" in page || !page.list) {
-    return (
-      <>
-        <PageHeader crumbs={[listsCrumb, { label: "List" }]} />
-        <DeniedState reason="not-found" label="List not found" />
-      </>
-    );
+    return <PageDenied crumbs={[listsCrumb, { label: "List" }]} reason="not-found" label="List not found" />;
   }
-  const { list, members, appName } = page;
+  const { list, members } = page;
+  const appLabel = appName(shell.apps, search.appId, "This list's app");
   const offset = search.cursor ? (search.offset ?? 0) : 0;
   async function remove(memberId: string) {
-    await removeMemberFn({ data: { listId, memberId } });
-    toast.success("Contact removed");
-    await router.invalidate();
+    await confirmAction(() => removeMemberFn({ data: { listId, memberId } }), "Contact removed", () => router.invalidate());
   }
   async function deleteList() {
     await deleteListFn({ data: { id: listId } });
@@ -166,7 +154,7 @@ function ListDetailPage() {
         </CreateDialog>
       ) : null}
       <CreateDialog title="Edit list" open={editing} onOpenChange={setEditing}>
-        {(done) => <EditListForm list={list} appName={appName} done={done} />}
+        {(done) => <EditListForm list={list} appName={appLabel} done={done} />}
       </CreateDialog>
       <CreateDialog title="Edit contact" open={editingContact !== null} onOpenChange={(o) => !o && setEditingContact(null)}>
         {(done) => (editingContact ? <EditContactForm key={editingContact.id} listId={listId} member={editingContact} done={done} /> : null)}
@@ -243,36 +231,25 @@ function EditListForm({
   done,
 }: {
   list: { id: string; name: string; consentSource: ConsentSource; consentNote: string | null };
-  appName?: string;
+  appName: string;
   done: () => void;
 }) {
-  const router = useRouter();
   const [name, setName] = useState(list.name);
   const [consent, setConsent] = useState(list.consentSource);
   const [note, setNote] = useState(list.consentNote ?? "");
-  const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
+  const { pending, error, run } = useSubmit();
   const dirty = name !== list.name || consent !== list.consentSource || note.trim() !== (list.consentNote ?? "");
   async function submit(event: FormEvent) {
     event.preventDefault();
-    setPending(true);
-    setError(null);
-    try {
+    await run(async () => {
       // An empty note clears it: the server keeps the old note only when consentNote is omitted.
       await updateListFn({ data: { id: list.id, patch: { name, consentSource: consent, consentNote: note.trim() } } });
-      toast.success("List updated");
-      done();
-      await router.invalidate();
-    } catch (err) {
-      setError(errorText(err, "Could not update this list."));
-    } finally {
-      setPending(false);
-    }
+    }, "Could not update this list.", { success: "List updated", after: done });
   }
   return (
     <FormBody onSubmit={submit}>
-      <FixedField label="App" value={appName ?? "This list's app"} hint="Create a new list in the other app instead." />
-      <TextField id="list-rename" label="Name" autoFocus required value={name} onChange={(e) => setName(e.target.value)} />
+      <FixedField label="App" value={appName} hint="Create a new list in the other app instead." />
+      <NameField id="list-rename" autoFocus value={name} onChange={(e) => setName(e.target.value)} />
       <ConsentFields idPrefix="list-edit" consent={consent} onConsent={setConsent} note={note} onNote={setNote} />
       <FormError message={error} />
       <FormActions
@@ -288,26 +265,15 @@ function EditListForm({
 }
 
 function EditContactForm({ listId, member, done }: { listId: string; member: MemberView; done: () => void }) {
-  const router = useRouter();
   const [firstName, setFirstName] = useState(member.firstName ?? "");
   const [lastName, setLastName] = useState(member.lastName ?? "");
-  const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
+  const { pending, error, run } = useSubmit();
   const dirty = firstName.trim() !== (member.firstName ?? "") || lastName.trim() !== (member.lastName ?? "");
   async function submit(event: FormEvent) {
     event.preventDefault();
-    setPending(true);
-    setError(null);
-    try {
+    await run(async () => {
       await updateContactFn({ data: { listId, contactId: member.id, firstName, lastName } });
-      toast.success("Contact updated");
-      done();
-      await router.invalidate();
-    } catch (err) {
-      setError(errorText(err, "Could not update this contact."));
-    } finally {
-      setPending(false);
-    }
+    }, "Could not update this contact.", { success: "Contact updated", after: done });
   }
   return (
     <FormBody onSubmit={submit}>
@@ -323,37 +289,26 @@ function EditContactForm({ listId, member, done }: { listId: string; member: Mem
 }
 
 function AddContactForm({ listId, consent, done }: { listId: string; consent: ConsentSource; done: () => void }) {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [named, setNamed] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [emailError, setEmailError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
+  const { pending, error, run } = useSubmit();
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (!/^\S+@\S+\.\S+$/.test(email.trim())) {
       setEmailError("Enter a valid email address.");
       return;
     }
-    setPending(true);
-    setError(null);
-    try {
+    await run(async () => {
       await addMemberFn({
         data: {
           listId,
           member: { email, firstName: firstName.trim() || undefined, lastName: lastName.trim() || undefined },
         },
       });
-      toast.success("Contact added");
-      done();
-      await router.invalidate();
-    } catch (err) {
-      setError(errorText(err, "Could not add this contact."));
-    } finally {
-      setPending(false);
-    }
+    }, "Could not add this contact.", { success: "Contact added", after: done });
   }
   return (
     <FormBody onSubmit={submit}>

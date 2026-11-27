@@ -1,6 +1,6 @@
 import { env, runInDurableObject, SELF } from "cloudflare:test";
 import { beforeAll, describe, expect, it } from "vitest";
-import { createApiKey } from "../src/core/api-keys";
+import { createApiKey } from "../src/services/api-keys";
 import { webhookInputSchema } from "../src/core/webhooks";
 import { securityDb } from "../src/db/security/client";
 import { app, member, user, workspace } from "../src/db/security/schema";

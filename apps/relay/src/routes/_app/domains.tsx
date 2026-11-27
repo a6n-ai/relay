@@ -4,19 +4,20 @@ import { toast } from "@foundry/ui/toast";
 import { createFileRoute, Link, useRouter, useSearch } from "@tanstack/react-router";
 import { GlobeIcon } from "lucide-react";
 import { useState } from "react";
-import { ConfirmDialog } from "../../components/confirm-dialog";
-import { DeniedState, deniedReason } from "../../components/denied-state";
-import { DnsRecords } from "../../components/dns-records";
-import { DomainDeleteDialog } from "../../components/domain-delete-dialog";
-import { errorText } from "../../components/error-text";
-import { ResourceTable } from "../../components/resource-table";
-import { StatusBadge } from "../../components/status-badge";
-import { useCan } from "../../components/use-can";
+import { ConfirmDialog } from "../../components/page/confirm-dialog";
+import { PageDenied } from "../../components/page/page-denied";
+import { DnsRecords } from "../../components/domains/dns-records";
+import { DomainDeleteDialog } from "../../components/domains/domain-delete-dialog";
+import { errorText } from "../../components/lib/error-text";
+import { confirmAction, runAction } from "../../components/lib/run-action";
+import { ResourceTable } from "../../components/page/resource-table";
+import { StatusBadge } from "../../components/page/status-badge";
+import { useCan } from "../../components/lib/use-can";
 import { EmptyState } from "../../components/page/empty-state";
 import { FilterMenu } from "../../components/page/filter-menu";
-import { FormPanel } from "../../components/page/form-parts";
+import { FormPanel } from "../../components/form/form-parts";
 import { SettingsCard } from "../../components/page/settings-card";
-import { ResourceGrid } from "../../components/page/resource-grid";
+import { ResourceCard, ResourceGrid } from "../../components/page/resource-grid";
 import { ListSkeleton } from "../../components/page/page-skeleton";
 import { SearchInput, Toolbar } from "../../components/page/toolbar";
 import { useUrlFilter } from "../../components/page/use-url-filter";
@@ -31,20 +32,22 @@ import {
   removeAddressFn,
   setDomainProtectedFn,
 } from "../../console/domains.fns";
-import { Hint, Mono } from "../../components/page/text";
-import { KIND_LABEL } from "../../lib/address-kinds";
+import { Hint, Mono } from "../../components/form/text";
+import { KIND_LABEL } from "../../components/lib/address-kinds";
+import { oneOf, str, untyped } from "../../components/lib/route-search";
 
 export const Route = createFileRoute("/_app/domains")({
+  staticData: { title: "Domains", copy: "Domains you send from and receive on, and the addresses on them." },
   validateSearch: (search: Record<string, unknown>) => ({
-    q: typeof search.q === "string" && search.q ? search.q : undefined,
-    status: search.status === "verified" || search.status === "pending" || search.status === "failed" ? search.status : undefined,
+    q: str(search.q),
+    status: oneOf(["verified", "pending", "failed"] as const, search.status),
   }),
   loader: async () => {
     const domains = await fetchDomains();
     if (!domains) return null;
     return { domains, addresses: await fetchAddresses() };
   },
-  pendingComponent: () => <ListSkeleton crumbs={[{ label: "Domains" }]} columns={3} sections={["Domains", "Addresses"]} search filter view action />,
+  pendingComponent: () => <ListSkeleton columns={3} sections={["Domains", "Addresses"]} search filter view action />,
   component: DomainsPage,
 });
 
@@ -72,14 +75,8 @@ function DomainsPage() {
   const [releasing, setReleasing] = useState<{ id: string; domain: string } | null>(null);
   const [deleting, setDeleting] = useState<{ id: string; domain: string } | null>(null);
   const [removing, setRemoving] = useState<{ id: string; email: string } | null>(null);
-  const crumbs = [{ label: "Domains" }];
   if (!data) {
-    return (
-      <>
-        <PageHeader crumbs={crumbs} />
-        <DeniedState reason={deniedReason(shell)} />
-      </>
-    );
+    return <PageDenied />;
   }
   const needle = q.trim().toLowerCase();
   const domains = data.domains.filter(
@@ -105,27 +102,10 @@ function DomainsPage() {
     }
   }
 
-  async function release(id: string) {
-    await releaseDomainFn({ data: { id } });
-    toast.success("Domain released");
-    await router.invalidate();
-  }
-
-  async function setProtected(id: string, protectedNow: boolean) {
-    try {
-      await setDomainProtectedFn({ data: { id, protected: protectedNow } });
-      toast.success(protectedNow ? "Domain protected" : "Domain unprotected");
-      await router.invalidate();
-    } catch (err) {
-      toast.error(errorText(err, "Could not change protection"));
-    }
-  }
-
-  async function remove(id: string) {
-    await removeAddressFn({ data: { id } });
-    toast.success("Address removed");
-    await router.invalidate();
-  }
+  const release = (id: string) => confirmAction(() => releaseDomainFn({ data: { id } }), "Domain released", () => router.invalidate());
+  const setProtected = (id: string, protectedNow: boolean) =>
+    runAction(() => setDomainProtectedFn({ data: { id, protected: protectedNow } }), protectedNow ? "Domain protected" : "Domain unprotected", () => router.invalidate(), "Could not change protection");
+  const remove = (id: string) => confirmAction(() => removeAddressFn({ data: { id } }), "Address removed", () => router.invalidate());
 
   const domainMenu = (d: (typeof domains)[number]) => [
     { label: "Check now", hidden: !canWrite, onSelect: () => void check(d.id) },
@@ -153,10 +133,10 @@ function DomainsPage() {
 
   return (
     <>
-      <PageHeader crumbs={crumbs} />
+      <PageHeader />
       <Toolbar
         search={<SearchInput value={q} onChange={setQ} placeholder="Search domains and addresses" />}
-        filters={<FilterMenu facets={[STATUS_FACET]} value={search} onChange={(next) => void navigate({ to: ".", search: next as never })} />}
+        filters={<FilterMenu facets={[STATUS_FACET]} value={search} onChange={(next) => void navigate({ to: ".", search: untyped(next) })} />}
         view={<ViewToggle route="/domains" value={view} onChange={setView} />}
       >
         {canWrite ? (
@@ -178,16 +158,16 @@ function DomainsPage() {
           menu={domainMenu}
           empty={domainsEmpty}
           card={(d) => (
-            <div className="grid gap-2 pr-8">
-              <Mono>{d.domain}</Mono>
-              <div className="flex items-center gap-2">
-                <StatusBadge status={d.status} />
-                {d.protected ? <Badge variant="warning">Protected</Badge> : null}
-              </div>
-              <Hint size="xs">
-                {addressCount.get(d.domain) ?? 0} {addressCount.get(d.domain) === 1 ? "address" : "addresses"} · {d.sesRegion}
-              </Hint>
-            </div>
+            <ResourceCard
+              title={<Mono>{d.domain}</Mono>}
+              badge={
+                <div className="flex items-center gap-2">
+                  <StatusBadge status={d.status} />
+                  {d.protected ? <Badge variant="warning">Protected</Badge> : null}
+                </div>
+              }
+              hints={[`${addressCount.get(d.domain) ?? 0} ${addressCount.get(d.domain) === 1 ? "address" : "addresses"} · ${d.sesRegion}`]}
+            />
           )}
         />
         </section>

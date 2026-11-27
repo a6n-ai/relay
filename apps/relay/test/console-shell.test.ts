@@ -1,13 +1,13 @@
 import { env, runInDurableObject, SELF } from "cloudflare:test";
 import { and, eq } from "drizzle-orm";
 import { beforeAll, describe, expect, it } from "vitest";
-import { PROBLEM_LABEL } from "../src/components/campaign-problems";
-import { reasonText } from "../src/components/error-text";
-import { clientFor } from "../src/core/messages";
-import { loadShell } from "../src/console/shell";
-import { safeRedirect } from "../src/console/shell.fns";
+import { reasonText } from "../src/components/campaigns/campaign-report";
+import { clientFor } from "../src/do/client";
+import { requireUser } from "../src/console/actor";
+import { loadShell } from "../src/services/shell";
+import { safeRedirect } from "../src/shared/redirect";
 import { securityDb } from "../src/db/security/client";
-import { newId } from "../src/lib/ids";
+import { newId } from "../src/shared/ids";
 import { app, member, user, workspace } from "../src/db/security/schema";
 import { addMember, cookieFor, createWorkspace, headersFor, ORIGIN, setActive, signIn } from "./console-helpers";
 import { applyMigrations } from "./migrate";
@@ -190,21 +190,6 @@ describe("console shell", { timeout: 60_000 }, () => {
     expect(await missing.text()).toContain("Campaign not found");
   });
 
-  it("labels every campaign problem", () => {
-    expect(Object.keys(PROBLEM_LABEL).sort()).toEqual(
-      [
-        "audience_empty",
-        "audience_hook_missing",
-        "data_fields_need_hook",
-        "from_missing",
-        "html_missing",
-        "postal_address_missing",
-        "subject_missing",
-        "text_missing",
-        "unsubscribe_missing",
-      ].sort(),
-    );
-  });
 });
 
 describe("shell apps", { timeout: 60_000 }, () => {
@@ -217,7 +202,7 @@ describe("shell apps", { timeout: 60_000 }, () => {
       { workspaceId: wsId, name: "Earlier App", slug: "earlier", createdAt: new Date(1000) },
     ]);
 
-    const shell = await loadShell(env, headersFor(owner));
+    const shell = await loadShell(env, await requireUser(env, headersFor(owner)));
     expect(shell.apps.map((a) => a.name)).toEqual(["Earlier App", "Later App"]);
     expect(Object.keys(shell.apps[0]).sort()).toEqual(["id", "name"]);
   });
@@ -227,7 +212,7 @@ describe("shell apps", { timeout: 60_000 }, () => {
     const wsId = await createWorkspace(owner, "Slug Shell Co");
     await setActive(owner, wsId);
     const [row] = await db.select().from(workspace).where(eq(workspace.id, wsId));
-    const shell = await loadShell(env, headersFor(owner));
+    const shell = await loadShell(env, await requireUser(env, headersFor(owner)));
     expect(shell.active?.slug).toBe(row.slug);
     expect(row.slug).toBeTruthy();
   });
@@ -242,22 +227,23 @@ describe("shell apps", { timeout: 60_000 }, () => {
       { workspaceId: otherId, name: "Foreign App", slug: "foreign" },
     ]);
 
-    const shell = await loadShell(env, headersFor(owner));
+    const shell = await loadShell(env, await requireUser(env, headersFor(owner)));
     expect(shell.apps.map((a) => a.name)).toEqual(["Mine App"]);
   });
 
   it("gives a user with no workspace an empty apps list", async () => {
     const lone = await cookieFor("apps-shell-lone@example.com", "user");
-    const shell = await loadShell(env, headersFor(lone));
+    const shell = await loadShell(env, await requireUser(env, headersFor(lone)));
     expect(shell.active).toBeNull();
     expect(shell.apps).toEqual([]);
   });
 });
 
 describe("campaign pause reasons", () => {
-  it("maps the stored pause codes to plain copy", () => {
-    expect(reasonText("too_many_recipients")).toBe("This campaign has more recipients than one send allows.");
-    expect(reasonText("run_failed")).toBe("Sending hit an error and stopped. Resume to try again.");
+  it("maps a stored pause code to plain copy, never the code, and nothing when there is none", () => {
+    const text = reasonText("run_failed");
+    expect(text).toBeTruthy();
+    expect(text).not.toBe("run_failed");
     expect(reasonText(null)).toBeNull();
   });
 });

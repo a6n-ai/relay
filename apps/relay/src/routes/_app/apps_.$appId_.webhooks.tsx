@@ -1,27 +1,30 @@
 import { Badge } from "@foundry/ui/badge";
 import { Button } from "@foundry/ui/button";
 import { Switch } from "@foundry/ui/switch";
-import { toast } from "@foundry/ui/toast";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { WebhookIcon } from "lucide-react";
 import { type FormEvent, useState } from "react";
-import { ConfirmDialog } from "../../components/confirm-dialog";
-import { CreateDialog } from "../../components/create-dialog";
-import { DeniedState, deniedReason } from "../../components/denied-state";
-import { errorText } from "../../components/error-text";
+import { ConfirmDialog } from "../../components/page/confirm-dialog";
+import { CreateDialog } from "../../components/page/create-dialog";
+import { PageDenied } from "../../components/page/page-denied";
 import { EmptyState } from "../../components/page/empty-state";
 import { ListSkeleton } from "../../components/page/page-skeleton";
-import { CellWhen, ResourceTable } from "../../components/resource-table";
+import { CellWhen, ResourceTable } from "../../components/page/resource-table";
 import { PageHeader } from "../../components/shell/page-header";
-import { confirmAction, runAction } from "../../components/run-action";
-import { SecretOnce } from "../../components/secret-once";
-import { useCan } from "../../components/use-can";
-import { WEBHOOK_EVENT_LABELS, WEBHOOK_EVENT_LIST } from "../../components/webhook-events";
-import { EditWebhookForm, WebhookEventsField, WebhookUrlField } from "../../components/webhook-form";
+import { confirmAction, runAction } from "../../components/lib/run-action";
+import { SecretOnce } from "../../components/page/secret-once";
+import { useCan } from "../../components/lib/use-can";
+import { WEBHOOK_EVENT_LABELS, WEBHOOK_EVENT_LIST } from "../../components/webhooks/webhook-events";
+import { EditWebhookForm, WebhookEventsField, WebhookUrlField } from "../../components/webhooks/webhook-form";
 import { createWebhookFn, deleteWebhookFn, fetchWebhooks, updateWebhookFn } from "../../console/webhooks.fns";
-import type { WebhookEvent } from "../../core/webhooks";
-import { formatDate, formatWhen } from "../../lib/format-date";
-import { FormError, FormBody, FormActions } from "../../components/page/form-parts";
+import { formatDate, formatWhen } from "../../components/lib/format-date";
+import { FormError, FormBody, FormActions } from "../../components/form/form-parts";
+import { type WebhookEvent } from "../../shared/mail";
+import { hostOf } from "../../components/lib/path";
+import { appName } from "../../shared/scope";
+import { useSubmit } from "../../components/lib/use-submit";
+
+const DESCRIPTION = "Where Relay tells your app about message events.";
 
 export const Route = createFileRoute("/_app/apps_/$appId_/webhooks")({
   loader: ({ params }) => fetchWebhooks({ data: { appId: params.appId } }),
@@ -38,27 +41,23 @@ function WebhooksPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [editId, setEditId] = useState<string | null>(null);
-  const appName = shell.apps?.find((a) => a.id === appId)?.name ?? "App";
+  const appLabel = appName(shell.apps, appId, "App");
   const crumbs = [
     { label: "Apps", to: "/apps" },
-    { label: appName, to: "/apps/$appId", params: { appId } },
+    { label: appLabel, to: "/apps/$appId", params: { appId } },
     { label: "Webhooks" },
   ];
   const editing = webhooks?.find((w) => w.id === editId);
   const deleting = webhooks?.find((w) => w.id === deleteId);
   if (!webhooks) {
-    return (
-      <>
-        <PageHeader crumbs={crumbs} />
-        <DeniedState reason={deniedReason(shell)} />
-      </>
-    );
+    return <PageDenied crumbs={crumbs} description={DESCRIPTION} />;
   }
 
   return (
     <>
       <PageHeader
         crumbs={crumbs}
+        description={DESCRIPTION}
         actions={
           canWrite ? (
             <CreateDialog trigger="New webhook" title="New webhook" open={createOpen} onOpenChange={setCreateOpen}>
@@ -135,38 +134,21 @@ function WebhooksPage() {
   );
 }
 
-function hostOf(url: string) {
-  try {
-    return new URL(url).host;
-  } catch {
-    return url;
-  }
-}
 
 function NewWebhookForm({ appId, done, lock }: { appId: string; done: () => void; lock: (locked: boolean) => void }) {
-  const router = useRouter();
   const [url, setUrl] = useState("");
   const [events, setEvents] = useState<WebhookEvent[]>(WEBHOOK_EVENT_LIST);
   const [created, setCreated] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
+  const { pending, error, run } = useSubmit();
 
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (events.length === 0) return;
-    setPending(true);
-    setError(null);
-    try {
+    await run(async () => {
       const result = await createWebhookFn({ data: { appId, url, events } });
       setCreated(result.secret);
       lock(true);
-      toast.success("Webhook created");
-      await router.invalidate();
-    } catch (err) {
-      setError(errorText(err, "Could not create the webhook."));
-    } finally {
-      setPending(false);
-    }
+    }, "Could not create the webhook.", { success: "Webhook created" });
   }
 
   if (created) return <SecretOnce secret={created} label="Signing secret" onDone={done} />;

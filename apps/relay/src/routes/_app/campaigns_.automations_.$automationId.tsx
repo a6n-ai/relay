@@ -1,30 +1,27 @@
 import { createFileRoute, useSearch } from "@tanstack/react-router";
-import { AutomationForm } from "../../components/automation-form";
-import { DeniedState, deniedReason } from "../../components/denied-state";
-import { isNotFound } from "../../components/error-text";
+import { AutomationForm } from "../../components/campaigns/automation-form";
+import { PageDenied } from "../../components/page/page-denied";
+import { isNotFound } from "../../components/lib/scoped-load";
 import { FormSkeleton } from "../../components/page/page-skeleton";
 import { PageHeader } from "../../components/shell/page-header";
-import { useCan } from "../../components/use-can";
-import { fetchApps } from "../../console/apps.fns";
+import { useCan } from "../../components/lib/use-can";
 import { fetchAutomation } from "../../console/automations.fns";
 import { fetchCampaignOptions } from "../../console/campaigns.fns";
+import { str } from "../../components/lib/route-search";
 
 export const Route = createFileRoute("/_app/campaigns_/automations_/$automationId")({
   validateSearch: (search: Record<string, unknown>): { appId?: string } => ({
-    appId: typeof search.appId === "string" && search.appId ? search.appId : undefined,
+    appId: str(search.appId),
   }),
   loader: async ({ params }) => {
     const automation = await fetchAutomation({ data: { id: params.automationId } });
     if (!automation) return null;
     if ("missing" in automation) return automation;
-    const [options, apps] = await Promise.all([
-      fetchCampaignOptions({ data: { appId: automation.appId } }).catch((err) => {
-        if (isNotFound(err)) return null;
-        throw err;
-      }),
-      fetchApps(),
-    ]);
-    return { automation, apps: apps ?? [], listName: options?.lists.find((l) => l.id === automation.listId)?.name };
+    const options = await fetchCampaignOptions({ data: { appId: automation.appId } }).catch((err) => {
+      if (isNotFound(err)) return null;
+      throw err;
+    });
+    return { automation, listName: options?.lists.find((l) => l.id === automation.listId)?.name };
   },
   pendingComponent: () => <FormSkeleton crumbs={[{ label: "Campaigns", to: "/campaigns" }, { label: "Automations", to: "/campaigns/automations" }, { label: "Automation" }]} cards={3} action />,
   component: AutomationPage,
@@ -42,26 +39,16 @@ function AutomationPage() {
     { label },
   ];
   if (!page || !canSend) {
-    return (
-      <>
-        <PageHeader crumbs={crumbs("Automation")} />
-        <DeniedState reason={deniedReason(shell)} />
-      </>
-    );
+    return <PageDenied crumbs={crumbs("Automation")} />;
   }
   if ("missing" in page) {
-    return (
-      <>
-        <PageHeader crumbs={crumbs("Automation")} />
-        <DeniedState reason="not-found" label="Automation not found" />
-      </>
-    );
+    return <PageDenied crumbs={crumbs("Automation")} reason="not-found" label="Automation not found" />;
   }
-  const { automation, apps, listName } = page;
+  const { automation, listName } = page;
   return (
     <>
       <PageHeader crumbs={crumbs(automation.name)} description="Settings for this automation." />
-      <AutomationForm key={automation.id} apps={apps} appId={automation.appId} automation={automation} listName={listName} />
+      <AutomationForm key={automation.id} apps={shell.apps} appId={automation.appId} automation={automation} listName={listName} />
     </>
   );
 }

@@ -8,7 +8,7 @@ import { Button } from "@foundry/ui/button";
 import { ResponsiveDialog } from "@foundry/design-system";
 import { Switch } from "@foundry/ui/switch";
 import { Label } from "@foundry/ui/label";
-import { apiFetch } from "./api-fetch";
+import { apiAction, apiFetch } from "./api-fetch";
 import type { ContactListOption } from "./audience-builder";
 
 /**
@@ -20,7 +20,6 @@ import type { ContactListOption } from "./audience-builder";
 export function CampaignRetriggerButton({
   campaignPublicId,
   lists,
-  /** Icon-only, no label — for a dense row-actions cell (matches RowActionButton elsewhere). */
   compact,
 }: {
   campaignPublicId: string;
@@ -36,23 +35,18 @@ export function CampaignRetriggerButton({
   async function submit() {
     if (!wholeAudience && !listId) return toast.error("Pick a list");
     setSending(true);
-    try {
-      const res = await apiFetch<{ publicId: string; queued: number }>(
-        `/api/notifications/campaigns/${campaignPublicId}/retrigger`,
-        {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify(wholeAudience ? {} : { listIds: [listId] }),
-        },
-      );
-      toast.success(`Resending to ${res.queued} people`);
-      setOpen(false);
-      router.push(`/dashboard/notifications/campaigns/${res.publicId}`);
-    } catch {
-      // apiFetch already toasted the failure detail.
-    } finally {
-      setSending(false);
-    }
+    const res = await apiAction(
+      apiFetch<{ publicId: string; queued: number }>(`/api/notifications/campaigns/${campaignPublicId}/retrigger`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(wholeAudience ? {} : { listIds: [listId] }),
+      }),
+    );
+    setSending(false);
+    if (!res) return;
+    toast.success(`Resending to ${res.data.queued} people`);
+    setOpen(false);
+    router.push(`/dashboard/notifications/campaigns/${res.data.publicId}`);
   }
 
   return (

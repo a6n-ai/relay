@@ -1,12 +1,13 @@
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { AuthButton, AuthCard, AuthText } from "../components/auth-card";
-import { useSignOut } from "../components/sign-out-button";
+import { useSignOut } from "../components/shell/sign-out";
 import { getShell } from "../console/shell.fns";
+import { signInRedirect } from "../components/lib/sign-in-redirect";
 
 export const Route = createFileRoute("/no-workspace")({
   beforeLoad: async ({ location }) => {
     const shell = await getShell();
-    if (!shell) throw redirect({ to: "/sign-in", search: { redirect: location.href } });
+    if (!shell) throw signInRedirect(location);
     if (shell.active) throw redirect({ to: "/" });
     return { shell };
   },

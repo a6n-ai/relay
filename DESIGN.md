@@ -83,41 +83,46 @@ Foundry ships the shapes. Only `<body>` carries `admin-ui` (`apps/relay/src/rout
 
 ## Component behaviour
 
-- **Sidebar** (`app-shell.tsx`, `shell/nav.ts`): 256px, 36px items at 14px, at most 8 top-level links in quiet groups, no sub-items. The active link is a grey tint with foreground text. Order: workspace switcher, Find (F), nav, account. It collapses to an icon rail and never holds settings or tabs.
+- **Sidebar** (`shell/app-shell.tsx`, `shell/nav.ts`): 256px, 36px items at 14px, at most 8 top-level links in quiet groups, no sub-items. The active link is a grey tint with foreground text. Order: workspace switcher, Find (F), nav, account. It collapses to an icon rail and never holds settings or tabs.
 - **Framed panel**: the content is a bordered, rounded (16px) panel inset beside the sidebar on desktop (`variant="inset"`, rule in `styles.css`) and full-bleed on mobile.
 - **Dialogs and pages**: a create with several sections is a full page (`CreatePage`, with `FormPanel` and one `SettingsCard` per section): app, domain, address, campaign, template, automation, list, import and workspace. Only an add with 3 fields or fewer, a secret shown once, a schedule and a confirm are dialogs (`CreateDialog`, `ConfirmDialog`), never a side column. Fields are 36px. Focus ring is blue. Every field is a `TextField` or `ChoiceField`: label, control, then the error and hint tucked under it; the error sits on the field and clears when it changes. A disabled primary says why (`disabledReason`). `ConfirmDialog` focuses Cancel first, its primary is Verb + noun, and a typed name is exact and case-sensitive.
-- **Page header** (`PageHeader`): no breadcrumb. A 56px scope row (app scope switcher on app-scoped pages, a back link on detail pages, otherwise the workspace name as plain text; `Add New` menu on the right, gated by role through `createItems`), then `SectionTabs` (grey fill on the active tab, 14px) where the section has them (Messages, Campaigns, Settings, app detail), then `PageTitle`: 32px semibold tight title, a one-line 16px muted description (`shell/page-copy.ts`), actions on the right of the title row (`PageHeader actions`), never alone on a row of their own. A toolbar holds search, filters and the view toggle; on phones the search takes a full row and the filter and view toggle share the next. Every route renders it first. Add New items are routes (`shell/nav.ts`); only Invite member opens its dialog through `?new=1`.
+- **Page header** (`PageHeader`): the `crumbs` prop renders as a back link, not a breadcrumb trail. A 56px scope row (app scope switcher on app-scoped pages, a back link on detail pages, otherwise the workspace name as plain text; `Add New` menu on the right, gated by role through `createItems`), then `SectionTabs` (grey fill on the active tab, 14px) where the section has them (Messages, Campaigns, Settings, app detail), then `PageTitle`: 32px semibold tight title, a one-line 16px muted description (`staticData.copy` on the route), actions on the right of the title row (`PageHeader actions`), never alone on a row of their own. A toolbar holds search, filters and the view toggle; on phones the search takes a full row and the filter and view toggle share the next. Every route renders it first. Add New items are routes (`shell/nav.ts`); only Invite member opens its dialog through `?new=1`.
 - **Type scale**: body and table text 14px, card titles 20px semibold, controls 36px, table rows 40px; set in the `styles.css` token block, never per page.
 - **Lists** (`ResourceTable` in a `Toolbar` page): the empty state is `EmptyState`: one 32px icon, a title, a line and the action, in that order, always. No row stagger on filter or search.
 - **Feedback**: route `pendingComponent` with the skeleton that matches the page (`ListSkeleton`, `CardsSkeleton`, `FormSkeleton`, `DetailSkeleton`) for waits, toasts only for results that leave the screen.
 
 ## Components (reuse, never restyle ad hoc)
 
-Build screens from these parts and the semantic tokens (`bg-card`, `text-muted-foreground`, `bg-primary`). A pattern used twice becomes a component in `apps/relay/src/components/`.
+Build screens from these parts and the semantic tokens (`bg-card`, `text-muted-foreground`, `bg-primary`). A pattern used twice becomes a component in `apps/relay/src/components/`. Folders: `shell/` is the console frame (sidebar, header, switchers), `page/` the page parts, `form/` the fields, `lib/` hooks and client helpers, `landing/` the public site. UI files import only `shared/`, `components/` and `console/*.fns.ts` (`test/ui-boundary.test.ts`).
 
 | Role | Component | File (under `apps/relay/src/components/`) |
 |---|---|---|
-| page header, title, tabs | `PageHeader`, `PageTitle`, `SectionTabs` | shell/page-header.tsx, page/page-title.tsx, shell/section-tabs.tsx |
+| page header, title, tabs | `PageHeader`, `PageTitle`, `SectionTabs` | shell/page-header.tsx, shell/page-title.tsx, shell/section-tabs.tsx |
 | add new menu, scope switcher | `AddNewMenu`, `ScopeSwitcher` | shell/add-new.tsx, shell/scope-switcher.tsx |
 | toolbar | `Toolbar` | page/toolbar.tsx |
-| table with frame | `ResourceTable` (Foundry `Table`, inset by `TableInset`) | resource-table.tsx, page/table-inset.tsx |
+| table with frame | `ResourceTable` (Foundry `Table`, inset by `TableInset`) | page/resource-table.tsx, page/table-inset.tsx |
 | loading | `ListSkeleton`, `CardsSkeleton`, `FormSkeleton`, `DetailSkeleton` | page/page-skeleton.tsx |
 | empty | `EmptyState` (passed as `empty` to `ResourceTable`) | page/empty-state.tsx |
-| page body wrapper (the only one) | `FormPanel` | page/form-parts.tsx |
+| page body wrapper (the only one) | `FormPanel` | form/form-parts.tsx |
 | create page (back link, title, one card per section, primary last) | `CreatePage` | page/create-page.tsx |
 | create page when no app exists | `NoAppState` | page/no-app-state.tsx |
 | read-only value with a hint | `FixedField` | form/fixed-field.tsx |
-| automation create and edit | `AutomationForm` | automation-form.tsx |
+| automation create and edit | `AutomationForm` | campaigns/automation-form.tsx |
 | row actions | `RowMenu` | page/row-menu.tsx |
 | settings card (title row, hint left, action right, grey footer strip) | `SettingsCard` | page/settings-card.tsx |
 | settings card with its own Save (form, hint, blocked reason, unsaved prompt) | `SettingsForm` | page/settings-card.tsx |
 | danger zone (consequence once, typed-name confirm) | `DangerCard` | page/danger-card.tsx |
 | text field (label, hint, error, prefix/suffix) | `TextField` | form/text-field.tsx |
 | choice field, empty pick with a create link | `ChoiceField`, `EmptyChoice` | form/choice-field.tsx, form/empty-choice.tsx |
-| form buttons (`disabledReason` explains a disabled primary) | `FormActions` | page/form-parts.tsx |
-| create flow | `CreateDialog` | create-dialog.tsx |
-| destructive confirm | `ConfirmDialog` | confirm-dialog.tsx |
-| status, meter, stat | `StatusBadge`, `MeterBar`, `StatTile` | status-badge.tsx, meter-bar.tsx, stat-tile.tsx |
+| form buttons (`disabledReason` explains a disabled primary) | `FormActions` | form/form-parts.tsx |
+| create flow | `CreateDialog` | page/create-dialog.tsx |
+| destructive confirm | `ConfirmDialog` | page/confirm-dialog.tsx |
+| status, meter, stat | `StatusBadge`, `MeterBar`, `StatTile` | page/status-badge.tsx, page/meter-bar.tsx, page/stat-tile.tsx |
+| denied page (no workspace, suspended, no permission) | `PageDenied`, `ScopedDenied` (an app-scoped page's loader data) | page/page-denied.tsx, page/scoped-page.tsx |
+| submit handler: pending, error copy, success toast, then close or navigate and refresh | `useSubmit().run(action, fallback, { success, after, invalidate })` | lib/use-submit.ts |
+| loader-less fetch with a live flag | `useLoad` | lib/use-load.ts |
+| row action and confirm-dialog action (toast, refresh) | `runAction`, `confirmAction` | lib/run-action.ts |
+| scoped page loader over the shell's apps, app name and default app | `scopedLoad`, `appName`, `startApp` | lib/scoped-load.ts, shared/scope.ts |
 | primitives | `Button`, `Input`, `Select`, `Dialog`, `Badge`, `Skeleton` | @foundry/ui |
 
 Styling lives in tokens and these components, never in one-off class strings on pages.

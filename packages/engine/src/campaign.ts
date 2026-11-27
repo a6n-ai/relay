@@ -95,7 +95,6 @@ export async function materializeCampaign(
   return { queued };
 }
 
-/** Scheduled campaigns whose time has come. */
 export async function dueCampaigns(
   db: Db,
   tables: CampaignTables,

@@ -1,5 +1,6 @@
-import type { Shell } from "../../console/shell";
 import { createItems, visibleNav } from "./nav";
+import type { PageOf } from "./page-data";
+import { type Shell } from "../../shared/views";
 
 export type FindEntry = {
   id: string;
@@ -9,9 +10,9 @@ export type FindEntry = {
   search?: Record<string, string>;
 };
 
-export function findEntries(shell: Shell): FindEntry[] {
+export function findEntries(shell: Shell, pageOf: PageOf): FindEntry[] {
   const roles = shell.active?.roles ?? [];
-  const pages = visibleNav(roles, shell.platformAdmin, shell.active !== null).flatMap((g) =>
+  const pages = visibleNav(roles, shell.platformAdmin, shell.active !== null, pageOf).flatMap((g) =>
     g.items.flatMap((item): FindEntry[] =>
       item.children
         ? item.children.map((c) => ({

@@ -1,14 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { apiRoute, readJson } from "../../../core/api-route";
-import { sendMessage } from "../../../core/messages";
-import { sendBody } from "../../../core/send-input";
+import { apiRoute, readJson } from "../../../api/route";
+import { sendMessage } from "../../../services/messages";
+import { sendBody } from "../../../shared/schemas";
 
 export const Route = createFileRoute("/api/v1/messages")({
   server: {
     handlers: {
-      POST: apiRoute(async ({ env, scope, request }) => {
+      POST: apiRoute(async ({ env, p, request }) => {
         const input = sendBody.parse(await readJson(request));
-        return Response.json(await sendMessage(env, scope, input), { status: 202 });
+        return Response.json(await sendMessage(env, p, input), { status: 202 });
       }),
     },
   },

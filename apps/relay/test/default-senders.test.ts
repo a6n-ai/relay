@@ -2,9 +2,9 @@ import { createExecutionContext, env, SELF } from "cloudflare:test";
 import { and, eq } from "drizzle-orm";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { requireActor } from "../src/console/actor";
-import { addApp, getDefaultSenders, setDefaultSendersFor } from "../src/console/apps";
-import { removeAddress, updateAddress } from "../src/console/domains";
-import { createApiKey } from "../src/core/api-keys";
+import { addApp, getDefaultSenders, setDefaultSenders } from "../src/services/apps";
+import { removeAddress, updateAddress } from "../src/services/domains";
+import { createApiKey } from "../src/services/api-keys";
 import { createAddress } from "../src/core/addresses";
 import { coreDb } from "../src/db/core/client";
 import { address, sendingDomain } from "../src/db/core/schema";
@@ -50,7 +50,7 @@ async function setup(slug: string) {
       body: JSON.stringify(payload),
     });
   const defaults = (transactionalId: string | null, marketingId: string | null) =>
-    setDefaultSendersFor(env, actor, appId, { transactionalId, marketingId });
+    setDefaultSenders(env, actor, appId, { transactionalId, marketingId });
   return { cookie, workspaceId, actor, appId, domain, sender, key, rpc, stub, call, defaults };
 }
 
@@ -154,8 +154,8 @@ describe("console default senders", () => {
     const mk = await t.sender("news");
     await t.defaults(tx.id, mk.id);
 
-    const memberActor = await requireActor(env, headersFor(await addMember(t.workspaceId, "ds-clear-m@example.com", "member")));
-    await expect(setDefaultSendersFor(env, memberActor, t.appId, { transactionalId: null, marketingId: null })).rejects.toMatchObject({ status: 403 });
+    const memberCookie = await addMember(t.workspaceId, "ds-clear-m@example.com", "member");
+    await expect(requireActor(env, headersFor(memberCookie), { permission: { tenant: ["write"] }, write: true })).rejects.toMatchObject({ status: 403 });
 
     await removeAddress(env, t.actor, tx.id);
     const [row] = await securityDb(env).select().from(app).where(eq(app.id, t.appId));

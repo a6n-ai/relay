@@ -1,33 +1,21 @@
-import { toast } from "@foundry/ui/toast";
-import { useRouter } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
-import { errorText } from "../error-text";
 import { TextField } from "../form/text-field";
-import { type MemberRole, RoleChoice } from "../role-select";
+import { RoleChoice } from "./role-select";
+import { type OrgRole } from "../../shared/roles";
 import { inviteMemberFn } from "../../console/members.fns";
-import { FormError, FormBody, FormActions } from "../page/form-parts";
+import { FormError, FormBody, FormActions } from "../form/form-parts";
+import { useSubmit } from "../lib/use-submit";
 
 export function InviteForm({ done, canGrantOwner }: { done: () => void; canGrantOwner: boolean }) {
-  const router = useRouter();
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState<MemberRole>("member");
-  const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
+  const [role, setRole] = useState<OrgRole>("member");
+  const { pending, error, run } = useSubmit();
 
   async function submit(event: FormEvent) {
     event.preventDefault();
-    setPending(true);
-    setError(null);
-    try {
+    await run(async () => {
       await inviteMemberFn({ data: { email, role } });
-      toast.success("Invite sent", { description: email });
-      done();
-      await router.invalidate();
-    } catch (err) {
-      setError(errorText(err, "Could not send the invite."));
-    } finally {
-      setPending(false);
-    }
+    }, "Could not send the invite.", { success: "Invite sent", description: email, after: done });
   }
 
   return (

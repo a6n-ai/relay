@@ -1,29 +1,24 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { apiRoute, data, json, readJson } from "../../../core/api-route";
-import {
-  cancelCampaignForScope,
-  pauseCampaignForScope,
-  resumeCampaignForScope,
-  scheduleCampaignForScope,
-} from "../../../core/campaign-scope";
+import { apiRoute, data, json, readJson } from "../../../api/route";
+import { cancelCampaign, pauseCampaign, resumeCampaign, scheduleCampaign } from "../../../services/campaigns";
 
 export const scheduleBody = z.object({ at: z.number().int() });
 
 export const Route = createFileRoute("/api/v1/campaigns/$id/$action")({
   server: {
     handlers: {
-      POST: apiRoute(async ({ env, scope, params, request }) => {
+      POST: apiRoute(async ({ env, p, params, request }) => {
         switch (params.action) {
           case "schedule":
-            return data(await scheduleCampaignForScope(env, scope, params.id, scheduleBody.parse(await readJson(request)).at));
+            return data(await scheduleCampaign(env, p, params.id, scheduleBody.parse(await readJson(request)).at));
           case "pause":
-            await pauseCampaignForScope(env, scope, params.id);
+            await pauseCampaign(env, p, params.id);
             return new Response(null, { status: 204 });
           case "resume":
-            return data(await resumeCampaignForScope(env, scope, params.id));
+            return data(await resumeCampaign(env, p, params.id));
           case "cancel":
-            return data(await cancelCampaignForScope(env, scope, params.id));
+            return data(await cancelCampaign(env, p, params.id));
           default:
             return json({ error: "not found" }, 404);
         }

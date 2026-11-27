@@ -1,0 +1,79 @@
+import { describe, expect, it } from "vitest";
+import { foreignPreheader, readPreheader, withPreheader } from "./preheader";
+
+const DOC = '<!DOCTYPE html><html><head></head><body style="margin:0"><p>Hi</p></body></html>';
+
+describe("preheader", () => {
+  it("injects right after <body>", () => {
+    const out = withPreheader(DOC, "Save $65 this weekend");
+    expect(out.indexOf("data-relay-preheader")).toBeGreaterThan(out.indexOf("<body"));
+    expect(out.indexOf("data-relay-preheader")).toBeLessThan(out.indexOf("<p>Hi</p>"));
+    expect(readPreheader(out)).toBe("Save $65 this weekend");
+  });
+
+  it("replaces its own preheader instead of adding a second", () => {
+    const once = withPreheader(DOC, "first");
+    const twice = withPreheader(once, "second");
+    expect(twice.match(/data-relay-preheader/g)).toHaveLength(1);
+    expect(readPreheader(twice)).toBe("second");
+  });
+
+  it("leaves a hand-written preheader alone", () => {
+    const own = DOC.replace("<p>Hi</p>", '<div style="display:none">their own</div><p>Hi</p>');
+    const out = withPreheader(own, "ours");
+    expect(out).toContain("their own");
+    expect(readPreheader(out)).toBe("ours");
+  });
+
+  it("removes ours when text is blank", () => {
+    expect(withPreheader(withPreheader(DOC, "x"), "  ")).not.toContain("data-relay-preheader");
+  });
+
+  it("escapes markup in the text", () => {
+    const out = withPreheader(DOC, `5 < 6 & "quotes"`);
+    expect(out).toContain("5 &lt; 6 &amp; &quot;quotes&quot;");
+    expect(readPreheader(out)).toBe(`5 < 6 & "quotes"`);
+  });
+
+  it("prepends when there is no <body> (a fragment)", () => {
+    expect(withPreheader("<p>Hi</p>", "x").startsWith("<div data-relay-preheader")).toBe(true);
+  });
+
+  it("reads nothing from html without one", () => {
+    expect(readPreheader(DOC)).toBe("");
+  });
+});
+
+describe("foreignPreheader", () => {
+  const theirs =
+    '<html><body><div style="display:none;max-height:0;mso-hide:all;">\n  Thanksgiving only: save $65.\n  &#847;&zwnj;&nbsp;\n</div><table><tr><td>Hi</td></tr></table></body></html>';
+
+  it("finds an author's hidden preview text", () => {
+    expect(foreignPreheader(theirs)).toBe("Thanksgiving only: save $65.");
+  });
+  it("ignores ours", () => {
+    expect(foreignPreheader(withPreheader(DOC, "ours"))).toBe("");
+  });
+  it("finds theirs even when ours is also present", () => {
+    expect(foreignPreheader(withPreheader(theirs, "ours"))).toBe("Thanksgiving only: save $65.");
+  });
+  it("is empty for an email without one", () => {
+    expect(foreignPreheader(DOC)).toBe("");
+  });
+});
+
+describe("preheader on hostile html", () => {
+  const fast = (fn: () => unknown) => {
+    const t = performance.now();
+    fn();
+    return performance.now() - t;
+  };
+  it("stays linear on many unclosed tags", () => {
+    expect(fast(() => foreignPreheader('<div style="display:none">'.repeat(20_000)))).toBeLessThan(500);
+    expect(fast(() => foreignPreheader("<".repeat(50_000)))).toBeLessThan(500);
+    expect(fast(() => withPreheader("<body".repeat(50_000), "x"))).toBeLessThan(500);
+  });
+  it("finds an upper-case hidden span", () => {
+    expect(foreignPreheader('<SPAN style="DISPLAY: none">Sale</SPAN><p>x</p>')).toBe("Sale");
+  });
+});

@@ -8,7 +8,7 @@ import {
 import { formatAddress } from "./address";
 import type { PreparedEmail, SendResult } from "./types";
 
-export interface SesProviderConfig extends EmailProviderConfig, AwsConfig {
+interface SesProviderConfig extends EmailProviderConfig, AwsConfig {
   /**
    * SES configuration set — routes bounce/complaint/delivery events to the
    * SNS feedback topic. Required for the suppression webhook to work.
@@ -105,7 +105,7 @@ export class SesEmailProvider extends AbstractEmailProvider {
   }
 }
 
-export interface SesSendQuota {
+interface SesSendQuota {
   /** Max sends allowed in a rolling 24h window. */
   max24HourSend: number;
   /** Sends already used in the current 24h window. */

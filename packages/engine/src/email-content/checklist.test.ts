@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { campaignChecklist, imagesMissingAlt, invalidLinks } from "./checklist";
 import { CAMPAIGN_VARIABLES } from "./variables";
-import { withPreheader } from "../preheader";
+import { withPreheader } from "./preheader";
 
 const ok = {
   channel: "email",

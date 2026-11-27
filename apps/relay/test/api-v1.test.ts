@@ -1,13 +1,13 @@
 import { env, SELF } from "cloudflare:test";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { createApiKey } from "../src/core/api-keys";
+import { createApiKey } from "../src/services/api-keys";
 import { securityDb } from "../src/db/security/client";
 import { app, member, user, workspace } from "../src/db/security/schema";
 import { applyMigrations } from "./migrate";
 
 const limit = vi.hoisted(() => ({ allow: true }));
-vi.mock("../src/core/api-keys", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("../src/core/api-keys")>()),
+vi.mock("../src/services/api-keys", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../src/services/api-keys")>()),
   withinRateLimit: async () => limit.allow,
 }));
 

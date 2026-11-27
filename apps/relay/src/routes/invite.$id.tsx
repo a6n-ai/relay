@@ -1,17 +1,17 @@
-import { createFileRoute, Link, redirect, useRouter } from "@tanstack/react-router";
-import { useState } from "react";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { getShell } from "../console/shell.fns";
+import { signInRedirect } from "../components/lib/sign-in-redirect";
 import { acceptInviteFn, getInviteFn } from "../console/members.fns";
 import { AuthButton, AuthCard, AuthText, AuthTitle } from "../components/auth-card";
-import { errorText } from "../components/error-text";
-import { FormError } from "../components/page/form-parts";
-import { ROLE_LABEL, type MemberRole } from "../components/role-select";
-import { useSignOut } from "../components/sign-out-button";
+import { FormError } from "../components/form/form-parts";
+import { ROLE_LABEL, type OrgRole } from "../shared/roles";
+import { useSignOut } from "../components/shell/sign-out";
+import { useSubmit } from "../components/lib/use-submit";
 
 export const Route = createFileRoute("/invite/$id")({
   beforeLoad: async ({ location }) => {
     const shell = await getShell();
-    if (!shell) throw redirect({ to: "/sign-in", search: { redirect: location.href } });
+    if (!shell) throw signInRedirect(location);
   },
   loader: ({ params }) => getInviteFn({ data: { id: params.id } }),
   component: InvitePage,
@@ -22,20 +22,13 @@ function InvitePage() {
   const invite = Route.useLoaderData();
   const router = useRouter();
   const signOut = useSignOut();
-  const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
+  const { pending, error, run } = useSubmit();
 
   async function accept() {
-    setPending(true);
-    setError(null);
-    try {
+    await run(async () => {
       await acceptInviteFn({ data: { id } });
       await router.navigate({ to: "/" });
-    } catch (err) {
-      setError(errorText(err, "Could not accept the invite."));
-    } finally {
-      setPending(false);
-    }
+    }, "Could not accept the invite.");
   }
 
   return (
@@ -62,7 +55,7 @@ function InvitePage() {
         <>
           <AuthTitle>Join {invite.workspaceName}</AuthTitle>
           <AuthText>
-            You are invited as {ROLE_LABEL[invite.role as MemberRole] ?? invite.role} for {invite.email}.
+            You are invited as {ROLE_LABEL[invite.role as OrgRole] ?? invite.role} for {invite.email}.
           </AuthText>
           <AuthButton onClick={accept} disabled={pending}>
             Accept invite

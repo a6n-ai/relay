@@ -30,15 +30,3 @@ export async function renderEmailTemplate(input: {
   const text = await render(<BrandedEmail appName={input.appName} markdown={markdown} />, { plainText: true });
   return { subject, html, text };
 }
-
-/** In-app rendering: interpolated title + plaintext body (no email chrome). */
-export function renderInApp(input: {
-  subject: string;
-  body: string;
-  vars: Record<string, unknown>;
-}): { title: string; body: string } {
-  return {
-    title: interpolate(input.subject, input.vars),
-    body: interpolate(input.body, input.vars),
-  };
-}

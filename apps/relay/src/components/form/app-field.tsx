@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { ChoiceField } from "./choice-field";
 import { Label } from "@foundry/ui/label";
-import { Hint } from "../page/text";
+import { Hint } from "./text";
 
 type App = { id: string; name: string };
 

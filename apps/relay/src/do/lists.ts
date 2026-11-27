@@ -1,38 +1,17 @@
-import { newId } from "../lib/ids";
-import { decodeCursor, encodeCursor } from "./console-reads";
+import { newId } from "../shared/ids";
+import { keysetBefore, keysetSlice, parseCursor } from "../core/cursor";
+import { type ConsentSource, type ListView, type MemberView } from "../shared/views";
+import type { MemberInput } from "../shared/schemas";
+import { PAGE_SIZE } from "../shared/limits";
+import { RelayError } from "../shared/errors";
 
-export type ConsentSource = "purchase" | "express_optin" | "event_signup" | "import_other";
-export type MemberState = "subscribed" | "suppressed";
 
 export type ListInput = { name: string; consentSource: ConsentSource; consentNote?: string };
-export type MemberInput = { email: string; firstName?: string; lastName?: string; consentAt?: number };
 
-export type ListView = {
-  id: string;
-  appId: string;
-  name: string;
-  consentSource: ConsentSource;
-  consentNote: string | null;
-  members: number;
-  createdAt: number;
-};
 
-export type MemberView = {
-  id: string;
-  email: string;
-  firstName: string | null;
-  lastName: string | null;
-  source: "manual" | "import";
-  consentAt: number;
-  state: MemberState;
-  optedOut: string[];
-  createdAt: number;
-};
 
-const PAGE = 50;
 export const EXPORT_PAGE = 1000;
 
-// One query per page: the brand domains each address opted out of, sorted.
 function optedOutByEmail(sql: SqlStorage, emails: string[]): Map<string, string[]> {
   const out = new Map<string, string[]>();
   if (emails.length === 0) return out;
@@ -46,7 +25,6 @@ function optedOutByEmail(sql: SqlStorage, emails: string[]): Map<string, string[
   return out;
 }
 
-// The member count is one LEFT JOIN, so a page of lists costs one query.
 function listViews(sql: SqlStorage, where: string, bindings: unknown[]): ListView[] {
   return sql
     .exec<ListView>(
@@ -62,6 +40,8 @@ function listViews(sql: SqlStorage, where: string, bindings: unknown[]): ListVie
 export function listListRows(sql: SqlStorage, appId?: string): ListView[] {
   return appId === undefined ? listViews(sql, "", []) : listViews(sql, "WHERE l.app_id = ?", [appId]);
 }
+
+export const listRow = (sql: SqlStorage, id: string): ListView | null => listViews(sql, "WHERE l.id = ?", [id])[0] ?? null;
 
 export function createListRow(sql: SqlStorage, appId: string, input: ListInput): ListView {
   const id = newId("ctl");
@@ -94,18 +74,17 @@ export function updateListRow(sql: SqlStorage, id: string, patch: Partial<ListIn
 }
 
 // A scheduled, sending or paused campaign still needs its audience, so its lists cannot go.
-export function deleteListRow(sql: SqlStorage, id: string): "deleted" | "missing" | "in_use" {
-  if (sql.exec("SELECT id FROM contact_list WHERE id = ?", id).toArray().length === 0) return "missing";
+export function deleteListRow(sql: SqlStorage, id: string): void {
+  if (sql.exec("SELECT id FROM contact_list WHERE id = ?", id).toArray().length === 0) throw new RelayError("not found");
   const busy = sql
     .exec(
       "SELECT c.id FROM campaign c, json_each(c.list_ids) j WHERE c.status IN ('scheduled', 'sending', 'paused') AND j.value = ? LIMIT 1",
       id,
     )
     .toArray();
-  if (busy.length > 0) return "in_use";
+  if (busy.length > 0) throw new RelayError("list in use");
   sql.exec("DELETE FROM contact_list_member WHERE list_id = ?", id);
   sql.exec("DELETE FROM contact_list WHERE id = ?", id);
-  return "deleted";
 }
 
 type MemberRow = {
@@ -124,25 +103,22 @@ export function listMemberRows(
   isSuppressed: (email: string) => boolean,
   cursor?: string,
 ): { rows: MemberView[]; nextCursor: string | null } | null {
-  const after = cursor === undefined ? null : decodeCursor(cursor);
-  if (cursor !== undefined && !after) throw new Error("invalid cursor");
+  const after = parseCursor(cursor);
   if (sql.exec("SELECT id FROM contact_list WHERE id = ?", listId).toArray().length === 0) return null;
-  const keyset = after ? "AND (m.created_at < ? OR (m.created_at = ? AND m.id < ?))" : "";
-  const keysetBindings = after ? [after.createdAt, after.createdAt, after.id] : [];
+  const keyset = after ? keysetBefore(after, "m.created_at", "m.id") : null;
   const fetched = sql
     .exec<MemberRow>(
       `SELECT m.id, m.email, m.first_name AS firstName, m.last_name AS lastName, m.source,
               m.consent_at AS consentAt, m.created_at AS createdAt
        FROM contact_list_member m
-       WHERE m.list_id = ? ${keyset}
+       WHERE m.list_id = ? ${keyset ? `AND ${keyset.sql}` : ""}
        ORDER BY m.created_at DESC, m.id DESC LIMIT ?`,
       listId,
-      ...keysetBindings,
-      PAGE + 1,
+      ...(keyset?.bindings ?? []),
+      PAGE_SIZE + 1,
     )
     .toArray();
-  const page = fetched.slice(0, PAGE);
-  const last = page[page.length - 1];
+  const { page, nextCursor } = keysetSlice(fetched, PAGE_SIZE);
   const optedOut = optedOutByEmail(sql, page.map((r) => r.email));
   const rows: MemberView[] = page.map((r) => ({
     id: r.id,
@@ -155,7 +131,7 @@ export function listMemberRows(
     optedOut: optedOut.get(r.email) ?? [],
     createdAt: r.createdAt,
   }));
-  return { rows, nextCursor: fetched.length > PAGE && last ? encodeCursor(last.createdAt, last.id) : null };
+  return { rows, nextCursor };
 }
 
 // Keyset on email, so a resumed export never repeats or skips an address.
@@ -200,11 +176,11 @@ export function addMemberRow(
   listId: string,
   input: MemberInput,
   isSuppressed: (email: string) => boolean,
-): "added" | "existing" | "suppressed" | "missing" {
+): "added" | "existing" {
   const list = sql.exec<{ app_id: string }>("SELECT app_id FROM contact_list WHERE id = ?", listId).toArray()[0];
-  if (!list) return "missing";
+  if (!list) throw new RelayError("not found");
   const email = input.email.trim().toLowerCase();
-  if (isSuppressed(email)) return "suppressed";
+  if (isSuppressed(email)) throw new RelayError("address suppressed");
   if (sql.exec("SELECT id FROM contact_list_member WHERE list_id = ? AND email = ?", listId, email).toArray().length > 0) return "existing";
   const now = Date.now();
   sql.exec(

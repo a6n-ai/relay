@@ -2,6 +2,7 @@
 // Docs header: brand and search over the sidebar, breadcrumb over the page, actions on the right.
 import Search from 'virtual:starlight/components/Search';
 import ThemeToggle from './ThemeToggle.astro';
+import { BASE } from '../../../site.mjs';
 import { NAV } from './nav-links';
 
 const { sidebar, entry } = Astro.locals.starlightRoute;
@@ -9,7 +10,7 @@ type Item = { type: string; label: string; isCurrent?: boolean; entries?: Item[]
 const group = (sidebar as Item[]).find((g) => g.type === 'group' && g.entries?.some((e) => e.isCurrent));
 const crumbs = (entry.id === 'index' ? ['Home'] : [group?.label, entry.data.title].filter(Boolean)) as string[];
 const path = Astro.url.pathname;
-const isCurrent = (href: string) => (href === '/docs/' ? path.startsWith('/docs/') && !path.startsWith('/docs/api/') : path.startsWith(href));
+const isCurrent = (href: string) => (href === `${BASE}/` ? path.startsWith(`${BASE}/`) && !path.startsWith(`${BASE}/api/`) : path.startsWith(href));
 ---
 
 <div class="rh">

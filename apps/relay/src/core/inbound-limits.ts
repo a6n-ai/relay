@@ -1,0 +1,1 @@
+export const MAX_INBOUND_BYTES = 26_214_400;

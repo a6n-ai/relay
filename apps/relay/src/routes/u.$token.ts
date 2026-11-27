@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { env } from "cloudflare:workers";
-import { clientFor } from "../core/messages";
+import { unsubscribeMessage } from "../services/messages";
 import { readUnsubscribeToken } from "../core/unsubscribe";
 
 const SECURITY = {
@@ -31,7 +31,7 @@ export const Route = createFileRoute("/u/$token")({
         if (!token) return page(400, `<p>${INVALID}</p>`);
         const limit = await env.API_LIMIT.limit({ key: `unsub:${request.headers.get("cf-connecting-ip") ?? "none"}` });
         if (!limit.success) return page(429, "<p>Too many requests. Try again later.</p>");
-        await clientFor(env, token.workspaceId).unsubscribe(token.workspaceId, token.messageId);
+        await unsubscribeMessage(env, token.workspaceId, token.messageId);
         return page(200, "<h1>You are unsubscribed.</h1>");
       },
     },

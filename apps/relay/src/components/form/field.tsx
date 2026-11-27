@@ -1,12 +1,11 @@
 import { useState, type ReactNode } from "react";
 import { Label } from "@foundry/ui/label";
-import { Hint } from "../page/text";
+import { Hint } from "./text";
 
 export function fieldDescribedBy(id: string, hint?: ReactNode, error?: string | null) {
   return [error ? `${id}-error` : null, hint ? `${id}-hint` : null].filter(Boolean).join(" ") || undefined;
 }
 
-// One place for label, control, hint and error, so every field reads the same.
 export function Field({
   id,
   label,

@@ -4,8 +4,8 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { securityDb } from "../src/db/security/client";
 import { securityAudit, session, user } from "../src/db/security/schema";
 import type { Env } from "../src/env";
-import { createAuth, isFreshSession, recordPasswordChange } from "../src/lib/auth";
-import { memoryOtpMailer } from "../src/lib/auth/otp-mailer";
+import { createAuth, isFreshSession, recordPasswordChange } from "../src/auth";
+import { memoryOtpMailer } from "../src/auth/otp-mailer";
 import { applyMigrations } from "./migrate";
 import { BASE, cookieFor, freshIp, headersFor, insertUser, json, ORIGIN, signIn } from "./console-helpers";
 

@@ -1,7 +1,8 @@
 import { env, SELF } from "cloudflare:test";
 import { and, eq } from "drizzle-orm";
 import { beforeAll, describe, expect, it } from "vitest";
-import { parseRoles, requireActor, requirePlatformAdmin } from "../src/console/actor";
+import { requireActor, requirePlatformAdmin } from "../src/console/actor";
+import { parseRoles } from "../src/auth/session";
 import { securityDb } from "../src/db/security/client";
 import { member, session, user, workspace } from "../src/db/security/schema";
 import { applyMigrations } from "./migrate";
@@ -39,7 +40,7 @@ describe("requireActor", () => {
     const wsId = await createWorkspace(ownerCookie, "perm-ws");
     await setActive(ownerCookie, wsId);
     const memberCookie = await addMember(wsId, "perm-member@example.com", "member");
-    const need = { permission: { tenant: ["write"] } };
+    const need = { permission: { tenant: ["write"] } } as const;
     await expect(requireActor(env, headersFor(memberCookie), need)).rejects.toMatchObject({ status: 403 });
     await expect(requireActor(env, headersFor(ownerCookie), need)).resolves.toMatchObject({ roles: ["owner"] });
   });

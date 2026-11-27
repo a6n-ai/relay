@@ -2,13 +2,13 @@ import { createHmac } from "node:crypto";
 import { env, runInDurableObject } from "cloudflare:test";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi, type MockInstance } from "vitest";
 import { createAddress } from "../src/core/addresses";
-import { handleInboundBatch } from "../src/core/inbound-consumer";
-import { handleWebhookBatch } from "../src/core/webhook-consumer";
+import { handleInboundBatch } from "../src/jobs/inbound-consumer";
+import { handleWebhookBatch } from "../src/jobs/webhook-consumer";
 import type { ClientDO } from "../src/do/client-do";
 import * as schema from "../src/do/client-schema";
 import { securityDb } from "../src/db/security/client";
 import { app, workspace } from "../src/db/security/schema";
-import type { InboundJob, WebhookJob } from "../src/env";
+import type { InboundJob, WebhookJob } from "../src/core/jobs";
 import worker from "../src/server";
 import { applyMigrations } from "./migrate";
 

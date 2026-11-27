@@ -30,7 +30,7 @@ const REACT_STARTER = `export default function Email() {
   );
 }`;
 
-export const EDITOR_PANE_HEIGHT = "h-[72vh] min-h-[560px]";
+const EDITOR_PANE_HEIGHT = "h-[72vh] min-h-[560px]";
 
 // ssr:false keeps CodeMirror out of the server bundle: Workers bundle every reachable import().
 const CodePane = dynamic(() => import("./email-editor/code-pane").then((m) => m.CodePane), {
@@ -81,7 +81,6 @@ interface Props {
   marketing?: boolean;
 }
 
-/** The one email editor for campaigns and event templates: HTML or React source + a sandboxed live preview. */
 export const EmailContentEditor = forwardRef<EmailContentEditorHandle, Props>(function EmailContentEditor(
   { initialBody, initialHtml, variables, samples, onChange, footer, marketing },
   ref,

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { initialEmailMode } from "./email-content-editor";
 import { REACT_SOURCE_MARKER } from "./react-template";
-import { withPreheader } from "../preheader";
+import { withPreheader } from "../email-content/preheader";
 
 const DOC = "<!DOCTYPE html><html><body><table><tr><td>Hi</td></tr></table></body></html>";
 

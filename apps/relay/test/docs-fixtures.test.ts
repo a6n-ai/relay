@@ -1,11 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { ZodType } from "zod";
-import { campaignPatch, listInput, listPatch, templateInput, templatePatch } from "../src/console/schemas";
+import { campaignCreateInput, campaignPatch, listInput, membersImportInput, listPatch, templateInput, templatePatch } from "../src/services/schemas";
 import { hookInputSchema } from "../src/core/audience-hook";
-import { campaignCreateInput } from "../src/core/campaign-scope";
-import { membersImportInput } from "../src/core/lists";
-import { memberInput } from "../src/core/member-input";
-import { sendBody, templateSendSchema } from "../src/core/send-input";
+import { memberInput } from "../src/shared/schemas";
+import { sendBody, templateSendSchema } from "../src/shared/schemas";
 import { webhookInputSchema, webhookPatchSchema } from "../src/core/webhooks";
 import { scheduleBody } from "../src/routes/api/v1/campaigns.$id.$action";
 
@@ -32,8 +30,23 @@ const SCHEMAS: Record<string, { route: string; schema: ZodType }> = {
 const files = import.meta.glob<Endpoint[]>("../../relay-docs/src/fixtures/*.json", { eager: true, import: "default" });
 const endpoints = Object.entries(files).flatMap(([file, list]) => list.map((e) => ({ file, ...e })));
 const pages = Object.values(import.meta.glob<string>("../../relay-docs/src/content/docs/docs/api/*.mdx", { eager: true, query: "?raw", import: "default" })).join("\n");
+// Drops <!-- --> and {/* */} comments by scanning; an unclosed one drops the rest, so no opener survives.
+const stripComments = (s: string): string => {
+  let out = "";
+  for (let i = 0; i < s.length; ) {
+    const html = s.indexOf("<!--", i);
+    const jsx = s.indexOf("{/*", i);
+    const at = html < 0 ? jsx : jsx < 0 ? html : Math.min(html, jsx);
+    if (at < 0) return out + s.slice(i);
+    out += s.slice(i, at);
+    const close = at === html ? s.indexOf("-->", at + 4) : s.indexOf("*/}", at + 3);
+    if (close < 0) return out;
+    i = close + 3;
+  }
+  return out;
+};
 const rendered = new Set(
-  [...pages.replace(/<!--[\s\S]*?-->|\{\/\*[\s\S]*?\*\/\}/g, "").matchAll(/<Endpoint file="([^"]+)" title=("(?:[^"\\]|\\.)*") \/>/g)].map((m) => `${m[1]}|${JSON.parse(m[2])}`),
+  [...stripComments(pages).matchAll(/<Endpoint file="([^"]+)" title=("(?:[^"\\]|\\.)*") \/>/g)].map((m) => `${m[1]}|${JSON.parse(m[2])}`),
 );
 const routeFiles = Object.keys(import.meta.glob("../src/routes/api/v1/*.ts")).map((p) => p.split("/").pop()!);
 

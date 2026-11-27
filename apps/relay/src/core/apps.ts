@@ -1,7 +1,7 @@
 import { securityDb } from "../db/security/client";
 import { app } from "../db/security/schema";
 import type { Env } from "../env";
-import { newId } from "../lib/ids";
+import { newId } from "../shared/ids";
 
 export async function createApp(
   env: Env,

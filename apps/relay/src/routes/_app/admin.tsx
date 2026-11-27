@@ -4,7 +4,8 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { createFileRoute, notFound, useNavigate, useRouter } from "@tanstack/react-router";
 import { BuildingIcon } from "lucide-react";
 import { type FormEvent, useState } from "react";
-import { ConfirmDialog } from "../../components/confirm-dialog";
+import { ConfirmDialog } from "../../components/page/confirm-dialog";
+import { isNotFound } from "../../components/lib/scoped-load";
 import { TextField } from "../../components/form/text-field";
 import { ChoiceControl } from "../../components/form/choice-field";
 import { type Facet } from "../../components/page/filters";
@@ -14,13 +15,15 @@ import { SettingsCard } from "../../components/page/settings-card";
 import { SearchInput, Toolbar } from "../../components/page/toolbar";
 import { useUrlFilter } from "../../components/page/use-url-filter";
 import { ListSkeleton } from "../../components/page/page-skeleton";
-import { ResourceTable } from "../../components/resource-table";
-import { confirmAction, runAction } from "../../components/run-action";
+import { ResourceTable } from "../../components/page/resource-table";
+import { confirmAction, runAction } from "../../components/lib/run-action";
 import { PageHeader } from "../../components/shell/page-header";
 import { fetchWorkspaces, setWorkspaceInviteCapFn, setWorkspaceQuotaFn, setWorkspaceRegionFn, setWorkspaceStatusFn } from "../../console/admin.fns";
-import { SES_REGIONS } from "../../core/ses-regions";
-import { formatDate } from "../../lib/format-date";
-import { Hint } from "../../components/page/text";
+import { SES_REGIONS } from "../../shared/regions";
+import { formatDate } from "../../components/lib/format-date";
+import { Hint } from "../../components/form/text";
+import { MAX_INVITES_PER_DAY } from "../../shared/limits";
+import { oneOf, str, untyped } from "../../components/lib/route-search";
 
 type AdminSearch = { ws?: string; q?: string; status?: "active" | "suspended" };
 
@@ -33,23 +36,23 @@ const STATUS_FACET: Facet = {
   ],
 };
 
-const REGION_LABEL: Record<string, string> = { "ap-south-1": "Mumbai (ap-south-1)", "us-east-1": "N. Virginia (us-east-1)" };
 
 export const Route = createFileRoute("/_app/admin")({
+  staticData: { title: "Admin", copy: "Every workspace on this Relay.", allowsNoWorkspace: "platform" },
   validateSearch: (search: Record<string, unknown>): AdminSearch => ({
-    ws: typeof search.ws === "string" && search.ws ? search.ws : undefined,
-    q: typeof search.q === "string" && search.q ? search.q : undefined,
-    status: search.status === "active" || search.status === "suspended" ? search.status : undefined,
+    ws: str(search.ws),
+    q: str(search.q),
+    status: oneOf(["active", "suspended"] as const, search.status),
   }),
   loader: async () => {
     try {
       return await fetchWorkspaces();
     } catch (err) {
-      if (err instanceof Error && err.message === "not found") throw notFound();
+      if (isNotFound(err)) throw notFound();
       throw err;
     }
   },
-  pendingComponent: () => <ListSkeleton crumbs={[{ label: "Admin" }]} columns={7} search filter />,
+  pendingComponent: () => <ListSkeleton columns={7} search filter />,
   component: AdminPage,
 });
 
@@ -166,7 +169,7 @@ function ManageSheet({ w, run, confirm }: { w: Workspace; run: Run; confirm: (ac
           mode="segmented"
           value={region}
           onChange={setRegion}
-          options={SES_REGIONS.map((r) => ({ value: r, label: REGION_LABEL[r] ?? r }))}
+          options={SES_REGIONS.map((r) => ({ value: r.id, label: r.label }))}
         />
       </SettingsCard>
       <NumberCard
@@ -188,8 +191,8 @@ function ManageSheet({ w, run, confirm }: { w: Workspace; run: Run; confirm: (ac
         description="Team invitations this workspace can send each day."
         value={w.invitesPerDay}
         min={1}
-        max={10000}
-        error="Invites per day must be a whole number from 1 to 10000"
+        max={MAX_INVITES_PER_DAY}
+        error={`Invites per day must be a whole number from 1 to ${MAX_INVITES_PER_DAY}`}
         unit="invites / day"
         saveLabel="Save limit"
         onSave={(cap) => run(() => setWorkspaceInviteCapFn({ data: { workspaceId: w.id, cap } }), "Invites per day saved")}
@@ -237,7 +240,7 @@ function AdminPage() {
 
   return (
     <>
-      <PageHeader crumbs={[{ label: "Admin" }]} />
+      <PageHeader />
       <Toolbar
         search={<SearchInput value={query} onChange={setQuery} placeholder="Search workspaces" />}
         filters={
@@ -251,7 +254,7 @@ function AdminPage() {
       <ResourceTable
         rows={rows}
         rowKey={(w) => w.id}
-        rowHref={(w) => ({ to: "/admin", search: (prev: Record<string, unknown>) => ({ ...prev, ws: w.id }) as never })}
+        rowHref={(w) => ({ to: "/admin", search: (prev: Record<string, unknown>) => untyped({ ...prev, ws: w.id }) })}
         rowLabel={(w) => `Manage ${w.name}`}
         empty={
           <EmptyState

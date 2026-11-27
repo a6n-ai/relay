@@ -1,19 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { decodeCursor } from "../../../do/console-reads";
-import { apiRoute, data, json, readJson } from "../../../core/api-route";
-import { campaignCreateInput, createCampaignForScope, listCampaignsForScope } from "../../../core/campaign-scope";
+import { apiRoute, data, json, readJson } from "../../../api/route";
+import { createCampaign, listCampaigns } from "../../../services/campaigns";
+import { campaignCreateInput, cursorParam } from "../../../services/schemas";
 
 export const Route = createFileRoute("/api/v1/campaigns")({
   server: {
     handlers: {
-      GET: apiRoute(async ({ env, scope, request }) => {
-        const cursor = new URL(request.url).searchParams.get("cursor") ?? undefined;
-        if (cursor !== undefined && !decodeCursor(cursor)) return json({ error: "invalid input" }, 400);
-        const page = await listCampaignsForScope(env, scope, cursor);
+      GET: apiRoute(async ({ env, p, request }) => {
+        const page = await listCampaigns(env, p, p.appId, cursorParam(request));
         return json({ data: page.rows, nextCursor: page.nextCursor });
       }),
-      POST: apiRoute(async ({ env, scope, request }) =>
-        data(await createCampaignForScope(env, scope, campaignCreateInput.parse(await readJson(request))), 201),
+      POST: apiRoute(async ({ env, p, request }) =>
+        data(await createCampaign(env, p, p.appId, campaignCreateInput.parse(await readJson(request))), 201),
       ),
     },
   },

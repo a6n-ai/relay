@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { env } from "cloudflare:workers";
-import { createAuth } from "../../../lib/auth";
+import { createAuth } from "../../../auth";
 
 const handle = ({ request }: { request: Request }) => createAuth(env).handler(request);
 

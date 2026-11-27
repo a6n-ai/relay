@@ -1,23 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { env } from "cloudflare:workers";
-import { ConsoleError, requireActor } from "../console/actor";
-import { exportMembersFor } from "../console/lists";
-import { describeError } from "../core/log";
+import { consoleRoute } from "../console/route";
+import { exportMembers } from "../services/lists";
+import { RelayError } from "../shared/errors";
 
 export const Route = createFileRoute("/lists/$listId/export")({
   server: {
     handlers: {
-      GET: async ({ request, params }) => {
-        try {
-          const actor = await requireActor(env, request.headers);
-          if (params.listId.length > 64) throw new ConsoleError(404, "not found");
-          return await exportMembersFor(env, actor, params.listId);
-        } catch (err) {
-          if (err instanceof ConsoleError) return Response.json({ error: err.message }, { status: err.status });
-          console.error("console export failed", describeError(err));
-          return Response.json({ error: "internal error" }, { status: 500 });
-        }
-      },
+      GET: consoleRoute("export", { permission: { list: ["import"] } }, async ({ env, p, params }) => {
+        if (p.workspaceStatus === "suspended") throw new RelayError("workspace suspended");
+        if (params.listId.length > 64) throw new RelayError("not found");
+        return exportMembers(env, p, params.listId);
+      }),
     },
   },
 });

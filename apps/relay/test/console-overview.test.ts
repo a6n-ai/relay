@@ -1,7 +1,7 @@
 import { env, SELF } from "cloudflare:test";
 import { beforeAll, describe, expect, it } from "vitest";
 import { requireActor } from "../src/console/actor";
-import { getOverview } from "../src/console/overview";
+import { getOverview } from "../src/services/overview";
 import { coreDb } from "../src/db/core/client";
 import { usageDaily } from "../src/db/core/schema";
 import { utcDay } from "../src/core/usage";
@@ -9,7 +9,7 @@ import { addMember, cookieFor, createWorkspace, ORIGIN, setActive } from "./cons
 import { applyMigrations } from "./migrate";
 
 const headersFor = (cookie: string) => new Headers({ cookie });
-const USAGE = { permission: { workspace: ["usage"] } };
+const USAGE = { permission: { workspace: ["usage"] } } as const;
 const NOV_24 = Date.UTC(2026, 10, 24);
 
 beforeAll(async () => {

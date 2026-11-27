@@ -1,10 +1,11 @@
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
+import { BASE, SITE } from './site.mjs';
 
-// Served by apps/relay at relay.a6n.ai/docs: its build copies dist into public/docs (apps/relay/scripts/build-docs.ts).
+// Served by apps/relay at relay.a6n.ai/docs: its build copies dist into public/docs (apps/relay/scripts/lib/docs.ts).
 export default defineConfig({
-	site: 'https://relay.a6n.ai',
-	base: '/docs',
+	site: SITE,
+	base: BASE,
 	integrations: [
 		starlight({
 			title: 'Relay',
@@ -15,10 +16,10 @@ export default defineConfig({
 			lastUpdated: false,
 			head: [
 				{ tag: 'meta', attrs: { property: 'og:site_name', content: 'Relay' } },
-				{ tag: 'meta', attrs: { property: 'og:image', content: 'https://relay.a6n.ai/landing/og.png' } },
+				{ tag: 'meta', attrs: { property: 'og:image', content: `${SITE}/landing/og.png` } },
 				{ tag: 'meta', attrs: { property: 'og:image:alt', content: 'Relay docs' } },
 				{ tag: 'meta', attrs: { name: 'twitter:card', content: 'summary_large_image' } },
-				{ tag: 'link', attrs: { rel: 'alternate', type: 'text/plain', href: '/docs/llms.txt', title: 'LLM summary' } },
+				{ tag: 'link', attrs: { rel: 'alternate', type: 'text/plain', href: `${BASE}/llms.txt`, title: 'LLM summary' } },
 			],
 			components: {
 				Header: './src/components/docs/Header.astro',
