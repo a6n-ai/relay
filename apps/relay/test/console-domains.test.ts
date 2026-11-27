@@ -353,7 +353,7 @@ describe("console sending domains and addresses", { timeout: 60_000 }, () => {
     expect(html).not.toContain('href="/domains"');
   });
 
-  it("shows a member the domains and addresses without add, check, switch or remove controls", async () => {
+  it("shows a member no domains or addresses, only the denied state", async () => {
     const owner = await workspaceFor("dom-ro-owner@example.com", "Dom Ro Co");
     const ownerActor = await requireActor(env, headersFor(owner.cookie), WRITE);
     const { id: appId } = await addApp(env, ownerActor, { name: "Web", slug: "web" });
@@ -369,11 +369,9 @@ describe("console sending domains and addresses", { timeout: 60_000 }, () => {
     const res = await SELF.fetch(`${ORIGIN}/domains`, { redirect: "manual", headers: { cookie: member } });
     expect(res.status).toBe(200);
     const html = await res.text();
-    expect(html).toContain("hi@readonly-view.test");
-    expect(html).not.toContain("Add domain");
-    expect(html).not.toContain("Add address");
-    expect(html).not.toContain("Check now");
-    expect(html).not.toContain('role="switch"');
+    expect(html).toContain("Not available to your role");
+    expect(html).not.toContain("hi@readonly-view.test");
+    expect(html).not.toContain("readonly-view.test");
   });
 });
 

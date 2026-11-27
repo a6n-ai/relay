@@ -74,7 +74,7 @@ const NAV: RawGroup[] = [
     id: "setup",
     items: [
       { id: "apps", to: "/apps", icon: AppWindow },
-      { id: "domains", to: "/domains", icon: Globe, need: { sending: ["read"] } },
+      { id: "domains", to: "/domains", icon: Globe, need: { sending: ["write"] } },
       {
         id: "settings",
         to: "/settings",

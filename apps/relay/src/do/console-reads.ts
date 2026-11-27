@@ -35,6 +35,7 @@ export type MessageQuery = {
   status?: MessageStatus;
   // Exact match on to_email for out, from_email for in.
   email?: string;
+  addressId?: string;
   cursor?: string;
 };
 
@@ -217,6 +218,7 @@ export function listMessageRows(
         eq(m.direction, q.direction),
         q.appId ? eq(m.appId, q.appId) : undefined,
         q.status ? eq(m.status, q.status) : undefined,
+        q.addressId ? eq(m.addressId, q.addressId) : undefined,
         q.email ? eq(q.direction === "out" ? m.toEmail : m.fromEmail, q.email) : undefined,
         cursor ? olderThan(m.createdAt, m.id, cursor) : undefined,
       ),

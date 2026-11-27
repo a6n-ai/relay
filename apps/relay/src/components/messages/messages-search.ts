@@ -6,6 +6,7 @@ export type MessagesSearch = {
   appId?: string;
   status?: MessageStatus;
   email?: string;
+  addressId?: string;
   cursor?: string;
 };
 
@@ -16,6 +17,7 @@ export function parseMessagesSearch(raw: Record<string, unknown>): MessagesSearc
     appId: str(raw.appId),
     status: status(raw.status),
     email: trimmed(raw.email),
+    addressId: str(raw.addressId),
     cursor: str(raw.cursor),
   };
 }

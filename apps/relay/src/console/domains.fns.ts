@@ -16,10 +16,12 @@ import {
   setDomainProtected,
   updateAddress,
 } from "../services/domains";
+import { closePersonalMailbox, listPersonalMailboxes, reopenPersonalMailbox } from "../services/personal-mailboxes";
 import { displayName, replyTo, validate } from "./schemas";
 import { id } from "../services/schemas";
 
-const VIEW = READ("sending", "read");
+// Members never see Domains: reading it takes the same permission as editing it.
+const VIEW = READ("sending", "write");
 const EDIT = WRITE("sending", "write");
 
 // Null means the role cannot read sending domains (billing): the page shows a denied state instead of an error.
@@ -45,7 +47,7 @@ export const setDomainProtectedFn = createServerFn({ method: "POST" })
 
 export const domainDeletePreview = createServerFn({ method: "POST" })
   .validator(validate(z.object({ id })))
-  .handler(({ data }) => run(VIEW, (p) => previewDomainDelete(env, p, data.id)));
+  .handler(({ data }) => run(EDIT, (p) => previewDomainDelete(env, p, data.id)));
 
 export const deleteDomainFn = createServerFn({ method: "POST" })
   .validator(validate(z.object({ id, confirm: z.string().trim().min(1).max(253), deleteHistory: z.boolean() })))
@@ -75,3 +77,15 @@ export const updateAddressFn = createServerFn({ method: "POST" })
 export const removeAddressFn = createServerFn({ method: "POST" })
   .validator(validate(z.object({ id })))
   .handler(({ data }) => run(EDIT, (p) => removeAddress(env, p, data.id)));
+
+const MANAGE = WRITE("mailbox", "manage");
+
+export const fetchPersonalMailboxes = createServerFn({ method: "GET" }).handler(() => read(READ("mailbox", "manage"), (p) => listPersonalMailboxes(env, p)));
+
+export const closePersonalMailboxFn = createServerFn({ method: "POST" })
+  .validator(validate(z.object({ id })))
+  .handler(({ data }) => run(MANAGE, (p) => closePersonalMailbox(env, p, data.id)));
+
+export const reopenPersonalMailboxFn = createServerFn({ method: "POST" })
+  .validator(validate(z.object({ id })))
+  .handler(({ data }) => run(MANAGE, (p) => reopenPersonalMailbox(env, p, data.id)));

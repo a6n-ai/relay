@@ -26,14 +26,18 @@ import { type View, viewPref } from "../../components/page/view-pref";
 import { PageHeader } from "../../components/shell/page-header";
 import {
   checkDomainFn,
+  closePersonalMailboxFn,
   fetchAddresses,
   fetchDomains,
+  fetchPersonalMailboxes,
   releaseDomainFn,
+  reopenPersonalMailboxFn,
   removeAddressFn,
   setDomainProtectedFn,
 } from "../../console/domains.fns";
 import { Hint, Mono } from "../../components/form/text";
 import { KIND_LABEL } from "../../components/lib/address-kinds";
+import { formatWhen } from "../../components/lib/format-date";
 import { oneOf, str, untyped } from "../../components/lib/route-search";
 
 export const Route = createFileRoute("/_app/domains")({
@@ -45,7 +49,7 @@ export const Route = createFileRoute("/_app/domains")({
   loader: async () => {
     const domains = await fetchDomains();
     if (!domains) return null;
-    return { domains, addresses: await fetchAddresses() };
+    return { domains, addresses: await fetchAddresses(), personal: (await fetchPersonalMailboxes()) ?? [] };
   },
   pendingComponent: () => <ListSkeleton columns={3} sections={["Domains", "Addresses"]} search filter view action />,
   component: DomainsPage,
@@ -75,6 +79,7 @@ function DomainsPage() {
   const [releasing, setReleasing] = useState<{ id: string; domain: string } | null>(null);
   const [deleting, setDeleting] = useState<{ id: string; domain: string } | null>(null);
   const [removing, setRemoving] = useState<{ id: string; email: string } | null>(null);
+  const [closing, setClosing] = useState<{ id: string; email: string } | null>(null);
   if (!data) {
     return <PageDenied />;
   }
@@ -106,6 +111,10 @@ function DomainsPage() {
   const setProtected = (id: string, protectedNow: boolean) =>
     runAction(() => setDomainProtectedFn({ data: { id, protected: protectedNow } }), protectedNow ? "Domain protected" : "Domain unprotected", () => router.invalidate(), "Could not change protection");
   const remove = (id: string) => confirmAction(() => removeAddressFn({ data: { id } }), "Address removed", () => router.invalidate());
+
+  const closeMailbox = (id: string) => confirmAction(() => closePersonalMailboxFn({ data: { id } }), "Mailbox closed", () => router.invalidate());
+  const reopenMailbox = (id: string) =>
+    runAction(() => reopenPersonalMailboxFn({ data: { id } }), "Mailbox reopened", () => router.invalidate(), "Could not reopen the mailbox");
 
   const domainMenu = (d: (typeof domains)[number]) => [
     { label: "Check now", hidden: !canWrite, onSelect: () => void check(d.id) },
@@ -228,7 +237,38 @@ function DomainsPage() {
         empty={needle ? "No addresses match your search." : "No addresses yet. Add one on a verified domain to send from it."}
       />
       </SettingsCard>
+      {canManageMail ? (
+        <SettingsCard title="Personal mailboxes" description="One mailbox for each member who was invited with one.">
+          <ResourceTable
+            columns={[
+              { header: "Address", cell: (m) => <Mono>{m.email}</Mono> },
+              { header: "Owner", cell: (m) => m.ownerName },
+              { header: "Recovery email", secondary: true, cell: (m) => (m.recoveryEmail ? <Mono>{m.recoveryEmail}</Mono> : "—") },
+              { header: "Status", cell: (m) => <Badge variant={m.closed ? "neutral" : "success"}>{m.closed ? "Closed" : "Open"}</Badge> },
+              { header: "Created", secondary: true, cell: (m) => formatWhen(m.createdAt) },
+            ]}
+            rows={data.personal}
+            rowKey={(m) => m.id}
+            menu={(m) => [
+              { label: "Open mail", hidden: !m.canRead, to: "/messages", search: { dir: "in", addressId: m.id } },
+              { label: "Close", hidden: m.closed, destructive: true, onSelect: () => setClosing({ id: m.id, email: m.email }) },
+              { label: "Reopen", hidden: !m.closed, onSelect: () => void reopenMailbox(m.id) },
+            ]}
+            empty="No personal mailboxes yet."
+          />
+        </SettingsCard>
+      ) : null}
       </FormPanel>
+      <ConfirmDialog
+        open={closing !== null}
+        onOpenChange={(o) => !o && setClosing(null)}
+        title={`Close ${closing?.email ?? "this mailbox"}?`}
+        description="Mail to it stops being received and its owner can no longer send from it. You can reopen it while the owner is still a member."
+        confirmLabel="Close mailbox"
+        onConfirm={async () => {
+          if (closing) await closeMailbox(closing.id);
+        }}
+      />
 
       <ConfirmDialog
         open={releasing !== null}
