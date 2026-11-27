@@ -1,7 +1,7 @@
 // Test seam: counts committed migration scripts and calls to migrate, so tests can prove each runs once and migrate runs once per DO.
 export const applied = { count: 0, calls: 0 };
 
-// Index + 1 is the stored schema_version. Keep in sync with client-schema.ts.
+// Index + 1 is the stored schema_version. test/do-schema-drift.test.ts checks the result against client-schema.ts.
 export const CLIENT_MIGRATIONS: readonly string[] = [
   `
 CREATE TABLE message (
@@ -232,6 +232,9 @@ CREATE UNIQUE INDEX contact_list_import_ref ON contact_list (app_id, import_ref)
 `,
 `
 ALTER TABLE message ADD COLUMN reply_to TEXT;
+`,
+`
+DROP TABLE IF EXISTS audit_log;
 `,
 ];
 

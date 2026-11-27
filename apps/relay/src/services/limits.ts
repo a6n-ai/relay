@@ -1,4 +1,3 @@
-import { describeError } from "../core/log";
 import type { Env } from "../env";
 import { clientFor } from "../do/client";
 
@@ -6,7 +5,7 @@ import { clientFor } from "../do/client";
 export async function refreshWorkspaceLimits(env: Env, workspaceId: string): Promise<void> {
   try {
     await clientFor(env, workspaceId).refreshLimits(workspaceId);
-  } catch (err) {
-    console.error("refreshLimits failed", workspaceId, describeError(err));
+  } catch {
+    console.error("refreshLimits failed", workspaceId);
   }
 }

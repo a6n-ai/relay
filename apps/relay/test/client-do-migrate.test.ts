@@ -22,7 +22,8 @@ describe("ClientDO migrations", () => {
       tables: tables(state.storage.sql),
     }));
     expect(result.version).toBe(CLIENT_MIGRATIONS.length);
-    expect(result.tables).toEqual(expect.arrayContaining(["audit_log", "message", "suppression"]));
+    expect(result.tables).toEqual(expect.arrayContaining(["message", "suppression"]));
+    expect(result.tables).not.toContain("audit_log");
   });
 
   it("fresh DO reaches the latest schema_version with message_event and the inbound tables", async () => {
@@ -175,8 +176,8 @@ describe("ClientDO migrations", () => {
 });
 
 describe("ClientDO migration 6 (contact lists and campaigns)", () => {
-  it("pins eight scripts and creates the list, member, opt-out and campaign tables with the message columns", async () => {
-    expect(CLIENT_MIGRATIONS.length).toBe(8);
+  it("pins nine scripts and creates the list, member, opt-out and campaign tables with the message columns", async () => {
+    expect(CLIENT_MIGRATIONS.length).toBe(9);
     const stub = env.CLIENT.get(env.CLIENT.idFromName("migrate-six"));
     const result = await runInDurableObject(stub, (_instance, state) => ({
       version: state.storage.kv.get<number>("schema_version"),
@@ -210,7 +211,7 @@ describe("ClientDO migration 6 (contact lists and campaigns)", () => {
       };
     });
     expect(result.version).toBe(CLIENT_MIGRATIONS.length);
-    expect(result.delta).toBe(3);
+    expect(result.delta).toBe(4);
     expect(result.kept).toEqual(["keep@x.test"]);
     expect(result.tables).toEqual(expect.arrayContaining(["contact_list", "contact_list_member", "campaign"]));
   });
@@ -224,7 +225,7 @@ describe("ClientDO migration 7", () => {
       tables: tables(state.storage.sql),
       campaignCols: state.storage.sql.exec<{ name: string }>("PRAGMA table_info('campaign')").toArray().map((r) => r.name),
     }));
-    expect(CLIENT_MIGRATIONS.length).toBe(8);
+    expect(CLIENT_MIGRATIONS.length).toBe(9);
     expect(result.version).toBe(CLIENT_MIGRATIONS.length);
     expect(result.tables).toEqual(expect.arrayContaining(["template", "automation", "automation_run", "audience_hook"]));
     expect(result.campaignCols).toContain("audience_kind");

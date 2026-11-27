@@ -2,7 +2,7 @@ import { sql } from "drizzle-orm";
 import { check, index, integer, primaryKey, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 import { newId } from "../shared/ids";
 
-// Mirrors CLIENT_MIGRATIONS in migrations.ts; change both together.
+// The migrations in migrations.ts are what runs; test/do-schema-drift.test.ts fails when a table here differs from them.
 export const message = sqliteTable(
   "message",
   {
@@ -95,15 +95,6 @@ export const suppression = sqliteTable(
     check("suppression_stream", sql`${t.stream} IS NULL OR ${t.stream} IN ('transactional', 'tracked', 'marketing')`),
   ],
 );
-
-export const auditLog = sqliteTable("audit_log", {
-  id: text("id").primaryKey().$defaultFn(() => newId("aud")),
-  actor: text("actor").notNull(),
-  action: text("action").notNull(),
-  target: text("target"),
-  data: text("data"),
-  createdAt: integer("created_at").notNull(),
-});
 
 export const attachment = sqliteTable(
   "attachment",
