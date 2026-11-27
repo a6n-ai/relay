@@ -1,4 +1,5 @@
 import { Button } from "@foundry/ui/button";
+import { Switch } from "@foundry/ui/switch";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@foundry/ui/sheet";
 import { createFileRoute, notFound, useNavigate, useRouter } from "@tanstack/react-router";
 import { BuildingIcon } from "lucide-react";
@@ -17,7 +18,7 @@ import { ListSkeleton } from "../../components/page/page-skeleton";
 import { ResourceTable } from "../../components/page/resource-table";
 import { confirmAction, runAction } from "../../components/lib/run-action";
 import { PageHeader } from "../../components/shell/page-header";
-import { fetchWorkspaces, setWorkspaceInviteCapFn, setWorkspaceQuotaFn, setWorkspaceRegionFn, setWorkspaceStatusFn } from "../../console/admin.fns";
+import { fetchWorkspaces, setWorkspaceInviteCapFn, setWorkspacePersonalReadFn, setWorkspaceQuotaFn, setWorkspaceRegionFn, setWorkspaceStatusFn } from "../../console/admin.fns";
 import { SES_REGIONS } from "../../shared/regions";
 import { formatDate } from "../../components/lib/format-date";
 import { Hint } from "../../components/form/text";
@@ -194,6 +195,16 @@ function ManageSheet({ w, run, confirm }: { w: Workspace; run: Run; confirm: (ac
         saveLabel="Save limit"
         onSave={(cap) => run(() => setWorkspaceInviteCapFn({ data: { workspaceId: w.id, cap } }), "Invites per day saved")}
       />
+      <SettingsCard title="Personal mailboxes">
+        <div className="flex items-center justify-between gap-3">
+          <label htmlFor={`personal-${w.id}`} className="text-sm">Owners and admins can read personal mailboxes</label>
+          <Switch
+            id={`personal-${w.id}`}
+            checked={w.adminsReadPersonal}
+            onCheckedChange={(allowed) => run(() => setWorkspacePersonalReadFn({ data: { workspaceId: w.id, allowed } }), "Setting saved")}
+          />
+        </div>
+      </SettingsCard>
       <SettingsCard
         title="Suspension"
         description={

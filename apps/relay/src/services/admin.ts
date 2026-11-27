@@ -39,6 +39,7 @@ export async function listWorkspaces(env: Env, now = Date.now()) {
         quota: workspaceProfile.monthlyMessageQuota,
         selfServe: workspaceProfile.selfServe,
         invitesPerDay: workspaceProfile.invitesPerDay,
+        adminsReadPersonal: workspaceProfile.adminsReadPersonal,
         sesRegion: workspaceProfile.defaultSesRegion,
       })
       .from(workspaceProfile),
@@ -52,6 +53,7 @@ export async function listWorkspaces(env: Env, now = Date.now()) {
   const quotaBy = new Map(profiles.map((p) => [p.workspaceId, p.quota]));
   const selfServeBy = new Map(profiles.map((p) => [p.workspaceId, p.selfServe]));
   const invitesBy = new Map(profiles.map((p) => [p.workspaceId, p.invitesPerDay]));
+  const personalBy = new Map(profiles.map((p) => [p.workspaceId, p.adminsReadPersonal]));
   const regionBy = new Map(profiles.map((p) => [p.workspaceId, p.sesRegion]));
   const sentBy = new Map(usage.map((u) => [u.workspaceId, u.sent]));
   return rows.map((ws) => ({
@@ -65,6 +67,7 @@ export async function listWorkspaces(env: Env, now = Date.now()) {
     quota: quotaBy.get(ws.id) ?? SELF_SERVE_QUOTA,
     selfServe: selfServeBy.get(ws.id) ?? true,
     invitesPerDay: invitesBy.get(ws.id) ?? INVITES_PER_DAY,
+    adminsReadPersonal: personalBy.get(ws.id) ?? true,
     sesRegion: regionBy.get(ws.id) ?? null,
     sentThisMonth: sentBy.get(ws.id) ?? 0,
     members: membersBy.get(ws.id) ?? 0,
@@ -108,6 +111,12 @@ export async function setWorkspaceInviteCap(env: Env, admin: PlatformAdmin, work
   await requireWorkspace(env, workspaceId);
   await updateWorkspaceProfile(env, workspaceId, { invitesPerDay: cap });
   await writeAudit(env, { action: "workspace.invite_cap", actorUserId: admin.userId, workspaceId, target: workspaceId, data: { cap } });
+}
+
+export async function setWorkspacePersonalRead(env: Env, admin: PlatformAdmin, workspaceId: string, allowed: boolean): Promise<void> {
+  await requireWorkspace(env, workspaceId);
+  await updateWorkspaceProfile(env, workspaceId, { adminsReadPersonal: allowed });
+  await writeAudit(env, { action: "workspace.personal_read", actorUserId: admin.userId, workspaceId, target: workspaceId, data: { allowed } });
 }
 
 // The region new sending domains in this workspace use. Existing domains keep the region they were added with.

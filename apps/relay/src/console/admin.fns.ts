@@ -6,6 +6,7 @@ import {
   listWorkspaces,
   setAudienceBinding,
   setWorkspaceInviteCap,
+  setWorkspacePersonalRead,
   setWorkspaceQuota,
   setWorkspaceRegion,
   setWorkspaceStatus,
@@ -31,6 +32,10 @@ export const setWorkspaceQuotaFn = createServerFn({ method: "POST" })
 export const setWorkspaceInviteCapFn = createServerFn({ method: "POST" })
   .validator(validate(z.object({ workspaceId: z.string().min(1), cap: z.number().int().min(1).max(MAX_INVITES_PER_DAY) })))
   .handler(({ data }) => runAdmin((admin) => setWorkspaceInviteCap(env, admin, data.workspaceId, data.cap)));
+
+export const setWorkspacePersonalReadFn = createServerFn({ method: "POST" })
+  .validator(validate(z.object({ workspaceId: z.string().min(1), allowed: z.boolean() })))
+  .handler(({ data }) => runAdmin((admin) => setWorkspacePersonalRead(env, admin, data.workspaceId, data.allowed)));
 
 export const setAudienceBindingFn = createServerFn({ method: "POST" })
   .validator(validate(z.object({ workspaceId: z.string().min(1), appId: z.string().min(1), binding: z.enum(AUDIENCE_BINDINGS) })))

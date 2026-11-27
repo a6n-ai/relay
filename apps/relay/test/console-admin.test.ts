@@ -2,7 +2,7 @@ import { env, SELF } from "cloudflare:test";
 import { and, eq } from "drizzle-orm";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { requireActor, requirePlatformAdmin } from "../src/console/actor";
-import { listWorkspaces, setAudienceBinding, setWorkspaceInviteCap, setWorkspaceQuota, setWorkspaceRegion, setWorkspaceStatus } from "../src/services/admin";
+import { listWorkspaces, setAudienceBinding, setWorkspaceInviteCap, setWorkspacePersonalRead, setWorkspaceQuota, setWorkspaceRegion, setWorkspaceStatus } from "../src/services/admin";
 import { addApp, createKey } from "../src/services/apps";
 import { addAddress, addDomain, checkDomain } from "../src/services/domains";
 import { inviteMember } from "../src/services/members";
@@ -206,6 +206,26 @@ describe("console platform admin invite cap", { timeout: 60_000 }, () => {
     for (const cap of [0, 10_001, 1.5]) {
       await expect(setWorkspaceInviteCap(env, OPS, a.workspaceId, cap)).rejects.toMatchObject({ status: 400, message: "invalid input" });
     }
+  });
+});
+
+describe("personal mailbox read setting (super admin)", () => {
+  it("lets a platform admin turn it off, and writes the audit row", async () => {
+    const a = await workspaceFor("adm-personal@example.com", "adm-personal-co");
+    expect((await listWorkspaces(env)).find((r) => r.id === a.workspaceId)?.adminsReadPersonal).toBe(true);
+    await setWorkspacePersonalRead(env, OPS, a.workspaceId, false);
+    expect((await listWorkspaces(env)).find((r) => r.id === a.workspaceId)?.adminsReadPersonal).toBe(false);
+    const [audit] = await securityDb(env)
+      .select({ data: securityAudit.data })
+      .from(securityAudit)
+      .where(and(eq(securityAudit.action, "workspace.personal_read"), eq(securityAudit.workspaceId, a.workspaceId)));
+    expect(audit).toBeDefined();
+  });
+
+  it("is not reachable by a workspace owner who is not a platform admin", async () => {
+    const host = await workspaceFor("adm-personal-host@example.com", "adm-personal-host-co");
+    const owner = await addMember(host.workspaceId, "adm-personal-own@example.com", "owner");
+    await expect(requirePlatformAdmin(env, headersFor(owner), { write: true })).rejects.toMatchObject({ status: 404 });
   });
 });
 
