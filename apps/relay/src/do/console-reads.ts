@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gt, lt, ne, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, lt, ne, or, sql, type SQL } from "drizzle-orm";
 import type { DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
 import type { SQLiteColumn } from "drizzle-orm/sqlite-core";
 import { safeDownloadName } from "../core/download";
@@ -7,6 +7,7 @@ import type { Env } from "../env";
 import type { AttachmentView, MessageView } from "./types";
 import * as schema from "./client-schema";
 import { keysetSlice, parseCursor } from "../core/cursor";
+import { RelayError } from "../shared/errors";
 import { type DeliveryView } from "../shared/views";
 import { type Stream, type SuppressionReason, type MessageStatus } from "../shared/mail";
 import { PAGE_SIZE } from "../shared/limits";
@@ -70,27 +71,36 @@ export function visibleTo(access: MessageAccess): SQL {
 
 export type SuppressionView = { email: string; reason: SuppressionReason; stream: Stream | null; createdAt: number };
 
+// Reason first: it never holds a colon, so the first one always ends it.
+function parseSuppressionCursor(raw: string): { reason: string; email: string } {
+  const [, reason, email] = /^(unsubscribe|bounce|complaint|manual):(.+)$/.exec(raw) ?? [];
+  if (!reason) throw new RelayError("invalid cursor");
+  return { reason, email };
+}
+
 // Range, not LIKE: the primary key serves it and no wildcard in an address needs escaping. char(1114111) is the largest code point.
 export function listSuppressionRows(
   db: Db,
   q: { prefix?: string; cursor?: string },
 ): { rows: SuppressionView[]; nextCursor: string | null } {
   const s = schema.suppression;
+  const after = q.cursor === undefined ? undefined : parseSuppressionCursor(q.cursor);
   const rows = db
     .select({ email: s.email, reason: s.reason, stream: s.stream, createdAt: s.createdAt })
     .from(s)
     .where(
       and(
         q.prefix ? sql`${s.email} >= ${q.prefix} AND ${s.email} < (${q.prefix} || char(1114111))` : undefined,
-        q.cursor ? gt(s.email, q.cursor) : undefined,
+        after ? sql`(${s.email}, ${s.reason}) > (${after.email}, ${after.reason})` : undefined,
       ),
     )
-    .orderBy(asc(s.email))
+    .orderBy(asc(s.email), asc(s.reason))
     .limit(PAGE_SIZE + 1)
     .all()
     .map((r): SuppressionView => ({ ...r, reason: r.reason as SuppressionReason, stream: r.stream as Stream | null }));
   const page = rows.slice(0, PAGE_SIZE);
-  const nextCursor = rows.length > PAGE_SIZE ? page[PAGE_SIZE - 1].email : null;
+  const last = page[PAGE_SIZE - 1];
+  const nextCursor = rows.length > PAGE_SIZE ? `${last.reason}:${last.email}` : null;
   return { rows: page, nextCursor };
 }
 

@@ -84,15 +84,20 @@ export const messageEvent = sqliteTable(
 export const suppression = sqliteTable(
   "suppression",
   {
-    email: text("email").primaryKey(),
+    email: text("email").notNull(),
     reason: text("reason").notNull(),
     stream: text("stream"),
+    source: text("source"),
+    campaignRef: text("campaign_ref"),
+    campaignName: text("campaign_name"),
     createdAt: integer("created_at").notNull(),
   },
   (t) => [
+    primaryKey({ columns: [t.email, t.reason] }),
     check("suppression_email_lower", sql`${t.email} = lower(trim(${t.email}))`),
     check("suppression_reason", sql`${t.reason} IN ('unsubscribe', 'bounce', 'complaint', 'manual')`),
     check("suppression_stream", sql`${t.stream} IS NULL OR ${t.stream} IN ('transactional', 'tracked', 'marketing')`),
+    check("suppression_source", sql`${t.source} IS NULL OR ${t.source} IN ('link', 'one-click', 'admin', 'ses')`),
   ],
 );
 
@@ -218,6 +223,9 @@ export const marketingOptout = sqliteTable(
     email: text("email").notNull(),
     domain: text("domain").notNull(),
     createdAt: integer("created_at").notNull(),
+    source: text("source"),
+    campaignRef: text("campaign_ref"),
+    campaignName: text("campaign_name"),
   },
   (t) => [primaryKey({ columns: [t.email, t.domain] })],
 );

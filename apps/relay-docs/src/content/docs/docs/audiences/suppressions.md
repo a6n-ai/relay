@@ -14,7 +14,7 @@ description: Why an address gets no mail, how to suppress one by hand and how to
 | Complaint | The person marked a message as spam. Relay adds it. |
 | Added manually | You added it. |
 
-A suppression covers all streams or one stream. Unsubscribes also opt the person out of marketing mail from your brand's domain.
+An address has one suppression per reason. A suppression covers all streams or one stream. Unsubscribes also opt the person out of marketing mail from your brand's domain.
 
 ## Review suppressions
 
@@ -29,7 +29,7 @@ Open **Messages**, then **Suppressions**. The table shows Email, Reason, Stream 
 
 ## Remove a suppression
 
-Open the row menu and choose **Remove**. Mail to the address can be sent again.
+Open the row menu and choose **Remove**. This removes that reason only. Mail to the address can be sent again when no other suppression applies.
 
 You cannot remove an Unsubscribed or Complaint suppression. Those people opted out.
 

@@ -1,7 +1,7 @@
 import { fromBase64 } from "../core/crypto";
 import { DurableObject } from "cloudflare:workers";
 import { ownedBy, ownedRaw, r2Keys } from "../core/r2-keys";
-import { and, eq, gte, inArray, isNotNull, isNull, lt, ne, or, sql, type SQLWrapper } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, isNotNull, isNull, lt, ne, or, sql, type SQLWrapper } from "drizzle-orm";
 import { drizzle, type DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
 import { brandDomain, IMPLIED_CONSENT_MS } from "../core/campaigns";
 import { campaignProblems, type CampaignProblem } from "../shared/campaign-problems";
@@ -73,7 +73,7 @@ const ATTACHMENT_TTL_MS = 7 * DAY_MS;
 const SWEEP_BATCH = 500;
 const SWEEP_CHUNK = 100;
 
-// Higher rank wins a suppression conflict: a stronger reason is never replaced by a weaker one.
+// Lookup order for one address: the strongest reason comes first.
 const reasonRank = (column: SQLWrapper) =>
   sql`CASE ${column} WHEN 'complaint' THEN 4 WHEN 'bounce' THEN 3 WHEN 'unsubscribe' THEN 2 ELSE 1 END`;
 
@@ -86,6 +86,8 @@ function claimGate<R extends { status: string; sesMessageId: string | null; clai
   if (row.claimedUntil != null && row.claimedUntil > now) return { gate: { kind: "busy", retryInSeconds: Math.ceil((row.claimedUntil - now) / 1000) } };
   return { row };
 }
+
+const suppressionKey = (email: string, reason: SuppressionReason) => and(eq(schema.suppression.email, email), eq(schema.suppression.reason, reason));
 
 export class ClientDO extends DurableObject<Env> {
   readonly db: DrizzleSqliteDODatabase<typeof schema>;
@@ -1068,7 +1070,7 @@ export class ClientDO extends DurableObject<Env> {
     await this.ready(workspaceId);
     return this.ctx.storage.transactionSync(() => {
       const key = email.trim().toLowerCase();
-      const had = this.db.select({ email: schema.suppression.email }).from(schema.suppression).where(eq(schema.suppression.email, key)).get() !== undefined;
+      const had = this.db.select({ email: schema.suppression.email }).from(schema.suppression).where(suppressionKey(key, reason)).get() !== undefined;
       this.writeSuppression(key, reason, stream);
       return { created: !had };
     });
@@ -1089,6 +1091,7 @@ export class ClientDO extends DurableObject<Env> {
       .select({ email: schema.suppression.email, stream: schema.suppression.stream, reason: schema.suppression.reason })
       .from(schema.suppression)
       .where(sql`${schema.suppression.email} IN (SELECT value FROM json_each(${JSON.stringify(emails)}))`)
+      .orderBy(asc(schema.suppression.email), desc(reasonRank(schema.suppression.reason)))
       .all() as { email: string; stream: Stream | null; reason: SuppressionReason }[];
     if (from === undefined) return rows.map((row) => ({ ...row, brandOptOut: false }));
     const optedOut = new Set(
@@ -1099,7 +1102,11 @@ export class ClientDO extends DurableObject<Env> {
         .all()
         .map((r) => r.email),
     );
-    return rows.map((row) => ({ ...row, brandOptOut: optedOut.has(row.email) }));
+    const blocked = new Set(rows.map((r) => r.email));
+    const brandOnly = [...optedOut]
+      .filter((email) => !blocked.has(email))
+      .map((email) => ({ email, stream: "marketing" as const, reason: "unsubscribe" as const, brandOptOut: true }));
+    return [...rows.map((row) => ({ ...row, brandOptOut: optedOut.has(row.email) })), ...brandOnly];
   }
 
   // One transactionSync per event. A replayed, foreign or unknown event changes nothing and counts as ignored.
@@ -1237,10 +1244,10 @@ export class ClientDO extends DurableObject<Env> {
       .insert(schema.suppression)
       .values({ email: email.trim().toLowerCase(), reason, stream: stream ?? null, createdAt: Date.now() })
       .onConflictDoUpdate({
-        target: schema.suppression.email,
+        target: [schema.suppression.email, schema.suppression.reason],
         set: {
-          reason: sql`CASE WHEN (${reasonRank(schema.suppression.reason)}) >= (${reasonRank(sql.raw("excluded.reason"))}) THEN ${schema.suppression.reason} ELSE excluded.reason END`,
           stream: sql`CASE WHEN ${schema.suppression.stream} IS NULL OR excluded.stream IS NULL OR ${schema.suppression.stream} <> excluded.stream THEN NULL ELSE excluded.stream END`,
+          createdAt: sql`min(${schema.suppression.createdAt}, excluded.created_at)`,
         },
       })
       .run();
@@ -1281,14 +1288,14 @@ export class ClientDO extends DurableObject<Env> {
     return listSuppressionRows(this.db, { prefix: q.prefix?.trim().toLowerCase(), cursor: q.cursor });
   }
   // Unsubscribe and complaint rows are kept: a recipient who opted out cannot be re-enabled from the console.
-  async removeSuppression(workspaceId: string, email: string): Promise<void> {
+  async removeSuppression(workspaceId: string, email: string, reason: SuppressionReason): Promise<void> {
     await this.ready(workspaceId);
-    const key = email.trim().toLowerCase();
+    if (reason !== "bounce" && reason !== "manual") throw new RelayError("recipient opted out");
+    const where = suppressionKey(email.trim().toLowerCase(), reason);
     this.ctx.storage.transactionSync(() => {
-      const row = this.db.select({ reason: schema.suppression.reason }).from(schema.suppression).where(eq(schema.suppression.email, key)).get();
+      const row = this.db.select({ email: schema.suppression.email }).from(schema.suppression).where(where).get();
       if (!row) throw new RelayError("not found");
-      if (row.reason !== "bounce" && row.reason !== "manual") throw new RelayError("recipient opted out");
-      this.db.delete(schema.suppression).where(eq(schema.suppression.email, key)).run();
+      this.db.delete(schema.suppression).where(where).run();
     });
   }
   async refreshLimits(workspaceId: string): Promise<WorkspaceLimits> {

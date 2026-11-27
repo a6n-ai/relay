@@ -101,5 +101,5 @@ These three methods have no HTTP endpoint.
 | Method | What it does |
 | --- | --- |
 | `isSuppressed(apiKey, email, stream, from?)` | Returns `true` when Relay will not send to the address on that stream. `stream` is `transactional`, `tracked` or `marketing`. Pass `from` to include that brand's opt-outs. |
-| `suppressionStatus(apiKey, emails, from?)` | Checks 1 to 100 addresses. Returns `email`, `stream`, `reason` and `brandOptOut` for each suppressed one. |
+| `suppressionStatus(apiKey, emails, from?)` | Checks 1 to 100 addresses. Returns `email`, `stream`, `reason` and `brandOptOut`. An address has one row per reason, ordered `complaint`, `bounce`, `unsubscribe`, `manual`. With `from`, an address that only opted out of that brand returns one `marketing` `unsubscribe` row. |
 | `suppress(apiKey, input)` | Suppresses an address. `input` is `{ email, reason, stream }`, with `reason` of `unsubscribe` or `manual` and `stream` of `"marketing"` or `null`. Returns `{ created }`. |

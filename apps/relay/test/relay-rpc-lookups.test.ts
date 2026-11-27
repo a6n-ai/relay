@@ -49,6 +49,26 @@ describe("RelayRpc lookups", () => {
     expect(rows).toEqual([{ email: "gone@x.test", stream: null, reason: "unsubscribe", brandOptOut: false }]);
   });
 
+  it("reports an address that has only a brand opt-out", async () => {
+    const { rpc, key1, workspaceId } = await seed("lookup-brand-only");
+    await rpc.suppressionStatus(key1, ["only@x.test"]);
+    await runInDurableObject(env.CLIENT.get(env.CLIENT.idFromName(workspaceId)), (_i, state) =>
+      state.storage.sql.exec("INSERT INTO marketing_optout (email, domain, created_at) VALUES (?, ?, ?)", "only@x.test", "x.test", Date.now()),
+    );
+    expect(await rpc.suppressionStatus(key1, ["only@x.test"], "Relay@X.test")).toEqual([
+      { email: "only@x.test", stream: "marketing", reason: "unsubscribe", brandOptOut: true },
+    ]);
+    expect(await rpc.suppressionStatus(key1, ["only@x.test"])).toEqual([]);
+  });
+
+  it("orders a complaint before a manual block for the same address", async () => {
+    const { rpc, key1, workspaceId } = await seed("lookup-order");
+    const stub = env.CLIENT.get(env.CLIENT.idFromName(workspaceId));
+    for (const reason of ["manual", "unsubscribe", "complaint", "bounce"] as const) await stub.addSuppression(workspaceId, "m@x.test", reason);
+    const rows = await rpc.suppressionStatus(key1, ["m@x.test"]);
+    expect(rows.map((r) => r.reason)).toEqual(["complaint", "bounce", "unsubscribe", "manual"]);
+  });
+
   it("flags a brand opt-out only for the sending domain given as from", async () => {
     const { rpc, key1, workspaceId } = await seed("lookup-brand");
     await rpc.suppress(key1, { email: "gone@x.test", reason: "unsubscribe", stream: null });

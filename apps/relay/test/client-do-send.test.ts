@@ -310,17 +310,22 @@ describe("ClientDO send", () => {
     expect(other).toBe("workspace mismatch");
   });
 
-  it("keeps the higher-ranked suppression reason when an email is suppressed again", async () => {
+  it("keeps one row per reason, widening the stream and keeping the first date on a repeat", async () => {
     const ws = "wsp_reason";
     const stub = await seededStub(ws);
-    const reason = async () => (await stub.listSuppressions(ws, { prefix: "r@x.com" })).rows[0].reason;
+    const rows = async () => (await stub.listSuppressions(ws, { prefix: "r@x.com" })).rows;
 
     await stub.addSuppression(ws, "r@x.com", "bounce");
-    await stub.addSuppression(ws, "r@x.com", "manual");
-    expect(await reason()).toBe("bounce");
+    expect(await stub.addSuppression(ws, "r@x.com", "manual", "marketing")).toEqual({ created: true });
+    const [, first] = await rows();
+    expect(await stub.addSuppression(ws, "r@x.com", "manual", "transactional")).toEqual({ created: false });
+    await stub.addSuppression(ws, "r@x.com", "manual", "marketing");
 
-    await stub.addSuppression(ws, "r@x.com", "complaint");
-    expect(await reason()).toBe("complaint");
+    expect((await rows()).map((r) => [r.reason, r.stream])).toEqual([
+      ["bounce", null],
+      ["manual", null],
+    ]);
+    expect((await rows())[1].createdAt).toBe(first.createdAt);
   });
 });
 

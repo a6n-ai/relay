@@ -236,6 +236,35 @@ ALTER TABLE message ADD COLUMN reply_to TEXT;
 `
 DROP TABLE IF EXISTS audit_log;
 `,
+// One block per (email, reason). An all-streams unsubscribe splits in two, so no stream it blocked is released.
+`
+CREATE TABLE suppression_new (
+  email TEXT NOT NULL,
+  reason TEXT NOT NULL,
+  stream TEXT,
+  source TEXT,
+  campaign_ref TEXT,
+  campaign_name TEXT,
+  created_at INTEGER NOT NULL,
+  PRIMARY KEY (email, reason),
+  CONSTRAINT suppression_email_lower CHECK (email = lower(trim(email))),
+  CONSTRAINT suppression_reason CHECK (reason IN ('unsubscribe', 'bounce', 'complaint', 'manual')),
+  CONSTRAINT suppression_stream CHECK (stream IS NULL OR stream IN ('transactional', 'tracked', 'marketing')),
+  CONSTRAINT suppression_source CHECK (source IS NULL OR source IN ('link', 'one-click', 'admin', 'ses'))
+);
+INSERT INTO suppression_new (email, reason, stream, created_at)
+  SELECT email, reason, stream, created_at FROM suppression WHERE NOT (reason = 'unsubscribe' AND stream IS NULL);
+INSERT INTO suppression_new (email, reason, stream, created_at)
+  SELECT email, 'manual', NULL, created_at FROM suppression WHERE reason = 'unsubscribe' AND stream IS NULL
+  ON CONFLICT(email, reason) DO UPDATE SET stream = NULL;
+INSERT INTO suppression_new (email, reason, stream, created_at)
+  SELECT email, 'unsubscribe', 'marketing', created_at FROM suppression WHERE reason = 'unsubscribe' AND stream IS NULL;
+DROP TABLE suppression;
+ALTER TABLE suppression_new RENAME TO suppression;
+ALTER TABLE marketing_optout ADD COLUMN source TEXT;
+ALTER TABLE marketing_optout ADD COLUMN campaign_ref TEXT;
+ALTER TABLE marketing_optout ADD COLUMN campaign_name TEXT;
+`,
 ];
 
 // PRAGMA user_version is rejected by DO SQL (SQLITE_AUTH), so the version lives in sync KV.

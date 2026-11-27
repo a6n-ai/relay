@@ -177,7 +177,7 @@ describe("ClientDO migrations", () => {
 
 describe("ClientDO migration 6 (contact lists and campaigns)", () => {
   it("pins nine scripts and creates the list, member, opt-out and campaign tables with the message columns", async () => {
-    expect(CLIENT_MIGRATIONS.length).toBe(9);
+    expect(CLIENT_MIGRATIONS.length).toBe(10);
     const stub = env.CLIENT.get(env.CLIENT.idFromName("migrate-six"));
     const result = await runInDurableObject(stub, (_instance, state) => ({
       version: state.storage.kv.get<number>("schema_version"),
@@ -211,7 +211,7 @@ describe("ClientDO migration 6 (contact lists and campaigns)", () => {
       };
     });
     expect(result.version).toBe(CLIENT_MIGRATIONS.length);
-    expect(result.delta).toBe(4);
+    expect(result.delta).toBe(5);
     expect(result.kept).toEqual(["keep@x.test"]);
     expect(result.tables).toEqual(expect.arrayContaining(["contact_list", "contact_list_member", "campaign"]));
   });
@@ -225,7 +225,7 @@ describe("ClientDO migration 7", () => {
       tables: tables(state.storage.sql),
       campaignCols: state.storage.sql.exec<{ name: string }>("PRAGMA table_info('campaign')").toArray().map((r) => r.name),
     }));
-    expect(CLIENT_MIGRATIONS.length).toBe(9);
+    expect(CLIENT_MIGRATIONS.length).toBe(10);
     expect(result.version).toBe(CLIENT_MIGRATIONS.length);
     expect(result.tables).toEqual(expect.arrayContaining(["template", "automation", "automation_run", "audience_hook"]));
     expect(result.campaignCols).toContain("audience_kind");
@@ -247,6 +247,7 @@ describe("ClientDO migration 7", () => {
       storage.sql.exec("ALTER TABLE campaign DROP COLUMN import_ref");
       storage.sql.exec("ALTER TABLE contact_list DROP COLUMN import_ref");
       storage.sql.exec("ALTER TABLE message DROP COLUMN reply_to");
+      for (const column of ["source", "campaign_ref", "campaign_name"]) storage.sql.exec(`ALTER TABLE marketing_optout DROP COLUMN ${column}`);
       storage.kv.put("schema_version", 6);
       storage.sql.exec("INSERT INTO campaign (id, app_id, name, created_at, updated_at) VALUES (?, ?, ?, ?, ?)", "cmp_old000000001", "app_1", "Old", 1, 1);
       const version = migrate(storage);
@@ -265,6 +266,7 @@ describe("ClientDO migration 8", () => {
     const result = await runInDurableObject(stub, (_instance, state) => {
       const { storage } = state;
       storage.sql.exec("ALTER TABLE message DROP COLUMN reply_to");
+      for (const column of ["source", "campaign_ref", "campaign_name"]) storage.sql.exec(`ALTER TABLE marketing_optout DROP COLUMN ${column}`);
       storage.sql.exec("INSERT INTO suppression (email, reason, stream, created_at) VALUES ('keep8@x.test', 'manual', NULL, 1)");
       storage.kv.put("schema_version", 7);
       const version = migrate(storage);
@@ -277,5 +279,35 @@ describe("ClientDO migration 8", () => {
     expect(result.version).toBe(CLIENT_MIGRATIONS.length);
     expect(result.cols).toContain("reply_to");
     expect(result.kept).toBe(1);
+  });
+});
+
+describe("ClientDO migration 10", () => {
+  it("splits an all-streams unsubscribe so the migration never loosens a block", async () => {
+    const stub = env.CLIENT.get(env.CLIENT.idFromName("migrate-v9-upgrade"));
+    const result = await runInDurableObject(stub, (_instance, state) => {
+      const { storage } = state;
+      for (const table of ["template", "automation_run", "automation", "audience_hook", "campaign", "marketing_optout", "contact_list_member", "contact_list", "inbound_failure", "webhook_delivery", "webhook", "attachment", "message_event", "message", "suppression", "audit_log"])
+        storage.sql.exec(`DROP TABLE IF EXISTS ${table}`);
+      storage.transactionSync(() => {
+        for (const script of CLIENT_MIGRATIONS.slice(0, 9)) storage.sql.exec(script);
+        storage.kv.put("schema_version", 9);
+      });
+      storage.sql.exec(
+        "INSERT INTO suppression (email, reason, stream, created_at) VALUES ('a@x.test', 'unsubscribe', NULL, 1), ('b@x.test', 'bounce', NULL, 2), ('c@x.test', 'unsubscribe', 'marketing', 3)",
+      );
+      const version = migrate(storage);
+      const rows = storage.sql
+        .exec("SELECT email, reason, stream, created_at, source FROM suppression ORDER BY email, reason")
+        .toArray();
+      return { version, rows };
+    });
+    expect(result.version).toBe(CLIENT_MIGRATIONS.length);
+    expect(result.rows).toEqual([
+      { email: "a@x.test", reason: "manual", stream: null, created_at: 1, source: null },
+      { email: "a@x.test", reason: "unsubscribe", stream: "marketing", created_at: 1, source: null },
+      { email: "b@x.test", reason: "bounce", stream: null, created_at: 2, source: null },
+      { email: "c@x.test", reason: "unsubscribe", stream: "marketing", created_at: 3, source: null },
+    ]);
   });
 });

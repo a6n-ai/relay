@@ -18,10 +18,11 @@ import { useCan } from "../../components/lib/use-can";
 import { formatWhen } from "../../components/lib/format-date";
 import { addSuppressionFn, fetchSuppressions, removeSuppressionFn } from "../../console/suppressions.fns";
 import { FormError, FormBody, FormActions } from "../../components/form/form-parts";
-import { STREAMS } from "../../shared/mail";
+import { STREAMS, type SuppressionReason } from "../../shared/mail";
 import { oneOf, posInt, str, trimmed, untyped } from "../../components/lib/route-search";
 import { useSubmit } from "../../components/lib/use-submit";
 
+type Blocked = { email: string; reason: SuppressionReason };
 type SuppressionsSearch = { prefix?: string; cursor?: string; stream?: StreamFilter; offset?: number };
 
 const STREAM_FILTERS = ["all", ...STREAMS] as const;
@@ -57,12 +58,12 @@ function SuppressionsPage() {
   const router = useRouter();
   const navigate = useNavigate();
   const canWrite = useCan({ sending: ["write"] });
-  const [removing, setRemoving] = useState<string | null>(null);
+  const [removing, setRemoving] = useState<Blocked | null>(null);
   if (!page) {
     return <PageDenied />;
   }
-  async function remove(email: string) {
-    await confirmAction(() => removeSuppressionFn({ data: { email } }), "Suppression removed", () => router.invalidate());
+  async function remove({ email, reason }: Blocked) {
+    await confirmAction(() => removeSuppressionFn({ data: { email, reason } }), "Suppression removed", () => router.invalidate());
   }
   // The server has no stream filter, so the facet narrows the rows loaded on this page.
   const rows = search.stream ? page.rows.filter((s) => (search.stream === "all" ? !s.stream : s.stream === search.stream)) : page.rows;
@@ -109,17 +110,17 @@ function SuppressionsPage() {
         ]}
         rows={rows}
         offset={offset}
-        rowKey={(s) => s.email}
+        rowKey={(s) => `${s.email}:${s.reason}`}
         empty={search.stream && page.nextCursor ? "None on this page" : "No suppressed addresses match."}
-        menu={(s) => [{ label: "Remove", onSelect: () => setRemoving(s.email), destructive: true, hidden: !canWrite || OPTED_OUT.has(s.reason) }]}
+        menu={(s) => [{ label: "Remove", onSelect: () => setRemoving(s), destructive: true, hidden: !canWrite || OPTED_OUT.has(s.reason) }]}
       />
       <ConfirmDialog
         open={removing !== null}
         onOpenChange={(open) => {
           if (!open) setRemoving(null);
         }}
-        title={removing ? `Remove suppression for ${removing}?` : "Remove this suppression?"}
-        description="Mail to this address can be sent again."
+        title={removing ? `Remove suppression for ${removing.email}?` : "Remove this suppression?"}
+        description="Mail to this address can be sent again unless another block still applies."
         confirmLabel="Remove suppression"
         onConfirm={async () => {
           if (removing) await remove(removing);
