@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { check, integer, primaryKey, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { check, integer, uniqueIndex, primaryKey, sqliteTable, text } from "drizzle-orm/sqlite-core";
 import { createdAt, flag, id, timestamp, updatedAt } from "../columns";
 
 // workspaceId and appId point at relay-security and are checked in code: D1 cannot foreign-key across databases.
@@ -10,6 +10,7 @@ export const workspaceProfile = sqliteTable("workspace_profile", {
   monthlyMessageQuota: integer("monthly_message_quota").notNull().default(10000),
   invitesPerDay: integer("invites_per_day"),
   selfServe: flag("self_serve").notNull().default(false),
+  adminsReadPersonal: flag("admins_read_personal").notNull().default(true),
   defaultSesRegion: text("default_ses_region").notNull().default("ap-south-1"),
   doSchemaVersion: integer("do_schema_version").notNull().default(0),
   doMigrateError: text("do_migrate_error"),
@@ -40,13 +41,18 @@ export const address = sqliteTable("address", {
   workspaceId: text("workspace_id").notNull(),
   appId: text("app_id").notNull(),
   email: text("email").notNull().unique(),
-  kind: text("kind", { enum: ["inbox", "sender", "both"] }).notNull(),
+  kind: text("kind", { enum: ["inbox", "sender", "both", "personal"] }).notNull(),
   displayName: text("display_name"),
   replyTo: text("reply_to"),
   canSend: flag("can_send").notNull().default(false),
+  ownerUserId: text("owner_user_id"),
+  closedAt: timestamp("closed_at"),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
-}, (t) => [check("address_email_lower", sql`${t.email} = lower(trim(${t.email}))`)]);
+}, (t) => [
+  check("address_email_lower", sql`${t.email} = lower(trim(${t.email}))`),
+  uniqueIndex("address_owner_user").on(t.workspaceId, t.ownerUserId).where(sql`${t.ownerUserId} IS NOT NULL`),
+]);
 
 export const usageDaily = sqliteTable(
   "usage_daily",

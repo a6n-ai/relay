@@ -120,6 +120,7 @@ export function createAuth(env: Env) {
       }),
       after: createAuthMiddleware((ctx) => auditAfterRequest(env, ctx, linkState)),
     },
+    user: { additionalFields: { recoveryEmail: { type: "string", required: false, input: false } } },
     session: {
       expiresIn: 30 * DAY_S,
       cookieCache: { enabled: true, maxAge: 5 * 60 },
@@ -148,6 +149,13 @@ export function createAuth(env: Env) {
         },
         organizationHooks: organizationHooks(env),
         schema: {
+          invitation: {
+            additionalFields: {
+              recoveryEmail: { type: "string", required: false, input: true },
+              mailboxName: { type: "string", required: false, input: true },
+              appId: { type: "string", required: false, input: true },
+            },
+          },
           organization: {
             modelName: "workspace",
             additionalFields: {

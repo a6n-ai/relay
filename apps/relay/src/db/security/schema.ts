@@ -12,6 +12,7 @@ export const user = sqliteTable("user", {
   banned: flag("banned").notNull().default(false),
   banReason: text("ban_reason"),
   banExpires: timestamp("ban_expires"),
+  recoveryEmail: text("recovery_email"),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 });
@@ -89,6 +90,9 @@ export const invitation = sqliteTable("invitation", {
   email: text("email").notNull(),
   role: text("role"),
   teamId: text("team_id"),
+  recoveryEmail: text("recovery_email"),
+  mailboxName: text("mailbox_name"),
+  appId: text("app_id"),
   status: text("status").notNull().default("pending"),
   expiresAt: timestamp("expires_at").notNull(),
   inviterId: text("inviter_id").notNull().references(() => user.id, { onDelete: "cascade" }),
