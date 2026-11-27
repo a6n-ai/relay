@@ -10,7 +10,7 @@ pnpm typecheck
 pnpm test
 ```
 
-`apps/relay` tests run in the Workers runtime (`@cloudflare/vitest-plugin`), with D1, the per-workspace Durable Object, Queues and R2 provided by Miniflare. Packages cover the engine, email adapters, SMS keywords, WhatsApp session window and the HTTP SDK.
+`apps/relay` tests run in the Workers runtime (`@cloudflare/vitest-plugin`), with D1, the per-workspace Durable Object, Queues and R2 provided by Miniflare. Packages cover the engine and the email adapters.
 
 Run one area while you work:
 

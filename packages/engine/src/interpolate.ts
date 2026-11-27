@@ -1,6 +1,5 @@
-// Copied verbatim from @relay/email rather than imported: depending on that
-// package would invert the layering that lets @relay/sms and @relay/whatsapp
-// land as siblings later. tiffin-grab's stored templates depend on this exact
+// Copied verbatim from @relay/email rather than imported, so the engine does
+// not depend on an email adapter. tiffin-grab's stored templates depend on this exact
 // missing-variable and stringification behaviour — do not "improve" it.
 // `{{a.b|fallback}}` is additive: tokens without `|` behave exactly as before.
 const VAR_RE = /\{\{\s*([\w.]+)\s*(?:\|([^}]*))?\}\}/g;

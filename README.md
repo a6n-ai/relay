@@ -35,9 +35,6 @@ npx wrangler workflows trigger relay-ops '{"op":"sweep"}'
 | `apps/relay-docs` | Public docs, served at `/docs` |
 | `@relay/engine` | Shared email engine that TiffinGrab and Realm still import |
 | `@relay/email` | Email adapters (SES or SMTP) |
-| `@relay/sms` / `@relay/whatsapp` | Channel adapters |
-| `@relay/sdk` | HTTP client for send |
-| `@relay/ui` | Composer / logs / bell |
 
 `@foundry/*` packages are pulled from Git as TypeScript source.
 
