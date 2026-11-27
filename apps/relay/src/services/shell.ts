@@ -5,7 +5,6 @@ import type { Env } from "../env";
 import { createAuth } from "../auth";
 import { parseRoles } from "../auth/session";
 import type { Session } from "./principal";
-import { type OrgRole } from "../shared/roles";
 import { type Shell } from "../shared/views";
 
 // A stale active workspace (removed member, or none yet) moves to the first active membership; its set-cookie goes to setCookies.

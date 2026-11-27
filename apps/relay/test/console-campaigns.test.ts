@@ -37,7 +37,7 @@ describe("campaigns console", () => {
   it("refuses a member update with 403", async () => {
     const { owner, workspaceId } = await workspaceFor("cmp-role@example.com", "Cmp Role Co");
     const { id: appId } = await addApp(env, owner, { name: "Web", slug: "web" });
-    const campaign = await createCampaign(env, owner, appId, { name: "Spring" });
+    await createCampaign(env, owner, appId, { name: "Spring" });
     const cookie = await addMember(workspaceId, "cmp-member@example.com", "member");
     await expect(requireActor(env, headersFor(cookie), { permission: { campaign: ["write"] }, write: true })).rejects.toMatchObject({ status: 403 });
   });
@@ -151,7 +151,7 @@ describe("campaign lifecycle console", () => {
   });
 
   it("refuses a member schedule with 403", async () => {
-    const { workspaceId, campaignId } = await readyFixture("cmp-403@example.com", "Cmp 403 Co");
+    const { workspaceId } = await readyFixture("cmp-403@example.com", "Cmp 403 Co");
     spyWorkflow();
     const cookie = await addMember(workspaceId, "cmp-403-member@example.com", "member");
     await expect(requireActor(env, headersFor(cookie), { permission: { campaign: ["send"] }, write: true })).rejects.toMatchObject({ status: 403 });

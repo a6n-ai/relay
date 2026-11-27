@@ -6,7 +6,7 @@ import { useSubmit } from "../lib/use-submit";
 
 export function NewTeamForm({ done }: { done: () => void }) {
   const [name, setName] = useState("");
-  const { pending, error, setError, run } = useSubmit();
+  const { pending, error, run } = useSubmit();
 
   async function submit(event: FormEvent) {
     event.preventDefault();

@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { env } from "cloudflare:workers";
 import { z } from "zod";
-import { webhookInputSchema, webhookPatchSchema } from "../core/webhooks";
+import { webhookInputSchema, webhookPatchSchema } from "../services/schemas";
 import { id } from "../services/schemas";
 import { read, run } from "./guard";
 import { READ, WRITE } from "./needs";

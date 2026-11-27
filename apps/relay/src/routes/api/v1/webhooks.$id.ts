@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { apiRoute, json, readJson } from "../../../api/route";
-import { webhookPatchSchema } from "../../../core/webhooks";
+import { webhookPatchSchema } from "../../../services/schemas";
 import { WEBHOOK_BODY_MAX } from "../../../shared/limits";
 import { deleteWebhook, updateWebhook } from "../../../services/webhooks";
 

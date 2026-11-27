@@ -2,8 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { env } from "cloudflare:workers";
 import { z } from "zod";
 import { runAdmin } from "./guard";
-import { AUDIENCE_BINDINGS } from "../core/audience-protocol";
 import {
+  AUDIENCE_BINDINGS,
   listWorkspaces,
   setAudienceBinding,
   setWorkspaceInviteCap,

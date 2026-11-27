@@ -22,7 +22,7 @@ function NewAppPage() {
   const navigate = useNavigate();
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
-  const { pending, error, setError, run } = useSubmit();
+  const { pending, error, run } = useSubmit();
 
   if (!canWrite) {
     return <PageDenied crumbs={crumbs} />;

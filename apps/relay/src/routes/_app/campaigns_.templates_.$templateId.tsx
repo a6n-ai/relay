@@ -64,7 +64,7 @@ function TemplateForm({ template, canWrite, appName }: { template: TemplateView;
   const [intro, setIntro] = useState(template.intro ?? "");
   const [enabled, setEnabled] = useState(template.enabled);
   const [content, setContent] = useState<ContentValue>({ subject: template.subject, html: template.html, text: template.text });
-  const { pending, error, setError, run } = useSubmit();
+  const { pending, error, run } = useSubmit();
   const leaving = useRef(false);
 
   // Preview and save both read the saved row, so the form saves first.

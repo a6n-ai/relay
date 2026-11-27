@@ -17,7 +17,7 @@ export function ChangeRoleDialog({
   onOpenChange: (open: boolean) => void;
 }) {
   const [role, setRole] = useState<OrgRole>(member.role);
-  const { pending, error, setError, run } = useSubmit();
+  const { pending, error, run } = useSubmit();
 
   async function submit(event: FormEvent) {
     event.preventDefault();

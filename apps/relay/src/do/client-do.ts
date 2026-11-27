@@ -42,7 +42,7 @@ import {
   type AudienceHookInput,
   type AudienceHookView,
 } from "./audience-hook";
-import type { AttachmentView, MessageView, SendResult } from "./types";
+import type { MessageView, SendResult } from "./types";
 import type { AudiencePage, HookCall } from "../core/audience-protocol";
 import { createAutomationRow, deleteAutomationRow, earliestDue, enrolAutomations, listAutomationRows, nextAutomationAlarm, runDueAutomationRows, setAutomationEnabledRow, updateAutomationRow, type AutomationInput, type AutomationPatch } from "./automations";
 import { RelayError, codeOf, fail } from "../shared/errors";

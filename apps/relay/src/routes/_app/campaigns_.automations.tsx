@@ -55,7 +55,6 @@ export const Route = createFileRoute("/_app/campaigns_/automations")({
 
 function AutomationsPage() {
   const page = Route.useLoaderData();
-  const { shell } = Route.useRouteContext();
   const search = Route.useSearch();
   const router = useRouter();
   const canSend = useCan({ campaign: ["send"] });

@@ -36,7 +36,7 @@ function NewTemplatePage() {
   const scopedAppId = apps.some((a) => a.id === scopeParam) ? scopeParam : undefined;
   const [app, setApp] = useState(startApp(apps, scopedAppId) ?? "");
   const [name, setName] = useState("");
-  const { pending, error, setError, run } = useSubmit();
+  const { pending, error, run } = useSubmit();
 
   if (!canWrite) {
     return <PageDenied crumbs={crumbs} />;

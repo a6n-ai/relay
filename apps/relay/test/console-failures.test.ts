@@ -220,7 +220,7 @@ describe("inbound failures console", () => {
     const inbox = await inboxFor(owner, "failures-susp.test");
     const job = await stage(workspaceId, inbox);
     await stub(workspaceId).recordInboundFailure(workspaceId, job, "Processing failed");
-    const id = await failureIdOf(workspaceId, job.rawKey);
+    await failureIdOf(workspaceId, job.rawKey);
     await securityDb(env).update(workspace).set({ status: "suspended" }).where(eq(workspace.id, workspaceId));
     const suspended = await requireActor(env, headersFor(cookie), { permission: { mailbox: ["read"] } });
     expect(await listFailures(env, suspended)).toHaveLength(1);

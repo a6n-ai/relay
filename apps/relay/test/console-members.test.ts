@@ -227,7 +227,7 @@ describe("accepting an invite", { timeout: 60_000 }, () => {
   it("refuses a cross-origin accept", async () => {
     const owner = await workspaceFor("mem-origin-owner@example.com", "Mem Origin Co");
     const actor = await requireActor(env, headersFor(owner.cookie), INVITE);
-    const { id } = await inviteMember(env, actor, headersFor(owner.cookie), { email: "origin-invitee@x.test", role: "member" });
+    await inviteMember(env, actor, headersFor(owner.cookie), { email: "origin-invitee@x.test", role: "member" });
     const cookie = await signIn("origin-invitee@x.test");
     await expect(requireUser(env, new Headers({ cookie, origin: "https://evil.example" }), { write: true })).rejects.toMatchObject({
       status: 403,

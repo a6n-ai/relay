@@ -1,7 +1,6 @@
 import { and, asc, count, desc, eq, inArray, sql } from "drizzle-orm";
 import { createApiKey, deleteApiKey, renameApiKey, revokeApiKey } from "./api-keys";
 import { createApp } from "../core/apps";
-import { clientFor } from "../do/client";
 import { getWorkspaceProfile, SELF_SERVE_APP_CAP } from "../core/workspace-profile";
 import { coreDb } from "../db/core/client";
 import { address } from "../db/core/schema";

@@ -2,7 +2,6 @@ import { maskEmails } from "../core/mask-emails";
 import { clientFor } from "../do/client";
 import type { Env } from "../env";
 import { audit, type Principal } from "./principal";
-import { RelayError } from "../shared/errors";
 import { type Stream } from "../shared/mail";
 
 export async function listSuppressions(env: Env, p: Principal, q: { prefix?: string; cursor?: string }) {

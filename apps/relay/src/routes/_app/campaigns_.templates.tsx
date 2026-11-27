@@ -54,7 +54,6 @@ export const Route = createFileRoute("/_app/campaigns_/templates")({
 
 function TemplatesPage() {
   const page = Route.useLoaderData();
-  const { shell } = Route.useRouteContext();
   const search = Route.useSearch();
   const canWrite = useCan({ template: ["write"] });
   const [query, setQuery] = useUrlFilter("q");

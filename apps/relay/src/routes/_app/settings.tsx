@@ -22,7 +22,7 @@ export const Route = createFileRoute("/_app/settings")({
 function WorkspaceNameCard({ name: current, slug }: { name: string; slug: string }) {
   const canRename = useCan({ organization: ["update"] });
   const [name, setName] = useState(current);
-  const { pending, error, setError, run } = useSubmit();
+  const { pending, error, run } = useSubmit();
   const next = name.trim();
 
   async function submit(event: FormEvent) {

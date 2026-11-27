@@ -2,7 +2,7 @@ import { env, SELF } from "cloudflare:test";
 import { beforeAll, describe, expect, it } from "vitest";
 import { requireActor } from "../src/console/actor";
 import { addApp } from "../src/services/apps";
-import { createAutomation, enableAutomation, listAutomations } from "../src/services/automations";
+import { createAutomation, listAutomations } from "../src/services/automations";
 import { addMember, cookieFor, createWorkspace, headersFor, ORIGIN, setActive } from "./console-helpers";
 import { applyMigrations } from "./migrate";
 

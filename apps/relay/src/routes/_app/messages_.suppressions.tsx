@@ -54,7 +54,6 @@ const OPTED_OUT = new Set(["unsubscribe", "complaint"]);
 function SuppressionsPage() {
   const page = Route.useLoaderData();
   const search = Route.useSearch();
-  const { shell } = Route.useRouteContext();
   const router = useRouter();
   const navigate = useNavigate();
   const canWrite = useCan({ sending: ["write"] });
@@ -147,7 +146,7 @@ function PrefixSearch() {
 function AddForm({ done }: { done: () => void }) {
   const [email, setEmail] = useState("");
   const [stream, setStream] = useState<StreamFilter>("all");
-  const { pending, error, setError, run } = useSubmit();
+  const { pending, error, run } = useSubmit();
   async function submit(event: FormEvent) {
     event.preventDefault();
     await run(async () => {

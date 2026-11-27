@@ -45,7 +45,6 @@ type Address = NonNullable<NonNullable<ReturnType<typeof Route.useLoaderData>>["
 
 function AddressPage() {
   const data = Route.useLoaderData();
-  const { shell } = Route.useRouteContext();
   const router = useRouter();
   const navigate = useNavigate();
   const canWrite = useCan({ sending: ["write"] });
@@ -145,7 +144,7 @@ function AddressDetailsCard({ address, canWrite, bypass }: { address: Address; c
   const [name, setName] = useState(address.displayName ?? "");
   const [replyTo, setReplyTo] = useState(address.replyTo ?? "");
   const [replyError, setReplyError] = useState<string | null>(null);
-  const { pending, error, setError, run } = useSubmit();
+  const { pending, error, run } = useSubmit();
   const dirty = name.trim() !== (address.displayName ?? "") || replyTo.trim() !== (address.replyTo ?? "");
 
   async function save(event: FormEvent) {
@@ -200,7 +199,7 @@ function NewGrantForm({
 }) {
   const [choice, setChoice] = useState(options.length === 1 ? options[0]!.value : "");
   const fe = useFieldErrors<"who">();
-  const { pending, error, setError, run } = useSubmit();
+  const { pending, error, run } = useSubmit();
 
   async function submit(event: FormEvent) {
     event.preventDefault();

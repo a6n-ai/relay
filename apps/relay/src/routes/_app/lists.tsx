@@ -50,7 +50,6 @@ export const Route = createFileRoute("/_app/lists")({
 function ListsPage() {
   const page = Route.useLoaderData();
   const search = Route.useSearch();
-  const { shell } = Route.useRouteContext();
   const canWrite = useCan({ list: ["write"] });
   const [query, setQuery] = useUrlFilter("q");
   const navigate = useNavigate();

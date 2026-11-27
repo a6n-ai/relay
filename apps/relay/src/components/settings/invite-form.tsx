@@ -9,7 +9,7 @@ import { useSubmit } from "../lib/use-submit";
 export function InviteForm({ done, canGrantOwner }: { done: () => void; canGrantOwner: boolean }) {
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<OrgRole>("member");
-  const { pending, error, setError, run } = useSubmit();
+  const { pending, error, run } = useSubmit();
 
   async function submit(event: FormEvent) {
     event.preventDefault();

@@ -21,7 +21,7 @@ export function RenameForm({
   done: () => void;
 }) {
   const [name, setName] = useState(initial);
-  const { pending, error, setError, run } = useSubmit();
+  const { pending, error, run } = useSubmit();
   const dirty = !!name.trim() && name.trim() !== initial;
 
   async function submit(event: FormEvent) {

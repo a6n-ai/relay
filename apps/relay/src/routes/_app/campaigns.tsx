@@ -52,7 +52,6 @@ export const Route = createFileRoute("/_app/campaigns")({
 
 function CampaignsPage() {
   const page = Route.useLoaderData();
-  const { shell } = Route.useRouteContext();
   const search = Route.useSearch();
   const canWrite = useCan({ campaign: ["write"] });
   const [query, setQuery] = useUrlFilter("q");

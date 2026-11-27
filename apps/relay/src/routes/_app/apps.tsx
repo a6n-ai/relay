@@ -28,7 +28,6 @@ export const Route = createFileRoute("/_app/apps")({
 
 function AppsPage() {
   const apps = Route.useLoaderData();
-  const { shell } = Route.useRouteContext();
   const canWrite = useCan({ tenant: ["write"] });
   const [query, setQuery] = useUrlFilter("q");
   const [view, setView] = useState<View>(() => viewPref.read(Route.fullPath));

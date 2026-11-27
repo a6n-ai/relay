@@ -237,7 +237,7 @@ function EditListForm({
   const [name, setName] = useState(list.name);
   const [consent, setConsent] = useState(list.consentSource);
   const [note, setNote] = useState(list.consentNote ?? "");
-  const { pending, error, setError, run } = useSubmit();
+  const { pending, error, run } = useSubmit();
   const dirty = name !== list.name || consent !== list.consentSource || note.trim() !== (list.consentNote ?? "");
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -267,7 +267,7 @@ function EditListForm({
 function EditContactForm({ listId, member, done }: { listId: string; member: MemberView; done: () => void }) {
   const [firstName, setFirstName] = useState(member.firstName ?? "");
   const [lastName, setLastName] = useState(member.lastName ?? "");
-  const { pending, error, setError, run } = useSubmit();
+  const { pending, error, run } = useSubmit();
   const dirty = firstName.trim() !== (member.firstName ?? "") || lastName.trim() !== (member.lastName ?? "");
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -294,7 +294,7 @@ function AddContactForm({ listId, consent, done }: { listId: string; consent: Co
   const [lastName, setLastName] = useState("");
   const [named, setNamed] = useState(false);
   const [emailError, setEmailError] = useState<string | null>(null);
-  const { pending, error, setError, run } = useSubmit();
+  const { pending, error, run } = useSubmit();
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (!/^\S+@\S+\.\S+$/.test(email.trim())) {

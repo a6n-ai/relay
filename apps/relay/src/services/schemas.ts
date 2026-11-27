@@ -1,10 +1,10 @@
 import { z } from "zod";
 import { decodeCursor } from "../core/cursor";
-import { httpsUrl } from "../core/webhooks";
 import { RelayError } from "../shared/errors";
 import { AUDIENCE_QUERY_MAX, BODY_MAX, CONSENT_NOTE_MAX, MEMBERS_IMPORT_MAX, NAME_MAX, TEMPLATE_NAME_MAX } from "../shared/limits";
-import { WEBHOOK_EVENTS } from "../shared/mail";
 import { emailSchema, idSchema, memberInput, subjectSchema } from "../shared/schemas";
+
+export { webhookInputSchema, webhookPatchSchema } from "../core/webhooks";
 
 // The public API and the RPC share these with the console, so they live below both.
 export const id = idSchema;

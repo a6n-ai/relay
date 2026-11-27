@@ -9,7 +9,6 @@ import { parseRoles } from "../auth/session";
 import type { Principal, Session } from "./principal";
 import { type ErrorCode, RelayError } from "../shared/errors";
 import { type OrgRole } from "../shared/roles";
-import { DAY_MS } from "../shared/limits";
 
 async function authCall<T>(call: () => Promise<T>): Promise<T> {
   try {

@@ -35,7 +35,6 @@ function ImportPage() {
   const page = Route.useLoaderData();
   const { appId } = Route.useSearch();
   const { listId } = Route.useParams();
-  const { shell } = Route.useRouteContext();
   const canImport = useCan({ list: ["import"] });
   const navigate = useNavigate();
   const [files, setFiles] = useState<File[]>([]);

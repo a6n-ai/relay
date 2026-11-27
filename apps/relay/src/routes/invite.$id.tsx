@@ -22,7 +22,7 @@ function InvitePage() {
   const invite = Route.useLoaderData();
   const router = useRouter();
   const signOut = useSignOut();
-  const { pending, error, setError, run } = useSubmit();
+  const { pending, error, run } = useSubmit();
 
   async function accept() {
     await run(async () => {

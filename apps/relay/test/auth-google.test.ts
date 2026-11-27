@@ -1,4 +1,4 @@
-import { env, SELF } from "cloudflare:test";
+import { env } from "cloudflare:test";
 import { BASE, json } from "./console-helpers";
 import { applyMigrations } from "./migrate";
 import { beforeAll, describe, expect, it } from "vitest";

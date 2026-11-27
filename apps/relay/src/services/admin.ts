@@ -4,7 +4,7 @@ import { INBOUND_GRACE_MS } from "../core/addresses";
 import { clientFor } from "../do/client";
 import { refreshWorkspaceLimits } from "./limits";
 import { utcDay } from "../core/usage";
-import { ensureWorkspaceProfile, SELF_SERVE_QUOTA, updateWorkspaceProfile } from "../core/workspace-profile";
+import { SELF_SERVE_QUOTA, updateWorkspaceProfile } from "../core/workspace-profile";
 import { coreDb } from "../db/core/client";
 import { usageDaily, workspaceProfile } from "../db/core/schema";
 import { securityDb } from "../db/security/client";
@@ -14,6 +14,8 @@ import { writeAudit } from "../auth/audit";
 import { INVITES_PER_DAY } from "../core/workspace-profile";
 import { RelayError } from "../shared/errors";
 import { MAX_INVITES_PER_DAY, MAX_MONTHLY_QUOTA } from "../shared/limits";
+
+export { AUDIENCE_BINDINGS } from "../core/audience-protocol";
 
 // shortcut: 100M caps a typo, not a plan; no product number yet, so revisit with the first real quota request.
 

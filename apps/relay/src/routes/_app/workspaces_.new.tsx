@@ -21,7 +21,7 @@ function NewWorkspacePage() {
   const navigate = useNavigate();
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
-  const { pending, error, setError, run } = useSubmit();
+  const { pending, error, run } = useSubmit();
   const back = shell.active ? { label: "Settings", to: "/settings" as const } : { label: "Workspaces", to: "/no-workspace" as const };
 
   async function submit(event: FormEvent) {

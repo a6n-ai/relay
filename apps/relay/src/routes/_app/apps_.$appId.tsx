@@ -168,7 +168,7 @@ function AppPage() {
 
 function AppDetailsPanel({ appId, name, slug, canWrite }: { appId: string; name: string; slug: string; canWrite: boolean }) {
   const [value, setValue] = useState(name);
-  const { pending, error, setError, run } = useSubmit();
+  const { pending, error, run } = useSubmit();
   const dirty = value.trim() !== name;
 
   async function save(event: FormEvent) {
@@ -212,7 +212,7 @@ function DefaultSendersPanel({ appId, senders, canWrite }: { appId: string; send
   const savedMarketing = senders.marketingId && known.has(senders.marketingId) ? senders.marketingId : NONE;
   const [transactional, setTransactional] = useState(savedTransactional === NONE ? only : savedTransactional);
   const [marketing, setMarketing] = useState(savedMarketing === NONE ? only : savedMarketing);
-  const { pending, error, setError, run } = useSubmit();
+  const { pending, error, run } = useSubmit();
   const dirty = transactional !== savedTransactional || marketing !== savedMarketing;
 
   async function save(event: FormEvent) {
@@ -279,7 +279,7 @@ function AudiencePanel({
   const [url, setUrl] = useState(hook?.url ?? "");
   const [enabled, setEnabled] = useState(hook?.enabled ?? true);
   const [secret, setSecret] = useState<string | null>(null);
-  const { pending, error, setError, run } = useSubmit();
+  const { pending, error, run } = useSubmit();
   const trimmed = url.trim();
   const urlInvalid = trimmed !== "" && !/^https:\/\/\S+$/i.test(trimmed);
   const dirty = url !== (hook?.url ?? "") || enabled !== (hook?.enabled ?? true);
@@ -392,7 +392,7 @@ function AudiencePanel({
 function NewKeyForm({ appId, first, done, lock }: { appId: string; first: boolean; done: () => void; lock: (locked: boolean) => void }) {
   const [name, setName] = useState(first ? "Production" : "");
   const [created, setCreated] = useState<string | null>(null);
-  const { pending, error, setError, run } = useSubmit();
+  const { pending, error, run } = useSubmit();
 
   async function submit(event: FormEvent) {
     event.preventDefault();

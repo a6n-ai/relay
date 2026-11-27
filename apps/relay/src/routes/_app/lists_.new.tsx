@@ -35,7 +35,7 @@ function NewListPage() {
   const [name, setName] = useState("");
   const [consent, setConsent] = useState<ConsentSource>("express_optin");
   const [note, setNote] = useState("");
-  const { pending, error, setError, run } = useSubmit();
+  const { pending, error, run } = useSubmit();
 
   if (!canWrite) {
     return <PageDenied crumbs={crumbs} />;

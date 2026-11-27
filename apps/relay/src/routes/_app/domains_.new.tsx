@@ -26,7 +26,7 @@ function AddDomainPage() {
   const [domain, setDomain] = useState("");
   const [region, setRegion] = useState("default");
   const [fieldError, setFieldError] = useState<string | null>(null);
-  const { pending, error, setError, run } = useSubmit();
+  const { pending, error, run } = useSubmit();
 
   if (!canWrite) {
     return <PageDenied crumbs={crumbs} />;

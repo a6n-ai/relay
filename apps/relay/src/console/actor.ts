@@ -13,6 +13,7 @@ export async function requireActor(
   headers: Headers,
   need: Need = {},
 ): Promise<Principal> {
+  if (need.write) assertSameOrigin(env, headers);
   const { userId, platformAdmin, activeWorkspaceId } = await requireSession(env, headers);
   if (!activeWorkspaceId) throw new RelayError("no workspace");
 
@@ -29,10 +30,7 @@ export async function requireActor(
     throw new RelayError("forbidden");
   }
 
-  if (need.write) {
-    assertSameOrigin(env, headers);
-    if (row.status === "suspended") throw new RelayError("workspace suspended");
-  }
+  if (need.write && row.status === "suspended") throw new RelayError("workspace suspended");
 
   return { userId, platformAdmin, workspaceId: activeWorkspaceId, appId: null, keyId: null, roles, workspaceStatus: row.status };
 }

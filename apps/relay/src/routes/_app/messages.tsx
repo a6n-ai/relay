@@ -29,7 +29,6 @@ export const Route = createFileRoute("/_app/messages")({
   component: MessagesPage,
 });
 
-type Status = NonNullable<MessagesSearch["status"]>;
 
 function MessagesPage() {
   const page = Route.useLoaderData();

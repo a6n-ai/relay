@@ -139,7 +139,7 @@ function NewWebhookForm({ appId, done, lock }: { appId: string; done: () => void
   const [url, setUrl] = useState("");
   const [events, setEvents] = useState<WebhookEvent[]>(WEBHOOK_EVENT_LIST);
   const [created, setCreated] = useState<string | null>(null);
-  const { pending, error, setError, run } = useSubmit();
+  const { pending, error, run } = useSubmit();
 
   async function submit(event: FormEvent) {
     event.preventDefault();

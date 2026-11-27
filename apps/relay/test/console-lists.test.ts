@@ -88,7 +88,7 @@ describe("lists console", () => {
   it("refuses a CSV import from a member with 403", async () => {
     const { owner, workspaceId } = await workspaceFor("lst-imp-role@example.com", "Lst Imp Role Co");
     const { id: appId } = await addApp(env, owner, { name: "Web", slug: "web" });
-    const list = await createList(env, owner, appId, { name: "Imp", consentSource: "import_other" });
+    await createList(env, owner, appId, { name: "Imp", consentSource: "import_other" });
     const cookie = await addMember(workspaceId, "lst-imp-member@example.com", "member");
     await expect(requireActor(env, headersFor(cookie), IMPORT)).rejects.toMatchObject({ status: 403 });
   });
@@ -120,7 +120,7 @@ describe("lists console", () => {
 
 describe("list export", () => {
   it("streams a CSV with a header, one line per member, and formula cells neutralised", async () => {
-    const { owner, workspaceId } = await workspaceFor("lst-export@example.com", "Lst Export Co");
+    const { owner } = await workspaceFor("lst-export@example.com", "Lst Export Co");
     const { id: appId } = await addApp(env, owner, { name: "Web", slug: "web" });
     const list = await createList(env, owner, appId, { name: "VIP", consentSource: "express_optin" });
     const csv = ["email,first_name", "cmd@x.com,=cmd", ...Array.from({ length: 2049 }, (_, i) => `m${String(i).padStart(4, "0")}@x.com,Ann`)];
@@ -140,7 +140,7 @@ describe("list export", () => {
     const b = await workspaceFor("lst-export-b@example.com", "Lst Export B Co");
     const { id: appA } = await addApp(env, a.owner, { name: "Web", slug: "web" });
     const { id: appB } = await addApp(env, b.owner, { name: "Web", slug: "web" });
-    const own = await createList(env, a.owner, appA, { name: "Own", consentSource: "purchase" });
+    await createList(env, a.owner, appA, { name: "Own", consentSource: "purchase" });
     const foreign = await createList(env, b.owner, appB, { name: "Foreign", consentSource: "purchase" });
     await expect(exportMembers(env, a.owner, foreign.id)).rejects.toMatchObject({ status: 404 });
     const cookie = await addMember(a.workspaceId, "lst-export-member@example.com", "member");

@@ -62,7 +62,7 @@ export function EditWebhookForm({
 }) {
   const [url, setUrl] = useState(webhook.url);
   const [events, setEvents] = useState<WebhookEvent[]>(webhook.events);
-  const { pending, error, setError, run } = useSubmit();
+  const { pending, error, run } = useSubmit();
   const same = events.length === webhook.events.length && events.every((e) => webhook.events.includes(e));
   const dirty = url !== webhook.url || !same;
 

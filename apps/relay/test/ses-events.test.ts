@@ -5,7 +5,6 @@ import { handleSesEventBatch } from "../src/jobs/ses-event-consumer";
 import type { SesEventJob } from "../src/core/ses-events";
 import { handleSendBatch } from "../src/jobs/send-consumer";
 import { memorySesTransport } from "../src/core/ses";
-import { utcDay } from "../src/core/usage";
 import { coreDb } from "../src/db/core/client";
 import { address, sendingDomain, usageDaily } from "../src/db/core/schema";
 import { securityDb } from "../src/db/security/client";
