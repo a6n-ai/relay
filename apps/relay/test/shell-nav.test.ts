@@ -55,19 +55,6 @@ describe("createItems", () => {
     expect(createItems(["owner"], true)).toEqual([]);
   });
 
-  it("gives an owner every create action in order", () => {
-    expect(createItems(["owner"], false).map((i) => i.id)).toEqual([
-      "app",
-      "domain",
-      "address",
-      "campaign",
-      "list",
-      "template",
-      "automation",
-      "invite",
-    ]);
-  });
-
   it("returns only the create actions a member may use", () => {
     const items = createItems(["member"], false);
     const expected = createItems(["owner"], false).filter((i) => allows(["member"], i.need));

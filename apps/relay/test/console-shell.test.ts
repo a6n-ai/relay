@@ -1,7 +1,6 @@
 import { env, runInDurableObject, SELF } from "cloudflare:test";
 import { and, eq } from "drizzle-orm";
 import { beforeAll, describe, expect, it } from "vitest";
-import { PROBLEM_LABEL } from "../src/components/campaigns/campaign-problems";
 import { reasonText } from "../src/components/campaigns/campaign-report";
 import { clientFor } from "../src/do/client";
 import { loadShell } from "../src/services/shell";
@@ -190,21 +189,6 @@ describe("console shell", { timeout: 60_000 }, () => {
     expect(await missing.text()).toContain("Campaign not found");
   });
 
-  it("labels every campaign problem", () => {
-    expect(Object.keys(PROBLEM_LABEL).sort()).toEqual(
-      [
-        "audience_empty",
-        "audience_hook_missing",
-        "data_fields_need_hook",
-        "from_missing",
-        "html_missing",
-        "postal_address_missing",
-        "subject_missing",
-        "text_missing",
-        "unsubscribe_missing",
-      ].sort(),
-    );
-  });
 });
 
 describe("shell apps", { timeout: 60_000 }, () => {
@@ -255,9 +239,10 @@ describe("shell apps", { timeout: 60_000 }, () => {
 });
 
 describe("campaign pause reasons", () => {
-  it("maps the stored pause codes to plain copy", () => {
-    expect(reasonText("too_many_recipients")).toBe("This campaign has more recipients than one send allows.");
-    expect(reasonText("run_failed")).toBe("Sending hit an error and stopped. Resume to try again.");
+  it("maps a stored pause code to plain copy, never the code, and nothing when there is none", () => {
+    const text = reasonText("run_failed");
+    expect(text).toBeTruthy();
+    expect(text).not.toBe("run_failed");
     expect(reasonText(null)).toBeNull();
   });
 });

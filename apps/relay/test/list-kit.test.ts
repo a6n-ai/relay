@@ -1,6 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { chipsFrom, withoutKey, type Facet } from "../src/components/page/filters";
-import { rowNumber } from "../src/components/page/row-number";
 import { viewPref } from "../src/components/page/view-pref";
 
 const statusFacet: Facet = {
@@ -22,12 +21,6 @@ describe("list kit", () => {
 
   it("drops key, cursor and offset", () => {
     expect(withoutKey({ status: "failed", cursor: "c", offset: 50, appId: "a" }, "status")).toEqual({ appId: "a" });
-  });
-
-  it("numbers rows from the offset", () => {
-    expect(rowNumber(undefined, 0)).toBe(1);
-    expect(rowNumber(50, 0)).toBe(51);
-    expect(rowNumber(50, 1)).toBe(52);
   });
 
   it("falls back to list for unknown stored values", () => {

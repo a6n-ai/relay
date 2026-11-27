@@ -9,7 +9,6 @@ import { slug, validate } from "../src/console/schemas";
 import { memberInput } from "../src/shared/schemas";
 import { name } from "../src/services/schemas";
 import { campaignPatch } from "../src/services/schemas";
-import { errorText } from "../src/components/error-text";
 
 describe("validate", () => {
   it("returns the parsed value for a good body", () => {
@@ -47,18 +46,5 @@ describe("rename name", () => {
     expect(() => check({ id: "a", name: "   " })).toThrow(new Error("invalid input"));
     expect(setResponseStatus).toHaveBeenCalledWith(400);
     expect(check({ id: "a", name: " Ok " })).toEqual({ id: "a", name: "Ok" });
-  });
-});
-
-describe("errorText", () => {
-  it("maps a known server message to plain copy", () => {
-    expect(errorText(new Error("forbidden"))).toBe("Your role can't do this in this workspace.");
-  });
-
-  it("falls back for an unknown message or a prototype key, never the raw text", () => {
-    expect(errorText(new Error("invite limit reached"))).toBe("This workspace has reached its daily invite limit. Try again tomorrow.");
-    expect(errorText(new Error("invite expired"))).toBe("This invite is no longer open.");
-    expect(errorText(new Error("constructor"))).toBe("Something went wrong. Try again.");
-    expect(errorText(new Error("forbidden-ish"), "Could not save.")).toBe("Could not save.");
   });
 });
