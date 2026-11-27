@@ -49,8 +49,7 @@ export const mailboxOrigin = pgEnum("mailbox_origin", ["automatic", "campaign", 
  * Build the notification tables against one app's `users` table and event enum.
  *
  * The tables cannot be shared as values: they FK to `users.id` and use a per-app
- * `app_event` enum (tiffin-grab has 18 subscription events, puchkaman has pickup
- * and delivery ones). Each app calls this from its own schema barrel and
+ * `app_event` enum. Each app calls this from its own schema barrel and
  * re-exports, so drizzle-kit generates that app's migration — the same approach
  * `@foundry/google-reviews` uses for `review_nudges`.
  */

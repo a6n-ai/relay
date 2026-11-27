@@ -29,7 +29,7 @@ interface BroadcastInput {
   href: string | null;
 }
 
-/** Realtime push transport, injected: RabbitMQ/AppSync in tiffin-grab. */
+/** Realtime push transport, injected by the app. */
 type BroadcastFn = (input: BroadcastInput) => Promise<void>;
 
 /**
