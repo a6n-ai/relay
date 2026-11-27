@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { foreignPreheader, readPreheader, withPreheader } from "./email-content/preheader";
+import { foreignPreheader, readPreheader, withPreheader } from "./preheader";
 
 const DOC = '<!DOCTYPE html><html><head></head><body style="margin:0"><p>Hi</p></body></html>';
 

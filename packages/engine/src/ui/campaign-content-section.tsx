@@ -9,7 +9,6 @@ import { Button } from "@foundry/ui/button";
 import { Input } from "@foundry/ui/input";
 import { Label } from "@foundry/ui/label";
 import { Textarea } from "@foundry/ui/textarea";
-import { apiAction, apiFetch } from "./api-fetch";
 import { saveCampaignContent } from "./campaign-content-save";
 import { CampaignAttachments, type CampaignAttachment } from "./campaign-attachments";
 import { EmailTemplateBuilder, type EmailTemplateBuilderHandle } from "./email-template-builder";
@@ -207,22 +206,25 @@ export function TextRow({
 
   async function save() {
     setSaving(true);
-    const res = await apiAction(
-      apiFetch(`/api/notifications/campaigns/${campaignPublicId}/content`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          channel: row.channel,
-          locale: row.locale,
-          subject: row.subject,
-          body,
-          providerTemplateId: templateId || undefined,
-          revision: row.revision,
-        }),
-      }),
-    );
-    setSaving(false);
-    if (!res) return;
+    let out: Awaited<ReturnType<typeof saveCampaignContent>>;
+    try {
+      out = await saveCampaignContent(campaignPublicId, {
+        channel: row.channel,
+        locale: row.locale,
+        subject: row.subject,
+        body,
+        providerTemplateId: templateId || undefined,
+        revision: row.revision,
+      });
+    } catch {
+      return;
+    } finally {
+      setSaving(false);
+    }
+    if (out === "conflict") {
+      toast.error("Changed in another tab. Reload to continue.");
+      return;
+    }
     toast.success("Content saved");
     setEditing(false);
     router.refresh();

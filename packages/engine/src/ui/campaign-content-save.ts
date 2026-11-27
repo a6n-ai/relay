@@ -6,9 +6,10 @@ export interface CampaignContentPayload {
   locale: string;
   subject: string;
   body: unknown;
-  html: string;
+  html?: string;
   preheader?: string;
-  attachments: CampaignAttachment[];
+  attachments?: CampaignAttachment[];
+  providerTemplateId?: string;
   revision: number;
 }
 
@@ -20,7 +21,7 @@ export async function saveCampaignContent(
   const res = await fetch(`/api/notifications/campaigns/${campaignPublicId}/content`, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ ...rest, attachments: attachments.length > 0 ? attachments : undefined }),
+    body: JSON.stringify({ ...rest, attachments: attachments?.length ? attachments : undefined }),
   });
   if (res.status === 409) return "conflict";
   const data = await res.json().catch(() => ({}));
