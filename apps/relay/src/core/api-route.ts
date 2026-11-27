@@ -6,7 +6,7 @@ import { logFailure } from "./log";
 import { SEND_REFUSAL_STATUS, TEMPLATE_ERROR_STATUS, TemplateError, sendRefusal } from "./messages";
 import type { Env } from "../env";
 
-export type ApiCtx = { env: Env; scope: KeyScope; request: Request; params: Record<string, string> };
+type ApiCtx = { env: Env; scope: KeyScope; request: Request; params: Record<string, string> };
 
 export const json = (body: unknown, status = 200) => Response.json(body, { status });
 export const data = (value: unknown, status = 200) => Response.json({ data: value }, { status });

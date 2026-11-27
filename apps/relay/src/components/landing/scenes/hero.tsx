@@ -39,7 +39,7 @@ const TL = [
 
 type Script = (a: Act<S>) => Promise<void>
 
-export function HeroStage({ script }: { script?: Script }) {
+function HeroStage({ script }: { script?: Script }) {
   return (
     <RStage<S>
       width={720}

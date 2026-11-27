@@ -32,7 +32,7 @@ import { FormError, FormActions, FormPanel, FormBody } from "./page/form-parts";
 import { Hint } from "./page/text";
 import { FixedField } from "./form/fixed-field";
 
-export type CampaignOptions = { senders: string[]; lists: ListView[]; postalAddress: string | null };
+type CampaignOptions = { senders: string[]; lists: ListView[]; postalAddress: string | null };
 
 export function CampaignEditor({
   campaign,

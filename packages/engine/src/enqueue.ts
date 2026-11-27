@@ -1,4 +1,4 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { inArray } from "drizzle-orm";
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import { resolveChannels, type PrefRow } from "./policy";
 import type { NotificationTables } from "./schema";
@@ -39,8 +39,8 @@ export interface EnqueueInput {
 /**
  * The app's users table, narrowed to the columns enqueue reads. Passed in
  * rather than imported so the package stays app-agnostic; `notifyEmail` and
- * `phone` are optional because not every app has them (puchkaman has no
- * notifyEmail column; some future app may have no phone column).
+ * `phone` are optional because not every app has them (some apps have no
+ * notifyEmail column; some may have no phone column).
  */
 export interface UsersRef {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -219,44 +219,4 @@ export function planOutboxRows(
       dedupeKey: input.dedupeKey ? `${input.dedupeKey}:${channel}` : null,
     }));
   });
-}
-
-export interface EnqueueToRoleInput
-  extends Omit<EnqueueInput, "recipientId" | "recipientEmail" | "recipientPhone"> {
-  roles: string[];
-}
-
-/**
- * Fan an event out to every active user holding one of `roles`.
- *
- * Needed because puchkaman customers are guests who cannot log in: staff-facing
- * events ("a new order arrived") have no single recipient, and an in-app
- * notification addressed to a customer would have nowhere to appear.
- */
-export async function enqueueToRole(
-  tx: Db,
-  tables: NotificationTables,
-  users: UsersRef,
-  input: EnqueueToRoleInput,
-): Promise<void> {
-  if (!users.columns.role || !users.columns.status) {
-    throw new Error("enqueueToRole requires users.role and users.status columns");
-  }
-  const staff = await tx
-    .select({ id: users.columns.id })
-    .from(users.table)
-    .where(and(inArray(users.columns.role, input.roles), eq(users.columns.status, "active")));
-
-  await enqueueMany(
-    tx,
-    tables,
-    users,
-    staff.map((s) => ({
-      ...input,
-      recipientId: s.id as bigint,
-      // Per-recipient dedupe suffix: one shared key would let the first staff
-      // row win the unique index and silently drop everyone else.
-      dedupeKey: input.dedupeKey ? `${input.dedupeKey}:u${s.id}` : undefined,
-    })),
-  );
 }

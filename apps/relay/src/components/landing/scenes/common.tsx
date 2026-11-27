@@ -26,7 +26,7 @@ export function Status({ s }: { s: keyof typeof STATUS | string }) {
 }
 
 /** Follows the page theme: `.dark` on <html>. Light until the page says otherwise. */
-export function useRelayTheme(): 'light' | 'dark' {
+function useRelayTheme(): 'light' | 'dark' {
   const [theme, setTheme] = useState<'light' | 'dark'>('light')
   useEffect(() => {
     const root = document.documentElement

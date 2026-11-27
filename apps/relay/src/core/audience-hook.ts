@@ -6,7 +6,7 @@ import { writeAudit } from "../lib/auth/audit";
 import type { KeyScope } from "./api-keys";
 import { ApiError } from "./api-error";
 import { clientFor } from "./messages";
-import { KEY_ERROR, signBody } from "./webhook-crypto";
+import { KEY_ERROR } from "./webhook-crypto";
 import { httpsUrl, isPublicWebhookUrl } from "./webhooks";
 
 export const AUDIENCE_BINDINGS = ["TIFFIN_AUDIENCE"] as const;
@@ -17,7 +17,7 @@ export const AUDIENCE_FAILED = "audience_failed";
 
 /**
  * Hook protocol (v1).
- * Request: { type: "audience.page", appId, workspaceId, campaignId, audience: string | null, cursor: string | null, limit: 500, sentAt }. `audience` is the campaign's opaque `audience_query`, at most 1,000 characters. The body is signed in `x-relay-signature`; `sentAt` (epoch ms) is also sent as `x-relay-timestamp`. Receivers must check requests with `verifyAudienceRequest`.
+ * Request: { type: "audience.page", appId, workspaceId, campaignId, audience: string | null, cursor: string | null, limit: 500, sentAt }. `audience` is the campaign's opaque `audience_query`, at most 1,000 characters. The body is signed in `x-relay-signature`; `sentAt` (epoch ms) is also sent as `x-relay-timestamp`.
  * Response: { recipients: HookRecipient[]; nextCursor: string | null }, with at most 500 recipients.
  * `HookRecipient` is { email, firstName?, lastName?, consent: "express" | "implied", consentAt: number, data?: Record<string, string> }. `data` holds at most 10 keys matching `/^[a-z0-9_]{1,40}$/`, and each value is at most 200 characters.
  * A recipient that fails validation is skipped and counted in the step output as `invalid`. A page that is not JSON, or has a bad shape, fails the run.
@@ -77,27 +77,6 @@ export function parseAudiencePage(json: unknown): AudiencePage | null {
     else invalid += 1;
   }
   return { recipients, nextCursor: page.data.nextCursor, invalid };
-}
-
-function sameText(a: string, b: string): boolean {
-  const x = new TextEncoder().encode(a);
-  const y = new TextEncoder().encode(b);
-  let diff = x.length ^ y.length;
-  for (let i = 0; i < x.length; i++) diff |= x[i] ^ (y[i % y.length] ?? 0);
-  return diff === 0;
-}
-
-// Receivers must use this: it is the only check that covers sentAt, which sits inside the signed body.
-export async function verifyAudienceRequest(
-  secret: string,
-  rawBody: string,
-  headers: Headers,
-  now: number,
-  maxAgeMs = 300_000,
-): Promise<boolean> {
-  if (!sameText(headers.get("x-relay-signature") ?? "", `sha256=${await signBody(secret, rawBody)}`)) return false;
-  const sentAt = (JSON.parse(rawBody) as { sentAt?: unknown }).sentAt;
-  return typeof sentAt === "number" && now - sentAt <= maxAgeMs && sentAt - now <= 60_000;
 }
 
 export const hookInputSchema = z.object({

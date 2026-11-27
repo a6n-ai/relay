@@ -2,7 +2,7 @@ import { Button } from "@foundry/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@foundry/ui/collapsible";
 import { Hint } from "./page/text";
 
-export type DnsRecord = { type: "CNAME"; name: string; value: string };
+type DnsRecord = { type: "CNAME"; name: string; value: string };
 
 export function DnsRecords({ records }: { records: DnsRecord[] }) {
   if (records.length === 0) return <Hint as="span" size="xs">Not available yet</Hint>;

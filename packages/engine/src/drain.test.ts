@@ -96,15 +96,21 @@ describe("runSignalLoop", () => {
   });
 });
 
+async function outboxTables() {
+  const { bigint, pgEnum, pgTable } = await import("drizzle-orm/pg-core");
+  const { makeNotificationTables } = await import("./schema");
+  return makeNotificationTables({
+    users: pgTable("users", { id: bigint("id", { mode: "bigint" }).primaryKey() }),
+    appEvent: pgEnum("app_event", ["test"]),
+    locale: pgEnum("locale", ["en"]),
+  });
+}
+
 describe("claim lease", () => {
   it("claims pending rows and rows whose processing lease ran out, once due", async () => {
     const { PgDialect } = await import("drizzle-orm/pg-core");
     const { claimableWhere } = await import("./drain");
-    const { bigint, pgTable, text } = await import("drizzle-orm/pg-core");
-    const { makeTenantNotificationTables } = await import("./tenant-schema");
-    const tenants = pgTable("tenants", { id: bigint("id", { mode: "bigint" }).primaryKey() });
-    const mailboxes = pgTable("tenant_mailboxes", { id: bigint("id", { mode: "bigint" }).primaryKey(), tenantId: bigint("tenant_id", { mode: "bigint" }), email: text("email") });
-    const o = makeTenantNotificationTables({ tenants, mailboxes }).notificationOutbox;
+    const o = (await outboxTables()).notificationOutbox;
     const { sql, params } = new PgDialect().sqlToQuery(claimableWhere(o, 1000)!);
     expect(sql).toMatch(/"status" in \(\$\d+, \$\d+\)/);
     expect(params).toEqual(expect.arrayContaining(["pending", "processing", 1000]));
@@ -132,12 +138,9 @@ describe("claim retry cap and fencing", () => {
   });
 
   it("writes a send's outcome only while this tick still holds the row's lease", async () => {
-    const { PgDialect, bigint, pgTable, text } = await import("drizzle-orm/pg-core");
+    const { PgDialect } = await import("drizzle-orm/pg-core");
     const { leaseHeld } = await import("./drain");
-    const { makeTenantNotificationTables } = await import("./tenant-schema");
-    const tenants = pgTable("tenants", { id: bigint("id", { mode: "bigint" }).primaryKey() });
-    const mailboxes = pgTable("tenant_mailboxes", { id: bigint("id", { mode: "bigint" }).primaryKey(), tenantId: bigint("tenant_id", { mode: "bigint" }), email: text("email") });
-    const o = makeTenantNotificationTables({ tenants, mailboxes }).notificationOutbox;
+    const o = (await outboxTables()).notificationOutbox;
     const { sql, params } = new PgDialect().sqlToQuery(leaseHeld(o, 7n, 301_000)!);
     expect(sql).toContain('"id" =');
     expect(sql).toContain('"status" =');
@@ -148,12 +151,8 @@ describe("claim retry cap and fencing", () => {
 
 describe("beforeSend", () => {
   async function drainOneRow(beforeSend: () => Promise<string | null>) {
-    const { bigint, pgTable, text } = await import("drizzle-orm/pg-core");
     const { drainOnce } = await import("./drain");
-    const { makeTenantNotificationTables } = await import("./tenant-schema");
-    const tenants = pgTable("tenants", { id: bigint("id", { mode: "bigint" }).primaryKey() });
-    const mailboxes = pgTable("tenant_mailboxes", { id: bigint("id", { mode: "bigint" }).primaryKey(), tenantId: bigint("tenant_id", { mode: "bigint" }), email: text("email") });
-    const tables = makeTenantNotificationTables({ tenants, mailboxes });
+    const tables = await outboxTables();
     const row = { id: 1n, tenantId: 1n, channel: "email", kind: "transactional", status: "pending", attempts: 0, nextAttemptAt: 0 };
     const writes: Record<string, unknown>[] = [];
     const rowsOf = (value: unknown[]) => {

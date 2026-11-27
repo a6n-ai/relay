@@ -10,7 +10,7 @@ import type { Env } from "../env";
 import { allows } from "../lib/auth/permissions";
 import { ConsoleError, type ConsoleActor } from "./actor";
 
-export type ConsoleMessage = Omit<
+type ConsoleMessage = Omit<
   MessageDetail,
   "html" | "htmlKey" | "rawKey" | "claimedUntil" | "idempotencyKey" | "status"
 > & {

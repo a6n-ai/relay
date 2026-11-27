@@ -59,7 +59,7 @@ describe("console platform admin", { timeout: 60_000 }, () => {
   it("lists each workspace with its status, quota, sends this month and member count", async () => {
     const a = await workspaceFor("adm-list@example.com", "adm-list-co");
 
-    const rows = await listWorkspaces(env, OPS);
+    const rows = await listWorkspaces(env);
     expect(rows).toContainEqual(
       expect.objectContaining({ id: a.workspaceId, slug: "adm-list-co", status: "active", quota: 10000, members: 1, sentThisMonth: 0 }),
     );
@@ -70,7 +70,7 @@ describe("console platform admin", { timeout: 60_000 }, () => {
     const suspended = await workspaceFor("adm-susp-at@example.com", "adm-susp-at-co");
     await setWorkspaceStatus(env, OPS, suspended.workspaceId, "suspended");
 
-    const rows = await listWorkspaces(env, OPS);
+    const rows = await listWorkspaces(env);
     const activeRow = rows.find((r) => r.id === active.workspaceId);
     const suspendedRow = rows.find((r) => r.id === suspended.workspaceId);
     expect(activeRow).toMatchObject({ suspendedAt: null, inboundUntil: null });
@@ -130,7 +130,7 @@ describe("console platform admin", { timeout: 60_000 }, () => {
   it("sets a workspace's SES region, lists it, and refuses an unknown region", async () => {
     const a = await workspaceFor("adm-region@example.com", "adm-region-co");
     await setWorkspaceRegion(env, OPS, a.workspaceId, "us-east-1");
-    const row = (await listWorkspaces(env, OPS)).find((w) => w.id === a.workspaceId);
+    const row = (await listWorkspaces(env)).find((w) => w.id === a.workspaceId);
     expect(row?.sesRegion).toBe("us-east-1");
     await expect(setWorkspaceRegion(env, OPS, a.workspaceId, "eu-west-9")).rejects.toMatchObject({ status: 400 });
   });
@@ -195,7 +195,7 @@ describe("console platform admin invite cap", { timeout: 60_000 }, () => {
     ).rejects.toMatchObject({ status: 429, message: "invite limit reached" });
 
     await setWorkspaceInviteCap(env, OPS, a.workspaceId, 25);
-    expect((await listWorkspaces(env, OPS)).find((r) => r.id === a.workspaceId)?.invitesPerDay).toBe(25);
+    expect((await listWorkspaces(env)).find((r) => r.id === a.workspaceId)?.invitesPerDay).toBe(25);
     await expect(
       inviteMember(env, actor, headersFor(a.cookie), { email: "cap-raised@x.test", role: "member" }),
     ).resolves.toEqual({ id: expect.any(String) });

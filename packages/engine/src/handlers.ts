@@ -29,7 +29,7 @@ export interface BroadcastInput {
   href: string | null;
 }
 
-/** Realtime push transport, injected: RabbitMQ/AppSync in tiffin-grab, SSE in puchkaman. */
+/** Realtime push transport, injected: RabbitMQ/AppSync in tiffin-grab. */
 export type BroadcastFn = (input: BroadcastInput) => Promise<void>;
 
 /**

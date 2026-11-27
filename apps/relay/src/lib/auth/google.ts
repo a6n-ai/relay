@@ -1,13 +1,13 @@
 import type { Env } from "../../env";
 
 // Better Auth redirects here with ?error=signup_disabled when the Google email has no user row.
-export const NO_ACCOUNT_CODE = "signup_disabled";
+const NO_ACCOUNT_CODE = "signup_disabled";
 
 // Set on the error redirect when a platform admin tries to link Google through the sign-in callback.
 export const ADMIN_LINK_CODE = "platform_admin_link_required";
 
 // Better Auth's link-social flow carries `link` in the OAuth state; a plain sign-in does not.
-export type OAuthFlow = "sign-in" | "link";
+type OAuthFlow = "sign-in" | "link";
 
 // Platform admins (Better Auth admin plugin role, possibly comma-separated) link Google only while signed in.
 export function refusesImplicitLink(role: string | null | undefined, flow: OAuthFlow): boolean {

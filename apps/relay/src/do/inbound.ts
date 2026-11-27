@@ -80,10 +80,6 @@ async function removeObjects(env: Env, messageId: string, keys: string[]): Promi
   );
 }
 
-function errorName(err: unknown): string {
-  return err instanceof Error ? err.name : "unknown";
-}
-
 function fail(deps: InboundDeps, workspaceId: string, job: InboundJob, error: string): InboundResult {
   writeInboundFailure(deps, workspaceId, job, error);
   return { outcome: "failed", error };

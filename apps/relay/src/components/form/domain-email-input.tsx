@@ -6,7 +6,7 @@ import { ChoiceControl, type ChoiceOption } from "./choice-field";
 import { choiceMode } from "./choice-mode";
 import { addressDomains, defaultDomain, splitEmail } from "./domain-email";
 
-export type DomainEmailValue = { local: string; domain: string };
+type DomainEmailValue = { local: string; domain: string };
 
 export function DomainEmailInput({
   id,

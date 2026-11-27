@@ -18,7 +18,7 @@ function requireWrite(actor: ConsoleActor): void {
   if (actor.workspaceStatus === "suspended") throw new ConsoleError(403, "workspace suspended");
 }
 
-export type ReplayResult =
+type ReplayResult =
   | { outcome: "inserted"; messageId: string }
   | { outcome: "duplicate"; messageId: string }
   | { outcome: "failed"; error: string };

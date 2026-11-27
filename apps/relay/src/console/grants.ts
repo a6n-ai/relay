@@ -9,7 +9,7 @@ import { writeAudit } from "../lib/auth/audit";
 import { allows } from "../lib/auth/permissions";
 import { type ConsoleActor, ConsoleError, parseRoles, uniqueViolation } from "./actor";
 
-export type GrantView = { id: string; kind: "member" | "team"; targetId: string; label: string };
+type GrantView = { id: string; kind: "member" | "team"; targetId: string; label: string };
 
 const requireManage = (actor: ConsoleActor): void => {
   if (!allows(actor.roles, { mailbox: ["manage"] })) throw new ConsoleError(403, "forbidden");

@@ -1,7 +1,7 @@
 import { env, runInDurableObject } from "cloudflare:test";
 import { NonRetryableError } from "cloudflare:workflows";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { fetchAudiencePage, parseAudiencePage, verifyAudienceRequest, type HookCall } from "../src/core/audience-hook";
+import { fetchAudiencePage, parseAudiencePage, type HookCall } from "../src/core/audience-hook";
 import { signBody } from "../src/core/webhook-crypto";
 import type { Env } from "../src/env";
 import { applyMigrations, seedVerifiedSender } from "./migrate";
@@ -108,34 +108,6 @@ describe("fetchAudiencePage", () => {
   });
 });
 
-describe("verifyAudienceRequest", () => {
-  const secret = "s".repeat(32);
-  const signed = async (sentAt: number) => {
-    const body = JSON.stringify({ type: "audience.page", workspaceId: "ws_1", sentAt });
-    const headers = new Headers({ "x-relay-signature": `sha256=${await signBody(secret, body)}`, "x-relay-timestamp": String(sentAt) });
-    return { body, headers };
-  };
-
-  it("passes a fresh request and rejects a changed sentAt", async () => {
-    const now = Date.now();
-    const { body, headers } = await signed(now);
-    expect(await verifyAudienceRequest(secret, body, headers, now)).toBe(true);
-    expect(await verifyAudienceRequest(secret, body.replace(String(now), String(now + 1000)), headers, now)).toBe(false);
-  });
-
-  it("rejects a 6-minute-old request", async () => {
-    const now = Date.now();
-    const { body, headers } = await signed(now - 6 * 60_000);
-    expect(await verifyAudienceRequest(secret, body, headers, now)).toBe(false);
-  });
-
-  it("rejects a sentAt more than 60 s in the future", async () => {
-    const now = Date.now();
-    const { body, headers } = await signed(now + 61_000);
-    expect(await verifyAudienceRequest(secret, body, headers, now)).toBe(false);
-  });
-});
-
 describe("ClientDO audience hook", () => {
   const stubFor = (ws: string) => env.CLIENT.get(env.CLIENT.idFromName(ws));
 
@@ -168,6 +140,5 @@ describe("ClientDO audience hook", () => {
     expect(call.headers["x-relay-signature"]).toBe(`sha256=${await signBody(secret!, call.body)}`);
     expect(JSON.parse(call.body)).toMatchObject({ type: "audience.page", appId: "app_1", workspaceId: ws, campaignId: campaign.id, cursor: null, limit: 500 });
     expect(call.headers["x-relay-timestamp"]).toBe(String(JSON.parse(call.body).sentAt));
-    expect(await verifyAudienceRequest(secret!, call.body, new Headers(call.headers), Date.now())).toBe(true);
   });
 });

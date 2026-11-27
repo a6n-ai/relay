@@ -20,7 +20,6 @@ import { Route as AppAppsRouteImport } from './routes/_app/apps'
 import { Route as AppCampaignsRouteImport } from './routes/_app/campaigns'
 import { Route as AppDomainsRouteImport } from './routes/_app/domains'
 import { Route as AppListsRouteImport } from './routes/_app/lists'
-import { Route as AppMembersRouteImport } from './routes/_app/members'
 import { Route as AppMessagesRouteImport } from './routes/_app/messages'
 import { Route as AppSettingsRouteImport } from './routes/_app/settings'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
@@ -129,11 +128,6 @@ const AppDomainsRoute = AppDomainsRouteImport.update({
 const AppListsRoute = AppListsRouteImport.update({
   id: '/lists',
   path: '/lists',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppMembersRoute = AppMembersRouteImport.update({
-  id: '/members',
-  path: '/members',
   getParentRoute: () => AppRoute,
 } as any)
 const AppMessagesRoute = AppMessagesRouteImport.update({
@@ -431,7 +425,6 @@ export interface FileRoutesByFullPath {
   '/campaigns': typeof AppCampaignsRoute
   '/domains': typeof AppDomainsRoute
   '/lists': typeof AppListsRoute
-  '/members': typeof AppMembersRoute
   '/messages': typeof AppMessagesRoute
   '/settings': typeof AppSettingsRoute
   '/api/health': typeof ApiHealthRoute
@@ -498,7 +491,6 @@ export interface FileRoutesByTo {
   '/campaigns': typeof AppCampaignsRoute
   '/domains': typeof AppDomainsRoute
   '/lists': typeof AppListsRoute
-  '/members': typeof AppMembersRoute
   '/messages': typeof AppMessagesRoute
   '/settings': typeof AppSettingsRoute
   '/api/health': typeof ApiHealthRoute
@@ -568,7 +560,6 @@ export interface FileRoutesById {
   '/_app/campaigns': typeof AppCampaignsRoute
   '/_app/domains': typeof AppDomainsRoute
   '/_app/lists': typeof AppListsRoute
-  '/_app/members': typeof AppMembersRoute
   '/_app/messages': typeof AppMessagesRoute
   '/_app/settings': typeof AppSettingsRoute
   '/api/health': typeof ApiHealthRoute
@@ -639,7 +630,6 @@ export interface FileRouteTypes {
     | '/campaigns'
     | '/domains'
     | '/lists'
-    | '/members'
     | '/messages'
     | '/settings'
     | '/api/health'
@@ -706,7 +696,6 @@ export interface FileRouteTypes {
     | '/campaigns'
     | '/domains'
     | '/lists'
-    | '/members'
     | '/messages'
     | '/settings'
     | '/api/health'
@@ -775,7 +764,6 @@ export interface FileRouteTypes {
     | '/_app/campaigns'
     | '/_app/domains'
     | '/_app/lists'
-    | '/_app/members'
     | '/_app/messages'
     | '/_app/settings'
     | '/api/health'
@@ -935,13 +923,6 @@ declare module '@tanstack/react-router' {
       path: '/lists'
       fullPath: '/lists'
       preLoaderRoute: typeof AppListsRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/members': {
-      id: '/_app/members'
-      path: '/members'
-      fullPath: '/members'
-      preLoaderRoute: typeof AppMembersRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/messages': {
@@ -1338,7 +1319,6 @@ interface AppRouteChildren {
   AppCampaignsRoute: typeof AppCampaignsRoute
   AppDomainsRoute: typeof AppDomainsRoute
   AppListsRoute: typeof AppListsRoute
-  AppMembersRoute: typeof AppMembersRoute
   AppMessagesRoute: typeof AppMessagesRoute
   AppSettingsRoute: typeof AppSettingsRoute
   AppIndexRoute: typeof AppIndexRoute
@@ -1375,7 +1355,6 @@ const AppRouteChildren: AppRouteChildren = {
   AppCampaignsRoute: AppCampaignsRoute,
   AppDomainsRoute: AppDomainsRoute,
   AppListsRoute: AppListsRoute,
-  AppMembersRoute: AppMembersRoute,
   AppMessagesRoute: AppMessagesRoute,
   AppSettingsRoute: AppSettingsRoute,
   AppIndexRoute: AppIndexRoute,

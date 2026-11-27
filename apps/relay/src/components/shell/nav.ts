@@ -11,7 +11,7 @@ import type { OrgRole } from "../../console/actor";
 import type { FileRouteTypes } from "../../routeTree.gen";
 import { allows } from "../../lib/auth/permissions";
 
-export type NavLeaf = {
+type NavLeaf = {
   id: string;
   label: string;
   to: string;
@@ -20,7 +20,7 @@ export type NavLeaf = {
 };
 export type NavItem = NavLeaf & { icon: LucideIcon; children?: NavLeaf[] };
 export type NavGroup = { id: "work" | "setup" | "platform"; items: NavItem[] };
-export type CreateItem = { id: string; label: string; find?: string; to: FileRouteTypes["to"]; new?: 1; need: Record<string, string[]> };
+type CreateItem = { id: string; label: string; find?: string; to: FileRouteTypes["to"]; new?: 1; need: Record<string, string[]> };
 
 export const NAV: NavGroup[] = [
   {

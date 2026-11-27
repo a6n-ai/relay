@@ -1,11 +1,9 @@
-import { env, runInDurableObject, SELF } from "cloudflare:test";
+import { env, SELF } from "cloudflare:test";
 import { and, eq } from "drizzle-orm";
 import { beforeAll, describe, expect, it } from "vitest";
-import { setSelfServe } from "../src/console/admin";
 import { requireActor } from "../src/console/actor";
 import { addApp } from "../src/console/apps";
 import { createWorkspace as createWorkspaceFromConsole } from "../src/console/workspaces";
-import { type WorkspaceLimits } from "../src/core/limits";
 import { getWorkspaceProfile, recordDoState } from "../src/core/workspace-profile";
 import { coreDb } from "../src/db/core/client";
 import { workspaceProfile } from "../src/db/core/schema";
@@ -16,7 +14,6 @@ import { applyMigrations } from "./migrate";
 
 const headersFor = (cookie: string) => new Headers({ cookie });
 const WRITE = { permission: { tenant: ["write"] }, write: true };
-const OPS = { userId: "usr_ops_test" };
 
 beforeAll(async () => {
   await applyMigrations();
@@ -25,11 +22,6 @@ beforeAll(async () => {
 
 const profileOf = async (workspaceId: string) =>
   (await coreDb(env).select().from(workspaceProfile).where(eq(workspaceProfile.workspaceId, workspaceId)))[0];
-
-const snapshot = (workspaceId: string) =>
-  runInDurableObject(env.CLIENT.get(env.CLIENT.idFromName(workspaceId)), (_instance, state) =>
-    state.storage.kv.get<WorkspaceLimits>("limits"),
-  );
 
 function postCreate(cookie: string, slug: string) {
   return SELF.fetch(`${BASE}/organization/create`, {
@@ -82,21 +74,6 @@ describe("self-serve workspaces", { timeout: 60_000 }, () => {
       status: 403,
       message: "self-serve workspaces have one app",
     });
-  });
-
-  it("setSelfServe(false) lifts the app cap and refreshes the limits", async () => {
-    const cookie = await cookieFor("ss-lift@example.com", "user");
-    const id = await createWorkspace(cookie, "ss-lift-co");
-    await setActive(cookie, id);
-    const actor = await requireActor(env, headersFor(cookie), WRITE);
-    await addApp(env, actor, { name: "Web", slug: "web" });
-    const before = (await snapshot(id))?.fetchedAt ?? 0;
-    await new Promise((resolve) => setTimeout(resolve, 5));
-
-    await setSelfServe(env, OPS, id, false);
-    expect(await profileOf(id)).toMatchObject({ selfServe: false });
-    await expect(addApp(env, actor, { name: "Mail", slug: "mail" })).resolves.toMatchObject({ id: expect.stringMatching(/^app_/) });
-    expect((await snapshot(id))!.fetchedAt).toBeGreaterThan(before);
   });
 
   it("creates through the console path with the same cap, and refuses a cross-origin write", async () => {

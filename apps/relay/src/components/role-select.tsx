@@ -12,7 +12,7 @@ const ROLE_HINT: Record<MemberRole, string> = {
 };
 
 // Owners are offered only to owners, so the picker never shows a role the actor cannot grant.
-export function roleOptions(canGrantOwner: boolean): ChoiceOption[] {
+function roleOptions(canGrantOwner: boolean): ChoiceOption[] {
   return (Object.keys(ROLE_LABEL) as MemberRole[])
     .filter((r) => r !== "owner" || canGrantOwner)
     .map((r) => ({ value: r, label: ROLE_LABEL[r], description: ROLE_HINT[r] }));

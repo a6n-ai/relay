@@ -83,7 +83,7 @@ async function emailWithinCap(env: Env, scope: string, email: string, max = OTP_
 }
 
 // A password is a lasting credential, so setting or changing one needs a sign-in from the last 10 minutes.
-export const FRESH_SESSION_MS = 10 * 60_000;
+const FRESH_SESSION_MS = 10 * 60_000;
 export const STALE_SESSION_MESSAGE = "Sign in again to set a password.";
 export const isFreshSession = (createdAt: Date | string | number) => Date.now() - new Date(createdAt).getTime() <= FRESH_SESSION_MS;
 

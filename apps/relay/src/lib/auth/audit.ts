@@ -2,7 +2,7 @@ import { securityDb } from "../../db/security/client";
 import { securityAudit } from "../../db/security/schema";
 import type { Env } from "../../env";
 
-export type AuditEvent = {
+type AuditEvent = {
   action: string;
   actorUserId?: string | null;
   workspaceId?: string | null;

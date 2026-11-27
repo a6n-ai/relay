@@ -53,7 +53,7 @@ export const appStatement = {
   workspace: ["usage", "limits"],
   staff: ["read"],
 } as const;
-export const orgStatement = { ...defaultStatements, ...appStatement };
+const orgStatement = { ...defaultStatements, ...appStatement };
 export const orgAc = createAccessControl(orgStatement);
 const allApp = appStatement;
 export const orgRoles = {

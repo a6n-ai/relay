@@ -6,7 +6,6 @@
   "exports": {
     ".": "./src/index.ts",
     "./schema": "./src/schema.ts",
-    "./ui": "./src/ui/index.ts",
     "./ui/api-fetch": "./src/ui/api-fetch.ts",
     "./ui/campaign-flow/steps": "./src/ui/campaign-flow/steps.ts",
     "./ui/create-list-with-contacts": "./src/ui/create-list-with-contacts.ts",
@@ -36,7 +35,6 @@
     "@foundry/design-system": "github:a6n-ai/foundry#path:packages/design-system",
     "@foundry/ui": "github:a6n-ai/foundry#path:packages/ui",
     "@lezer/highlight": "^1.2.5",
-    "@relay/email": "workspace:*",
     "@uiw/react-md-editor": "^4.2.3",
     "codemirror": "^6.0.2",
     "dom-serializer": "^3.1.1",
@@ -44,7 +42,6 @@
     "entities": "^9.0.0",
     "htmlparser2": "^12.0.0",
     "lucide-react": "^1.70.0",
-    "postal-mime": "^4.2.0",
     "prettier": "^3.9.10",
     "react-email": "^6.11.8",
     "recharts": "^3.10.1",

@@ -4,7 +4,7 @@ import { cn } from "@foundry/ui/cn";
 import type { ComponentProps, ReactNode } from "react";
 import { SiteHeader } from "./site-header";
 
-export const authControl = "h-11 w-full text-base";
+const authControl = "h-11 w-full text-base";
 
 export function AuthTitle({ className, ...props }: ComponentProps<"h1">) {
   return <h1 className={cn("text-balance text-center text-title-1 font-semibold tracking-tight", className)} {...props} />;

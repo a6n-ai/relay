@@ -2,7 +2,7 @@ import { useMatch } from "@tanstack/react-router";
 import type { Shell } from "../console/shell";
 import { Hint, Title } from "./page/text";
 
-export type DeniedReason = "no-workspace" | "suspended" | "not-allowed" | "not-found";
+type DeniedReason = "no-workspace" | "suspended" | "not-allowed" | "not-found";
 
 const COPY: Record<DeniedReason, { title: string; body: string }> = {
   "no-workspace": {

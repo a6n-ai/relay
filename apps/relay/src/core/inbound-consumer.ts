@@ -5,10 +5,6 @@ import { describeError } from "./log";
 
 export const MAX_INBOUND_ATTEMPTS = 5;
 
-function errorName(err: unknown): string {
-  return err instanceof Error ? err.name : "unknown";
-}
-
 export async function handleInboundBatch(batch: MessageBatch<InboundJob>, env: Env): Promise<void> {
   await Promise.all(
     batch.messages.map(async (message) => {

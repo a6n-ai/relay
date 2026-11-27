@@ -269,7 +269,7 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /**
  * Drain the outbox when told to, never on a timer. The one loop every app runs
- * — kept here so tiffin-grab and puchkaman can't drift.
+ * — kept here so consumers can't drift.
  *
  * Postgres stays the record (claiming, attempt counting, failed status); the
  * signal only says "look now", so an idle app sends zero queries and a

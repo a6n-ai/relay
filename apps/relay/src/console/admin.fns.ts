@@ -17,8 +17,8 @@ import { validate } from "./schemas";
 
 export const fetchWorkspaces = createServerFn({ method: "GET" }).handler(async () => {
   try {
-    const admin = await requirePlatformAdmin(env, getRequestHeaders());
-    return await listWorkspaces(env, admin);
+    await requirePlatformAdmin(env, getRequestHeaders());
+    return await listWorkspaces(env);
   } catch (err) {
     toResponseError(err);
   }

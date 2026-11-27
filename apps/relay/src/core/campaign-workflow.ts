@@ -10,9 +10,9 @@ export type CampaignStep = Pick<WorkflowStep, "do" | "sleep" | "sleepUntil">;
 export const CHUNK_SIZE = 500;
 export const ENQUEUE_BATCH = 100;
 // Workflows allow 1,024 steps on Free and 10,000 on Paid (sleeps do not count). 1 start + 400 chunks fits both.
-export const MAX_CHUNKS = 400;
+const MAX_CHUNKS = 400;
 // A hook page is three steps (page, ingest, pace), so 300 pages plus the start step stays under the Free limit of 1,024.
-export const HOOK_MAX_PAGES = 300;
+const HOOK_MAX_PAGES = 300;
 const STEP_RETRY = { retries: { limit: 5, delay: "30 seconds", backoff: "exponential" }, timeout: "5 minutes" } as const;
 
 type Stub = ReturnType<typeof clientFor>;

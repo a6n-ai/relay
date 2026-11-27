@@ -3,7 +3,7 @@ import { Input } from "@foundry/ui/input";
 import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from "@foundry/ui/input-group";
 import { Field, fieldDescribedBy } from "./field";
 
-export type TextFieldProps = Omit<ComponentProps<"input">, "id" | "prefix"> & {
+type TextFieldProps = Omit<ComponentProps<"input">, "id" | "prefix"> & {
   id: string;
   label: ReactNode;
   hint?: ReactNode;

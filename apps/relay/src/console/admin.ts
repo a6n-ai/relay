@@ -18,10 +18,10 @@ import { INVITES_PER_DAY } from "./members";
 export const MAX_MONTHLY_QUOTA = 100_000_000;
 export const MAX_INVITES_PER_DAY = 10_000;
 
-export type PlatformAdmin = { userId: string };
+type PlatformAdmin = { userId: string };
 
 // Read from D1 only: the sender snapshot in the DO is not the source for an admin's view.
-export async function listWorkspaces(env: Env, _admin: PlatformAdmin, now = Date.now()) {
+export async function listWorkspaces(env: Env, now = Date.now()) {
   const d = new Date(now);
   const monthStart = utcDay(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1));
   const [rows, members, profiles, usage] = await Promise.all([
@@ -99,18 +99,6 @@ export async function setWorkspaceStatus(
     workspaceId,
     target: workspaceId,
   });
-  await refreshWorkspaceLimits(env, workspaceId);
-}
-
-// Lifting self-serve keeps the quota; the admin changes it with setWorkspaceQuota.
-export async function setSelfServe(env: Env, admin: PlatformAdmin, workspaceId: string, selfServe: boolean): Promise<void> {
-  await requireWorkspace(env, workspaceId);
-  await ensureWorkspaceProfile(env, workspaceId, { selfServe });
-  await coreDb(env)
-    .update(workspaceProfile)
-    .set({ selfServe, updatedAt: new Date() })
-    .where(eq(workspaceProfile.workspaceId, workspaceId));
-  await writeAudit(env, { action: "workspace.self_serve", actorUserId: admin.userId, workspaceId, target: workspaceId, data: { selfServe } });
   await refreshWorkspaceLimits(env, workspaceId);
 }
 

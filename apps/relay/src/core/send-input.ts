@@ -1,13 +1,13 @@
 import { z } from "zod";
 
-export const streamSchema = z.enum(["transactional", "tracked", "marketing"]);
+const streamSchema = z.enum(["transactional", "tracked", "marketing"]);
 export type Stream = z.infer<typeof streamSchema>;
 
 export type SuppressionReason = "unsubscribe" | "bounce" | "complaint" | "manual";
 
 const email = z.string().trim().toLowerCase().pipe(z.email());
 
-export const MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024;
+const MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024;
 const noLineBreak = (s: string) => !/[\r\n]/.test(s);
 // Decoded size is derived from the length, so an oversized upload is refused before it is decoded.
 // A grouped regex overflows the V8 stack on a multi-megabyte string, so the shape check is a flat class.
@@ -25,7 +25,7 @@ const attachmentSchema = z.object({
   content: base64Content,
 });
 
-export const sendInputSchema = z.object({
+const sendInputSchema = z.object({
   appId: z.string().min(1),
   stream: streamSchema,
   // Omitted: the app's default sender for the stream is used (core/messages.ts).

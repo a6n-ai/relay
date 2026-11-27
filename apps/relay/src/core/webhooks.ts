@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { Env } from "../env";
 import { clientFor, type Scope } from "./messages";
 
-export const WEBHOOK_EVENTS = ["mailbox.received"] as const;
+const WEBHOOK_EVENTS = ["mailbox.received"] as const;
 export type WebhookEvent = (typeof WEBHOOK_EVENTS)[number];
 
 export type WebhookView = {

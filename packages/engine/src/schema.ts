@@ -246,8 +246,3 @@ export function makeNotificationTables<
 }
 
 export type NotificationTables = ReturnType<typeof makeNotificationTables>;
-
-export {
-  makeTenantNotificationTables,
-  type TenantNotificationTables,
-} from "./tenant-schema";
