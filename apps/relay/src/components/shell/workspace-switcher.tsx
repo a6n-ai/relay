@@ -7,6 +7,7 @@ import { Link, useRouter } from "@tanstack/react-router";
 import Check from "lucide-react/icons/check";
 import ChevronsUpDown from "lucide-react/icons/chevrons-up-down";
 import { useState } from "react";
+import { isSuspended } from "../../shared/limits";
 import { type OrgRole } from "../../shared/roles";
 import { authFetch } from "../lib/auth-fetch";
 
@@ -41,7 +42,7 @@ export function WorkspaceSwitcher({ active, workspaces }: { active: Active | nul
               <span className="w-full truncate font-medium">{active?.name ?? "Choose workspace"}</span>
               <span className="flex items-center gap-1">
                 {role ? <Badge variant="neutral" size="sm">{capitalise(role)}</Badge> : null}
-                {active?.status === "suspended" ? <Badge variant="warning" size="sm">Suspended</Badge> : null}
+                {isSuspended(active?.status) ? <Badge variant="warning" size="sm">Suspended</Badge> : null}
               </span>
             </span>
             <ChevronsUpDown className="ml-auto text-muted-foreground" />

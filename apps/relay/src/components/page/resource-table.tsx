@@ -6,6 +6,8 @@ import { Hint } from "../form/text";
 import { TableInset } from "./table-inset";
 import { RowMenu, type RowAction } from "./row-menu";
 import { rowNumber } from "./row-number";
+import { focusRingSoft } from "../lib/focus";
+import { cn } from "@foundry/ui/cn";
 
 const KIND = { name: "font-medium", mono: "font-mono text-xs", url: "break-all font-mono text-xs", time: "text-xs tabular-nums" } as const;
 
@@ -86,7 +88,7 @@ export function ResourceTable<T>({
                       {...href}
                       data-row-link
                       aria-label={rowLabel?.(row) ?? "Open"}
-                      className="absolute inset-0 outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                      className={cn("absolute inset-0", focusRingSoft)}
                     />
                   ) : null}
                 </TableCell>

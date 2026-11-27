@@ -2,7 +2,6 @@ import { Badge } from "@foundry/ui/badge";
 import { confirmAction } from "../../components/lib/run-action";
 import { NameField, TextField } from "../../components/form/text-field";
 import { Button } from "@foundry/ui/button";
-import { toast } from "@foundry/ui/toast";
 import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { UsersIcon } from "lucide-react";
 import { type FormEvent, useState } from "react";
@@ -37,6 +36,7 @@ import { type ConsentSource, type MemberView } from "../../shared/views";
 import { str, posInt } from "../../components/lib/route-search";
 import { appName } from "../../shared/scope";
 import { useSubmit } from "../../components/lib/use-submit";
+import { emailSchema } from "../../shared/schemas";
 
 type ListSearch = { appId?: string; cursor?: string; q?: string; offset?: number };
 
@@ -88,9 +88,7 @@ function ListDetailPage() {
     await confirmAction(() => removeMemberFn({ data: { listId, memberId } }), "Contact removed", () => router.invalidate());
   }
   async function deleteList() {
-    await deleteListFn({ data: { id: listId } });
-    toast.success("List deleted");
-    await navigate({ to: "/lists", search: { appId: list.appId } });
+    await confirmAction(() => deleteListFn({ data: { id: listId } }), "List deleted", () => navigate({ to: "/lists", search: { appId: list.appId } }));
   }
   const q = query.trim().toLowerCase();
   const shown = q
@@ -297,7 +295,7 @@ function AddContactForm({ listId, consent, done }: { listId: string; consent: Co
   const { pending, error, run } = useSubmit();
   async function submit(event: FormEvent) {
     event.preventDefault();
-    if (!/^\S+@\S+\.\S+$/.test(email.trim())) {
+    if (!emailSchema.safeParse(email).success) {
       setEmailError("Enter a valid email address.");
       return;
     }

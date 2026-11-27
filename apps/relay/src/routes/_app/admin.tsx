@@ -1,4 +1,3 @@
-import { Badge } from "@foundry/ui/badge";
 import { Button } from "@foundry/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@foundry/ui/sheet";
 import { createFileRoute, notFound, useNavigate, useRouter } from "@tanstack/react-router";
@@ -22,10 +21,11 @@ import { fetchWorkspaces, setWorkspaceInviteCapFn, setWorkspaceQuotaFn, setWorks
 import { SES_REGIONS } from "../../shared/regions";
 import { formatDate } from "../../components/lib/format-date";
 import { Hint } from "../../components/form/text";
-import { MAX_INVITES_PER_DAY } from "../../shared/limits";
+import { StatusBadge } from "../../components/page/status-badge";
+import { isSuspended, MAX_INVITES_PER_DAY, WORKSPACE_STATUSES, type WorkspaceStatus } from "../../shared/limits";
 import { oneOf, str, untyped } from "../../components/lib/route-search";
 
-type AdminSearch = { ws?: string; q?: string; status?: "active" | "suspended" };
+type AdminSearch = { ws?: string; q?: string; status?: WorkspaceStatus };
 
 const STATUS_FACET: Facet = {
   key: "status",
@@ -42,7 +42,7 @@ export const Route = createFileRoute("/_app/admin")({
   validateSearch: (search: Record<string, unknown>): AdminSearch => ({
     ws: str(search.ws),
     q: str(search.q),
-    status: oneOf(["active", "suspended"] as const, search.status),
+    status: oneOf(WORKSPACE_STATUSES, search.status),
   }),
   loader: async () => {
     try {
@@ -59,9 +59,9 @@ export const Route = createFileRoute("/_app/admin")({
 type Workspace = Awaited<ReturnType<typeof fetchWorkspaces>>[number];
 
 function StatusCell({ w }: { w: Workspace }) {
-  return w.status === "suspended" ? (
+  return isSuspended(w.status) ? (
     <div>
-      <Badge variant="danger">Suspended</Badge>
+      <StatusBadge status="suspended" />
       {w.suspendedAt && w.inboundUntil && (
         <div className="mt-1 text-xs text-muted-foreground">
           Suspended {formatDate(w.suspendedAt)} · inbound until {formatDate(w.inboundUntil)}
@@ -69,7 +69,7 @@ function StatusCell({ w }: { w: Workspace }) {
       )}
     </div>
   ) : (
-    <Badge variant="success">Active</Badge>
+    <StatusBadge status="active" />
   );
 }
 
@@ -147,7 +147,7 @@ type Run = (action: () => Promise<unknown>, success: string) => void;
 
 function ManageSheet({ w, run, confirm }: { w: Workspace; run: Run; confirm: (action: () => Promise<unknown>, success: string) => Promise<void> }) {
   const [region, setRegion] = useState(w.sesRegion ?? "");
-  const suspend = w.status !== "suspended";
+  const suspend = !isSuspended(w.status);
   return (
     <div className="grid min-h-0 flex-1 auto-rows-max gap-4 overflow-y-auto px-4 pb-4">
       <StatusCell w={w} />

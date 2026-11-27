@@ -19,12 +19,13 @@ import { useCan } from "../../components/lib/use-can";
 import { cancelInviteFn, fetchPeople } from "../../console/members.fns";
 import { formatDate } from "../../components/lib/format-date";
 import { isSuspended } from "../../shared/limits";
+import { flag } from "../../components/lib/route-search";
 
 
 export const Route = createFileRoute("/_app/settings_/invites")({
   staticData: { title: "Invites", copy: "People you have asked to join this workspace." },
   validateSearch: (search: Record<string, unknown>): { new?: 1 } => ({
-    new: search.new === 1 || search.new === "1" ? 1 : undefined,
+    new: flag(search.new) && 1,
   }),
   loader: () => fetchPeople(),
   pendingComponent: () => <ListSkeleton columns={4} action />,

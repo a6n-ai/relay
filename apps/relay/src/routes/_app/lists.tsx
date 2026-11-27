@@ -41,7 +41,7 @@ export const Route = createFileRoute("/_app/lists")({
     const results = settled.flatMap((r) => (r.status === "fulfilled" ? [r.value] : []));
     if (results.some((r) => !r)) return null;
     const lists = results.flatMap((r) => (r && !("missing" in r) ? r : []));
-    return { apps, appId: deps.appId, lists };
+    return { apps, appId: deps.appId, lists, failed: rejected.length };
   },
   pendingComponent: () => <ListSkeleton columns={4} search filter view action />,
   component: ListsPage,
@@ -55,7 +55,7 @@ function ListsPage() {
   const navigate = useNavigate();
   const [view, setView] = useState<View>(() => viewPref.read("/lists"));
   if (!loaded(page)) return <ScopedDenied page={page} />;
-  const { apps, appId, lists } = page;
+  const { apps, appId, lists, failed } = page;
   const canCreate = canWrite && !!startApp(apps, appId);
   const q = query.trim().toLowerCase();
   const shown = q ? lists.filter((l) => l.name.toLowerCase().includes(q)) : lists;
@@ -92,6 +92,7 @@ function ListsPage() {
       >
         {canCreate ? <Button render={<Link to="/lists/new" search={{ appId }} />}>New list</Button> : null}
       </Toolbar>
+      {failed ? <Hint>Lists from some apps could not be loaded. Refresh to try again.</Hint> : null}
       {view === "grid" ? (
         <ResourceGrid
           items={shown}

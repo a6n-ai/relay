@@ -36,7 +36,7 @@ function WorkspaceNameCard({ name: current, slug }: { name: string; slug: string
     <SettingsForm
       title="Workspace name"
       description="The name shown in the workspace switcher."
-      hint="Up to 80 characters."
+      hint={`Up to ${NAME_MAX} characters.`}
       dirty={Boolean(next) && next !== current}
       pending={pending}
       saveLabel="Save name"

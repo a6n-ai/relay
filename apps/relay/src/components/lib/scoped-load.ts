@@ -1,8 +1,9 @@
+import { codeOf } from "../../shared/errors";
 import { allows } from "../../shared/permissions";
 import { startApp } from "../../shared/scope";
 import type { Shell } from "../../shared/views";
 
-export const isNotFound = (err: unknown): boolean => err instanceof Error && err.message === "not found";
+export const isNotFound = (err: unknown): boolean => codeOf(err) === "not found";
 
 // The client twin of the server's orMissing: a thrown "not found" becomes `{ missing: true }` data the page renders as a not-found state.
 export const orMissing = <T>(call: Promise<T>): Promise<T | { missing: true }> =>

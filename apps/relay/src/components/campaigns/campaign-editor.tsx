@@ -31,6 +31,7 @@ import { Hint } from "../form/text";
 import { FixedField } from "../form/fixed-field";
 import { type CampaignView, type ListView } from "../../shared/views";
 import { useLoad } from "../lib/use-load";
+import { confirmAction } from "../lib/run-action";
 
 type CampaignOptions = { senders: string[]; lists: ListView[]; postalAddress: string | null };
 
@@ -161,10 +162,10 @@ export function CampaignEditor({
   }
 
   async function remove() {
-    await deleteCampaignFn({ data: { id: campaign.id } });
-    toast.success("Campaign deleted");
-    leaving.current = true;
-    await navigate({ to: "/campaigns", search: { appId: campaign.appId } });
+    await confirmAction(() => deleteCampaignFn({ data: { id: campaign.id } }), "Campaign deleted", () => {
+      leaving.current = true;
+      return navigate({ to: "/campaigns", search: { appId: campaign.appId } });
+    });
   }
 
   async function savePostalAddress(event: FormEvent) {

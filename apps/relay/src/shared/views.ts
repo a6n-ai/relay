@@ -1,4 +1,5 @@
 // Shapes the console UI and the server modules both read. Type-only: nothing here may import app code.
+import type { WorkspaceStatus } from "./limits";
 import type { OrgRole } from "./roles";
 
 type CampaignStatus = "draft" | "scheduled" | "sending" | "paused" | "sent" | "cancelled";
@@ -115,7 +116,7 @@ export type DeliveryView = {
 export type Shell = {
   user: { id: string; email: string; name: string };
   platformAdmin: boolean;
-  active: { id: string; name: string; slug: string; status: "active" | "suspended"; roles: OrgRole[] } | null;
+  active: { id: string; name: string; slug: string; status: WorkspaceStatus; roles: OrgRole[] } | null;
   workspaces: { id: string; name: string }[];
   apps: { id: string; name: string }[];
 };

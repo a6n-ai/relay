@@ -36,7 +36,7 @@ function ResetPassword() {
   async function submit(event: FormEvent) {
     event.preventDefault();
     setError(null);
-    if (password.length < 8 || password.length > 128) return setError("Use 8 to 128 characters.");
+    if (password.length < PASSWORD_MIN || password.length > PASSWORD_MAX) return setError(`Use ${PASSWORD_MIN} to ${PASSWORD_MAX} characters.`);
     if (password !== confirm) return setError("The passwords do not match.");
     setPending(true);
     const res = await authFetch("/reset-password", { newPassword: password, token });

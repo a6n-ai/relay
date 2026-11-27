@@ -3,7 +3,6 @@ import { Button } from "@foundry/ui/button";
 import { Input } from "@foundry/ui/input";
 import { Label } from "@foundry/ui/label";
 import { Switch } from "@foundry/ui/switch";
-import { toast } from "@foundry/ui/toast";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { KeyRoundIcon } from "lucide-react";
 import { type FormEvent, useState } from "react";
@@ -40,6 +39,7 @@ import { RenameForm } from "../../components/form/rename-form";
 import { Hint } from "../../components/form/text";
 import { hostOf } from "../../components/lib/path";
 import { useSubmit } from "../../components/lib/use-submit";
+import { AUDIENCE_BINDINGS } from "../../shared/audience";
 
 export const Route = createFileRoute("/_app/apps_/$appId")({
   pendingComponent: () => <FormSkeleton crumbs={[{ label: "Apps", to: "/apps" }, { label: "App" }]} cards={3} action />,
@@ -201,7 +201,7 @@ type DefaultSenders = NonNullable<Awaited<ReturnType<typeof fetchAppDetail>>>["s
 const NONE = "none";
 
 // The loader returns no display name for the audience binding, so the one platform-admin button names it here.
-const BINDING = "TIFFIN_AUDIENCE";
+const BINDING = AUDIENCE_BINDINGS[0];
 const BINDING_NAME = "TiffinGrab";
 
 function DefaultSendersPanel({ appId, senders, canWrite }: { appId: string; senders: DefaultSenders; canWrite: boolean }) {
@@ -300,13 +300,17 @@ function AudiencePanel({
   // The server only generates a secret on first save, so a rotation sends a fresh one and shows it here.
   // url and enabled are required by the save, so they come from a fresh read, not the loader data.
   async function rotate() {
-    const current = await fetchAudienceHook({ data: { appId } });
-    if (!current?.url) throw new Error("audience not saved");
-    const fresh = Array.from(crypto.getRandomValues(new Uint8Array(32)), (b) => b.toString(16).padStart(2, "0")).join("");
-    await setAudienceHookFn({ data: { appId, url: current.url, secret: fresh, enabled: current.enabled } });
-    setSecret(fresh);
-    toast.success("Secret rotated");
-    await router.invalidate();
+    await confirmAction(
+      async () => {
+        const current = await fetchAudienceHook({ data: { appId } });
+        if (!current?.url) throw new Error("audience not saved");
+        const fresh = Array.from(crypto.getRandomValues(new Uint8Array(32)), (b) => b.toString(16).padStart(2, "0")).join("");
+        await setAudienceHookFn({ data: { appId, url: current.url, secret: fresh, enabled: current.enabled } });
+        setSecret(fresh);
+      },
+      "Secret rotated",
+      () => router.invalidate(),
+    );
   }
 
   async function connectBinding() {

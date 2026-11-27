@@ -3,7 +3,6 @@ import { env } from "cloudflare:workers";
 import { z } from "zod";
 import { runAdmin } from "./guard";
 import {
-  AUDIENCE_BINDINGS,
   listWorkspaces,
   setAudienceBinding,
   setWorkspaceInviteCap,
@@ -11,13 +10,14 @@ import {
   setWorkspaceRegion,
   setWorkspaceStatus,
 } from "../services/admin";
-import { MAX_INVITES_PER_DAY, MAX_MONTHLY_QUOTA } from "../shared/limits";
+import { AUDIENCE_BINDINGS } from "../shared/audience";
+import { MAX_INVITES_PER_DAY, MAX_MONTHLY_QUOTA, WORKSPACE_STATUSES } from "../shared/limits";
 import { validate } from "./schemas";
 
 export const fetchWorkspaces = createServerFn({ method: "GET" }).handler(() => runAdmin(() => listWorkspaces(env), { write: false }));
 
 export const setWorkspaceStatusFn = createServerFn({ method: "POST" })
-  .validator(validate(z.object({ workspaceId: z.string().min(1), status: z.enum(["active", "suspended"]) })))
+  .validator(validate(z.object({ workspaceId: z.string().min(1), status: z.enum(WORKSPACE_STATUSES) })))
   .handler(({ data }) => runAdmin((admin) => setWorkspaceStatus(env, admin, data.workspaceId, data.status)));
 
 export const setWorkspaceRegionFn = createServerFn({ method: "POST" })

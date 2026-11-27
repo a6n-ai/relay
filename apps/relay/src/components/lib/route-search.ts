@@ -2,8 +2,10 @@ import { MESSAGE_STATUSES, type MessageStatus } from "../../shared/mail";
 
 // Route `validateSearch` parsers: a garbage value is dropped rather than failing the page. The server validates again at the fn boundary.
 export const str = (v: unknown): string | undefined => (typeof v === "string" && v ? v : undefined);
-export const appId = str;
-export const cursor = str;
+// A text filter: surrounding spaces are not part of the search.
+export const trimmed = (v: unknown): string | undefined => (typeof v === "string" && v.trim() !== "" ? v.trim() : undefined);
+// A flag in the URL: ?new=1 or ?images=true.
+export const flag = (v: unknown): true | undefined => (v === true || v === "true" || v === 1 || v === "1" ? true : undefined);
 export const posInt = (v: unknown): number | undefined => (typeof v === "number" && v > 0 ? Math.floor(v) : undefined);
 export const oneOf = <T extends string>(allowed: readonly T[], v: unknown): T | undefined => allowed.find((a) => a === v);
 export const status = (v: unknown): MessageStatus | undefined => oneOf(MESSAGE_STATUSES, v);

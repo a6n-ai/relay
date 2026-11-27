@@ -2,7 +2,6 @@ import { Button } from "@foundry/ui/button";
 import { Label } from "@foundry/ui/label";
 import { Switch } from "@foundry/ui/switch";
 import { Textarea } from "@foundry/ui/textarea";
-import { toast } from "@foundry/ui/toast";
 import { createFileRoute, useNavigate, useRouter, useSearch } from "@tanstack/react-router";
 import { type FormEvent, useRef, useState } from "react";
 import { DangerCard } from "../../components/page/danger-card";
@@ -23,6 +22,7 @@ import { type TemplateView } from "../../shared/views";
 import { TEMPLATE_NAME_MAX } from "../../shared/limits";
 import { appName } from "../../shared/scope";
 import { useSubmit } from "../../components/lib/use-submit";
+import { confirmAction } from "../../components/lib/run-action";
 
 export const Route = createFileRoute("/_app/campaigns_/templates_/$templateId")({
   loader: ({ params }) => orMissing(fetchTemplate({ data: { id: params.templateId } })),
@@ -93,10 +93,10 @@ function TemplateForm({ template, canWrite, appName }: { template: TemplateView;
   }
 
   async function remove() {
-    await deleteTemplateFn({ data: { id: template.id } });
-    toast.success("Template deleted");
-    leaving.current = true;
-    await navigate({ to: "/campaigns/templates", search: { appId: template.appId } });
+    await confirmAction(() => deleteTemplateFn({ data: { id: template.id } }), "Template deleted", () => {
+      leaving.current = true;
+      return navigate({ to: "/campaigns/templates", search: { appId: template.appId } });
+    });
   }
 
   const dirty =

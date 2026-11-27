@@ -15,6 +15,8 @@ export const STATUS = {
   cancelled: { tone: "neutral", label: "Cancelled" },
   accepted: { tone: "success", label: "Accepted" },
   expired: { tone: "neutral", label: "Expired" },
+  active: { tone: "success", label: "Active" },
+  suspended: { tone: "danger", label: "Suspended" },
 } as const;
 
 // Inbound rows are stored as "sent"; the operator sees what happened to them, which is receipt.

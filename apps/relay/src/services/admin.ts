@@ -13,9 +13,8 @@ import type { Env } from "../env";
 import { writeAudit } from "../auth/audit";
 import { INVITES_PER_DAY } from "../core/workspace-profile";
 import { RelayError } from "../shared/errors";
-import { MAX_INVITES_PER_DAY, MAX_MONTHLY_QUOTA } from "../shared/limits";
+import { MAX_INVITES_PER_DAY, MAX_MONTHLY_QUOTA, type WorkspaceStatus } from "../shared/limits";
 
-export { AUDIENCE_BINDINGS } from "../core/audience-protocol";
 
 // shortcut: 100M caps a typo, not a plan; no product number yet, so revisit with the first real quota request.
 
@@ -81,7 +80,7 @@ export async function setWorkspaceStatus(
   env: Env,
   admin: PlatformAdmin,
   workspaceId: string,
-  status: "active" | "suspended",
+  status: WorkspaceStatus,
 ): Promise<void> {
   const rows = await securityDb(env)
     .update(workspace)

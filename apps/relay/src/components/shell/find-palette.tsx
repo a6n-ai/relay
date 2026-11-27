@@ -10,6 +10,8 @@ import { type FindEntry, findEntries, pushRecent, readRecent } from "./find";
 import { withNew } from "./scope";
 import { type Shell } from "../../shared/views";
 import { untyped } from "../lib/route-search";
+import { cn } from "@foundry/ui/cn";
+import { focusRing } from "../lib/focus";
 
 const RECENT_KEY = "relay-find-recent";
 const GROUPS: FindEntry["group"][] = ["Pages", "Apps", "Actions"];
@@ -56,7 +58,7 @@ export function FindPalette({ shell }: { shell: Shell }) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="flex h-9 w-full items-center gap-2 rounded-(--ui-radius-control) border bg-sidebar px-3 text-sm text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+        className={cn(focusRing, "flex h-9 w-full items-center gap-2 rounded-(--ui-radius-control) border bg-sidebar px-3 text-sm text-muted-foreground hover:text-foreground")}
       >
         <SearchIcon className="size-4" />
         <span className="flex-1 text-left">Find</span>
