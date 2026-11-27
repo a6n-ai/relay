@@ -26,6 +26,7 @@ import { newId } from "../shared/ids";
 import { attachmentViews, getInboundFailureRow, listDeliveryRows, listInboundFailureRows, listMessageRows, listSuppressionRows, messagesByKeyRows, type MessageByKey, type FailureView, type SuppressionView, messageBody, readMessageDetail, readMessageFile, type MessageAccess, type MessageBody, type MessageFile, type MessageDetail, type MessageQuery, type MessageSummary } from "./console-reads";
 import { storeInbound, writeInboundFailure, type InboundDeps, type InboundResult } from "./inbound";
 import * as schema from "./client-schema";
+import { blockSummaryRows, listBlockRows } from "./blocks";
 import { describeError } from "../core/log";
 import { bumpCampaign, campaignStatsRow, statsOf, createCampaignRow, deleteCampaignRow, getCampaignRow, listCampaignRows, previewAudienceRows, recipientQuery, updateCampaignRow, type CampaignPatch, type CampaignSummary } from "./campaigns";
 import { CLIENT_MIGRATIONS, migrate } from "./migrations";
@@ -47,7 +48,7 @@ import type { MessageView, SendResult } from "./types";
 import type { AudiencePage, HookCall } from "../core/audience-protocol";
 import { createAutomationRow, deleteAutomationRow, earliestDue, enrolAutomations, listAutomationRows, nextAutomationAlarm, runDueAutomationRows, setAutomationEnabledRow, updateAutomationRow, type AutomationInput, type AutomationPatch } from "./automations";
 import { RelayError, codeOf, fail } from "../shared/errors";
-import { type DeliveryView, type CampaignStats, type AudiencePreview, type CampaignView, type ListView, type MemberView, type TemplateView, type AutomationView } from "../shared/views";
+import { type DeliveryView, type CampaignStats, type AudiencePreview, type CampaignView, type ListView, type MemberView, type TemplateView, type AutomationView, type BlockSummary } from "../shared/views";
 import { type Stream, type SuppressionReason } from "../shared/mail";
 import { DAY_MS, isSuspended } from "../shared/limits";
 
@@ -1079,6 +1080,16 @@ export class ClientDO extends DurableObject<Env> {
   async messagesByKeys(workspaceId: string, appId: string, keys: string[]): Promise<MessageByKey[]> {
     await this.ready(workspaceId);
     return messagesByKeyRows(this.db, appId, keys);
+  }
+
+  async listBlocks(workspaceId: string, q: Parameters<typeof listBlockRows>[1]): Promise<ReturnType<typeof listBlockRows>> {
+    await this.ready(workspaceId);
+    return listBlockRows(this.ctx.storage.sql, q);
+  }
+
+  async blockSummary(workspaceId: string): Promise<BlockSummary> {
+    await this.ready(workspaceId);
+    return blockSummaryRows(this.ctx.storage.sql, Date.now());
   }
 
   async suppressionRows(

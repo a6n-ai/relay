@@ -1,6 +1,7 @@
 // Shapes the console UI and the server modules both read. Type-only: nothing here may import app code.
 import type { WorkspaceStatus } from "./limits";
 import type { OrgRole } from "./roles";
+import type { Stream, SuppressionReason } from "./mail";
 
 type CampaignStatus = "draft" | "scheduled" | "sending" | "paused" | "sent" | "cancelled";
 
@@ -121,3 +122,7 @@ export type Shell = {
   apps: { id: string; name: string }[];
 };
 
+export type BlockSource = "link" | "one-click" | "admin" | "ses";
+export type BlockView = { email: string; reason: SuppressionReason; stream: Stream | null; source: BlockSource | null; campaignRef: string | null; campaignName: string | null; createdAt: number };
+export type BlockQuery = { reasons?: SuppressionReason[]; streams?: (Stream | "all")[]; sources?: BlockSource[]; from?: number; to?: number; search?: string; sort?: "time" | "address" | "stream" | "reason"; dir?: "asc" | "desc"; offset?: number; limit?: number };
+export type BlockSummary = Record<"total" | "last30" | "thisMonth", Record<SuppressionReason, number>>;
