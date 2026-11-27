@@ -44,7 +44,7 @@ describe("tenant isolation", () => {
   it("cannot read a message sent by another workspace's key", async () => {
     const a = await tenant("iso-a");
     const b = await tenant("iso-b");
-    await seedVerifiedSender(a.workspaceId);
+    await seedVerifiedSender(a.workspaceId, a.appId);
 
     const sent = await post(a.secret, message);
     expect(sent.status).toBe(202);
@@ -62,7 +62,7 @@ describe("tenant isolation", () => {
   it("stores a message in the key's workspace and app, whatever the body names", async () => {
     const a = await tenant("body-a");
     const b = await tenant("body-b");
-    await seedVerifiedSender(a.workspaceId);
+    await seedVerifiedSender(a.workspaceId, a.appId);
 
     const sent = await post(a.secret, { ...message, workspaceId: b.workspaceId, appId: b.appId });
     expect(sent.status).toBe(202);

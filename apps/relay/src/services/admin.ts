@@ -11,7 +11,7 @@ import { securityDb } from "../db/security/client";
 import { app, member, workspace } from "../db/security/schema";
 import type { Env } from "../env";
 import { writeAudit } from "../lib/auth/audit";
-import { INVITES_PER_DAY } from "./members";
+import { INVITES_PER_DAY } from "../core/workspace-profile";
 import { RelayError } from "../shared/errors";
 import { MAX_INVITES_PER_DAY, MAX_MONTHLY_QUOTA } from "../shared/limits";
 

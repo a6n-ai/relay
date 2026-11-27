@@ -8,7 +8,7 @@ export const Route = createFileRoute("/api/v1/webhooks")({
     handlers: {
       GET: apiRoute(async ({ env, scope, p }) => json({ data: await listWebhooks(env, p, scope.appId) })),
       POST: apiRoute(async ({ env, scope, p, request }) =>
-        json(await createWebhook(env, p, scope.appId, webhookInputSchema.parse(await readJson(request))), 201),
+        json(await createWebhook(env, p, scope.appId, webhookInputSchema.parse(await readJson(request, 65_536))), 201),
       ),
     },
   },

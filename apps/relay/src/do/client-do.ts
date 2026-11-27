@@ -6,7 +6,7 @@ import { CHUNK_SIZE, ENQUEUE_BATCH } from "../core/campaign-run";
 import { contactValues, fillUnsubscribe, hasMergeToken, MERGE_SAMPLES, renderMerge, type MergeData } from "../shared/merge";
 import { sesSendRate } from "../core/send-rate";
 import type { SesAttachment, SesSendRequest } from "../core/ses";
-import { LIMITS_TTL_MS, loadWorkspaceLimits, SENDER_RETRY_MS, type WorkspaceLimits } from "../core/limits";
+import { LIMITS_KEY, LIMITS_TTL_MS, loadWorkspaceLimits, SENDER_RETRY_MS, type WorkspaceLimits } from "../core/limits";
 import { resolvedSendSchema, type ResolvedSendInput } from "../core/send-input";
 import type { SesEventJob } from "../core/ses-events";
 import { listUnsubscribeHeaders, unsubscribeToken, unsubscribeUrl } from "../core/unsubscribe";
@@ -119,7 +119,8 @@ export class ClientDO extends DurableObject<Env> {
     const limits = await this.limits(workspaceId, { forSender: data.from });
     if (limits.status === "suspended") throw new RelayError("workspace_suspended");
     const sender = limits.senders[data.from];
-    if (!sender) throw new RelayError("sender_not_verified");
+    // An address belongs to one app: another app's key in the same workspace may not send from it.
+    if (!sender || sender.appId !== data.appId) throw new RelayError("sender_not_verified");
     const id = newId("msg");
     const preSuppressed = this.suppressed(data.to, data.stream, data.from);
     // shortcut: an R2 object orphaned by a crash between the put and the insert is never swept, add a sweeper when storage cost shows up.
@@ -599,7 +600,7 @@ export class ClientDO extends DurableObject<Env> {
       return stopped();
     }
     const sender = limits.senders[campaign.fromEmail ?? ""];
-    if (!sender) {
+    if (!sender || sender.appId !== campaign.appId) {
       this.ctx.storage.transactionSync(() => setPaused("sender_not_verified"));
       return stopped();
     }
@@ -935,7 +936,7 @@ export class ClientDO extends DurableObject<Env> {
         return { kind: "suppressed", htmlKey: row.htmlKey };
       }
       // A suspension or a revoked sender can land while the row waits in the queue; the message fails, it is not held.
-      if (limits.status === "suspended" || !limits.senders[row.fromEmail ?? ""]) {
+      if (limits.status === "suspended" || limits.senders[row.fromEmail ?? ""]?.appId !== row.appId) {
         this.db
           .update(schema.message)
           .set({
@@ -1448,7 +1449,7 @@ export class ClientDO extends DurableObject<Env> {
 
   // The snapshot lives in KV, so a stale copy survives eviction and a D1 outage. It is never stored when empty.
   private async limits(workspaceId: string, { forSender }: { forSender?: string } = {}): Promise<WorkspaceLimits> {
-    const cached = this.ctx.storage.kv.get<WorkspaceLimits>("limits");
+    const cached = this.ctx.storage.kv.get<WorkspaceLimits>(LIMITS_KEY);
     const age = cached ? Date.now() - cached.fetchedAt : Infinity;
     const senderMiss = forSender !== undefined && !cached?.senders[forSender];
     if (cached && age < LIMITS_TTL_MS && !(senderMiss && age > SENDER_RETRY_MS)) return { ...cached, postalAddress: cached.postalAddress ?? null };
@@ -1462,7 +1463,7 @@ export class ClientDO extends DurableObject<Env> {
 
   private async loadLimits(workspaceId: string): Promise<WorkspaceLimits> {
     const snapshot = await loadWorkspaceLimits(this.env, workspaceId);
-    this.ctx.storage.kv.put("limits", snapshot);
+    this.ctx.storage.kv.put(LIMITS_KEY, snapshot);
     return snapshot;
   }
 
@@ -1668,7 +1669,7 @@ export class ClientDO extends DurableObject<Env> {
       return stopped();
     }
     const sender = limits.senders[campaign.fromEmail ?? ""];
-    if (!sender) {
+    if (!sender || sender.appId !== campaign.appId) {
       this.ctx.storage.transactionSync(() => setPaused("sender_not_verified"));
       return stopped();
     }

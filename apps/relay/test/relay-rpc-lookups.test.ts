@@ -1,6 +1,8 @@
 import { createExecutionContext, env, runInDurableObject } from "cloudflare:test";
 import { beforeAll, describe, expect, it } from "vitest";
 import { createApiKey } from "../src/services/api-keys";
+import { coreDb } from "../src/db/core/client";
+import { address } from "../src/db/core/schema";
 import { securityDb } from "../src/db/security/client";
 import { app, member, user, workspace } from "../src/db/security/schema";
 import { RelayRpc } from "../src/rpc/relay-rpc";
@@ -9,6 +11,8 @@ import { applyMigrations, seedVerifiedSender } from "./migrate";
 beforeAll(async () => {
   await applyMigrations();
 });
+
+const APP2_FROM = "two@a6n.ai";
 
 async function seed(slug: string) {
   const db = securityDb(env);
@@ -20,7 +24,8 @@ async function seed(slug: string) {
   const key1 = (await createApiKey(env, { workspaceId: ws.id, appId: app1.id, name: "k1" })).secret;
   const key2 = (await createApiKey(env, { workspaceId: ws.id, appId: app2.id, name: "k2" })).secret;
   await seedVerifiedSender(ws.id, app1.id);
-  await seedVerifiedSender(ws.id, app2.id);
+  // An address belongs to one app, so app two sends from its own.
+  await coreDb(env).insert(address).values({ workspaceId: ws.id, appId: app2.id, email: APP2_FROM, kind: "sender", canSend: true }).onConflictDoUpdate({ target: address.email, set: { workspaceId: ws.id, appId: app2.id } });
   return { rpc: new RelayRpc(createExecutionContext(), env), key1, key2, workspaceId: ws.id };
 }
 
@@ -30,7 +35,7 @@ describe("RelayRpc lookups", () => {
   it("returns only the app's own message for a key", async () => {
     const { rpc, key1, key2 } = await seed("lookup-keys");
     const sent = await rpc.send(key1, { ...mail, idempotencyKey: "order-1" });
-    const other = await rpc.send(key2, { ...mail, idempotencyKey: "order-1" });
+    const other = await rpc.send(key2, { ...mail, from: APP2_FROM, idempotencyKey: "order-1" });
     expect(other.messageId).not.toBe(sent.messageId);
     const mine = await rpc.messagesByKeys(key1, ["order-1", "order-missing"]);
     expect(mine).toEqual([expect.objectContaining({ key: "order-1", messageId: sent.messageId, status: "queued", sentAt: null, opens: 0 })]);

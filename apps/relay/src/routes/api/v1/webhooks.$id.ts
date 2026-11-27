@@ -7,7 +7,7 @@ export const Route = createFileRoute("/api/v1/webhooks/$id")({
   server: {
     handlers: {
       PATCH: apiRoute(async ({ env, scope, p, params, request }) =>
-        json(await updateWebhook(env, p, scope.appId, params.id, webhookPatchSchema.parse(await readJson(request)))),
+        json(await updateWebhook(env, p, scope.appId, params.id, webhookPatchSchema.parse(await readJson(request, 65_536)))),
       ),
       DELETE: apiRoute(async ({ env, scope, p, params }) => {
         await deleteWebhook(env, p, scope.appId, params.id);

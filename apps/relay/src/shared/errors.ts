@@ -1,6 +1,6 @@
 import { AppError } from "@foundry/commons/errors";
 
-export type Status = 400 | 401 | 403 | 404 | 409 | 422 | 429 | 500 | 503;
+export type Status = 400 | 401 | 403 | 404 | 409 | 413 | 422 | 429 | 500 | 503;
 type Row = { status: Status; copy?: string; denied?: true };
 
 // Errors thrown inside ClientDO cross Workers RPC, which keeps only the message, so the message string is the code.
@@ -56,7 +56,8 @@ export const ERRORS = {
   "unknown merge field": { status: 400, copy: "The body uses a merge field that doesn't exist. Check the merge field list." },
   "sender not verified": { status: 400, copy: "Choose a From address on a verified domain." },
   "sender not available": { status: 400 },
-  "no default sender": { status: 400 },
+  no_default_sender: { status: 422 },
+  "body too large": { status: 413 },
   "invalid schedule": { status: 400, copy: "Pick a time within the next year, not in the past." },
   "could not schedule": { status: 503, copy: "The campaign could not be scheduled. Try again in a moment." },
   "campaign not scheduled": { status: 409, copy: "This campaign is no longer scheduled. Refresh to see its current status." },

@@ -25,7 +25,7 @@ async function defaultSender(env: Env, scope: Scope, stream: Stream): Promise<st
         .from(address)
         .where(and(eq(address.id, addressId), eq(address.workspaceId, scope.workspaceId)))
     : [];
-  if (!found) throw new RelayError("no default sender");
+  if (!found) throw new RelayError("no_default_sender");
   return found.email;
 }
 

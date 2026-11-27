@@ -3,6 +3,7 @@ import { env, runInDurableObject } from "cloudflare:test";
 import { and, eq } from "drizzle-orm";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi, type MockInstance } from "vitest";
 import { setWorkspaceStatus } from "../src/services/admin";
+import { LIMITS_KEY } from "../src/core/limits";
 import { refreshWorkspaceLimits } from "../src/services/limits";
 import { handleSendBatch } from "../src/jobs/send-consumer";
 import { memorySesTransport } from "../src/core/ses";
@@ -435,7 +436,7 @@ describe("handleSendBatch", () => {
     const ws = "wsp_claim_no_limits";
     const stub = await seedWorkspace(ws);
     const job = await queue(stub, ws);
-    await runInDurableObject(stub, (_instance, state) => state.storage.kv.delete("limits"));
+    await runInDurableObject(stub, (_instance, state) => state.storage.kv.delete(LIMITS_KEY));
     vi.spyOn(env.CORE_DB, "prepare").mockImplementation(() => {
       throw new Error("D1 down");
     });

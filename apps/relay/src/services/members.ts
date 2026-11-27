@@ -1,24 +1,23 @@
 import { isAPIError } from "better-auth/api";
-import { and, asc, count, desc, eq, gte } from "drizzle-orm";
+import { and, asc, desc, eq } from "drizzle-orm";
 import { securityDb } from "../db/security/client";
 import { invitation, member, team, teamMember, user, workspace } from "../db/security/schema";
 import type { Env } from "../env";
-import { getWorkspaceProfile } from "../core/workspace-profile";
+import { inviteCap, invitesInWindow } from "../core/workspace-profile";
 import { createAuth } from "../lib/auth";
 import { assertSameOrigin, type ConsoleActor, parseRoles, requireSession } from "../core/session";
 import { RelayError } from "../shared/errors";
 import { type OrgRole } from "../shared/roles";
 import { DAY_MS } from "../shared/limits";
 
-export const INVITES_PER_DAY = 20;
-
-// better-auth refusals keep their message; only a 403 or 404 keeps its status, every other refusal is a 400.
+// better-auth refusals keep their message; only a 403, 404 or 429 keeps its status, every other refusal is a 400.
 async function authCall<T>(call: () => Promise<T>): Promise<T> {
   try {
     return await call();
   } catch (err) {
     if (isAPIError(err) && err.statusCode < 500) {
-      throw new RelayError("invalid input", err.statusCode === 403 || err.statusCode === 404 ? err.statusCode : 400, err.message);
+      const s = err.statusCode;
+      throw new RelayError("invalid input", s === 403 || s === 404 || s === 429 ? s : 400, err.message);
     }
     throw err;
   }
@@ -69,14 +68,6 @@ export async function listPeople(env: Env, actor: ConsoleActor) {
   };
 }
 
-async function invitesInWindow(env: Env, workspaceId: string): Promise<number> {
-  const [row] = await securityDb(env)
-    .select({ n: count() })
-    .from(invitation)
-    .where(and(eq(invitation.organizationId, workspaceId), gte(invitation.createdAt, new Date(Date.now() - DAY_MS))));
-  return row.n;
-}
-
 export async function inviteMember(
   env: Env,
   actor: ConsoleActor,
@@ -84,9 +75,8 @@ export async function inviteMember(
   input: { email: string; role: OrgRole },
 ): Promise<{ id: string }> {
   if (input.role === "owner" && !actor.roles.includes("owner")) throw new RelayError("forbidden");
-  const cap = (await getWorkspaceProfile(env, actor.workspaceId)).invitesPerDay ?? INVITES_PER_DAY;
-  if ((await invitesInWindow(env, actor.workspaceId)) >= cap) throw new RelayError("invite limit reached");
-
+  // beforeCreateInvitation refuses at the cap; the recount below catches concurrent requests that all passed it.
+  const cap = await inviteCap(env, actor.workspaceId);
   const email = input.email.trim().toLowerCase();
   const cancel = (invitationId: string) =>
     authCall(() => createAuth(env).api.cancelInvitation({ headers, body: { invitationId } }));

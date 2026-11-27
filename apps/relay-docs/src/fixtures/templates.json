@@ -182,12 +182,12 @@
     "response": { "data": { "messageId": "msg_Example0001", "status": "queued", "duplicate": false } },
     "errors": [
       { "status": 400, "message": "invalid input", "when": "The body is not valid JSON or fails validation." },
-      { "status": 400, "message": "no default sender", "when": "from is omitted and the app has no default sender for the stream." },
       { "status": 400, "message": "unsubscribe only on marketing", "when": "The template has an unsubscribe link and the stream is not marketing." },
       { "status": 400, "message": "unsubscribe link required", "when": "A marketing message lacks the unsubscribe link in html or text." },
       { "status": 403, "message": "workspace_suspended", "when": "The workspace is suspended." },
       { "status": 404, "message": "template not found", "when": "The template does not exist for your app." },
       { "status": 409, "message": "template disabled", "when": "The template is not enabled." },
+      { "status": 422, "message": "no_default_sender", "when": "from is omitted and the app has no default sender for the stream." },
       { "status": 422, "message": "sender_not_verified", "when": "from is not a verified sender." },
       { "status": 429, "message": "quota_exceeded", "when": "The monthly send quota is used up." }
     ]

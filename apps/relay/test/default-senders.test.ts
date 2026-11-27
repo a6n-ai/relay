@@ -89,15 +89,15 @@ describe("send without from", () => {
     expect(await t.stub.getMessage(t.workspaceId, sent.messageId)).toMatchObject({ fromName: "Custom", replyTo: "me@x.com" });
   });
 
-  it("is refused with 400 when the stream has no default, over HTTP and RPC", async () => {
+  it("is refused with 422 no_default_sender when the stream has no default, over HTTP and RPC", async () => {
     const t = await setup("ds-none");
     const tx = await t.sender("orders");
     await t.defaults(tx.id, null);
 
     const http = await t.call("/messages", { ...body, ...unsub, stream: "marketing" });
-    expect(http.status).toBe(400);
-    expect(await http.json()).toEqual({ error: "no default sender" });
-    await expect(t.rpc.send(t.key, { ...body, ...unsub, stream: "marketing" })).rejects.toThrow("no default sender");
+    expect(http.status).toBe(422);
+    expect(await http.json()).toEqual({ error: "no_default_sender" });
+    await expect(t.rpc.send(t.key, { ...body, ...unsub, stream: "marketing" })).rejects.toThrow("no_default_sender");
     const tpl = await t.call("/templates/send", { stream: "marketing", to: "a@x.com", templateId: "tpl_missing" });
     expect(tpl.status).toBe(404);
   });
