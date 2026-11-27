@@ -73,7 +73,7 @@ describe("password sign-in", () => {
   it("resets by link, then signs in with the new password and loses old sessions", async () => {
     const oldCookie = await cookieFor("reset@example.com", "user");
     await post("/request-password-reset", { email: "reset@example.com", redirectTo: "/reset-password" });
-    await expect.poll(() => memoryOtpMailer.lastOtp("reset@example.com")).toBeTruthy();
+    await expect.poll(() => memoryOtpMailer.lastOtp("reset@example.com")).toContain("/reset-password/");
     const token = new URL(memoryOtpMailer.lastOtp("reset@example.com")!).pathname.split("/").pop();
     const res = await post("/reset-password", { newPassword: "brand-new-pass-1", token });
     expect(res.status).toBe(200);

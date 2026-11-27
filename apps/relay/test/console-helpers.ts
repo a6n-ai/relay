@@ -25,14 +25,16 @@ export function freshIp(): Record<string, string> {
 }
 
 export async function sendOtp(email: string): Promise<string> {
+  const before = memoryOtpMailer.lastOtp(email);
   const sent = await SELF.fetch(`${BASE}/email-otp/send-verification-otp`, {
     method: "POST",
     headers: { ...json, ...freshIp() },
     body: JSON.stringify({ email, type: "sign-in" }),
   });
   expect(sent.status).toBe(200);
-  // The mail goes out after the response, so wait for it.
+  // The mail goes out after the response, so wait for a new code, not the previous one.
   await expect.poll(() => memoryOtpMailer.lastOtp(email)).toMatch(/^\d{6}$/);
+  await expect.poll(() => memoryOtpMailer.lastOtp(email) !== before).toBe(true);
   return memoryOtpMailer.lastOtp(email) as string;
 }
 

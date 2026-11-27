@@ -31,6 +31,7 @@ import { gateSuspendedWorkspace } from "./hooks/suspended";
 import type { AdminLinkState } from "./hooks/types";
 import { pickInviteMailer, pickMailer } from "./mailers";
 import { recordPasswordChange } from "./password";
+import { deliveryEmail } from "./recovery";
 import { ac as platformAc, orgAc, orgRoles, roles as platformRoles } from "./permissions";
 import { customRules } from "./rate-limit";
 
@@ -86,7 +87,7 @@ export function createAuth(env: Env) {
       // A mail failure is swallowed so a known address cannot be told apart from an unknown one by a 500.
       sendResetPassword: async ({ user, url }) => {
         try {
-          await pickMailer(env.OTP_MAILER, env).send(user.email, url, "reset-password");
+          await pickMailer(env.OTP_MAILER, env).send(await deliveryEmail(env, user.email), url, "reset-password");
         } catch (error) {
           console.error(`reset mail failed: ${error instanceof Error ? error.message : "unknown"}`);
         }
@@ -135,7 +136,7 @@ export function createAuth(env: Env) {
         allowedAttempts: 5,
         expiresIn: 600,
         sendVerificationOTP: async ({ email, otp, type }) => {
-          await pickMailer(env.OTP_MAILER, env).send(email, otp, type);
+          await pickMailer(env.OTP_MAILER, env).send(await deliveryEmail(env, email), otp, type);
         },
       }),
       organization({
