@@ -39,7 +39,7 @@ export const Route = createFileRoute("/_app/campaigns")({
   loaderDeps: ({ search }) => ({ appId: search.appId, cursor: search.cursor }),
   pendingComponent: () => <ListSkeleton columns={5} search filter view action />,
   loader: ({ deps, context }) =>
-    scopedLoad(deps.appId, context.shell.apps, async (appId) => {
+    scopedLoad(deps.appId, context.shell, async (appId) => {
       const campaigns = await fetchCampaigns({ data: { appId, cursor: deps.cursor } });
       return campaigns && { campaigns };
     }, {

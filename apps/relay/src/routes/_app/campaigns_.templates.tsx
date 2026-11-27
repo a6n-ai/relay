@@ -41,7 +41,7 @@ export const Route = createFileRoute("/_app/campaigns_/templates")({
   loaderDeps: ({ search }) => ({ appId: search.appId, cursor: search.cursor }),
   pendingComponent: () => <ListSkeleton columns={5} search filter view action />,
   loader: ({ deps, context }) =>
-    scopedLoad(deps.appId, context.shell.apps, async (appId) => {
+    scopedLoad(deps.appId, context.shell, async (appId) => {
       const templates = await fetchTemplates({ data: { appId, cursor: deps.cursor } });
       return templates && { templates };
     }, {

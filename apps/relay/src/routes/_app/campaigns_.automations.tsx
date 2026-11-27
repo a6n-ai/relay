@@ -38,7 +38,7 @@ export const Route = createFileRoute("/_app/campaigns_/automations")({
   loader: ({ deps, context }) =>
     scopedLoad(
       deps.appId,
-      context.shell.apps,
+      context.shell,
       async (appId) => {
         const automations = await fetchAutomations({ data: { appId } });
         if (!automations || "missing" in automations) return automations;

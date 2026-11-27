@@ -1,3 +1,4 @@
+import { canReadApps } from "../../components/lib/scoped-load";
 import { Button } from "@foundry/ui/button";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ListIcon } from "lucide-react";
@@ -30,6 +31,7 @@ export const Route = createFileRoute("/_app/lists")({
   }),
   loaderDeps: ({ search }) => ({ appId: search.appId }),
   loader: async ({ deps, context }) => {
+    if (!canReadApps(context.shell)) return null;
     const apps = context.shell.apps;
     const scoped = deps.appId ? apps.filter((a) => a.id === deps.appId) : apps;
     if (deps.appId && scoped.length === 0) return { missing: true as const };
