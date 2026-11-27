@@ -2,10 +2,10 @@
 
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { toast } from "@foundry/ui/toast";
 import { CAMPAIGN_VARIABLE_SAMPLES, CAMPAIGN_VARIABLES } from "../../email-content/variables";
 import type { FooterInfo } from "../../template";
 import { CampaignAttachments, type CampaignAttachment } from "../campaign-attachments";
+import { saveCampaignContent } from "../campaign-content-save";
 import type { CampaignContentRow } from "../campaign-content-section";
 import { useAutosave, type SaveState } from "../email-editor/autosave";
 import { EmailTemplateBuilder, type EmailTemplateBuilderHandle } from "../email-template-builder";
@@ -43,31 +43,20 @@ export const ContentStep = forwardRef<
     setHasContent(!!out.html.trim());
     // The row needs both; until then there is nothing the server would accept.
     if (!subject.trim() || !out.html.trim()) throw new Error("incomplete");
-    const res = await fetch(`/api/notifications/campaigns/${campaignPublicId}/content`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        channel: "email",
-        locale: "en",
-        subject,
-        body: out.body,
-        html: out.html,
-        preheader: out.preheader,
-        attachments: attachments.length > 0 ? attachments : undefined,
-        revision: revision.current,
-      }),
+    const res = await saveCampaignContent(campaignPublicId, {
+      channel: "email",
+      locale: "en",
+      subject,
+      body: out.body,
+      html: out.html,
+      preheader: out.preheader,
+      attachments,
+      revision: revision.current,
     });
-    if (res.status === 409) return "conflict";
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      // One id: autosave retries the same failure, which would otherwise stack identical toasts.
-      toast.error(data.detail ?? data.title ?? "Save failed", { id: `campaign-content-${campaignPublicId}` });
-      throw new Error("save failed");
-    }
-    revision.current = data.revision;
+    if (res === "conflict") return "conflict";
+    revision.current = res.revision;
     // Keep the cached page current, so browser Back/Forward never shows an older email or revision.
     router.refresh();
-    if (data.removed?.length) toast.warning(`Removed ${data.removed.length} unsafe item(s): ${data.removed.join(", ")}`);
     return "ok";
   }
 

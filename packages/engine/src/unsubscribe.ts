@@ -21,12 +21,7 @@ export function signUnsubscribeToken(secret: string, address: string): string {
 
 export function verifyUnsubscribeToken(secret: string, address: string, token: string): boolean {
   const expected = Buffer.from(signUnsubscribeToken(secret, address), "hex");
-  let given: Buffer;
-  try {
-    given = Buffer.from(token, "hex");
-  } catch {
-    return false;
-  }
+  const given = Buffer.from(token, "hex");
   return expected.length === given.length && timingSafeEqual(expected, given);
 }
 

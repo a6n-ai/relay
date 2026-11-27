@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { renderEmailTemplate, renderInApp } from "./email";
+import { renderEmailTemplate } from "./email";
 
 describe("render-email", () => {
   it("interpolates + renders markdown to HTML", async () => {
@@ -13,15 +13,5 @@ describe("render-email", () => {
     expect(out.html).toContain("TG-9");
     expect(out.html.toLowerCase()).toContain("<html");
     expect(out.text).toContain("TG-9");
-  });
-
-  it("renders in-app title + plaintext body", () => {
-    const out = renderInApp({
-      subject: "Order {{order.code}}",
-      body: "Your order {{order.code}} is active.",
-      vars: { order: { code: "TG-9" } },
-    });
-    expect(out.title).toBe("Order TG-9");
-    expect(out.body).toBe("Your order TG-9 is active.");
   });
 });

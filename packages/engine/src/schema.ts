@@ -14,6 +14,9 @@ import {
   type PgEnum,
 } from "drizzle-orm/pg-core";
 
+import { notificationChannel } from "./enums";
+export { notificationChannel };
+
 // Re-exported so an app can build both table sets from one import path
 // (`@relay/engine/schema`), which is what drizzle.config resolves.
 export {
@@ -21,10 +24,6 @@ export {
   type AudienceDef,
   type CampaignTables,
 } from "./campaign-schema";
-
-export const notificationChannel = pgEnum("notification_channel", [
-  "email", "in_app", "sms", "whatsapp",
-]);
 
 export const outboxStatus = pgEnum("notification_outbox_status", [
   "pending", "processing", "sent", "failed",
@@ -35,11 +34,6 @@ export const messageKind = pgEnum("message_kind", ["transactional", "marketing"]
 
 /** How far a suppression reaches. See messageSuppression for why this is not a boolean. */
 export const suppressionScope = pgEnum("suppression_scope", ["all", "marketing"]);
-
-export const mailboxDirection = pgEnum("mailbox_direction", ["out", "in"]);
-
-/** Why Relay produced the letter. Distinct from outbox kind (consent). */
-export const mailboxOrigin = pgEnum("mailbox_origin", ["automatic", "campaign", "test", "manual"]);
 
 /**
  * Build the notification tables against one app's `users` table and event enum.

@@ -10,7 +10,7 @@ import {
   uniqueIndex,
   type PgEnum,
 } from "drizzle-orm/pg-core";
-import { notificationChannel } from "./schema";
+import { notificationChannel } from "./enums";
 
 export const campaignStatus = pgEnum("campaign_status", [
   "draft", "scheduled", "sending", "sent", "completed", "paused", "cancelled",
