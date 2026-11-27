@@ -1,7 +1,7 @@
 import { variableTokens } from "../../email-content/variables";
 import { lintEmailHtml } from "../../email-content/email-compat";
 
-export interface EditorDiagnostic {
+interface EditorDiagnostic {
   from: number;
   to: number;
   severity: "error" | "warning";

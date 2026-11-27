@@ -1,6 +1,7 @@
 import { useMatch } from "@tanstack/react-router";
 import type { ReactNode } from "react";
-import { isDenied } from "../../shared/errors";
+import { codeOf, isDenied, type ErrorCode } from "../../shared/errors";
+import { isSuspended } from "../../shared/limits";
 import type { Shell } from "../../shared/views";
 import { Hint, Title } from "../form/text";
 
@@ -25,9 +26,9 @@ const COPY: Record<DeniedReason, { title: string; body: string }> = {
   },
 };
 
-export function deniedReason(shell: Shell | undefined, message?: string): DeniedReason {
-  if (shell?.active?.status === "suspended" || message === "workspace suspended") return "suspended";
-  if (!shell?.active || message === "no workspace") return "no-workspace";
+export function deniedReason(shell: Shell | undefined, code?: ErrorCode): DeniedReason {
+  if (isSuspended(shell?.active?.status) || code === "workspace suspended") return "suspended";
+  if (!shell?.active || code === "no workspace") return "no-workspace";
   return "not-allowed";
 }
 
@@ -51,13 +52,13 @@ export function DeniedState({ reason, label }: { reason: DeniedReason; label?: s
 export function AppError({ error }: { error: unknown }) {
   // Outside _app (sign-in, invite) there is no match, so the shell is undefined and only the generic copy can show.
   const shell = useMatch({ from: "/_app", shouldThrow: false, select: (m) => m.context.shell });
-  const message = error instanceof Error ? error.message : "";
-  if (!isDenied(message)) {
+  const code = codeOf(error);
+  if (!isDenied(code)) {
     return (
       <p role="alert" className="p-6 text-sm text-destructive">
         Something went wrong. Refresh the page to try again.
       </p>
     );
   }
-  return <DeniedState reason={deniedReason(shell, message)} />;
+  return <DeniedState reason={deniedReason(shell, code)} />;
 }

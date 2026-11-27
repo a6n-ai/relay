@@ -143,4 +143,4 @@ export const copyOf = (code: string | null | undefined): string | undefined => {
   return (ERRORS[code as ErrorCode] as Row).copy;
 };
 
-export const isDenied = (message: string): boolean => Object.hasOwn(ERRORS, message) && "denied" in ERRORS[message as ErrorCode];
+export const isDenied = (code: ErrorCode | undefined): boolean => code !== undefined && "denied" in ERRORS[code];

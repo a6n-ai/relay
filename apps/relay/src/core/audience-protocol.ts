@@ -1,4 +1,5 @@
-export const AUDIENCE_BINDINGS = ["TIFFIN_AUDIENCE"] as const;
+import { AUDIENCE_BINDINGS } from "../shared/audience";
+
 export const HOOK_PAGE_LIMIT = 500;
 
 /**

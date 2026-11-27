@@ -27,7 +27,6 @@ import { scopedLoad } from "../../components/lib/scoped-load";
 type TemplatesSearch = { appId?: string; cursor?: string; offset?: number; q?: string; event?: string; locale?: string };
 
 const ROUTE = "/campaigns/templates";
-const text = (v: unknown) => (typeof v === "string" && v ? v : undefined);
 
 export const Route = createFileRoute("/_app/campaigns_/templates")({
   staticData: { title: "Templates", copy: "Reusable layouts for your campaigns and app emails.", scoped: "first" },
@@ -35,8 +34,8 @@ export const Route = createFileRoute("/_app/campaigns_/templates")({
     appId: str(search.appId),
     cursor: str(search.cursor),
     offset: posInt(search.offset),
-    event: text(search.event),
-    locale: text(search.locale),
+    event: str(search.event),
+    locale: str(search.locale),
     q: str(search.q),
   }),
   loaderDeps: ({ search }) => ({ appId: search.appId, cursor: search.cursor }),

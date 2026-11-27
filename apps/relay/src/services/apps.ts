@@ -150,3 +150,12 @@ export async function setDefaultSenders(
     .where(and(eq(app.id, appId), eq(app.workspaceId, p.workspaceId)));
   await audit(env, p, "app.default_senders", appId, { appId, transactionalId: input.transactionalId, marketingId: input.marketingId });
 }
+
+// A key reaches only its own app; a console user reaches any app of the workspace.
+export async function ownApp(env: Env, p: Principal, appId: string): Promise<void> {
+  if (p.appId !== null) {
+    if (appId !== p.appId) throw new RelayError("not found");
+    return;
+  }
+  await getApp(env, p, appId);
+}

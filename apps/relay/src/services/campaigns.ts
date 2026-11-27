@@ -17,7 +17,8 @@ import { fillUnsubscribe, MERGE_SAMPLES, renderMerge, unknownMergeFields } from 
 import { type AudiencePreview, type CampaignStats, type CampaignView, type ListView } from "../shared/views";
 import { startCampaignRun, stopRun, verifiedSenders } from "./campaign-run";
 import { refreshWorkspaceLimits } from "./limits";
-import { ownApp, audit, owned, type Principal } from "./principal";
+import { audit, owned, type Principal } from "./principal";
+import { ownApp } from "./apps";
 import type { campaignCreateInput } from "./schemas";
 
 type CampaignResult = CampaignView & { consoleUrl?: string };
@@ -26,7 +27,7 @@ type CampaignResult = CampaignView & { consoleUrl?: string };
 const resultFor = (env: Env, p: Principal, campaign: CampaignView): CampaignResult =>
   p.keyId ? { ...campaign, consoleUrl: `${env.BETTER_AUTH_URL}/campaigns/${campaign.id}?appId=${campaign.appId}` } : campaign;
 
-async function ownedCampaign(env: Env, p: Principal, id: string): Promise<CampaignView> {
+export async function getCampaign(env: Env, p: Principal, id: string): Promise<CampaignView> {
   return owned(p, await clientFor(env, p.workspaceId).getCampaign(p.workspaceId, id));
 }
 
@@ -41,10 +42,8 @@ export async function listCampaigns(
   return clientFor(env, p.workspaceId).listCampaigns(p.workspaceId, cursor, appId);
 }
 
-export const getCampaign = ownedCampaign;
-
 export async function campaignStats(env: Env, p: Principal, id: string): Promise<CampaignStats> {
-  await ownedCampaign(env, p, id);
+  await getCampaign(env, p, id);
   const stats = await clientFor(env, p.workspaceId).campaignStats(p.workspaceId, id);
   if (!stats) throw new RelayError("not found");
   return stats;
@@ -61,7 +60,7 @@ export async function createCampaign(env: Env, p: Principal, appId: string, inpu
 
 // Merge fields and the sender are checked here; the DO checks draft status and list ownership in its own transaction.
 export async function updateCampaign(env: Env, p: Principal, id: string, patch: CampaignPatch): Promise<CampaignResult> {
-  const current = await ownedCampaign(env, p, id);
+  const current = await getCampaign(env, p, id);
   if (patch.audienceQuery && patch.audienceQuery.length > 1000) throw new RelayError("invalid input");
   // {{data.*}} is only valid where a hook supplies the data.
   const data = (patch.audienceKind ?? current.audienceKind) === "hook";
@@ -81,14 +80,14 @@ export async function updateCampaign(env: Env, p: Principal, id: string, patch: 
 }
 
 export async function deleteCampaign(env: Env, p: Principal, id: string): Promise<void> {
-  await ownedCampaign(env, p, id);
+  await getCampaign(env, p, id);
   await clientFor(env, p.workspaceId).deleteCampaign(p.workspaceId, id);
   await audit(env, p, "campaign.delete", id);
 }
 
 // A hook audience is resolved at send time, so there is no count to preview.
 export async function previewAudience(env: Env, p: Principal, id: string): Promise<AudiencePreview | null> {
-  const campaign = await ownedCampaign(env, p, id);
+  const campaign = await getCampaign(env, p, id);
   if (campaign.audienceKind === "hook") return null;
   return clientFor(env, p.workspaceId).previewAudience(p.workspaceId, campaign.appId, campaign.listIds, campaign.fromEmail);
 }
@@ -116,7 +115,7 @@ export async function setPostalAddress(env: Env, p: Principal, value: string): P
 
 // Renders with the sample contact; unsubscribe links point at "#" and the HTML is sanitized as the recipient would see it.
 export async function previewHtml(env: Env, p: Principal, id: string): Promise<{ htmlSafe: string; text: string; subject: string }> {
-  const campaign = await ownedCampaign(env, p, id);
+  const campaign = await getCampaign(env, p, id);
   return {
     htmlSafe: sanitizeEmailHtml(fillUnsubscribe(renderMerge(campaign.html, MERGE_SAMPLES, "html"), "#")).html,
     text: fillUnsubscribe(renderMerge(campaign.text, MERGE_SAMPLES, "text"), "#"),
@@ -128,7 +127,7 @@ export async function scheduleCampaign(env: Env, p: Principal, id: string, at: n
   const now = Date.now();
   // Same window for both transports; the console shows its own copy for it, the API keeps the generic one.
   if (at < now - 60_000 || at > now + 365 * DAY_MS) throw new RelayError(p.keyId ? "invalid input" : "invalid schedule");
-  await ownedCampaign(env, p, id);
+  await getCampaign(env, p, id);
   const outcome = await startCampaignRun(env, p.workspaceId, id, at);
   if (outcome === "could_not_schedule") throw new RelayError("could not schedule");
   if ("problems" in outcome) throw new RelayError("campaign not ready", 409, `campaign not ready: ${outcome.problems.join(", ")}`);
@@ -137,21 +136,21 @@ export async function scheduleCampaign(env: Env, p: Principal, id: string, at: n
 }
 
 export async function unscheduleCampaign(env: Env, p: Principal, id: string): Promise<void> {
-  const campaign = await ownedCampaign(env, p, id);
+  const campaign = await getCampaign(env, p, id);
   await clientFor(env, p.workspaceId).unscheduleCampaign(p.workspaceId, id);
   await stopRun(env, id, campaign.runSeq);
   await audit(env, p, "campaign.unschedule", id);
 }
 
 export async function pauseCampaign(env: Env, p: Principal, id: string): Promise<void> {
-  const campaign = await ownedCampaign(env, p, id);
+  const campaign = await getCampaign(env, p, id);
   await clientFor(env, p.workspaceId).pauseCampaign(p.workspaceId, id);
   await stopRun(env, id, campaign.runSeq);
   await audit(env, p, "campaign.pause", id);
 }
 
 export async function resumeCampaign(env: Env, p: Principal, id: string): Promise<{ runSeq: number }> {
-  await ownedCampaign(env, p, id);
+  await getCampaign(env, p, id);
   const client = clientFor(env, p.workspaceId);
   const outcome = await client.resumeCampaign(p.workspaceId, id);
   try {
@@ -169,7 +168,7 @@ export async function resumeCampaign(env: Env, p: Principal, id: string): Promis
 }
 
 export async function cancelCampaign(env: Env, p: Principal, id: string): Promise<{ dropped: number }> {
-  const campaign = await ownedCampaign(env, p, id);
+  const campaign = await getCampaign(env, p, id);
   const outcome = await clientFor(env, p.workspaceId).cancelCampaign(p.workspaceId, id);
   await stopRun(env, id, campaign.runSeq);
   await audit(env, p, "campaign.cancel", id, { dropped: outcome.dropped });

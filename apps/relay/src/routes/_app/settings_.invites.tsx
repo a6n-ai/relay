@@ -18,12 +18,14 @@ import { StatusBadge } from "../../components/page/status-badge";
 import { useCan } from "../../components/lib/use-can";
 import { cancelInviteFn, fetchPeople } from "../../console/members.fns";
 import { formatDate } from "../../components/lib/format-date";
+import { isSuspended } from "../../shared/limits";
+import { flag } from "../../components/lib/route-search";
 
 
 export const Route = createFileRoute("/_app/settings_/invites")({
   staticData: { title: "Invites", copy: "People you have asked to join this workspace." },
   validateSearch: (search: Record<string, unknown>): { new?: 1 } => ({
-    new: search.new === 1 || search.new === "1" ? 1 : undefined,
+    new: flag(search.new, 1, "1") && 1,
   }),
   loader: () => fetchPeople(),
   pendingComponent: () => <ListSkeleton columns={4} action />,
@@ -43,7 +45,7 @@ function InvitesPage() {
   const router = useRouter();
   const [open, setOpen] = useNewParam();
   const [cancelling, setCancelling] = useState<string | null>(null);
-  const suspended = shell.active?.status === "suspended";
+  const suspended = isSuspended(shell.active?.status);
   const ownerActor = (shell.active?.roles ?? []).includes("owner");
   const canInvite = useCan({ invitation: ["create"] });
   const canCancel = useCan({ invitation: ["cancel"] });

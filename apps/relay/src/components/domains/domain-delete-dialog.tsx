@@ -6,8 +6,9 @@ import { useEffect, useState } from "react";
 import { deleteDomainFn, domainDeletePreview } from "../../console/domains.fns";
 import { ConfirmDialog } from "../page/confirm-dialog";
 import { DnsRecords } from "./dns-records";
-import { errorText } from "../lib/error-text";
+import { useLoad } from "../lib/use-load";
 import { Mono } from "../form/text";
+import { confirmAction } from "../lib/run-action";
 
 type Preview = Awaited<ReturnType<typeof domainDeletePreview>>;
 
@@ -31,30 +32,31 @@ export function DomainDeleteDialog({
   const [deleteHistory, setDeleteHistory] = useState(false);
 
   useEffect(() => {
-    if (!open) {
-      setPreview(null);
-      setDeleteHistory(false);
-      return;
-    }
-    let live = true;
-    domainDeletePreview({ data: { id } }).then(
-      (p) => live && setPreview(p),
-      (err) => {
-        if (!live) return;
-        setOpen(false);
-        toast.error(errorText(err, "Could not load the delete preview"));
-      },
-    );
-    return () => {
-      live = false;
-    };
-  }, [open, id]);
+    if (open) return;
+    setPreview(null);
+    setDeleteHistory(false);
+  }, [open]);
+  useLoad(open ? () => domainDeletePreview({ data: { id } }) : null, [open, id], {
+    onData: setPreview,
+    onError: (copy) => {
+      setOpen(false);
+      toast.error(copy);
+    },
+    fallback: "Could not load the delete preview",
+  });
 
   async function confirm() {
-    const { ownerCommand } = await deleteDomainFn({ data: { id, confirm: domain, deleteHistory } });
-    toast.success("Domain deleted");
-    if (ownerCommand) toast("Delete the SES identity as the owner", { description: ownerCommand });
-    await router.invalidate();
+    let ownerCommand: string | null | undefined;
+    await confirmAction(
+      async () => {
+        ({ ownerCommand } = await deleteDomainFn({ data: { id, confirm: domain, deleteHistory } }));
+      },
+      "Domain deleted",
+      async () => {
+        if (ownerCommand) toast("Delete the SES identity as the owner", { description: ownerCommand });
+        await router.invalidate();
+      },
+    );
   }
 
   return (

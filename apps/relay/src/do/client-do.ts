@@ -3,7 +3,8 @@ import { DurableObject } from "cloudflare:workers";
 import { ownedBy, ownedRaw, r2Keys } from "../core/r2-keys";
 import { and, eq, gte, inArray, isNotNull, isNull, lt, ne, or, sql, type SQLWrapper } from "drizzle-orm";
 import { drizzle, type DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
-import { brandDomain, campaignProblems, IMPLIED_CONSENT_MS, type CampaignProblem } from "../core/campaigns";
+import { brandDomain, IMPLIED_CONSENT_MS } from "../core/campaigns";
+import { campaignProblems, type CampaignProblem } from "../shared/campaign-problems";
 import { CHUNK_SIZE, ENQUEUE_BATCH } from "../core/campaign-run";
 import { contactValues, fillUnsubscribe, hasMergeToken, MERGE_SAMPLES, renderMerge, type MergeData } from "../shared/merge";
 import { sesSendRate } from "../core/send-rate";
@@ -48,17 +49,17 @@ import { createAutomationRow, deleteAutomationRow, earliestDue, enrolAutomations
 import { RelayError, codeOf, fail } from "../shared/errors";
 import { type DeliveryView, type CampaignStats, type AudiencePreview, type CampaignView, type ListView, type MemberView, type TemplateView, type AutomationView } from "../shared/views";
 import { type Stream, type SuppressionReason } from "../shared/mail";
-import { DAY_MS } from "../shared/limits";
+import { DAY_MS, isSuspended } from "../shared/limits";
 
 // failed: indexes into the input whose transaction threw. They rolled back alone and must be retried.
-export type SesEventResult = {
+type SesEventResult = {
   applied: number;
   ignored: number;
   failed: number[];
   usage: { day: string; delivered: number; bounced: number; sent?: number }[];
 };
 
-export type SendClaim =
+type SendClaim =
   | { kind: "skip"; reason: "missing" | "sent" | "failed" | "suppressed" }
   | { kind: "busy"; retryInSeconds: number }
   | { kind: "send"; attempt: number; request: SesSendRequest };
@@ -75,6 +76,16 @@ const SWEEP_CHUNK = 100;
 // Higher rank wins a suppression conflict: a stronger reason is never replaced by a weaker one.
 const reasonRank = (column: SQLWrapper) =>
   sql`CASE ${column} WHEN 'complaint' THEN 4 WHEN 'bounce' THEN 3 WHEN 'unsubscribe' THEN 2 ELSE 1 END`;
+
+// The one pre-send check: a row that is gone, already settled or leased by another job never reaches a send.
+function claimGate<R extends { status: string; sesMessageId: string | null; claimedUntil: number | null }>(row: R | undefined, now: number): { gate: SendClaim } | { row: R } {
+  if (!row) return { gate: { kind: "skip", reason: "missing" } };
+  if (row.status !== "queued" || row.sesMessageId) {
+    return { gate: { kind: "skip", reason: row.status === "queued" ? "sent" : (row.status as "sent" | "failed" | "suppressed") } };
+  }
+  if (row.claimedUntil != null && row.claimedUntil > now) return { gate: { kind: "busy", retryInSeconds: Math.ceil((row.claimedUntil - now) / 1000) } };
+  return { row };
+}
 
 export class ClientDO extends DurableObject<Env> {
   readonly db: DrizzleSqliteDODatabase<typeof schema>;
@@ -122,7 +133,7 @@ export class ClientDO extends DurableObject<Env> {
 
   private async create(workspaceId: string, data: ResolvedSendInput): Promise<SendResult> {
     const limits = await this.limitsOrThrow(workspaceId, { forSender: data.from });
-    if (limits.status === "suspended") throw new RelayError("workspace_suspended");
+    if (isSuspended(limits.status)) throw new RelayError("workspace_suspended");
     const sender = limits.senders[data.from];
     // An address belongs to one app: another app's key in the same workspace may not send from it.
     if (!sender || sender.appId !== data.appId) throw new RelayError("sender_not_verified");
@@ -647,10 +658,10 @@ export class ClientDO extends DurableObject<Env> {
       this.pauseRun(id, head.runSeq, null, Date.now());
     });
   }
-  // The workflow pause: never throws for a stale run, so its step does not retry. Returns whether it paused.
-  async pauseRunning(workspaceId: string, id: string, runSeq: number, error: string | null): Promise<boolean> {
+  // The workflow pause: never throws for a stale run, so its step does not retry.
+  async pauseRunning(workspaceId: string, id: string, runSeq: number, error: string | null): Promise<void> {
     await this.ready(workspaceId);
-    return this.pauseRun(id, runSeq, error, Date.now());
+    this.pauseRun(id, runSeq, error, Date.now());
   }
   async resumeCampaign(workspaceId: string, id: string): Promise<{ runSeq: number }> {
     await this.ready(workspaceId);
@@ -887,7 +898,7 @@ export class ClientDO extends DurableObject<Env> {
   // A lease (claimed_until) stops a second job from sending while the first is in flight.
   async claimSend(workspaceId: string, messageId: string, now = Date.now()): Promise<SendClaim> {
     await this.ready(workspaceId);
-    const queued = this.db
+    const found = this.db
       .select({
         fromEmail: schema.message.fromEmail,
         stream: schema.message.stream,
@@ -898,13 +909,9 @@ export class ClientDO extends DurableObject<Env> {
       .from(schema.message)
       .where(eq(schema.message.id, messageId))
       .get();
-    if (!queued) return { kind: "skip", reason: "missing" };
-    if (queued.status !== "queued" || queued.sesMessageId) {
-      return { kind: "skip", reason: queued.status === "queued" ? "sent" : (queued.status as "sent" | "failed" | "suppressed") };
-    }
-    if (queued.claimedUntil != null && queued.claimedUntil > now) {
-      return { kind: "busy", retryInSeconds: Math.ceil((queued.claimedUntil - now) / 1000) };
-    }
+    const early = claimGate(found, now);
+    if ("gate" in early) return early.gate;
+    const { row: queued } = early;
     // Only a row about to be sent needs limits. Read before the transaction. With no snapshot and no D1, the job retries: queued mail is never failed for an outage.
     let limits: WorkspaceLimits;
     try {
@@ -921,14 +928,9 @@ export class ClientDO extends DurableObject<Env> {
       | { kind: "claimed"; attempt: number; row: typeof schema.message.$inferSelect; region: string; body: MessageBody | null }
       | { kind: "suppressed"; htmlKey: string | null }
       | { kind: "refused"; htmlKey: string | null } => {
-      const row = this.db.select().from(schema.message).where(eq(schema.message.id, messageId)).get();
-      if (!row) return { kind: "skip", reason: "missing" };
-      if (row.status !== "queued" || row.sesMessageId) {
-        return { kind: "skip", reason: row.status === "queued" ? "sent" : (row.status as "sent" | "failed" | "suppressed") };
-      }
-      if (row.claimedUntil != null && row.claimedUntil > now) {
-        return { kind: "busy", retryInSeconds: Math.ceil((row.claimedUntil - now) / 1000) };
-      }
+      const gated = claimGate(this.db.select().from(schema.message).where(eq(schema.message.id, messageId)).get(), now);
+      if ("gate" in gated) return gated.gate;
+      const { row } = gated;
       // Re-checked at claim time: a bounce or complaint can land while the row waits in the queue.
       if (this.suppressed(row.toEmail ?? "", row.stream as Stream, row.fromEmail)) {
         this.db
@@ -940,8 +942,8 @@ export class ClientDO extends DurableObject<Env> {
         return { kind: "suppressed", htmlKey: row.htmlKey };
       }
       // A suspension or a revoked sender can land while the row waits in the queue; the message fails, it is not held.
-      if (limits.status === "suspended" || limits.senders[row.fromEmail ?? ""]?.appId !== row.appId) {
-        this.failMessage(messageId, limits.status === "suspended" ? "workspace_suspended" : "sender_not_verified", now, { htmlKey: null });
+      if (isSuspended(limits.status) || limits.senders[row.fromEmail ?? ""]?.appId !== row.appId) {
+        this.failMessage(messageId, isSuspended(limits.status) ? "workspace_suspended" : "sender_not_verified", now, { htmlKey: null });
         return { kind: "refused", htmlKey: row.htmlKey };
       }
       let body: MessageBody | null = null;
@@ -1430,13 +1432,15 @@ export class ClientDO extends DurableObject<Env> {
     const cached = this.ctx.storage.kv.get<WorkspaceLimits>(LIMITS_KEY);
     const age = cached ? Date.now() - cached.fetchedAt : Infinity;
     const senderMiss = forSender !== undefined && !cached?.senders[forSender];
-    if (cached && age < LIMITS_TTL_MS && !(senderMiss && age > SENDER_RETRY_MS)) return { ...cached, postalAddress: cached.postalAddress ?? null };
+    const fromSnapshot = (snapshot: WorkspaceLimits) => ({ ...snapshot, postalAddress: snapshot.postalAddress ?? null });
+    if (cached && age < LIMITS_TTL_MS && !(senderMiss && age > SENDER_RETRY_MS)) return fromSnapshot(cached);
     try {
       return await this.loadLimits(workspaceId);
     } catch (err) {
       console.error("ClientDO: failed to reload workspace limits, using the cached snapshot", describeError(err));
-      if (!cached) throw new RelayError("limits unavailable");
-      return cached;
+      // A sender the old snapshot lacks may be newly verified: answer "unavailable", never a false "not verified".
+      if (!cached || senderMiss) throw new RelayError("limits unavailable");
+      return fromSnapshot(cached);
     }
   }
 
@@ -1620,23 +1624,22 @@ export class ClientDO extends DurableObject<Env> {
   }
 
   // Pauses only the run that is still sending: a newer run or a manual pause stays as it is.
-  private pauseRun(id: string, runSeq: number, error: string | null, now: number): boolean {
-    return this.ctx.storage.transactionSync(
-      () =>
-        this.ctx.storage.sql.exec(
-          "UPDATE campaign SET status = 'paused', error = ?, updated_at = ? WHERE id = ? AND status = 'sending' AND run_seq = ?",
-          error,
-          now,
-          id,
-          runSeq,
-        ).rowsWritten > 0,
-    );
+  private pauseRun(id: string, runSeq: number, error: string | null, now: number): void {
+    this.ctx.storage.transactionSync(() => {
+      this.ctx.storage.sql.exec(
+        "UPDATE campaign SET status = 'paused', error = ?, updated_at = ? WHERE id = ? AND status = 'sending' AND run_seq = ?",
+        error,
+        now,
+        id,
+        runSeq,
+      );
+    });
   }
 
   // Null means the run was paused here and the caller reports it stopped.
   private async runGate(workspaceId: string, id: string, runSeq: number, campaign: { appId: string; fromEmail: string | null }, now: number) {
     const limits = await this.limitsOrThrow(workspaceId, { forSender: campaign.fromEmail ?? undefined });
-    if (limits.status === "suspended") {
+    if (isSuspended(limits.status)) {
       this.pauseRun(id, runSeq, "workspace_suspended", now);
       return null;
     }

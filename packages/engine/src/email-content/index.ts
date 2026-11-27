@@ -1,3 +1,4 @@
+export * from "./preheader";
 export * from "./sanitize";
 export * from "./text";
 export * from "./variables";

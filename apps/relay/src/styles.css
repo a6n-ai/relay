@@ -15,20 +15,12 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
-  --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
   --color-muted: var(--muted);
@@ -36,11 +28,6 @@
   --color-secondary: var(--secondary);
   --color-primary-foreground: var(--primary-foreground);
   --color-primary: var(--primary);
-  --color-primary-hover: var(--primary-hover);
-  --color-warn-hover: var(--warn-hover);
-  --color-accent-badge: var(--accent-badge);
-  --color-accent-badge-hover: var(--accent-badge-hover);
-  --color-accent-badge-foreground: var(--accent-badge-foreground);
   --color-popover-foreground: var(--popover-foreground);
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
@@ -52,27 +39,14 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
-  --color-ok: var(--ok);
-  --color-warn: var(--warn);
-  --color-bad: var(--bad);
-  --color-success: var(--success);
-  --color-success-foreground: var(--success-foreground);
-  --color-warning: var(--warning);
-  --color-warning-foreground: var(--warning-foreground);
   --color-info: var(--info);
-  --color-info-foreground: var(--info-foreground);
-  --color-destructive-foreground: var(--destructive-foreground);
-  --duration-fast: 150ms;
   --duration-base: 250ms;
-  --duration-slow: 400ms;
   --ease-soft: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 :root {
   color-scheme: light;
-  --brand: #171717;
-  --brand-foreground: #ffffff;
   --background: #ffffff;
   --foreground: #171717;
   --card: #ffffff;
@@ -92,45 +66,22 @@
   --border: #ebebeb;
   --input: #ebebeb;
   --ring: #006bff;
-  --chart-1: #171717;
-  --chart-2: #666666;
-  --chart-3: #a8a8a8;
-  --chart-4: #d4d4d4;
-  --chart-5: #006bff;
   --radius: 0.375rem;
   --sidebar: #fafafa;
   --sidebar-foreground: #171717;
-  --sidebar-primary: #171717;
-  --sidebar-primary-foreground: #ffffff;
   --sidebar-accent: #f2f2f2;
   --sidebar-accent-foreground: #171717;
   --sidebar-border: #ebebeb;
   --sidebar-ring: #006bff;
   --ok: #107d32;
   --warn: #a35200;
-  --warn-hover: #8a4600;
-  --bad: #d93036;
   --success: var(--ok);
-  --success-foreground: #ffffff;
   --warning: var(--warn);
-  --warning-foreground: #ffffff;
   --info: #006bff;
-  --info-foreground: #ffffff;
-  --destructive-foreground: #ffffff;
-  --accent-badge: #171717;
-  --accent-badge-hover: #2e2e2e;
-  --accent-badge-foreground: #ffffff;
-  --tag-blue: #006bff;
-  --tag-green: #107d32;
-  --tag-orange: #c35f00;
-  --tag-yellow: #a35200;
-  --tag-red: #d93036;
 }
 
 .dark {
   color-scheme: dark;
-  --brand: #ededed;
-  --brand-foreground: #0a0a0a;
   --background: #0a0a0a;
   --foreground: #ededed;
   --card: #111111;
@@ -150,38 +101,17 @@
   --border: #2e2e2e;
   --input: #2e2e2e;
   --ring: #52a8ff;
-  --chart-1: #ededed;
-  --chart-2: #a1a1a1;
-  --chart-3: #6b6b6b;
-  --chart-4: #3d3d3d;
-  --chart-5: #52a8ff;
   --sidebar: #0a0a0a;
   --sidebar-foreground: #ededed;
-  --sidebar-primary: #ededed;
-  --sidebar-primary-foreground: #0a0a0a;
   --sidebar-accent: #1a1a1a;
   --sidebar-accent-foreground: #ededed;
   --sidebar-border: #2e2e2e;
   --sidebar-ring: #52a8ff;
   --ok: #3fb950;
   --warn: #f5a524;
-  --warn-hover: #f7b955;
-  --bad: #ff6166;
   --success: var(--ok);
-  --success-foreground: #04200c;
   --warning: var(--warn);
-  --warning-foreground: #2a1700;
   --info: #52a8ff;
-  --info-foreground: #00172e;
-  --destructive-foreground: #2a0709;
-  --accent-badge: #ededed;
-  --accent-badge-hover: #d4d4d4;
-  --accent-badge-foreground: #0a0a0a;
-  --tag-blue: #52a8ff;
-  --tag-green: #3fb950;
-  --tag-orange: #f5a524;
-  --tag-yellow: #f5d90a;
-  --tag-red: #ff6166;
 }
 
 @layer base {

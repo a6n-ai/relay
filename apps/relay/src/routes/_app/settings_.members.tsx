@@ -16,6 +16,7 @@ import { PageHeader } from "../../components/shell/page-header";
 import { useCan } from "../../components/lib/use-can";
 import { fetchPeople, removeMemberFn } from "../../console/members.fns";
 import { str } from "../../components/lib/route-search";
+import { isSuspended } from "../../shared/limits";
 
 
 export const Route = createFileRoute("/_app/settings_/members")({
@@ -33,7 +34,7 @@ function MembersPage() {
   const [q, setQ] = useUrlFilter("q");
   const { shell } = Route.useRouteContext();
   const router = useRouter();
-  const suspended = shell.active?.status === "suspended";
+  const suspended = isSuspended(shell.active?.status);
   const ownerActor = (shell.active?.roles ?? []).includes("owner");
   const canManage = useCan({ member: ["update"] });
   const canRemove = useCan({ member: ["delete"] });

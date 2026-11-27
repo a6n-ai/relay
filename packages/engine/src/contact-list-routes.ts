@@ -66,7 +66,7 @@ export async function listContactLists(deps: CampaignRouteDeps): Promise<Contact
   return rows.map((r) => ({ ...r, isSegment: r.segmentDef != null })) as ContactListRow[];
 }
 
-export interface CreateContactListInput {
+interface CreateContactListInput {
   name: string;
   consentSource: z.infer<typeof createContactListSchema>["consentSource"];
   consentAt: number;

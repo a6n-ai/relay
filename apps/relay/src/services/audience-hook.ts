@@ -2,7 +2,8 @@ import type { Env } from "../env";
 import { hookInputSchema } from "../core/audience-hook";
 import { clientFor } from "../do/client";
 import { RelayError, codeOf } from "../shared/errors";
-import { ownApp, audit, type Principal } from "./principal";
+import { audit, type Principal } from "./principal";
+import { ownApp } from "./apps";
 
 // A binding names a Worker on this deployment: only a super admin sets or removes one (admin.ts), so a key never does.
 async function guardBinding(env: Env, p: Principal, appId: string): Promise<void> {

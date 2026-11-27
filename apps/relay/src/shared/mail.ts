@@ -4,7 +4,7 @@ export type Stream = (typeof STREAMS)[number];
 export const MESSAGE_STATUSES = ["queued", "sent", "failed", "suppressed"] as const;
 export type MessageStatus = (typeof MESSAGE_STATUSES)[number];
 
-export const SUPPRESSION_REASONS = ["unsubscribe", "bounce", "complaint", "manual"] as const;
+const SUPPRESSION_REASONS = ["unsubscribe", "bounce", "complaint", "manual"] as const;
 export type SuppressionReason = (typeof SUPPRESSION_REASONS)[number];
 
 export const MAILBOX_RECEIVED = "mailbox.received";

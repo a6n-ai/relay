@@ -5,10 +5,11 @@ import ChevronDown from "lucide-react/icons/chevron-down";
 import { createItems } from "./nav";
 import { withNew } from "./scope";
 import { untyped } from "../lib/route-search";
+import { isSuspended } from "../../shared/limits";
 
 export function AddNewMenu() {
   const { shell } = useRouteContext({ from: "/_app" });
-  const allowed = createItems(shell.active?.roles ?? [], shell.active?.status === "suspended");
+  const allowed = createItems(shell.active?.roles ?? [], isSuspended(shell.active?.status));
   const items = allowed.filter((c) => c.menu !== false);
   if (items.length === 0) return null;
   return (

@@ -10,7 +10,7 @@ import { useCan } from "../../components/lib/use-can";
 import { passwordStatusFn } from "../../console/password.fns";
 import { renameWorkspaceFn } from "../../console/workspaces.fns";
 import { PasswordCard } from "../../components/settings/password-card";
-import { NAME_MAX } from "../../shared/limits";
+import { isSuspended, NAME_MAX } from "../../shared/limits";
 import { useSubmit } from "../../components/lib/use-submit";
 
 export const Route = createFileRoute("/_app/settings")({
@@ -36,7 +36,7 @@ function WorkspaceNameCard({ name: current, slug }: { name: string; slug: string
     <SettingsForm
       title="Workspace name"
       description="The name shown in the workspace switcher."
-      hint="Up to 80 characters."
+      hint={`Up to ${NAME_MAX} characters.`}
       dirty={Boolean(next) && next !== current}
       pending={pending}
       saveLabel="Save name"
@@ -55,7 +55,7 @@ function GeneralPage() {
   const { shell } = Route.useRouteContext();
   const { hasPassword } = Route.useLoaderData();
   const active = shell.active;
-  const suspended = active?.status === "suspended";
+  const suspended = isSuspended(active?.status);
   return (
     <>
       <PageHeader />

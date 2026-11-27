@@ -5,7 +5,6 @@ export * from "./schema";
 export * from "./campaign-schema";
 export { interpolate } from "@relay/email/interpolate";
 export * from "./template";
-export * from "./email-content/preheader";
 export * from "./suppression";
 export * from "./unsubscribe";
 export * from "./audience";

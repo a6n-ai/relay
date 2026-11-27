@@ -11,7 +11,7 @@ type Db = PostgresJsDatabase<any>;
 
 const BATCH = 500;
 
-export interface MaterializeDeps {
+interface MaterializeDeps {
   db: Db;
   tables: NotificationTables & CampaignTables;
   users: UsersRef;

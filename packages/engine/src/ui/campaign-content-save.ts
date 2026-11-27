@@ -1,7 +1,7 @@
 import { toast } from "@foundry/ui/toast";
 import type { CampaignAttachment } from "./campaign-attachments";
 
-export interface CampaignContentPayload {
+interface CampaignContentPayload {
   channel: string;
   locale: string;
   subject: string;

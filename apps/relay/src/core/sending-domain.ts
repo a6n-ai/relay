@@ -6,7 +6,7 @@ import { type SesIdentity, sesIdentityApi } from "./ses-identity";
 
 export type DomainStatus = "pending" | "verified" | "failed";
 
-export const statusOf = (identity: SesIdentity | null): DomainStatus => {
+const domainStatusOf = (identity: SesIdentity | null): DomainStatus => {
   if (identity?.verified && identity.dkimStatus === "SUCCESS") return "verified";
   if (identity?.dkimStatus === "FAILED") return "failed";
   return "pending";
@@ -14,7 +14,7 @@ export const statusOf = (identity: SesIdentity | null): DomainStatus => {
 
 // The stored pair for an identity; null (no identity) reads as pending / not_started.
 export const domainStateOf = (identity: SesIdentity | null) => ({
-  status: statusOf(identity),
+  status: domainStatusOf(identity),
   dkimStatus: (identity?.dkimStatus ?? "NOT_STARTED").toLowerCase(),
 });
 

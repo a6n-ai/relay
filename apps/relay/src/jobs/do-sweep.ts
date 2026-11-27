@@ -7,7 +7,7 @@ import { workspace } from "../db/security/schema";
 import type { Env } from "../env";
 import { clientFor } from "../do/client";
 
-export type SweepResult = {
+type SweepResult = {
   total: number;
   upToDate: number;
   behind: string[];

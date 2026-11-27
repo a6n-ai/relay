@@ -12,7 +12,7 @@ import { URL_MAX } from "../shared/limits";
 const VIEW = READ("tenant", "read");
 const EDIT = WRITE("tenant", "write");
 
-// Null means no workspace or a suspended one: the page shows a denied state with a 200, not an error status.
+// Null means no workspace or no access: the page shows a denied state with a 200, not an error status. A suspended workspace still reads; only writes are refused.
 export const fetchApps = createServerFn({ method: "GET" }).handler(() => read(VIEW, (p) => listApps(env, p)));
 
 export const fetchAppDetail = createServerFn({ method: "GET" })

@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-export type Definition = { term: ReactNode; value: ReactNode; note?: ReactNode; wrap?: boolean };
+type Definition = { term: ReactNode; value: ReactNode; note?: ReactNode; wrap?: boolean };
 
 // "details" stacks term and value in two columns; "rows" spreads them across a ruled row, with an optional note under the term.
 export function DefinitionList({ items, layout = "details" }: { items: Definition[]; layout?: "details" | "rows" }) {

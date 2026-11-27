@@ -20,7 +20,7 @@ import {
 import { inviteInput, role, validate } from "./schemas";
 import { id, name } from "../services/schemas";
 
-// Null means no workspace or a suspended one: the page shows a denied state with a 200, not an error status.
+// Null means no workspace or no access: the page shows a denied state with a 200, not an error status. A suspended workspace still reads; only writes are refused.
 export const fetchPeople = createServerFn({ method: "GET" }).handler(() => read({}, (p) => listPeople(env, p)));
 
 export const inviteMemberFn = createServerFn({ method: "POST" })

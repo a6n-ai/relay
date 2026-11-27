@@ -59,6 +59,8 @@ async function readyCampaign(stub: Stub, ws: string, listIds: string[], at = 0) 
   return { id: c.id, runSeq: scheduled.runSeq };
 }
 
+const refused = (call: Promise<unknown>) => call.then(() => "resolved", (e: Error) => e.message);
+
 function fakeStep() {
   const step = {
     do: vi.fn((_name: string, _config: unknown, fn: () => Promise<unknown>) => fn()),
@@ -223,6 +225,25 @@ describe("campaign run", () => {
     expect(await stub.getCampaign(ws, id)).toMatchObject({ status: "sending" });
 
     expect(await runCampaign(env, { workspaceId: ws, campaignId: id, runSeq, at: 0 }, failing)).toBe("stopped");
+    expect(await stub.getCampaign(ws, id)).toMatchObject({ status: "paused", error: "run_failed" });
+  });
+
+  it("pauses with run_failed, not sender_not_verified, when the sender is missing from a stale snapshot while D1 is down", async () => {
+    const { ws, stub } = await setup("stalegate");
+    const list = await listWith(stub, ws, range(0, 3));
+    const { id, runSeq } = await readyCampaign(stub, ws, [list]);
+    await runInDurableObject(stub, (_instance, state) =>
+      state.storage.kv.put("limits:v2", { monthlyQuota: 100_000, postalAddress: null, status: "active", senders: {}, fetchedAt: Date.now() - 120_000 }),
+    );
+    vi.spyOn(env.CORE_DB, "prepare").mockImplementation(() => {
+      throw new Error("D1 down");
+    });
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    expect(await stub.startCampaign(ws, id, runSeq)).toBe("go");
+    expect(await refused(stub.campaignChunk(ws, id, runSeq))).toBe("limits unavailable");
+    expect(await runCampaign(env, { workspaceId: ws, campaignId: id, runSeq, at: 0 }, fakeStep().asStep)).toBe("stopped");
+    vi.restoreAllMocks();
     expect(await stub.getCampaign(ws, id)).toMatchObject({ status: "paused", error: "run_failed" });
   });
 

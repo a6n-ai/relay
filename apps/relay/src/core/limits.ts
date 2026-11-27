@@ -6,7 +6,7 @@ import { workspace } from "../db/security/schema";
 import type { Env } from "../env";
 import { senderDomainJoin, verifiedSenderWhere } from "./sending-domain";
 import { ensureWorkspaceProfile } from "./workspace-profile";
-import { DEFAULT_MONTHLY_QUOTA } from "../shared/limits";
+import { DEFAULT_MONTHLY_QUOTA, type WorkspaceStatus } from "../shared/limits";
 
 export const LIMITS_TTL_MS = 300_000;
 // A sender miss refreshes only once the snapshot is older than this, so a bad from cannot force a D1 read per send.
@@ -17,7 +17,7 @@ export const LIMITS_KEY = "limits:v2";
 export type WorkspaceLimits = {
   monthlyQuota: number;
   postalAddress: string | null;
-  status: "active" | "suspended";
+  status: WorkspaceStatus;
   senders: Record<string, { appId: string; name: string | null; replyTo?: string | null; sesRegion: string }>;
   fetchedAt: number;
 };

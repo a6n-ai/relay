@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const SES_EVENT_TYPES = [
+const SES_EVENT_TYPES = [
   "Send",
   "Delivery",
   "Bounce",
@@ -11,7 +11,7 @@ export const SES_EVENT_TYPES = [
   "Open",
   "Click",
 ] as const;
-export type SesEventType = (typeof SES_EVENT_TYPES)[number];
+type SesEventType = (typeof SES_EVENT_TYPES)[number];
 
 export type SesEventJob = {
   workspaceId: string;

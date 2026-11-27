@@ -1,8 +1,6 @@
 import { getDomain } from "tldts";
 import { DAY_MS } from "../shared/limits";
 
-export { type CampaignProblem, campaignProblems } from "../shared/campaign-problems";
-
 // Purchase-sourced contacts count as consented for this long (CASL implied consent).
 export const IMPLIED_CONSENT_MS = 730 * DAY_MS;
 

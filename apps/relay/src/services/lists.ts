@@ -7,7 +7,8 @@ import { RelayError } from "../shared/errors";
 import { MEMBERS_IMPORT_MAX } from "../shared/limits";
 import type { MemberInput } from "../shared/schemas";
 import { type ListView, type MemberView } from "../shared/views";
-import { ownApp, audit, owned, type Principal } from "./principal";
+import { audit, owned, type Principal } from "./principal";
+import { ownApp } from "./apps";
 
 const ownedList = async (env: Env, p: Principal, listId: string): Promise<ListView> => owned(p, await clientFor(env, p.workspaceId).getList(p.workspaceId, listId));
 
@@ -122,7 +123,7 @@ const memberCsvLine = (m: MemberView): string =>
 
 // The first page is read before the stream starts, so a missing list is a 404 and not an empty file.
 // onOpen runs once, when the download starts, and is where the caller writes its audit row.
-export async function membersCsvResponse(
+async function membersCsvResponse(
   env: Env,
   workspaceId: string,
   listId: string,

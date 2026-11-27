@@ -22,3 +22,9 @@ export const PAGE_SIZE = 50;
 export const DEFAULT_MONTHLY_QUOTA = 10_000;
 export const MAX_MONTHLY_QUOTA = 100_000_000;
 export const MAX_INVITES_PER_DAY = 10_000;
+
+export const WORKSPACE_STATUSES = ["active", "suspended"] as const;
+export type WorkspaceStatus = (typeof WORKSPACE_STATUSES)[number];
+
+// The one reading of a workspace status: suspended pauses writes and sending, nothing else.
+export const isSuspended = (status: string | null | undefined) => status === "suspended";

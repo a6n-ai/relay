@@ -1,6 +1,6 @@
 import { fromBase64Url, hmacSha256, hmacSha256Verify, toBase64Url } from "./crypto";
 
-export const UNSUBSCRIBE_KEY_ERROR = "unsubscribe key not configured";
+const UNSUBSCRIBE_KEY_ERROR = "unsubscribe key not configured";
 
 const encoder = new TextEncoder();
 

@@ -1,5 +1,5 @@
 const MERGE_FIELDS = ["contact.email", "contact.first_name", "contact.last_name", "contact.name", "postal_address"] as const;
-export type MergeValues = Record<(typeof MERGE_FIELDS)[number], string>;
+type MergeValues = Record<(typeof MERGE_FIELDS)[number], string>;
 export const MERGE_SAMPLES: MergeValues = {
   "contact.email": "priya@example.com",
   "contact.first_name": "Priya",

@@ -19,7 +19,7 @@ import { formatWhen } from "../../components/lib/format-date";
 import { addSuppressionFn, fetchSuppressions, removeSuppressionFn } from "../../console/suppressions.fns";
 import { FormError, FormBody, FormActions } from "../../components/form/form-parts";
 import { STREAMS } from "../../shared/mail";
-import { oneOf, posInt, str, untyped } from "../../components/lib/route-search";
+import { oneOf, posInt, str, trimmed, untyped } from "../../components/lib/route-search";
 import { useSubmit } from "../../components/lib/use-submit";
 
 type SuppressionsSearch = { prefix?: string; cursor?: string; stream?: StreamFilter; offset?: number };
@@ -32,7 +32,7 @@ const streamLabel = (s: string) => STREAM_LABEL[s as StreamFilter] ?? s;
 export const Route = createFileRoute("/_app/messages_/suppressions")({
   staticData: { title: "Suppressed", copy: "Addresses Relay will not send to." },
   validateSearch: (search: Record<string, unknown>): SuppressionsSearch => ({
-    prefix: typeof search.prefix === "string" && search.prefix.trim() ? search.prefix.trim() : undefined,
+    prefix: trimmed(search.prefix),
     cursor: str(search.cursor),
     stream: oneOf(STREAM_FILTERS, search.stream),
     offset: posInt(search.offset),

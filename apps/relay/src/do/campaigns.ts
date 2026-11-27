@@ -29,7 +29,7 @@ export function recipientQuery(): string {
     GROUP BY m.email ORDER BY m.email`;
 }
 
-export type CampaignCounter =
+type CampaignCounter =
   | "queued"
   | "sent"
   | "failed"

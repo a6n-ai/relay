@@ -3,7 +3,7 @@ import { domainLikePattern } from "../core/sending-domain";
 // Mail history for a domain: what it sent, plus what arrived at its own addresses. Inbound mail merely sent FROM the domain
 // to someone else's address is not the domain's history.
 const HISTORY = "((direction = 'out' AND from_email LIKE ?) OR (direction = 'in' AND to_email LIKE ?))";
-export const HISTORY_BATCH = 100;
+const HISTORY_BATCH = 100;
 
 export function domainUsage(sql: SqlStorage, domain: string): { messages: number; campaigns: number; automations: number } {
   const like = domainLikePattern(domain);

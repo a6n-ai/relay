@@ -8,13 +8,13 @@ import { createAuth } from "../auth";
 import { writeAudit } from "../auth/audit";
 import { newId } from "../shared/ids";
 import type { SeedInput } from "../core/ops-params";
-import { readDomainState } from "../services/domain-state";
+import { readDomainState } from "./domain-state";
 import { createApp } from "../core/apps";
 
-import { createApiKey } from "../services/api-keys";
+import { createApiKey } from "./api-keys";
 import { isProtectedDomain } from "../core/protected-domains";
 
-export type SeedResult = { workspaceId: string; appId: string; apiKey: string };
+type SeedResult = { workspaceId: string; appId: string; apiKey: string };
 
 // Each better-auth call commits on its own, so a failure part-way leaves rows that a rerun completes: every step
 // looks up before it writes. Reads and the domain check come first, so a refused domain writes nothing.

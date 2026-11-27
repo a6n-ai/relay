@@ -1,6 +1,6 @@
 import type { Env } from "../env";
 
-export const DEFAULT_SES_RATE = 14;
+const DEFAULT_SES_RATE = 14;
 
 // Read untyped: the binding name depends on the region, so Env cannot list every one.
 export function sesSendRate(env: Env, region: string): number {

@@ -35,9 +35,9 @@ export type MessageQuery = {
   cursor?: string;
 };
 
-export type EventView = { type: string; occurredAt: number; detail: string | null };
+type EventView = { type: string; occurredAt: number; detail: string | null };
 
-export type ThreadItem = {
+type ThreadItem = {
   id: string;
   direction: "in" | "out";
   subject: string | null;

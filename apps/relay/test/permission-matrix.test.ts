@@ -61,7 +61,7 @@ describe("every POST server function is a write", () => {
         const guarded =
           /\bWRITE\(/.test(p) ||
           writeNames.some((n) => new RegExp(`\\b${n}\\b`).test(p)) ||
-          /\brunAdmin\((?![^;]*,\s*false\))/.test(p) ||
+          /\brunAdmin\((?![^;]*write:\s*false)/.test(p) ||
           /\buserSession\(\{ write: true \}\)/.test(p) ||
           /\bassertSameOrigin\(/.test(p) ||
           EXEMPT.has(name);

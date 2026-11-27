@@ -3,6 +3,8 @@ import { Link, type LinkProps } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { type RowAction, RowMenu } from "./row-menu";
 import { Hint } from "../form/text";
+import { focusRingSoft } from "../lib/focus";
+import { cn } from "@foundry/ui/cn";
 
 // Same rule as ResourceTable rows: only real controls sit above the overlay link.
 const CARD_LINK =
@@ -38,7 +40,7 @@ export function ResourceGrid<T>({
                 {...to}
                 data-row-link
                 aria-label={rowLabel?.(row) ?? "Open"}
-                className="absolute inset-0 outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                className={cn("absolute inset-0", focusRingSoft)}
               />
             ) : null}
             {menu ? (

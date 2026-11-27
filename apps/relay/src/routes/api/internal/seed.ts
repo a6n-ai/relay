@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { env } from "cloudflare:workers";
 import { guardInternal } from "../../../core/internal-guard";
-import { seed } from "../../../jobs/seed";
+import { seed } from "../../../services/seed";
 import { seedInputSchema } from "../../../core/ops-params";
 
 export const Route = createFileRoute("/api/internal/seed")({

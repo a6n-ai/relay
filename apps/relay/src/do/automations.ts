@@ -14,7 +14,7 @@ export type AutomationInput = { name: string; listId: string; templateId: string
 export type AutomationPatch = Partial<Omit<AutomationInput, "listId">>;
 
 
-export type AutomationDeps = {
+type AutomationDeps = {
   send: (input: ResolvedSendInput) => Promise<SendResult>;
   render: (appId: string, templateId: string, values: Record<string, string>) => RenderedTemplate | "missing" | "disabled";
   refreshLimits: () => Promise<unknown>;
@@ -25,7 +25,7 @@ export type AutomationDeps = {
 };
 
 const HOUR_MS = 3_600_000;
-export const RUN_BATCH = 100;
+const RUN_BATCH = 100;
 // Used when a send is refused for quota or suspension: the runs stay pending and are retried on this cadence.
 const RETRY_MS = 600_000;
 
@@ -184,7 +184,7 @@ export function nextAutomationAlarm(sql: SqlStorage, now: number, outcome: { mor
 }
 
 // Render and send one automation message. Rendering is the template-send path (ClientDO.renderTemplate); the send path owns suppression, sender and quota checks.
-export async function sendTemplateForAutomation(
+async function sendTemplateForAutomation(
   deps: AutomationDeps,
   run: { automationId: string; appId: string; fromEmail: string; email: string; firstName: string | null; lastName: string | null },
   template: TemplateView,
@@ -245,21 +245,6 @@ function markRun(sql: SqlStorage, run: Due, status: "sent" | "skipped", detail: 
   );
 }
 
-// Checked before any send: a removed or lapsed contact is skipped, never mailed.
-function skipReason(sql: SqlStorage, run: Due, now: number): string | null {
-  const member = sql
-    .exec<{ firstName: string | null; lastName: string | null; consentAt: number; consentSource: string }>(
-      `SELECT m.first_name AS firstName, m.last_name AS lastName, m.consent_at AS consentAt, l.consent_source AS consentSource
-       FROM contact_list_member m JOIN contact_list l ON l.id = m.list_id WHERE m.list_id = ? AND m.email = ?`,
-      run.listId,
-      run.email,
-    )
-    .toArray()[0];
-  if (!member) return "left_list";
-  if (member.consentSource === "purchase" && member.consentAt < now - IMPLIED_CONSENT_MS) return "consent_lapsed";
-  return null;
-}
-
 export async function runDueAutomationRows(
   sql: SqlStorage,
   deps: AutomationDeps,
@@ -279,9 +264,18 @@ export async function runDueAutomationRows(
   let skipped = 0;
   let blocked = false;
   for (const run of due) {
-    const reason = skipReason(sql, run, now);
-    if (reason) {
-      markRun(sql, run, "skipped", { error: reason });
+    // Checked before any send: a removed or lapsed contact is skipped, never mailed.
+    const member = sql
+      .exec<{ firstName: string | null; lastName: string | null; consentAt: number; consentSource: string }>(
+        `SELECT m.first_name AS firstName, m.last_name AS lastName, m.consent_at AS consentAt, l.consent_source AS consentSource
+         FROM contact_list_member m JOIN contact_list l ON l.id = m.list_id WHERE m.list_id = ? AND m.email = ?`,
+        run.listId,
+        run.email,
+      )
+      .toArray()[0];
+    const reason = !member ? "left_list" : member.consentSource === "purchase" && member.consentAt < now - IMPLIED_CONSENT_MS ? "consent_lapsed" : null;
+    if (!member || reason) {
+      markRun(sql, run, "skipped", { error: reason ?? "left_list" });
       skipped += 1;
       continue;
     }
@@ -298,16 +292,9 @@ export async function runDueAutomationRows(
       skipped += 1;
       continue;
     }
-    const member = sql
-      .exec<{ firstName: string | null; lastName: string | null }>(
-        "SELECT first_name AS firstName, last_name AS lastName FROM contact_list_member WHERE list_id = ? AND email = ?",
-        run.listId,
-        run.email,
-      )
-      .one();
     let result: SendResult;
     try {
-      result = await sendTemplateForAutomation(deps, { automationId: run.automationId, appId: run.appId, fromEmail: run.fromEmail, email: run.email, ...member }, template);
+      result = await sendTemplateForAutomation(deps, { automationId: run.automationId, appId: run.appId, fromEmail: run.fromEmail, email: run.email, firstName: member.firstName, lastName: member.lastName }, template);
     } catch (err) {
       const code = codeOf(err);
       const retryKey = `${run.automationId}:${run.email}`;

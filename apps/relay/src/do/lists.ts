@@ -10,7 +10,7 @@ export type ListInput = { name: string; consentSource: ConsentSource; consentNot
 
 
 
-export const EXPORT_PAGE = 1000;
+const EXPORT_PAGE = 1000;
 
 function optedOutByEmail(sql: SqlStorage, emails: string[]): Map<string, string[]> {
   const out = new Map<string, string[]>();

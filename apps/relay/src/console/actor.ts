@@ -7,6 +7,7 @@ import { assertSameOrigin, parseRoles, requireSession } from "../auth/session";
 import type { Principal, Session } from "../services/principal";
 import { RelayError } from "../shared/errors";
 import type { Need } from "./needs";
+import { isSuspended } from "../shared/limits";
 
 export async function requireActor(
   env: Env,
@@ -30,7 +31,7 @@ export async function requireActor(
     throw new RelayError("forbidden");
   }
 
-  if (need.write && row.status === "suspended") throw new RelayError("workspace suspended");
+  if (need.write && isSuspended(row.status)) throw new RelayError("workspace suspended");
 
   return { userId, platformAdmin, workspaceId: activeWorkspaceId, appId: null, keyId: null, roles, workspaceStatus: row.status };
 }

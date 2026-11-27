@@ -6,6 +6,8 @@ import { pickMailer } from "./mailers";
 const FRESH_SESSION_MS = 10 * 60_000;
 export const STALE_SESSION_MESSAGE = "Sign in again to set a password.";
 export const isFreshSession = (createdAt: Date | string | number) => Date.now() - new Date(createdAt).getTime() <= FRESH_SESSION_MS;
+// An impersonated session never sets a password, however new it is.
+export const needsFreshSignIn = (s: { impersonatedBy?: string | null; createdAt: Date | string | number }) => Boolean(s.impersonatedBy) || !isFreshSession(s.createdAt);
 
 // Audit row plus a notice mail. The change has already committed, so a failed notice is logged (no address) and never fails the caller.
 export async function recordPasswordChange(
