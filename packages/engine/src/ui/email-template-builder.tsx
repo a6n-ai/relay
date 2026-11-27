@@ -4,7 +4,7 @@ import { forwardRef, useImperativeHandle, useRef, useState, type ReactNode } fro
 import { cn } from "@foundry/ui/cn";
 import { EmailContentEditor, type EmailContentEditorHandle, type EmailMode } from "./email-content-editor";
 import { SendTestEmailButton } from "./send-test-email-button";
-import { foreignPreheader, readPreheader, withPreheader } from "../preheader";
+import { foreignPreheader, readPreheader, withPreheader } from "../email-content/preheader";
 import { htmlToText } from "../email-content/text";
 import type { FooterInfo } from "../template";
 
