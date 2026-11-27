@@ -4,7 +4,7 @@ import { createGuard } from "@foundry/commons/guard";
 import { env } from "cloudflare:workers";
 import { recordFailure } from "../core/log";
 import { requireActor, requirePlatformAdmin } from "./actor";
-import type { ConsoleActor } from "../auth/session";
+import type { Principal } from "../services/principal";
 import type { Need } from "./needs";
 
 // A known error keeps its status and message, anything else is a 500 with no detail. The browser sees only that copy;
@@ -16,7 +16,7 @@ const shared = {
   },
 };
 
-const guard = createGuard<Need, ConsoleActor>({ actor: (need) => requireActor(env, getRequestHeaders(), need), ...shared });
+const guard = createGuard<Need, Principal>({ actor: (need) => requireActor(env, getRequestHeaders(), need), ...shared });
 export const { run, read } = guard;
 
 const admin = createGuard<{ write?: boolean }, { userId: string }>({
@@ -33,10 +33,10 @@ export function fail(err: unknown): never {
 
 // A page that can name a missing app or list renders its own empty state, so a 404 is data rather than an error.
 export const orMissing =
-  <T>(fn: (actor: ConsoleActor) => Promise<T>) =>
-  async (actor: ConsoleActor): Promise<T | { missing: true }> => {
+  <T>(fn: (p: Principal) => Promise<T>) =>
+  async (p: Principal): Promise<T | { missing: true }> => {
     try {
-      return await fn(actor);
+      return await fn(p);
     } catch (err) {
       if (err instanceof AppError && err.status === 404) return { missing: true as const };
       throw err;

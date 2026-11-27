@@ -18,7 +18,7 @@ import { idSchema } from "../shared/schemas";
 import { type AudiencePreview, type CampaignStats, type CampaignView, type ListView } from "../shared/views";
 import { startCampaignRun, stopRun, verifiedSenders } from "./campaign-run";
 import { refreshWorkspaceLimits } from "./limits";
-import { appFor, audit, owned, type Principal } from "./principal";
+import { ownApp, audit, owned, type Principal } from "./principal";
 
 export const campaignCreateInput = z.object({
   name: z.string().trim().min(1).max(NAME_MAX),
@@ -43,7 +43,7 @@ export async function listCampaigns(
   appId: string,
   cursor?: string,
 ): Promise<{ rows: CampaignSummary[]; nextCursor: string | null }> {
-  await appFor(env, p, appId);
+  await ownApp(env, p, appId);
   if (cursor !== undefined && !decodeCursor(cursor)) throw new RelayError("invalid cursor");
   return clientFor(env, p.workspaceId).listCampaigns(p.workspaceId, cursor, appId);
 }
@@ -58,7 +58,7 @@ export async function campaignStats(env: Env, p: Principal, id: string): Promise
 }
 
 export async function createCampaign(env: Env, p: Principal, appId: string, input: z.infer<typeof campaignCreateInput>): Promise<CampaignView> {
-  await appFor(env, p, appId);
+  await ownApp(env, p, appId);
   const audience = input.audienceKind ? { audienceKind: input.audienceKind, audienceQuery: input.audienceQuery ?? null } : undefined;
   const campaign = await clientFor(env, p.workspaceId).createCampaign(p.workspaceId, appId, input.name, input.templateId, audience);
   if (campaign === "template_missing") throw new RelayError("not found");
@@ -110,7 +110,7 @@ export async function campaignOptions(
   p: Principal,
   appId: string,
 ): Promise<{ senders: string[]; lists: ListView[]; postalAddress: string | null }> {
-  await appFor(env, p, appId);
+  await ownApp(env, p, appId);
   const [senders, lists, profile] = await Promise.all([
     verifiedSenders(env, p.workspaceId, appId),
     clientFor(env, p.workspaceId).listLists(p.workspaceId, appId),

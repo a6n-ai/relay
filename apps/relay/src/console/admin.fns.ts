@@ -5,7 +5,7 @@ import { runAdmin } from "./guard";
 import { AUDIENCE_BINDINGS } from "../core/audience-protocol";
 import {
   listWorkspaces,
-  setAudienceBindingFor,
+  setAudienceBinding,
   setWorkspaceInviteCap,
   setWorkspaceQuota,
   setWorkspaceRegion,
@@ -34,4 +34,4 @@ export const setWorkspaceInviteCapFn = createServerFn({ method: "POST" })
 
 export const setAudienceBindingFn = createServerFn({ method: "POST" })
   .validator(validate(z.object({ workspaceId: z.string().min(1), appId: z.string().min(1), binding: z.enum(AUDIENCE_BINDINGS) })))
-  .handler(({ data }) => runAdmin((admin) => setAudienceBindingFor(env, admin, data.workspaceId, data.appId, data.binding)));
+  .handler(({ data }) => runAdmin((admin) => setAudienceBinding(env, admin, data.workspaceId, data.appId, data.binding)));

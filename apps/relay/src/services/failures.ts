@@ -6,8 +6,7 @@ import { coreDb } from "../db/core/client";
 import { address } from "../db/core/schema";
 import type { Env } from "../env";
 import type { InboundJob } from "../core/jobs";
-import { writeAudit } from "../auth/audit";
-import { type ConsoleActor } from "../auth/session";
+import { audit, type Principal } from "./principal";
 import { messageAccess } from "./inbox";
 import { RelayError, codeOf } from "../shared/errors";
 
@@ -16,25 +15,25 @@ export type ReplayResult =
   | { outcome: "duplicate"; messageId: string }
   | { outcome: "failed"; error: string };
 
-export async function listFailuresFor(env: Env, actor: ConsoleActor) {
-  const { inbound } = await messageAccess(env, actor);
-  return clientFor(env, actor.workspaceId).listInboundFailures(actor.workspaceId, inbound);
+export async function listFailures(env: Env, p: Principal) {
+  const { inbound } = await messageAccess(env, p);
+  return clientFor(env, p.workspaceId).listInboundFailures(p.workspaceId, inbound);
 }
 
-export async function replayFailureFor(env: Env, actor: ConsoleActor, id: string): Promise<ReplayResult> {
-  const stub = clientFor(env, actor.workspaceId);
-  const failure = await stub.getInboundFailure(actor.workspaceId, id);
+export async function replayFailure(env: Env, p: Principal, id: string): Promise<ReplayResult> {
+  const stub = clientFor(env, p.workspaceId);
+  const failure = await stub.getInboundFailure(p.workspaceId, id);
   if (!failure) throw new RelayError("not found");
   if (!failure.appId || !failure.addressId) throw new RelayError("cannot replay");
   const [inbox] = await coreDb(env)
     .select({ id: address.id })
     .from(address)
     .where(
-      and(eq(address.id, failure.addressId), eq(address.workspaceId, actor.workspaceId), eq(address.appId, failure.appId)),
+      and(eq(address.id, failure.addressId), eq(address.workspaceId, p.workspaceId), eq(address.appId, failure.appId)),
     );
   if (!inbox) throw new RelayError("address removed");
   const job: InboundJob = {
-    workspaceId: actor.workspaceId,
+    workspaceId: p.workspaceId,
     appId: failure.appId,
     addressId: failure.addressId,
     rawKey: failure.rawKey,
@@ -45,32 +44,21 @@ export async function replayFailureFor(env: Env, actor: ConsoleActor, id: string
   };
   let result: InboundResult;
   try {
-    result = await stub.ingestInbound(actor.workspaceId, job);
+    result = await stub.ingestInbound(p.workspaceId, job);
   } catch (err) {
     if (codeOf(err) === "raw mail missing") throw new RelayError("raw letter missing");
     throw err;
   }
-  if (result.outcome === "inserted") await bumpUsage(env, actor.workspaceId, utcDay(failure.receivedAt), { inbound: 1 });
-  if (result.outcome === "duplicate") await stub.deleteInboundFailure(actor.workspaceId, id);
-  await writeAudit(env, {
-    action: "inbound_failure.replay",
-    actorUserId: actor.userId,
-    workspaceId: actor.workspaceId,
-    target: id,
-    data: { outcome: result.outcome },
-  });
+  if (result.outcome === "inserted") await bumpUsage(env, p.workspaceId, utcDay(failure.receivedAt), { inbound: 1 });
+  if (result.outcome === "duplicate") await stub.deleteInboundFailure(p.workspaceId, id);
+  await audit(env, p, "inbound_failure.replay", id, { outcome: result.outcome });
   return result.outcome === "failed"
     ? { outcome: "failed", error: result.error }
     : { outcome: result.outcome, messageId: result.messageId };
 }
 
-export async function deleteFailureFor(env: Env, actor: ConsoleActor, id: string): Promise<void> {
-  const removed = await clientFor(env, actor.workspaceId).deleteInboundFailure(actor.workspaceId, id);
+export async function deleteFailure(env: Env, p: Principal, id: string): Promise<void> {
+  const removed = await clientFor(env, p.workspaceId).deleteInboundFailure(p.workspaceId, id);
   if (!removed) throw new RelayError("not found");
-  await writeAudit(env, {
-    action: "inbound_failure.delete",
-    actorUserId: actor.userId,
-    workspaceId: actor.workspaceId,
-    target: id,
-  });
+  await audit(env, p, "inbound_failure.delete", id);
 }

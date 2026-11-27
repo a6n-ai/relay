@@ -1,7 +1,6 @@
 import { z } from "zod";
 import type { Env } from "../env";
-import { writeAudit } from "../auth/audit";
-import type { KeyScope } from "../shared/scope";
+import { audit, type KeyPrincipal } from "./principal";
 import { clientFor } from "../do/client";
 import { RelayError } from "../shared/errors";
 import { emailSchema } from "../shared/schemas";
@@ -21,20 +20,20 @@ function parseInput<T extends z.ZodType>(schema: T, input: unknown): z.output<T>
   return parsed.data;
 }
 
-export function messagesByKeysForScope(env: Env, scope: KeyScope, input: unknown) {
+export function messagesByKeys(env: Env, p: KeyPrincipal, input: unknown) {
   const keys = parseInput(keysSchema, input);
-  return clientFor(env, scope.workspaceId).messagesByKeys(scope.workspaceId, scope.appId, keys);
+  return clientFor(env, p.workspaceId).messagesByKeys(p.workspaceId, p.appId, keys);
 }
 
-export async function suppressionStatusForScope(env: Env, scope: KeyScope, input: unknown, from?: unknown) {
+export async function suppressionStatus(env: Env, p: KeyPrincipal, input: unknown, from?: unknown) {
   const emails = parseInput(emailsSchema, input);
   const sender = from === undefined ? undefined : parseInput(emailSchema, from);
-  return clientFor(env, scope.workspaceId).suppressionRows(scope.workspaceId, emails, sender);
+  return clientFor(env, p.workspaceId).suppressionRows(p.workspaceId, emails, sender);
 }
 
-export async function suppressForScope(env: Env, scope: KeyScope, input: unknown): Promise<{ created: boolean }> {
+export async function suppress(env: Env, p: KeyPrincipal, input: unknown): Promise<{ created: boolean }> {
   const data = parseInput(suppressSchema, input);
-  const result = await clientFor(env, scope.workspaceId).addSuppression(scope.workspaceId, data.email, data.reason, data.stream ?? undefined);
-  await writeAudit(env, { action: "suppression.add", actorUserId: null, workspaceId: scope.workspaceId, target: scope.appId, data: { keyId: scope.keyId, created: result.created } });
+  const result = await clientFor(env, p.workspaceId).addSuppression(p.workspaceId, data.email, data.reason, data.stream ?? undefined);
+  await audit(env, p, "suppression.add", p.appId, { created: result.created });
   return result;
 }

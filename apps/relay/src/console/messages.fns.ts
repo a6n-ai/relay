@@ -3,7 +3,7 @@ import { env } from "cloudflare:workers";
 import { z } from "zod";
 import { orMissing, read } from "./guard";
 import { READ } from "./needs";
-import { getMessageFor, listMessagesFor } from "../services/inbox";
+import { getMessage, listMessages } from "../services/inbox";
 import { appId, id, validate } from "./schemas";
 import { MESSAGE_STATUSES } from "../shared/mail";
 
@@ -24,8 +24,8 @@ export const fetchMessages = createServerFn({ method: "GET" })
     ),
   )
   .handler(({ data }) =>
-    read(data.dir === "out" ? LOG_READ : MAIL_READ, (actor) =>
-      listMessagesFor(env, actor, {
+    read(data.dir === "out" ? LOG_READ : MAIL_READ, (p) =>
+      listMessages(env, p, {
         direction: data.dir,
         appId: data.app,
         status: data.status,
@@ -39,5 +39,5 @@ export const fetchMessages = createServerFn({ method: "GET" })
 export const fetchMessage = createServerFn({ method: "GET" })
   .validator(validate(z.object({ id, images: z.boolean().optional() })))
   .handler(({ data }) =>
-    read(LOG_READ, orMissing(async (actor) => ({ message: await getMessageFor(env, actor, data.id, { images: data.images === true }) }))),
+    read(LOG_READ, orMissing(async (p) => ({ message: await getMessage(env, p, data.id, { images: data.images === true }) }))),
   );

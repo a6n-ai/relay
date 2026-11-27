@@ -3,14 +3,6 @@ import { createAuth } from "./index";
 import { RelayError } from "../shared/errors";
 import { ORG_ROLES, type OrgRole } from "../shared/roles";
 
-export type ConsoleActor = {
-  userId: string;
-  platformAdmin: boolean;
-  workspaceId: string;
-  roles: OrgRole[];
-  workspaceStatus: "active" | "suspended";
-};
-
 // The cookie cache can hold a role or suspension decision from before a change, so the session is read from the database.
 export async function requireSession(
   env: Env,

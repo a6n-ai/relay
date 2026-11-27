@@ -6,11 +6,11 @@ import { deleteWebhook, updateWebhook } from "../../../services/webhooks";
 export const Route = createFileRoute("/api/v1/webhooks/$id")({
   server: {
     handlers: {
-      PATCH: apiRoute(async ({ env, scope, p, params, request }) =>
-        json(await updateWebhook(env, p, scope.appId, params.id, webhookPatchSchema.parse(await readJson(request, 65_536)))),
+      PATCH: apiRoute(async ({ env, p, params, request }) =>
+        json(await updateWebhook(env, p, p.appId, params.id, webhookPatchSchema.parse(await readJson(request, 65_536)))),
       ),
-      DELETE: apiRoute(async ({ env, scope, p, params }) => {
-        await deleteWebhook(env, p, scope.appId, params.id);
+      DELETE: apiRoute(async ({ env, p, params }) => {
+        await deleteWebhook(env, p, p.appId, params.id);
         return new Response(null, { status: 204 });
       }),
     },

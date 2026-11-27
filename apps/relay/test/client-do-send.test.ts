@@ -310,7 +310,7 @@ describe("template sends", () => {
     return { stub, id: tpl.id };
   }
   const send = (ws: string, templateId: string, extra: Record<string, unknown> = {}) =>
-    sendTemplateMessage(env, { workspaceId: ws, appId: "app_1" }, { stream: "transactional", from: "Relay@A6n.ai", to: "a@x.com", templateId, ...extra });
+    sendTemplateMessage(env, { workspaceId: ws, appId: "app_1", userId: null, keyId: "key_1" }, { stream: "transactional", from: "Relay@A6n.ai", to: "a@x.com", templateId, ...extra });
 
   it("renders the template with the contact name escaped", async () => {
     const ws = "wsp_tpl_render_send";
@@ -331,7 +331,7 @@ describe("template sends", () => {
     const { stub, id } = await template(ws, { subject: "S", html: "<p>x</p>", text: "x", enabled: false });
     await expect(send(ws, id)).rejects.toThrow("template disabled");
     await stub.updateTemplate(ws, id, { enabled: true });
-    await expect(sendTemplateMessage(env, { workspaceId: ws, appId: "app_2" }, { stream: "transactional", from: "Relay@A6n.ai", to: "a@x.com", templateId: id })).rejects.toThrow(
+    await expect(sendTemplateMessage(env, { workspaceId: ws, appId: "app_2", userId: null, keyId: "key_1" }, { stream: "transactional", from: "Relay@A6n.ai", to: "a@x.com", templateId: id })).rejects.toThrow(
       "template not found",
     );
   });

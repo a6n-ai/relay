@@ -6,7 +6,7 @@ import type { Env } from "../env";
 import { RelayError } from "../shared/errors";
 import { fillUnsubscribe, MERGE_SAMPLES, renderMerge, unknownMergeFields } from "../shared/merge";
 import { type TemplateView } from "../shared/views";
-import { appFor, audit, keyApp, owned, type Principal } from "./principal";
+import { ownApp, audit, keyApp, owned, type Principal } from "./principal";
 
 function refuseUnknownFields(bodies: (string | null | undefined)[]): void {
   for (const body of bodies) {
@@ -24,7 +24,7 @@ export async function listTemplates(
   appId: string,
   cursor?: string,
 ): Promise<{ rows: TemplateView[]; nextCursor: string | null }> {
-  await appFor(env, p, appId);
+  await ownApp(env, p, appId);
   if (cursor !== undefined && !decodeCursor(cursor)) throw new RelayError("invalid cursor");
   return clientFor(env, p.workspaceId).listTemplates(p.workspaceId, appId, cursor);
 }
@@ -32,7 +32,7 @@ export async function listTemplates(
 export const getTemplate = ownedTemplate;
 
 export async function createTemplate(env: Env, p: Principal, appId: string, input: TemplateInput): Promise<TemplateView> {
-  await appFor(env, p, appId);
+  await ownApp(env, p, appId);
   refuseUnknownFields([input.subject, input.intro, input.html, input.text]);
   const outcome = await clientFor(env, p.workspaceId).createTemplate(p.workspaceId, appId, input);
   if (outcome === "event_taken") throw new RelayError("template event taken");

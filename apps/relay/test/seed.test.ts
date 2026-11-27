@@ -45,6 +45,7 @@ describe("seed", () => {
     expect(await resolveApiKey(env, result.apiKey)).toEqual({
       workspaceId: result.workspaceId,
       appId: result.appId,
+      userId: null,
       keyId: expect.any(String),
     });
     const [owner] = await db.select().from(user).where(eq(user.email, "a@example.com"));

@@ -6,9 +6,9 @@ import { sendBody } from "../../../core/send-input";
 export const Route = createFileRoute("/api/v1/messages")({
   server: {
     handlers: {
-      POST: apiRoute(async ({ env, scope, request }) => {
+      POST: apiRoute(async ({ env, p, request }) => {
         const input = sendBody.parse(await readJson(request));
-        return Response.json(await sendMessage(env, scope, input), { status: 202 });
+        return Response.json(await sendMessage(env, p, input), { status: 202 });
       }),
     },
   },

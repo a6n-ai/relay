@@ -3,7 +3,7 @@ import { securityDb } from "../db/security/client";
 import { apiKey, app, member, workspace } from "../db/security/schema";
 import type { Env } from "../env";
 import { createAuth } from "../auth";
-import type { KeyScope } from "../shared/scope";
+import type { KeyPrincipal } from "./principal";
 
 
 // Keys are created as the workspace owner, who holds the organization's apiKey create permission.
@@ -54,7 +54,7 @@ export async function renameApiKey(env: Env, workspaceId: string, id: string, na
 }
 
 // The plugin checks enabled and expiry against D1 on every call; the workspace status is read here.
-export async function resolveApiKey(env: Env, secret: string): Promise<KeyScope | null> {
+export async function resolveApiKey(env: Env, secret: string): Promise<KeyPrincipal | null> {
   const { valid, key } = await createAuth(env).api.verifyApiKey({ body: { key: secret } });
   if (!valid || !key) return null;
   const appId = (key.metadata as { appId?: unknown } | null)?.appId;
@@ -64,7 +64,7 @@ export async function resolveApiKey(env: Env, secret: string): Promise<KeyScope 
     .from(workspace)
     .where(eq(workspace.id, key.referenceId));
   if (ws?.status !== "active") return null;
-  return { workspaceId: key.referenceId, appId, keyId: key.id };
+  return { workspaceId: key.referenceId, appId, userId: null, keyId: key.id };
 }
 
 // Keyed by key id, so one key's traffic cannot spend another key's budget.
@@ -73,7 +73,7 @@ export async function withinRateLimit(env: Env, keyId: string): Promise<boolean>
 }
 
 // Every key-authenticated route must also call withinRateLimit.
-export async function resolveBearer(env: Env, request: Request): Promise<KeyScope | null> {
+export async function resolveBearer(env: Env, request: Request): Promise<KeyPrincipal | null> {
   const secret = request.headers.get("authorization")?.match(/^Bearer (\S+)$/)?.[1];
   return secret ? resolveApiKey(env, secret) : null;
 }

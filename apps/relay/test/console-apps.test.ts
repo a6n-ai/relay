@@ -4,7 +4,6 @@ import { requireActor } from "../src/console/actor";
 import { uniqueViolation } from "../src/auth/session";
 import { addApp, createKey, deleteKey, getApp, listApps, listKeys, renameApp, renameKey, revokeKey } from "../src/services/apps";
 import { deleteAudienceHook, setAudienceHook } from "../src/services/audience-hook";
-import { fromActor } from "../src/services/principal";
 import { createApp } from "../src/core/apps";
 import { clientFor } from "../src/do/client";
 import { resolveApiKey } from "../src/services/api-keys";
@@ -154,7 +153,7 @@ describe("app audience hook", () => {
     const owner = await requireActor(env, headersFor(cookie));
     const { id: appId } = await addApp(env, owner, { name: "Web", slug: "web" });
     for (const url of ["https://169.254.169.254/x", "https://[::ffff:10.0.0.1]/", "http://x.com"]) {
-      await expect(setAudienceHook(env, fromActor(owner), appId, { url })).rejects.toMatchObject({ status: 400 });
+      await expect(setAudienceHook(env, owner, appId, { url })).rejects.toMatchObject({ status: 400 });
     }
     const memberCookie = await addMember(workspaceId, "hook-member@example.com", "member");
     await expect(requireActor(env, headersFor(memberCookie), WRITE)).rejects.toMatchObject({ status: 403 });
@@ -166,11 +165,11 @@ describe("app audience hook", () => {
     const { id: appId } = await addApp(env, owner, { name: "Web", slug: "web" });
     await clientFor(env, workspaceId).setAudienceHook(workspaceId, appId, { kind: "binding", binding: "TIFFIN_AUDIENCE" });
     const tenantOwner = { ...owner, platformAdmin: false };
-    await expect(setAudienceHook(env, fromActor(tenantOwner), appId, { url: "https://hooks.example.com/a" })).rejects.toMatchObject({
+    await expect(setAudienceHook(env, tenantOwner, appId, { url: "https://hooks.example.com/a" })).rejects.toMatchObject({
       status: 403,
       message: "hook managed by platform admin",
     });
-    await expect(deleteAudienceHook(env, fromActor(tenantOwner), appId)).rejects.toMatchObject({ status: 403 });
+    await expect(deleteAudienceHook(env, tenantOwner, appId)).rejects.toMatchObject({ status: 403 });
     expect(await clientFor(env, workspaceId).getAudienceHook(workspaceId, appId)).toMatchObject({ kind: "binding" });
   });
 

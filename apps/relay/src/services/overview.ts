@@ -4,7 +4,7 @@ import { getWorkspaceProfile } from "../core/workspace-profile";
 import { coreDb } from "../db/core/client";
 import { usageDaily } from "../db/core/schema";
 import type { Env } from "../env";
-import type { ConsoleActor } from "../auth/session";
+import type { Principal } from "./principal";
 
 export type Overview = {
   month: string;
@@ -17,7 +17,7 @@ export type Overview = {
 };
 
 // quota 0 means unlimited.
-export async function getOverview(env: Env, actor: ConsoleActor, now = Date.now()): Promise<Overview> {
+export async function getOverview(env: Env, p: Principal, now = Date.now()): Promise<Overview> {
   const d = new Date(now);
   const monthStart = utcDay(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1));
   const nextMonthStart = utcDay(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1));
@@ -33,13 +33,13 @@ export async function getOverview(env: Env, actor: ConsoleActor, now = Date.now(
       .from(usageDaily)
       .where(
         and(
-          eq(usageDaily.workspaceId, actor.workspaceId),
+          eq(usageDaily.workspaceId, p.workspaceId),
           gte(usageDaily.day, monthStart),
           lt(usageDaily.day, nextMonthStart),
         ),
       )
       .orderBy(asc(usageDaily.day)),
-    getWorkspaceProfile(env, actor.workspaceId),
+    getWorkspaceProfile(env, p.workspaceId),
   ]);
 
   const total = { sent: 0, delivered: 0, bounced: 0, inbound: 0 };

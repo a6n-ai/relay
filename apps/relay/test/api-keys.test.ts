@@ -38,7 +38,7 @@ describe("API keys", () => {
     const { id, secret } = await createApiKey(env, { workspaceId, appId, name: "web" });
 
     expect(secret).toMatch(/^rk_[A-Za-z]{64}$/);
-    expect(await resolveApiKey(env, secret)).toEqual({ workspaceId, appId, keyId: id });
+    expect(await resolveApiKey(env, secret)).toEqual({ workspaceId, appId, userId: null, keyId: id });
   });
 
   it("resolves a wrong secret to null", async () => {

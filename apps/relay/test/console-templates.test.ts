@@ -3,7 +3,6 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { requireActor } from "../src/console/actor";
 import { addApp } from "../src/services/apps";
 import { createTemplate, getTemplate, previewTemplate, updateTemplate } from "../src/services/templates";
-import { fromActor } from "../src/services/principal";
 import { addMember, cookieFor, createWorkspace, headersFor, ORIGIN, setActive } from "./console-helpers";
 import { applyMigrations } from "./migrate";
 
@@ -24,19 +23,19 @@ describe("templates console", () => {
   it("lets a member read but refuses create with 403", async () => {
     const { owner, workspaceId } = await workspaceFor("tpl-role@example.com", "Tpl Role Co");
     const { id: appId } = await addApp(env, owner, { name: "Web", slug: "web" });
-    const made = await createTemplate(env, fromActor(owner), appId, { name: "Welcome" });
+    const made = await createTemplate(env, owner, appId, { name: "Welcome" });
     const cookie = await addMember(workspaceId, "tpl-member@example.com", "member");
     const member = await requireActor(env, headersFor(cookie));
-    await expect(getTemplate(env, fromActor(member), made.id)).resolves.toMatchObject({ id: made.id });
+    await expect(getTemplate(env, member, made.id)).resolves.toMatchObject({ id: made.id });
     await expect(requireActor(env, headersFor(cookie), { permission: { template: ["write"] }, write: true })).rejects.toMatchObject({ status: 403 });
   });
 
   it("accepts data.* merge fields and refuses contact fields with 400", async () => {
     const { owner } = await workspaceFor("tpl-merge@example.com", "Tpl Merge Co");
     const { id: appId } = await addApp(env, owner, { name: "Web", slug: "web" });
-    const made = await createTemplate(env, fromActor(owner), appId, { name: "Plan", html: "{{data.plan}}" });
+    const made = await createTemplate(env, owner, appId, { name: "Plan", html: "{{data.plan}}" });
     expect(made).toMatchObject({ html: "{{data.plan}}" });
-    await expect(updateTemplate(env, fromActor(owner), made.id, { text: "{{contact.phone}}" })).rejects.toMatchObject({
+    await expect(updateTemplate(env, owner, made.id, { text: "{{contact.phone}}" })).rejects.toMatchObject({
       status: 400,
       message: "unknown merge field",
     });
@@ -46,20 +45,20 @@ describe("templates console", () => {
     const a = await workspaceFor("tpl-iso-a@example.com", "Tpl Iso A");
     const b = await workspaceFor("tpl-iso-b@example.com", "Tpl Iso B");
     const { id: appB } = await addApp(env, b.owner, { name: "Web", slug: "web" });
-    const theirs = await createTemplate(env, fromActor(b.owner), appB, { name: "B only" });
-    await expect(getTemplate(env, fromActor(a.owner), theirs.id)).rejects.toMatchObject({ status: 404 });
+    const theirs = await createTemplate(env, b.owner, appB, { name: "B only" });
+    await expect(getTemplate(env, a.owner, theirs.id)).rejects.toMatchObject({ status: 404 });
   });
 
   it("previews without script tags and shows a sample for data fields", async () => {
     const { owner } = await workspaceFor("tpl-preview@example.com", "Tpl Preview Co");
     const { id: appId } = await addApp(env, owner, { name: "Web", slug: "web" });
-    const made = await createTemplate(env, fromActor(owner), appId, {
+    const made = await createTemplate(env, owner, appId, {
       name: "Preview",
       subject: "Hi {{data.plan}}",
       html: "<script>alert(1)</script><p>{{data.plan}}</p>",
       text: "{{data.plan}}",
     });
-    const preview = await previewTemplate(env, fromActor(owner), made.id);
+    const preview = await previewTemplate(env, owner, made.id);
     expect(preview.htmlSafe).not.toContain("<script");
     expect(preview.htmlSafe).toContain("sample");
     expect(preview.subject).toBe("Hi sample");

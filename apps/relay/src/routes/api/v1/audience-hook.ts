@@ -6,13 +6,13 @@ import { apiRoute, data, json, readJson } from "../../../api/route";
 export const Route = createFileRoute("/api/v1/audience-hook")({
   server: {
     handlers: {
-      GET: apiRoute(async ({ env, scope, p }) => {
-        const hook = await getAudienceHook(env, p, scope.appId);
+      GET: apiRoute(async ({ env, p }) => {
+        const hook = await getAudienceHook(env, p, p.appId);
         return hook ? data(hook) : json({ error: "not found" }, 404);
       }),
-      PUT: apiRoute(async ({ env, scope, p, request }) => data(await setAudienceHook(env, p, scope.appId, await readJson(request)))),
-      DELETE: apiRoute(async ({ env, scope, p }) => {
-        await deleteAudienceHook(env, p, scope.appId);
+      PUT: apiRoute(async ({ env, p, request }) => data(await setAudienceHook(env, p, p.appId, await readJson(request)))),
+      DELETE: apiRoute(async ({ env, p }) => {
+        await deleteAudienceHook(env, p, p.appId);
         return new Response(null, { status: 204 });
       }),
     },

@@ -13,7 +13,8 @@ import { securityDb } from "../db/security/client";
 import { app } from "../db/security/schema";
 import type { Env } from "../env";
 import { writeAudit } from "../auth/audit";
-import { type ConsoleActor, uniqueViolation } from "../auth/session";
+import { uniqueViolation } from "../auth/session";
+import type { Principal } from "./principal";
 import { getApp } from "./apps";
 import { RelayError } from "../shared/errors";
 
@@ -63,11 +64,11 @@ export const dkimRecords = (domain: string, identity: SesIdentity | null) =>
     value: `${token}.dkim.amazonses.com`,
   }));
 
-export async function listDomains(env: Env, actor: ConsoleActor) {
+export async function listDomains(env: Env, p: Principal) {
   const rows = await coreDb(env)
     .select({ ...getTableColumns(sendingDomain), releasable: releasableFlag })
     .from(sendingDomain)
-    .where(eq(sendingDomain.workspaceId, actor.workspaceId))
+    .where(eq(sendingDomain.workspaceId, p.workspaceId))
     .orderBy(asc(sendingDomain.createdAt));
   return Promise.all(
     rows.map(async (d) => {
@@ -86,21 +87,21 @@ export async function listDomains(env: Env, actor: ConsoleActor) {
   );
 }
 
-export async function addDomain(env: Env, actor: ConsoleActor, input: { domain: string; sesRegion?: string }): Promise<{ id: string }> {
+export async function addDomain(env: Env, p: Principal, input: { domain: string; sesRegion?: string }): Promise<{ id: string }> {
   const domain = normaliseDomain(input.domain);
-  const profile = await getWorkspaceProfile(env, actor.workspaceId);
+  const profile = await getWorkspaceProfile(env, p.workspaceId);
   const sesRegion = input.sesRegion ?? profile.defaultSesRegion;
   if (!isSesRegion(sesRegion)) throw new RelayError("unknown region");
-  if (sesRegion !== profile.defaultSesRegion && !actor.platformAdmin) throw new RelayError("forbidden");
+  if (sesRegion !== profile.defaultSesRegion && !p.platformAdmin) throw new RelayError("forbidden");
 
   const ses = sesIdentityApi(env);
-  if (!actor.platformAdmin) {
+  if (!p.platformAdmin) {
     if (profile.selfServe) {
       // shortcut: parallel addDomain calls can all pass this count and exceed the cap, add an atomic check if abuse appears
-      const [{ n }] = await coreDb(env).select({ n: count() }).from(sendingDomain).where(eq(sendingDomain.workspaceId, actor.workspaceId));
+      const [{ n }] = await coreDb(env).select({ n: count() }).from(sendingDomain).where(eq(sendingDomain.workspaceId, p.workspaceId));
       if (n >= SELF_SERVE_DOMAIN_CAP) throw new RelayError("domain limit reached");
     }
-    if (await claimedByAnother(env, actor.workspaceId, domain)) throw new RelayError("domain claimed");
+    if (await claimedByAnother(env, p.workspaceId, domain)) throw new RelayError("domain claimed");
     // An identity can sit in any region of the shared SES account, so a squat elsewhere is still a claim.
     for (const region of SES_REGION_IDS) {
       if (await sesRead.failClosed(env, region, domain)) throw new RelayError("domain registered");
@@ -112,7 +113,7 @@ export async function addDomain(env: Env, actor: ConsoleActor, input: { domain: 
   try {
     [row] = await coreDb(env)
       .insert(sendingDomain)
-      .values({ workspaceId: actor.workspaceId, domain, sesRegion, protected: isProtectedDomain(env, domain) })
+      .values({ workspaceId: p.workspaceId, domain, sesRegion, protected: isProtectedDomain(env, domain) })
       .returning({ id: sendingDomain.id });
   } catch (err) {
     if (uniqueViolation(err, "sending_domain.domain")) throw new RelayError("domain claimed");
@@ -123,7 +124,7 @@ export async function addDomain(env: Env, actor: ConsoleActor, input: { domain: 
   let alreadyExists: boolean;
   try {
     // A platform admin adopting an identity needs only read access: Create is behind EnableSelfServeIdentities.
-    const existing = actor.platformAdmin ? await sesRead.failClosed(env, sesRegion, domain) : null;
+    const existing = p.platformAdmin ? await sesRead.failClosed(env, sesRegion, domain) : null;
     ({ alreadyExists } = existing ? { alreadyExists: true } : await ses.create(sesRegion, domain));
   } catch (err) {
     await removeRow();
@@ -132,22 +133,22 @@ export async function addDomain(env: Env, actor: ConsoleActor, input: { domain: 
   if (!alreadyExists) {
     await coreDb(env).update(sendingDomain).set({ createdByRelay: true }).where(eq(sendingDomain.id, row.id));
   } else {
-    if (!actor.platformAdmin) {
+    if (!p.platformAdmin) {
       await removeRow();
       throw new RelayError("domain registered");
     }
     // Adopting an identity that already exists: read its real state now instead of waiting for Check now.
-    await checkDomain(env, actor, row.id);
+    await checkDomain(env, p, row.id);
   }
-  await refreshWorkspaceLimits(env, actor.workspaceId);
+  await refreshWorkspaceLimits(env, p.workspaceId);
   return row;
 }
 
-export async function checkDomain(env: Env, actor: ConsoleActor, id: string): Promise<{ status: DomainStatus; dkimStatus: string }> {
+export async function checkDomain(env: Env, p: Principal, id: string): Promise<{ status: DomainStatus; dkimStatus: string }> {
   const [row] = await coreDb(env)
     .select()
     .from(sendingDomain)
-    .where(and(eq(sendingDomain.id, id), eq(sendingDomain.workspaceId, actor.workspaceId)));
+    .where(and(eq(sendingDomain.id, id), eq(sendingDomain.workspaceId, p.workspaceId)));
   if (!row) throw new RelayError("not found");
 
   const { status, dkimStatus } = domainStateOf(await sesRead.failClosed(env, row.sesRegion, row.domain));
@@ -155,11 +156,11 @@ export async function checkDomain(env: Env, actor: ConsoleActor, id: string): Pr
     .update(sendingDomain)
     .set({ status, dkimStatus, updatedAt: new Date(), ...(status === "verified" && !row.verifiedAt ? { verifiedAt: new Date() } : {}) })
     .where(eq(sendingDomain.id, id));
-  if (status !== row.status) await refreshWorkspaceLimits(env, actor.workspaceId);
+  if (status !== row.status) await refreshWorkspaceLimits(env, p.workspaceId);
   return { status, dkimStatus };
 }
 
-export async function listAddresses(env: Env, actor: ConsoleActor) {
+export async function listAddresses(env: Env, p: Principal) {
   const [rows, apps] = await Promise.all([
     coreDb(env)
       .select({
@@ -172,9 +173,9 @@ export async function listAddresses(env: Env, actor: ConsoleActor) {
         canSend: address.canSend,
       })
       .from(address)
-      .where(eq(address.workspaceId, actor.workspaceId))
+      .where(eq(address.workspaceId, p.workspaceId))
       .orderBy(asc(address.createdAt)),
-    securityDb(env).select({ id: app.id, name: app.name }).from(app).where(eq(app.workspaceId, actor.workspaceId)),
+    securityDb(env).select({ id: app.id, name: app.name }).from(app).where(eq(app.workspaceId, p.workspaceId)),
   ]);
   const names = new Map(apps.map((a) => [a.id, a.name]));
   return rows.map((r) => ({ ...r, appName: names.get(r.appId) ?? "Unknown app" }));
@@ -182,51 +183,51 @@ export async function listAddresses(env: Env, actor: ConsoleActor) {
 
 export async function addAddress(
   env: Env,
-  actor: ConsoleActor,
+  p: Principal,
   input: { appId: string; email: string; kind: "inbox" | "sender" | "both"; displayName?: string; replyTo?: string | null },
 ): Promise<{ id: string }> {
-  await getApp(env, actor, input.appId);
+  await getApp(env, p, input.appId);
   const email = normaliseEmail(input.email);
   const [owned] = await coreDb(env)
     .select({ status: sendingDomain.status })
     .from(sendingDomain)
-    .where(and(eq(sendingDomain.workspaceId, actor.workspaceId), eq(sendingDomain.domain, email.slice(email.indexOf("@") + 1))));
+    .where(and(eq(sendingDomain.workspaceId, p.workspaceId), eq(sendingDomain.domain, email.slice(email.indexOf("@") + 1))));
   if (!owned) throw new RelayError("address must use one of your domains");
   // A sender can go out before its domain verifies; anything received or read as a mailbox needs the domain verified.
-  if (!actor.platformAdmin && input.kind !== "sender" && owned.status !== "verified") {
+  if (!p.platformAdmin && input.kind !== "sender" && owned.status !== "verified") {
     throw new RelayError("domain not verified");
   }
 
   let row: { id: string };
   try {
-    row = await createAddress(env, { ...input, canSend: input.kind !== "inbox", workspaceId: actor.workspaceId, email });
+    row = await createAddress(env, { ...input, canSend: input.kind !== "inbox", workspaceId: p.workspaceId, email });
   } catch (err) {
     if (uniqueViolation(err, "address.email")) throw new RelayError("address already exists");
     throw err;
   }
-  await refreshWorkspaceLimits(env, actor.workspaceId);
+  await refreshWorkspaceLimits(env, p.workspaceId);
   return row;
 }
 
 export async function updateAddress(
   env: Env,
-  actor: ConsoleActor,
+  p: Principal,
   id: string,
   patch: { displayName?: string | null; replyTo?: string | null },
 ): Promise<void> {
   // Sending follows kind, so canSend is never taken from the caller.
   const { displayName, replyTo } = patch;
-  if (!(await updateAddressRow(env, actor.workspaceId, id, { displayName, replyTo }))) throw new RelayError("not found");
-  await refreshWorkspaceLimits(env, actor.workspaceId);
+  if (!(await updateAddressRow(env, p.workspaceId, id, { displayName, replyTo }))) throw new RelayError("not found");
+  await refreshWorkspaceLimits(env, p.workspaceId);
 }
 
-export async function removeAddress(env: Env, actor: ConsoleActor, id: string): Promise<void> {
-  if (!(await deleteAddressRow(env, actor.workspaceId, id))) throw new RelayError("not found");
-  await refreshWorkspaceLimits(env, actor.workspaceId);
+export async function removeAddress(env: Env, p: Principal, id: string): Promise<void> {
+  if (!(await deleteAddressRow(env, p.workspaceId, id))) throw new RelayError("not found");
+  await refreshWorkspaceLimits(env, p.workspaceId);
 }
 
-export async function releaseDomain(env: Env, actor: ConsoleActor, id: string): Promise<void> {
-  if (!actor.platformAdmin) throw new RelayError("forbidden");
+export async function releaseDomain(env: Env, p: Principal, id: string): Promise<void> {
+  if (!p.platformAdmin) throw new RelayError("forbidden");
   const [row] = await coreDb(env)
     .select({
       id: sendingDomain.id,
@@ -239,14 +240,14 @@ export async function releaseDomain(env: Env, actor: ConsoleActor, id: string): 
     .where(eq(sendingDomain.id, id));
   if (!row) throw new RelayError("not found");
   if (row.protected) throw new RelayError("domain is protected");
-  if (!(await releasePendingRow(env, row, actor.userId))) {
+  if (!(await releasePendingRow(env, row, p.userId))) {
     throw new RelayError("domain cannot be released");
   }
 }
 
 // Protection is the only guard on a live domain's rows: the sweep, release and delete paths all check it.
-export async function setDomainProtected(env: Env, actor: ConsoleActor, id: string, protectedNow: boolean): Promise<void> {
-  if (!actor.platformAdmin) throw new RelayError("forbidden");
+export async function setDomainProtected(env: Env, p: Principal, id: string, protectedNow: boolean): Promise<void> {
+  if (!p.platformAdmin) throw new RelayError("forbidden");
   const [row] = await coreDb(env)
     .update(sendingDomain)
     .set({ protected: protectedNow, updatedAt: new Date() })
@@ -255,7 +256,7 @@ export async function setDomainProtected(env: Env, actor: ConsoleActor, id: stri
   if (!row) throw new RelayError("not found");
   await writeAudit(env, {
     action: protectedNow ? "domain.protect" : "domain.unprotect",
-    actorUserId: actor.userId,
+    actorUserId: p.userId,
     workspaceId: row.workspaceId,
     target: id,
   });

@@ -2,7 +2,7 @@ import { env, runInDurableObject, SELF } from "cloudflare:test";
 import { and, eq } from "drizzle-orm";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { requireActor } from "../src/console/actor";
-import { getMessageFor, listMessagesFor } from "../src/services/inbox";
+import { getMessage, listMessages } from "../src/services/inbox";
 import { createAddress, createAddressGrant } from "../src/core/addresses";
 import { clientFor } from "../src/do/client";
 import { securityDb } from "../src/db/security/client";
@@ -98,12 +98,12 @@ describe("message reads", () => {
         createdAt: 1000 + Math.floor(i / 3),
       })),
     );
-    const p1 = await listMessagesFor(env, t.owner, { direction: "out" });
+    const p1 = await listMessages(env, t.owner, { direction: "out" });
     expect(p1.rows).toHaveLength(50);
     expect(p1.nextCursor).not.toBeNull();
-    const p2 = await listMessagesFor(env, t.owner, { direction: "out", cursor: p1.nextCursor ?? undefined });
+    const p2 = await listMessages(env, t.owner, { direction: "out", cursor: p1.nextCursor ?? undefined });
     expect(p2.rows).toHaveLength(50);
-    const p3 = await listMessagesFor(env, t.owner, { direction: "out", cursor: p2.nextCursor ?? undefined });
+    const p3 = await listMessages(env, t.owner, { direction: "out", cursor: p2.nextCursor ?? undefined });
     expect(p3.rows).toHaveLength(20);
     expect(p3.nextCursor).toBeNull();
     const all = [...p1.rows, ...p2.rows, ...p3.rows];
@@ -116,7 +116,7 @@ describe("message reads", () => {
 
   it("refuses a malformed cursor with 400", async () => {
     const t = await tenant("cursor");
-    await expect(listMessagesFor(env, t.owner, { direction: "out", cursor: "x" })).rejects.toMatchObject({
+    await expect(listMessages(env, t.owner, { direction: "out", cursor: "x" })).rejects.toMatchObject({
       status: 400,
       message: "invalid cursor",
     });
@@ -129,11 +129,11 @@ describe("message reads", () => {
       { appId: t.appA, direction: "out", status: "sent", toEmail: "cust@example.com", createdAt: 2 },
       { appId: t.appB, direction: "out", status: "failed", toEmail: "other@example.com", createdAt: 3 },
     ]);
-    const failed = await listMessagesFor(env, t.owner, { direction: "out", status: "failed" });
+    const failed = await listMessages(env, t.owner, { direction: "out", status: "failed" });
     expect(failed.rows.map((r) => r.createdAt)).toEqual([3, 1]);
-    const appB = await listMessagesFor(env, t.owner, { direction: "out", appId: t.appB });
+    const appB = await listMessages(env, t.owner, { direction: "out", appId: t.appB });
     expect(appB.rows.map((r) => r.createdAt)).toEqual([3]);
-    const byEmail = await listMessagesFor(env, t.owner, { direction: "out", email: "Cust@Example.com " });
+    const byEmail = await listMessages(env, t.owner, { direction: "out", email: "Cust@Example.com " });
     expect(byEmail.rows.map((r) => r.createdAt)).toEqual([2, 1]);
   });
 
@@ -147,34 +147,34 @@ describe("message reads", () => {
     ]);
     const m = await memberOf(t.workspaceId, "grants-member@example.com", "member");
 
-    expect(await listMessagesFor(env, m.actor, { direction: "in" })).toMatchObject({ rows: [], restricted: true });
+    expect(await listMessages(env, m.actor, { direction: "in" })).toMatchObject({ rows: [], restricted: true });
 
     await createAddressGrant(env, { workspaceId: t.workspaceId, addressId: in1, memberId: m.memberId });
-    const direct = await listMessagesFor(env, m.actor, { direction: "in" });
+    const direct = await listMessages(env, m.actor, { direction: "in" });
     expect(direct.rows.map((r) => r.id)).toEqual([a1]);
 
     const [tm] = await db.insert(team).values({ name: "Support", organizationId: t.workspaceId }).returning();
     await db.insert(teamMember).values({ teamId: tm.id, userId: m.userId });
     await createAddressGrant(env, { workspaceId: t.workspaceId, addressId: in2, teamId: tm.id });
-    const viaTeam = await listMessagesFor(env, m.actor, { direction: "in" });
+    const viaTeam = await listMessages(env, m.actor, { direction: "in" });
     expect(viaTeam.rows.map((r) => r.id).sort()).toEqual([a1, a2].sort());
 
-    const owner = await listMessagesFor(env, t.owner, { direction: "in" });
+    const owner = await listMessages(env, t.owner, { direction: "in" });
     expect(owner.restricted).toBe(false);
     expect(owner.rows).toHaveLength(2);
 
     await db.delete(addressGrant).where(eq(addressGrant.teamId, tm.id));
-    await expect(getMessageFor(env, m.actor, a2, { images: false })).rejects.toMatchObject({ status: 404 });
-    await expect(getMessageFor(env, m.actor, a1, { images: false })).resolves.toMatchObject({ id: a1 });
+    await expect(getMessage(env, m.actor, a2, { images: false })).rejects.toMatchObject({ status: 404 });
+    await expect(getMessage(env, m.actor, a1, { images: false })).resolves.toMatchObject({ id: a1 });
   });
 
   it("lets billing list outbound mail and refuses inbound", async () => {
     const t = await tenant("billing");
     await seed(t.workspaceId, [{ appId: t.appA, direction: "out", toEmail: "c@example.com", createdAt: 1 }]);
     const b = await memberOf(t.workspaceId, "billing-user@example.com", "billing");
-    const out = await listMessagesFor(env, b.actor, { direction: "out" });
+    const out = await listMessages(env, b.actor, { direction: "out" });
     expect(out.rows).toHaveLength(1);
-    await expect(listMessagesFor(env, b.actor, { direction: "in" })).rejects.toMatchObject({ status: 403 });
+    await expect(listMessages(env, b.actor, { direction: "in" })).rejects.toMatchObject({ status: 403 });
   });
 
   it("returns events in occurrence order and no storage keys", async () => {
@@ -192,7 +192,7 @@ describe("message reads", () => {
         id,
       );
     });
-    const view = await getMessageFor(env, t.owner, id, { images: false });
+    const view = await getMessage(env, t.owner, id, { images: false });
     expect(view.events.map((e) => [e.type, e.occurredAt])).toEqual([
       ["Send", 1000],
       ["Delivery", 2000],
@@ -220,14 +220,14 @@ describe("message reads", () => {
         createdAt: 2,
       },
     ]);
-    const first = await getMessageFor(env, t.owner, l1, { images: false });
+    const first = await getMessage(env, t.owner, l1, { images: false });
     expect(first.thread.map((x) => x.id)).toEqual([l2]);
-    const reply = await getMessageFor(env, t.owner, l2, { images: false });
+    const reply = await getMessage(env, t.owner, l2, { images: false });
     expect(reply.thread.map((x) => x.id)).toEqual([l1]);
 
     const m = await memberOf(t.workspaceId, "thread-member@example.com", "member");
     await createAddressGrant(env, { workspaceId: t.workspaceId, addressId: in1, memberId: m.memberId });
-    await expect(getMessageFor(env, m.actor, l1, { images: false })).resolves.toMatchObject({ thread: [] });
+    await expect(getMessage(env, m.actor, l1, { images: false })).resolves.toMatchObject({ thread: [] });
   });
 
   it("migration 4 adds the direction, reply and webhook-delivery indexes", async () => {
@@ -259,14 +259,14 @@ describe("letter HTML", () => {
       state.storage.sql.exec("UPDATE message SET html_key = ? WHERE id = ?", htmlKey, id);
     });
 
-    const blocked = await getMessageFor(env, t.owner, id, { images: false });
+    const blocked = await getMessage(env, t.owner, id, { images: false });
     expect(blocked.htmlSafe).toContain("Hi");
     for (const bad of ["<script", "onerror", "http-equiv", "<base", "track.example"]) {
       expect(blocked.htmlSafe, bad).not.toContain(bad);
     }
     expect(blocked.blockedRemote).toBe(1);
 
-    const shown = await getMessageFor(env, t.owner, id, { images: true });
+    const shown = await getMessage(env, t.owner, id, { images: true });
     expect(shown.htmlSafe).toContain("track.example");
     expect(shown.htmlSafe).not.toContain("<script");
   });
@@ -360,7 +360,7 @@ describe("downloads", () => {
     const t = await tenant("dl-label");
     const addr = await inbox(t.workspaceId, t.appA, "in@label.test");
     const letter = await storedLetter(t, addr, { attachments: [{ filename: "invoice‮gnp.exe", body: PDF }] });
-    const detail = await getMessageFor(env, t.owner, letter.id, { images: false });
+    const detail = await getMessage(env, t.owner, letter.id, { images: false });
     expect(detail.attachments[0].filename).toBe("invoicegnp.exe");
   });
 
@@ -565,7 +565,7 @@ describe("inline images", () => {
   const KB = 1024;
 
   // Owner's view of a letter, with images shown or blocked.
-  const view = (t: Tenant, id: string, images: boolean) => getMessageFor(env, t.owner, id, { images });
+  const view = (t: Tenant, id: string, images: boolean) => getMessage(env, t.owner, id, { images });
 
   it("inlines a PNG as a data: URI when images are shown, and drops it when blocked", async () => {
     const t = await tenant("img-png");
@@ -689,7 +689,7 @@ describe("campaign message content", () => {
     const t = await tenant("camp-read");
     await campaignLetter(t, "msg_camp_read", "cmp_read", true);
 
-    const view = await getMessageFor(env, t.owner, "msg_camp_read", { images: false });
+    const view = await getMessage(env, t.owner, "msg_camp_read", { images: false });
     expect(view.htmlSafe).toContain("Hi &lt;b&gt;Ann&lt;/b&gt;");
     expect(view.htmlSafe).toContain("{{unsubscribe_url}}");
     expect(view.text).toBe("Hi <b>Ann</b> 1 Main St {{unsubscribe_url}}");
@@ -704,7 +704,7 @@ describe("campaign message content", () => {
     const t = await tenant("camp-gone");
     await campaignLetter(t, "msg_camp_gone_read", "cmp_missing", false);
 
-    const view = await getMessageFor(env, t.owner, "msg_camp_gone_read", { images: false });
+    const view = await getMessage(env, t.owner, "msg_camp_gone_read", { images: false });
     expect(view.htmlSafe).toBeNull();
     expect(view.text).toBeNull();
     const html = await SELF.fetch(`${ORIGIN}/api/console/messages/msg_camp_gone_read/html`, { headers: { cookie: t.cookie } });

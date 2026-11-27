@@ -2,7 +2,7 @@ import { env, SELF } from "cloudflare:test";
 import { beforeAll, describe, expect, it } from "vitest";
 import { requireActor } from "../src/console/actor";
 import { addApp } from "../src/services/apps";
-import { createAutomationFor, enableAutomationFor, listAutomationsFor } from "../src/services/automations";
+import { createAutomation, enableAutomation, listAutomations } from "../src/services/automations";
 import { addMember, cookieFor, createWorkspace, headersFor, ORIGIN, setActive } from "./console-helpers";
 import { applyMigrations } from "./migrate";
 
@@ -27,14 +27,14 @@ describe("automations console", () => {
     const { id: appId } = await addApp(env, owner, { name: "Web", slug: "web" });
     const cookie = await addMember(workspaceId, "aut-member@example.com", "member");
     const member = await requireActor(env, headersFor(cookie));
-    expect(await listAutomationsFor(env, member, appId)).toEqual([]);
+    expect(await listAutomations(env, member, appId)).toEqual([]);
     await expect(requireActor(env, headersFor(cookie), { permission: { campaign: ["send"] }, write: true })).rejects.toMatchObject({ status: 403 });
   });
 
   it("refuses a sender that is not verified in the app with 400 and creates nothing", async () => {
     const { owner } = await workspaceFor("aut-sender@example.com", "Aut Sender Co");
     const { id: appId } = await addApp(env, owner, { name: "Web", slug: "web" });
-    await expect(createAutomationFor(env, owner, appId, input)).rejects.toMatchObject({ status: 400, message: "sender not verified" });
-    expect(await listAutomationsFor(env, owner, appId)).toEqual([]);
+    await expect(createAutomation(env, owner, appId, input)).rejects.toMatchObject({ status: 400, message: "sender not verified" });
+    expect(await listAutomations(env, owner, appId)).toEqual([]);
   });
 });

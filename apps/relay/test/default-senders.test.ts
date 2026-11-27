@@ -2,7 +2,7 @@ import { createExecutionContext, env, SELF } from "cloudflare:test";
 import { and, eq } from "drizzle-orm";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { requireActor } from "../src/console/actor";
-import { addApp, getDefaultSenders, setDefaultSendersFor } from "../src/services/apps";
+import { addApp, getDefaultSenders, setDefaultSenders } from "../src/services/apps";
 import { removeAddress, updateAddress } from "../src/services/domains";
 import { createApiKey } from "../src/services/api-keys";
 import { createAddress } from "../src/core/addresses";
@@ -50,7 +50,7 @@ async function setup(slug: string) {
       body: JSON.stringify(payload),
     });
   const defaults = (transactionalId: string | null, marketingId: string | null) =>
-    setDefaultSendersFor(env, actor, appId, { transactionalId, marketingId });
+    setDefaultSenders(env, actor, appId, { transactionalId, marketingId });
   return { cookie, workspaceId, actor, appId, domain, sender, key, rpc, stub, call, defaults };
 }
 

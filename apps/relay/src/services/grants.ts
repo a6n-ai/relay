@@ -5,17 +5,17 @@ import { address } from "../db/core/schema";
 import { securityDb } from "../db/security/client";
 import { addressGrant, member, team, user } from "../db/security/schema";
 import type { Env } from "../env";
-import { writeAudit } from "../auth/audit";
-import { type ConsoleActor, parseRoles, uniqueViolation } from "../auth/session";
+import { parseRoles, uniqueViolation } from "../auth/session";
+import { audit, type Principal } from "./principal";
 import { RelayError, codeOf } from "../shared/errors";
 
 type GrantView = { id: string; kind: "member" | "team"; targetId: string; label: string };
 
-export async function getAddressAccess(env: Env, actor: ConsoleActor, addressId: string) {
+export async function getAddressAccess(env: Env, p: Principal, addressId: string) {
   const [owned] = await coreDb(env)
     .select({ id: address.id, email: address.email })
     .from(address)
-    .where(and(eq(address.id, addressId), eq(address.workspaceId, actor.workspaceId)));
+    .where(and(eq(address.id, addressId), eq(address.workspaceId, p.workspaceId)));
   if (!owned) throw new RelayError("not found");
 
   const db = securityDb(env);
@@ -33,13 +33,13 @@ export async function getAddressAccess(env: Env, actor: ConsoleActor, addressId:
       .leftJoin(member, eq(member.id, addressGrant.memberId))
       .leftJoin(user, eq(user.id, member.userId))
       .leftJoin(team, eq(team.id, addressGrant.teamId))
-      .where(and(eq(addressGrant.addressId, addressId), eq(addressGrant.workspaceId, actor.workspaceId))),
+      .where(and(eq(addressGrant.addressId, addressId), eq(addressGrant.workspaceId, p.workspaceId))),
     db
       .select({ id: member.id, name: user.name, email: user.email, role: member.role })
       .from(member)
       .innerJoin(user, eq(user.id, member.userId))
-      .where(eq(member.organizationId, actor.workspaceId)),
-    db.select({ id: team.id, name: team.name }).from(team).where(eq(team.organizationId, actor.workspaceId)),
+      .where(eq(member.organizationId, p.workspaceId)),
+    db.select({ id: team.id, name: team.name }).from(team).where(eq(team.organizationId, p.workspaceId)),
   ]);
 
   const grants: GrantView[] = grantRows.flatMap((g): GrantView[] => {
@@ -74,36 +74,24 @@ function grantFailure(err: unknown): unknown {
 
 export async function addGrant(
   env: Env,
-  actor: ConsoleActor,
+  p: Principal,
   input: { addressId: string; memberId?: string; teamId?: string },
 ): Promise<void> {
   let grantId: string;
   try {
-    grantId = await createAddressGrant(env, { ...input, workspaceId: actor.workspaceId });
+    grantId = await createAddressGrant(env, { ...input, workspaceId: p.workspaceId });
   } catch (err) {
     throw grantFailure(err);
   }
-  await writeAudit(env, {
-    action: "address_grant.add",
-    actorUserId: actor.userId,
-    workspaceId: actor.workspaceId,
-    target: input.addressId,
-    data: input.memberId ? { grantId, memberId: input.memberId } : { grantId, teamId: input.teamId },
-  });
+  await audit(env, p, "address_grant.add", input.addressId, input.memberId ? { grantId, memberId: input.memberId } : { grantId, teamId: input.teamId });
 }
 
-export async function removeGrant(env: Env, actor: ConsoleActor, grantId: string): Promise<void> {
+export async function removeGrant(env: Env, p: Principal, grantId: string): Promise<void> {
   const rows = await securityDb(env)
     .delete(addressGrant)
-    .where(and(eq(addressGrant.id, grantId), eq(addressGrant.workspaceId, actor.workspaceId)))
+    .where(and(eq(addressGrant.id, grantId), eq(addressGrant.workspaceId, p.workspaceId)))
     .returning({ addressId: addressGrant.addressId, memberId: addressGrant.memberId, teamId: addressGrant.teamId });
   if (rows.length === 0) throw new RelayError("not found");
   const [row] = rows;
-  await writeAudit(env, {
-    action: "address_grant.remove",
-    actorUserId: actor.userId,
-    workspaceId: actor.workspaceId,
-    target: row.addressId,
-    data: row.memberId ? { grantId, memberId: row.memberId } : { grantId, teamId: row.teamId },
-  });
+  await audit(env, p, "address_grant.remove", row.addressId, row.memberId ? { grantId, memberId: row.memberId } : { grantId, teamId: row.teamId });
 }

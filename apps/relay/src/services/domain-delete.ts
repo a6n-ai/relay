@@ -11,7 +11,7 @@ import { securityDb } from "../db/security/client";
 import { addressGrant } from "../db/security/schema";
 import type { Env } from "../env";
 import { writeAudit } from "../auth/audit";
-import { type ConsoleActor } from "../auth/session";
+import type { Principal } from "./principal";
 import { dkimRecords, domainRow } from "./domains";
 import { RelayError } from "../shared/errors";
 
@@ -39,8 +39,8 @@ async function grantIdsOf(env: Env, workspaceId: string, addressIds: string[]): 
   return found.flat().map((r) => r.id);
 }
 
-export async function domainDeletePreview(env: Env, actor: ConsoleActor, id: string) {
-  if (!actor.platformAdmin) throw new RelayError("forbidden");
+export async function previewDomainDelete(env: Env, p: Principal, id: string) {
+  if (!p.platformAdmin) throw new RelayError("forbidden");
   const row = await domainRow(env, id);
   const addresses = await addressesOf(env, row.workspaceId, row.domain);
   const [grants, usage, identity] = await Promise.all([
@@ -70,11 +70,11 @@ export async function domainDeletePreview(env: Env, actor: ConsoleActor, id: str
 // Suppressions, marketing opt-outs and audit rows stay: they are the legal record. Mail history goes only when asked for.
 export async function deleteDomain(
   env: Env,
-  actor: ConsoleActor,
+  p: Principal,
   id: string,
   input: { confirm: string; deleteHistory: boolean },
 ): Promise<{ ownerCommand: string | null }> {
-  if (!actor.platformAdmin) throw new RelayError("forbidden");
+  if (!p.platformAdmin) throw new RelayError("forbidden");
   const row = await domainRow(env, id);
   if (input.confirm !== row.domain) throw new RelayError("domain name does not match");
 
@@ -97,7 +97,7 @@ export async function deleteDomain(
   await refreshWorkspaceLimits(env, row.workspaceId);
   await writeAudit(env, {
     action: row.protected ? "domain.delete_protected" : "domain.delete",
-    actorUserId: actor.userId,
+    actorUserId: p.userId,
     workspaceId: row.workspaceId,
     target: row.id,
     data: {

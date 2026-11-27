@@ -6,14 +6,14 @@ import { campaignCreateInput, createCampaign, listCampaigns, withConsoleUrl } fr
 export const Route = createFileRoute("/api/v1/campaigns")({
   server: {
     handlers: {
-      GET: apiRoute(async ({ env, scope, p, request }) => {
+      GET: apiRoute(async ({ env, p, request }) => {
         const cursor = new URL(request.url).searchParams.get("cursor") ?? undefined;
         if (cursor !== undefined && !decodeCursor(cursor)) return json({ error: "invalid input" }, 400);
-        const page = await listCampaigns(env, p, scope.appId, cursor);
+        const page = await listCampaigns(env, p, p.appId, cursor);
         return json({ data: page.rows, nextCursor: page.nextCursor });
       }),
-      POST: apiRoute(async ({ env, scope, p, request }) =>
-        data(withConsoleUrl(env, await createCampaign(env, p, scope.appId, campaignCreateInput.parse(await readJson(request)))), 201),
+      POST: apiRoute(async ({ env, p, request }) =>
+        data(withConsoleUrl(env, await createCampaign(env, p, p.appId, campaignCreateInput.parse(await readJson(request)))), 201),
       ),
     },
   },

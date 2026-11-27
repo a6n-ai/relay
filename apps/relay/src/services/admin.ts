@@ -127,7 +127,7 @@ export async function setWorkspaceQuota(env: Env, admin: PlatformAdmin, workspac
 }
 
 // Super admin only: a binding names a Worker on this deployment, which a tenant must never choose.
-export async function setAudienceBindingFor(
+export async function setAudienceBinding(
   env: Env,
   admin: PlatformAdmin,
   workspaceId: string,

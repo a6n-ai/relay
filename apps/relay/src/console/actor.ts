@@ -3,7 +3,8 @@ import { securityDb } from "../db/security/client";
 import { member, workspace } from "../db/security/schema";
 import type { Env } from "../env";
 import { allows } from "../shared/permissions";
-import { assertSameOrigin, parseRoles, requireSession, type ConsoleActor } from "../auth/session";
+import { assertSameOrigin, parseRoles, requireSession } from "../auth/session";
+import type { Principal } from "../services/principal";
 import { RelayError } from "../shared/errors";
 import type { Need } from "./needs";
 
@@ -11,7 +12,7 @@ export async function requireActor(
   env: Env,
   headers: Headers,
   need: Need = {},
-): Promise<ConsoleActor> {
+): Promise<Principal> {
   const { userId, platformAdmin, activeWorkspaceId } = await requireSession(env, headers);
   if (!activeWorkspaceId) throw new RelayError("no workspace");
 
@@ -33,7 +34,7 @@ export async function requireActor(
     if (row.status === "suspended") throw new RelayError("workspace suspended");
   }
 
-  return { userId, platformAdmin, workspaceId: activeWorkspaceId, roles, workspaceStatus: row.status };
+  return { userId, platformAdmin, workspaceId: activeWorkspaceId, appId: null, keyId: null, roles, workspaceStatus: row.status };
 }
 
 export async function requirePlatformAdmin(

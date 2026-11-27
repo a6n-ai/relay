@@ -1,21 +1,22 @@
 import type { Env } from "../env";
 import { writeAudit } from "../auth/audit";
 import { RelayError } from "../shared/errors";
-import type { KeyScope } from "../shared/scope";
+import type { OrgRole } from "../shared/roles";
 import { getApp } from "./apps";
 
-// Who is acting: a console user (userId) or an API key (keyId, pinned to one app). Permission and suspension are checked by the transport.
-export type Principal = { workspaceId: string; appId: string | null; userId: string | null; keyId: string | null; platformAdmin?: boolean };
+// Who is acting: a console user (userId, roles) or an API key (keyId, pinned to one app). The transport checks permission and suspension, then builds this once.
+export type Principal = {
+  workspaceId: string;
+  appId: string | null;
+  userId: string | null;
+  keyId: string | null;
+  platformAdmin?: boolean;
+  roles?: OrgRole[];
+  workspaceStatus?: "active" | "suspended";
+};
 
-export const fromActor = (a: { workspaceId: string; userId: string; platformAdmin?: boolean }): Principal => ({
-  workspaceId: a.workspaceId,
-  appId: null,
-  userId: a.userId,
-  keyId: null,
-  platformAdmin: a.platformAdmin,
-});
-
-export const fromScope = (s: KeyScope): Principal => ({ workspaceId: s.workspaceId, appId: s.appId, userId: null, keyId: s.keyId });
+// An API key reaches one app, so these two are always set.
+export type KeyPrincipal = Principal & { appId: string; keyId: string };
 
 export const audit = (env: Env, p: Principal, action: string, target: string, data?: Record<string, unknown>) =>
   writeAudit(env, {
@@ -27,7 +28,7 @@ export const audit = (env: Env, p: Principal, action: string, target: string, da
   });
 
 // A key reaches only its own app; a console user reaches any app of the workspace.
-export async function appFor(env: Env, p: Principal, appId: string): Promise<void> {
+export async function ownApp(env: Env, p: Principal, appId: string): Promise<void> {
   if (p.appId !== null) {
     if (appId !== p.appId) throw new RelayError("not found");
     return;

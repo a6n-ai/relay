@@ -7,7 +7,7 @@ import type { ImportResult, ListInput } from "../do/lists";
 import type { Env } from "../env";
 import { RelayError } from "../shared/errors";
 import { type ListView, type MemberView } from "../shared/views";
-import { appFor, audit, type Principal } from "./principal";
+import { ownApp, audit, type Principal } from "./principal";
 
 // A key reaches only the lists of its app, so an id from another app is a 404 before any member is read.
 // A console principal has no app: the DO answers not found for a list outside the workspace.
@@ -26,12 +26,12 @@ export async function getList(env: Env, p: Principal, listId: string): Promise<L
 }
 
 export async function listLists(env: Env, p: Principal, appId: string): Promise<ListView[]> {
-  await appFor(env, p, appId);
+  await ownApp(env, p, appId);
   return clientFor(env, p.workspaceId).listLists(p.workspaceId, appId);
 }
 
 export async function createList(env: Env, p: Principal, appId: string, input: ListInput): Promise<ListView> {
-  await appFor(env, p, appId);
+  await ownApp(env, p, appId);
   const list = await clientFor(env, p.workspaceId).createList(p.workspaceId, appId, input);
   await audit(env, p, "list.create", list.id, { appId });
   return list;

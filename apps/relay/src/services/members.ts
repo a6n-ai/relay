@@ -5,7 +5,8 @@ import { invitation, member, team, teamMember, user, workspace } from "../db/sec
 import type { Env } from "../env";
 import { inviteCap, invitesInWindow } from "../core/workspace-profile";
 import { createAuth } from "../auth";
-import { assertSameOrigin, type ConsoleActor, parseRoles, requireSession } from "../auth/session";
+import { assertSameOrigin, parseRoles, requireSession } from "../auth/session";
+import type { Principal } from "./principal";
 import { RelayError } from "../shared/errors";
 import { type OrgRole } from "../shared/roles";
 import { DAY_MS } from "../shared/limits";
@@ -26,9 +27,9 @@ async function authCall<T>(call: () => Promise<T>): Promise<T> {
 const effectiveStatus = (i: { status: string; expiresAt: Date }) =>
   i.status === "pending" && i.expiresAt.getTime() < Date.now() ? "expired" : i.status;
 
-export async function listPeople(env: Env, actor: ConsoleActor) {
+export async function listPeople(env: Env, p: Principal) {
   const db = securityDb(env);
-  const ws = actor.workspaceId;
+  const ws = p.workspaceId;
   const [rows, invites, teams, links] = await Promise.all([
     db
       .select({ id: member.id, userId: member.userId, role: member.role, email: user.email, name: user.name })
@@ -70,19 +71,19 @@ export async function listPeople(env: Env, actor: ConsoleActor) {
 
 export async function inviteMember(
   env: Env,
-  actor: ConsoleActor,
+  p: Principal,
   headers: Headers,
   input: { email: string; role: OrgRole },
 ): Promise<{ id: string }> {
-  if (input.role === "owner" && !actor.roles.includes("owner")) throw new RelayError("forbidden");
+  if (input.role === "owner" && !p.roles?.includes("owner")) throw new RelayError("forbidden");
   // beforeCreateInvitation refuses at the cap; the recount below catches concurrent requests that all passed it.
-  const cap = await inviteCap(env, actor.workspaceId);
+  const cap = await inviteCap(env, p.workspaceId);
   const email = input.email.trim().toLowerCase();
   const auth = createAuth(env);
   const cancel = (invitationId: string) => authCall(() => auth.api.cancelInvitation({ headers, body: { invitationId } }));
   const { id } = await authCall(() => auth.api.createInvitation({ headers, body: { email, role: input.role } }));
   // Concurrent requests can all pass the count above. Recounting after the insert keeps live invites at or under the cap.
-  if ((await invitesInWindow(env, actor.workspaceId)) > cap) {
+  if ((await invitesInWindow(env, p.workspaceId)) > cap) {
     await cancel(id);
     throw new RelayError("invite limit reached");
   }
@@ -99,35 +100,35 @@ export async function inviteMember(
   return { id };
 }
 
-export async function cancelInvite(env: Env, actor: ConsoleActor, headers: Headers, id: string): Promise<void> {
+export async function cancelInvite(env: Env, p: Principal, headers: Headers, id: string): Promise<void> {
   const [row] = await securityDb(env)
     .select({ id: invitation.id })
     .from(invitation)
-    .where(and(eq(invitation.id, id), eq(invitation.organizationId, actor.workspaceId)));
+    .where(and(eq(invitation.id, id), eq(invitation.organizationId, p.workspaceId)));
   if (!row) throw new RelayError("not found");
   await authCall(() => createAuth(env).api.cancelInvitation({ headers, body: { invitationId: id } }));
 }
 
-async function ownMember(env: Env, actor: ConsoleActor, memberId: string) {
+async function ownMember(env: Env, p: Principal, memberId: string) {
   const [row] = await securityDb(env)
     .select({ id: member.id, userId: member.userId, role: member.role })
     .from(member)
-    .where(and(eq(member.id, memberId), eq(member.organizationId, actor.workspaceId)));
+    .where(and(eq(member.id, memberId), eq(member.organizationId, p.workspaceId)));
   if (!row) throw new RelayError("not found");
   return { ...row, roles: parseRoles(row.role) };
 }
 
-export async function changeRole(env: Env, actor: ConsoleActor, headers: Headers, memberId: string, role: OrgRole): Promise<void> {
-  const target = await ownMember(env, actor, memberId);
+export async function changeRole(env: Env, p: Principal, headers: Headers, memberId: string, role: OrgRole): Promise<void> {
+  const target = await ownMember(env, p, memberId);
   const touchesOwner = role === "owner" || target.roles.includes("owner");
-  if (touchesOwner && !actor.roles.includes("owner")) throw new RelayError("forbidden");
+  if (touchesOwner && !p.roles?.includes("owner")) throw new RelayError("forbidden");
   await authCall(() => createAuth(env).api.updateMemberRole({ headers, body: { memberId, role } }));
 }
 
 // better-auth refuses removing the last owner; that refusal comes back as a 400.
-export async function removeMember(env: Env, actor: ConsoleActor, headers: Headers, memberId: string): Promise<void> {
-  const target = await ownMember(env, actor, memberId);
-  if (target.roles.includes("owner") && !actor.roles.includes("owner")) throw new RelayError("forbidden");
+export async function removeMember(env: Env, p: Principal, headers: Headers, memberId: string): Promise<void> {
+  const target = await ownMember(env, p, memberId);
+  if (target.roles.includes("owner") && !p.roles?.includes("owner")) throw new RelayError("forbidden");
   await authCall(() => createAuth(env).api.removeMember({ headers, body: { memberIdOrEmail: memberId } }));
 }
 
@@ -136,34 +137,34 @@ export async function createTeam(env: Env, headers: Headers, name: string): Prom
   return { id: created.id };
 }
 
-async function ownTeam(env: Env, actor: ConsoleActor, teamId: string): Promise<void> {
+async function ownTeam(env: Env, p: Principal, teamId: string): Promise<void> {
   const [row] = await securityDb(env)
     .select({ id: team.id })
     .from(team)
-    .where(and(eq(team.id, teamId), eq(team.organizationId, actor.workspaceId)));
+    .where(and(eq(team.id, teamId), eq(team.organizationId, p.workspaceId)));
   if (!row) throw new RelayError("not found");
 }
 
-export async function renameTeam(env: Env, actor: ConsoleActor, headers: Headers, teamId: string, name: string): Promise<void> {
-  await ownTeam(env, actor, teamId);
+export async function renameTeam(env: Env, p: Principal, headers: Headers, teamId: string, name: string): Promise<void> {
+  await ownTeam(env, p, teamId);
   await authCall(() => createAuth(env).api.updateTeam({ headers, body: { teamId, data: { name } } }));
 }
 
-export async function deleteTeam(env: Env, actor: ConsoleActor, headers: Headers, teamId: string): Promise<void> {
-  await ownTeam(env, actor, teamId);
+export async function deleteTeam(env: Env, p: Principal, headers: Headers, teamId: string): Promise<void> {
+  await ownTeam(env, p, teamId);
   await authCall(() => createAuth(env).api.removeTeam({ headers, body: { teamId } }));
 }
 
 export async function setTeamMember(
   env: Env,
-  actor: ConsoleActor,
+  p: Principal,
   headers: Headers,
   teamId: string,
   memberId: string,
   on: boolean,
 ): Promise<void> {
-  await ownTeam(env, actor, teamId);
-  const target = await ownMember(env, actor, memberId);
+  await ownTeam(env, p, teamId);
+  const target = await ownMember(env, p, memberId);
   const body = { teamId, userId: target.userId };
   await authCall(async () => {
     if (on) await createAuth(env).api.addTeamMember({ headers, body });
