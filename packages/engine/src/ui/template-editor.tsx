@@ -14,7 +14,7 @@ import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { BellIcon, TriangleAlertIcon } from "lucide-react";
 import { toast } from "@foundry/ui/toast";
-import { apiFetch } from "./api-fetch";
+import { apiAction, apiFetch } from "./api-fetch";
 import "@uiw/react-md-editor/markdown-editor.css";
 import { Button } from "@foundry/ui/button";
 import { Input } from "@foundry/ui/input";
@@ -109,20 +109,18 @@ export function TemplateEditor({
     } else {
       payload = { ...payload, body };
     }
-    try {
-      await apiFetch("/api/notifications/templates", {
+    const res = await apiAction(
+      apiFetch("/api/notifications/templates", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(payload),
-      });
-      toast.success("Template saved");
-      // Picks up the new revision for the next save (templates are live: explicit Save only, no autosave).
-      router.refresh();
-    } catch {
-      // apiFetch already toasted the failure detail.
-    } finally {
-      setBusy(false);
-    }
+      }),
+    );
+    setBusy(false);
+    if (!res) return;
+    toast.success("Template saved");
+    // Picks up the new revision for the next save (templates are live: explicit Save only, no autosave).
+    router.refresh();
   }
 
   return (

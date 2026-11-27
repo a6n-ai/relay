@@ -26,3 +26,12 @@ export async function apiFetch<T = unknown>(input: RequestInfo | URL, init?: Req
   if (res.status === 204) return undefined as T;
   return (await res.json()) as T;
 }
+
+// For handlers: apiFetch already toasted the failure, so the caller only needs to know the action did not complete.
+export async function apiAction<T>(call: Promise<T>): Promise<{ data: T } | undefined> {
+  try {
+    return { data: await call };
+  } catch {
+    return undefined;
+  }
+}

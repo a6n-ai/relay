@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "@foundry/ui/toast";
-import { apiFetch } from "./api-fetch";
+import { apiAction, apiFetch } from "./api-fetch";
 import { Button } from "@foundry/ui/button";
 import { Input } from "@foundry/ui/input";
 import { Label } from "@foundry/ui/label";
@@ -52,8 +52,8 @@ export function ContactListFromSegment({ requiresVerifiedPhone }: { requiresVeri
     if (!name.trim()) return toast.error("Name the list");
 
     setBusy(true);
-    try {
-      const res = await apiFetch<{ imported: number }>("/api/notifications/contact-lists/from-segment", {
+    const res = await apiAction(
+      apiFetch<{ imported: number }>("/api/notifications/contact-lists/from-segment", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -63,16 +63,14 @@ export function ContactListFromSegment({ requiresVerifiedPhone }: { requiresVeri
           consentNote: consentNote || undefined,
           segment,
         }),
-      });
-      toast.success(`Created list with ${res.imported} customers`);
-      router.refresh();
-      setName("");
-      setSegment({});
-    } catch {
-      // apiFetch already toasted the failure detail.
-    } finally {
-      setBusy(false);
-    }
+      }),
+    );
+    setBusy(false);
+    if (!res) return;
+    toast.success(`Created list with ${res.data.imported} customers`);
+    router.refresh();
+    setName("");
+    setSegment({});
   }
 
   return (

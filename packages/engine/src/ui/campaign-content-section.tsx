@@ -9,7 +9,7 @@ import { Button } from "@foundry/ui/button";
 import { Input } from "@foundry/ui/input";
 import { Label } from "@foundry/ui/label";
 import { Textarea } from "@foundry/ui/textarea";
-import { apiFetch } from "./api-fetch";
+import { apiAction, apiFetch } from "./api-fetch";
 import { CampaignAttachments, type CampaignAttachment } from "./campaign-attachments";
 import { EmailTemplateBuilder, type EmailTemplateBuilderHandle } from "./email-template-builder";
 import { openEmailPreview } from "./email-content-editor";
@@ -216,8 +216,8 @@ export function TextRow({
 
   async function save() {
     setSaving(true);
-    try {
-      await apiFetch(`/api/notifications/campaigns/${campaignPublicId}/content`, {
+    const res = await apiAction(
+      apiFetch(`/api/notifications/campaigns/${campaignPublicId}/content`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -228,15 +228,13 @@ export function TextRow({
           providerTemplateId: templateId || undefined,
           revision: row.revision,
         }),
-      });
-      toast.success("Content saved");
-      setEditing(false);
-      router.refresh();
-    } catch {
-      // apiFetch already toasted the failure detail.
-    } finally {
-      setSaving(false);
-    }
+      }),
+    );
+    setSaving(false);
+    if (!res) return;
+    toast.success("Content saved");
+    setEditing(false);
+    router.refresh();
   }
 
   return (

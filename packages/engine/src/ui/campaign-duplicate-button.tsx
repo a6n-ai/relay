@@ -8,7 +8,7 @@ import { Button } from "@foundry/ui/button";
 import { Input } from "@foundry/ui/input";
 import { Label } from "@foundry/ui/label";
 import { ResponsiveDialog } from "@foundry/design-system";
-import { apiFetch } from "./api-fetch";
+import { apiAction, apiFetch } from "./api-fetch";
 import { AudienceBuilder, type AudienceValue, type ContactListOption } from "./audience-builder";
 
 /** Clone a campaign's content/channels into a new draft, optionally onto a different audience. */
@@ -37,23 +37,18 @@ export function CampaignDuplicateButton({
   async function submit() {
     if (!name.trim()) return toast.error("Name the new campaign");
     setSaving(true);
-    try {
-      const res = await apiFetch<{ publicId: string }>(
-        `/api/notifications/campaigns/${campaignPublicId}/duplicate`,
-        {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ name: name.trim(), ...(changeAudience ? { audience } : {}) }),
-        },
-      );
-      toast.success("Duplicated as a new draft");
-      setOpen(false);
-      router.push(`/dashboard/notifications/campaigns/${res.publicId}`);
-    } catch {
-      // apiFetch already toasted the failure detail.
-    } finally {
-      setSaving(false);
-    }
+    const res = await apiAction(
+      apiFetch<{ publicId: string }>(`/api/notifications/campaigns/${campaignPublicId}/duplicate`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ name: name.trim(), ...(changeAudience ? { audience } : {}) }),
+      }),
+    );
+    setSaving(false);
+    if (!res) return;
+    toast.success("Duplicated as a new draft");
+    setOpen(false);
+    router.push(`/dashboard/notifications/campaigns/${res.data.publicId}`);
   }
 
   return (

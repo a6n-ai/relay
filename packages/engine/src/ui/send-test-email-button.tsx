@@ -4,7 +4,7 @@ import { useState } from "react";
 import { toast } from "@foundry/ui/toast";
 import { Button } from "@foundry/ui/button";
 import { Input } from "@foundry/ui/input";
-import { apiFetch } from "./api-fetch";
+import { apiAction, apiFetch } from "./api-fetch";
 
 /**
  * "Send test" affordance shared by every place an admin edits an email —
@@ -33,23 +33,22 @@ export function SendTestEmailButton({
   async function sendTest() {
     if (!subject.trim()) return toast.error("Add a subject first");
     setBusy(true);
-    try {
-      const { html, text } = await exportEmail();
-      const res = await apiFetch<{ sent: boolean; footerIncluded: boolean }>("/api/notifications/templates/test", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ subject, html, text, to: testEmail.trim() || undefined, marketing }),
-      });
-      const dest = testEmail.trim() ? ` to ${testEmail.trim()}` : "";
-      if (!marketing || res.footerIncluded) {
-        toast.success(`Test sent${dest}`);
-      } else {
-        toast.warning(`Test sent${dest} — no unsubscribe footer (sender/unsubscribe config missing)`);
-      }
-    } catch {
-      // apiFetch already toasted the failure detail.
-    } finally {
-      setBusy(false);
+    const res = await apiAction(
+      exportEmail().then(({ html, text }) =>
+        apiFetch<{ sent: boolean; footerIncluded: boolean }>("/api/notifications/templates/test", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ subject, html, text, to: testEmail.trim() || undefined, marketing }),
+        }),
+      ),
+    );
+    setBusy(false);
+    if (!res) return;
+    const dest = testEmail.trim() ? ` to ${testEmail.trim()}` : "";
+    if (!marketing || res.data.footerIncluded) {
+      toast.success(`Test sent${dest}`);
+    } else {
+      toast.warning(`Test sent${dest} — no unsubscribe footer (sender/unsubscribe config missing)`);
     }
   }
 

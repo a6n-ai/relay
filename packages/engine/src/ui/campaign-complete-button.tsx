@@ -6,7 +6,7 @@ import { toast } from "@foundry/ui/toast";
 import { CheckCircleIcon } from "lucide-react";
 import { Button } from "@foundry/ui/button";
 import { ResponsiveDialog } from "@foundry/design-system";
-import { apiFetch } from "./api-fetch";
+import { apiAction, apiFetch } from "./api-fetch";
 
 /**
  * Manually close out a "sent" campaign as "completed" — nothing watches
@@ -20,16 +20,12 @@ export function CampaignCompleteButton({ campaignPublicId }: { campaignPublicId:
 
   async function confirm() {
     setBusy(true);
-    try {
-      await apiFetch(`/api/notifications/campaigns/${campaignPublicId}/complete`, { method: "POST" });
-      toast.success("Campaign marked completed");
-      setOpen(false);
-      router.refresh();
-    } catch {
-      // apiFetch already toasted the failure detail.
-    } finally {
-      setBusy(false);
-    }
+    const res = await apiAction(apiFetch(`/api/notifications/campaigns/${campaignPublicId}/complete`, { method: "POST" }));
+    setBusy(false);
+    if (!res) return;
+    toast.success("Campaign marked completed");
+    setOpen(false);
+    router.refresh();
   }
 
   return (

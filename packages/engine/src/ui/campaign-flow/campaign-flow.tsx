@@ -8,7 +8,7 @@ import { Button } from "@foundry/ui/button";
 import type { CampaignReview } from "../../campaign-routes";
 import { htmlToText } from "../../email-content/text";
 import type { FooterInfo } from "../../template";
-import { apiFetch } from "../api-fetch";
+import { apiAction, apiFetch } from "../api-fetch";
 import type { AudienceValue, ContactListOption } from "../audience-builder";
 import { TextRow, type CampaignContentRow } from "../campaign-content-section";
 import type { SaveState } from "../email-editor/autosave";
@@ -75,12 +75,7 @@ export function CampaignFlow(props: {
   const go = (to: FlowStep) => router.push(`${page}?step=${to}`);
 
   async function rename(name: string) {
-    try {
-      await apiFetch(api, json("PATCH", { name }));
-      router.refresh();
-    } catch {
-      // apiFetch already toasted the failure detail.
-    }
+    if (await apiAction(apiFetch(api, json("PATCH", { name })))) router.refresh();
   }
 
   async function leaveContent() {
@@ -91,38 +86,29 @@ export function CampaignFlow(props: {
   async function send() {
     if (!review) return;
     setBusy(true);
-    try {
-      const res = await apiFetch<{ queued: number; warning?: string }>(
+    const res = await apiAction(
+      apiFetch<{ queued: number; warning?: string }>(
         `${api}/send`,
         json("POST", { confirmedCount: review.breakdown.eligible }),
-      );
-      if (res.warning) toast.warning(res.warning);
-      else toast.success(`Queued ${res.queued.toLocaleString()} messages`);
-      setSendOpen(false);
-      router.push(page);
-      router.refresh();
-    } catch {
-      // apiFetch already toasted the reason (422 blocking items, 409 already sending).
-      setSendOpen(false);
-      resync();
-    } finally {
-      setBusy(false);
-    }
+      ),
+    );
+    setBusy(false);
+    setSendOpen(false);
+    if (!res) return resync(); // apiFetch toasted the reason (422 blocking items, 409 already sending)
+    if (res.data.warning) toast.warning(res.data.warning);
+    else toast.success(`Queued ${res.data.queued.toLocaleString()} messages`);
+    router.push(page);
+    router.refresh();
   }
 
   async function schedule(localDateTime: string | null) {
     setBusy(true);
-    try {
-      await apiFetch(`${api}/schedule`, json("POST", { localDateTime }));
-      toast.success(localDateTime ? "Campaign scheduled" : "Schedule removed");
-      setScheduleOpen(false);
-      router.refresh();
-    } catch {
-      // apiFetch already toasted the failure detail.
-      resync();
-    } finally {
-      setBusy(false);
-    }
+    const res = await apiAction(apiFetch(`${api}/schedule`, json("POST", { localDateTime })));
+    setBusy(false);
+    if (!res) return resync();
+    toast.success(localDateTime ? "Campaign scheduled" : "Schedule removed");
+    setScheduleOpen(false);
+    router.refresh();
   }
 
   const reviewEmail = review?.content.find((c) => c.channel === "email");

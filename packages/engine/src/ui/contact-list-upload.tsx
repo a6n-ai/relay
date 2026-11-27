@@ -17,6 +17,7 @@ import {
 } from "@foundry/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@foundry/ui/table";
 import { ContactListMetaFields, type ListMeta } from "./contact-list-meta-fields";
+import { apiAction } from "./api-fetch";
 import { createListWithContacts } from "./create-list-with-contacts";
 
 const NONE = "__none__";
@@ -140,25 +141,21 @@ export function ContactListUpload({ onCreated }: { onCreated?: (result: { name: 
     if (!rows || includedCount === 0) return toast.error("Select at least one contact");
 
     setBusy(true);
-    try {
-      const contacts = rows
-        .filter((r) => !r.reason && !excluded.has(r.id))
-        .map((r) => ({ name: r.name, email: r.email || undefined, phone: r.phone || undefined }));
-      const res = await createListWithContacts(meta, contacts);
-      if (onCreated) onCreated({ name: meta.name, imported: res.imported });
-      else {
-        toast.success(`Imported ${res.imported}`);
-        router.refresh();
-      }
-      setMeta({ name: "", consentSource: "express_optin", consentNote: "" });
-      setFile(null);
-      setHeaders([]);
-      setRows(null);
-    } catch {
-      // apiFetch already toasted the failure detail.
-    } finally {
-      setBusy(false);
+    const contacts = rows
+      .filter((r) => !r.reason && !excluded.has(r.id))
+      .map((r) => ({ name: r.name, email: r.email || undefined, phone: r.phone || undefined }));
+    const res = await apiAction(createListWithContacts(meta, contacts));
+    setBusy(false);
+    if (!res) return;
+    if (onCreated) onCreated({ name: meta.name, imported: res.data.imported });
+    else {
+      toast.success(`Imported ${res.data.imported}`);
+      router.refresh();
     }
+    setMeta({ name: "", consentSource: "express_optin", consentNote: "" });
+    setFile(null);
+    setHeaders([]);
+    setRows(null);
   }
 
   const columnSelect = (key: "email" | "phone" | "name", label: string) => (

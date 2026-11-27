@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "@foundry/ui/toast";
 import { RefreshCwIcon } from "lucide-react";
-import { apiFetch } from "./api-fetch";
+import { apiAction, apiFetch } from "./api-fetch";
 import { Button } from "@foundry/ui/button";
 
 export function ContactListResyncButton({ publicId }: { publicId: string }) {
@@ -13,17 +13,13 @@ export function ContactListResyncButton({ publicId }: { publicId: string }) {
 
   async function resync() {
     setBusy(true);
-    try {
-      const res = await apiFetch<{ imported: number }>(`/api/notifications/contact-lists/${publicId}/resync`, {
-        method: "POST",
-      });
-      toast.success(res.imported > 0 ? `Added ${res.imported} new customers` : "No new customers to add");
-      router.refresh();
-    } catch {
-      // apiFetch already toasted the failure detail.
-    } finally {
-      setBusy(false);
-    }
+    const res = await apiAction(
+      apiFetch<{ imported: number }>(`/api/notifications/contact-lists/${publicId}/resync`, { method: "POST" }),
+    );
+    setBusy(false);
+    if (!res) return;
+    toast.success(res.data.imported > 0 ? `Added ${res.data.imported} new customers` : "No new customers to add");
+    router.refresh();
   }
 
   return (

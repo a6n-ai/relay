@@ -7,7 +7,7 @@ import { ResponsiveDialog } from "@foundry/design-system";
 import type { CampaignReview } from "../../campaign-routes";
 import { CAMPAIGN_VARIABLE_SAMPLES } from "../../email-content/variables";
 import { appendUnsubscribeFooter, missingFooterPreview, type FooterInfo } from "../../template";
-import { apiFetch } from "../api-fetch";
+import { apiAction, apiFetch } from "../api-fetch";
 import { openEmailPreview } from "../email-content-editor";
 import { fillSamples } from "../email-editor/samples";
 
@@ -34,13 +34,11 @@ export function ReviewStep({
     let live = true;
     // Never leave the parent holding an older review (and its recipient count) while this one loads.
     onReview(null);
-    apiFetch<CampaignReview>(`/api/notifications/campaigns/${campaignPublicId}/review`)
-      .then((r) => {
-        if (!live) return;
-        setReview(r);
-        onReview(r);
-      })
-      .catch(() => {});
+    apiAction(apiFetch<CampaignReview>(`/api/notifications/campaigns/${campaignPublicId}/review`)).then((res) => {
+      if (!live || !res) return;
+      setReview(res.data);
+      onReview(res.data);
+    });
     return () => {
       live = false;
     };

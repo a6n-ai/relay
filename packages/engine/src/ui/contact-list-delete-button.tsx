@@ -6,7 +6,7 @@ import { toast } from "@foundry/ui/toast";
 import { Trash2Icon } from "lucide-react";
 import { Button } from "@foundry/ui/button";
 import { ResponsiveDialog } from "@foundry/design-system";
-import { apiFetch } from "./api-fetch";
+import { apiAction, apiFetch } from "./api-fetch";
 
 /**
  * Delete an unused contact list. The route itself refuses a list any campaign
@@ -32,17 +32,13 @@ export function ContactListDeleteButton({
 
   async function confirmDelete() {
     setBusy(true);
-    try {
-      await apiFetch(`/api/notifications/contact-lists/${publicId}`, { method: "DELETE" });
-      toast.success("List deleted");
-      setOpen(false);
-      if (onDeleted === "back") router.push("/dashboard/notifications/contact-lists");
-      else router.refresh();
-    } catch {
-      // apiFetch already toasted the failure detail (e.g. "used in a campaign").
-    } finally {
-      setBusy(false);
-    }
+    const res = await apiAction(apiFetch(`/api/notifications/contact-lists/${publicId}`, { method: "DELETE" }));
+    setBusy(false);
+    if (!res) return;
+    toast.success("List deleted");
+    setOpen(false);
+    if (onDeleted === "back") router.push("/dashboard/notifications/contact-lists");
+    else router.refresh();
   }
 
   return (

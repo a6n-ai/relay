@@ -6,7 +6,7 @@ import { toast } from "@foundry/ui/toast";
 import { Button } from "@foundry/ui/button";
 import { Input } from "@foundry/ui/input";
 import { Label } from "@foundry/ui/label";
-import { apiFetch } from "./api-fetch";
+import { apiAction, apiFetch } from "./api-fetch";
 
 /** Add one contact to an existing list. For the whole-new-list case, see ContactListManualAdd. */
 export function ContactListAddMember({ listPublicId }: { listPublicId: string }) {
@@ -20,24 +20,22 @@ export function ContactListAddMember({ listPublicId }: { listPublicId: string })
     if (!name.trim()) return toast.error("Enter a name");
     if (!email.trim() && !phone.trim()) return toast.error("Enter an email or phone");
     setSaving(true);
-    try {
-      await apiFetch(`/api/notifications/contact-lists/${listPublicId}/members`, {
+    const res = await apiAction(
+      apiFetch(`/api/notifications/contact-lists/${listPublicId}/members`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           contacts: [{ name: name.trim(), email: email.trim() || undefined, phone: phone.trim() || undefined }],
         }),
-      });
-      toast.success("Contact added");
-      setName("");
-      setEmail("");
-      setPhone("");
-      router.refresh();
-    } catch {
-      // apiFetch already toasted the failure detail.
-    } finally {
-      setSaving(false);
-    }
+      }),
+    );
+    setSaving(false);
+    if (!res) return;
+    toast.success("Contact added");
+    setName("");
+    setEmail("");
+    setPhone("");
+    router.refresh();
   }
 
   return (
