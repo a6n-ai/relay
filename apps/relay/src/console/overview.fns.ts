@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeaders } from "@tanstack/react-start/server";
 import { env } from "cloudflare:workers";
 import { requireActor, toResponseError } from "./actor";
-import { getOverview, type Overview } from "./overview";
+import { getOverview, type Overview } from "../services/overview";
 import { RelayError } from "../shared/errors";
 
 // Null means no numbers: a role without usage (member), or no active workspace in the session (suspended-only shell).

@@ -1,91 +1,131 @@
-import { writeAudit } from "../lib/auth/audit";
-import type { KeyScope } from "../shared/scope";
-import { csvCell, membersCsvHeader } from "../core/csv";
-import { memberInput } from "../core/member-input";
-import { clientFor } from "../do/client";
-import type { ListInput } from "../do/lists";
-import type { MemberInput } from "../core/member-input";
-import type { Env } from "../env";
 import { z } from "zod";
+import { csvCell, membersCsvHeader, parseContactsCsv } from "../core/csv";
+import { decodeCursor } from "../core/cursor";
+import { memberInput, type MemberInput } from "../core/member-input";
+import { clientFor } from "../do/client";
+import type { ImportResult, ListInput } from "../do/lists";
+import type { Env } from "../env";
 import { RelayError } from "../shared/errors";
 import { type ListView, type MemberView } from "../shared/views";
+import { appFor, audit, type Principal } from "./principal";
 
-const audit = (env: Env, scope: KeyScope, action: string, target: string) =>
-  writeAudit(env, { action, actorUserId: null, workspaceId: scope.workspaceId, target, data: { keyId: scope.keyId } });
+// A key reaches only the lists of its app, so an id from another app is a 404 before any member is read.
+// A console principal has no app: the DO answers not found for a list outside the workspace.
+async function checkList(env: Env, p: Principal, listId: string): Promise<void> {
+  if (p.appId === null) return;
+  const lists = await clientFor(env, p.workspaceId).listLists(p.workspaceId, p.appId);
+  if (!lists.some((l) => l.id === listId)) throw new RelayError("not found");
+}
 
-// Every member route names its list first, so an id from another app is a 404 before any member is read.
-export async function ownedList(env: Env, scope: KeyScope, listId: string): Promise<ListView> {
-  const list = (await clientFor(env, scope.workspaceId).listLists(scope.workspaceId, scope.appId)).find((l) => l.id === listId);
+export async function getList(env: Env, p: Principal, listId: string): Promise<ListView> {
+  const appId = p.appId;
+  if (appId === null) throw new RelayError("not found");
+  const list = (await clientFor(env, p.workspaceId).listLists(p.workspaceId, appId)).find((l) => l.id === listId);
   if (!list) throw new RelayError("not found");
   return list;
 }
 
-export const getListForScope = ownedList;
-
-export function listListsForScope(env: Env, scope: KeyScope): Promise<ListView[]> {
-  return clientFor(env, scope.workspaceId).listLists(scope.workspaceId, scope.appId);
+export async function listLists(env: Env, p: Principal, appId: string): Promise<ListView[]> {
+  await appFor(env, p, appId);
+  return clientFor(env, p.workspaceId).listLists(p.workspaceId, appId);
 }
 
-export async function createListForScope(env: Env, scope: KeyScope, input: ListInput): Promise<ListView> {
-  const list = await clientFor(env, scope.workspaceId).createList(scope.workspaceId, scope.appId, input);
-  await audit(env, scope, "list.create", list.id);
+export async function createList(env: Env, p: Principal, appId: string, input: ListInput): Promise<ListView> {
+  await appFor(env, p, appId);
+  const list = await clientFor(env, p.workspaceId).createList(p.workspaceId, appId, input);
+  await audit(env, p, "list.create", list.id, { appId });
   return list;
 }
 
-export async function updateListForScope(env: Env, scope: KeyScope, id: string, patch: Partial<ListInput>): Promise<ListView> {
-  await ownedList(env, scope, id);
-  const list = await clientFor(env, scope.workspaceId).updateList(scope.workspaceId, id, patch);
+export async function updateList(env: Env, p: Principal, id: string, patch: Partial<ListInput>): Promise<ListView> {
+  await checkList(env, p, id);
+  const list = await clientFor(env, p.workspaceId).updateList(p.workspaceId, id, patch);
   if (!list) throw new RelayError("not found");
-  await audit(env, scope, "list.update", id);
+  await audit(env, p, "list.update", id);
   return list;
 }
 
-export async function deleteListForScope(env: Env, scope: KeyScope, id: string): Promise<void> {
-  await ownedList(env, scope, id);
-  const outcome = await clientFor(env, scope.workspaceId).deleteList(scope.workspaceId, id);
+export async function deleteList(env: Env, p: Principal, id: string): Promise<void> {
+  await checkList(env, p, id);
+  const outcome = await clientFor(env, p.workspaceId).deleteList(p.workspaceId, id);
   if (outcome === "missing") throw new RelayError("not found");
   if (outcome === "in_use") throw new RelayError("list in use");
-  await audit(env, scope, "list.delete", id);
+  await audit(env, p, "list.delete", id);
 }
 
-export async function listMembersForScope(
+export async function listMembers(
   env: Env,
-  scope: KeyScope,
+  p: Principal,
   listId: string,
   cursor?: string,
 ): Promise<{ rows: MemberView[]; nextCursor: string | null }> {
-  await ownedList(env, scope, listId);
-  const page = await clientFor(env, scope.workspaceId).listMembers(scope.workspaceId, listId, cursor);
+  await checkList(env, p, listId);
+  if (cursor !== undefined && !decodeCursor(cursor)) throw new RelayError("invalid cursor");
+  const page = await clientFor(env, p.workspaceId).listMembers(p.workspaceId, listId, cursor);
   if (!page) throw new RelayError("not found");
-  return page;
+  return { rows: page.rows, nextCursor: page.nextCursor };
 }
 
 // Addresses never reach the audit row; the list id is the only target.
-export async function addMemberForScope(env: Env, scope: KeyScope, listId: string, input: MemberInput) {
-  await ownedList(env, scope, listId);
-  const outcome = await clientFor(env, scope.workspaceId).addMember(scope.workspaceId, listId, input);
+export async function addMember(env: Env, p: Principal, listId: string, input: MemberInput) {
+  await checkList(env, p, listId);
+  const outcome = await clientFor(env, p.workspaceId).addMember(p.workspaceId, listId, input);
   if (outcome === "missing") throw new RelayError("not found");
   if (outcome === "suppressed") throw new RelayError("address suppressed");
-  if (outcome === "added") await audit(env, scope, "list.member.add", listId);
+  if (outcome === "added") await audit(env, p, "list.member.add", listId);
   return outcome;
 }
 
-export async function removeMemberForScope(env: Env, scope: KeyScope, listId: string, memberId: string): Promise<void> {
-  await ownedList(env, scope, listId);
-  const removed = await clientFor(env, scope.workspaceId).removeMember(scope.workspaceId, listId, memberId);
-  if (!removed) throw new RelayError("not found");
-  await audit(env, scope, "list.member.remove", listId);
+export async function updateContact(
+  env: Env,
+  p: Principal,
+  input: { listId: string; contactId: string; firstName: string; lastName: string },
+): Promise<void> {
+  await checkList(env, p, input.listId);
+  const updated = await clientFor(env, p.workspaceId).updateMember(p.workspaceId, input.listId, input.contactId, input);
+  if (!updated) throw new RelayError("not found");
+  await audit(env, p, "list.member.update", input.contactId, { listId: input.listId });
 }
 
-export const membersImportInput = z.object({ rows: z.array(memberInput).max(1000) });
+export async function removeMember(env: Env, p: Principal, listId: string, memberId: string): Promise<void> {
+  await checkList(env, p, listId);
+  const removed = await clientFor(env, p.workspaceId).removeMember(p.workspaceId, listId, memberId);
+  if (!removed) throw new RelayError("not found");
+  await audit(env, p, "list.member.remove", memberId, { listId });
+}
 
-export async function importMembersForScope(env: Env, scope: KeyScope, listId: string, rows: MemberInput[]) {
-  if (rows.length > 1000) throw new RelayError("invalid input");
-  await ownedList(env, scope, listId);
-  const result = await clientFor(env, scope.workspaceId).importMembers(scope.workspaceId, listId, rows);
+export const MEMBERS_IMPORT_MAX = 1000;
+export const membersImportInput = z.object({ rows: z.array(memberInput).max(MEMBERS_IMPORT_MAX) });
+
+async function importRows(env: Env, p: Principal, listId: string, rows: MemberInput[], extra: Record<string, number> = {}) {
+  await checkList(env, p, listId);
+  const result = await clientFor(env, p.workspaceId).importMembers(p.workspaceId, listId, rows);
   if (!result) throw new RelayError("not found");
-  await audit(env, scope, "list.import", listId);
-  return result;
+  const counts = { ...result, ...extra };
+  await audit(env, p, "list.import", listId, counts);
+  return counts;
+}
+
+export function importMembers(env: Env, p: Principal, listId: string, rows: MemberInput[]) {
+  if (rows.length > MEMBERS_IMPORT_MAX) throw new RelayError("invalid input");
+  return importRows(env, p, listId, rows);
+}
+
+// Parser errors carry fixed messages, so they go out as 400 as they are.
+export async function importCsv(
+  env: Env,
+  p: Principal,
+  input: { listId: string; csv: string },
+): Promise<ImportResult & { invalid: number; duplicates: number }> {
+  let parsed: ReturnType<typeof parseContactsCsv>;
+  try {
+    parsed = parseContactsCsv(input.csv);
+  } catch (err) {
+    throw new RelayError("invalid input", 400, err instanceof Error ? err.message : "invalid csv");
+  }
+  return importRows(env, p, input.listId, parsed.rows, { invalid: parsed.invalid, duplicates: parsed.duplicates }) as Promise<
+    ImportResult & { invalid: number; duplicates: number }
+  >;
 }
 
 const memberCsvLine = (m: MemberView): string =>
@@ -159,13 +199,14 @@ export async function membersCsvResponse(
   });
 }
 
-export async function exportMembersForScope(env: Env, scope: KeyScope, listId: string): Promise<Response> {
-  await ownedList(env, scope, listId);
+// The first page is read before the stream starts, so a missing list is a 404 and not an empty file.
+export async function exportMembers(env: Env, p: Principal, listId: string): Promise<Response> {
+  await checkList(env, p, listId);
   return membersCsvResponse(
     env,
-    scope.workspaceId,
+    p.workspaceId,
     listId,
-    () => audit(env, scope, "list.export", listId),
+    () => audit(env, p, "list.export", listId),
     () => new RelayError("not found"),
   );
 }

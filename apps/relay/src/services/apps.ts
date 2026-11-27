@@ -1,5 +1,5 @@
 import { and, asc, count, desc, eq, inArray, sql } from "drizzle-orm";
-import { createApiKey, deleteApiKey, renameApiKey, revokeApiKey } from "../services/api-keys";
+import { createApiKey, deleteApiKey, renameApiKey, revokeApiKey } from "./api-keys";
 import { hookInputSchema } from "../core/audience-hook";
 import { createApp } from "../core/apps";
 import { clientFor } from "../do/client";
@@ -11,7 +11,7 @@ import { apiKey, app } from "../db/security/schema";
 import type { Env } from "../env";
 import { writeAudit } from "../lib/auth/audit";
 import { allows } from "../lib/auth/permissions";
-import { type ConsoleActor, uniqueViolation } from "./actor";
+import { type ConsoleActor, uniqueViolation } from "../core/session";
 import { RelayError, codeOf } from "../shared/errors";
 import { SLUG_RE } from "../shared/schemas";
 

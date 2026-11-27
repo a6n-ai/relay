@@ -4,7 +4,7 @@ import { getWorkspaceProfile } from "../core/workspace-profile";
 import { coreDb } from "../db/core/client";
 import { usageDaily } from "../db/core/schema";
 import type { Env } from "../env";
-import type { ConsoleActor } from "./actor";
+import type { ConsoleActor } from "../core/session";
 
 export type Overview = {
   month: string;

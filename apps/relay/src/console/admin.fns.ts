@@ -10,7 +10,7 @@ import {
   setWorkspaceInviteCap,
   setWorkspaceQuota, setWorkspaceRegion,
   setWorkspaceStatus,
-} from "./admin";
+} from "../services/admin";
 import { MAX_INVITES_PER_DAY, MAX_MONTHLY_QUOTA } from "../shared/limits";
 import { validate } from "./schemas";
 

@@ -4,7 +4,7 @@ import { env } from "cloudflare:workers";
 import { z } from "zod";
 import { requireActor, toResponseError } from "./actor";
 import { validate } from "./schemas";
-import { addSuppressionFor, listSuppressionsFor, removeSuppressionFor } from "./suppressions";
+import { addSuppressionFor, listSuppressionsFor, removeSuppressionFor } from "../services/suppressions";
 import { RelayError } from "../shared/errors";
 import { STREAMS } from "../shared/mail";
 import { emailSchema } from "../shared/schemas";

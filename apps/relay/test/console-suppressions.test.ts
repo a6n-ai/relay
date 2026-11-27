@@ -2,7 +2,7 @@ import { env, SELF } from "cloudflare:test";
 import { eq } from "drizzle-orm";
 import { beforeAll, describe, expect, it } from "vitest";
 import { requireActor } from "../src/console/actor";
-import { addSuppressionFor, listSuppressionsFor, removeSuppressionFor } from "../src/console/suppressions";
+import { addSuppressionFor, listSuppressionsFor, removeSuppressionFor } from "../src/services/suppressions";
 import { clientFor } from "../src/do/client";
 import { securityDb } from "../src/db/security/client";
 import { securityAudit, workspace } from "../src/db/security/schema";

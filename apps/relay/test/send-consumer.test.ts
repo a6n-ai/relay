@@ -2,7 +2,7 @@ import { AwsError } from "@foundry/cloud";
 import { env, runInDurableObject } from "cloudflare:test";
 import { and, eq } from "drizzle-orm";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi, type MockInstance } from "vitest";
-import { setWorkspaceStatus } from "../src/console/admin";
+import { setWorkspaceStatus } from "../src/services/admin";
 import { refreshWorkspaceLimits } from "../src/services/limits";
 import { handleSendBatch } from "../src/jobs/send-consumer";
 import { memorySesTransport } from "../src/core/ses";

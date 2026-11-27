@@ -15,7 +15,7 @@ import {
   removeMember,
   renameTeam,
   setTeamMember,
-} from "./members";
+} from "../services/members";
 import { id, inviteInput, name, role, validate } from "./schemas";
 import { RelayError } from "../shared/errors";
 

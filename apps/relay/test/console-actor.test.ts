@@ -1,7 +1,8 @@
 import { env, SELF } from "cloudflare:test";
 import { and, eq } from "drizzle-orm";
 import { beforeAll, describe, expect, it } from "vitest";
-import { parseRoles, requireActor, requirePlatformAdmin } from "../src/console/actor";
+import { requireActor, requirePlatformAdmin } from "../src/console/actor";
+import { parseRoles } from "../src/core/session";
 import { securityDb } from "../src/db/security/client";
 import { member, session, user, workspace } from "../src/db/security/schema";
 import { applyMigrations } from "./migrate";

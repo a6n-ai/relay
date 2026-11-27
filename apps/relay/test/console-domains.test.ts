@@ -2,7 +2,7 @@ import { env, runInDurableObject, SELF } from "cloudflare:test";
 import { eq } from "drizzle-orm";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { requireActor } from "../src/console/actor";
-import { addApp } from "../src/console/apps";
+import { addApp } from "../src/services/apps";
 import {
   addAddress,
   addDomain,
@@ -11,7 +11,7 @@ import {
   listDomains,
   removeAddress,
   updateAddress,
-} from "../src/console/domains";
+} from "../src/services/domains";
 import { createAddressGrant } from "../src/core/addresses";
 import { type WorkspaceLimits } from "../src/core/limits";
 import { refreshWorkspaceLimits } from "../src/services/limits";

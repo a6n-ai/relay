@@ -3,7 +3,7 @@ import { clientFor } from "../do/client";
 import type { Env } from "../env";
 import { writeAudit } from "../lib/auth/audit";
 import { allows } from "../lib/auth/permissions";
-import { type ConsoleActor } from "./actor";
+import { type ConsoleActor } from "../core/session";
 import { RelayError } from "../shared/errors";
 import { type Stream } from "../shared/mail";
 

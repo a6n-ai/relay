@@ -18,7 +18,7 @@ import {
   revokeKey,
   setAudienceHookFor,
   setDefaultSendersFor,
-} from "./apps";
+} from "../services/apps";
 import { appId, id, name, slug, validate } from "./schemas";
 import { RelayError } from "../shared/errors";
 import { URL_MAX } from "../shared/limits";

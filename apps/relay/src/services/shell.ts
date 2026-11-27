@@ -3,7 +3,7 @@ import { securityDb } from "../db/security/client";
 import { app, member, user, workspace } from "../db/security/schema";
 import type { Env } from "../env";
 import { createAuth } from "../lib/auth";
-import { parseRoles, requireSession } from "./actor";
+import { parseRoles, requireSession } from "../core/session";
 import { type OrgRole } from "../shared/roles";
 import { type Shell } from "../shared/views";
 

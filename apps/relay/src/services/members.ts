@@ -5,7 +5,7 @@ import { invitation, member, team, teamMember, user, workspace } from "../db/sec
 import type { Env } from "../env";
 import { getWorkspaceProfile } from "../core/workspace-profile";
 import { createAuth } from "../lib/auth";
-import { assertSameOrigin, type ConsoleActor, parseRoles, requireSession } from "./actor";
+import { assertSameOrigin, type ConsoleActor, parseRoles, requireSession } from "../core/session";
 import { RelayError } from "../shared/errors";
 import { type OrgRole } from "../shared/roles";
 import { DAY_MS } from "../shared/limits";

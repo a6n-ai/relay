@@ -1,7 +1,7 @@
 import { and, asc, count, eq, inArray, isNull, like, lt, ne, or } from "drizzle-orm";
 import { createAddress, deleteAddress as deleteAddressRow, updateAddress as updateAddressRow } from "../core/addresses";
-import { releasePendingRow, statusOf, type DomainStatus } from "../services/domain-state";
-import { refreshWorkspaceLimits } from "../services/limits";
+import { releasePendingRow, statusOf, type DomainStatus } from "./domain-state";
+import { refreshWorkspaceLimits } from "./limits";
 import { isSesRegion, SES_REGION_IDS } from "../shared/regions";
 import { type SesIdentity, sesIdentityApi } from "../core/ses-identity";
 import { getWorkspaceProfile, SELF_SERVE_DOMAIN_CAP } from "../core/workspace-profile";
@@ -12,7 +12,7 @@ import { securityDb } from "../db/security/client";
 import { app } from "../db/security/schema";
 import type { Env } from "../env";
 import { writeAudit } from "../lib/auth/audit";
-import { type ConsoleActor, uniqueViolation } from "./actor";
+import { type ConsoleActor, uniqueViolation } from "../core/session";
 import { getApp } from "./apps";
 import { RelayError } from "../shared/errors";
 

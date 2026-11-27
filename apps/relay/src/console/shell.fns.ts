@@ -3,7 +3,7 @@ import { getRequestHeaders, setResponseHeader } from "@tanstack/react-start/serv
 import { env } from "cloudflare:workers";
 import { toResponseError } from "./actor";
 import { googleConfig } from "../lib/auth/google";
-import { loadShell } from "./shell";
+import { loadShell } from "../services/shell";
 import { RelayError } from "../shared/errors";
 import { type Shell } from "../shared/views";
 

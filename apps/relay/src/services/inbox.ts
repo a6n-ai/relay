@@ -9,7 +9,7 @@ import { securityDb } from "../db/security/client";
 import { addressGrant, member, team, teamMember } from "../db/security/schema";
 import type { Env } from "../env";
 import { allows } from "../lib/auth/permissions";
-import { type ConsoleActor } from "./actor";
+import { type ConsoleActor } from "../core/session";
 import { RelayError } from "../shared/errors";
 import { type MessageStatus } from "../shared/mail";
 

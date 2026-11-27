@@ -1,8 +1,9 @@
 import { env, runInDurableObject, SELF } from "cloudflare:test";
 import { and, eq } from "drizzle-orm";
 import { beforeAll, beforeEach, describe, expect, it, vi, type MockInstance } from "vitest";
-import { requireActor, type ConsoleActor } from "../src/console/actor";
-import { addApp } from "../src/console/apps";
+import { requireActor } from "../src/console/actor";
+import { type ConsoleActor } from "../src/core/session";
+import { addApp } from "../src/services/apps";
 import {
   createWebhookFor,
   deleteWebhookFor,

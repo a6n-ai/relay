@@ -1,7 +1,7 @@
 import { env, SELF } from "cloudflare:test";
 import { beforeAll, describe, expect, it } from "vitest";
 import { requireActor } from "../src/console/actor";
-import { getOverview } from "../src/console/overview";
+import { getOverview } from "../src/services/overview";
 import { coreDb } from "../src/db/core/client";
 import { usageDaily } from "../src/db/core/schema";
 import { utcDay } from "../src/core/usage";

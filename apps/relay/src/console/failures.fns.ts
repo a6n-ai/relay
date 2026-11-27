@@ -3,7 +3,7 @@ import { getRequestHeaders } from "@tanstack/react-start/server";
 import { env } from "cloudflare:workers";
 import { z } from "zod";
 import { requireActor, toResponseError } from "./actor";
-import { deleteFailureFor, listFailuresFor, replayFailureFor } from "./failures";
+import { deleteFailureFor, listFailuresFor, replayFailureFor } from "../services/failures";
 import { id, validate } from "./schemas";
 import { RelayError } from "../shared/errors";
 

@@ -1,7 +1,8 @@
 import { env, SELF } from "cloudflare:test";
 import { beforeAll, describe, expect, it } from "vitest";
-import { requireActor, uniqueViolation } from "../src/console/actor";
-import { addApp, createKey, deleteAudienceHookFor, deleteKey, getApp, listApps, listKeys, renameApp, renameKey, revokeKey, setAudienceHookFor } from "../src/console/apps";
+import { requireActor } from "../src/console/actor";
+import { uniqueViolation } from "../src/core/session";
+import { addApp, createKey, deleteAudienceHookFor, deleteKey, getApp, listApps, listKeys, renameApp, renameKey, revokeKey, setAudienceHookFor } from "../src/services/apps";
 import { createApp } from "../src/core/apps";
 import { clientFor } from "../src/do/client";
 import { resolveApiKey } from "../src/services/api-keys";

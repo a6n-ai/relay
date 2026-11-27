@@ -1,11 +1,12 @@
 import { env, runInDurableObject, SELF } from "cloudflare:test";
 import { and, eq } from "drizzle-orm";
 import { beforeAll, describe, expect, it } from "vitest";
-import { requireActor, type ConsoleActor } from "../src/console/actor";
-import { addApp } from "../src/console/apps";
-import { addGrant } from "../src/console/grants";
-import { deleteFailureFor, listFailuresFor, replayFailureFor } from "../src/console/failures";
-import { getMessageFor } from "../src/console/messages";
+import { requireActor } from "../src/console/actor";
+import { type ConsoleActor } from "../src/core/session";
+import { addApp } from "../src/services/apps";
+import { addGrant } from "../src/services/grants";
+import { deleteFailureFor, listFailuresFor, replayFailureFor } from "../src/services/failures";
+import { getMessageFor } from "../src/services/inbox";
 import { createAddress, deleteAddress } from "../src/core/addresses";
 import { clientFor } from "../src/do/client";
 import { coreDb } from "../src/db/core/client";

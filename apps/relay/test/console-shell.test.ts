@@ -4,7 +4,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { PROBLEM_LABEL } from "../src/components/campaign-problems";
 import { reasonText } from "../src/components/error-text";
 import { clientFor } from "../src/do/client";
-import { loadShell } from "../src/console/shell";
+import { loadShell } from "../src/services/shell";
 import { safeRedirect } from "../src/console/shell.fns";
 import { securityDb } from "../src/db/security/client";
 import { newId } from "../src/shared/ids";

@@ -2,7 +2,7 @@ import { env, SELF } from "cloudflare:test";
 import { and, eq } from "drizzle-orm";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { requireActor } from "../src/console/actor";
-import { addDomain, releaseDomain, setDomainProtected } from "../src/console/domains";
+import { addDomain, releaseDomain, setDomainProtected } from "../src/services/domains";
 import { releaseStalePendingDomains } from "../src/services/domain-state";
 import { memorySesIdentity } from "../src/core/ses-identity";
 import { coreDb } from "../src/db/core/client";

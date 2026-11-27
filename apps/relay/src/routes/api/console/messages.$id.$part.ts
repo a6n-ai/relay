@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { env } from "cloudflare:workers";
 import { requireActor } from "../../../console/actor";
-import { messageFileFor } from "../../../console/messages";
+import { messageFileFor } from "../../../services/inbox";
 import { describeError } from "../../../core/log";
 import { RelayError } from "../../../shared/errors";
 

@@ -1,12 +1,13 @@
 import { env } from "cloudflare:workers";
 import { ZodError } from "zod";
 import { resolveBearer, withinRateLimit } from "../services/api-keys";
+import { fromScope, type Principal } from "../services/principal";
 import { type KeyScope } from "../shared/scope";
 import { logFailure } from "../core/log";
 import { codeOf, ERRORS, RelayError } from "../shared/errors";
 import type { Env } from "../env";
 
-type ApiCtx = { env: Env; scope: KeyScope; request: Request; params: Record<string, string> };
+type ApiCtx = { env: Env; scope: KeyScope; p: Principal; request: Request; params: Record<string, string> };
 
 export const json = (body: unknown, status = 200) => Response.json(body, { status });
 export const data = (value: unknown, status = 200) => Response.json({ data: value }, { status });
@@ -19,7 +20,7 @@ export function apiRoute(handler: (ctx: ApiCtx) => Promise<Response>) {
     if (!scope) return json({ error: "unauthorized" }, 401);
     if (!(await withinRateLimit(env, scope.keyId))) return json({ error: "rate limited" }, 429);
     try {
-      return await handler({ env, scope, request, params });
+      return await handler({ env, scope, p: fromScope(scope), request, params });
     } catch (err) {
       const where = `api ${request.method} ${new URL(request.url).pathname} key=${scope.keyId}`;
       const fail = (error: string, status: number, cause: unknown = err) => {

@@ -1,38 +1,10 @@
-import { setResponseStatus } from "@tanstack/react-start/server";
 import { and, eq } from "drizzle-orm";
 import { securityDb } from "../db/security/client";
 import { member, workspace } from "../db/security/schema";
 import type { Env } from "../env";
-import { createAuth } from "../lib/auth";
-import { allows, orgRoles } from "../lib/auth/permissions";
-import { recordFailure } from "../core/log";
+import { allows } from "../lib/auth/permissions";
+import { assertSameOrigin, parseRoles, requireSession, type ConsoleActor } from "../core/session";
 import { RelayError } from "../shared/errors";
-import { type OrgRole } from "../shared/roles";
-
-export type ConsoleActor = {
-  userId: string;
-  platformAdmin: boolean;
-  workspaceId: string;
-  roles: OrgRole[];
-  workspaceStatus: "active" | "suspended";
-};
-
-// The cookie cache can hold a role or suspension decision from before a change, so the session is read from the database.
-export async function requireSession(
-  env: Env,
-  headers: Headers,
-): Promise<{ userId: string; platformAdmin: boolean; activeWorkspaceId: string | null }> {
-  const session = await createAuth(env).api.getSession({ headers, query: { disableCookieCache: true } });
-  if (!session) throw new RelayError("unauthorized");
-  return {
-    userId: session.user.id,
-    platformAdmin: session.user.role === "admin",
-    activeWorkspaceId: session.session.activeOrganizationId ?? null,
-  };
-}
-
-const isOrgRole = (role: string): role is OrgRole => Object.hasOwn(orgRoles, role);
-export const parseRoles = (raw: string): OrgRole[] => raw.split(",").map((r) => r.trim()).filter(isOrgRole);
 
 export async function requireActor(
   env: Env,
@@ -63,21 +35,6 @@ export async function requireActor(
   return { userId, platformAdmin, workspaceId: activeWorkspaceId, roles, workspaceStatus: row.status };
 }
 
-// D1 names the violated index in the message; drizzle may wrap the error, so the cause chain is walked too.
-export function uniqueViolation(err: unknown, column: string): boolean {
-  for (let e: unknown = err; e instanceof Error; e = e.cause) {
-    if (e.message.includes(`UNIQUE constraint failed: ${column}`)) return true;
-  }
-  return false;
-}
-
-export function assertSameOrigin(env: Env, headers: Headers): void {
-  const origin = headers.get("origin");
-  if (origin !== null && origin !== new URL(env.BETTER_AUTH_URL).origin) {
-    throw new RelayError("cross-origin write");
-  }
-}
-
 export async function requirePlatformAdmin(
   env: Env,
   headers: Headers,
@@ -87,15 +44,4 @@ export async function requirePlatformAdmin(
   if (!platformAdmin) throw new RelayError("not found");
   if (write) assertSameOrigin(env, headers);
   return { userId };
-}
-
-// Server functions call this from their catch: known errors keep their status and message, anything else is a 500 with no detail.
-// The browser sees only that copy; the log middleware in src/start.ts writes the status and real cause.
-export function toResponseError(err: unknown): never {
-  if (err instanceof RelayError) {
-    setResponseStatus(err.status);
-    throw recordFailure(new Error(err.message), err.status, err);
-  }
-  setResponseStatus(500);
-  throw recordFailure(new Error("internal error"), 500, err);
 }

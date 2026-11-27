@@ -6,7 +6,7 @@ import { securityDb } from "../db/security/client";
 import { app, workspace } from "../db/security/schema";
 import type { Env } from "../env";
 import { createAuth } from "../lib/auth";
-import { assertSameOrigin, type ConsoleActor } from "./actor";
+import { assertSameOrigin, type ConsoleActor } from "../core/session";
 import { RelayError } from "../shared/errors";
 
 // The cap and the self-serve profile are set by the better-auth hooks, so this path cannot skip them.

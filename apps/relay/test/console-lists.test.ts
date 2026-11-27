@@ -2,7 +2,7 @@ import { env, SELF } from "cloudflare:test";
 import { eq } from "drizzle-orm";
 import { beforeAll, describe, expect, it } from "vitest";
 import { requireActor } from "../src/console/actor";
-import { addApp } from "../src/console/apps";
+import { addApp } from "../src/services/apps";
 import { membersCsvHeader } from "../src/core/csv";
 import {
   addMemberFor,

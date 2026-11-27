@@ -3,7 +3,7 @@ import { getRequestHeaders } from "@tanstack/react-start/server";
 import { env } from "cloudflare:workers";
 import { z } from "zod";
 import { requireActor, toResponseError } from "./actor";
-import { addGrant, getAddressAccess, removeGrant } from "./grants";
+import { addGrant, getAddressAccess, removeGrant } from "../services/grants";
 import { id, validate } from "./schemas";
 import { RelayError } from "../shared/errors";
 

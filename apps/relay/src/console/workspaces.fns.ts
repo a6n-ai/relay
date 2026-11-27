@@ -3,7 +3,7 @@ import { getRequestHeaders } from "@tanstack/react-start/server";
 import { env } from "cloudflare:workers";
 import { z } from "zod";
 import { requireActor, toResponseError } from "./actor";
-import { createWorkspace, deleteWorkspace, renameWorkspace } from "./workspaces";
+import { createWorkspace, deleteWorkspace, renameWorkspace } from "../services/workspaces";
 import { name, slug, validate } from "./schemas";
 
 export const createWorkspaceFn = createServerFn({ method: "POST" })

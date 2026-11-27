@@ -13,8 +13,8 @@ import {
   removeMember,
   renameTeam,
   setTeamMember,
-} from "../src/console/members";
-import { renameWorkspace } from "../src/console/workspaces";
+} from "../src/services/members";
+import { renameWorkspace } from "../src/services/workspaces";
 import { inviteInput } from "../src/console/schemas";
 import { securityDb } from "../src/db/security/client";
 import { invitation, member, user, workspace } from "../src/db/security/schema";

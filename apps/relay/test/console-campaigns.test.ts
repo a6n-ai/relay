@@ -3,7 +3,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { campaignProblems } from "../src/shared/campaign-problems";
 import { clientFor } from "../src/do/client";
 import { requireActor } from "../src/console/actor";
-import { addApp } from "../src/console/apps";
+import { addApp } from "../src/services/apps";
 import {
   cancelCampaignFor,
   campaignStatsFor,

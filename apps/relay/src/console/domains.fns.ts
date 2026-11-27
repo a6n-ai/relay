@@ -4,7 +4,7 @@ import { env } from "cloudflare:workers";
 import { z } from "zod";
 import { SES_REGION_IDS } from "../shared/regions";
 import { requireActor, toResponseError } from "./actor";
-import { deleteDomain, domainDeletePreview as domainDeletePreviewFor } from "./domain-delete";
+import { deleteDomain, domainDeletePreview as domainDeletePreviewFor } from "../services/domain-delete";
 import {
   addAddress,
   addDomain,
@@ -15,7 +15,7 @@ import {
   removeAddress,
   setDomainProtected,
   updateAddress,
-} from "./domains";
+} from "../services/domains";
 import { displayName, id, replyTo, validate } from "./schemas";
 import { RelayError } from "../shared/errors";
 

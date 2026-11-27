@@ -1,8 +1,8 @@
 import { env, SELF } from "cloudflare:test";
 import { beforeAll, describe, expect, it } from "vitest";
 import { requireActor } from "../src/console/actor";
-import { addApp } from "../src/console/apps";
-import { addAddress, addDomain } from "../src/console/domains";
+import { addApp } from "../src/services/apps";
+import { addAddress, addDomain } from "../src/services/domains";
 import { createListFor } from "../src/console/lists";
 import { addMember, cookieFor, createWorkspace, headersFor, ORIGIN, setActive } from "./console-helpers";
 import { applyMigrations } from "./migrate";

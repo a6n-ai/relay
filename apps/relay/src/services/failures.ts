@@ -8,8 +8,8 @@ import type { Env } from "../env";
 import type { InboundJob } from "../core/jobs";
 import { writeAudit } from "../lib/auth/audit";
 import { allows } from "../lib/auth/permissions";
-import { type ConsoleActor } from "./actor";
-import { messageAccess } from "./messages";
+import { type ConsoleActor } from "../core/session";
+import { messageAccess } from "./inbox";
 import { RelayError, codeOf } from "../shared/errors";
 
 const READ = { mailbox: ["read"] };

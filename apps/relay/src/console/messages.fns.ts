@@ -3,7 +3,7 @@ import { getRequestHeaders } from "@tanstack/react-start/server";
 import { env } from "cloudflare:workers";
 import { z } from "zod";
 import { requireActor, toResponseError } from "./actor";
-import { getMessageFor, listMessagesFor } from "./messages";
+import { getMessageFor, listMessagesFor } from "../services/inbox";
 import { appId, id, validate } from "./schemas";
 import { RelayError } from "../shared/errors";
 import { MESSAGE_STATUSES } from "../shared/mail";

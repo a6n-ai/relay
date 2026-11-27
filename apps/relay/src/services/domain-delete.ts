@@ -1,6 +1,6 @@
 import { and, eq, inArray, like } from "drizzle-orm";
 import { clearDefaultSenders } from "../core/addresses";
-import { refreshWorkspaceLimits } from "../services/limits";
+import { refreshWorkspaceLimits } from "./limits";
 import { clientFor } from "../do/client";
 import { sesIdentityApi } from "../core/ses-identity";
 import { coreDb } from "../db/core/client";
@@ -9,7 +9,7 @@ import { securityDb } from "../db/security/client";
 import { addressGrant } from "../db/security/schema";
 import type { Env } from "../env";
 import { writeAudit } from "../lib/auth/audit";
-import { type ConsoleActor } from "./actor";
+import { type ConsoleActor } from "../core/session";
 import { dkimRecords, domainRow } from "./domains";
 import { RelayError } from "../shared/errors";
 

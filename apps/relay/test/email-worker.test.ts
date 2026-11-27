@@ -2,7 +2,7 @@ import { env } from "cloudflare:test";
 import { eq } from "drizzle-orm";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi, type MockInstance } from "vitest";
 import worker from "../src/server";
-import { setWorkspaceStatus } from "../src/console/admin";
+import { setWorkspaceStatus } from "../src/services/admin";
 import { createAddress } from "../src/core/addresses";
 import type { InboundJob } from "../src/core/jobs";
 import { coreDb } from "../src/db/core/client";
