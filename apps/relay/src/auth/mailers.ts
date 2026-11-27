@@ -1,4 +1,4 @@
-import type { Env } from "../../env";
+import type { Env } from "../env";
 import { consoleInviteMailer, memoryInviteMailer } from "./invite-mailer";
 import { consoleOtpMailer, memoryOtpMailer, type OtpMailer } from "./otp-mailer";
 import { sesInviteMailer, sesOtpMailer, type InviteMailer } from "./system-mail";

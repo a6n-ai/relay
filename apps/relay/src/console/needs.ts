@@ -1,5 +1,10 @@
-// Client-safe: server-fn files use these at module level, so they must not pull guard.ts (and cloudflare:workers) into the client bundle.
-export type Need = { permission?: Record<string, string[]>; write?: boolean };
+import type { ActionOf, Permission, Resource } from "../shared/permissions";
 
-export const READ = (resource: string, ...actions: string[]): Need => ({ permission: { [resource]: actions } });
-export const WRITE = (resource: string, ...actions: string[]): Need => ({ permission: { [resource]: actions }, write: true });
+// Client-safe: server-fn files use these at module level, so they must not pull guard.ts (and cloudflare:workers) into the client bundle.
+export type Need = { permission?: Permission; write?: boolean };
+
+export const READ = <R extends Resource>(resource: R, action: ActionOf<R>): Need => ({ permission: { [resource]: [action] } });
+export const WRITE = <R extends Resource>(resource: R, action: ActionOf<R>): Need => ({
+  permission: { [resource]: [action] },
+  write: true,
+});

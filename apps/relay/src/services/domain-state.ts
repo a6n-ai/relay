@@ -4,7 +4,7 @@ import { address, sendingDomain } from "../db/core/schema";
 import { sesIdentityApi } from "../core/ses-identity";
 import { domainStateOf, onDomain, releasableWhere, sesRead } from "../core/sending-domain";
 import type { Env } from "../env";
-import { writeAudit } from "../lib/auth/audit";
+import { writeAudit } from "../auth/audit";
 import { refreshWorkspaceLimits } from "./limits";
 
 // The real SES state of an identity, for rows that start from an identity Relay did not create (seed, adopt).

@@ -1,4 +1,4 @@
-import type { Env } from "../../env";
+import type { Env } from "../env";
 
 // Better Auth redirects here with ?error=signup_disabled when the Google email has no user row.
 const NO_ACCOUNT_CODE = "signup_disabled";

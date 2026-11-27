@@ -1,14 +1,13 @@
 import { useNavigate, useSearch } from "@tanstack/react-router";
-import { trimSlash } from "../../lib/path";
+import { trimSlash } from "../lib/path";
 import type { PageOf } from "./page-data";
-import { untyped } from "../../lib/route-search";
+import { untyped } from "../lib/route-search";
+import { defaultApp } from "../../shared/scope";
 
 export const isAppScoped = (pathname: string, pageOf: PageOf) => Boolean(pageOf(trimSlash(pathname))?.scoped);
 
 // Pages with `scoped: "all"` read every app when none is picked; the others load the first app.
 export const showsAllApps = (pathname: string, pageOf: PageOf) => pageOf(trimSlash(pathname))?.scoped === "all";
-
-export const defaultApp = (apps: { id: string }[], all: boolean): string | undefined => (all ? undefined : apps[0]?.id);
 
 export const pickApp = (apps: { id: string }[], appId: string | undefined, all: boolean): string | undefined =>
   apps.some((a) => a.id === appId) ? appId : defaultApp(apps, all);

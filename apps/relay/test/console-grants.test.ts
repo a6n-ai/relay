@@ -11,7 +11,7 @@ import { addressGrant, member, team, user } from "../src/db/security/schema";
 import { addMember, cookieFor, createWorkspace, headersFor, ORIGIN, setActive } from "./console-helpers";
 import { applyMigrations } from "./migrate";
 
-const MANAGE = { permission: { mailbox: ["manage"] }, write: true };
+const MANAGE = { permission: { mailbox: ["manage"] }, write: true } as const;
 
 beforeAll(async () => {
   await applyMigrations();

@@ -2,7 +2,7 @@ import { Button } from "@foundry/ui/button";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { DeniedState, deniedReason } from "../../components/denied-state";
 import { EventTimeline, type TimelineItem } from "../../components/messages/event-timeline";
-import { formatWhen } from "../../lib/format-date";
+import { formatWhen } from "../../components/lib/format-date";
 import { LetterView } from "../../components/letter-view";
 import { Toolbar } from "../../components/page/toolbar";
 import { PageHeader } from "../../components/shell/page-header";

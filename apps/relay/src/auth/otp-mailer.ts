@@ -1,4 +1,4 @@
-import { maskEmails, normalizeEmail } from "../../core/mask-emails";
+import { maskEmails, normalizeEmail } from "../core/mask-emails";
 
 export type OtpMailer = { send(email: string, otp: string, type: string): Promise<void> };
 

@@ -1,6 +1,6 @@
 import { APIError, getAuthoritativeSessionFromCtx } from "better-auth/api";
-import { normalizeEmail } from "../../../core/mask-emails";
-import type { Env } from "../../../env";
+import { normalizeEmail } from "../../core/mask-emails";
+import type { Env } from "../../env";
 import { emailWithinCap } from "../rate-limit";
 import { isFreshSession, STALE_SESSION_MESSAGE } from "../password";
 import type { HookCtx } from "./types";

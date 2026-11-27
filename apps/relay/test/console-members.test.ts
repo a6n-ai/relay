@@ -18,13 +18,13 @@ import { renameWorkspace } from "../src/services/workspaces";
 import { inviteInput } from "../src/console/schemas";
 import { securityDb } from "../src/db/security/client";
 import { invitation, member, user, workspace } from "../src/db/security/schema";
-import { memoryInviteMailer } from "../src/lib/auth/invite-mailer";
+import { memoryInviteMailer } from "../src/auth/invite-mailer";
 import { addMember, cookieFor, createWorkspace, ORIGIN, setActive, signIn } from "./console-helpers";
 import { applyMigrations } from "./migrate";
 
 const db = securityDb(env);
 const headersFor = (cookie: string) => new Headers({ cookie });
-const INVITE = { permission: { invitation: ["create"] }, write: true };
+const INVITE = { permission: { invitation: ["create"] }, write: true } as const;
 const DAY_MS = 86_400_000;
 
 beforeAll(async () => {
@@ -250,7 +250,7 @@ describe("accepting an invite", { timeout: 60_000 }, () => {
   it("renames a team and refuses a member with 403 and another workspace with 404", async () => {
     const a = await workspaceFor("mem-rt-a@example.com", "Mem RT A Co");
     const b = await workspaceFor("mem-rt-b@example.com", "Mem RT B Co");
-    const need = { permission: { team: ["update"] }, write: true };
+    const need = { permission: { team: ["update"] }, write: true } as const;
     const actorA = await requireActor(env, headersFor(a.cookie), need);
     const actorB = await requireActor(env, headersFor(b.cookie), need);
     const { id: teamId } = await createTeam(env, headersFor(a.cookie), "Support");
@@ -264,7 +264,7 @@ describe("accepting an invite", { timeout: 60_000 }, () => {
 
   it("renames a workspace, keeps its slug, and refuses a member with 403", async () => {
     const a = await workspaceFor("mem-rw@example.com", "Mem RW Co");
-    const need = { permission: { organization: ["update"] }, write: true };
+    const need = { permission: { organization: ["update"] }, write: true } as const;
     const actor = await requireActor(env, headersFor(a.cookie), need);
     await renameWorkspace(env, actor, headersFor(a.cookie), "Renamed Co");
     const [row] = await db.select({ name: workspace.name, slug: workspace.slug }).from(workspace).where(eq(workspace.id, a.workspaceId));

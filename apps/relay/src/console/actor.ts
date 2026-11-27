@@ -2,14 +2,15 @@ import { and, eq } from "drizzle-orm";
 import { securityDb } from "../db/security/client";
 import { member, workspace } from "../db/security/schema";
 import type { Env } from "../env";
-import { allows } from "../lib/auth/permissions";
-import { assertSameOrigin, parseRoles, requireSession, type ConsoleActor } from "../core/session";
+import { allows } from "../shared/permissions";
+import { assertSameOrigin, parseRoles, requireSession, type ConsoleActor } from "../auth/session";
 import { RelayError } from "../shared/errors";
+import type { Need } from "./needs";
 
 export async function requireActor(
   env: Env,
   headers: Headers,
-  need: { permission?: Record<string, string[]>; write?: boolean } = {},
+  need: Need = {},
 ): Promise<ConsoleActor> {
   const { userId, platformAdmin, activeWorkspaceId } = await requireSession(env, headers);
   if (!activeWorkspaceId) throw new RelayError("no workspace");

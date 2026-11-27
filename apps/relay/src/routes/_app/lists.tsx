@@ -17,7 +17,7 @@ import { ListSkeleton } from "../../components/page/page-skeleton";
 import { PageHeader } from "../../components/shell/page-header";
 import { fetchApps } from "../../console/apps.fns";
 import { fetchLists } from "../../console/lists.fns";
-import { str, untyped } from "../../lib/route-search";
+import { str, untyped } from "../../components/lib/route-search";
 import { loaded, ScopedDenied } from "../../components/page/scoped-page";
 
 type ListsSearch = { appId?: string; q?: string };

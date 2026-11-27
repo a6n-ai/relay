@@ -5,9 +5,9 @@ import { usageDaily, workspaceProfile } from "../db/core/schema";
 import { securityDb } from "../db/security/client";
 import { workspace } from "../db/security/schema";
 import type { Env } from "../env";
-import { createAuth } from "../lib/auth";
+import { createAuth } from "../auth";
 import { workspaceHoldings } from "../core/workspace-holdings";
-import { assertSameOrigin, type ConsoleActor } from "../core/session";
+import { assertSameOrigin, type ConsoleActor } from "../auth/session";
 import { RelayError } from "../shared/errors";
 
 // The cap and the self-serve profile are set by the better-auth hooks, so this path cannot skip them.

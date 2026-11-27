@@ -12,7 +12,7 @@ import { securityAudit } from "../src/db/security/schema";
 import { addMember, cookieFor, createWorkspace, headersFor, ORIGIN, setActive } from "./console-helpers";
 import { applyMigrations } from "./migrate";
 
-const WRITE = { permission: { sending: ["write"] }, write: true };
+const WRITE = { permission: { sending: ["write"] }, write: true } as const;
 const DAY = 24 * 60 * 60 * 1000;
 
 beforeAll(async () => {

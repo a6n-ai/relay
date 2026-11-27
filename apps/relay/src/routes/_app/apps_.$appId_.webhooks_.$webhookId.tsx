@@ -19,9 +19,9 @@ import { deliveryActions } from "../../components/webhooks/webhook-delivery-acti
 import { WEBHOOK_EVENT_LABELS } from "../../components/webhooks/webhook-events";
 import { EditWebhookForm } from "../../components/webhooks/webhook-form";
 import { fetchDeliveries, retryDeliveryFn } from "../../console/webhooks.fns";
-import { formatDate, formatWhen } from "../../lib/format-date";
+import { formatDate, formatWhen } from "../../components/lib/format-date";
 import { type DeliveryView } from "../../shared/views";
-import { hostOf } from "../../lib/path";
+import { hostOf } from "../../components/lib/path";
 
 export const Route = createFileRoute("/_app/apps_/$appId_/webhooks_/$webhookId")({
   loader: ({ params }) => fetchDeliveries({ data: { appId: params.appId, webhookId: params.webhookId } }),

@@ -19,10 +19,10 @@ import { useCan } from "../../components/use-can";
 import { WEBHOOK_EVENT_LABELS, WEBHOOK_EVENT_LIST } from "../../components/webhooks/webhook-events";
 import { EditWebhookForm, WebhookEventsField, WebhookUrlField } from "../../components/webhooks/webhook-form";
 import { createWebhookFn, deleteWebhookFn, fetchWebhooks, updateWebhookFn } from "../../console/webhooks.fns";
-import { formatDate, formatWhen } from "../../lib/format-date";
+import { formatDate, formatWhen } from "../../components/lib/format-date";
 import { FormError, FormBody, FormActions } from "../../components/page/form-parts";
 import { type WebhookEvent } from "../../shared/mail";
-import { hostOf } from "../../lib/path";
+import { hostOf } from "../../components/lib/path";
 
 const DESCRIPTION = "Where Relay tells your app about message events.";
 

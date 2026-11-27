@@ -3,11 +3,12 @@ import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { type FormEvent, useEffect, useState } from "react";
 import { AuthButton, AuthCard, AuthField, AuthForm, AuthLink, AuthText, authLink } from "../components/auth-card";
 import { FormError } from "../components/page/form-parts";
-import { authOptionsFn, safeRedirect } from "../console/shell.fns";
-import { signInErrorText } from "../lib/auth/google";
+import { authOptionsFn } from "../console/shell.fns";
+import { safeRedirect } from "../shared/redirect";
+import { signInErrorText } from "../auth/google";
 import { PASSWORD_MAX } from "../shared/limits";
 import { SITE_ORIGIN } from "../shared/site";
-import { authFetch } from "../lib/auth-fetch";
+import { authFetch } from "../components/lib/auth-fetch";
 
 const TITLE = "Sign in to Relay";
 const DESCRIPTION = "Sign in to Relay with a one-time code sent to your email, a password, or Google.";

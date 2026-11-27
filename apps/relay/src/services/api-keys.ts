@@ -2,7 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { securityDb } from "../db/security/client";
 import { apiKey, app, member, workspace } from "../db/security/schema";
 import type { Env } from "../env";
-import { createAuth } from "../lib/auth";
+import { createAuth } from "../auth";
 import type { KeyScope } from "../shared/scope";
 
 

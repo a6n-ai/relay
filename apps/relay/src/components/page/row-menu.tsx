@@ -2,7 +2,7 @@ import { Button } from "@foundry/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@foundry/ui/dropdown-menu";
 import { Link } from "@tanstack/react-router";
 import { MoreHorizontalIcon } from "lucide-react";
-import { untyped } from "../../lib/route-search";
+import { untyped } from "../lib/route-search";
 
 export type RowAction = {
   label: string;

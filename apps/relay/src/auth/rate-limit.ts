@@ -1,9 +1,9 @@
 import { sql } from "drizzle-orm";
-import { securityDb } from "../../db/security/client";
-import { rateLimit } from "../../db/security/schema";
-import type { Env } from "../../env";
-import { newId } from "../../shared/ids";
-import { toHex } from "../../core/crypto";
+import { securityDb } from "../db/security/client";
+import { rateLimit } from "../db/security/schema";
+import type { Env } from "../env";
+import { newId } from "../shared/ids";
+import { toHex } from "../core/crypto";
 
 const WINDOW_S = 600;
 

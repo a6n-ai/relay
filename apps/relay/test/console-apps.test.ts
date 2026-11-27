@@ -1,7 +1,7 @@
 import { env, SELF } from "cloudflare:test";
 import { beforeAll, describe, expect, it } from "vitest";
 import { requireActor } from "../src/console/actor";
-import { uniqueViolation } from "../src/core/session";
+import { uniqueViolation } from "../src/auth/session";
 import { addApp, createKey, deleteKey, getApp, listApps, listKeys, renameApp, renameKey, revokeKey } from "../src/services/apps";
 import { deleteAudienceHook, setAudienceHook } from "../src/services/audience-hook";
 import { fromActor } from "../src/services/principal";
@@ -12,8 +12,8 @@ import { addMember, cookieFor, createWorkspace, ORIGIN, setActive } from "./cons
 import { applyMigrations } from "./migrate";
 
 const headersFor = (cookie: string) => new Headers({ cookie });
-const READ = { permission: { tenant: ["read"] } };
-const WRITE = { permission: { tenant: ["write"] }, write: true };
+const READ = { permission: { tenant: ["read"] } } as const;
+const WRITE = { permission: { tenant: ["write"] }, write: true } as const;
 
 beforeAll(async () => {
   await applyMigrations();

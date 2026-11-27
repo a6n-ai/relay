@@ -1,6 +1,6 @@
-import { securityDb } from "../../db/security/client";
-import { securityAudit } from "../../db/security/schema";
-import type { Env } from "../../env";
+import { securityDb } from "../db/security/client";
+import { securityAudit } from "../db/security/schema";
+import type { Env } from "../env";
 
 type AuditEvent = {
   action: string;

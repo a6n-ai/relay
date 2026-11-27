@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { oneOf, posInt, status, str } from "../src/lib/route-search";
+import { oneOf, posInt, status, str } from "../src/components/lib/route-search";
 
 describe("route search parsers", () => {
   it("keeps a non-empty string only", () => {

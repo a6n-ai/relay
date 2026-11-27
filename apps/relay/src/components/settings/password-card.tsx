@@ -10,7 +10,7 @@ import { errorText } from "../error-text";
 import { FormError } from "../page/form-parts";
 import { SettingsCard } from "../page/settings-card";
 import { PASSWORD_MAX, PASSWORD_MIN } from "../../shared/limits";
-import { authFetch } from "../../lib/auth-fetch";
+import { authFetch } from "../lib/auth-fetch";
 
 
 // Setting goes through a server function (setPassword has no HTTP route); changing goes through Better Auth with the current password.

@@ -16,11 +16,11 @@ import { useUrlFilter } from "../../components/page/use-url-filter";
 import { PageHeader } from "../../components/shell/page-header";
 import { ResourceTable } from "../../components/resource-table";
 import { useCan } from "../../components/use-can";
-import { formatWhen } from "../../lib/format-date";
+import { formatWhen } from "../../components/lib/format-date";
 import { addSuppressionFn, fetchSuppressions, removeSuppressionFn } from "../../console/suppressions.fns";
 import { FormError, FormBody, FormActions } from "../../components/page/form-parts";
 import { STREAMS } from "../../shared/mail";
-import { oneOf, posInt, str, untyped } from "../../lib/route-search";
+import { oneOf, posInt, str, untyped } from "../../components/lib/route-search";
 
 type SuppressionsSearch = { prefix?: string; cursor?: string; stream?: StreamFilter; offset?: number };
 

@@ -14,7 +14,7 @@ import { addMember, BASE, cookieFor, createWorkspace, json, ORIGIN, setActive } 
 import { applyMigrations } from "./migrate";
 
 const headersFor = (cookie: string) => new Headers({ cookie });
-const WRITE = { permission: { tenant: ["write"] }, write: true };
+const WRITE = { permission: { tenant: ["write"] }, write: true } as const;
 
 beforeAll(async () => {
   await applyMigrations();

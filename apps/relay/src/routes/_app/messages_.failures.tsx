@@ -10,12 +10,12 @@ import { Hint } from "../../components/page/text";
 import { Toolbar } from "../../components/page/toolbar";
 import { ListSkeleton } from "../../components/page/page-skeleton";
 import { PageHeader } from "../../components/shell/page-header";
-import { formatWhen } from "../../lib/format-date";
+import { formatWhen } from "../../components/lib/format-date";
 import { ResourceTable } from "../../components/resource-table";
 import { useCan } from "../../components/use-can";
 import { fetchApps } from "../../console/apps.fns";
 import { deleteFailureFn, fetchFailures, replayFailureFn } from "../../console/failures.fns";
-import { posInt, str, untyped } from "../../lib/route-search";
+import { posInt, str, untyped } from "../../components/lib/route-search";
 
 type FailuresSearch = { appId?: string; offset?: number };
 

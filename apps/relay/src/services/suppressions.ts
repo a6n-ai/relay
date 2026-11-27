@@ -1,8 +1,8 @@
 import { maskEmails } from "../core/mask-emails";
 import { clientFor } from "../do/client";
 import type { Env } from "../env";
-import { writeAudit } from "../lib/auth/audit";
-import { type ConsoleActor } from "../core/session";
+import { writeAudit } from "../auth/audit";
+import { type ConsoleActor } from "../auth/session";
 import { RelayError } from "../shared/errors";
 import { type Stream } from "../shared/mail";
 

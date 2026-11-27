@@ -13,7 +13,7 @@ import { addMember, cookieFor, createWorkspace, ORIGIN, setActive } from "./cons
 import { applyMigrations } from "./migrate";
 
 const headersFor = (cookie: string) => new Headers({ cookie });
-const WRITE = { permission: { sending: ["write"] }, write: true };
+const WRITE = { permission: { sending: ["write"] }, write: true } as const;
 const OPS = { userId: "usr_ops_test" };
 
 beforeAll(async () => {
@@ -163,7 +163,7 @@ describe("console platform admin", { timeout: 60_000 }, () => {
 });
 
 describe("console platform admin invite cap", { timeout: 60_000 }, () => {
-  const INVITE = { permission: { invitation: ["create"] }, write: true };
+  const INVITE = { permission: { invitation: ["create"] }, write: true } as const;
 
   async function seedInvites(workspaceId: string, inviterId: string, count: number) {
     for (let i = 0; i < count; i++) {

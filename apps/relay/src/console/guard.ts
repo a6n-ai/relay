@@ -4,7 +4,7 @@ import { createGuard } from "@foundry/commons/guard";
 import { env } from "cloudflare:workers";
 import { recordFailure } from "../core/log";
 import { requireActor, requirePlatformAdmin } from "./actor";
-import type { ConsoleActor } from "../core/session";
+import type { ConsoleActor } from "../auth/session";
 import type { Need } from "./needs";
 
 // A known error keeps its status and message, anything else is a 500 with no detail. The browser sees only that copy;

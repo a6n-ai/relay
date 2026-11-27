@@ -7,7 +7,7 @@ import { errorText } from "../error-text";
 
 import { ConfirmDialog } from "../confirm-dialog";
 import { FormError } from "../page/form-parts";
-import { formatWhen } from "../../lib/format-date";
+import { formatWhen } from "../lib/format-date";
 import { MeterBar } from "../meter-bar";
 import { confirmAction, runAction } from "../run-action";
 import { StatTile } from "../stat-tile";

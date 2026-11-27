@@ -32,8 +32,8 @@ import {
   setDomainProtectedFn,
 } from "../../console/domains.fns";
 import { Hint, Mono } from "../../components/page/text";
-import { KIND_LABEL } from "../../lib/address-kinds";
-import { oneOf, str, untyped } from "../../lib/route-search";
+import { KIND_LABEL } from "../../components/lib/address-kinds";
+import { oneOf, str, untyped } from "../../components/lib/route-search";
 
 export const Route = createFileRoute("/_app/domains")({
   staticData: { title: "Domains", copy: "Domains you send from and receive on, and the addresses on them." },

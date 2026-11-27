@@ -17,11 +17,11 @@ import { PageHeader } from "../../components/shell/page-header";
 import { StatusBadge } from "../../components/status-badge";
 import { useCan } from "../../components/use-can";
 import { fetchCampaigns } from "../../console/campaigns.fns";
-import { formatWhen } from "../../lib/format-date";
+import { formatWhen } from "../../components/lib/format-date";
 import { PAGE_SIZE } from "../../shared/limits";
-import { posInt, str, untyped } from "../../lib/route-search";
+import { posInt, str, untyped } from "../../components/lib/route-search";
 import { loaded, ScopedDenied } from "../../components/page/scoped-page";
-import { scopedLoad } from "../../lib/scoped-load";
+import { scopedLoad } from "../../components/lib/scoped-load";
 
 type CampaignsSearch = { appId?: string; cursor?: string; offset?: number; q?: string; status?: string };
 

@@ -8,8 +8,8 @@ import { address } from "../db/core/schema";
 import { securityDb } from "../db/security/client";
 import { apiKey, app } from "../db/security/schema";
 import type { Env } from "../env";
-import { writeAudit } from "../lib/auth/audit";
-import { type ConsoleActor, uniqueViolation } from "../core/session";
+import { writeAudit } from "../auth/audit";
+import { type ConsoleActor, uniqueViolation } from "../auth/session";
 import { RelayError } from "../shared/errors";
 import { SLUG_RE } from "../shared/schemas";
 

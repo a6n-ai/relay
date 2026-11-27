@@ -2,7 +2,7 @@ import { env, runInDurableObject, SELF } from "cloudflare:test";
 import { and, eq } from "drizzle-orm";
 import { beforeAll, describe, expect, it } from "vitest";
 import { requireActor } from "../src/console/actor";
-import { type ConsoleActor } from "../src/core/session";
+import { type ConsoleActor } from "../src/auth/session";
 import { addApp } from "../src/services/apps";
 import { addGrant } from "../src/services/grants";
 import { deleteFailureFor, listFailuresFor, replayFailureFor } from "../src/services/failures";

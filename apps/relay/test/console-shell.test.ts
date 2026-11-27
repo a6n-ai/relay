@@ -5,7 +5,7 @@ import { PROBLEM_LABEL } from "../src/components/campaigns/campaign-problems";
 import { reasonText } from "../src/components/campaigns/campaign-report";
 import { clientFor } from "../src/do/client";
 import { loadShell } from "../src/services/shell";
-import { safeRedirect } from "../src/console/shell.fns";
+import { safeRedirect } from "../src/shared/redirect";
 import { securityDb } from "../src/db/security/client";
 import { newId } from "../src/shared/ids";
 import { app, member, user, workspace } from "../src/db/security/schema";

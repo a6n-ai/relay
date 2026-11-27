@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { getShell } from "../console/shell.fns";
-import { signInRedirect } from "../lib/sign-in-redirect";
+import { signInRedirect } from "../components/lib/sign-in-redirect";
 import { acceptInviteFn, getInviteFn } from "../console/members.fns";
 import { AuthButton, AuthCard, AuthText, AuthTitle } from "../components/auth-card";
 import { errorText } from "../components/error-text";

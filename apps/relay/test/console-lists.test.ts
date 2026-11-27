@@ -11,8 +11,8 @@ import { securityAudit } from "../src/db/security/schema";
 import { addMember, cookieFor, createWorkspace, headersFor, ORIGIN, setActive } from "./console-helpers";
 import { applyMigrations } from "./migrate";
 
-const EDIT = { permission: { list: ["write"] }, write: true };
-const IMPORT = { permission: { list: ["import"] }, write: true };
+const EDIT = { permission: { list: ["write"] }, write: true } as const;
+const IMPORT = { permission: { list: ["import"] }, write: true } as const;
 
 beforeAll(async () => {
   await applyMigrations();

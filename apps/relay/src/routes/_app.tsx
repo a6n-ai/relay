@@ -3,7 +3,7 @@ import { lazy, Suspense } from "react";
 import { AppError } from "../components/denied-state";
 import { Landing } from "../components/landing/landing";
 import { getShell } from "../console/shell.fns";
-import { signInRedirect } from "../lib/sign-in-redirect";
+import { signInRedirect } from "../components/lib/sign-in-redirect";
 
 // Console code loads only for signed-in visitors, so the landing page ships none of it.
 const ConsoleLayout = lazy(() => import("../components/console-layout"));

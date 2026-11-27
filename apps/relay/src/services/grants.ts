@@ -5,8 +5,8 @@ import { address } from "../db/core/schema";
 import { securityDb } from "../db/security/client";
 import { addressGrant, member, team, user } from "../db/security/schema";
 import type { Env } from "../env";
-import { writeAudit } from "../lib/auth/audit";
-import { type ConsoleActor, parseRoles, uniqueViolation } from "../core/session";
+import { writeAudit } from "../auth/audit";
+import { type ConsoleActor, parseRoles, uniqueViolation } from "../auth/session";
 import { RelayError, codeOf } from "../shared/errors";
 
 type GrantView = { id: string; kind: "member" | "team"; targetId: string; label: string };

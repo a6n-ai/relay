@@ -1,4 +1,4 @@
-import { MESSAGE_STATUSES, type MessageStatus } from "../shared/mail";
+import { MESSAGE_STATUSES, type MessageStatus } from "../../shared/mail";
 
 // Route `validateSearch` parsers: a garbage value is dropped rather than failing the page. The server validates again at the fn boundary.
 export const str = (v: unknown): string | undefined => (typeof v === "string" && v ? v : undefined);

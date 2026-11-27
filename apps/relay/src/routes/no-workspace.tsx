@@ -2,7 +2,7 @@ import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { AuthButton, AuthCard, AuthText } from "../components/auth-card";
 import { useSignOut } from "../components/sign-out-button";
 import { getShell } from "../console/shell.fns";
-import { signInRedirect } from "../lib/sign-in-redirect";
+import { signInRedirect } from "../components/lib/sign-in-redirect";
 
 export const Route = createFileRoute("/no-workspace")({
   beforeLoad: async ({ location }) => {

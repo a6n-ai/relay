@@ -1,14 +1,14 @@
 import { createFileRoute, useSearch } from "@tanstack/react-router";
 import { AutomationForm } from "../../components/campaigns/automation-form";
 import { DeniedState, deniedReason } from "../../components/denied-state";
-import { isNotFound } from "../../lib/scoped-load";
+import { isNotFound } from "../../components/lib/scoped-load";
 import { FormSkeleton } from "../../components/page/page-skeleton";
 import { PageHeader } from "../../components/shell/page-header";
 import { useCan } from "../../components/use-can";
 import { fetchApps } from "../../console/apps.fns";
 import { fetchAutomation } from "../../console/automations.fns";
 import { fetchCampaignOptions } from "../../console/campaigns.fns";
-import { str } from "../../lib/route-search";
+import { str } from "../../components/lib/route-search";
 
 export const Route = createFileRoute("/_app/campaigns_/automations_/$automationId")({
   validateSearch: (search: Record<string, unknown>): { appId?: string } => ({

@@ -1,5 +1,5 @@
 import type { Env } from "../env";
-import { writeAudit } from "../lib/auth/audit";
+import { writeAudit } from "../auth/audit";
 import { RelayError } from "../shared/errors";
 import type { KeyScope } from "../shared/scope";
 import { getApp } from "./apps";

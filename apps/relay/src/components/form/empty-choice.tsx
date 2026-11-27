@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import type { ComponentProps } from "react";
 import { Field, fieldDescribedBy } from "./field";
-import { untyped } from "../../lib/route-search";
+import { untyped } from "../lib/route-search";
 
 // An empty pick says so and links to where one is made: "No lists yet. Create a list".
 // onNavigate is for the dialog that holds the pick, so it closes when the link is followed.

@@ -23,7 +23,7 @@ import { useUrlFilter } from "../../components/page/use-url-filter";
 import { ListSkeleton } from "../../components/page/page-skeleton";
 import { PageHeader } from "../../components/shell/page-header";
 import { fetchApps } from "../../console/apps.fns";
-import { formatDate, formatWhen } from "../../lib/format-date";
+import { formatDate, formatWhen } from "../../components/lib/format-date";
 import {
   addMemberFn,
   deleteListFn,
@@ -35,7 +35,7 @@ import {
 } from "../../console/lists.fns";
 import { FormError, FormBody, FormActions } from "../../components/page/form-parts";
 import { type ConsentSource, type MemberView } from "../../shared/views";
-import { str, posInt } from "../../lib/route-search";
+import { str, posInt } from "../../components/lib/route-search";
 
 type ListSearch = { appId?: string; cursor?: string; q?: string; offset?: number };
 

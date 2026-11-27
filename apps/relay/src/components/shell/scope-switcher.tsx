@@ -10,7 +10,7 @@ import { useState } from "react";
 import { createItems } from "./nav";
 import { usePageOf } from "./page-data";
 import { pickApp, scopeLabel, scopeSearch, showsAllApps } from "./scope";
-import { untyped } from "../../lib/route-search";
+import { untyped } from "../lib/route-search";
 
 const row =
   "flex h-9 items-center justify-between gap-2 rounded-md px-2 text-sm hover:bg-muted focus-visible:bg-muted outline-none";

@@ -13,10 +13,10 @@ import { PageHeader } from "../../components/shell/page-header";
 import { StatusBadge } from "../../components/status-badge";
 import { fetchApps } from "../../console/apps.fns";
 import { fetchMessages } from "../../console/messages.fns";
-import { formatWhen } from "../../lib/format-date";
+import { formatWhen } from "../../components/lib/format-date";
 import { MESSAGE_STATUSES } from "../../shared/mail";
 import { PAGE_SIZE } from "../../shared/limits";
-import { posInt, untyped } from "../../lib/route-search";
+import { posInt, untyped } from "../../components/lib/route-search";
 
 export const Route = createFileRoute("/_app/messages")({
   staticData: { title: "Messages", copy: "Every email you send and receive, with its delivery status.", scoped: "all" },

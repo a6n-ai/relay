@@ -9,7 +9,7 @@ import { usePageOf } from "./page-data";
 import { type FindEntry, findEntries, pushRecent, readRecent } from "./find";
 import { withNew } from "./scope";
 import { type Shell } from "../../shared/views";
-import { untyped } from "../../lib/route-search";
+import { untyped } from "../lib/route-search";
 
 const RECENT_KEY = "relay-find-recent";
 const GROUPS: FindEntry["group"][] = ["Pages", "Apps", "Actions"];

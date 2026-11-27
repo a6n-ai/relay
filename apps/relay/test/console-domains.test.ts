@@ -24,7 +24,7 @@ import backfill from "../drizzle/core/0006_address_can_send_follows_kind.sql?raw
 import { addMember, cookieFor, createWorkspace, headersFor, ORIGIN, setActive } from "./console-helpers";
 import { applyMigrations } from "./migrate";
 
-const WRITE = { permission: { sending: ["write"] }, write: true };
+const WRITE = { permission: { sending: ["write"] }, write: true } as const;
 
 beforeAll(async () => {
   await applyMigrations();

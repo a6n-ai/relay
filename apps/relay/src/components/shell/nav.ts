@@ -10,10 +10,10 @@ import Megaphone from "lucide-react/icons/megaphone";
 import Settings from "lucide-react/icons/settings";
 import Shield from "lucide-react/icons/shield";
 import type { FileRouteTypes } from "../../routeTree.gen";
-import { allows } from "../../lib/auth/permissions";
+import { allows, type Permission } from "../../shared/permissions";
 import type { PageOf } from "./page-data";
 import { type OrgRole } from "../../shared/roles";
-import { trimSlash } from "../../lib/path";
+import { trimSlash } from "../lib/path";
 
 // A nav entry's label is its route's `staticData.title`; `label` is set only where one route has several entries (Sent/Received) or the entry names the page differently (General).
 type NavLeaf = {
@@ -21,7 +21,7 @@ type NavLeaf = {
   label?: string;
   to: string;
   search?: Record<string, string>;
-  need?: Record<string, string[]>;
+  need?: Permission;
 };
 
 type Leaf = Omit<NavLeaf, "label"> & { label: string };
@@ -34,7 +34,7 @@ type CreateItem = {
   to: FileRouteTypes["to"];
   new?: 1;
   menu?: false;
-  need: Record<string, string[]>;
+  need: Permission;
   start?: { icon: LucideIcon; title: string; line: string; cta: string };
 };
 
@@ -115,7 +115,7 @@ const CREATE: CreateItem[] = [
   },
 ];
 
-const permitted = (roles: OrgRole[], need?: Record<string, string[]>) => !need || allows(roles, need);
+const permitted = (roles: OrgRole[], need?: Permission) => !need || allows(roles, need);
 
 export function visibleNav(roles: OrgRole[], platformAdmin: boolean, hasWorkspace: boolean, pageOf: PageOf): NavGroup[] {
   const label = (leaf: NavLeaf) => leaf.label ?? pageOf(leaf.to)?.title ?? leaf.id;

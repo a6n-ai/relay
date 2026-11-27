@@ -9,7 +9,7 @@ import { DangerCard } from "../../components/page/danger-card";
 import { ContentFields, type ContentValue } from "../../components/campaigns/content-fields";
 import { DeniedState, deniedReason } from "../../components/denied-state";
 import { errorText } from "../../components/error-text";
-import { isNotFound } from "../../lib/scoped-load";
+import { isNotFound } from "../../components/lib/scoped-load";
 import { FixedField } from "../../components/form/fixed-field";
 import { NameField, TextField } from "../../components/form/text-field";
 import { SettingsCard } from "../../components/page/settings-card";

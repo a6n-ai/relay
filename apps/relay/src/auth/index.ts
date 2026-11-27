@@ -6,7 +6,7 @@ import { apiKey as apiKeyPlugin } from "@better-auth/api-key";
 import { admin } from "better-auth/plugins/admin";
 import { emailOTP } from "better-auth/plugins/email-otp";
 import { organization } from "better-auth/plugins/organization";
-import { securityDb } from "../../db/security/client";
+import { securityDb } from "../db/security/client";
 import {
   account,
   apiKey,
@@ -19,9 +19,9 @@ import {
   rateLimit,
   verification,
   workspace,
-} from "../../db/security/schema";
-import type { Env } from "../../env";
-import { newId } from "../../shared/ids";
+} from "../db/security/schema";
+import type { Env } from "../env";
+import { newId } from "../shared/ids";
 import { googleConfig } from "./google";
 import { auditAfterRequest, requestMeta, userAuditHooks } from "./hooks/audit";
 import { accountCreateBefore } from "./hooks/oauth-link";

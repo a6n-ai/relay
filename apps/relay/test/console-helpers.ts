@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import { expect } from "vitest";
 import { securityDb } from "../src/db/security/client";
 import { member, user } from "../src/db/security/schema";
-import { memoryOtpMailer } from "../src/lib/auth/otp-mailer";
+import { memoryOtpMailer } from "../src/auth/otp-mailer";
 import { newId } from "../src/shared/ids";
 import { type OrgRole } from "../src/shared/roles";
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { allows } from "../src/lib/auth/permissions";
+import { allows } from "../src/shared/permissions";
 import { pageOf } from "./shell-pages";
 import { activeNav, createItems, sectionTabs, visibleNav } from "../src/components/shell/nav";
 

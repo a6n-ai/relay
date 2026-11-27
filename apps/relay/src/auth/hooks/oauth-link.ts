@@ -1,8 +1,8 @@
 import { getOAuthState } from "better-auth/api";
 import { eq } from "drizzle-orm";
-import { securityDb } from "../../../db/security/client";
-import { user } from "../../../db/security/schema";
-import type { Env } from "../../../env";
+import { securityDb } from "../../db/security/client";
+import { user } from "../../db/security/schema";
+import type { Env } from "../../env";
 import { writeAudit } from "../audit";
 import { ADMIN_LINK_CODE, auditKindFor, refusesImplicitLink } from "../google";
 import type { AdminLinkState, HookCtx } from "./types";

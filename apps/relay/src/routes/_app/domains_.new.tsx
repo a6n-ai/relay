@@ -12,7 +12,7 @@ import { PageHeader } from "../../components/shell/page-header";
 import { useCan } from "../../components/use-can";
 import { addDomainFn } from "../../console/domains.fns";
 import { SES_REGIONS } from "../../shared/regions";
-import { looksLikeDomain, normaliseDomainInput } from "../../lib/domain-input";
+import { looksLikeDomain, normaliseDomainInput } from "../../components/lib/domain-input";
 
 export const Route = createFileRoute("/_app/domains_/new")({
   component: AddDomainPage,

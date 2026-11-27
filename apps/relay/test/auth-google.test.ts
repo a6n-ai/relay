@@ -2,8 +2,8 @@ import { env, SELF } from "cloudflare:test";
 import { BASE, json } from "./console-helpers";
 import { applyMigrations } from "./migrate";
 import { beforeAll, describe, expect, it } from "vitest";
-import { createAuth } from "../src/lib/auth";
-import { ADMIN_LINK_CODE, auditKindFor, googleConfig, refusesImplicitLink, signInErrorText } from "../src/lib/auth/google";
+import { createAuth } from "../src/auth";
+import { ADMIN_LINK_CODE, auditKindFor, googleConfig, refusesImplicitLink, signInErrorText } from "../src/auth/google";
 import type { Env } from "../src/env";
 
 describe("googleConfig", () => {

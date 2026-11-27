@@ -1,4 +1,4 @@
-import { maskEmails, normalizeEmail } from "../../core/mask-emails";
+import { maskEmails, normalizeEmail } from "../core/mask-emails";
 import type { InviteMail, InviteMailer } from "./system-mail";
 
 // The link is never logged: it carries the invitation id, which accepts the invite.

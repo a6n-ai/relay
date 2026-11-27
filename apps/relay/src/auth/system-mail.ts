@@ -1,6 +1,6 @@
 import { AwsError } from "@foundry/cloud";
-import { sesTransport } from "../../core/ses";
-import type { Env } from "../../env";
+import { sesTransport } from "../core/ses";
+import type { Env } from "../env";
 import type { OtpMailer } from "./otp-mailer";
 
 // Never logs the code, the link or the address: the mail itself is the only copy.

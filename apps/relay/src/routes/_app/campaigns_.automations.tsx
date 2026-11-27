@@ -19,9 +19,9 @@ import { deleteAutomationFn, enableAutomationFn, fetchAutomations } from "../../
 import { fetchCampaignOptions } from "../../console/campaigns.fns";
 import { fetchTemplates } from "../../console/templates.fns";
 import { type AutomationView } from "../../shared/views";
-import { oneOf, str, untyped } from "../../lib/route-search";
+import { oneOf, str, untyped } from "../../components/lib/route-search";
 import { loaded, ScopedDenied } from "../../components/page/scoped-page";
-import { scopedLoad } from "../../lib/scoped-load";
+import { scopedLoad } from "../../components/lib/scoped-load";
 
 type AutomationsSearch = { appId?: string; status?: "on" | "off" };
 

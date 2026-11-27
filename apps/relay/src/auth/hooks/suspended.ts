@@ -1,8 +1,8 @@
 import { APIError, getAuthoritativeSessionFromCtx } from "better-auth/api";
 import { and, eq, inArray, or } from "drizzle-orm";
-import { securityDb } from "../../../db/security/client";
-import { invitation, team, workspace } from "../../../db/security/schema";
-import type { Env } from "../../../env";
+import { securityDb } from "../../db/security/client";
+import { invitation, team, workspace } from "../../db/security/schema";
+import type { Env } from "../../env";
 import type { HookCtx } from "./types";
 
 // A suspended workspace keeps its sessions but loses organization endpoints. Every workspace a request names counts, not only the active one.

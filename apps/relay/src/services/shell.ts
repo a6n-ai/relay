@@ -2,8 +2,8 @@ import { asc, eq } from "drizzle-orm";
 import { securityDb } from "../db/security/client";
 import { app, member, user, workspace } from "../db/security/schema";
 import type { Env } from "../env";
-import { createAuth } from "../lib/auth";
-import { parseRoles, requireSession } from "../core/session";
+import { createAuth } from "../auth";
+import { parseRoles, requireSession } from "../auth/session";
 import { type OrgRole } from "../shared/roles";
 import { type Shell } from "../shared/views";
 

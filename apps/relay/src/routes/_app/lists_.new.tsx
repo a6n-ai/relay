@@ -15,7 +15,7 @@ import { useCan } from "../../components/use-can";
 import { fetchApps } from "../../console/apps.fns";
 import { createListFn } from "../../console/lists.fns";
 import { type ConsentSource } from "../../shared/views";
-import { str } from "../../lib/route-search";
+import { str } from "../../components/lib/route-search";
 
 export const Route = createFileRoute("/_app/lists_/new")({
   validateSearch: (search: Record<string, unknown>): { appId?: string } => ({

@@ -1,7 +1,7 @@
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { withParam } from "./search-param";
-import { untyped } from "../../lib/route-search";
+import { untyped } from "../lib/route-search";
 
 // The URL is the source of truth: follow it (sidebar, Back), push typed text to it `delay` ms after typing stops.
 export function useUrlFilter(key: string, { resetCursor = false, delay = 300 } = {}): [string, (value: string) => void] {

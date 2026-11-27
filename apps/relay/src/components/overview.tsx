@@ -9,7 +9,7 @@ import { createItems } from "./shell/nav";
 import { PageHeader } from "./shell/page-header";
 import { StatTile } from "./stat-tile";
 import { type Shell } from "../shared/views";
-import { untyped } from "../lib/route-search";
+import { untyped } from "./lib/route-search";
 
 type OverviewData = NonNullable<Awaited<ReturnType<typeof fetchOverview>>>;
 

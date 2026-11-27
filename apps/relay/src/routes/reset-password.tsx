@@ -3,7 +3,7 @@ import { type FormEvent, useState } from "react";
 import { AuthButton, AuthCard, AuthField, AuthForm, AuthLink, AuthText } from "../components/auth-card";
 import { FormError } from "../components/page/form-parts";
 import { PASSWORD_MAX, PASSWORD_MIN } from "../shared/limits";
-import { authFetch } from "../lib/auth-fetch";
+import { authFetch } from "../components/lib/auth-fetch";
 
 export const Route = createFileRoute("/reset-password")({
   head: () => ({ meta: [{ title: "Choose a new Relay password" }, { name: "robots", content: "noindex" }] }),

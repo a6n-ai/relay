@@ -1,7 +1,7 @@
 import { Button } from "@foundry/ui/button";
 import { Link } from "@tanstack/react-router";
 import { Loader2Icon } from "lucide-react";
-import { untyped } from "../../lib/route-search";
+import { untyped } from "../lib/route-search";
 
 const withoutOffset = (s?: Record<string, unknown>) => {
   if (!s) return s;

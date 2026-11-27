@@ -18,9 +18,9 @@ import { PageHeader } from "../../components/shell/page-header";
 import { useCan } from "../../components/use-can";
 import { fetchApps } from "../../console/apps.fns";
 import { addAddressFn, fetchDomains } from "../../console/domains.fns";
-import { type Kind, KINDS, LOCAL_RE } from "../../lib/address-kinds";
+import { type Kind, KINDS, LOCAL_RE } from "../../components/lib/address-kinds";
 import { EMAIL_MAX, NAME_MAX } from "../../shared/limits";
-import { str } from "../../lib/route-search";
+import { str } from "../../components/lib/route-search";
 
 export const Route = createFileRoute("/_app/domains_/addresses/new")({
   validateSearch: (search: Record<string, unknown>): { appId?: string } => ({

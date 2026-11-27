@@ -17,7 +17,7 @@ import { PageHeader } from "../../components/shell/page-header";
 import { StatusBadge } from "../../components/status-badge";
 import { useCan } from "../../components/use-can";
 import { cancelInviteFn, fetchPeople } from "../../console/members.fns";
-import { formatDate } from "../../lib/format-date";
+import { formatDate } from "../../components/lib/format-date";
 
 
 export const Route = createFileRoute("/_app/settings_/invites")({

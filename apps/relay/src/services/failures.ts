@@ -6,8 +6,8 @@ import { coreDb } from "../db/core/client";
 import { address } from "../db/core/schema";
 import type { Env } from "../env";
 import type { InboundJob } from "../core/jobs";
-import { writeAudit } from "../lib/auth/audit";
-import { type ConsoleActor } from "../core/session";
+import { writeAudit } from "../auth/audit";
+import { type ConsoleActor } from "../auth/session";
 import { messageAccess } from "./inbox";
 import { RelayError, codeOf } from "../shared/errors";
 

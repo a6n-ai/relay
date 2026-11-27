@@ -1,5 +1,5 @@
-import { fetchApps } from "../console/apps.fns";
-import { defaultApp } from "../components/shell/scope";
+import { fetchApps } from "../../console/apps.fns";
+import { defaultApp } from "../../shared/scope";
 
 export const isNotFound = (err: unknown): boolean => err instanceof Error && err.message === "not found";
 

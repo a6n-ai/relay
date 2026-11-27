@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { Env } from "../env";
-import { writeAudit } from "../lib/auth/audit";
+import { writeAudit } from "../auth/audit";
 import type { KeyScope } from "../shared/scope";
 import { clientFor } from "../do/client";
 import { RelayError } from "../shared/errors";

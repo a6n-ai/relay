@@ -2,17 +2,10 @@ import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeaders, setResponseHeader } from "@tanstack/react-start/server";
 import { env } from "cloudflare:workers";
 import { fail } from "./guard";
-import { googleConfig } from "../lib/auth/google";
+import { googleConfig } from "../auth/google";
 import { loadShell } from "../services/shell";
 import { RelayError } from "../shared/errors";
 import { type Shell } from "../shared/views";
-
-// Browsers strip tabs and newlines from URLs, so "/\t/host" would become "//host".
-const SAFE_PATH = /^\/(?![/\\])[^\\\s\x00-\x1f\x7f]*$/;
-
-export function safeRedirect(path: string | undefined): string {
-  return path && SAFE_PATH.test(path) ? path : "/";
-}
 
 // Null means signed out; the layout turns that into a redirect to sign-in.
 export const getShell = createServerFn({ method: "GET" }).handler(async (): Promise<Shell | null> => {

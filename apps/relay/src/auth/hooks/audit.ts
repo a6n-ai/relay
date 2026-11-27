@@ -1,9 +1,9 @@
 import { getSessionFromCtx, isAPIError } from "better-auth/api";
 import { eq } from "drizzle-orm";
-import { maskEmails, normalizeEmail } from "../../../core/mask-emails";
-import { securityDb } from "../../../db/security/client";
-import { member } from "../../../db/security/schema";
-import type { Env } from "../../../env";
+import { maskEmails, normalizeEmail } from "../../core/mask-emails";
+import { securityDb } from "../../db/security/client";
+import { member } from "../../db/security/schema";
+import type { Env } from "../../env";
 import { writeAudit } from "../audit";
 import { recordPasswordChange } from "../password";
 import { callbackAudit } from "./oauth-link";

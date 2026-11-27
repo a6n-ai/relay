@@ -8,7 +8,7 @@ import Check from "lucide-react/icons/check";
 import ChevronsUpDown from "lucide-react/icons/chevrons-up-down";
 import { useState } from "react";
 import { type OrgRole } from "../shared/roles";
-import { authFetch } from "../lib/auth-fetch";
+import { authFetch } from "./lib/auth-fetch";
 
 type Active = { id: string; name: string; status: "active" | "suspended"; roles: OrgRole[] };
 

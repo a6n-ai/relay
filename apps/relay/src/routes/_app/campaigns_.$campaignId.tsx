@@ -2,13 +2,13 @@ import { createFileRoute } from "@tanstack/react-router";
 import { CampaignEditor } from "../../components/campaigns/campaign-editor";
 import { CampaignReport } from "../../components/campaigns/campaign-report";
 import { DeniedState, deniedReason } from "../../components/denied-state";
-import { isNotFound } from "../../lib/scoped-load";
+import { isNotFound } from "../../components/lib/scoped-load";
 import { PageHeader } from "../../components/shell/page-header";
 import { StatusBadge } from "../../components/status-badge";
 import { fetchAudienceHook } from "../../console/apps.fns";
 import { fetchCampaign, fetchCampaignOptions, fetchCampaignStats } from "../../console/campaigns.fns";
 import { DetailSkeleton } from "../../components/page/page-skeleton";
-import { str } from "../../lib/route-search";
+import { str } from "../../components/lib/route-search";
 
 type CampaignSearch = { appId?: string };
 

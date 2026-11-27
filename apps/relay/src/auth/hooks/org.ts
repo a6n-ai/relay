@@ -1,8 +1,8 @@
 import { APIError } from "better-auth/api";
-import { countSelfServeCreatedBy, ensureWorkspaceProfile, inviteCap, invitesInWindow, SELF_SERVE_WORKSPACE_CAP } from "../../../core/workspace-profile";
-import { workspaceHoldings } from "../../../core/workspace-holdings";
-import { maskEmails } from "../../../core/mask-emails";
-import type { Env } from "../../../env";
+import { countSelfServeCreatedBy, ensureWorkspaceProfile, inviteCap, invitesInWindow, SELF_SERVE_WORKSPACE_CAP } from "../../core/workspace-profile";
+import { workspaceHoldings } from "../../core/workspace-holdings";
+import { maskEmails } from "../../core/mask-emails";
+import type { Env } from "../../env";
 import { writeAudit } from "../audit";
 
 // Guards and audit rows for the organization plugin (a workspace is an organization).

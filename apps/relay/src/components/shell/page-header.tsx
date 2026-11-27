@@ -6,13 +6,13 @@ import { type ReactNode, useEffect } from "react";
 import { PageTitle } from "../page/page-title";
 import { AddNewMenu } from "./add-new";
 import { sectionTabs } from "./nav";
-import { focusRing } from "../../lib/focus";
-import { trimSlash } from "../../lib/path";
+import { focusRing } from "../lib/focus";
+import { trimSlash } from "../lib/path";
 import { usePageOf } from "./page-data";
 import { isAppScoped } from "./scope";
 import { ScopeSwitcher } from "./scope-switcher";
 import { SectionTabs } from "./section-tabs";
-import { untyped } from "../../lib/route-search";
+import { untyped } from "../lib/route-search";
 
 export type Crumb = { label: string; to?: string; params?: Record<string, string>; search?: Record<string, unknown> };
 

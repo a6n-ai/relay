@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatDate, formatWhen } from "../src/lib/format-date";
+import { formatDate, formatWhen } from "../src/components/lib/format-date";
 
 const now = Date.UTC(2026, 10, 25, 12, 0, 0);
 const ago = (ms: number) => now - ms;

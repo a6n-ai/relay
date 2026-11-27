@@ -15,7 +15,7 @@ import { useCan } from "../../components/use-can";
 import { fetchApps } from "../../console/apps.fns";
 import { createCampaignFn } from "../../console/campaigns.fns";
 import { fetchTemplates } from "../../console/templates.fns";
-import { str } from "../../lib/route-search";
+import { str } from "../../components/lib/route-search";
 
 export const Route = createFileRoute("/_app/campaigns_/new")({
   validateSearch: (search: Record<string, unknown>): { appId?: string } => ({

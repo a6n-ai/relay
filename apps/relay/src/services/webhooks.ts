@@ -1,9 +1,9 @@
 import { decodeCursor } from "../core/cursor";
-import type { ConsoleActor } from "../core/session";
+import type { ConsoleActor } from "../auth/session";
 import { type WebhookInput, type WebhookPatch, type WebhookView } from "../core/webhooks";
 import { clientFor } from "../do/client";
 import type { Env } from "../env";
-import { allows } from "../lib/auth/permissions";
+import { allows } from "../shared/permissions";
 import { RelayError, codeOf } from "../shared/errors";
 import { grantedAddressIds } from "./inbox";
 import { appFor, audit, fromActor, type Principal } from "./principal";

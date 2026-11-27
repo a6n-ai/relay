@@ -1,4 +1,4 @@
-import { appId, cursor, status } from "../../lib/route-search";
+import { appId, cursor, status } from "../lib/route-search";
 import type { MessageStatus } from "../../shared/mail";
 
 export type MessagesSearch = {

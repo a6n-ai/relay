@@ -5,7 +5,7 @@ import { createFileRoute, notFound, useNavigate, useRouter } from "@tanstack/rea
 import { BuildingIcon } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { ConfirmDialog } from "../../components/confirm-dialog";
-import { isNotFound } from "../../lib/scoped-load";
+import { isNotFound } from "../../components/lib/scoped-load";
 import { TextField } from "../../components/form/text-field";
 import { ChoiceControl } from "../../components/form/choice-field";
 import { type Facet } from "../../components/page/filters";
@@ -20,10 +20,10 @@ import { confirmAction, runAction } from "../../components/run-action";
 import { PageHeader } from "../../components/shell/page-header";
 import { fetchWorkspaces, setWorkspaceInviteCapFn, setWorkspaceQuotaFn, setWorkspaceRegionFn, setWorkspaceStatusFn } from "../../console/admin.fns";
 import { SES_REGIONS } from "../../shared/regions";
-import { formatDate } from "../../lib/format-date";
+import { formatDate } from "../../components/lib/format-date";
 import { Hint } from "../../components/page/text";
 import { MAX_INVITES_PER_DAY } from "../../shared/limits";
-import { oneOf, str, untyped } from "../../lib/route-search";
+import { oneOf, str, untyped } from "../../components/lib/route-search";
 
 type AdminSearch = { ws?: string; q?: string; status?: "active" | "suspended" };
 

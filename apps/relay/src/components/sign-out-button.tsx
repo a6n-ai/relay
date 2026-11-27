@@ -1,5 +1,5 @@
 import { useRouter } from "@tanstack/react-router";
-import { authFetch } from "../lib/auth-fetch";
+import { authFetch } from "./lib/auth-fetch";
 
 export function useSignOut() {
   const router = useRouter();

@@ -1,4 +1,4 @@
-import { formatDate } from "../../lib/format-date";
+import { formatDate } from "../lib/format-date";
 
 export type TimelineItem = { label: string; at: number; detail?: string | null };
 

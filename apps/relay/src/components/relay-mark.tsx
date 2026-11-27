@@ -1,6 +1,6 @@
 import { cn } from "@foundry/ui/cn";
 import { Link } from "@tanstack/react-router";
-import { focusRing } from "../lib/focus";
+import { focusRing } from "./lib/focus";
 
 // The Relay mark, linked home. Signed out, "/" is the landing page; signed in, it is Overview.
 export function RelayMark() {

@@ -34,11 +34,11 @@ import {
   setAudienceHookFn,
 } from "../../console/apps.fns";
 import { setAudienceBindingFn } from "../../console/admin.fns";
-import { formatDate, formatWhen } from "../../lib/format-date";
+import { formatDate, formatWhen } from "../../components/lib/format-date";
 import { FormError, FormBody, FormActions, FormPanel } from "../../components/page/form-parts";
 import { RenameForm } from "../../components/form/rename-form";
 import { Hint } from "../../components/page/text";
-import { hostOf } from "../../lib/path";
+import { hostOf } from "../../components/lib/path";
 
 export const Route = createFileRoute("/_app/apps_/$appId")({
   pendingComponent: () => <FormSkeleton crumbs={[{ label: "Apps", to: "/apps" }, { label: "App" }]} cards={3} action />,

@@ -22,7 +22,7 @@ import { PageHeader } from "../../components/shell/page-header";
 import { fetchAddresses, fetchDomains, removeAddressFn, updateAddressFn } from "../../console/domains.fns";
 import { addGrantFn, fetchAddressAccess, removeGrantFn } from "../../console/grants.fns";
 import { FormError, FormBody, FormActions, FormPanel } from "../../components/page/form-parts";
-import { KIND_LABEL, KINDS } from "../../lib/address-kinds";
+import { KIND_LABEL, KINDS } from "../../components/lib/address-kinds";
 import { EMAIL_MAX } from "../../shared/limits";
 
 export const Route = createFileRoute("/_app/domains_/addresses/$addressId")({

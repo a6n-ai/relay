@@ -9,7 +9,7 @@ import { addMember, cookieFor, createWorkspace, ORIGIN, setActive } from "./cons
 import { applyMigrations } from "./migrate";
 
 const headersFor = (cookie: string) => new Headers({ cookie });
-const USAGE = { permission: { workspace: ["usage"] } };
+const USAGE = { permission: { workspace: ["usage"] } } as const;
 const NOV_24 = Date.UTC(2026, 10, 24);
 
 beforeAll(async () => {

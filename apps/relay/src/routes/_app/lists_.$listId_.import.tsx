@@ -11,7 +11,7 @@ import { SettingsCard } from "../../components/page/settings-card";
 import { PageHeader } from "../../components/shell/page-header";
 import { useCan } from "../../components/use-can";
 import { fetchLists, importCsvFn } from "../../console/lists.fns";
-import { str } from "../../lib/route-search";
+import { str } from "../../components/lib/route-search";
 import { DefinitionList } from "../../components/page/definition-list";
 
 const MAX_CSV_BYTES = 2_000_000;

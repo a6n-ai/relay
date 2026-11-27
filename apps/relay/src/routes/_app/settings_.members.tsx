@@ -15,7 +15,7 @@ import { SuspendedNotice } from "../../components/settings/suspended-notice";
 import { PageHeader } from "../../components/shell/page-header";
 import { useCan } from "../../components/use-can";
 import { fetchPeople, removeMemberFn } from "../../console/members.fns";
-import { str } from "../../lib/route-search";
+import { str } from "../../components/lib/route-search";
 
 
 export const Route = createFileRoute("/_app/settings_/members")({

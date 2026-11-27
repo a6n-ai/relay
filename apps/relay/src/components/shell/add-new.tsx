@@ -4,7 +4,7 @@ import { Link, useRouteContext } from "@tanstack/react-router";
 import ChevronDown from "lucide-react/icons/chevron-down";
 import { createItems } from "./nav";
 import { withNew } from "./scope";
-import { untyped } from "../../lib/route-search";
+import { untyped } from "../lib/route-search";
 
 export function AddNewMenu() {
   const { shell } = useRouteContext({ from: "/_app" });

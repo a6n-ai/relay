@@ -1,8 +1,7 @@
 import type { Env } from "../env";
-import { createAuth } from "../lib/auth";
-import { orgRoles } from "../lib/auth/permissions";
+import { createAuth } from "./index";
 import { RelayError } from "../shared/errors";
-import { type OrgRole } from "../shared/roles";
+import { ORG_ROLES, type OrgRole } from "../shared/roles";
 
 export type ConsoleActor = {
   userId: string;
@@ -26,7 +25,7 @@ export async function requireSession(
   };
 }
 
-const isOrgRole = (role: string): role is OrgRole => Object.hasOwn(orgRoles, role);
+const isOrgRole = (role: string): role is OrgRole => (ORG_ROLES as readonly string[]).includes(role);
 export const parseRoles = (raw: string): OrgRole[] => raw.split(",").map((r) => r.trim()).filter(isOrgRole);
 
 // D1 names the violated index in the message; drizzle may wrap the error, so the cause chain is walked too.

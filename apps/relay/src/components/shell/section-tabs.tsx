@@ -2,7 +2,7 @@ import { Link } from "@tanstack/react-router";
 import type { SectionTab } from "./nav";
 import { usePageOf } from "./page-data";
 import { navSearch } from "./scope";
-import { untyped } from "../../lib/route-search";
+import { untyped } from "../lib/route-search";
 
 export function SectionTabs({ tabs, active, appId, label = "Sections" }: { tabs: SectionTab[]; active: string; appId?: string; label?: string }) {
   const pageOf = usePageOf();

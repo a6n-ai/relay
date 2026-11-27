@@ -1,4 +1,4 @@
-import type { Env } from "../../env";
+import type { Env } from "../env";
 import { writeAudit } from "./audit";
 import { pickMailer } from "./mailers";
 

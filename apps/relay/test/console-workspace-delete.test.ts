@@ -12,7 +12,7 @@ import { addMember, cookieFor, createWorkspace, ORIGIN, setActive } from "./cons
 import { applyMigrations } from "./migrate";
 
 const db = securityDb(env);
-const OWNER = { permission: { organization: ["delete"] }, write: true };
+const OWNER = { permission: { organization: ["delete"] }, write: true } as const;
 
 beforeAll(async () => {
   await applyMigrations();
