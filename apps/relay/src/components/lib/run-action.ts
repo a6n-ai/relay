@@ -4,11 +4,11 @@ import { errorText } from "./error-text";
 type Invalidate = () => Promise<void>;
 
 // A row action: toast the outcome, either way.
-export async function runAction(action: () => Promise<unknown>, success: string, invalidate: Invalidate): Promise<void> {
+export async function runAction(action: () => Promise<unknown>, success: string, invalidate: Invalidate, fallback?: string): Promise<void> {
   try {
     await confirmAction(action, success, invalidate);
   } catch (err) {
-    toast.error(errorText(err));
+    toast.error(errorText(err, fallback));
   }
 }
 

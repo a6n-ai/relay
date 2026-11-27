@@ -104,7 +104,7 @@ function DomainsPage() {
 
   const release = (id: string) => confirmAction(() => releaseDomainFn({ data: { id } }), "Domain released", () => router.invalidate());
   const setProtected = (id: string, protectedNow: boolean) =>
-    runAction(() => setDomainProtectedFn({ data: { id, protected: protectedNow } }), protectedNow ? "Domain protected" : "Domain unprotected", () => router.invalidate());
+    runAction(() => setDomainProtectedFn({ data: { id, protected: protectedNow } }), protectedNow ? "Domain protected" : "Domain unprotected", () => router.invalidate(), "Could not change protection");
   const remove = (id: string) => confirmAction(() => removeAddressFn({ data: { id } }), "Address removed", () => router.invalidate());
 
   const domainMenu = (d: (typeof domains)[number]) => [
