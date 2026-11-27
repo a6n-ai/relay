@@ -7,7 +7,7 @@ import type { UsersRef } from "./enqueue";
 import { resolveAudienceDetailed, type AudienceBreakdown, type AudienceDeps } from "./audience";
 import { materializeCampaign } from "./campaign";
 import { CAMPAIGN_VARIABLES, campaignChecklist, prepareEmailContent, type ChecklistItem } from "./email-content";
-import type { CompatWarning } from "./ui/email-compat";
+import type { CompatWarning } from "./email-content/email-compat";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Db = PostgresJsDatabase<any>;

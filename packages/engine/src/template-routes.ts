@@ -3,7 +3,7 @@ import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import { z } from "zod";
 import { prepareEmailContent } from "./email-content";
 import type { NotificationTables } from "./schema";
-import type { CompatWarning } from "./ui/email-compat";
+import type { CompatWarning } from "./email-content/email-compat";
 
 export const saveEmailTemplateSchema = z.object({
   event: z.string().min(1),

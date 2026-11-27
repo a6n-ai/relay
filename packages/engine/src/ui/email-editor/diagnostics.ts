@@ -1,5 +1,5 @@
 import { variableTokens } from "../../email-content/variables";
-import { lintEmailHtml } from "../email-compat";
+import { lintEmailHtml } from "../../email-content/email-compat";
 
 export interface EditorDiagnostic {
   from: number;

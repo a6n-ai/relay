@@ -8,11 +8,7 @@
     "./schema": "./src/schema.ts",
     "./ui/api-fetch": "./src/ui/api-fetch.ts",
     "./ui/campaign-flow/steps": "./src/ui/campaign-flow/steps.ts",
-    "./ui/create-list-with-contacts": "./src/ui/create-list-with-contacts.ts",
     "./ui/date": "./src/ui/date.ts",
-    "./ui/email-compat": "./src/ui/email-compat.ts",
-    "./ui/format": "./src/ui/format.ts",
-    "./ui/react-template": "./src/ui/react-template.ts",
     "./ui/use-notifications": "./src/ui/use-notifications.ts",
     "./ui/*": "./src/ui/*.tsx"
   },
