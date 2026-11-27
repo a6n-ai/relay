@@ -6,6 +6,8 @@ import { address, sendingDomain, workspaceProfile } from "../src/db/core/schema"
 import { securityDb } from "../src/db/security/client";
 import { app, member, rateLimit, securityAudit, session, team, user, verification, workspace } from "../src/db/security/schema";
 import { createAuth } from "../src/auth";
+import { requireUser } from "../src/console/actor";
+import { acceptInvite } from "../src/services/members";
 import { pickInviteMailer, pickMailer } from "../src/auth/mailers";
 import { writeAudit } from "../src/auth/audit";
 import { consoleInviteMailer, memoryInviteMailer } from "../src/auth/invite-mailer";
@@ -160,7 +162,7 @@ async function suspendedTeam(slug: string): Promise<{ cookie: string; suspendedI
 }
 
 describe("admin and organization plugins", () => {
-  it("lets an admin create a workspace, invite B, and makes B a member on accept", async () => {
+  it("lets an admin create a workspace, invite B, refuses accept over HTTP, and makes B a member on accept", async () => {
     const adminCookie = await cookieFor("admin-invite@example.com", "admin");
     const orgId = await createWorkspace(adminCookie, "invite-co");
 
@@ -176,12 +178,13 @@ describe("admin and organization plugins", () => {
 
     await insertUser("b@example.com", "user");
     const bCookie = await signIn("b@example.com");
-    const accept = await SELF.fetch(`${BASE}/organization/accept-invitation`, {
+    const direct = await SELF.fetch(`${BASE}/organization/accept-invitation`, {
       method: "POST",
       headers: { ...json, cookie: bCookie, origin: ORIGIN },
       body: JSON.stringify({ invitationId: sent?.id }),
     });
-    expect(accept.status).toBe(200);
+    expect(direct.status).toBe(400);
+    await acceptInvite(env, await requireUser(env, new Headers({ cookie: bCookie, origin: ORIGIN }), { write: true }), sent?.id ?? "");
 
     const [bUser] = await db.select().from(user).where(eq(user.email, "b@example.com"));
     const [bMember] = await db
@@ -810,6 +813,17 @@ describe("mailbox invite guard", () => {
       method: "POST",
       headers: { ...json, cookie, origin: ORIGIN },
       body: JSON.stringify({ email: "x@x.test", role: "member", organizationId, recoveryEmail: "x@y.test" }),
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it("refuses an HTTP invite whose recoveryEmail is an empty string", async () => {
+    const cookie = await cookieFor("guard-empty-owner@example.com", "admin");
+    const organizationId = await createWorkspace(cookie, "guard-empty-co");
+    const res = await SELF.fetch(`${BASE}/organization/invite-member`, {
+      method: "POST",
+      headers: { ...json, cookie, origin: ORIGIN },
+      body: JSON.stringify({ email: "x2@x.test", role: "member", organizationId, recoveryEmail: "" }),
     });
     expect(res.status).toBe(400);
   });

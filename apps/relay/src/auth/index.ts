@@ -148,7 +148,7 @@ export function createAuth(env: Env) {
         // Better Auth passes the stored row, so recoveryEmail comes from the server-created invitation, never from a request body.
         sendInvitationEmail: async ({ id, email, role, invitation }) => {
           const recovery = (invitation as { recoveryEmail?: string | null }).recoveryEmail;
-          await pickInviteMailer(env.INVITE_MAILER, env).send(recovery ?? (await deliveryEmail(env, email)), {
+          await pickInviteMailer(env.INVITE_MAILER, env).send(recovery || (await deliveryEmail(env, email)), {
             id,
             role,
             ...(recovery ? { mailbox: email } : {}),

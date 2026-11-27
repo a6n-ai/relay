@@ -13,11 +13,12 @@ import {
   removeMember,
   renameTeam,
   setTeamMember,
+  suggestMailboxFor,
 } from "../src/services/members";
 import { renameWorkspace } from "../src/services/workspaces";
 import { inviteInput } from "../src/console/schemas";
 import { securityDb } from "../src/db/security/client";
-import { app, invitation, member, user, workspace } from "../src/db/security/schema";
+import { app, invitation, member, session, user, workspace } from "../src/db/security/schema";
 import { coreDb } from "../src/db/core/client";
 import { address, sendingDomain } from "../src/db/core/schema";
 import { deliveryEmail } from "../src/auth/recovery";
@@ -349,5 +350,50 @@ describe("accepting an invite", { timeout: 60_000 }, () => {
     const [u] = await db.select().from(user).where(eq(user.email, mailbox));
     const rows = await db.select().from(member).where(and(eq(member.userId, u.id), eq(member.organizationId, owner.workspaceId)));
     expect(rows).toHaveLength(0);
+  });
+
+  it("cancel signs out a session made under the cancelled mailbox invite", async () => {
+    const { actor, owner, domain, invite } = await mailboxSetup("stale");
+    const mailbox = `ravi@${domain}`;
+    const first = await invite(mailbox, "a-stale@gmail.test");
+    const staleCookie = await signIn(mailbox, "a-stale@gmail.test");
+    await cancelInvite(env, actor, headersFor(owner.cookie), first.id);
+    await invite(mailbox, "b-stale@gmail.test");
+    await expect(requireUser(env, headersFor(staleCookie), { write: true })).rejects.toMatchObject({ status: 401 });
+  });
+
+  it("accept refuses a session older than the invite", async () => {
+    const { domain, invite } = await mailboxSetup("old");
+    const mailbox = `ravi@${domain}`;
+    const { id } = await invite(mailbox, "a-old@gmail.test");
+    const cookie = await signIn(mailbox, "a-old@gmail.test");
+    await db.update(invitation).set({ createdAt: new Date(Date.now() + 60_000) }).where(eq(invitation.id, id));
+    await expect(acceptInvite(env, await requireUser(env, headersFor(cookie), { write: true }), id)).rejects.toMatchObject({
+      message: "invite expired",
+    });
+    const [u] = await db.select().from(user).where(eq(user.email, mailbox));
+    expect(await db.select().from(member).where(eq(member.userId, u.id))).toHaveLength(0);
+    expect(await db.select().from(session).where(eq(session.userId, u.id))).not.toHaveLength(0);
+  });
+
+  it("accept refuses when the domain left the workspace after the invite", async () => {
+    const { owner, domain, invite } = await mailboxSetup("gone");
+    const mailbox = `ravi@${domain}`;
+    const { id } = await invite(mailbox, "a-gone@gmail.test");
+    const cookie = await signIn(mailbox, "a-gone@gmail.test");
+    await coreDb(env).delete(sendingDomain).where(and(eq(sendingDomain.workspaceId, owner.workspaceId), eq(sendingDomain.domain, domain)));
+    await expect(acceptInvite(env, await requireUser(env, headersFor(cookie), { write: true }), id)).rejects.toMatchObject({
+      status: 400,
+      message: "invalid input",
+    });
+    const [u] = await db.select().from(user).where(eq(user.email, mailbox));
+    expect(await db.select().from(member).where(eq(member.userId, u.id))).toHaveLength(0);
+    expect(await coreDb(env).select().from(address).where(eq(address.email, mailbox))).toHaveLength(0);
+  });
+
+  it("suggest refuses a domain that is not verified in the workspace", async () => {
+    const { actor, domain } = await mailboxSetup("sug");
+    expect(await suggestMailboxFor(env, actor, "Ravi Kumar", domain)).toBe(`ravi@${domain}`);
+    await expect(suggestMailboxFor(env, actor, "Bob", "gmail.com")).rejects.toMatchObject({ status: 400, message: "invalid input" });
   });
 });

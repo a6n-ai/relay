@@ -4,11 +4,11 @@ import { address, sendingDomain } from "../db/core/schema";
 import { createPersonalAddress } from "../core/addresses";
 import { refreshWorkspaceLimits } from "./limits";
 import { securityDb } from "../db/security/client";
-import { app, invitation, member, team, teamMember, user, workspace } from "../db/security/schema";
+import { account, app, invitation, member, session, team, teamMember, user, workspace } from "../db/security/schema";
 import type { Env } from "../env";
 import { inviteCap, invitesInWindow } from "../core/workspace-profile";
 import { createAuth } from "../auth";
-import { mailboxFree } from "../core/mailbox-name";
+import { mailboxFree, suggestMailbox } from "../core/mailbox-name";
 import { authError } from "../auth/errors";
 import { parseRoles } from "../auth/session";
 import type { Principal, Session } from "./principal";
@@ -86,16 +86,20 @@ export type InviteInput =
   | { kind: "mailbox"; name: string; recoveryEmail: string; mailbox: string; appId: string; role: OrgRole };
 
 // The mailbox must sit on one of this workspace's verified domains, with an app of this workspace.
-async function checkMailboxTarget(env: Env, p: Principal, mailbox: string, appId: string): Promise<void> {
-  const domain = mailbox.split("@")[1];
+async function verifiedDomain(env: Env, workspaceId: string, domain: string): Promise<boolean> {
   const [dom] = await coreDb(env)
     .select({ id: sendingDomain.id })
     .from(sendingDomain)
-    .where(and(eq(sendingDomain.domain, domain), eq(sendingDomain.workspaceId, p.workspaceId), eq(sendingDomain.status, "verified")));
+    .where(and(eq(sendingDomain.domain, domain), eq(sendingDomain.workspaceId, workspaceId), eq(sendingDomain.status, "verified")));
+  return !!dom;
+}
+
+async function checkMailboxTarget(env: Env, workspaceId: string, mailbox: string, appId: string): Promise<void> {
+  const dom = await verifiedDomain(env, workspaceId, mailbox.split("@")[1]);
   const [owned] = await securityDb(env)
     .select({ id: app.id })
     .from(app)
-    .where(and(eq(app.id, appId), eq(app.workspaceId, p.workspaceId)));
+    .where(and(eq(app.id, appId), eq(app.workspaceId, workspaceId)));
   if (!dom || !owned) throw new RelayError("invalid input");
 }
 
@@ -106,7 +110,7 @@ export async function inviteMember(env: Env, p: Principal, headers: Headers, inp
   const mailbox = input.kind === "mailbox" ? input : null;
   const email = (input.kind === "mailbox" ? input.mailbox : input.email).trim().toLowerCase();
   if (mailbox) {
-    await checkMailboxTarget(env, p, email, mailbox.appId);
+    await checkMailboxTarget(env, p.workspaceId, email, mailbox.appId);
     if (!(await mailboxFree(env, email))) throw new RelayError("mailbox taken");
   }
   const auth = createAuth(env);
@@ -136,13 +140,27 @@ export async function inviteMember(env: Env, p: Principal, headers: Headers, inp
   return { id };
 }
 
+// Only the owner of a domain's workspace may ask which names are free on it; any other domain would let a caller probe arbitrary emails.
+export async function suggestMailboxFor(env: Env, p: Principal, name: string, domain: string): Promise<string | null> {
+  if (!(await verifiedDomain(env, p.workspaceId, domain))) throw new RelayError("invalid input");
+  return suggestMailbox(env, name, domain);
+}
+
 export async function cancelInvite(env: Env, p: Principal, headers: Headers, id: string): Promise<void> {
   const [row] = await securityDb(env)
-    .select({ id: invitation.id })
+    .select({ id: invitation.id, email: invitation.email, recoveryEmail: invitation.recoveryEmail })
     .from(invitation)
     .where(and(eq(invitation.id, id), eq(invitation.organizationId, p.workspaceId)));
   if (!row) throw new RelayError("not found");
   await authCall(() => createAuth(env).api.cancelInvitation({ headers, body: { invitationId: id } }));
+  if (!row.recoveryEmail) return;
+  // A session signed in under a cancelled mailbox invite must not outlive it, or it could take the re-invite.
+  const db = securityDb(env);
+  const [u] = await db.select({ id: user.id }).from(user).where(eq(user.email, row.email));
+  if (!u) return;
+  const [m] = await db.select({ id: member.id }).from(member).where(eq(member.userId, u.id)).limit(1);
+  const [c] = await db.select({ id: account.id }).from(account).where(and(eq(account.userId, u.id), eq(account.providerId, "credential"))).limit(1);
+  if (!m && !c) await db.delete(session).where(eq(session.userId, u.id));
 }
 
 async function ownMember(env: Env, p: Principal, memberId: string) {
@@ -236,7 +254,7 @@ export async function getInvite(env: Env, { userId }: Session, id: string) {
   };
 }
 
-export async function acceptInvite(env: Env, { headers, userId }: Session, id: string): Promise<void> {
+export async function acceptInvite(env: Env, { headers, userId, sessionCreatedAt }: Session, id: string): Promise<void> {
   const [row] = await securityDb(env)
     .select({
       email: invitation.email,
@@ -246,6 +264,7 @@ export async function acceptInvite(env: Env, { headers, userId }: Session, id: s
       recoveryEmail: invitation.recoveryEmail,
       mailboxName: invitation.mailboxName,
       appId: invitation.appId,
+      createdAt: invitation.createdAt,
     })
     .from(invitation)
     .where(eq(invitation.id, id));
@@ -259,8 +278,11 @@ export async function acceptInvite(env: Env, { headers, userId }: Session, id: s
     await accept();
     return;
   }
+  // A session older than the invite may belong to someone who signed in under an earlier, cancelled invite for this mailbox.
+  if (sessionCreatedAt < row.createdAt) throw new RelayError("invite expired");
+  await checkMailboxTarget(env, row.workspaceId, row.email, row.appId ?? "");
   const name = row.mailboxName ?? row.email.split("@")[0];
-  const addressId = await createPersonalAddress(env, { workspaceId: row.workspaceId, appId: row.appId ?? "", email: row.email, ownerUserId: userId, displayName: name });
+  const addressId = await createPersonalAddress(env, { workspaceId: row.workspaceId, appId: row.appId!, email: row.email, ownerUserId: userId, displayName: name });
   try {
     await accept();
   } catch (err) {

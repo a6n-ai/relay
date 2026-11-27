@@ -7,13 +7,14 @@ import { ORG_ROLES, type OrgRole } from "../shared/roles";
 export async function requireSession(
   env: Env,
   headers: Headers,
-): Promise<{ userId: string; platformAdmin: boolean; activeWorkspaceId: string | null }> {
+): Promise<{ userId: string; platformAdmin: boolean; activeWorkspaceId: string | null; sessionCreatedAt: Date }> {
   const session = await createAuth(env).api.getSession({ headers, query: { disableCookieCache: true } });
   if (!session) throw new RelayError("unauthorized");
   return {
     userId: session.user.id,
     platformAdmin: session.user.role === "admin",
     activeWorkspaceId: session.session.activeOrganizationId ?? null,
+    sessionCreatedAt: new Date(session.session.createdAt),
   };
 }
 

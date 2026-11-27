@@ -21,5 +21,5 @@ export async function deliveryEmail(env: Env, email: string): Promise<string> {
     .where(and(eq(invitation.email, e), eq(invitation.status, "pending"), gt(invitation.expiresAt, new Date()), isNotNull(invitation.recoveryEmail)))
     .orderBy(desc(invitation.createdAt))
     .limit(1);
-  return inv?.recoveryEmail ?? e;
+  return inv?.recoveryEmail || e;
 }
