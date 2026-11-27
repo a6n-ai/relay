@@ -11,6 +11,7 @@ import { createItems } from "./nav";
 import { usePageOf } from "./page-data";
 import { pickApp, scopeLabel, scopeSearch, showsAllApps } from "./scope";
 import { untyped } from "../lib/route-search";
+import { isSuspended } from "../../shared/limits";
 
 const row =
   "flex h-9 items-center justify-between gap-2 rounded-md px-2 text-sm hover:bg-muted focus-visible:bg-muted outline-none";
@@ -26,7 +27,7 @@ export function ScopeSwitcher() {
   const needle = query.trim().toLowerCase();
   const apps = shell.apps.filter((a) => a.name.toLowerCase().includes(needle));
   const current = pickApp(shell.apps, appId, all);
-  const canCreateApp = createItems(shell.active?.roles ?? [], shell.active?.status === "suspended").some((i) => i.id === "app");
+  const canCreateApp = createItems(shell.active?.roles ?? [], isSuspended(shell.active?.status)).some((i) => i.id === "app");
   const close = () => {
     setOpen(false);
     setQuery("");

@@ -4,8 +4,8 @@ import { MESSAGE_STATUSES, type MessageStatus } from "../../shared/mail";
 export const str = (v: unknown): string | undefined => (typeof v === "string" && v ? v : undefined);
 // A text filter: surrounding spaces are not part of the search.
 export const trimmed = (v: unknown): string | undefined => (typeof v === "string" && v.trim() !== "" ? v.trim() : undefined);
-// A flag in the URL: ?new=1 or ?images=true.
-export const flag = (v: unknown): true | undefined => (v === true || v === "true" || v === 1 || v === "1" ? true : undefined);
+// A flag in the URL: true only for the spellings the route lists, so each route keeps its own accepted values.
+export const flag = (v: unknown, ...accepted: unknown[]): true | undefined => (accepted.includes(v) ? true : undefined);
 export const posInt = (v: unknown): number | undefined => (typeof v === "number" && v > 0 ? Math.floor(v) : undefined);
 export const oneOf = <T extends string>(allowed: readonly T[], v: unknown): T | undefined => allowed.find((a) => a === v);
 export const status = (v: unknown): MessageStatus | undefined => oneOf(MESSAGE_STATUSES, v);

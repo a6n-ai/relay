@@ -7,11 +7,11 @@ import { Link, useRouter } from "@tanstack/react-router";
 import Check from "lucide-react/icons/check";
 import ChevronsUpDown from "lucide-react/icons/chevrons-up-down";
 import { useState } from "react";
-import { isSuspended } from "../../shared/limits";
+import { isSuspended, type WorkspaceStatus } from "../../shared/limits";
 import { type OrgRole } from "../../shared/roles";
 import { authFetch } from "../lib/auth-fetch";
 
-type Active = { id: string; name: string; status: "active" | "suspended"; roles: OrgRole[] };
+type Active = { id: string; name: string; status: WorkspaceStatus; roles: OrgRole[] };
 
 const capitalise = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 

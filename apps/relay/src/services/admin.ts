@@ -13,7 +13,7 @@ import type { Env } from "../env";
 import { writeAudit } from "../auth/audit";
 import { INVITES_PER_DAY } from "../core/workspace-profile";
 import { RelayError } from "../shared/errors";
-import { MAX_INVITES_PER_DAY, MAX_MONTHLY_QUOTA, type WorkspaceStatus } from "../shared/limits";
+import { isSuspended, MAX_INVITES_PER_DAY, MAX_MONTHLY_QUOTA, type WorkspaceStatus } from "../shared/limits";
 
 
 // shortcut: 100M caps a typo, not a plan; no product number yet, so revisit with the first real quota request.
@@ -60,7 +60,7 @@ export async function listWorkspaces(env: Env, now = Date.now()) {
     slug: ws.slug,
     status: ws.status,
     suspendedAt: ws.suspendedAt?.getTime() ?? null,
-    inboundUntil: ws.status === "suspended" && ws.suspendedAt ? ws.suspendedAt.getTime() + INBOUND_GRACE_MS : null,
+    inboundUntil: isSuspended(ws.status) && ws.suspendedAt ? ws.suspendedAt.getTime() + INBOUND_GRACE_MS : null,
     // Without a row, show what ensureWorkspaceProfile would enforce (fail closed: self-serve, SELF_SERVE_QUOTA).
     quota: quotaBy.get(ws.id) ?? SELF_SERVE_QUOTA,
     selfServe: selfServeBy.get(ws.id) ?? true,
@@ -87,14 +87,14 @@ export async function setWorkspaceStatus(
     // A repeat suspend keeps the first suspended_at so the inbound grace window never extends.
     .set({
       status,
-      suspendedAt: status === "suspended" ? sql`coalesce(${workspace.suspendedAt}, ${Date.now()})` : null,
+      suspendedAt: isSuspended(status) ? sql`coalesce(${workspace.suspendedAt}, ${Date.now()})` : null,
       updatedAt: new Date(),
     })
     .where(eq(workspace.id, workspaceId))
     .returning({ id: workspace.id });
   if (rows.length === 0) throw new RelayError("not found");
   await writeAudit(env, {
-    action: status === "suspended" ? "workspace.suspend" : "workspace.unsuspend",
+    action: isSuspended(status) ? "workspace.suspend" : "workspace.unsuspend",
     actorUserId: admin.userId,
     workspaceId,
     target: workspaceId,

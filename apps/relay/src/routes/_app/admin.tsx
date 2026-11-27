@@ -30,10 +30,7 @@ type AdminSearch = { ws?: string; q?: string; status?: WorkspaceStatus };
 const STATUS_FACET: Facet = {
   key: "status",
   label: "Status",
-  options: [
-    { value: "active", label: "Active" },
-    { value: "suspended", label: "Suspended" },
-  ],
+  options: WORKSPACE_STATUSES.map((value) => ({ value, label: value === "active" ? "Active" : "Suspended" })),
 };
 
 

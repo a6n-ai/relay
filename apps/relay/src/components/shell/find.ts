@@ -1,6 +1,7 @@
 import { createItems, visibleNav } from "./nav";
 import type { PageOf } from "./page-data";
 import { type Shell } from "../../shared/views";
+import { isSuspended } from "../../shared/limits";
 
 export type FindEntry = {
   id: string;
@@ -26,7 +27,7 @@ export function findEntries(shell: Shell, pageOf: PageOf): FindEntry[] {
     ),
   );
   const apps = shell.apps.map((a): FindEntry => ({ id: `app:${a.id}`, group: "Apps", label: a.name, to: `/apps/${a.id}` }));
-  const actions = createItems(roles, shell.active?.status === "suspended").map(
+  const actions = createItems(roles, isSuspended(shell.active?.status)).map(
     (c): FindEntry => ({ id: `new:${c.id}`, group: "Actions", label: c.find ?? `New ${c.label}`, to: c.to, search: c.new ? { new: String(c.new) } : undefined }),
   );
   return [...pages, ...apps, ...actions];

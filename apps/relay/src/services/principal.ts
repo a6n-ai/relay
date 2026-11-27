@@ -2,6 +2,7 @@ import type { Env } from "../env";
 import { writeAudit } from "../auth/audit";
 import { RelayError } from "../shared/errors";
 import type { OrgRole } from "../shared/roles";
+import type { WorkspaceStatus } from "../shared/limits";
 
 // Who is acting: a console user (userId, roles) or an API key (keyId, pinned to one app). The transport checks permission and suspension, then builds this once.
 export type Principal = {
@@ -11,7 +12,7 @@ export type Principal = {
   keyId: string | null;
   platformAdmin?: boolean;
   roles?: OrgRole[];
-  workspaceStatus?: "active" | "suspended";
+  workspaceStatus?: WorkspaceStatus;
 };
 
 // A signed-in user before any workspace is chosen (shell, invite, create workspace, password). The headers carry the cookie for better-auth calls.

@@ -447,6 +447,24 @@ describe("handleSendBatch", () => {
     expect(await stub.getMessage(ws, job.messageId)).toMatchObject({ status: "queued", attempts: 0 });
   });
 
+  it("answers busy, not sender_not_verified, for a queued row whose sender is missing from a stale snapshot while D1 is down", async () => {
+    const ws = "wsp_claim_stale_down";
+    const stub = await seedWorkspace(ws);
+    const job = await queue(stub, ws);
+    await runInDurableObject(stub, (_instance, state) => {
+      const snapshot = state.storage.kv.get<Record<string, unknown>>(LIMITS_KEY)!;
+      state.storage.kv.put(LIMITS_KEY, { ...snapshot, senders: {}, fetchedAt: Date.now() - 120_000 });
+    });
+    vi.spyOn(env.CORE_DB, "prepare").mockImplementation(() => {
+      throw new Error("D1 down");
+    });
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    expect(await stub.claimSend(ws, job.messageId)).toEqual({ kind: "busy", retryInSeconds: 60 });
+    vi.restoreAllMocks();
+    expect(await stub.getMessage(ws, job.messageId)).toMatchObject({ status: "queued", attempts: 0 });
+  });
+
   it("acks a duplicate of a sent message after its workspace is suspended, without loading limits or failing it", async () => {
     const ws = "wsp_claim_sent_suspend";
     const stub = await seedWorkspace(ws);

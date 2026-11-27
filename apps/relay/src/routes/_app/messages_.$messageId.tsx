@@ -19,7 +19,7 @@ const crumbs = [{ label: "Messages", to: "/messages" }, { label: "Message" }];
 
 export const Route = createFileRoute("/_app/messages_/$messageId")({
   validateSearch: (search: Record<string, unknown>): { images?: boolean } => ({
-    images: flag(search.images),
+    images: flag(search.images, true, "true"),
   }),
   loaderDeps: ({ search }) => ({ images: search.images }),
   loader: ({ params, deps }) => fetchMessage({ data: { id: params.messageId, images: deps.images } }),

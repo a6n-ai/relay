@@ -25,7 +25,7 @@ import { flag } from "../../components/lib/route-search";
 export const Route = createFileRoute("/_app/settings_/invites")({
   staticData: { title: "Invites", copy: "People you have asked to join this workspace." },
   validateSearch: (search: Record<string, unknown>): { new?: 1 } => ({
-    new: flag(search.new) && 1,
+    new: flag(search.new, 1, "1") && 1,
   }),
   loader: () => fetchPeople(),
   pendingComponent: () => <ListSkeleton columns={4} action />,

@@ -10,11 +10,12 @@ import { PageHeader } from "./shell/page-header";
 import { StatTile } from "./page/stat-tile";
 import { type Shell } from "../shared/views";
 import { untyped } from "./lib/route-search";
+import { isSuspended } from "../shared/limits";
 
 type OverviewData = NonNullable<Awaited<ReturnType<typeof fetchOverview>>>;
 
 function GetStarted({ shell }: { shell: Shell }) {
-  const rows = createItems(shell.active?.roles ?? [], shell.active?.status === "suspended").flatMap((c) => (c.start ? [{ ...c, ...c.start }] : []));
+  const rows = createItems(shell.active?.roles ?? [], isSuspended(shell.active?.status)).flatMap((c) => (c.start ? [{ ...c, ...c.start }] : []));
   if (rows.length === 0) return null;
   return (
     <Card>
