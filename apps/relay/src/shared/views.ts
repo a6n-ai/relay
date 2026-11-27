@@ -125,4 +125,5 @@ export type Shell = {
 export type BlockSource = "link" | "one-click" | "admin" | "ses";
 export type BlockView = { email: string; reason: SuppressionReason; stream: Stream | null; source: BlockSource | null; campaignRef: string | null; campaignName: string | null; createdAt: number };
 export type BlockQuery = { reasons?: SuppressionReason[]; streams?: (Stream | "all")[]; sources?: BlockSource[]; from?: number; to?: number; search?: string; sort?: "time" | "address" | "stream" | "reason"; dir?: "asc" | "desc"; offset?: number; limit?: number };
+export type BlockImportRow = { email: string; reason: SuppressionReason; stream: Stream | null; source?: BlockSource | null; campaignRef?: string | null; campaignName?: string | null; createdAt: number };
 export type BlockSummary = Record<"total" | "last30" | "thisMonth", Record<SuppressionReason, number>>;

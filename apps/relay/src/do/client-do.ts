@@ -48,7 +48,7 @@ import type { MessageView, SendResult } from "./types";
 import type { AudiencePage, HookCall } from "../core/audience-protocol";
 import { createAutomationRow, deleteAutomationRow, earliestDue, enrolAutomations, listAutomationRows, nextAutomationAlarm, runDueAutomationRows, setAutomationEnabledRow, updateAutomationRow, type AutomationInput, type AutomationPatch } from "./automations";
 import { RelayError, codeOf, fail } from "../shared/errors";
-import { type DeliveryView, type CampaignStats, type AudiencePreview, type CampaignView, type ListView, type MemberView, type TemplateView, type AutomationView, type BlockSummary } from "../shared/views";
+import { type DeliveryView, type CampaignStats, type AudiencePreview, type CampaignView, type ListView, type MemberView, type TemplateView, type AutomationView, type BlockSummary, type BlockImportRow } from "../shared/views";
 import { type Stream, type SuppressionReason } from "../shared/mail";
 import { DAY_MS, isSuspended } from "../shared/limits";
 
@@ -1092,6 +1092,27 @@ export class ClientDO extends DurableObject<Env> {
     return blockSummaryRows(this.ctx.storage.sql, Date.now());
   }
 
+  async importBlocks(workspaceId: string, rows: BlockImportRow[]): Promise<void> {
+    await this.ready(workspaceId);
+    this.ctx.storage.transactionSync(() => {
+      for (const { email, reason, stream, ...meta } of rows) this.writeSuppression(email, reason, stream ?? undefined, meta);
+    });
+  }
+
+  // The person's own opt-back-in: bounce, complaint and manual blocks stay.
+  async resubscribe(workspaceId: string, email: string, from: string): Promise<{ removed: boolean }> {
+    await this.ready(workspaceId);
+    return this.ctx.storage.transactionSync(() => {
+      const blocks = this.db.delete(schema.suppression).where(suppressionKey(email, "unsubscribe")).returning().all();
+      const optOuts = this.db
+        .delete(schema.marketingOptout)
+        .where(and(eq(schema.marketingOptout.email, email), eq(schema.marketingOptout.domain, brandDomain(from))))
+        .returning()
+        .all();
+      return { removed: blocks.length + optOuts.length > 0 };
+    });
+  }
+
   async suppressionRows(
     workspaceId: string,
     emails: string[],
@@ -1249,16 +1270,24 @@ export class ClientDO extends DurableObject<Env> {
     return usage;
   }
 
-  private writeSuppression(email: string, reason: SuppressionReason, stream?: Stream): void {
+  private writeSuppression(
+    email: string,
+    reason: SuppressionReason,
+    stream?: Stream,
+    meta?: Pick<BlockImportRow, "source" | "campaignRef" | "campaignName" | "createdAt">,
+  ): void {
     // Widen on conflict: an all-streams row must never be narrowed by a later stream-scoped one.
     this.db
       .insert(schema.suppression)
-      .values({ email: email.trim().toLowerCase(), reason, stream: stream ?? null, createdAt: Date.now() })
+      .values({ email: email.trim().toLowerCase(), reason, stream: stream ?? null, createdAt: Date.now(), ...meta })
       .onConflictDoUpdate({
         target: [schema.suppression.email, schema.suppression.reason],
         set: {
           stream: sql`CASE WHEN ${schema.suppression.stream} IS NULL OR excluded.stream IS NULL OR ${schema.suppression.stream} <> excluded.stream THEN NULL ELSE excluded.stream END`,
           createdAt: sql`min(${schema.suppression.createdAt}, excluded.created_at)`,
+          source: sql`coalesce(${schema.suppression.source}, excluded.source)`,
+          campaignRef: sql`coalesce(${schema.suppression.campaignRef}, excluded.campaign_ref)`,
+          campaignName: sql`coalesce(${schema.suppression.campaignName}, excluded.campaign_name)`,
         },
       })
       .run();

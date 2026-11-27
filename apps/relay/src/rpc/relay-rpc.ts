@@ -16,8 +16,9 @@ import {
   scheduleCampaign,
   updateCampaign,
 } from "../services/campaigns";
-import { blockSummary, listBlocks, messagesByKeys, suppress, suppressionStatus } from "../services/lookups";
-import type { BlockQuery } from "../shared/views";
+import { blockSummary, importBlocks, listBlocks, messagesByKeys, removeBlock, resubscribe, suppress, suppressionStatus } from "../services/lookups";
+import type { BlockImportRow, BlockQuery } from "../shared/views";
+import type { SuppressionReason } from "../shared/mail";
 import {
   addMember,
   createList,
@@ -213,5 +214,17 @@ export class RelayRpc extends WorkerEntrypoint<Env> {
 
   async suppressionSummary(apiKey: string) {
     return withPrincipal(this.env, apiKey, (p) => blockSummary(this.env, p));
+  }
+
+  async removeSuppression(apiKey: string, input: { email: string; reason: SuppressionReason }) {
+    return withPrincipal(this.env, apiKey, (p) => removeBlock(this.env, p, input));
+  }
+
+  async resubscribe(apiKey: string, input: { email: string; from: string }) {
+    return withPrincipal(this.env, apiKey, (p) => resubscribe(this.env, p, input));
+  }
+
+  async importSuppressions(apiKey: string, rows: BlockImportRow[]) {
+    return withPrincipal(this.env, apiKey, (p) => importBlocks(this.env, p, rows));
   }
 }

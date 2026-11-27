@@ -1,6 +1,8 @@
 import { z } from "zod";
 import type { Env } from "../env";
 import { audit, type KeyPrincipal } from "./principal";
+import { removeSuppression } from "./suppressions";
+import { maskEmails } from "../core/mask-emails";
 import { clientFor } from "../do/client";
 import { RelayError } from "../shared/errors";
 import { emailSchema } from "../shared/schemas";
@@ -16,10 +18,25 @@ const suppressSchema = z.object({
   stream: z.literal("marketing").nullable(),
 });
 
+const sourceName = z.enum(["link", "one-click", "admin", "ses"]);
+const removeSchema = z.object({ email: emailSchema, reason: z.enum(SUPPRESSION_REASONS) });
+const resubscribeSchema = z.object({ email: emailSchema, from: emailSchema });
+const importSchema = z.array(z.unknown()).max(500);
+const importRowSchema = z.object({
+  email: emailSchema,
+  reason: z.enum(SUPPRESSION_REASONS),
+  stream: z.enum(STREAMS).nullable(),
+  source: sourceName.nullish(),
+  // Generous: a rejected row is a lost block, and these are only labels.
+  campaignRef: z.string().max(500).nullish(),
+  campaignName: z.string().max(500).nullish(),
+  createdAt: z.number().int().positive(),
+});
+
 const blockQuerySchema = z.object({
   reasons: z.array(z.enum(SUPPRESSION_REASONS)).optional(),
   streams: z.array(z.enum([...STREAMS, "all"])).optional(),
-  sources: z.array(z.enum(["link", "one-click", "admin", "ses"])).optional(),
+  sources: z.array(sourceName).optional(),
   from: z.number().int().optional(),
   to: z.number().int().optional(),
   search: z.string().max(EMAIL_MAX).optional(),
@@ -59,4 +76,31 @@ export function listBlocks(env: Env, p: KeyPrincipal, input: unknown) {
 
 export function blockSummary(env: Env, p: KeyPrincipal) {
   return clientFor(env, p.workspaceId).blockSummary(p.workspaceId);
+}
+
+// The Durable Object refuses unsubscribe and complaint: only the person reverses those.
+export async function removeBlock(env: Env, p: KeyPrincipal, input: unknown) {
+  const { email, reason } = parseInput(removeSchema, input);
+  await removeSuppression(env, p, email, reason);
+  return { removed: true as const };
+}
+
+export async function resubscribe(env: Env, p: KeyPrincipal, input: unknown) {
+  const { email, from } = parseInput(resubscribeSchema, input);
+  const result = await clientFor(env, p.workspaceId).resubscribe(p.workspaceId, email, from);
+  await audit(env, p, "suppression.resubscribe", maskEmails(email), { removed: result.removed });
+  return result;
+}
+
+export async function importBlocks(env: Env, p: KeyPrincipal, input: unknown) {
+  const accepted: z.output<typeof importRowSchema>[] = [];
+  const rejected: number[] = [];
+  parseInput(importSchema, input).forEach((row, index) => {
+    const parsed = importRowSchema.safeParse(row);
+    if (parsed.success) accepted.push(parsed.data);
+    else rejected.push(index);
+  });
+  await clientFor(env, p.workspaceId).importBlocks(p.workspaceId, accepted);
+  await audit(env, p, "suppression.import", p.appId, { accepted: accepted.length, rejected: rejected.length });
+  return { accepted: accepted.length, rejected };
 }
