@@ -51,6 +51,7 @@ Relay sends a `POST` with a JSON body:
 - `id` identifies the delivery. It is the same on every retry. Use it to ignore duplicates.
 - `createdAt` and `receivedAt` are Unix times in milliseconds.
 - `fromName` and `authResults` can be `null`.
+- `authResults` holds every `Authentication-Results` header in the letter, joined. The sender can write one of them, so do not trust a sender because it says `dmarc=pass`. Relay already refuses letters that fail DMARC.
 
 Headers:
 

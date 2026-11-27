@@ -1,6 +1,8 @@
 import { env, runInDurableObject } from "cloudflare:test";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi, type MockInstance } from "vitest";
 import { sendTemplateMessage } from "../src/core/messages";
+import { coreDb } from "../src/db/core/client";
+import { address } from "../src/db/core/schema";
 import { securityDb } from "../src/db/security/client";
 import { workspace } from "../src/db/security/schema";
 import { applyMigrations, seedVerifiedSender } from "./migrate";
@@ -15,6 +17,10 @@ const base = {
   text: "Thanks",
 };
 
+
+async function seedOwnSender(workspaceId: string, appId: string, email: string) {
+  await coreDb(env).insert(address).values({ workspaceId, appId, email, kind: "sender", canSend: true });
+}
 
 const stubFor = (workspaceId: string) => env.CLIENT.get(env.CLIENT.idFromName(workspaceId));
 
@@ -168,13 +174,22 @@ describe("ClientDO send", () => {
   it("scopes idempotency keys to the app within a workspace", async () => {
     const ws = "wsp_apps";
     const stub = await seededStub(ws);
-    const a = await stub.send(ws, { ...base, appId: "app_a", idempotencyKey: "order:1:confirmation" });
-    const b = await stub.send(ws, { ...base, appId: "app_b", idempotencyKey: "order:1:confirmation" });
+    await seedOwnSender(ws, "app_b", "b@a6n.ai");
+    const a = await stub.send(ws, { ...base, idempotencyKey: "order:1:confirmation" });
+    const b = await stub.send(ws, { ...base, appId: "app_b", from: "b@a6n.ai", idempotencyKey: "order:1:confirmation" });
 
     expect(a).toEqual({ messageId: expect.stringMatching(/^msg_/), status: "queued", duplicate: false });
     expect(b).toEqual({ messageId: expect.stringMatching(/^msg_/), status: "queued", duplicate: false });
     expect(b.messageId).not.toBe(a.messageId);
     expect(enqueue).toHaveBeenCalledTimes(2);
+  });
+
+  it("refuses a from address that another app in the same workspace owns", async () => {
+    const ws = "wsp_cross_app";
+    const stub = await seededStub(ws);
+
+    expect(await settle(stub.send(ws, { ...base, appId: "app_other" }))).toEqual({ error: "sender_not_verified" });
+    expect(enqueue).not.toHaveBeenCalled();
   });
 
   it("settles a same-key caller that arrives during the enqueue with the same rejection and no row", async () => {

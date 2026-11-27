@@ -24,8 +24,26 @@ async function fetchWithDocs404(...args: Parameters<typeof handler.fetch>): Prom
   return page.status === 200 ? new Response(page.body, { status: 404, headers: page.headers }) : res;
 }
 
+// No other site, including another *.a6n.ai page, may frame the console. A route that sets its own value keeps it.
+const SECURITY_HEADERS: Record<string, string> = {
+  "content-security-policy": "frame-ancestors 'self'",
+  "x-frame-options": "SAMEORIGIN",
+  "x-content-type-options": "nosniff",
+  "referrer-policy": "strict-origin-when-cross-origin",
+  "strict-transport-security": "max-age=31536000; includeSubDomains",
+};
+
+async function withSecurityHeaders(...args: Parameters<typeof handler.fetch>): Promise<Response> {
+  const res = await fetchWithDocs404(...args);
+  // A 101 upgrade cannot be rebuilt, and asset and fetch responses have immutable headers.
+  if (res.status === 101) return res;
+  const out = new Response(res.body, res);
+  for (const [name, value] of Object.entries(SECURITY_HEADERS)) if (!out.headers.has(name)) out.headers.set(name, value);
+  return out;
+}
+
 export default {
-  fetch: fetchWithDocs404,
+  fetch: withSecurityHeaders,
   email: receiveEmail,
   async scheduled(_controller: ScheduledController, env: Env) {
     const result = await sweepAll(env);

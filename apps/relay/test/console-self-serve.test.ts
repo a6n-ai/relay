@@ -5,7 +5,7 @@ import { setSelfServe } from "../src/console/admin";
 import { requireActor } from "../src/console/actor";
 import { addApp } from "../src/console/apps";
 import { createWorkspace as createWorkspaceFromConsole } from "../src/console/workspaces";
-import { type WorkspaceLimits } from "../src/core/limits";
+import { LIMITS_KEY, type WorkspaceLimits } from "../src/core/limits";
 import { getWorkspaceProfile, recordDoState } from "../src/core/workspace-profile";
 import { coreDb } from "../src/db/core/client";
 import { workspaceProfile } from "../src/db/core/schema";
@@ -28,7 +28,7 @@ const profileOf = async (workspaceId: string) =>
 
 const snapshot = (workspaceId: string) =>
   runInDurableObject(env.CLIENT.get(env.CLIENT.idFromName(workspaceId)), (_instance, state) =>
-    state.storage.kv.get<WorkspaceLimits>("limits"),
+    state.storage.kv.get<WorkspaceLimits>(LIMITS_KEY),
   );
 
 function postCreate(cookie: string, slug: string) {

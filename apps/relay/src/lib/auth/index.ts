@@ -7,7 +7,7 @@ import { admin } from "better-auth/plugins/admin";
 import { emailOTP } from "better-auth/plugins/email-otp";
 import { organization } from "better-auth/plugins/organization";
 import { and, eq, inArray, or, sql } from "drizzle-orm";
-import { countSelfServeCreatedBy, ensureWorkspaceProfile, SELF_SERVE_WORKSPACE_CAP } from "../../core/workspace-profile";
+import { countSelfServeCreatedBy, ensureWorkspaceProfile, inviteCap, invitesInWindow, SELF_SERVE_WORKSPACE_CAP } from "../../core/workspace-profile";
 import { coreDb } from "../../db/core/client";
 import { address, sendingDomain } from "../../db/core/schema";
 import { securityDb } from "../../db/security/client";
@@ -274,6 +274,8 @@ export function createAuth(env: Env) {
         }
         // Keys are created by the server only: over HTTP, metadata.appId would be client-set and skip the app check.
         if (ctx.request && ctx.path.startsWith("/api-key/")) throw new APIError("NOT_FOUND");
+        // A resend mails again without beforeCreateInvitation, so it would skip the daily cap.
+        if (ctx.path === "/organization/invite-member" && ctx.body?.resend) throw new APIError("BAD_REQUEST", { message: "resend is not supported" });
 
         // A suspended workspace keeps its sessions but loses organization endpoints. Every workspace a request names counts, not only the active one.
         if (ctx.path.startsWith("/organization/")) {
@@ -295,9 +297,12 @@ export function createAuth(env: Env) {
             else if (mutation) throw new APIError("BAD_REQUEST", { message: "team not found" });
           }
           // set-active leaves the current workspace and list shows every membership, so neither is gated by the active one.
+          // Authoritative read: the cookie cache can predate a set-active, a suspension, a ban or a password reset.
+          const current = await getAuthoritativeSessionFromCtx(ctx);
+          // Over HTTP a mutation needs a live session row; the cached cookie alone outlives a revoke by up to 5 minutes.
+          if (ctx.request && mutation && !current) throw new APIError("UNAUTHORIZED");
           if (ctx.path !== "/organization/set-active" && ctx.path !== "/organization/list") {
-            // Authoritative read: the cookie cache can predate a set-active or a suspension.
-            const active = (await getAuthoritativeSessionFromCtx(ctx))?.session.activeOrganizationId;
+            const active = current?.session.activeOrganizationId;
             if (active) ids.push(active);
           }
           if (ids.length || slugs.length) {
@@ -455,6 +460,11 @@ export function createAuth(env: Env) {
           },
           afterDeleteOrganization: async ({ organization, user }) => {
             await writeAudit(env, { action: "workspace.delete", actorUserId: user.id, workspaceId: organization.id, target: organization.id });
+          },
+          // Here, not only in the console: /api/auth/organization/invite-member is reachable over HTTP and mails from Relay's sender.
+          beforeCreateInvitation: async ({ organization }) => {
+            if ((await invitesInWindow(env, organization.id)) >= (await inviteCap(env, organization.id)))
+              throw new APIError("TOO_MANY_REQUESTS", { message: "invite limit reached" });
           },
           afterCreateInvitation: async ({ invitation, inviter, organization }) => {
             await writeAudit(env, { action: "invite.create", actorUserId: inviter.id, workspaceId: organization.id, target: maskEmails(invitation.email), data: { role: invitation.role } });

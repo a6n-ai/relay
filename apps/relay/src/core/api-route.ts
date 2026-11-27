@@ -10,7 +10,35 @@ export type ApiCtx = { env: Env; scope: KeyScope; request: Request; params: Reco
 
 export const json = (body: unknown, status = 200) => Response.json(body, { status });
 export const data = (value: unknown, status = 200) => Response.json({ data: value }, { status });
-export const readJson = (request: Request): Promise<unknown> => request.json().catch(() => undefined);
+// Fits three 5 MB attachments as base64 plus the bodies. A chunked body has no length, so the cap is counted while reading.
+export const MAX_API_BODY_BYTES = 25 * 1024 * 1024;
+
+export async function readJson(request: Request, max = MAX_API_BODY_BYTES): Promise<unknown> {
+  if (Number(request.headers.get("content-length") ?? 0) > max) throw new ApiError(413, "body too large");
+  if (!request.body) return undefined;
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  const reader = request.body.getReader();
+  for (let r = await reader.read(); !r.done; r = await reader.read()) {
+    size += r.value.byteLength;
+    if (size > max) {
+      await reader.cancel();
+      throw new ApiError(413, "body too large");
+    }
+    chunks.push(r.value);
+  }
+  const bytes = new Uint8Array(size);
+  let at = 0;
+  for (const c of chunks) {
+    bytes.set(c, at);
+    at += c.byteLength;
+  }
+  try {
+    return JSON.parse(new TextDecoder().decode(bytes));
+  } catch {
+    return undefined;
+  }
+}
 
 // The one auth and rate-limit path for /api/v1 routes. A malformed body is a 400, never a 500.
 export function apiRoute(handler: (ctx: ApiCtx) => Promise<Response>) {

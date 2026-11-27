@@ -1,10 +1,12 @@
-import { and, eq } from "drizzle-orm";
+import { and, count, eq, gte } from "drizzle-orm";
 import { coreDb } from "../db/core/client";
 import { workspaceProfile } from "../db/core/schema";
 import { securityDb } from "../db/security/client";
-import { workspace } from "../db/security/schema";
+import { invitation, workspace } from "../db/security/schema";
 import type { Env } from "../env";
 
+const DAY_MS = 86_400_000;
+export const INVITES_PER_DAY = 20;
 export const SELF_SERVE_WORKSPACE_CAP = 3;
 export const SELF_SERVE_QUOTA = 100;
 export const SELF_SERVE_APP_CAP = 1;
@@ -34,6 +36,19 @@ export async function countSelfServeCreatedBy(env: Env, userId: string): Promise
     .from(workspaceProfile)
     .where(and(eq(workspaceProfile.createdBy, userId), eq(workspaceProfile.selfServe, true)));
   return rows.length;
+}
+
+// Cancelled rows still count, so cancelling does not free a slot.
+export async function invitesInWindow(env: Env, workspaceId: string): Promise<number> {
+  const [row] = await securityDb(env)
+    .select({ n: count() })
+    .from(invitation)
+    .where(and(eq(invitation.organizationId, workspaceId), gte(invitation.createdAt, new Date(Date.now() - DAY_MS))));
+  return row.n;
+}
+
+export async function inviteCap(env: Env, workspaceId: string): Promise<number> {
+  return (await getWorkspaceProfile(env, workspaceId)).invitesPerDay ?? INVITES_PER_DAY;
 }
 
 // Repairs a profile lost between the organization write and its afterCreate hook, or deleted later.

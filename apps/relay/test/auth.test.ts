@@ -4,7 +4,7 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 import { coreDb } from "../src/db/core/client";
 import { address, sendingDomain, workspaceProfile } from "../src/db/core/schema";
 import { securityDb } from "../src/db/security/client";
-import { app, member, rateLimit, securityAudit, team, user, verification, workspace } from "../src/db/security/schema";
+import { app, member, rateLimit, securityAudit, session, team, user, verification, workspace } from "../src/db/security/schema";
 import { createAuth, pickMailer } from "../src/lib/auth";
 import { writeAudit } from "../src/lib/auth/audit";
 import { consoleInviteMailer, memoryInviteMailer, pickInviteMailer } from "../src/lib/auth/invite-mailer";
@@ -187,6 +187,39 @@ describe("admin and organization plugins", () => {
       .where(eq(member.userId, bUser.id));
     expect(bMember.organizationId).toBe(orgId);
     expect(bMember.role).toBe("member");
+  });
+
+  it("holds the daily invite cap over HTTP and refuses resend, which would skip it", async () => {
+    const ownerCookie = await cookieFor("cap-owner@example.com", "admin");
+    const orgId = await createWorkspace(ownerCookie, "cap-co");
+    await coreDb(env).update(workspaceProfile).set({ invitesPerDay: 2 }).where(eq(workspaceProfile.workspaceId, orgId));
+    const invite = (email: string, extra: Record<string, unknown> = {}) =>
+      SELF.fetch(`${BASE}/organization/invite-member`, {
+        method: "POST",
+        headers: { ...json, cookie: ownerCookie, origin: ORIGIN },
+        body: JSON.stringify({ organizationId: orgId, email, role: "member", ...extra }),
+      });
+
+    expect((await invite("cap1@example.com")).status).toBe(200);
+    expect((await invite("cap1@example.com", { resend: true })).status).toBe(400);
+    expect((await invite("cap2@example.com")).status).toBe(200);
+    expect((await invite("cap3@example.com")).status).toBe(429);
+    expect(memoryInviteMailer.lastInvite("cap3@example.com")).toBeUndefined();
+  });
+
+  it("refuses an organization change from a cookie whose session row is gone", async () => {
+    const cookie = await cookieFor("revoked-owner@example.com", "admin");
+    const orgId = await createWorkspace(cookie, "revoked-co");
+    const [u] = await db.select({ id: user.id }).from(user).where(eq(user.email, "revoked-owner@example.com"));
+    await db.delete(session).where(eq(session.userId, u.id));
+
+    const res = await SELF.fetch(`${BASE}/organization/invite-member`, {
+      method: "POST",
+      headers: { ...json, cookie, origin: ORIGIN },
+      body: JSON.stringify({ organizationId: orgId, email: "late@example.com", role: "member" }),
+    });
+    expect(res.status).toBe(401);
+    expect(memoryInviteMailer.lastInvite("late@example.com")).toBeUndefined();
   });
 
   it("refuses invite and delete from a member", async () => {

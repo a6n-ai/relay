@@ -12,7 +12,7 @@ import { app, member, workspace } from "../db/security/schema";
 import type { Env } from "../env";
 import { writeAudit } from "../lib/auth/audit";
 import { ConsoleError } from "./actor";
-import { INVITES_PER_DAY } from "./members";
+import { INVITES_PER_DAY } from "../core/workspace-profile";
 
 // shortcut: 100M caps a typo, not a plan; no product number yet, so revisit with the first real quota request.
 export const MAX_MONTHLY_QUOTA = 100_000_000;

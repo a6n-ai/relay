@@ -13,7 +13,7 @@ import {
   updateAddress,
 } from "../src/console/domains";
 import { createAddressGrant } from "../src/core/addresses";
-import { refreshWorkspaceLimits, type WorkspaceLimits } from "../src/core/limits";
+import { LIMITS_KEY, refreshWorkspaceLimits, type WorkspaceLimits } from "../src/core/limits";
 import { memorySesIdentity } from "../src/core/ses-identity";
 import { coreDb } from "../src/db/core/client";
 import { address, sendingDomain } from "../src/db/core/schema";
@@ -50,7 +50,7 @@ async function plainOwnerIn(hostEmail: string, name: string, email: string) {
 
 const stubFor = (workspaceId: string) => env.CLIENT.get(env.CLIENT.idFromName(workspaceId));
 const snapshot = (workspaceId: string) =>
-  runInDurableObject(stubFor(workspaceId), (_instance, state) => state.storage.kv.get<WorkspaceLimits>("limits"));
+  runInDurableObject(stubFor(workspaceId), (_instance, state) => state.storage.kv.get<WorkspaceLimits>(LIMITS_KEY));
 
 describe("console sending domains and addresses", { timeout: 60_000 }, () => {
   it("normalises a domain, stores it pending in the default region, lists its DKIM records, and refuses another workspace's claim", async () => {

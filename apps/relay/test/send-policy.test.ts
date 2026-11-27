@@ -1,3 +1,4 @@
+import { LIMITS_KEY } from "../src/core/limits";
 import { env, runInDurableObject, SELF } from "cloudflare:test";
 import { eq } from "drizzle-orm";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
@@ -42,7 +43,7 @@ async function seedSender(
   workspaceId: string,
   domain: string,
   email: string,
-  opts: { status?: "pending" | "verified"; sesRegion?: string; name?: string } = {},
+  opts: { status?: "pending" | "verified"; sesRegion?: string; name?: string; appId?: string } = {},
 ) {
   // Storage persists across tests in this file and domain and email are unique: a re-seed moves ownership.
   const sesRegion = opts.sesRegion ?? "us-east-1";
@@ -54,8 +55,8 @@ async function seedSender(
   const displayName = opts.name ?? null;
   await coreDb(env)
     .insert(address)
-    .values({ workspaceId, appId: "app_1", email, kind: "sender", displayName, canSend: true })
-    .onConflictDoUpdate({ target: address.email, set: { workspaceId, displayName, canSend: true } });
+    .values({ workspaceId, appId: opts.appId ?? "app_1", email, kind: "sender", displayName, canSend: true })
+    .onConflictDoUpdate({ target: address.email, set: { workspaceId, appId: opts.appId ?? "app_1", displayName, canSend: true } });
 }
 
 // RPC rejections surface as unhandled in this plugin, so the refused calls run inside the DO.
@@ -204,8 +205,8 @@ describe("send policy", () => {
     expect(await refusal(stub, "wsp_late", { ...base, from: "hello@later.ca" })).toBe("sender_not_verified");
 
     await runInDurableObject(stub, (_instance, state) => {
-      const snapshot = state.storage.kv.get<{ fetchedAt: number }>("limits")!;
-      state.storage.kv.put("limits", { ...snapshot, fetchedAt: Date.now() - 61_000 });
+      const snapshot = state.storage.kv.get<{ fetchedAt: number }>(LIMITS_KEY)!;
+      state.storage.kv.put(LIMITS_KEY, { ...snapshot, fetchedAt: Date.now() - 61_000 });
     });
     expect((await stub.send("wsp_late", { ...base, from: "hello@later.ca" })).status).toBe("queued");
   });
@@ -219,8 +220,8 @@ describe("send policy", () => {
     const stale = stubFor("wsp_stale");
     await stale.send("wsp_stale", base);
     await runInDurableObject(stale, (_instance, state) => {
-      const snapshot = state.storage.kv.get<{ fetchedAt: number }>("limits")!;
-      state.storage.kv.put("limits", { ...snapshot, fetchedAt: Date.now() - 301_000 });
+      const snapshot = state.storage.kv.get<{ fetchedAt: number }>(LIMITS_KEY)!;
+      state.storage.kv.put(LIMITS_KEY, { ...snapshot, fetchedAt: Date.now() - 301_000 });
     });
 
     vi.spyOn(console, "error").mockImplementation(() => {});
@@ -240,7 +241,7 @@ describe("send policy", () => {
     await securityDb(env).insert(member).values({ organizationId: ws.id, userId: owner.id, role: "owner" });
     const { secret } = await createApiKey(env, { workspaceId: ws.id, appId: a.id, name: "web" });
     await coreDb(env).insert(workspaceProfile).values({ workspaceId: ws.id, monthlyMessageQuota: 1 });
-    await seedSender(ws.id, "tiffingrab.ca", from);
+    await seedSender(ws.id, "tiffingrab.ca", from, { appId: a.id });
     const body = { stream: "transactional", from, to: "guest@x.com", subject: "Order 1", html: "<p>Thanks</p>", text: "Thanks" };
     const post = (payload: unknown) =>
       SELF.fetch("https://relay.test/api/v1/messages", {
@@ -265,7 +266,7 @@ describe("send policy", () => {
     const [owner] = await securityDb(env).insert(user).values({ name: slug, email: `${slug}@owner.test` }).returning();
     await securityDb(env).insert(member).values({ organizationId: ws.id, userId: owner.id, role: "owner" });
     const { secret } = await createApiKey(env, { workspaceId: ws.id, appId: a.id, name: "web" });
-    await seedSender(ws.id, "tiffingrab.ca", from);
+    await seedSender(ws.id, "tiffingrab.ca", from, { appId: a.id });
     const body = { stream: "transactional", from, to: "guest@x.com", subject: "Order\r\nBcc: spy@x.com", html: "<p>Thanks</p>", text: "Thanks" };
 
     const res = await SELF.fetch("https://relay.test/api/v1/messages", {
@@ -287,7 +288,7 @@ describe("marketing sends carry an unsubscribe link", () => {
     const [owner] = await securityDb(env).insert(user).values({ name: slug, email: `${slug}@owner.test` }).returning();
     await securityDb(env).insert(member).values({ organizationId: ws.id, userId: owner.id, role: "owner" });
     const { secret } = await createApiKey(env, { workspaceId: ws.id, appId: a.id, name: "web" });
-    await seedSender(ws.id, "tiffingrab.ca", from);
+    await seedSender(ws.id, "tiffingrab.ca", from, { appId: a.id });
     const post = (payload: unknown) =>
       SELF.fetch("https://relay.test/api/v1/messages", {
         method: "POST",
@@ -312,7 +313,7 @@ describe("send attachments are limited at the API", () => {
     const [owner] = await securityDb(env).insert(user).values({ name: slug, email: `${slug}@owner.test` }).returning();
     await securityDb(env).insert(member).values({ organizationId: ws.id, userId: owner.id, role: "owner" });
     const { secret } = await createApiKey(env, { workspaceId: ws.id, appId: a.id, name: "web" });
-    await seedSender(ws.id, "tiffingrab.ca", from);
+    await seedSender(ws.id, "tiffingrab.ca", from, { appId: a.id });
     const post = (attachments: unknown[]) =>
       SELF.fetch("https://relay.test/api/v1/messages", {
         method: "POST",

@@ -1,3 +1,4 @@
+import { LIMITS_KEY } from "../src/core/limits";
 import { env, runInDurableObject, SELF } from "cloudflare:test";
 import { eq } from "drizzle-orm";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
@@ -113,10 +114,10 @@ describe("ClientDO schema version", () => {
     const stub = stubFor(id);
     // A snapshot loaded before the outage; a DO that never loaded limits refuses sends.
     await runInDurableObject(stub, (_instance, state) =>
-      state.storage.kv.put("limits", {
+      state.storage.kv.put(LIMITS_KEY, {
         monthlyQuota: 10000,
         status: "active",
-        senders: { "relay@a6n.ai": { name: null, sesRegion: "ap-south-1" } },
+        senders: { "relay@a6n.ai": { appId: "app_1", name: null, sesRegion: "ap-south-1" } },
         fetchedAt: Date.now(),
       }),
     );

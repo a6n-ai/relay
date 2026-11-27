@@ -118,7 +118,7 @@ describe("campaign lifecycle console", () => {
     const list = await client.createList(workspaceId, appId, { name: "L", consentSource: "express_optin" });
     await client.addMember(workspaceId, list.id, { email: "ann@x.com", firstName: "Ann" });
     const campaign = await createCampaignFor(env, owner, appId, "Spring");
-    await seedVerifiedSender(workspaceId);
+    await seedVerifiedSender(workspaceId, appId);
     await client.updateCampaign(workspaceId, campaign.id, { ...BODY, fromEmail: "relay@a6n.ai", listIds: [list.id] });
     await setPostalAddressFor(env, owner, "1 Main St");
     return { owner, workspaceId, campaignId: campaign.id };
