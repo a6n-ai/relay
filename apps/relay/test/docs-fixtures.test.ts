@@ -33,7 +33,7 @@ const pages = Object.values(import.meta.glob<string>("../../relay-docs/src/conte
 // Repeated until stable, so a comment split by another cannot leave an opener behind.
 const stripComments = (s: string): string => {
   for (let prev = ""; prev !== s; ) [prev, s] = [s, s.replace(/<!--[\s\S]*?-->|\{\/\*[\s\S]*?\*\/\}/g, "")];
-  return s;
+  return s.replace(/<!--/g, "");
 };
 const rendered = new Set(
   [...stripComments(pages).matchAll(/<Endpoint file="([^"]+)" title=("(?:[^"\\]|\\.)*") \/>/g)].map((m) => `${m[1]}|${JSON.parse(m[2])}`),

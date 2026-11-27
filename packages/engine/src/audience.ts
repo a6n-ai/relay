@@ -5,6 +5,7 @@ import type { NotificationTables } from "./schema";
 import type { UsersRef } from "./enqueue";
 import { marketingConsentBlockReason } from "./compliance";
 import { normalizeAddress } from "@foundry/commons";
+import { isEmailAddress } from "./email-address";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Db = PostgresJsDatabase<any>;
@@ -63,7 +64,6 @@ export interface AudienceBreakdown {
   excluded: { unsubscribed: number; suppressed: number; noConsent: number; invalid: number; duplicates: number };
 }
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function classifyAudience(input: {
   candidates: Recipient[];
@@ -74,7 +74,7 @@ export function classifyAudience(input: {
   suppressions: { address: string; reason: string }[];
 }): { recipients: Recipient[]; breakdown: AudienceBreakdown } {
   const valid = input.candidates.filter(
-    (r) => normalizeAddress(r.email ?? r.phone ?? "") && (!r.email || EMAIL_RE.test(r.email.trim()) || !!r.phone),
+    (r) => normalizeAddress(r.email ?? r.phone ?? "") && (!r.email || isEmailAddress(r.email.trim()) || !!r.phone),
   );
   const invalid = input.candidates.length - valid.length;
   const deduped = dedupeRecipients(valid);

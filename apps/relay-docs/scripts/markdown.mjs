@@ -20,7 +20,8 @@ td.addRule('dd', { filter: 'dd', replacement: (c) => `${c.trim()}\n` });
 const decode = (s) => s.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
 const stripTags = (s) => {
 	for (let prev; prev !== s; ) [prev, s] = [s, s.replace(/<[^<>]*>/g, '')];
-	return s;
+	// A broken tag with no closing > is dropped too, so no element can survive.
+	return s.replace(/</g, '');
 };
 const entries = [];
 

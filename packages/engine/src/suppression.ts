@@ -4,6 +4,7 @@ import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import { normalizeAddress } from "@foundry/commons";
 import type { NotificationTables } from "./schema";
 import type { Channel } from "./types";
+import { isEmailAddress } from "./email-address";
 
 // Schema generic is loose (matches @foundry/database's Database type): these
 // helpers only use the core query builder, and pinning a concrete schema would
@@ -136,7 +137,6 @@ export async function clearSuppression(db: Db, tables: NotificationTables, publi
   } as const;
 }
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_RE = /^\+?[0-9]{7,15}$/;
 
 export async function suppressManually(
@@ -145,7 +145,7 @@ export async function suppressManually(
   input: { address: string; channel: Channel },
 ): Promise<Outcome> {
   const address = input.address.trim();
-  if (input.channel === "email" ? !EMAIL_RE.test(address) : !PHONE_RE.test(address.replace(/[\s()-]/g, ""))) {
+  if (input.channel === "email" ? !isEmailAddress(address) : !PHONE_RE.test(address.replace(/[\s()-]/g, ""))) {
     return {
       error: input.channel === "email" ? "Enter a valid email address" : "Enter a valid phone number",
       status: 422,
