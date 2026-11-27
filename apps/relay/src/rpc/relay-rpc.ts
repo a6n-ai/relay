@@ -1,7 +1,6 @@
 import { WorkerEntrypoint } from "cloudflare:workers";
 import { z } from "zod";
 import { resolveApiKey, withinRateLimit, type KeyScope } from "../core/api-keys";
-import { ApiError } from "../core/api-error";
 import { logFailure } from "../core/log";
 import { deleteAudienceHookForScope, getAudienceHookForScope, setAudienceHookForScope } from "../core/audience-hook";
 import {
@@ -47,28 +46,30 @@ import {
 } from "../core/templates";
 import { campaignPatch, listInput, listPatch, templateInput, templatePatch } from "../console/schemas";
 import type { Env } from "../env";
+import { RelayError } from "../shared/errors";
+import { STREAMS } from "../shared/mail";
 
 // Module-level, not a method: WorkerEntrypoint exposes every method over RPC, private or not.
 async function scopeOf(env: Env, apiKey: string): Promise<KeyScope> {
   const scope = await resolveApiKey(env, apiKey);
-  if (!scope) throw new Error("unauthorized");
+  if (!scope) throw new RelayError("unauthorized");
   if (!(await withinRateLimit(env, scope.keyId))) throw new Error("rate limited");
   return scope;
 }
 
-// Every scoped method runs through here: an ApiError reaches the caller as a plain Error with the same message.
+// Every scoped method runs through here: a RelayError reaches the caller as a plain Error with the same message.
 async function withScope<T>(env: Env, apiKey: string, call: (scope: KeyScope) => Promise<T>): Promise<T> {
   const scope = await scopeOf(env, apiKey);
   try {
     return await call(scope);
   } catch (err) {
-    logFailure(`rpc key=${scope.keyId}`, err instanceof ApiError ? err.status : 500, err);
-    if (err instanceof ApiError) throw new Error(err.message);
+    logFailure(`rpc key=${scope.keyId}`, err instanceof RelayError ? err.status : 500, err);
+    if (err instanceof RelayError) throw new Error(err.message);
     throw err;
   }
 }
 
-const streamName = z.enum(["transactional", "tracked", "marketing"]);
+const streamName = z.enum(STREAMS);
 
 export class RelayRpc extends WorkerEntrypoint<Env> {
   async send(apiKey: string, input: unknown) {

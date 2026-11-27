@@ -1,4 +1,4 @@
-import type { MessageStatus } from "../do/console-reads";
+import { type MessageStatus, MESSAGE_STATUSES } from "../shared/mail";
 
 export type MessagesSearch = {
   dir: "out" | "in";
@@ -8,13 +8,11 @@ export type MessagesSearch = {
   cursor?: string;
 };
 
-const STATUSES: MessageStatus[] = ["queued", "sent", "failed", "suppressed"];
-
 const text = (v: unknown): string | undefined => (typeof v === "string" && v.trim() !== "" ? v.trim() : undefined);
 
 // Route validateSearch: a garbage value is dropped rather than failing the page. The server validates again at the fn boundary.
 export function parseMessagesSearch(raw: Record<string, unknown>): MessagesSearch {
-  const status = STATUSES.find((s) => s === raw.status);
+  const status = MESSAGE_STATUSES.find((s) => s === raw.status);
   return {
     dir: raw.dir === "in" ? "in" : "out",
     appId: text(raw.appId),

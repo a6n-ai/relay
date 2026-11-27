@@ -4,6 +4,7 @@ import { type FormEvent, useState } from "react";
 import { errorText } from "../error-text";
 import { FormActions, FormBody, FormError } from "../page/form-parts";
 import { TextField } from "./text-field";
+import { NAME_MAX } from "../../shared/limits";
 
 export function RenameForm({
   id,
@@ -47,7 +48,7 @@ export function RenameForm({
 
   return (
     <FormBody onSubmit={submit}>
-      <TextField id={id} label="Name" hint={hint} required autoFocus maxLength={80} placeholder={placeholder} value={name} onChange={(e) => setName(e.target.value)} />
+      <TextField id={id} label="Name" hint={hint} required autoFocus maxLength={NAME_MAX} placeholder={placeholder} value={name} onChange={(e) => setName(e.target.value)} />
       <FormError message={error} />
       <FormActions cancel submitLabel="Save name" pending={pending} pendingLabel="Saving…" disabled={!dirty} disabledReason={name.trim() ? "Change the name to save." : "Enter a name first."} />
     </FormBody>

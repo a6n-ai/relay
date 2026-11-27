@@ -5,6 +5,7 @@ import { createFileRoute, notFound, useNavigate, useRouter } from "@tanstack/rea
 import { BuildingIcon } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { ConfirmDialog } from "../../components/confirm-dialog";
+import { isNotFound } from "../../components/error-text";
 import { TextField } from "../../components/form/text-field";
 import { ChoiceControl } from "../../components/form/choice-field";
 import { type Facet } from "../../components/page/filters";
@@ -18,9 +19,10 @@ import { ResourceTable } from "../../components/resource-table";
 import { confirmAction, runAction } from "../../components/run-action";
 import { PageHeader } from "../../components/shell/page-header";
 import { fetchWorkspaces, setWorkspaceInviteCapFn, setWorkspaceQuotaFn, setWorkspaceRegionFn, setWorkspaceStatusFn } from "../../console/admin.fns";
-import { SES_REGIONS } from "../../core/ses-regions";
+import { SES_REGIONS } from "../../shared/regions";
 import { formatDate } from "../../lib/format-date";
 import { Hint } from "../../components/page/text";
+import { MAX_INVITES_PER_DAY } from "../../shared/limits";
 
 type AdminSearch = { ws?: string; q?: string; status?: "active" | "suspended" };
 
@@ -33,7 +35,6 @@ const STATUS_FACET: Facet = {
   ],
 };
 
-const REGION_LABEL: Record<string, string> = { "ap-south-1": "Mumbai (ap-south-1)", "us-east-1": "N. Virginia (us-east-1)" };
 
 export const Route = createFileRoute("/_app/admin")({
   validateSearch: (search: Record<string, unknown>): AdminSearch => ({
@@ -45,7 +46,7 @@ export const Route = createFileRoute("/_app/admin")({
     try {
       return await fetchWorkspaces();
     } catch (err) {
-      if (err instanceof Error && err.message === "not found") throw notFound();
+      if (isNotFound(err)) throw notFound();
       throw err;
     }
   },
@@ -166,7 +167,7 @@ function ManageSheet({ w, run, confirm }: { w: Workspace; run: Run; confirm: (ac
           mode="segmented"
           value={region}
           onChange={setRegion}
-          options={SES_REGIONS.map((r) => ({ value: r, label: REGION_LABEL[r] ?? r }))}
+          options={SES_REGIONS.map((r) => ({ value: r.id, label: r.label }))}
         />
       </SettingsCard>
       <NumberCard
@@ -188,8 +189,8 @@ function ManageSheet({ w, run, confirm }: { w: Workspace; run: Run; confirm: (ac
         description="Team invitations this workspace can send each day."
         value={w.invitesPerDay}
         min={1}
-        max={10000}
-        error="Invites per day must be a whole number from 1 to 10000"
+        max={MAX_INVITES_PER_DAY}
+        error={`Invites per day must be a whole number from 1 to ${MAX_INVITES_PER_DAY}`}
         unit="invites / day"
         saveLabel="Save limit"
         onSave={(cap) => run(() => setWorkspaceInviteCapFn({ data: { workspaceId: w.id, cap } }), "Invites per day saved")}

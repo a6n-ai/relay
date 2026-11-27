@@ -1,4 +1,4 @@
-export const KEY_ERROR = "webhook key not configured";
+import { RelayError } from "../shared/errors";
 const DECRYPT_ERROR = "webhook secret could not be decrypted";
 const encoder = new TextEncoder();
 
@@ -18,15 +18,15 @@ function toHex(bytes: Uint8Array): string {
 
 // Imported once per isolate; a changed key string gets a fresh import.
 function aesKey(keyB64: string | undefined): Promise<CryptoKey> {
-  if (!keyB64) throw new Error(KEY_ERROR);
+  if (!keyB64) throw new RelayError("webhook key not configured");
   if (cachedKey?.keyB64 === keyB64) return cachedKey.key;
   let raw: Uint8Array<ArrayBuffer>;
   try {
     raw = fromB64(keyB64);
   } catch {
-    throw new Error(KEY_ERROR);
+    throw new RelayError("webhook key not configured");
   }
-  if (raw.length !== 32) throw new Error(KEY_ERROR);
+  if (raw.length !== 32) throw new RelayError("webhook key not configured");
   const key = crypto.subtle.importKey("raw", raw, "AES-GCM", false, ["encrypt", "decrypt"]);
   cachedKey = { keyB64, key };
   return key;

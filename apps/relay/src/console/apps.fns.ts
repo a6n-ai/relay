@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeaders } from "@tanstack/react-start/server";
 import { env } from "cloudflare:workers";
 import { z } from "zod";
-import { ConsoleError, requireActor, toResponseError } from "./actor";
+import { requireActor, toResponseError } from "./actor";
 import {
   addApp,
   createKey,
@@ -20,6 +20,8 @@ import {
   setDefaultSendersFor,
 } from "./apps";
 import { appId, id, name, slug, validate } from "./schemas";
+import { RelayError } from "../shared/errors";
+import { URL_MAX } from "../shared/limits";
 
 const READ = { permission: { tenant: ["read"] } };
 const WRITE = { permission: { tenant: ["write"] }, write: true };
@@ -30,7 +32,7 @@ export const fetchApps = createServerFn({ method: "GET" }).handler(async () => {
     const actor = await requireActor(env, getRequestHeaders(), READ);
     return await listApps(env, actor);
   } catch (err) {
-    if (err instanceof ConsoleError && err.status === 403) return null;
+    if (err instanceof RelayError && err.status === 403) return null;
     toResponseError(err);
   }
 });
@@ -47,7 +49,7 @@ export const fetchAppDetail = createServerFn({ method: "GET" })
       ]);
       return { app, keys, senders };
     } catch (err) {
-      if (err instanceof ConsoleError && err.status === 403) return null;
+      if (err instanceof RelayError && err.status === 403) return null;
       toResponseError(err);
     }
   });
@@ -93,14 +95,14 @@ export const fetchAudienceHook = createServerFn({ method: "GET" })
       const actor = await requireActor(env, getRequestHeaders(), READ);
       return await getAudienceHookFor(env, actor, data.appId);
     } catch (err) {
-      if (err instanceof ConsoleError && err.status === 403) return null;
+      if (err instanceof RelayError && err.status === 403) return null;
       toResponseError(err);
     }
   });
 
 // The plaintext secret is returned here once, for the dialog that generated it.
 export const setAudienceHookFn = createServerFn({ method: "POST" })
-  .validator(validate(z.object({ appId, url: z.string().max(2048), secret: z.string().max(256).optional(), enabled: z.boolean().optional() })))
+  .validator(validate(z.object({ appId, url: z.string().max(URL_MAX), secret: z.string().max(256).optional(), enabled: z.boolean().optional() })))
   .handler(async ({ data }) => {
     try {
       const actor = await requireActor(env, getRequestHeaders(), WRITE);

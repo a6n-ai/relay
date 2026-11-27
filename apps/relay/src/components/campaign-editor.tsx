@@ -13,9 +13,7 @@ import {
   testSendCampaignFn,
   updateCampaignFn,
 } from "../console/campaigns.fns";
-import type { CampaignView } from "../do/campaigns";
-import type { ListView } from "../do/lists";
-import { campaignProblems } from "../core/campaign-problems";
+import { campaignProblems } from "../shared/campaign-problems";
 import { baselineFrom, isDirty } from "./campaign-dirty";
 import { DangerCard } from "./page/danger-card";
 import { PROBLEM_LABEL } from "./campaign-problems";
@@ -31,6 +29,8 @@ import { useCan } from "./use-can";
 import { FormError, FormActions, FormPanel, FormBody } from "./page/form-parts";
 import { Hint } from "./page/text";
 import { FixedField } from "./form/fixed-field";
+import { type CampaignView, type ListView } from "../shared/views";
+import { NAME_MAX } from "../shared/limits";
 
 type CampaignOptions = { senders: string[]; lists: ListView[]; postalAddress: string | null };
 
@@ -209,7 +209,7 @@ export function CampaignEditor({
       <FormPanel as="form" id="campaign-form" onSubmit={save}>
         <SettingsCard title="Content">
           <FormBody as="div">
-            <TextField id="campaign-name" label="Name" required maxLength={80} value={name} disabled={!canWrite} onChange={(e) => setName(e.target.value)} />
+            <TextField id="campaign-name" label="Name" required maxLength={NAME_MAX} value={name} disabled={!canWrite} onChange={(e) => setName(e.target.value)} />
             <FixedField label="App" value={appName} hint="To use another app, create a new campaign there." />
             {canWrite ? (
               <SenderField

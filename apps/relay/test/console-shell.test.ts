@@ -7,7 +7,7 @@ import { clientFor } from "../src/core/messages";
 import { loadShell } from "../src/console/shell";
 import { safeRedirect } from "../src/console/shell.fns";
 import { securityDb } from "../src/db/security/client";
-import { newId } from "../src/lib/ids";
+import { newId } from "../src/shared/ids";
 import { app, member, user, workspace } from "../src/db/security/schema";
 import { addMember, cookieFor, createWorkspace, headersFor, ORIGIN, setActive, signIn } from "./console-helpers";
 import { applyMigrations } from "./migrate";

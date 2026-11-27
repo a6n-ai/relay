@@ -1,23 +1,23 @@
 import { z } from "zod";
 import type { Env } from "../env";
 import { writeAudit } from "../lib/auth/audit";
-import { ApiError } from "./api-error";
 import type { KeyScope } from "./api-keys";
 import { clientFor } from "./messages";
+import { RelayError } from "../shared/errors";
+import { emailSchema } from "../shared/schemas";
 
 // send() accepts any idempotency key length, and callers put URLs in keys, so 200 refused real keys.
 const keysSchema = z.array(z.string().min(1).max(2000)).min(1).max(100);
-const emailSchema = z.string().trim().toLowerCase().max(254).email();
 const emailsSchema = z.array(emailSchema).min(1).max(100);
 const suppressSchema = z.object({
-  email: z.string().trim().toLowerCase().max(254).email(),
+  email: emailSchema,
   reason: z.enum(["unsubscribe", "manual"]),
   stream: z.literal("marketing").nullable(),
 });
 
 function parseInput<T extends z.ZodType>(schema: T, input: unknown): z.output<T> {
   const parsed = schema.safeParse(input);
-  if (!parsed.success) throw new ApiError(400, "invalid input");
+  if (!parsed.success) throw new RelayError("invalid input");
   return parsed.data;
 }
 

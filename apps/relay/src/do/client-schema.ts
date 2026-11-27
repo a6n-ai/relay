@@ -1,6 +1,6 @@
 import { sql } from "drizzle-orm";
 import { check, index, integer, primaryKey, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
-import { newId } from "../lib/ids";
+import { newId } from "../shared/ids";
 
 // Mirrors CLIENT_MIGRATIONS in migrations.ts; change both together.
 export const message = sqliteTable(

@@ -3,6 +3,7 @@ import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
 import { AuthButton, AuthCard, AuthInput, AuthText } from "../components/auth-card";
 import { FormError } from "../components/page/form-parts";
+import { PASSWORD_MAX, PASSWORD_MIN } from "../shared/limits";
 
 export const Route = createFileRoute("/reset-password")({
   head: () => ({ meta: [{ title: "Choose a new Relay password" }, { name: "robots", content: "noindex" }] }),
@@ -60,11 +61,11 @@ function ResetPassword() {
         <Label htmlFor="new-password" className="sr-only">
           New password
         </Label>
-        <AuthInput id="new-password" type="password" autoComplete="new-password" placeholder="New password" required autoFocus minLength={8} maxLength={128} value={password} onChange={(e) => setPassword(e.target.value)} />
+        <AuthInput id="new-password" type="password" autoComplete="new-password" placeholder="New password" required autoFocus minLength={PASSWORD_MIN} maxLength={PASSWORD_MAX} value={password} onChange={(e) => setPassword(e.target.value)} />
         <Label htmlFor="confirm-password" className="sr-only">
           Confirm new password
         </Label>
-        <AuthInput id="confirm-password" type="password" autoComplete="new-password" placeholder="Confirm new password" required maxLength={128} value={confirm} onChange={(e) => setConfirm(e.target.value)} />
+        <AuthInput id="confirm-password" type="password" autoComplete="new-password" placeholder="Confirm new password" required maxLength={PASSWORD_MAX} value={confirm} onChange={(e) => setConfirm(e.target.value)} />
         <AuthButton type="submit" disabled={pending}>
           Reset password
         </AuthButton>

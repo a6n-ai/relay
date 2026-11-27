@@ -20,6 +20,7 @@
     "@fontsource-variable/geist": "^5.3.0",
     "@fontsource-variable/geist-mono": "^5.3.0",
     "@foundry/cloud": "github:a6n-ai/foundry#path:packages/cloud",
+    "@foundry/commons": "github:a6n-ai/foundry#path:packages/commons",
     "@foundry/themes": "github:a6n-ai/foundry#path:packages/themes",
     "@foundry/ui": "github:a6n-ai/foundry#path:packages/ui",
     "@tanstack/react-router": "^1.170.46",

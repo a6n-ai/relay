@@ -2,9 +2,12 @@ import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeaders } from "@tanstack/react-start/server";
 import { env } from "cloudflare:workers";
 import { z } from "zod";
-import { ConsoleError, requireActor, toResponseError } from "./actor";
+import { requireActor, toResponseError } from "./actor";
 import { validate } from "./schemas";
 import { addSuppressionFor, listSuppressionsFor, removeSuppressionFor } from "./suppressions";
+import { RelayError } from "../shared/errors";
+import { STREAMS } from "../shared/mail";
+import { emailSchema } from "../shared/schemas";
 
 const READ = { permission: { sending: ["read"] } };
 const WRITE = { permission: { sending: ["write"] }, write: true };
@@ -24,7 +27,7 @@ export const fetchSuppressions = createServerFn({ method: "GET" })
       const actor = await requireActor(env, getRequestHeaders(), READ);
       return await listSuppressionsFor(env, actor, data);
     } catch (err) {
-      if (err instanceof ConsoleError && err.status === 403) return null;
+      if (err instanceof RelayError && err.status === 403) return null;
       toResponseError(err);
     }
   });
@@ -33,8 +36,8 @@ export const addSuppressionFn = createServerFn({ method: "POST" })
   .validator(
     validate(
       z.object({
-        email: z.string().trim().toLowerCase().max(254).email(),
-        stream: z.enum(["transactional", "tracked", "marketing"]).optional(),
+        email: emailSchema,
+        stream: z.enum(STREAMS).optional(),
       }),
     ),
   )
@@ -48,7 +51,7 @@ export const addSuppressionFn = createServerFn({ method: "POST" })
   });
 
 export const removeSuppressionFn = createServerFn({ method: "POST" })
-  .validator(validate(z.object({ email: z.string().trim().toLowerCase().max(254).email() })))
+  .validator(validate(z.object({ email: emailSchema })))
   .handler(async ({ data }) => {
     try {
       const actor = await requireActor(env, getRequestHeaders(), WRITE);

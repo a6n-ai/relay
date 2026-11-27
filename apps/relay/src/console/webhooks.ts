@@ -1,21 +1,14 @@
 import { clientFor } from "../core/messages";
-import { KEY_ERROR } from "../core/webhook-crypto";
-import {
-  createWebhookForScope,
-  deleteWebhookForScope,
-  listWebhooksForScope,
-  updateWebhookForScope,
-  type WebhookEvent,
-  type WebhookPatch,
-  type WebhookView,
-} from "../core/webhooks";
+import { createWebhookForScope, deleteWebhookForScope, listWebhooksForScope, updateWebhookForScope, type WebhookPatch, type WebhookView } from "../core/webhooks";
 import { decodeCursor } from "../do/console-reads";
 import type { Env } from "../env";
 import { writeAudit } from "../lib/auth/audit";
 import { allows } from "../lib/auth/permissions";
-import { ConsoleError, type ConsoleActor } from "./actor";
+import { type ConsoleActor } from "./actor";
 import { getApp } from "./apps";
 import { grantedAddressIds } from "./messages";
+import { RelayError, codeOf } from "../shared/errors";
+import { type WebhookEvent } from "../shared/mail";
 
 const scopeOf = (actor: ConsoleActor, appId: string) => ({ workspaceId: actor.workspaceId, appId });
 
@@ -26,9 +19,9 @@ export async function listWebhooksFor(env: Env, actor: ConsoleActor, appId: stri
 
 export async function listDeliveriesFor(env: Env, actor: ConsoleActor, appId: string, webhookId: string, cursor?: string) {
   await getApp(env, actor, appId);
-  if (cursor !== undefined && !decodeCursor(cursor)) throw new ConsoleError(400, "invalid cursor");
+  if (cursor !== undefined && !decodeCursor(cursor)) throw new RelayError("invalid cursor");
   const webhook = (await listWebhooksForScope(env, scopeOf(actor, appId))).find((w) => w.id === webhookId);
-  if (!webhook) throw new ConsoleError(404, "not found");
+  if (!webhook) throw new RelayError("not found");
   const visible = allows(actor.roles, { webhook: ["log_all"] }) ? "all" : await grantedAddressIds(env, actor);
   const page = await clientFor(env, actor.workspaceId).listWebhookDeliveries(actor.workspaceId, appId, webhookId, visible, cursor);
   // Explicit fields: a spread of the RPC result would carry its Symbol.dispose member into the serialized loader data.
@@ -51,7 +44,7 @@ export async function createWebhookFor(
       enabled: input.enabled,
     });
   } catch (err) {
-    if (err instanceof Error && err.message === KEY_ERROR) throw new ConsoleError(503, "webhooks unavailable");
+    if (codeOf(err) === "webhook key not configured") throw new RelayError("webhooks unavailable");
     throw err;
   }
   await writeAudit(env, {
@@ -73,7 +66,7 @@ export async function updateWebhookFor(
 ): Promise<WebhookView> {
   await getApp(env, actor, appId);
   const view = await updateWebhookForScope(env, scopeOf(actor, appId), id, patch);
-  if (!view) throw new ConsoleError(404, "not found");
+  if (!view) throw new RelayError("not found");
   await writeAudit(env, {
     action: "webhook.update",
     actorUserId: actor.userId,
@@ -86,7 +79,7 @@ export async function updateWebhookFor(
 
 export async function deleteWebhookFor(env: Env, actor: ConsoleActor, appId: string, id: string): Promise<void> {
   await getApp(env, actor, appId);
-  if (!(await deleteWebhookForScope(env, scopeOf(actor, appId), id))) throw new ConsoleError(404, "not found");
+  if (!(await deleteWebhookForScope(env, scopeOf(actor, appId), id))) throw new RelayError("not found");
   await writeAudit(env, {
     action: "webhook.delete",
     actorUserId: actor.userId,
@@ -99,9 +92,9 @@ export async function deleteWebhookFor(env: Env, actor: ConsoleActor, appId: str
 export async function retryDeliveryFor(env: Env, actor: ConsoleActor, appId: string, deliveryId: string): Promise<void> {
   await getApp(env, actor, appId);
   const outcome = await clientFor(env, actor.workspaceId).retryWebhookDelivery(actor.workspaceId, appId, deliveryId);
-  if (outcome === "missing") throw new ConsoleError(404, "not found");
-  if (outcome === "not_failed") throw new ConsoleError(409, "delivery not failed");
-  if (outcome === "webhook_disabled") throw new ConsoleError(409, "webhook disabled");
+  if (outcome === "missing") throw new RelayError("not found");
+  if (outcome === "not_failed") throw new RelayError("delivery not failed");
+  if (outcome === "webhook_disabled") throw new RelayError("webhook disabled");
   await writeAudit(env, {
     action: "webhook.retry",
     actorUserId: actor.userId,

@@ -12,6 +12,7 @@ import { SettingsCard } from "../../components/page/settings-card";
 import { PageHeader } from "../../components/shell/page-header";
 import { useCan } from "../../components/use-can";
 import { createAppFn } from "../../console/apps.fns";
+import { NAME_MAX } from "../../shared/limits";
 
 export const Route = createFileRoute("/_app/apps_/new")({
   component: NewAppPage,
@@ -57,7 +58,7 @@ function NewAppPage() {
     <CreatePage crumbs={crumbs} description="An app gets its own API keys, senders and messages." onSubmit={submit}>
       <SettingsCard title="Details" description="Name the product that sends mail through Relay.">
         <div className="grid gap-4">
-          <TextField id="app-name" label="Name" required autoFocus maxLength={80} placeholder="Marketing site" value={name} onChange={(e) => setName(e.target.value)} />
+          <TextField id="app-name" label="Name" required autoFocus maxLength={NAME_MAX} placeholder="Marketing site" value={name} onChange={(e) => setName(e.target.value)} />
           <SlugField id="app-slug" name={name} value={slug} onChange={setSlug} error={split.slug} />
         </div>
       </SettingsCard>

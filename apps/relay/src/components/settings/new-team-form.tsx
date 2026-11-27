@@ -5,6 +5,7 @@ import { errorText } from "../error-text";
 import { TextField } from "../form/text-field";
 import { createTeamFn } from "../../console/members.fns";
 import { FormError, FormBody, FormActions } from "../page/form-parts";
+import { NAME_MAX } from "../../shared/limits";
 
 export function NewTeamForm({ done }: { done: () => void }) {
   const router = useRouter();
@@ -30,7 +31,7 @@ export function NewTeamForm({ done }: { done: () => void }) {
 
   return (
     <FormBody onSubmit={submit}>
-      <TextField id="team-name" label="Name" required autoFocus maxLength={80} placeholder="Support" value={name} onChange={(e) => setName(e.target.value)} />
+      <TextField id="team-name" label="Name" required autoFocus maxLength={NAME_MAX} placeholder="Support" value={name} onChange={(e) => setName(e.target.value)} />
       <FormError message={error} />
       <FormActions cancel submitLabel="Create team" pending={pending} pendingLabel="Creating…" disabled={!name.trim()} disabledReason="Enter a name first." />
     </FormBody>

@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { env } from "cloudflare:workers";
 import { resolveBearer, withinRateLimit } from "../../../core/api-keys";
-import { KEY_ERROR } from "../../../core/webhook-crypto";
 import { createWebhookForScope, listWebhooksForScope, webhookInputSchema } from "../../../core/webhooks";
+import { codeOf } from "../../../shared/errors";
 
 export const Route = createFileRoute("/api/v1/webhooks")({
   server: {
@@ -22,7 +22,7 @@ export const Route = createFileRoute("/api/v1/webhooks")({
         try {
           return Response.json(await createWebhookForScope(env, scope, body.data), { status: 201 });
         } catch (err) {
-          if (err instanceof Error && err.message === KEY_ERROR) {
+          if (codeOf(err) === "webhook key not configured") {
             return Response.json({ error: "webhooks unavailable" }, { status: 503 });
           }
           throw err;

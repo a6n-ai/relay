@@ -1,9 +1,9 @@
 import { z } from "zod";
 import type { Env } from "../env";
 import { clientFor, type Scope } from "./messages";
+import { type WebhookEvent, WEBHOOK_EVENTS } from "../shared/mail";
+import { URL_MAX } from "../shared/limits";
 
-const WEBHOOK_EVENTS = ["mailbox.received"] as const;
-export type WebhookEvent = (typeof WEBHOOK_EVENTS)[number];
 
 export type WebhookView = {
   id: string;
@@ -86,7 +86,7 @@ export function isPublicWebhookUrl(value: string): boolean {
   }
 }
 
-export const httpsUrl = z.string().max(2048).refine(isPublicWebhookUrl, "url must be a public https URL without credentials");
+export const httpsUrl = z.string().max(URL_MAX).refine(isPublicWebhookUrl, "url must be a public https URL without credentials");
 
 export const webhookInputSchema = z.object({
   url: httpsUrl,

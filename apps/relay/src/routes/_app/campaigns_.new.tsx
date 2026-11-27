@@ -15,6 +15,7 @@ import { useCan } from "../../components/use-can";
 import { fetchApps } from "../../console/apps.fns";
 import { createCampaignFn } from "../../console/campaigns.fns";
 import { fetchTemplates } from "../../console/templates.fns";
+import { NAME_MAX } from "../../shared/limits";
 
 export const Route = createFileRoute("/_app/campaigns_/new")({
   validateSearch: (search: Record<string, unknown>): { appId?: string } => ({
@@ -86,7 +87,7 @@ function NewCampaignPage() {
       <SettingsCard title="Details" description="Name the campaign and pick where it starts.">
         <div className="grid gap-4">
           <AppField apps={apps} scopedAppId={scopedAppId} value={app} onChange={setApp} id="campaign-app" autoFocus={choose} />
-          <TextField id="campaign-name" label="Name" autoFocus={!choose} required maxLength={80} placeholder="Product update" value={name} onChange={(e) => setName(e.target.value)} />
+          <TextField id="campaign-name" label="Name" autoFocus={!choose} required maxLength={NAME_MAX} placeholder="Product update" value={name} onChange={(e) => setName(e.target.value)} />
           <ChoiceField
             id="campaign-template"
             label="Start from"

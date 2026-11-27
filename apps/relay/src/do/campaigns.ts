@@ -1,35 +1,14 @@
 import { brandDomain, IMPLIED_CONSENT_MS } from "../core/campaigns";
-import { newId } from "../lib/ids";
+import { newId } from "../shared/ids";
 import { decodeCursor, encodeCursor } from "./console-reads";
 import { getTemplateRow } from "./templates";
+import { RelayError } from "../shared/errors";
+import { type CampaignView, type AudiencePreview, type CampaignStats } from "../shared/views";
+import { PAGE_SIZE } from "../shared/limits";
 
-export type CampaignStatus = "draft" | "scheduled" | "sending" | "paused" | "sent" | "cancelled";
-export type CampaignView = {
-  id: string;
-  appId: string;
-  name: string;
-  status: CampaignStatus;
-  fromEmail: string | null;
-  subject: string;
-  html: string;
-  text: string;
-  listIds: string[];
-  audienceKind: "lists" | "hook";
-  audienceQuery: string | null;
-  scheduledAt: number | null;
-  runSeq: number;
-  startedAt: number | null;
-  finishedAt: number | null;
-  recipients: number;
-  error: string | null;
-  createdAt: number;
-  updatedAt: number;
-};
 export type CampaignSummary = Omit<CampaignView, "html" | "text">;
 export type CampaignPatch = Partial<Pick<CampaignView, "name" | "fromEmail" | "subject" | "html" | "text" | "listIds" | "audienceKind" | "audienceQuery">>;
-export type AudiencePreview = { members: number; suppressed: number; lapsed: number; sendable: number };
 
-const PAGE = 50;
 const SUMMARY_COLUMNS = `id, app_id AS appId, name, status, from_email AS fromEmail, subject, list_ids AS listIds, audience_kind AS audienceKind, audience_query AS audienceQuery,
   scheduled_at AS scheduledAt, run_seq AS runSeq, started_at AS startedAt, finished_at AS finishedAt, recipients, error,
   created_at AS createdAt, updated_at AS updatedAt`;
@@ -74,19 +53,6 @@ export function bumpCampaign(sql: SqlStorage, campaignId: string | null, delta: 
   );
 }
 
-export type CampaignStats = {
-  total: number;
-  queued: number;
-  sent: number;
-  failed: number;
-  suppressed: number;
-  delivered: number;
-  opened: number;
-  clicked: number;
-  bounced: number;
-  complained: number;
-  unsubscribed: number;
-};
 
 export function statsOf(s: Omit<CampaignStats, "total">): CampaignStats {
   return { ...s, total: s.queued + s.sent + s.failed + s.suppressed };
@@ -143,7 +109,7 @@ export function listCampaignRows(
   appId?: string,
 ): { rows: CampaignSummary[]; nextCursor: string | null } {
   const after = cursor === undefined ? null : decodeCursor(cursor);
-  if (cursor !== undefined && !after) throw new Error("invalid cursor");
+  if (cursor !== undefined && !after) throw new RelayError("invalid cursor");
   const where: string[] = [];
   const bindings: unknown[] = [];
   if (after) {
@@ -156,11 +122,11 @@ export function listCampaignRows(
   }
   const clause = where.length > 0 ? `WHERE ${where.join(" AND ")}` : "";
   const fetched = sql
-    .exec<Raw<CampaignSummary>>(`SELECT ${SUMMARY_COLUMNS} FROM campaign ${clause} ORDER BY created_at DESC, id DESC LIMIT ?`, ...bindings, PAGE + 1)
+    .exec<Raw<CampaignSummary>>(`SELECT ${SUMMARY_COLUMNS} FROM campaign ${clause} ORDER BY created_at DESC, id DESC LIMIT ?`, ...bindings, PAGE_SIZE + 1)
     .toArray();
-  const page = fetched.slice(0, PAGE).map((r) => parse(r) as CampaignSummary);
+  const page = fetched.slice(0, PAGE_SIZE).map((r) => parse(r) as CampaignSummary);
   const last = page[page.length - 1];
-  return { rows: page, nextCursor: fetched.length > PAGE && last ? encodeCursor(last.createdAt, last.id) : null };
+  return { rows: page, nextCursor: fetched.length > PAGE_SIZE && last ? encodeCursor(last.createdAt, last.id) : null };
 }
 
 export function updateCampaignRow(sql: SqlStorage, id: string, patch: CampaignPatch): CampaignView | "missing" | "not_draft" | "bad_list" {

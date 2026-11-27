@@ -3,7 +3,6 @@ import { createApiKey, deleteApiKey, renameApiKey, revokeApiKey } from "../core/
 import { hookInputSchema } from "../core/audience-hook";
 import { createApp } from "../core/apps";
 import { clientFor } from "../core/messages";
-import { KEY_ERROR } from "../core/webhook-crypto";
 import { getWorkspaceProfile, SELF_SERVE_APP_CAP } from "../core/workspace-profile";
 import { coreDb } from "../db/core/client";
 import { address } from "../db/core/schema";
@@ -12,9 +11,10 @@ import { apiKey, app } from "../db/security/schema";
 import type { Env } from "../env";
 import { writeAudit } from "../lib/auth/audit";
 import { allows } from "../lib/auth/permissions";
-import { ConsoleError, type ConsoleActor, uniqueViolation } from "./actor";
+import { type ConsoleActor, uniqueViolation } from "./actor";
+import { RelayError, codeOf } from "../shared/errors";
+import { SLUG_RE } from "../shared/schemas";
 
-const SLUG = /^[a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])?$/;
 
 export async function listApps(env: Env, actor: ConsoleActor) {
   const db = securityDb(env);
@@ -39,26 +39,26 @@ export async function getApp(env: Env, actor: ConsoleActor, appId: string) {
     .select({ id: app.id, name: app.name, slug: app.slug })
     .from(app)
     .where(and(eq(app.id, appId), eq(app.workspaceId, actor.workspaceId)));
-  if (!row) throw new ConsoleError(404, "not found");
+  if (!row) throw new RelayError("not found");
   return row;
 }
 
 export async function addApp(env: Env, actor: ConsoleActor, input: { name: string; slug: string }): Promise<{ id: string }> {
-  if (!SLUG.test(input.slug)) throw new ConsoleError(400, "invalid slug");
+  if (!SLUG_RE.test(input.slug)) throw new RelayError("invalid slug");
   const [taken] = await securityDb(env)
     .select({ id: app.id })
     .from(app)
     .where(and(eq(app.workspaceId, actor.workspaceId), eq(app.slug, input.slug)));
-  if (taken) throw new ConsoleError(409, "slug taken");
+  if (taken) throw new RelayError("slug taken");
   // shortcut: parallel addApp calls can all pass this count and exceed the self-serve app cap, add an atomic check if abuse appears
   if ((await getWorkspaceProfile(env, actor.workspaceId)).selfServe) {
     const [{ n }] = await securityDb(env).select({ n: count() }).from(app).where(eq(app.workspaceId, actor.workspaceId));
-    if (n >= SELF_SERVE_APP_CAP) throw new ConsoleError(403, "self-serve workspaces have one app");
+    if (n >= SELF_SERVE_APP_CAP) throw new RelayError("self-serve workspaces have one app");
   }
   try {
     return await createApp(env, { workspaceId: actor.workspaceId, name: input.name, slug: input.slug });
   } catch (err) {
-    if (uniqueViolation(err, "app.workspace_id, app.slug")) throw new ConsoleError(409, "slug taken");
+    if (uniqueViolation(err, "app.workspace_id, app.slug")) throw new RelayError("slug taken");
     throw err;
   }
 }
@@ -69,7 +69,7 @@ export async function renameApp(env: Env, actor: ConsoleActor, id: string, name:
     .set({ name, updatedAt: new Date() })
     .where(and(eq(app.id, id), eq(app.workspaceId, actor.workspaceId)))
     .returning({ id: app.id });
-  if (!rows.length) throw new ConsoleError(404, "not found");
+  if (!rows.length) throw new RelayError("not found");
 }
 
 // The secret is never stored or listed: listKeys selects only the metadata columns the screen shows.
@@ -104,15 +104,15 @@ export async function createKey(
 }
 
 export async function revokeKey(env: Env, actor: ConsoleActor, id: string): Promise<void> {
-  if (!(await revokeApiKey(env, actor.workspaceId, id))) throw new ConsoleError(404, "not found");
+  if (!(await revokeApiKey(env, actor.workspaceId, id))) throw new RelayError("not found");
 }
 
 export async function deleteKey(env: Env, actor: ConsoleActor, id: string): Promise<void> {
-  if (!(await deleteApiKey(env, actor.workspaceId, id))) throw new ConsoleError(404, "not found");
+  if (!(await deleteApiKey(env, actor.workspaceId, id))) throw new RelayError("not found");
 }
 
 export async function renameKey(env: Env, actor: ConsoleActor, id: string, name: string): Promise<void> {
-  if (!(await renameApiKey(env, actor.workspaceId, id, name))) throw new ConsoleError(404, "not found");
+  if (!(await renameApiKey(env, actor.workspaceId, id, name))) throw new RelayError("not found");
 }
 
 const AUDIENCE_READ = { tenant: ["read"] };
@@ -122,7 +122,7 @@ const AUDIENCE_WRITE = { tenant: ["write"] };
 async function guardPlatformHook(env: Env, actor: ConsoleActor, appId: string): Promise<void> {
   if (actor.platformAdmin) return;
   const hook = await clientFor(env, actor.workspaceId).getAudienceHook(actor.workspaceId, appId);
-  if (hook?.kind === "binding") throw new ConsoleError(403, "hook managed by platform admin");
+  if (hook?.kind === "binding") throw new RelayError("hook managed by platform admin");
 }
 
 // Https only: a binding names a Worker on this deployment, so only a super admin sets one (admin.ts).
@@ -132,16 +132,16 @@ export async function setAudienceHookFor(
   appId: string,
   input: { url: string; secret?: string; enabled?: boolean },
 ): Promise<{ secret: string | null }> {
-  if (!allows(actor.roles, AUDIENCE_WRITE)) throw new ConsoleError(403, "forbidden");
+  if (!allows(actor.roles, AUDIENCE_WRITE)) throw new RelayError("forbidden");
   await getApp(env, actor, appId);
   await guardPlatformHook(env, actor, appId);
   const parsed = hookInputSchema.safeParse(input);
-  if (!parsed.success) throw new ConsoleError(400, "invalid input");
+  if (!parsed.success) throw new RelayError("invalid input");
   let result: { secret: string | null };
   try {
     result = await clientFor(env, actor.workspaceId).setAudienceHook(actor.workspaceId, appId, { kind: "https", ...parsed.data });
   } catch (err) {
-    if (err instanceof Error && err.message === KEY_ERROR) throw new ConsoleError(503, "audience hook unavailable");
+    if (codeOf(err) === "webhook key not configured") throw new RelayError("audience hook unavailable");
     throw err;
   }
   await writeAudit(env, { action: "app.audience_hook.set", actorUserId: actor.userId, workspaceId: actor.workspaceId, target: appId, data: { appId } });
@@ -149,7 +149,7 @@ export async function setAudienceHookFor(
 }
 
 export async function getAudienceHookFor(env: Env, actor: ConsoleActor, appId: string) {
-  if (!allows(actor.roles, AUDIENCE_READ)) throw new ConsoleError(403, "forbidden");
+  if (!allows(actor.roles, AUDIENCE_READ)) throw new RelayError("forbidden");
   await getApp(env, actor, appId);
   const hook = await clientFor(env, actor.workspaceId).getAudienceHook(actor.workspaceId, appId);
   // Explicit fields: a spread of the RPC result would carry its Symbol.dispose member into the serialized loader data.
@@ -157,10 +157,10 @@ export async function getAudienceHookFor(env: Env, actor: ConsoleActor, appId: s
 }
 
 export async function deleteAudienceHookFor(env: Env, actor: ConsoleActor, appId: string): Promise<void> {
-  if (!allows(actor.roles, AUDIENCE_WRITE)) throw new ConsoleError(403, "forbidden");
+  if (!allows(actor.roles, AUDIENCE_WRITE)) throw new RelayError("forbidden");
   await getApp(env, actor, appId);
   await guardPlatformHook(env, actor, appId);
-  if (!(await clientFor(env, actor.workspaceId).deleteAudienceHook(actor.workspaceId, appId))) throw new ConsoleError(404, "not found");
+  if (!(await clientFor(env, actor.workspaceId).deleteAudienceHook(actor.workspaceId, appId))) throw new RelayError("not found");
   await writeAudit(env, { action: "app.audience_hook.delete", actorUserId: actor.userId, workspaceId: actor.workspaceId, target: appId, data: { appId } });
 }
 
@@ -177,7 +177,7 @@ export async function getDefaultSenders(env: Env, actor: ConsoleActor, appId: st
       .where(and(eq(address.workspaceId, actor.workspaceId), eq(address.appId, appId), eq(address.canSend, true)))
       .orderBy(asc(address.email)),
   ]);
-  if (!row) throw new ConsoleError(404, "not found");
+  if (!row) throw new RelayError("not found");
   return { ...row, options };
 }
 
@@ -187,7 +187,7 @@ export async function setDefaultSendersFor(
   appId: string,
   input: { transactionalId: string | null; marketingId: string | null },
 ): Promise<void> {
-  if (!allows(actor.roles, AUDIENCE_WRITE)) throw new ConsoleError(403, "forbidden");
+  if (!allows(actor.roles, AUDIENCE_WRITE)) throw new RelayError("forbidden");
   await getApp(env, actor, appId);
   const ids = [input.transactionalId, input.marketingId].filter((v): v is string => v !== null);
   if (ids.length) {
@@ -195,7 +195,7 @@ export async function setDefaultSendersFor(
       .select({ id: address.id })
       .from(address)
       .where(and(inArray(address.id, ids), eq(address.workspaceId, actor.workspaceId), eq(address.appId, appId), eq(address.canSend, true)));
-    if (owned.length !== new Set(ids).size) throw new ConsoleError(400, "sender not available");
+    if (owned.length !== new Set(ids).size) throw new RelayError("sender not available");
   }
   await securityDb(env)
     .update(app)

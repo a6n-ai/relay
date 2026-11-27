@@ -19,10 +19,11 @@ import { useCan } from "../../components/use-can";
 import { formatWhen } from "../../lib/format-date";
 import { addSuppressionFn, fetchSuppressions, removeSuppressionFn } from "../../console/suppressions.fns";
 import { FormError, FormBody, FormActions } from "../../components/page/form-parts";
+import { STREAMS } from "../../shared/mail";
 
 type SuppressionsSearch = { prefix?: string; cursor?: string; stream?: StreamFilter; offset?: number };
 
-const STREAM_FILTERS = ["all", "transactional", "tracked", "marketing"] as const;
+const STREAM_FILTERS = ["all", ...STREAMS] as const;
 type StreamFilter = (typeof STREAM_FILTERS)[number];
 const STREAM_LABEL: Record<StreamFilter, string> = { all: "All mail", transactional: "Receipts and alerts", tracked: "Tracked mail", marketing: "Campaigns" };
 const streamLabel = (s: string) => STREAM_LABEL[s as StreamFilter] ?? s;

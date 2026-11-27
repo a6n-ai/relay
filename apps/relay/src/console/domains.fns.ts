@@ -2,8 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeaders } from "@tanstack/react-start/server";
 import { env } from "cloudflare:workers";
 import { z } from "zod";
-import { SES_REGIONS } from "../core/ses-regions";
-import { ConsoleError, requireActor, toResponseError } from "./actor";
+import { SES_REGION_IDS } from "../shared/regions";
+import { requireActor, toResponseError } from "./actor";
 import { deleteDomain, domainDeletePreview as domainDeletePreviewFor } from "./domain-delete";
 import {
   addAddress,
@@ -17,6 +17,7 @@ import {
   updateAddress,
 } from "./domains";
 import { displayName, id, replyTo, validate } from "./schemas";
+import { RelayError } from "../shared/errors";
 
 const READ = { permission: { sending: ["read"] } };
 const WRITE = { permission: { sending: ["write"] }, write: true };
@@ -27,7 +28,7 @@ export const fetchDomains = createServerFn({ method: "GET" }).handler(async () =
     const actor = await requireActor(env, getRequestHeaders(), READ);
     return await listDomains(env, actor);
   } catch (err) {
-    if (err instanceof ConsoleError && err.status === 403) return null;
+    if (err instanceof RelayError && err.status === 403) return null;
     toResponseError(err);
   }
 });
@@ -42,7 +43,7 @@ export const fetchAddresses = createServerFn({ method: "GET" }).handler(async ()
 });
 
 export const addDomainFn = createServerFn({ method: "POST" })
-  .validator(validate(z.object({ domain: z.string().min(1).max(253), sesRegion: z.enum(SES_REGIONS).optional() })))
+  .validator(validate(z.object({ domain: z.string().min(1).max(253), sesRegion: z.enum(SES_REGION_IDS).optional() })))
   .handler(async ({ data }) => {
     try {
       const actor = await requireActor(env, getRequestHeaders(), WRITE);

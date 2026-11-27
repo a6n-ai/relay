@@ -22,10 +22,10 @@ import { useCan } from "../../components/use-can";
 import { fetchApps } from "../../console/apps.fns";
 import { fetchTemplates } from "../../console/templates.fns";
 import { formatWhen } from "../../lib/format-date";
+import { PAGE_SIZE } from "../../shared/limits";
 
 type TemplatesSearch = { appId?: string; cursor?: string; offset?: number; q?: string; event?: string; locale?: string };
 
-const PAGE = 50;
 const ROUTE = "/campaigns/templates";
 const text = (v: unknown) => (typeof v === "string" && v ? v : undefined);
 
@@ -162,7 +162,7 @@ function TemplatesPage() {
         hasMore={Boolean(templates.nextCursor)}
         to="/campaigns/templates"
         offset={search.cursor ? search.offset : undefined}
-        pageSize={PAGE}
+        pageSize={PAGE_SIZE}
         search={{ appId: search.appId, q: search.q, event: search.event, locale: search.locale, cursor: templates.nextCursor }}
         resetTo={search.cursor ? "/campaigns/templates" : undefined}
         resetSearch={{ appId: search.appId, q: search.q, event: search.event, locale: search.locale }}

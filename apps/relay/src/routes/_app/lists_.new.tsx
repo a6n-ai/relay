@@ -14,7 +14,8 @@ import { PageHeader } from "../../components/shell/page-header";
 import { useCan } from "../../components/use-can";
 import { fetchApps } from "../../console/apps.fns";
 import { createListFn } from "../../console/lists.fns";
-import type { ConsentSource } from "../../do/lists";
+import { type ConsentSource } from "../../shared/views";
+import { NAME_MAX } from "../../shared/limits";
 
 export const Route = createFileRoute("/_app/lists_/new")({
   validateSearch: (search: Record<string, unknown>): { appId?: string } => ({
@@ -71,7 +72,7 @@ function NewListPage() {
       <SettingsCard title="Details" description="Name the list.">
         <div className="grid gap-4">
           <AppField apps={apps} scopedAppId={scopedAppId} value={app} onChange={setApp} id="list-app" autoFocus={choose} />
-          <TextField id="list-name" label="Name" autoFocus={!choose} required maxLength={80} value={name} onChange={(e) => setName(e.target.value)} placeholder="Newsletter subscribers" />
+          <TextField id="list-name" label="Name" autoFocus={!choose} required maxLength={NAME_MAX} value={name} onChange={(e) => setName(e.target.value)} placeholder="Newsletter subscribers" />
         </div>
       </SettingsCard>
       <SettingsCard title="Permission" description="We keep this as your record of consent.">

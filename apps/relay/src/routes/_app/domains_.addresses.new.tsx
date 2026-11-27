@@ -5,6 +5,7 @@ import { type FormEvent, useState } from "react";
 import { Button } from "@foundry/ui/button";
 import { DeniedState, deniedReason } from "../../components/denied-state";
 import { errorText } from "../../components/error-text";
+import { codeOf } from "../../shared/errors";
 import { AppField, needsAppChoice } from "../../components/form/app-field";
 import { ChoiceField } from "../../components/form/choice-field";
 import { DomainEmailInput } from "../../components/form/domain-email-input";
@@ -18,6 +19,7 @@ import { useCan } from "../../components/use-can";
 import { fetchApps } from "../../console/apps.fns";
 import { addAddressFn, fetchDomains } from "../../console/domains.fns";
 import { type Kind, KINDS, LOCAL_RE } from "../../lib/address-kinds";
+import { EMAIL_MAX, NAME_MAX } from "../../shared/limits";
 
 export const Route = createFileRoute("/_app/domains_/addresses/new")({
   validateSearch: (search: Record<string, unknown>): { appId?: string } => ({
@@ -110,8 +112,8 @@ function AddAddressPage() {
       await navigate({ to: "/domains/addresses/$addressId", params: { addressId: created.id } });
     } catch (err) {
       const text = errorText(err, "Could not add the address.");
-      if (err instanceof Error && err.message === "address already exists") setServerError("That address already exists.");
-      else if (err instanceof Error && err.message === "domain not verified") setServerError(`Verify ${address.domain} first to receive mail on it.`);
+      if (codeOf(err) === "address already exists") setServerError("That address already exists.");
+      else if (codeOf(err) === "domain not verified") setServerError(`Verify ${address.domain} first to receive mail on it.`);
       else setError(text);
     } finally {
       setPending(false);
@@ -157,7 +159,7 @@ function AddAddressPage() {
             id="address-name"
             label="Name (optional)"
             hint="Shown to recipients as the sender name."
-            maxLength={80}
+            maxLength={NAME_MAX}
             placeholder={appName ?? "Support"}
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -166,7 +168,7 @@ function AddAddressPage() {
             id="address-reply-to"
             label="Reply-To (optional)"
             type="email"
-            maxLength={254}
+            maxLength={EMAIL_MAX}
             placeholder={address.local && address.domain ? email : "Same as the address"}
             value={replyTo}
             onChange={(e) => setReplyTo(e.target.value)}

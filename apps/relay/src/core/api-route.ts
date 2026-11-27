@@ -1,9 +1,8 @@
 import { env } from "cloudflare:workers";
 import { ZodError } from "zod";
 import { resolveBearer, withinRateLimit, type KeyScope } from "./api-keys";
-import { ApiError } from "./api-error";
 import { logFailure } from "./log";
-import { SEND_REFUSAL_STATUS, TEMPLATE_ERROR_STATUS, TemplateError, sendRefusal } from "./messages";
+import { codeOf, ERRORS, RelayError } from "../shared/errors";
 import type { Env } from "../env";
 
 type ApiCtx = { env: Env; scope: KeyScope; request: Request; params: Record<string, string> };
@@ -30,12 +29,10 @@ export function apiRoute(handler: (ctx: ApiCtx) => Promise<Response>) {
         // Field paths and issue codes only: the submitted values stay out of the log.
         return fail("invalid input", 400, `invalid input at ${err.issues.map((i) => `${i.path.join(".") || "(root)"}:${i.code}`).join(", ")}`);
       }
-      if (err instanceof ApiError) return fail(err.message, err.status);
-      if (err instanceof TemplateError && Object.hasOwn(TEMPLATE_ERROR_STATUS, err.message)) {
-        return fail(err.message, TEMPLATE_ERROR_STATUS[err.message as keyof typeof TEMPLATE_ERROR_STATUS]);
-      }
-      const refusal = sendRefusal(err);
-      if (refusal) return fail(refusal, SEND_REFUSAL_STATUS[refusal]);
+      if (err instanceof RelayError) return fail(err.message, err.status);
+      // ClientDO errors cross RPC as plain Errors that keep only the code.
+      const code = codeOf(err);
+      if (code) return fail(code, ERRORS[code].status);
       logFailure(where, 500, err);
       throw err;
     }

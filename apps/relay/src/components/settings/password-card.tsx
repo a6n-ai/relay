@@ -9,10 +9,9 @@ import { setPasswordFn } from "../../console/password.fns";
 import { errorText } from "../error-text";
 import { FormError } from "../page/form-parts";
 import { SettingsCard } from "../page/settings-card";
+import { PASSWORD_MAX, PASSWORD_MIN } from "../../shared/limits";
 
 const json = { "content-type": "application/json" };
-const MIN = 8;
-const MAX = 128;
 
 // Setting goes through a server function (setPassword has no HTTP route); changing goes through Better Auth with the current password.
 export function PasswordCard({ hasPassword }: { hasPassword: boolean }) {
@@ -27,7 +26,7 @@ export function PasswordCard({ hasPassword }: { hasPassword: boolean }) {
   async function submit(event: FormEvent) {
     event.preventDefault();
     setError(null);
-    if (next.length < MIN || next.length > MAX) return setError(`Use ${MIN} to ${MAX} characters.`);
+    if (next.length < PASSWORD_MIN || next.length > PASSWORD_MAX) return setError(`Use ${PASSWORD_MIN} to ${PASSWORD_MAX} characters.`);
     if (next !== confirm) return setError("The passwords do not match.");
     setPending(true);
     try {
@@ -61,7 +60,7 @@ export function PasswordCard({ hasPassword }: { hasPassword: boolean }) {
   return (
     <SettingsCard
       title="Password"
-      footer={`At least ${MIN} characters.`}
+      footer={`At least ${PASSWORD_MIN} characters.`}
       disabledReason={blocked && !pending ? (hasPassword && !current ? "Enter your current password." : "Enter and confirm the new password.") : undefined}
       description={
         hasPassword
@@ -76,10 +75,10 @@ export function PasswordCard({ hasPassword }: { hasPassword: boolean }) {
     >
       <form id="password-form" onSubmit={submit} className="grid gap-3">
         {hasPassword ? (
-          <TextField id="current-password" label="Current password" type="password" autoComplete="current-password" maxLength={MAX} value={current} onChange={(e) => setCurrent(e.target.value)} />
+          <TextField id="current-password" label="Current password" type="password" autoComplete="current-password" maxLength={PASSWORD_MAX} value={current} onChange={(e) => setCurrent(e.target.value)} />
         ) : null}
-        <TextField id="new-password" label="New password" type="password" autoComplete="new-password" minLength={MIN} maxLength={MAX} value={next} onChange={(e) => setNext(e.target.value)} />
-        <TextField id="confirm-password" label="Confirm new password" type="password" autoComplete="new-password" maxLength={MAX} value={confirm} onChange={(e) => setConfirm(e.target.value)} />
+        <TextField id="new-password" label="New password" type="password" autoComplete="new-password" minLength={PASSWORD_MIN} maxLength={PASSWORD_MAX} value={next} onChange={(e) => setNext(e.target.value)} />
+        <TextField id="confirm-password" label="Confirm new password" type="password" autoComplete="new-password" maxLength={PASSWORD_MAX} value={confirm} onChange={(e) => setConfirm(e.target.value)} />
         {hasPassword ? (
           <Label className="font-normal">
             <Checkbox checked={others} onCheckedChange={(on) => setOthers(on === true)} />

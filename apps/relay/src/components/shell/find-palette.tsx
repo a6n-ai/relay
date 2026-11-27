@@ -4,10 +4,10 @@ import { Kbd } from "@foundry/ui/kbd";
 import { localStore } from "@foundry/ui/safe-storage";
 import SearchIcon from "lucide-react/icons/search";
 import { useEffect, useMemo, useState } from "react";
-import type { Shell } from "../../console/shell";
 import { isTypingTarget } from "../page/keys";
 import { type FindEntry, findEntries, pushRecent, readRecent } from "./find";
 import { withNew } from "./scope";
+import { type Shell } from "../../shared/views";
 
 const RECENT_KEY = "relay-find-recent";
 const GROUPS: FindEntry["group"][] = ["Pages", "Apps", "Actions"];

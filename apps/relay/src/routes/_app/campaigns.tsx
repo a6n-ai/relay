@@ -22,10 +22,10 @@ import { useCan } from "../../components/use-can";
 import { fetchApps } from "../../console/apps.fns";
 import { fetchCampaigns } from "../../console/campaigns.fns";
 import { formatWhen } from "../../lib/format-date";
+import { PAGE_SIZE } from "../../shared/limits";
 
 type CampaignsSearch = { appId?: string; cursor?: string; offset?: number; q?: string; status?: string };
 
-const PAGE = 50;
 const ROUTE = "/campaigns";
 
 export const Route = createFileRoute("/_app/campaigns")({
@@ -155,7 +155,7 @@ function CampaignsPage() {
         hasMore={Boolean(campaigns.nextCursor)}
         to="/campaigns"
         offset={search.cursor ? search.offset : undefined}
-        pageSize={PAGE}
+        pageSize={PAGE_SIZE}
         search={{ appId: search.appId, q: search.q, status: search.status, cursor: campaigns.nextCursor }}
         resetTo={search.cursor ? "/campaigns" : undefined}
         resetSearch={{ appId: search.appId, q: search.q, status: search.status }}

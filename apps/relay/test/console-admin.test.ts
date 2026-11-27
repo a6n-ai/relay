@@ -3,8 +3,6 @@ import { and, eq } from "drizzle-orm";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { requireActor, requirePlatformAdmin } from "../src/console/actor";
 import { listWorkspaces, setAudienceBindingFor, setWorkspaceInviteCap, setWorkspaceQuota, setWorkspaceRegion, setWorkspaceStatus } from "../src/console/admin";
-import { SES_CONFIG_SETS } from "../src/core/ses";
-import { SES_REGIONS } from "../src/core/ses-regions";
 import { addApp, createKey } from "../src/console/apps";
 import { addAddress, addDomain, checkDomain } from "../src/console/domains";
 import { inviteMember } from "../src/console/members";
@@ -133,10 +131,6 @@ describe("console platform admin", { timeout: 60_000 }, () => {
     const row = (await listWorkspaces(env)).find((w) => w.id === a.workspaceId);
     expect(row?.sesRegion).toBe("us-east-1");
     await expect(setWorkspaceRegion(env, OPS, a.workspaceId, "eu-west-9")).rejects.toMatchObject({ status: 400 });
-  });
-
-  it("keeps the client region list equal to the SES config sets", () => {
-    expect([...SES_REGIONS].sort()).toEqual(Object.keys(SES_CONFIG_SETS).sort());
   });
 
   it("refuses a quota that is not a non-negative integer", async () => {

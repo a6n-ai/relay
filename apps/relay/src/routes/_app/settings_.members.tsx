@@ -8,7 +8,7 @@ import { SearchInput, Toolbar } from "../../components/page/toolbar";
 import { useUrlFilter } from "../../components/page/use-url-filter";
 import { ListSkeleton } from "../../components/page/page-skeleton";
 import { ResourceTable } from "../../components/resource-table";
-import { type MemberRole, ROLE_LABEL } from "../../components/role-select";
+import { type OrgRole, ROLE_LABEL } from "../../shared/roles";
 import { confirmAction } from "../../components/run-action";
 import { ChangeRoleDialog } from "../../components/settings/change-role-dialog";
 import { SuspendedNotice } from "../../components/settings/suspended-notice";
@@ -73,7 +73,7 @@ function MembersPage() {
           { header: "Email", kind: "mono", cell: (m) => m.email },
           {
             header: "Role",
-            cell: (m) => m.roles.map((r) => ROLE_LABEL[r as MemberRole]).join(", "),
+            cell: (m) => m.roles.map((r) => ROLE_LABEL[r as OrgRole]).join(", "),
           },
         ]}
         rows={rows}
@@ -97,7 +97,7 @@ function MembersPage() {
       {changingMember ? (
         <ChangeRoleDialog
           key={changingMember.id}
-          member={{ id: changingMember.id, name: changingMember.name, role: (changingMember.roles[0] ?? "member") as MemberRole }}
+          member={{ id: changingMember.id, name: changingMember.name, role: (changingMember.roles[0] ?? "member") as OrgRole }}
           canGrantOwner={ownerActor}
           onOpenChange={(o) => !o && setChanging(null)}
         />

@@ -7,7 +7,7 @@ import { Link, useRouter } from "@tanstack/react-router";
 import Check from "lucide-react/icons/check";
 import ChevronsUpDown from "lucide-react/icons/chevrons-up-down";
 import { useState } from "react";
-import type { OrgRole } from "../console/actor";
+import { type OrgRole } from "../shared/roles";
 
 type Active = { id: string; name: string; status: "active" | "suspended"; roles: OrgRole[] };
 

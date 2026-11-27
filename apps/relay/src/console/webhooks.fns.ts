@@ -3,7 +3,7 @@ import { getRequestHeaders } from "@tanstack/react-start/server";
 import { env } from "cloudflare:workers";
 import { z } from "zod";
 import { webhookInputSchema, webhookPatchSchema } from "../core/webhooks";
-import { ConsoleError, requireActor, toResponseError } from "./actor";
+import { requireActor, toResponseError } from "./actor";
 import { appId, id, validate } from "./schemas";
 import {
   createWebhookFor,
@@ -13,6 +13,7 @@ import {
   retryDeliveryFor,
   updateWebhookFor,
 } from "./webhooks";
+import { RelayError } from "../shared/errors";
 
 const READ = { permission: { webhook: ["read"] } };
 const WRITE = { permission: { webhook: ["write"] }, write: true };
@@ -25,7 +26,7 @@ export const fetchWebhooks = createServerFn({ method: "GET" })
       const actor = await requireActor(env, getRequestHeaders(), READ);
       return await listWebhooksFor(env, actor, data.appId);
     } catch (err) {
-      if (err instanceof ConsoleError && err.status === 403) return null;
+      if (err instanceof RelayError && err.status === 403) return null;
       toResponseError(err);
     }
   });
@@ -37,7 +38,7 @@ export const fetchDeliveries = createServerFn({ method: "GET" })
       const actor = await requireActor(env, getRequestHeaders(), READ);
       return await listDeliveriesFor(env, actor, data.appId, data.webhookId, data.cursor);
     } catch (err) {
-      if (err instanceof ConsoleError && err.status === 403) return null;
+      if (err instanceof RelayError && err.status === 403) return null;
       toResponseError(err);
     }
   });

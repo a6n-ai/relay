@@ -16,12 +16,12 @@ import {
 } from "@foundry/ui/sidebar";
 import { Link, useLocation, useSearch } from "@tanstack/react-router";
 import { Fragment, type ReactNode, useEffect } from "react";
-import type { Shell } from "../console/shell";
 import { activeNav, type NavGroup, type NavItem, visibleNav } from "./shell/nav";
 import { navSearch } from "./shell/scope";
 import { UserMenu } from "./shell/user-menu";
 import { SuspendedBanner } from "./suspended-banner";
 import { WorkspaceSwitcher } from "./workspace-switcher";
+import { type Shell } from "../shared/views";
 
 type Active = { item: string; child?: string } | null;
 

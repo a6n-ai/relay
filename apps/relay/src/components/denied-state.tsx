@@ -1,5 +1,6 @@
 import { useMatch } from "@tanstack/react-router";
-import type { Shell } from "../console/shell";
+import { isDenied } from "../shared/errors";
+import type { Shell } from "../shared/views";
 import { Hint, Title } from "./page/text";
 
 type DeniedReason = "no-workspace" | "suspended" | "not-allowed" | "not-found";
@@ -23,9 +24,6 @@ const COPY: Record<DeniedReason, { title: string; body: string }> = {
   },
 };
 
-// Server messages that mean "you cannot see this here". Anything else is a real failure and gets the generic copy.
-const DENIED = new Set(["no workspace", "forbidden", "workspace suspended", "not a member"]);
-
 export function deniedReason(shell: Shell | undefined, message?: string): DeniedReason {
   if (shell?.active?.status === "suspended" || message === "workspace suspended") return "suspended";
   if (!shell?.active || message === "no workspace") return "no-workspace";
@@ -47,7 +45,7 @@ export function AppError({ error }: { error: unknown }) {
   // Outside _app (sign-in, invite) there is no match, so the shell is undefined and only the generic copy can show.
   const shell = useMatch({ from: "/_app", shouldThrow: false, select: (m) => m.context.shell });
   const message = error instanceof Error ? error.message : "";
-  if (!DENIED.has(message)) {
+  if (!isDenied(message)) {
     return (
       <p role="alert" className="p-6 text-sm text-destructive">
         Something went wrong. Refresh the page to try again.

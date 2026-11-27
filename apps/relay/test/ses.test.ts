@@ -2,6 +2,7 @@ import { AwsError } from "@foundry/cloud";
 import { describe, expect, it, vi } from "vitest";
 import {
   configSetFor,
+  SES_CONFIG_SETS,
   isRetryableSesError,
   retryDelaySeconds,
   sendEmailBody,
@@ -9,6 +10,7 @@ import {
   type SesSendRequest,
 } from "../src/core/ses";
 import type { Env } from "../src/env";
+import { SES_REGION_IDS } from "../src/shared/regions";
 
 const credsEnv = { AWS_ACCESS_KEY_ID: "AKIDTEST", AWS_SECRET_ACCESS_KEY: "secret" } as Partial<Env> as Env;
 
@@ -31,6 +33,10 @@ describe("configSetFor", () => {
   it("maps region and stream to the fixed config set", () => {
     expect(configSetFor("us-east-1", "tracked")).toBe("tiffin-grab-transactional-tracked");
     expect(configSetFor("ap-south-1", "marketing")).toBe("relay-marketing");
+  });
+
+  it("has config sets for exactly the shared region list", () => {
+    expect(Object.keys(SES_CONFIG_SETS).sort()).toEqual([...SES_REGION_IDS].sort());
   });
 
   it("throws for a region outside the table", () => {

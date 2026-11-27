@@ -5,7 +5,6 @@ import { type FormEvent, useEffect, useRef, useState } from "react";
 import { createAutomationFn, deleteAutomationFn, updateAutomationFn } from "../console/automations.fns";
 import { fetchCampaignOptions } from "../console/campaigns.fns";
 import { fetchTemplates } from "../console/templates.fns";
-import type { AutomationView } from "../do/automations";
 import { errorText } from "./error-text";
 import { AppField, needsAppChoice } from "./form/app-field";
 import { ChoiceControl, ChoiceField } from "./form/choice-field";
@@ -18,6 +17,8 @@ import { DangerCard } from "./page/danger-card";
 import { FormActions, FormError, FormPanel } from "./page/form-parts";
 import { SettingsCard } from "./page/settings-card";
 import { UnsavedGuard } from "./unsaved-guard";
+import { type AutomationView } from "../shared/views";
+import { AUTOMATION_DELAY_MAX, NAME_MAX } from "../shared/limits";
 
 const PRESETS = ["0", "1", "24"];
 
@@ -46,7 +47,7 @@ function DelayField({ value, onChange, error, onClearError }: { value: string; o
       />
       {custom ? (
         <InputGroup>
-          <InputGroupInput type="number" min={0} max={720} step={1} aria-label="Delay in hours" aria-invalid={error ? true : undefined} aria-describedby={error ? "automation-delay-error" : undefined} value={value} onChange={(e) => { onClearError(); onChange(e.target.value); }} />
+          <InputGroupInput type="number" min={0} max={AUTOMATION_DELAY_MAX} step={1} aria-label="Delay in hours" aria-invalid={error ? true : undefined} aria-describedby={error ? "automation-delay-error" : undefined} value={value} onChange={(e) => { onClearError(); onChange(e.target.value); }} />
           <InputGroupAddon align="inline-end">hours</InputGroupAddon>
         </InputGroup>
       ) : null}
@@ -198,7 +199,7 @@ export function AutomationForm({
             label="Name"
             autoFocus={!choose}
             required
-            maxLength={80}
+            maxLength={NAME_MAX}
             placeholder="Welcome new subscribers"
             value={name}
             error={fe.errors.name}

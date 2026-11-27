@@ -4,13 +4,14 @@ import { toast } from "@foundry/ui/toast";
 import { useRouter } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
 import { updateWebhookFn } from "../console/webhooks.fns";
-import type { WebhookEvent } from "../core/webhooks";
 import { errorText } from "./error-text";
 import { TextField } from "./form/text-field";
 import { FormActions, FormBody, FormError } from "./page/form-parts";
 import { Hint, SectionTitle } from "./page/text";
 import { webhookUrlForInput, webhookUrlFromInput, WEBHOOK_URL_PREFIX } from "./webhook-url";
 import { WEBHOOK_EVENT_LABELS, WEBHOOK_EVENT_LIST } from "./webhook-events";
+import { type WebhookEvent } from "../shared/mail";
+import { URL_MAX } from "../shared/limits";
 
 export function WebhookUrlField({ value, onChange, hint = "Must be public. Called when a letter arrives." }: { value: string; onChange: (url: string) => void; hint?: string }) {
   return (
@@ -20,7 +21,7 @@ export function WebhookUrlField({ value, onChange, hint = "Must be public. Calle
       hint={hint}
       required
       autoFocus
-      maxLength={2048}
+      maxLength={URL_MAX}
       prefix={WEBHOOK_URL_PREFIX}
       placeholder="example.com/webhooks/relay"
       value={webhookUrlForInput(value)}

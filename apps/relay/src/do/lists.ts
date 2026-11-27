@@ -1,35 +1,15 @@
-import { newId } from "../lib/ids";
+import { newId } from "../shared/ids";
 import { decodeCursor, encodeCursor } from "./console-reads";
+import { RelayError } from "../shared/errors";
+import { type ConsentSource, type ListView, type MemberView } from "../shared/views";
+import { PAGE_SIZE } from "../shared/limits";
 
-export type ConsentSource = "purchase" | "express_optin" | "event_signup" | "import_other";
-export type MemberState = "subscribed" | "suppressed";
 
 export type ListInput = { name: string; consentSource: ConsentSource; consentNote?: string };
 export type MemberInput = { email: string; firstName?: string; lastName?: string; consentAt?: number };
 
-export type ListView = {
-  id: string;
-  appId: string;
-  name: string;
-  consentSource: ConsentSource;
-  consentNote: string | null;
-  members: number;
-  createdAt: number;
-};
 
-export type MemberView = {
-  id: string;
-  email: string;
-  firstName: string | null;
-  lastName: string | null;
-  source: "manual" | "import";
-  consentAt: number;
-  state: MemberState;
-  optedOut: string[];
-  createdAt: number;
-};
 
-const PAGE = 50;
 export const EXPORT_PAGE = 1000;
 
 // One query per page: the brand domains each address opted out of, sorted.
@@ -125,7 +105,7 @@ export function listMemberRows(
   cursor?: string,
 ): { rows: MemberView[]; nextCursor: string | null } | null {
   const after = cursor === undefined ? null : decodeCursor(cursor);
-  if (cursor !== undefined && !after) throw new Error("invalid cursor");
+  if (cursor !== undefined && !after) throw new RelayError("invalid cursor");
   if (sql.exec("SELECT id FROM contact_list WHERE id = ?", listId).toArray().length === 0) return null;
   const keyset = after ? "AND (m.created_at < ? OR (m.created_at = ? AND m.id < ?))" : "";
   const keysetBindings = after ? [after.createdAt, after.createdAt, after.id] : [];
@@ -138,10 +118,10 @@ export function listMemberRows(
        ORDER BY m.created_at DESC, m.id DESC LIMIT ?`,
       listId,
       ...keysetBindings,
-      PAGE + 1,
+      PAGE_SIZE + 1,
     )
     .toArray();
-  const page = fetched.slice(0, PAGE);
+  const page = fetched.slice(0, PAGE_SIZE);
   const last = page[page.length - 1];
   const optedOut = optedOutByEmail(sql, page.map((r) => r.email));
   const rows: MemberView[] = page.map((r) => ({
@@ -155,7 +135,7 @@ export function listMemberRows(
     optedOut: optedOut.get(r.email) ?? [],
     createdAt: r.createdAt,
   }));
-  return { rows, nextCursor: fetched.length > PAGE && last ? encodeCursor(last.createdAt, last.id) : null };
+  return { rows, nextCursor: fetched.length > PAGE_SIZE && last ? encodeCursor(last.createdAt, last.id) : null };
 }
 
 // Keyset on email, so a resumed export never repeats or skips an address.

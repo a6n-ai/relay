@@ -4,10 +4,12 @@ import { MAX_INBOUND_BYTES } from "../core/email-worker";
 import { InboundParseError, parseInboundEml, safeFilename, type ParsedInbound } from "../core/inbound-parse";
 import { mailboxReceivedJson } from "../core/mailbox-received";
 import type { Env, InboundJob } from "../env";
-import { newId } from "../lib/ids";
+import { newId } from "../shared/ids";
 import * as schema from "./client-schema";
 import { listWebhookRows, toWebhookView } from "./webhooks";
 import { describeError } from "../core/log";
+import { RelayError } from "../shared/errors";
+import { MAILBOX_RECEIVED } from "../shared/mail";
 
 export type InboundResult =
   | { outcome: "inserted"; messageId: string; deliveries: number }
@@ -19,7 +21,7 @@ export type InboundDeps = { storage: DurableObjectStorage; db: DrizzleSqliteDODa
 // Keeps a DO row under 2 MB; the webhook payload keeps the full text.
 const INBOUND_TEXT_MAX = 262_144;
 const SUBJECT_MAX = 998;
-const EVENT = "mailbox.received";
+const EVENT = MAILBOX_RECEIVED;
 
 function assertOwnRawKey(workspaceId: string, rawKey: string): void {
   if (!rawKey.startsWith(`ws/${workspaceId}/raw/`)) throw new Error("raw key outside workspace");
@@ -100,7 +102,7 @@ export async function storeInbound(deps: InboundDeps, workspaceId: string, job: 
   if (sameLetter) return { outcome: "duplicate", messageId: sameLetter.id };
 
   const object = await env.MAIL.get(job.rawKey);
-  if (!object) throw new Error("raw mail missing");
+  if (!object) throw new RelayError("raw mail missing");
   if (object.size > MAX_INBOUND_BYTES) return fail(deps, workspaceId, job, "Letter too large");
 
   let parsed: ParsedInbound;

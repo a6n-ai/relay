@@ -3,15 +3,10 @@ import { securityDb } from "../db/security/client";
 import { app, member, user, workspace } from "../db/security/schema";
 import type { Env } from "../env";
 import { createAuth } from "../lib/auth";
-import { type OrgRole, parseRoles, requireSession } from "./actor";
+import { parseRoles, requireSession } from "./actor";
+import { type OrgRole } from "../shared/roles";
+import { type Shell } from "../shared/views";
 
-export type Shell = {
-  user: { id: string; email: string; name: string };
-  platformAdmin: boolean;
-  active: { id: string; name: string; slug: string; status: "active" | "suspended"; roles: OrgRole[] } | null;
-  workspaces: { id: string; name: string }[];
-  apps: { id: string; name: string }[];
-};
 
 // A stale active workspace (removed member, or none yet) moves to the first active membership; its set-cookie goes to setCookies.
 // set-active refuses suspended workspaces, so when every membership is suspended the first one is shown without switching.

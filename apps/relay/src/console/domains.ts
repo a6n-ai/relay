@@ -1,7 +1,7 @@
 import { and, asc, count, eq, inArray, isNull, like, lt, ne, or } from "drizzle-orm";
 import { createAddress, deleteAddress as deleteAddressRow, updateAddress as updateAddressRow } from "../core/addresses";
 import { refreshWorkspaceLimits } from "../core/limits";
-import { SES_CONFIG_SETS } from "../core/ses";
+import { isSesRegion, SES_REGION_IDS } from "../shared/regions";
 import { type SesIdentity, sesIdentityApi } from "../core/ses-identity";
 import { getWorkspaceProfile, SELF_SERVE_DOMAIN_CAP } from "../core/workspace-profile";
 import { isProtectedDomain } from "../core/protected-domains";
@@ -11,8 +11,9 @@ import { securityDb } from "../db/security/client";
 import { app } from "../db/security/schema";
 import type { Env } from "../env";
 import { writeAudit } from "../lib/auth/audit";
-import { type ConsoleActor, ConsoleError, uniqueViolation } from "./actor";
+import { type ConsoleActor, uniqueViolation } from "./actor";
 import { getApp } from "./apps";
+import { RelayError } from "../shared/errors";
 
 type DomainStatus = "pending" | "verified" | "failed";
 
@@ -21,21 +22,21 @@ const HOSTNAME = /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0
 // The URL host parser does the punycode; the character check keeps paths, ports and credentials out of it.
 function normaliseDomain(raw: string): string {
   const candidate = raw.trim().toLowerCase().replace(/\.$/, "");
-  if (/[\s/:@?#\\]/.test(candidate)) throw new ConsoleError(400, "invalid domain");
+  if (/[\s/:@?#\\]/.test(candidate)) throw new RelayError("invalid domain");
   let host: string;
   try {
     host = new URL(`http://${candidate}`).hostname;
   } catch {
-    throw new ConsoleError(400, "invalid domain");
+    throw new RelayError("invalid domain");
   }
-  if (!HOSTNAME.test(host)) throw new ConsoleError(400, "invalid domain");
+  if (!HOSTNAME.test(host)) throw new RelayError("invalid domain");
   return host;
 }
 
 function normaliseEmail(raw: string): string {
   const email = raw.trim().toLowerCase();
   const at = email.lastIndexOf("@");
-  if (at < 1 || !/^[^\s@]+$/.test(email.slice(0, at))) throw new ConsoleError(400, "invalid address");
+  if (at < 1 || !/^[^\s@]+$/.test(email.slice(0, at))) throw new RelayError("invalid address");
   return `${email.slice(0, at)}@${normaliseDomain(email.slice(at + 1))}`;
 }
 
@@ -109,20 +110,20 @@ export async function addDomain(env: Env, actor: ConsoleActor, input: { domain: 
   const domain = normaliseDomain(input.domain);
   const profile = await getWorkspaceProfile(env, actor.workspaceId);
   const sesRegion = input.sesRegion ?? profile.defaultSesRegion;
-  if (!Object.hasOwn(SES_CONFIG_SETS, sesRegion)) throw new ConsoleError(400, "unknown region");
-  if (sesRegion !== profile.defaultSesRegion && !actor.platformAdmin) throw new ConsoleError(403, "forbidden");
+  if (!isSesRegion(sesRegion)) throw new RelayError("unknown region");
+  if (sesRegion !== profile.defaultSesRegion && !actor.platformAdmin) throw new RelayError("forbidden");
 
   const ses = sesIdentityApi(env);
   if (!actor.platformAdmin) {
     if (profile.selfServe) {
       // shortcut: parallel addDomain calls can all pass this count and exceed the cap, add an atomic check if abuse appears
       const [{ n }] = await coreDb(env).select({ n: count() }).from(sendingDomain).where(eq(sendingDomain.workspaceId, actor.workspaceId));
-      if (n >= SELF_SERVE_DOMAIN_CAP) throw new ConsoleError(409, "domain limit reached");
+      if (n >= SELF_SERVE_DOMAIN_CAP) throw new RelayError("domain limit reached");
     }
-    if (await claimedByAnother(env, actor.workspaceId, domain)) throw new ConsoleError(409, "domain claimed");
+    if (await claimedByAnother(env, actor.workspaceId, domain)) throw new RelayError("domain claimed");
     // An identity can sit in any region of the shared SES account, so a squat elsewhere is still a claim.
-    for (const region of Object.keys(SES_CONFIG_SETS)) {
-      if (await ses.get(region, domain)) throw new ConsoleError(409, "domain registered");
+    for (const region of SES_REGION_IDS) {
+      if (await ses.get(region, domain)) throw new RelayError("domain registered");
     }
   }
 
@@ -134,7 +135,7 @@ export async function addDomain(env: Env, actor: ConsoleActor, input: { domain: 
       .values({ workspaceId: actor.workspaceId, domain, sesRegion, protected: isProtectedDomain(env, domain) })
       .returning({ id: sendingDomain.id });
   } catch (err) {
-    if (uniqueViolation(err, "sending_domain.domain")) throw new ConsoleError(409, "domain claimed");
+    if (uniqueViolation(err, "sending_domain.domain")) throw new RelayError("domain claimed");
     throw err;
   }
 
@@ -153,7 +154,7 @@ export async function addDomain(env: Env, actor: ConsoleActor, input: { domain: 
   } else {
     if (!actor.platformAdmin) {
       await removeRow();
-      throw new ConsoleError(409, "domain registered");
+      throw new RelayError("domain registered");
     }
     // Adopting an identity that already exists: read its real state now instead of waiting for Check now.
     await checkDomain(env, actor, row.id);
@@ -167,7 +168,7 @@ export async function checkDomain(env: Env, actor: ConsoleActor, id: string): Pr
     .select()
     .from(sendingDomain)
     .where(and(eq(sendingDomain.id, id), eq(sendingDomain.workspaceId, actor.workspaceId)));
-  if (!row) throw new ConsoleError(404, "not found");
+  if (!row) throw new RelayError("not found");
 
   const identity = await sesIdentityApi(env).get(row.sesRegion, row.domain);
   const status = statusOf(identity);
@@ -212,17 +213,17 @@ export async function addAddress(
     .select({ status: sendingDomain.status })
     .from(sendingDomain)
     .where(and(eq(sendingDomain.workspaceId, actor.workspaceId), eq(sendingDomain.domain, email.slice(email.indexOf("@") + 1))));
-  if (!owned) throw new ConsoleError(400, "address must use one of your domains");
+  if (!owned) throw new RelayError("address must use one of your domains");
   // A sender can go out before its domain verifies; anything received or read as a mailbox needs the domain verified.
   if (!actor.platformAdmin && input.kind !== "sender" && owned.status !== "verified") {
-    throw new ConsoleError(409, "domain not verified");
+    throw new RelayError("domain not verified");
   }
 
   let row: { id: string };
   try {
     row = await createAddress(env, { ...input, canSend: input.kind !== "inbox", workspaceId: actor.workspaceId, email });
   } catch (err) {
-    if (uniqueViolation(err, "address.email")) throw new ConsoleError(409, "address already exists");
+    if (uniqueViolation(err, "address.email")) throw new RelayError("address already exists");
     throw err;
   }
   await refreshWorkspaceLimits(env, actor.workspaceId);
@@ -237,12 +238,12 @@ export async function updateAddress(
 ): Promise<void> {
   // Sending follows kind, so canSend is never taken from the caller.
   const { displayName, replyTo } = patch;
-  if (!(await updateAddressRow(env, actor.workspaceId, id, { displayName, replyTo }))) throw new ConsoleError(404, "not found");
+  if (!(await updateAddressRow(env, actor.workspaceId, id, { displayName, replyTo }))) throw new RelayError("not found");
   await refreshWorkspaceLimits(env, actor.workspaceId);
 }
 
 export async function removeAddress(env: Env, actor: ConsoleActor, id: string): Promise<void> {
-  if (!(await deleteAddressRow(env, actor.workspaceId, id))) throw new ConsoleError(404, "not found");
+  if (!(await deleteAddressRow(env, actor.workspaceId, id))) throw new RelayError("not found");
   await refreshWorkspaceLimits(env, actor.workspaceId);
 }
 
@@ -304,7 +305,7 @@ export async function releaseStalePendingDomains(env: Env, now = Date.now()): Pr
 }
 
 export async function releaseDomain(env: Env, actor: ConsoleActor, id: string): Promise<void> {
-  if (!actor.platformAdmin) throw new ConsoleError(403, "forbidden");
+  if (!actor.platformAdmin) throw new RelayError("forbidden");
   const [row] = await coreDb(env)
     .select({
       id: sendingDomain.id,
@@ -318,22 +319,22 @@ export async function releaseDomain(env: Env, actor: ConsoleActor, id: string): 
     })
     .from(sendingDomain)
     .where(eq(sendingDomain.id, id));
-  if (!row) throw new ConsoleError(404, "not found");
-  if (row.protected) throw new ConsoleError(409, "domain is protected");
+  if (!row) throw new RelayError("not found");
+  if (row.protected) throw new RelayError("domain is protected");
   if (!releasable(row) || !(await releasePendingRow(env, row, actor.userId))) {
-    throw new ConsoleError(409, "domain cannot be released");
+    throw new RelayError("domain cannot be released");
   }
 }
 
 // Protection is the only guard on a live domain's rows: the sweep, release and delete paths all check it.
 export async function setDomainProtected(env: Env, actor: ConsoleActor, id: string, protectedNow: boolean): Promise<void> {
-  if (!actor.platformAdmin) throw new ConsoleError(403, "forbidden");
+  if (!actor.platformAdmin) throw new RelayError("forbidden");
   const [row] = await coreDb(env)
     .update(sendingDomain)
     .set({ protected: protectedNow, updatedAt: new Date() })
     .where(eq(sendingDomain.id, id))
     .returning({ workspaceId: sendingDomain.workspaceId });
-  if (!row) throw new ConsoleError(404, "not found");
+  if (!row) throw new RelayError("not found");
   await writeAudit(env, {
     action: protectedNow ? "domain.protect" : "domain.unprotect",
     actorUserId: actor.userId,
@@ -344,6 +345,6 @@ export async function setDomainProtected(env: Env, actor: ConsoleActor, id: stri
 
 export async function domainRow(env: Env, id: string) {
   const [row] = await coreDb(env).select().from(sendingDomain).where(eq(sendingDomain.id, id));
-  if (!row) throw new ConsoleError(404, "not found");
+  if (!row) throw new RelayError("not found");
   return row;
 }

@@ -7,9 +7,9 @@ import Mail from "lucide-react/icons/mail";
 import Megaphone from "lucide-react/icons/megaphone";
 import Settings from "lucide-react/icons/settings";
 import Shield from "lucide-react/icons/shield";
-import type { OrgRole } from "../../console/actor";
 import type { FileRouteTypes } from "../../routeTree.gen";
 import { allows } from "../../lib/auth/permissions";
+import { type OrgRole } from "../../shared/roles";
 
 type NavLeaf = {
   id: string;

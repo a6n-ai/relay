@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { newId } from "../src/lib/ids";
+import { newId } from "../src/shared/ids";
 
 describe("newId", () => {
   it("returns prefix_ followed by 12 url-safe characters", () => {

@@ -6,8 +6,9 @@ import { AuthButton, AuthCard, AuthInput, AuthText } from "../components/auth-ca
 import { FormError } from "../components/page/form-parts";
 import { authOptionsFn, safeRedirect } from "../console/shell.fns";
 import { signInErrorText } from "../lib/auth/google";
+import { PASSWORD_MAX } from "../shared/limits";
+import { SITE_ORIGIN } from "../shared/site";
 
-const SITE = "https://relay.a6n.ai";
 const TITLE = "Sign in to Relay";
 const DESCRIPTION = "Sign in to Relay with a one-time code sent to your email, a password, or Google.";
 
@@ -20,14 +21,14 @@ export const Route = createFileRoute("/sign-in")({
       { property: "og:site_name", content: "Relay" },
       { property: "og:title", content: TITLE },
       { property: "og:description", content: DESCRIPTION },
-      { property: "og:url", content: `${SITE}/sign-in` },
-      { property: "og:image", content: `${SITE}/landing/og.png` },
+      { property: "og:url", content: `${SITE_ORIGIN}/sign-in` },
+      { property: "og:image", content: `${SITE_ORIGIN}/landing/og.png` },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: TITLE },
       { name: "twitter:description", content: DESCRIPTION },
-      { name: "twitter:image", content: `${SITE}/landing/og.png` },
+      { name: "twitter:image", content: `${SITE_ORIGIN}/landing/og.png` },
     ],
-    links: [{ rel: "canonical", href: `${SITE}/sign-in` }],
+    links: [{ rel: "canonical", href: `${SITE_ORIGIN}/sign-in` }],
   }),
   validateSearch: (search: Record<string, unknown>): { redirect?: string; error?: string } => ({
     ...(typeof search.redirect === "string" ? { redirect: search.redirect } : {}),
@@ -203,7 +204,7 @@ function SignIn() {
                 autoComplete="current-password"
                 placeholder="Password"
                 required
-                maxLength={128}
+                maxLength={PASSWORD_MAX}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />

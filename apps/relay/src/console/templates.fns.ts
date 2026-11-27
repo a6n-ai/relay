@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeaders } from "@tanstack/react-start/server";
 import { env } from "cloudflare:workers";
 import { z } from "zod";
-import { ConsoleError, requireActor, toResponseError } from "./actor";
+import { requireActor, toResponseError } from "./actor";
 import {
   createTemplateFor,
   deleteTemplateFor,
@@ -12,6 +12,7 @@ import {
   updateTemplateFor,
 } from "./templates";
 import { id, templateInput, templatePatch, validate } from "./schemas";
+import { RelayError } from "../shared/errors";
 
 const READ = { permission: { template: ["read"] } };
 const WRITE = { permission: { template: ["write"] }, write: true };
@@ -24,7 +25,7 @@ export const fetchTemplates = createServerFn({ method: "GET" })
       const actor = await requireActor(env, getRequestHeaders(), READ);
       return await listTemplatesFor(env, actor, data.appId, data.cursor);
     } catch (err) {
-      if (err instanceof ConsoleError && err.status === 403) return null;
+      if (err instanceof RelayError && err.status === 403) return null;
       toResponseError(err);
     }
   });
@@ -36,7 +37,7 @@ export const fetchTemplate = createServerFn({ method: "GET" })
       const actor = await requireActor(env, getRequestHeaders(), READ);
       return await getTemplateFor(env, actor, data.id);
     } catch (err) {
-      if (err instanceof ConsoleError && err.status === 403) return null;
+      if (err instanceof RelayError && err.status === 403) return null;
       toResponseError(err);
     }
   });
@@ -48,7 +49,7 @@ export const previewTemplateFn = createServerFn({ method: "GET" })
       const actor = await requireActor(env, getRequestHeaders(), READ);
       return await previewTemplateFor(env, actor, data.id);
     } catch (err) {
-      if (err instanceof ConsoleError && err.status === 403) return null;
+      if (err instanceof RelayError && err.status === 403) return null;
       toResponseError(err);
     }
   });

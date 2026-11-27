@@ -6,13 +6,12 @@ import { requirePlatformAdmin, toResponseError } from "./actor";
 import { AUDIENCE_BINDINGS } from "../core/audience-hook";
 import {
   listWorkspaces,
-  MAX_INVITES_PER_DAY,
-  MAX_MONTHLY_QUOTA,
   setAudienceBindingFor,
   setWorkspaceInviteCap,
   setWorkspaceQuota, setWorkspaceRegion,
   setWorkspaceStatus,
 } from "./admin";
+import { MAX_INVITES_PER_DAY, MAX_MONTHLY_QUOTA } from "../shared/limits";
 import { validate } from "./schemas";
 
 export const fetchWorkspaces = createServerFn({ method: "GET" }).handler(async () => {

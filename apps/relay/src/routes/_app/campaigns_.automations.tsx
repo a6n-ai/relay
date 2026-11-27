@@ -21,7 +21,7 @@ import { fetchApps } from "../../console/apps.fns";
 import { deleteAutomationFn, enableAutomationFn, fetchAutomations } from "../../console/automations.fns";
 import { fetchCampaignOptions } from "../../console/campaigns.fns";
 import { fetchTemplates } from "../../console/templates.fns";
-import type { AutomationView } from "../../do/automations";
+import { type AutomationView } from "../../shared/views";
 
 type AutomationsSearch = { appId?: string; status?: "on" | "off" };
 

@@ -1,30 +1,32 @@
 import { membersCsvResponse } from "../core/lists";
 import { parseContactsCsv } from "../core/csv";
 import { clientFor } from "../core/messages";
-import type { ImportResult, ListInput, ListView, MemberInput, MemberView } from "../do/lists";
+import type { ImportResult, ListInput, MemberInput } from "../do/lists";
 import { decodeCursor } from "../do/console-reads";
 import type { Env } from "../env";
 import { writeAudit } from "../lib/auth/audit";
 import { allows } from "../lib/auth/permissions";
-import { ConsoleError, type ConsoleActor } from "./actor";
+import { type ConsoleActor } from "./actor";
 import { getApp } from "./apps";
+import { RelayError } from "../shared/errors";
+import { type ListView, type MemberView } from "../shared/views";
 
 const READ = { list: ["read"] };
 const WRITE = { list: ["write"] };
 const IMPORT = { list: ["import"] };
 
 function requireRead(actor: ConsoleActor): void {
-  if (!allows(actor.roles, READ)) throw new ConsoleError(403, "forbidden");
+  if (!allows(actor.roles, READ)) throw new RelayError("forbidden");
 }
 
 function requireWrite(actor: ConsoleActor): void {
-  if (!allows(actor.roles, WRITE)) throw new ConsoleError(403, "forbidden");
-  if (actor.workspaceStatus === "suspended") throw new ConsoleError(403, "workspace suspended");
+  if (!allows(actor.roles, WRITE)) throw new RelayError("forbidden");
+  if (actor.workspaceStatus === "suspended") throw new RelayError("workspace suspended");
 }
 
 function requireImport(actor: ConsoleActor): void {
-  if (!allows(actor.roles, IMPORT)) throw new ConsoleError(403, "forbidden");
-  if (actor.workspaceStatus === "suspended") throw new ConsoleError(403, "workspace suspended");
+  if (!allows(actor.roles, IMPORT)) throw new RelayError("forbidden");
+  if (actor.workspaceStatus === "suspended") throw new RelayError("workspace suspended");
 }
 
 export async function listListsFor(env: Env, actor: ConsoleActor, appId: string): Promise<ListView[]> {
@@ -50,7 +52,7 @@ export async function createListFor(env: Env, actor: ConsoleActor, appId: string
 export async function updateListFor(env: Env, actor: ConsoleActor, id: string, patch: Partial<ListInput>): Promise<ListView> {
   requireWrite(actor);
   const list = await clientFor(env, actor.workspaceId).updateList(actor.workspaceId, id, patch);
-  if (!list) throw new ConsoleError(404, "not found");
+  if (!list) throw new RelayError("not found");
   await writeAudit(env, { action: "list.update", actorUserId: actor.userId, workspaceId: actor.workspaceId, target: id });
   return list;
 }
@@ -58,8 +60,8 @@ export async function updateListFor(env: Env, actor: ConsoleActor, id: string, p
 export async function deleteListFor(env: Env, actor: ConsoleActor, id: string): Promise<void> {
   requireWrite(actor);
   const outcome = await clientFor(env, actor.workspaceId).deleteList(actor.workspaceId, id);
-  if (outcome === "missing") throw new ConsoleError(404, "not found");
-  if (outcome === "in_use") throw new ConsoleError(409, "list in use");
+  if (outcome === "missing") throw new RelayError("not found");
+  if (outcome === "in_use") throw new RelayError("list in use");
   await writeAudit(env, { action: "list.delete", actorUserId: actor.userId, workspaceId: actor.workspaceId, target: id });
 }
 
@@ -70,9 +72,9 @@ export async function listMembersFor(
   cursor?: string,
 ): Promise<{ rows: MemberView[]; nextCursor: string | null }> {
   requireRead(actor);
-  if (cursor !== undefined && !decodeCursor(cursor)) throw new ConsoleError(400, "invalid cursor");
+  if (cursor !== undefined && !decodeCursor(cursor)) throw new RelayError("invalid cursor");
   const page = await clientFor(env, actor.workspaceId).listMembers(actor.workspaceId, listId, cursor);
-  if (!page) throw new ConsoleError(404, "not found");
+  if (!page) throw new RelayError("not found");
   return { rows: page.rows, nextCursor: page.nextCursor };
 }
 
@@ -80,8 +82,8 @@ export async function listMembersFor(
 export async function addMemberFor(env: Env, actor: ConsoleActor, listId: string, input: MemberInput) {
   requireWrite(actor);
   const outcome = await clientFor(env, actor.workspaceId).addMember(actor.workspaceId, listId, input);
-  if (outcome === "missing") throw new ConsoleError(404, "not found");
-  if (outcome === "suppressed") throw new ConsoleError(409, "address suppressed");
+  if (outcome === "missing") throw new RelayError("not found");
+  if (outcome === "suppressed") throw new RelayError("address suppressed");
   if (outcome === "added") {
     await writeAudit(env, { action: "list.member.add", actorUserId: actor.userId, workspaceId: actor.workspaceId, target: listId });
   }
@@ -95,7 +97,7 @@ export async function updateContactFor(
 ): Promise<void> {
   requireWrite(actor);
   const updated = await clientFor(env, actor.workspaceId).updateMember(actor.workspaceId, input.listId, input.contactId, input);
-  if (!updated) throw new ConsoleError(404, "not found");
+  if (!updated) throw new RelayError("not found");
   await writeAudit(env, {
     action: "list.member.update",
     actorUserId: actor.userId,
@@ -108,7 +110,7 @@ export async function updateContactFor(
 export async function removeMemberFor(env: Env, actor: ConsoleActor, listId: string, memberId: string): Promise<void> {
   requireWrite(actor);
   const removed = await clientFor(env, actor.workspaceId).removeMember(actor.workspaceId, listId, memberId);
-  if (!removed) throw new ConsoleError(404, "not found");
+  if (!removed) throw new RelayError("not found");
   await writeAudit(env, {
     action: "list.member.remove",
     actorUserId: actor.userId,
@@ -129,10 +131,10 @@ export async function importCsvFor(
   try {
     parsed = parseContactsCsv(input.csv);
   } catch (err) {
-    throw new ConsoleError(400, err instanceof Error ? err.message : "invalid csv");
+    throw new RelayError("invalid input", 400, err instanceof Error ? err.message : "invalid csv");
   }
   const result = await clientFor(env, actor.workspaceId).importMembers(actor.workspaceId, input.listId, parsed.rows);
-  if (!result) throw new ConsoleError(404, "not found");
+  if (!result) throw new RelayError("not found");
   const counts = { ...result, invalid: parsed.invalid, duplicates: parsed.duplicates };
   await writeAudit(env, {
     action: "list.import",
@@ -152,6 +154,6 @@ export async function exportMembersFor(env: Env, actor: ConsoleActor, listId: st
     actor.workspaceId,
     listId,
     () => writeAudit(env, { action: "list.export", actorUserId: actor.userId, workspaceId: actor.workspaceId, target: listId }),
-    () => new ConsoleError(404, "not found"),
+    () => new RelayError("not found"),
   );
 }

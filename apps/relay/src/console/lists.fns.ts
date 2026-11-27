@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeaders } from "@tanstack/react-start/server";
 import { env } from "cloudflare:workers";
 import { z } from "zod";
-import { ConsoleError, requireActor, toResponseError } from "./actor";
+import { requireActor, toResponseError } from "./actor";
 import { id, listInput, listPatch, memberInput, validate } from "./schemas";
 import {
   addMemberFor,
@@ -15,6 +15,8 @@ import {
   updateContactFor,
   updateListFor,
 } from "./lists";
+import { RelayError } from "../shared/errors";
+import { NAME_MAX } from "../shared/limits";
 
 const READ = { permission: { list: ["read"] } };
 const WRITE = { permission: { list: ["write"] }, write: true };
@@ -29,8 +31,8 @@ export const fetchLists = createServerFn({ method: "GET" })
       const actor = await requireActor(env, getRequestHeaders(), READ);
       return await listListsFor(env, actor, data.appId);
     } catch (err) {
-      if (err instanceof ConsoleError && err.status === 403) return null;
-      if (err instanceof ConsoleError && err.status === 404) return { missing: true as const };
+      if (err instanceof RelayError && err.status === 403) return null;
+      if (err instanceof RelayError && err.status === 404) return { missing: true as const };
       toResponseError(err);
     }
   });
@@ -42,8 +44,8 @@ export const fetchListMembers = createServerFn({ method: "GET" })
       const actor = await requireActor(env, getRequestHeaders(), READ);
       return await listMembersFor(env, actor, data.listId, data.cursor);
     } catch (err) {
-      if (err instanceof ConsoleError && err.status === 403) return null;
-      if (err instanceof ConsoleError && err.status === 404) return { missing: true as const };
+      if (err instanceof RelayError && err.status === 403) return null;
+      if (err instanceof RelayError && err.status === 404) return { missing: true as const };
       toResponseError(err);
     }
   });
@@ -115,7 +117,7 @@ export const removeMemberFn = createServerFn({ method: "POST" })
   });
 
 export const updateContactFn = createServerFn({ method: "POST" })
-  .validator(validate(z.object({ listId: id, contactId: id, firstName: z.string().trim().max(80), lastName: z.string().trim().max(80) })))
+  .validator(validate(z.object({ listId: id, contactId: id, firstName: z.string().trim().max(NAME_MAX), lastName: z.string().trim().max(NAME_MAX) })))
   .handler(async ({ data }) => {
     try {
       const actor = await requireActor(env, getRequestHeaders(), WRITE);

@@ -3,96 +3,31 @@ import { and, eq, gte, inArray, isNotNull, isNull, lt, ne, or, sql, type SQLWrap
 import { drizzle, type DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
 import { brandDomain, campaignProblems, IMPLIED_CONSENT_MS, type CampaignProblem } from "../core/campaigns";
 import { CHUNK_SIZE, ENQUEUE_BATCH } from "../core/campaign-workflow";
-import { contactValues, fillUnsubscribe, hasMergeToken, MERGE_SAMPLES, renderMerge, type MergeData } from "../core/merge";
+import { contactValues, fillUnsubscribe, hasMergeToken, MERGE_SAMPLES, renderMerge, type MergeData } from "../shared/merge";
 import { sesSendRate } from "../core/send-rate";
 import type { SesAttachment, SesSendRequest } from "../core/ses";
-import { DEFAULT_MONTHLY_QUOTA, LIMITS_TTL_MS, loadWorkspaceLimits, SENDER_RETRY_MS, type WorkspaceLimits } from "../core/limits";
-import { resolvedSendSchema, type ResolvedSendInput, type Stream, type SuppressionReason } from "../core/send-input";
+import { LIMITS_TTL_MS, loadWorkspaceLimits, SENDER_RETRY_MS, type WorkspaceLimits } from "../core/limits";
+import { resolvedSendSchema, type ResolvedSendInput } from "../core/send-input";
 import type { SesEventJob } from "../core/ses-events";
 import { listUnsubscribeHeaders, unsubscribeToken, unsubscribeUrl } from "../core/unsubscribe";
 import { recordDoState } from "../core/workspace-profile";
 import { utcDay } from "../core/usage";
-import { decryptSecret, encryptSecret, KEY_ERROR, newWebhookSecret, signBody } from "../core/webhook-crypto";
+import { decryptSecret, encryptSecret, newWebhookSecret, signBody } from "../core/webhook-crypto";
 import { webhookBody, webhookHeaders } from "../core/mailbox-received";
 import { deleteFailureRows, deleteHistoryRows, detachDomainSenders, domainUsage, failureBatch, historyBatch, rawKeyInUse } from "./domain-cleanup";
 import { MAX_WEBHOOK_ATTEMPTS, webhookRetryDelaySeconds, type WebhookClaim, type WebhookOutcome } from "../core/webhook-consumer";
 import { isPublicWebhookUrl, type WebhookInput, type WebhookPatch, type WebhookView } from "../core/webhooks";
 import type { Env, InboundJob } from "../env";
-import { newId } from "../lib/ids";
-import {
-  attachmentViews,
-  type DeliveryView,
-  getInboundFailureRow,
-  listDeliveryRows,
-  listInboundFailureRows,
-  listMessageRows,
-  listSuppressionRows,
-  messagesByKeyRows,
-  type MessageByKey,
-  type FailureView,
-  type SuppressionView,
-  messageBody,
-  readMessageDetail,
-  readMessageFile,
-  type MessageAccess,
-  type MessageBody,
-  type MessageFile,
-  type MessageDetail,
-  type MessageQuery,
-  type MessageSummary,
-} from "./console-reads";
+import { newId } from "../shared/ids";
+import { attachmentViews, getInboundFailureRow, listDeliveryRows, listInboundFailureRows, listMessageRows, listSuppressionRows, messagesByKeyRows, type MessageByKey, type FailureView, type SuppressionView, messageBody, readMessageDetail, readMessageFile, type MessageAccess, type MessageBody, type MessageFile, type MessageDetail, type MessageQuery, type MessageSummary } from "./console-reads";
 import { storeInbound, writeInboundFailure, type InboundDeps, type InboundResult } from "./inbound";
 import * as schema from "./client-schema";
 import { describeError } from "../core/log";
-import {
-  bumpCampaign,
-  type CampaignStats,
-  campaignStatsRow,
-  statsOf,
-  createCampaignRow,
-  deleteCampaignRow,
-  getCampaignRow,
-  listCampaignRows,
-  previewAudienceRows,
-  recipientQuery,
-  updateCampaignRow,
-  type AudiencePreview,
-  type CampaignPatch,
-  type CampaignSummary,
-  type CampaignView,
-} from "./campaigns";
+import { bumpCampaign, campaignStatsRow, statsOf, createCampaignRow, deleteCampaignRow, getCampaignRow, listCampaignRows, previewAudienceRows, recipientQuery, updateCampaignRow, type CampaignPatch, type CampaignSummary } from "./campaigns";
 import { CLIENT_MIGRATIONS, migrate } from "./migrations";
-import {
-  addMemberRow,
-  createListRow,
-  deleteListRow,
-  listListRows,
-  listMemberRows,
-  exportMemberRows,
-  IMPORT_CHUNK,
-  importMemberRow,
-  removeMemberRow,
-  updateMemberRow,
-  updateListRow,
-  type ImportResult,
-  type ListInput,
-  type ListView,
-  type MemberInput,
-  type MemberView,
-} from "./lists";
+import { addMemberRow, createListRow, deleteListRow, listListRows, listMemberRows, exportMemberRows, IMPORT_CHUNK, importMemberRow, removeMemberRow, updateMemberRow, updateListRow, type ImportResult, type ListInput, type MemberInput } from "./lists";
 import { maskEmails } from "../core/mask-emails";
-import {
-  createTemplateRow,
-  deleteTemplateRow,
-  getTemplateRow,
-  listTemplateRows,
-  templateOverrideRows,
-  updateTemplateRow,
-  type TemplateInput,
-  type RenderedTemplate,
-  type TemplateOverride,
-  type TemplateView,
-} from "./templates";
+import { createTemplateRow, deleteTemplateRow, getTemplateRow, listTemplateRows, templateOverrideRows, updateTemplateRow, type TemplateInput, type RenderedTemplate, type TemplateOverride } from "./templates";
 import { deleteWebhookRow, failDeliveryRow, listWebhookRows, toWebhookView, updateWebhookRow, type WebhookRow } from "./webhooks";
 import {
   audienceCallFor,
@@ -104,20 +39,11 @@ import {
   type AudienceHookView,
 } from "./audience-hook";
 import type { AudiencePage, HookCall } from "../core/audience-hook";
-import {
-  createAutomationRow,
-  deleteAutomationRow,
-  earliestDue,
-  enrolAutomations,
-  listAutomationRows,
-  nextAutomationAlarm,
-  runDueAutomationRows,
-  setAutomationEnabledRow,
-  updateAutomationRow,
-  type AutomationInput,
-  type AutomationPatch,
-  type AutomationView,
-} from "./automations";
+import { createAutomationRow, deleteAutomationRow, earliestDue, enrolAutomations, listAutomationRows, nextAutomationAlarm, runDueAutomationRows, setAutomationEnabledRow, updateAutomationRow, type AutomationInput, type AutomationPatch } from "./automations";
+import { RelayError, codeOf } from "../shared/errors";
+import { type DeliveryView, type CampaignStats, type AudiencePreview, type CampaignView, type ListView, type MemberView, type TemplateView, type AutomationView } from "../shared/views";
+import { type Stream, type SuppressionReason } from "../shared/mail";
+import { DAY_MS, DEFAULT_MONTHLY_QUOTA } from "../shared/limits";
 
 export type AttachmentView = {
   id: string;
@@ -149,8 +75,8 @@ const CLAIM_LEASE_MS = 60_000;
 const SWEEP_INTERVAL_MS = 600_000;
 // Longer than the largest retry backoff, so a row still waiting on a retry is never re-sent.
 const STALE_MS = 1_200_000;
-const EXPIRE_MS = 86_400_000;
-const ATTACHMENT_TTL_MS = 7 * 86_400_000;
+const EXPIRE_MS = DAY_MS;
+const ATTACHMENT_TTL_MS = 7 * DAY_MS;
 const SWEEP_BATCH = 500;
 const SWEEP_CHUNK = 100;
 
@@ -201,9 +127,9 @@ export class ClientDO extends DurableObject<Env> {
 
   private async create(workspaceId: string, data: ResolvedSendInput): Promise<SendResult> {
     const limits = await this.limits(workspaceId, { forSender: data.from });
-    if (limits.status === "suspended") throw new Error("workspace_suspended");
+    if (limits.status === "suspended") throw new RelayError("workspace_suspended");
     const sender = limits.senders[data.from];
-    if (!sender) throw new Error("sender_not_verified");
+    if (!sender) throw new RelayError("sender_not_verified");
     const id = newId("msg");
     const preSuppressed = this.suppressed(data.to, data.stream, data.from);
     // shortcut: an R2 object orphaned by a crash between the put and the insert is never swept, add a sweeper when storage cost shows up.
@@ -228,7 +154,7 @@ export class ClientDO extends DurableObject<Env> {
     try {
       this.ctx.storage.transactionSync(() => {
         // Counted in the same synchronous transaction as the insert, so concurrent sends cannot both take the last slot.
-        if (limits.monthlyQuota > 0 && this.monthUsed(now) >= limits.monthlyQuota) throw new Error("quota_exceeded");
+        if (limits.monthlyQuota > 0 && this.monthUsed(now) >= limits.monthlyQuota) throw new RelayError("quota_exceeded");
         // Re-checked here: an unsubscribe can land during the R2 put above.
         suppressed = this.suppressed(data.to, data.stream, data.from);
         this.db
@@ -677,7 +603,7 @@ export class ClientDO extends DurableObject<Env> {
       .one();
     const limits = await this.limits(workspaceId, { forSender: campaign.fromEmail ?? undefined });
     // No snapshot yet: throw so the Workflow step retries. A missing snapshot must not look like a revoked sender.
-    if (limits.fetchedAt === 0) throw new Error("limits unavailable");
+    if (limits.fetchedAt === 0) throw new RelayError("limits unavailable");
     if (limits.status === "suspended") {
       this.ctx.storage.transactionSync(() => setPaused("workspace_suspended"));
       return stopped();
@@ -785,7 +711,7 @@ export class ClientDO extends DurableObject<Env> {
     await this.ready(workspaceId);
     const c = getCampaignRow(this.ctx.storage.sql, id);
     if (!c) return "missing";
-    if (!c.fromEmail) throw new Error("sender_not_verified");
+    if (!c.fromEmail) throw new RelayError("sender_not_verified");
     const values = { ...MERGE_SAMPLES, "contact.email": to, postal_address: postalAddress ?? MERGE_SAMPLES.postal_address };
     return this.send(workspaceId, {
       appId: c.appId,
@@ -896,7 +822,7 @@ export class ClientDO extends DurableObject<Env> {
       secret = await decryptSecret(this.env.WEBHOOK_SECRET_KEY, hook.secretEnc, `${workspaceId}:${hook.id}`);
     } catch (err) {
       // A missing key is a config problem: throw so the consumer retries without spending an attempt.
-      if (err instanceof Error && err.message === KEY_ERROR) throw err;
+      if (codeOf(err) === "webhook key not configured") throw err;
       this.failDelivery(deliveryId, "Secret unreadable", now);
       return { kind: "skip" };
     }
@@ -1746,7 +1672,7 @@ export class ClientDO extends DurableObject<Env> {
     if (ingested > n) return { state: "more", enqueued: 0, paceMs: 0 };
     if (ingested < n) throw new Error("page out of order");
     const limits = await this.limits(workspaceId, { forSender: campaign.fromEmail ?? undefined });
-    if (limits.fetchedAt === 0) throw new Error("limits unavailable");
+    if (limits.fetchedAt === 0) throw new RelayError("limits unavailable");
     if (limits.status === "suspended") {
       this.ctx.storage.transactionSync(() => setPaused("workspace_suspended"));
       return stopped();

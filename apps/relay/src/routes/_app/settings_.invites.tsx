@@ -8,7 +8,7 @@ import { DeniedState, deniedReason } from "../../components/denied-state";
 import { EmptyState } from "../../components/page/empty-state";
 import { ListSkeleton } from "../../components/page/page-skeleton";
 import { ResourceTable } from "../../components/resource-table";
-import { type MemberRole, ROLE_LABEL } from "../../components/role-select";
+import { type OrgRole, ROLE_LABEL } from "../../shared/roles";
 import { confirmAction } from "../../components/run-action";
 import { InviteForm } from "../../components/settings/invite-form";
 import { SuspendedNotice } from "../../components/settings/suspended-notice";
@@ -72,7 +72,7 @@ function InvitesPage() {
       <ResourceTable
         columns={[
           { header: "Email", kind: "mono", cell: (i) => i.email },
-          { header: "Role", secondary: true, cell: (i) => ROLE_LABEL[i.role as MemberRole] ?? i.role },
+          { header: "Role", secondary: true, cell: (i) => ROLE_LABEL[i.role as OrgRole] ?? i.role },
           { header: "Status", cell: (i) => <InviteStatus status={i.status} /> },
           { header: "Expires", secondary: true, cell: (i) => formatDate(i.expiresAt) },
         ]}

@@ -1,4 +1,4 @@
-import { SES_CONFIG_SETS } from "../core/ses";
+import { isSesRegion } from "../shared/regions";
 import { and, asc, count, eq, gte, sql } from "drizzle-orm";
 import { INBOUND_GRACE_MS } from "../core/addresses";
 import { clientFor } from "../core/messages";
@@ -11,12 +11,11 @@ import { securityDb } from "../db/security/client";
 import { app, member, workspace } from "../db/security/schema";
 import type { Env } from "../env";
 import { writeAudit } from "../lib/auth/audit";
-import { ConsoleError } from "./actor";
 import { INVITES_PER_DAY } from "./members";
+import { RelayError } from "../shared/errors";
+import { MAX_INVITES_PER_DAY, MAX_MONTHLY_QUOTA } from "../shared/limits";
 
 // shortcut: 100M caps a typo, not a plan; no product number yet, so revisit with the first real quota request.
-export const MAX_MONTHLY_QUOTA = 100_000_000;
-export const MAX_INVITES_PER_DAY = 10_000;
 
 type PlatformAdmin = { userId: string };
 
@@ -73,7 +72,7 @@ export async function listWorkspaces(env: Env, now = Date.now()) {
 
 async function requireWorkspace(env: Env, workspaceId: string): Promise<void> {
   const [ws] = await securityDb(env).select({ id: workspace.id }).from(workspace).where(eq(workspace.id, workspaceId));
-  if (!ws) throw new ConsoleError(404, "not found");
+  if (!ws) throw new RelayError("not found");
 }
 
 export async function setWorkspaceStatus(
@@ -92,7 +91,7 @@ export async function setWorkspaceStatus(
     })
     .where(eq(workspace.id, workspaceId))
     .returning({ id: workspace.id });
-  if (rows.length === 0) throw new ConsoleError(404, "not found");
+  if (rows.length === 0) throw new RelayError("not found");
   await writeAudit(env, {
     action: status === "suspended" ? "workspace.suspend" : "workspace.unsuspend",
     actorUserId: admin.userId,
@@ -104,7 +103,7 @@ export async function setWorkspaceStatus(
 
 // Null in the profile means the default (INVITES_PER_DAY); this only raises or lowers it for one workspace.
 export async function setWorkspaceInviteCap(env: Env, admin: PlatformAdmin, workspaceId: string, cap: number): Promise<void> {
-  if (!Number.isInteger(cap) || cap < 1 || cap > MAX_INVITES_PER_DAY) throw new ConsoleError(400, "invalid input");
+  if (!Number.isInteger(cap) || cap < 1 || cap > MAX_INVITES_PER_DAY) throw new RelayError("invalid input");
   await requireWorkspace(env, workspaceId);
   await ensureWorkspaceProfile(env, workspaceId);
   await coreDb(env)
@@ -116,7 +115,7 @@ export async function setWorkspaceInviteCap(env: Env, admin: PlatformAdmin, work
 
 // The region new sending domains in this workspace use. Existing domains keep the region they were added with.
 export async function setWorkspaceRegion(env: Env, admin: PlatformAdmin, workspaceId: string, region: string): Promise<void> {
-  if (!Object.hasOwn(SES_CONFIG_SETS, region)) throw new ConsoleError(400, "unknown region");
+  if (!isSesRegion(region)) throw new RelayError("unknown region");
   await requireWorkspace(env, workspaceId);
   await ensureWorkspaceProfile(env, workspaceId);
   await coreDb(env)
@@ -128,7 +127,7 @@ export async function setWorkspaceRegion(env: Env, admin: PlatformAdmin, workspa
 
 // quota 0 means unlimited, matching ClientDO.
 export async function setWorkspaceQuota(env: Env, admin: PlatformAdmin, workspaceId: string, quota: number): Promise<void> {
-  if (!Number.isInteger(quota) || quota < 0 || quota > MAX_MONTHLY_QUOTA) throw new ConsoleError(400, "invalid quota");
+  if (!Number.isInteger(quota) || quota < 0 || quota > MAX_MONTHLY_QUOTA) throw new RelayError("invalid quota");
   await requireWorkspace(env, workspaceId);
   await ensureWorkspaceProfile(env, workspaceId);
   await coreDb(env)
@@ -151,7 +150,7 @@ export async function setAudienceBindingFor(
     .select({ id: app.id })
     .from(app)
     .where(and(eq(app.id, appId), eq(app.workspaceId, workspaceId)));
-  if (!row) throw new ConsoleError(404, "not found");
+  if (!row) throw new RelayError("not found");
   const result = await clientFor(env, workspaceId).setAudienceHook(workspaceId, appId, { kind: "binding", binding });
   await writeAudit(env, { action: "app.audience_hook.set", actorUserId: admin.userId, workspaceId, target: appId, data: { appId } });
   return result;

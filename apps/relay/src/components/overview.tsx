@@ -4,7 +4,6 @@ import { Link } from "@tanstack/react-router";
 import Globe from "lucide-react/icons/globe";
 import LayoutGrid from "lucide-react/icons/layout-grid";
 import UserPlus from "lucide-react/icons/user-plus";
-import type { Shell } from "../console/shell";
 import type { fetchOverview } from "../console/overview.fns";
 import { DeniedState, deniedReason } from "./denied-state";
 import { MeterBar } from "./meter-bar";
@@ -12,6 +11,7 @@ import { Hint, SectionTitle } from "./page/text";
 import { createItems } from "./shell/nav";
 import { PageHeader } from "./shell/page-header";
 import { StatTile } from "./stat-tile";
+import { type Shell } from "../shared/views";
 
 type OverviewData = NonNullable<Awaited<ReturnType<typeof fetchOverview>>>;
 

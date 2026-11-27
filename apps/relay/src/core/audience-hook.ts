@@ -4,16 +4,15 @@ import type { Env } from "../env";
 import { mergeDataSchema } from "./send-input";
 import { writeAudit } from "../lib/auth/audit";
 import type { KeyScope } from "./api-keys";
-import { ApiError } from "./api-error";
 import { clientFor } from "./messages";
-import { KEY_ERROR } from "./webhook-crypto";
 import { httpsUrl, isPublicWebhookUrl } from "./webhooks";
+import { RelayError, codeOf, type ErrorCode } from "../shared/errors";
 
 export const AUDIENCE_BINDINGS = ["TIFFIN_AUDIENCE"] as const;
 export const HOOK_PAGE_LIMIT = 500;
 export const HOOK_RESPONSE_CAP = 1_000_000;
 const HOOK_TIMEOUT_MS = 15_000;
-export const AUDIENCE_FAILED = "audience_failed";
+export const AUDIENCE_FAILED = "audience_failed" satisfies ErrorCode;
 
 /**
  * Hook protocol (v1).
@@ -120,7 +119,7 @@ export async function fetchAudiencePage(env: Env, call: HookCall): Promise<Audie
     redirect: "manual",
     signal: AbortSignal.timeout(HOOK_TIMEOUT_MS),
   });
-  if (res.status >= 500 || res.status === 429) throw new Error("audience hook unavailable");
+  if (res.status >= 500 || res.status === 429) throw new RelayError("audience hook unavailable");
   if (res.status < 200 || res.status >= 300) throw new NonRetryableError(AUDIENCE_FAILED);
   const declared = Number(res.headers.get("content-length") ?? 0);
   if (declared > HOOK_RESPONSE_CAP) throw new NonRetryableError(AUDIENCE_FAILED);
@@ -139,18 +138,18 @@ export async function fetchAudiencePage(env: Env, call: HookCall): Promise<Audie
 // Keys set https hooks only. A binding names a Worker on this deployment, so a key never sets or removes one.
 async function guardBinding(env: Env, scope: KeyScope): Promise<void> {
   const hook = await clientFor(env, scope.workspaceId).getAudienceHook(scope.workspaceId, scope.appId);
-  if (hook?.kind === "binding") throw new ApiError(403, "hook managed by platform admin");
+  if (hook?.kind === "binding") throw new RelayError("hook managed by platform admin");
 }
 
 export async function setAudienceHookForScope(env: Env, scope: KeyScope, input: unknown): Promise<{ secret: string | null }> {
   const parsed = hookInputSchema.safeParse(input);
-  if (!parsed.success) throw new ApiError(400, "invalid input");
+  if (!parsed.success) throw new RelayError("invalid input");
   await guardBinding(env, scope);
   let result: { secret: string | null };
   try {
     result = await clientFor(env, scope.workspaceId).setAudienceHook(scope.workspaceId, scope.appId, { kind: "https", ...parsed.data });
   } catch (err) {
-    if (err instanceof Error && err.message === KEY_ERROR) throw new ApiError(503, "audience hook unavailable");
+    if (codeOf(err) === "webhook key not configured") throw new RelayError("audience hook unavailable");
     throw err;
   }
   await writeAudit(env, { action: "app.audience_hook.set", actorUserId: null, workspaceId: scope.workspaceId, target: scope.appId, data: { keyId: scope.keyId, appId: scope.appId } });
@@ -165,6 +164,6 @@ export async function getAudienceHookForScope(env: Env, scope: KeyScope) {
 
 export async function deleteAudienceHookForScope(env: Env, scope: KeyScope): Promise<void> {
   await guardBinding(env, scope);
-  if (!(await clientFor(env, scope.workspaceId).deleteAudienceHook(scope.workspaceId, scope.appId))) throw new ApiError(404, "not found");
+  if (!(await clientFor(env, scope.workspaceId).deleteAudienceHook(scope.workspaceId, scope.appId))) throw new RelayError("not found");
   await writeAudit(env, { action: "app.audience_hook.delete", actorUserId: null, workspaceId: scope.workspaceId, target: scope.appId, data: { keyId: scope.keyId, appId: scope.appId } });
 }

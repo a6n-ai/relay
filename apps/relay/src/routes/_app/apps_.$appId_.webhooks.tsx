@@ -19,9 +19,9 @@ import { useCan } from "../../components/use-can";
 import { WEBHOOK_EVENT_LABELS, WEBHOOK_EVENT_LIST } from "../../components/webhook-events";
 import { EditWebhookForm, WebhookEventsField, WebhookUrlField } from "../../components/webhook-form";
 import { createWebhookFn, deleteWebhookFn, fetchWebhooks, updateWebhookFn } from "../../console/webhooks.fns";
-import type { WebhookEvent } from "../../core/webhooks";
 import { formatDate, formatWhen } from "../../lib/format-date";
 import { FormError, FormBody, FormActions } from "../../components/page/form-parts";
+import { type WebhookEvent } from "../../shared/mail";
 
 export const Route = createFileRoute("/_app/apps_/$appId_/webhooks")({
   loader: ({ params }) => fetchWebhooks({ data: { appId: params.appId } }),

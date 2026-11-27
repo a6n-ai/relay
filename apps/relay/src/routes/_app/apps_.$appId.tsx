@@ -38,6 +38,7 @@ import { formatDate, formatWhen } from "../../lib/format-date";
 import { FormError, FormBody, FormActions, FormPanel } from "../../components/page/form-parts";
 import { RenameForm } from "../../components/form/rename-form";
 import { Hint } from "../../components/page/text";
+import { NAME_MAX } from "../../shared/limits";
 
 export const Route = createFileRoute("/_app/apps_/$appId")({
   pendingComponent: () => <FormSkeleton crumbs={[{ label: "Apps", to: "/apps" }, { label: "App" }]} cards={3} action />,
@@ -206,7 +207,7 @@ function AppDetailsPanel({ appId, name, slug, canWrite }: { appId: string; name:
       invalidReason={!value.trim() ? "Enter a name first." : undefined}
       onSubmit={save}
     >
-      <TextField id="app-name" label="Name" required maxLength={80} value={value} disabled={!canWrite} onChange={(e) => setValue(e.target.value)} />
+      <TextField id="app-name" label="Name" required maxLength={NAME_MAX} value={value} disabled={!canWrite} onChange={(e) => setValue(e.target.value)} />
       <FixedField label="Short name" value={slug} hint="Create a new app to use a different short name." />
       <FormError message={error} />
     </SettingsForm>
@@ -463,7 +464,7 @@ function NewKeyForm({ appId, first, done, lock }: { appId: string; first: boolea
         hint="Production, Staging or the service that uses it."
         required
         autoFocus
-        maxLength={80}
+        maxLength={NAME_MAX}
         placeholder="Production"
         value={name}
         onChange={(e) => setName(e.target.value)}

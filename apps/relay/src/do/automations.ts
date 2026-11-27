@@ -1,29 +1,16 @@
-import { campaignProblems, type CampaignProblem } from "../core/campaign-problems";
+import { campaignProblems, type CampaignProblem } from "../shared/campaign-problems";
 import { IMPLIED_CONSENT_MS } from "../core/campaigns";
-import { contactValues } from "../core/merge";
+import { contactValues } from "../shared/merge";
 import type { ResolvedSendInput } from "../core/send-input";
-import { newId } from "../lib/ids";
+import { newId } from "../shared/ids";
 import type { SendResult } from "./client-do";
-import { getTemplateRow, type RenderedTemplate, type TemplateView } from "./templates";
+import { getTemplateRow, type RenderedTemplate } from "./templates";
+import { RelayError } from "../shared/errors";
+import { type TemplateView, type AutomationView } from "../shared/views";
 
 export type AutomationInput = { name: string; listId: string; templateId: string; fromEmail: string; delayHours: number };
 export type AutomationPatch = Partial<Omit<AutomationInput, "listId">>;
 
-export type AutomationView = {
-  id: string;
-  appId: string;
-  name: string;
-  listId: string;
-  templateId: string;
-  fromEmail: string;
-  delayHours: number;
-  enabled: boolean;
-  pending: number;
-  sent: number;
-  skipped: number;
-  createdAt: number;
-  updatedAt: number;
-};
 
 export type AutomationDeps = {
   send: (input: ResolvedSendInput) => Promise<SendResult>;
@@ -200,10 +187,10 @@ export async function sendTemplateForAutomation(
 ): Promise<SendResult> {
   const values = contactValues({ email: run.email, firstName: run.firstName, lastName: run.lastName }, deps.postalAddress ?? "");
   const rendered = await deps.render(run.appId, template.id, values);
-  if (rendered === "missing") throw new Error("template_missing");
-  if (rendered === "disabled") throw new Error("template_disabled");
+  if (rendered === "missing") throw new RelayError("template_missing");
+  if (rendered === "disabled") throw new RelayError("template_disabled");
   // Thrown before the send, so a blank subject skips one run instead of failing the whole pass.
-  if (rendered.subject.trim() === "") throw new Error("empty_subject");
+  if (rendered.subject.trim() === "") throw new RelayError("empty_subject");
   return deps.send({
     appId: run.appId,
     stream: "marketing",

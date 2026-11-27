@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { campaignProblems } from "../src/core/campaigns";
-import { contactValues, fillUnsubscribe, MERGE_SAMPLES, parseMergeData, renderMerge, unknownMergeFields } from "../src/core/merge";
+import { contactValues, fillUnsubscribe, MERGE_SAMPLES, parseMergeData, renderMerge, unknownMergeFields } from "../src/shared/merge";
 
 describe("merge fields", () => {
   it("escapes html values and leaves text values alone", () => {

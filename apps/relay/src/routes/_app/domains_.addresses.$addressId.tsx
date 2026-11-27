@@ -23,6 +23,7 @@ import { fetchAddresses, fetchDomains, removeAddressFn, updateAddressFn } from "
 import { addGrantFn, fetchAddressAccess, removeGrantFn } from "../../console/grants.fns";
 import { FormError, FormBody, FormActions, FormPanel } from "../../components/page/form-parts";
 import { KIND_LABEL, KINDS } from "../../lib/address-kinds";
+import { EMAIL_MAX, NAME_MAX } from "../../shared/limits";
 
 export const Route = createFileRoute("/_app/domains_/addresses/$addressId")({
   loader: async ({ params }) => {
@@ -191,12 +192,12 @@ function AddressDetailsCard({ address, canWrite, bypass }: { address: Address; c
       onSubmit={save}
     >
       <FixedField label="Address" value={address.email} hint="Remove it and add a new one to change it." />
-      <TextField id="edit-address-name" label="Name" hint="Shown to recipients as the sender name." maxLength={80} value={name} disabled={!canWrite} onChange={(e) => setName(e.target.value)} />
+      <TextField id="edit-address-name" label="Name" hint="Shown to recipients as the sender name." maxLength={NAME_MAX} value={name} disabled={!canWrite} onChange={(e) => setName(e.target.value)} />
       <TextField
         id="edit-address-reply-to"
         label="Reply-To"
         type="email"
-        maxLength={254}
+        maxLength={EMAIL_MAX}
         value={replyTo}
         error={replyError}
         disabled={!canWrite}

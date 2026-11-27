@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeaders } from "@tanstack/react-start/server";
 import { env } from "cloudflare:workers";
 import { z } from "zod";
-import { ConsoleError, requireActor, toResponseError } from "./actor";
+import { requireActor, toResponseError } from "./actor";
 import {
   campaignOptionsFor,
   campaignStatsFor,
@@ -22,6 +22,7 @@ import {
   updateCampaignFor,
 } from "./campaigns";
 import { campaignPatch, id, name, postalAddress, validate } from "./schemas";
+import { RelayError } from "../shared/errors";
 
 const READ = { permission: { campaign: ["read"] } };
 const WRITE = { permission: { campaign: ["write"] }, write: true };
@@ -36,7 +37,7 @@ export const fetchCampaigns = createServerFn({ method: "GET" })
       const actor = await requireActor(env, getRequestHeaders(), READ);
       return await listCampaignsFor(env, actor, data.appId, data.cursor);
     } catch (err) {
-      if (err instanceof ConsoleError && err.status === 403) return null;
+      if (err instanceof RelayError && err.status === 403) return null;
       toResponseError(err);
     }
   });
@@ -48,7 +49,7 @@ export const fetchCampaignStats = createServerFn({ method: "GET" })
       const actor = await requireActor(env, getRequestHeaders(), READ);
       return await campaignStatsFor(env, actor, data.id);
     } catch (err) {
-      if (err instanceof ConsoleError && err.status === 403) return null;
+      if (err instanceof RelayError && err.status === 403) return null;
       toResponseError(err);
     }
   });
@@ -60,7 +61,7 @@ export const fetchCampaign = createServerFn({ method: "GET" })
       const actor = await requireActor(env, getRequestHeaders(), READ);
       return await getCampaignFor(env, actor, data.id);
     } catch (err) {
-      if (err instanceof ConsoleError && err.status === 403) return null;
+      if (err instanceof RelayError && err.status === 403) return null;
       toResponseError(err);
     }
   });
@@ -72,7 +73,7 @@ export const fetchCampaignOptions = createServerFn({ method: "GET" })
       const actor = await requireActor(env, getRequestHeaders(), READ);
       return await campaignOptionsFor(env, actor, data.appId);
     } catch (err) {
-      if (err instanceof ConsoleError && err.status === 403) return null;
+      if (err instanceof RelayError && err.status === 403) return null;
       toResponseError(err);
     }
   });
@@ -84,7 +85,7 @@ export const previewAudienceFn = createServerFn({ method: "GET" })
       const actor = await requireActor(env, getRequestHeaders(), READ);
       return await previewAudienceFor(env, actor, data.id);
     } catch (err) {
-      if (err instanceof ConsoleError && err.status === 403) return null;
+      if (err instanceof RelayError && err.status === 403) return null;
       toResponseError(err);
     }
   });
@@ -96,7 +97,7 @@ export const previewHtmlFn = createServerFn({ method: "GET" })
       const actor = await requireActor(env, getRequestHeaders(), READ);
       return await previewHtmlFor(env, actor, data.id);
     } catch (err) {
-      if (err instanceof ConsoleError && err.status === 403) return null;
+      if (err instanceof RelayError && err.status === 403) return null;
       toResponseError(err);
     }
   });

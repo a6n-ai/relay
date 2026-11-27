@@ -5,7 +5,8 @@ import { type FormEvent, useState } from "react";
 import { changeRoleFn } from "../../console/members.fns";
 import { errorText } from "../error-text";
 import { FormActions, FormBody, FormError } from "../page/form-parts";
-import { type MemberRole, RoleChoice } from "../role-select";
+import { RoleChoice } from "../role-select";
+import { type OrgRole } from "../../shared/roles";
 
 // Opened from a row menu, so the parent owns open state.
 export function ChangeRoleDialog({
@@ -13,12 +14,12 @@ export function ChangeRoleDialog({
   canGrantOwner,
   onOpenChange,
 }: {
-  member: { id: string; name: string; role: MemberRole };
+  member: { id: string; name: string; role: OrgRole };
   canGrantOwner: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
   const router = useRouter();
-  const [role, setRole] = useState<MemberRole>(member.role);
+  const [role, setRole] = useState<OrgRole>(member.role);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 

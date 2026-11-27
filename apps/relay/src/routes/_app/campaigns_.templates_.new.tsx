@@ -13,6 +13,7 @@ import { PageHeader } from "../../components/shell/page-header";
 import { useCan } from "../../components/use-can";
 import { fetchApps } from "../../console/apps.fns";
 import { createTemplateFn } from "../../console/templates.fns";
+import { TEMPLATE_NAME_MAX } from "../../shared/limits";
 
 export const Route = createFileRoute("/_app/campaigns_/templates_/new")({
   validateSearch: (search: Record<string, unknown>): { appId?: string } => ({
@@ -71,7 +72,7 @@ function NewTemplatePage() {
       <SettingsCard title="Details" description="Name the template. You write its content next.">
         <div className="grid gap-4">
           <AppField apps={apps} scopedAppId={scopedAppId} value={app} onChange={setApp} id="template-app" autoFocus={choose} />
-          <TextField id="template-name" label="Name" autoFocus={!choose} required maxLength={120} placeholder="Welcome email" value={name} onChange={(e) => setName(e.target.value)} />
+          <TextField id="template-name" label="Name" autoFocus={!choose} required maxLength={TEMPLATE_NAME_MAX} placeholder="Welcome email" value={name} onChange={(e) => setName(e.target.value)} />
         </div>
       </SettingsCard>
       <FormError message={error} />

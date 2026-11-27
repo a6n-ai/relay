@@ -1,9 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeaders, setResponseHeader } from "@tanstack/react-start/server";
 import { env } from "cloudflare:workers";
-import { ConsoleError, toResponseError } from "./actor";
+import { toResponseError } from "./actor";
 import { googleConfig } from "../lib/auth/google";
-import { loadShell, type Shell } from "./shell";
+import { loadShell } from "./shell";
+import { RelayError } from "../shared/errors";
+import { type Shell } from "../shared/views";
 
 // Browsers strip tabs and newlines from URLs, so "/\t/host" would become "//host".
 const SAFE_PATH = /^\/(?![/\\])[^\\\s\x00-\x1f\x7f]*$/;
@@ -20,7 +22,7 @@ export const getShell = createServerFn({ method: "GET" }).handler(async (): Prom
     if (setCookies.length > 0) setResponseHeader("set-cookie", setCookies);
     return shell;
   } catch (err) {
-    if (err instanceof ConsoleError && err.status === 401) return null;
+    if (err instanceof RelayError && err.status === 401) return null;
     toResponseError(err);
   }
 });

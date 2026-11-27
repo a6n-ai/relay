@@ -7,7 +7,7 @@ import { apiKey, app, member, user, workspace } from "../db/security/schema";
 import type { Env } from "../env";
 import { createAuth } from "../lib/auth";
 import { writeAudit } from "../lib/auth/audit";
-import { newId } from "../lib/ids";
+import { newId } from "../shared/ids";
 import { readDomainState } from "../console/domains";
 import { createApp } from "./apps";
 

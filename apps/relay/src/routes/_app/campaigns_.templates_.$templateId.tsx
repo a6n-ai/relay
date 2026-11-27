@@ -17,9 +17,10 @@ import { PageHeader } from "../../components/shell/page-header";
 import { UnsavedGuard } from "../../components/unsaved-guard";
 import { useCan } from "../../components/use-can";
 import { deleteTemplateFn, fetchTemplate, previewTemplateFn, updateTemplateFn } from "../../console/templates.fns";
-import type { TemplateView } from "../../do/templates";
 import { FormError, FormPanel, FormBody } from "../../components/page/form-parts";
 import { FormSkeleton } from "../../components/page/page-skeleton";
+import { type TemplateView } from "../../shared/views";
+import { TEMPLATE_NAME_MAX } from "../../shared/limits";
 
 export const Route = createFileRoute("/_app/campaigns_/templates_/$templateId")({
   loader: ({ params }) =>
@@ -143,7 +144,7 @@ function TemplateForm({ template, canWrite, appName }: { template: TemplateView;
           <SettingsCard title="Content">
             <FormBody as="div">
               <FixedField label="App" value={appName} hint="To use another app, create a new template there." />
-              <TextField id="template-name-edit" label="Name" maxLength={120} value={name} disabled={!canWrite} onChange={(e) => setName(e.target.value)} />
+              <TextField id="template-name-edit" label="Name" maxLength={TEMPLATE_NAME_MAX} value={name} disabled={!canWrite} onChange={(e) => setName(e.target.value)} />
               <ContentFields
                 value={content}
                 onChange={setContent}

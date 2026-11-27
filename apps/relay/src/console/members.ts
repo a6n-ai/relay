@@ -5,9 +5,11 @@ import { invitation, member, team, teamMember, user, workspace } from "../db/sec
 import type { Env } from "../env";
 import { getWorkspaceProfile } from "../core/workspace-profile";
 import { createAuth } from "../lib/auth";
-import { assertSameOrigin, ConsoleError, type ConsoleActor, type OrgRole, parseRoles, requireSession } from "./actor";
+import { assertSameOrigin, type ConsoleActor, parseRoles, requireSession } from "./actor";
+import { RelayError } from "../shared/errors";
+import { type OrgRole } from "../shared/roles";
+import { DAY_MS } from "../shared/limits";
 
-const DAY_MS = 86_400_000;
 export const INVITES_PER_DAY = 20;
 
 // better-auth refusals keep their message; only a 403 or 404 keeps its status, every other refusal is a 400.
@@ -16,7 +18,7 @@ async function authCall<T>(call: () => Promise<T>): Promise<T> {
     return await call();
   } catch (err) {
     if (isAPIError(err) && err.statusCode < 500) {
-      throw new ConsoleError(err.statusCode === 403 || err.statusCode === 404 ? err.statusCode : 400, err.message);
+      throw new RelayError("invalid input", err.statusCode === 403 || err.statusCode === 404 ? err.statusCode : 400, err.message);
     }
     throw err;
   }
@@ -81,9 +83,9 @@ export async function inviteMember(
   headers: Headers,
   input: { email: string; role: OrgRole },
 ): Promise<{ id: string }> {
-  if (input.role === "owner" && !actor.roles.includes("owner")) throw new ConsoleError(403, "forbidden");
+  if (input.role === "owner" && !actor.roles.includes("owner")) throw new RelayError("forbidden");
   const cap = (await getWorkspaceProfile(env, actor.workspaceId)).invitesPerDay ?? INVITES_PER_DAY;
-  if ((await invitesInWindow(env, actor.workspaceId)) >= cap) throw new ConsoleError(429, "invite limit reached");
+  if ((await invitesInWindow(env, actor.workspaceId)) >= cap) throw new RelayError("invite limit reached");
 
   const email = input.email.trim().toLowerCase();
   const cancel = (invitationId: string) =>
@@ -92,7 +94,7 @@ export async function inviteMember(
   // Concurrent requests can all pass the count above. Recounting after the insert keeps live invites at or under the cap.
   if ((await invitesInWindow(env, actor.workspaceId)) > cap) {
     await cancel(id);
-    throw new ConsoleError(429, "invite limit reached");
+    throw new RelayError("invite limit reached");
   }
   // Sign-up is disabled, so the invite is the only path that creates a row for a new email. Existing rows are left alone.
   try {
@@ -112,7 +114,7 @@ export async function cancelInvite(env: Env, actor: ConsoleActor, headers: Heade
     .select({ id: invitation.id })
     .from(invitation)
     .where(and(eq(invitation.id, id), eq(invitation.organizationId, actor.workspaceId)));
-  if (!row) throw new ConsoleError(404, "not found");
+  if (!row) throw new RelayError("not found");
   await authCall(() => createAuth(env).api.cancelInvitation({ headers, body: { invitationId: id } }));
 }
 
@@ -121,21 +123,21 @@ async function ownMember(env: Env, actor: ConsoleActor, memberId: string) {
     .select({ id: member.id, userId: member.userId, role: member.role })
     .from(member)
     .where(and(eq(member.id, memberId), eq(member.organizationId, actor.workspaceId)));
-  if (!row) throw new ConsoleError(404, "not found");
+  if (!row) throw new RelayError("not found");
   return { ...row, roles: parseRoles(row.role) };
 }
 
 export async function changeRole(env: Env, actor: ConsoleActor, headers: Headers, memberId: string, role: OrgRole): Promise<void> {
   const target = await ownMember(env, actor, memberId);
   const touchesOwner = role === "owner" || target.roles.includes("owner");
-  if (touchesOwner && !actor.roles.includes("owner")) throw new ConsoleError(403, "forbidden");
+  if (touchesOwner && !actor.roles.includes("owner")) throw new RelayError("forbidden");
   await authCall(() => createAuth(env).api.updateMemberRole({ headers, body: { memberId, role } }));
 }
 
 // better-auth refuses removing the last owner; that refusal comes back as a 400.
 export async function removeMember(env: Env, actor: ConsoleActor, headers: Headers, memberId: string): Promise<void> {
   const target = await ownMember(env, actor, memberId);
-  if (target.roles.includes("owner") && !actor.roles.includes("owner")) throw new ConsoleError(403, "forbidden");
+  if (target.roles.includes("owner") && !actor.roles.includes("owner")) throw new RelayError("forbidden");
   await authCall(() => createAuth(env).api.removeMember({ headers, body: { memberIdOrEmail: memberId } }));
 }
 
@@ -149,7 +151,7 @@ async function ownTeam(env: Env, actor: ConsoleActor, teamId: string): Promise<v
     .select({ id: team.id })
     .from(team)
     .where(and(eq(team.id, teamId), eq(team.organizationId, actor.workspaceId)));
-  if (!row) throw new ConsoleError(404, "not found");
+  if (!row) throw new RelayError("not found");
 }
 
 export async function renameTeam(env: Env, actor: ConsoleActor, headers: Headers, teamId: string, name: string): Promise<void> {
@@ -215,10 +217,10 @@ export async function acceptInvite(env: Env, headers: Headers, id: string): Prom
     .select({ email: invitation.email, status: invitation.status, expiresAt: invitation.expiresAt })
     .from(invitation)
     .where(eq(invitation.id, id));
-  if (!row) throw new ConsoleError(404, "not found");
+  if (!row) throw new RelayError("not found");
   const [me] = await securityDb(env).select({ email: user.email }).from(user).where(eq(user.id, userId));
-  if (me?.email !== row.email) throw new ConsoleError(403, "this invite is for another email");
+  if (me?.email !== row.email) throw new RelayError("this invite is for another email");
   const status = effectiveStatus(row);
-  if (status !== "pending") throw new ConsoleError(409, `invite ${status}`);
+  if (status !== "pending") throw new RelayError("invalid input", 409, `invite ${status}`);
   await authCall(() => createAuth(env).api.acceptInvitation({ headers, body: { invitationId: id } }));
 }

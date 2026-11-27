@@ -26,7 +26,7 @@ import {
   workspace,
 } from "../../db/security/schema";
 import type { Env } from "../../env";
-import { newId } from "../ids";
+import { newId } from "../../shared/ids";
 import { maskEmails } from "../../core/mask-emails";
 import { writeAudit } from "./audit";
 import { ADMIN_LINK_CODE, auditKindFor, googleConfig, refusesImplicitLink } from "./google";

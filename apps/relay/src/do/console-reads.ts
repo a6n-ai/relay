@@ -1,14 +1,17 @@
 import { and, asc, desc, eq, gt, lt, ne, or, sql, type SQL } from "drizzle-orm";
 import type { DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
 import { safeDownloadName } from "../core/download";
-import { contactValues, parseMergeData, renderMerge } from "../core/merge";
+import { contactValues, parseMergeData, renderMerge } from "../shared/merge";
 import type { Env } from "../env";
-import type { Stream, SuppressionReason } from "../core/send-input";
 import type { AttachmentView, MessageView } from "./client-do";
 import * as schema from "./client-schema";
+import { ID_SHAPE } from "../shared/ids";
+import { RelayError } from "../shared/errors";
+import { type DeliveryView } from "../shared/views";
+import { type Stream, type SuppressionReason, type MessageStatus } from "../shared/mail";
+import { PAGE_SIZE } from "../shared/limits";
 
 export type MessageAccess = { out: boolean; inbound: "all" | string[] };
-export type MessageStatus = "queued" | "sent" | "failed" | "suppressed";
 
 export type MessageSummary = {
   id: string;
@@ -46,9 +49,7 @@ export type MessageDetail = MessageView & { events: EventView[]; thread: ThreadI
 
 type Db = DrizzleSqliteDODatabase<typeof schema>;
 
-const PAGE_SIZE = 50;
 const THREAD_LIMIT = 20;
-const ID_SHAPE = /^[a-z]{3}_[0-9A-Za-z_-]{12}$/;
 
 export function encodeCursor(createdAt: number, id: string): string {
   return `${createdAt}.${id}`;
@@ -101,19 +102,6 @@ export function listSuppressionRows(
   return { rows: page, nextCursor };
 }
 
-// No payloadKey and no response body: the console shows status, attempts and the fixed reason only.
-export type DeliveryView = {
-  id: string;
-  messageId: string;
-  event: string;
-  status: "pending" | "sent" | "failed";
-  attempts: number;
-  responseStatus: number | null;
-  lastError: string | null;
-  nextAttemptAt: number;
-  createdAt: number;
-  updatedAt: number;
-};
 
 export function listDeliveryRows(
   db: Db,
@@ -122,7 +110,7 @@ export function listDeliveryRows(
   const d = schema.webhookDelivery;
   const m = schema.message;
   const cursor = q.cursor === undefined ? undefined : decodeCursor(q.cursor);
-  if (q.cursor !== undefined && !cursor) throw new Error("invalid cursor");
+  if (q.cursor !== undefined && !cursor) throw new RelayError("invalid cursor");
   const rows = db
     .select({
       id: d.id,
@@ -223,7 +211,7 @@ export function listMessageRows(
 ): { rows: MessageSummary[]; nextCursor: string | null } {
   const m = schema.message;
   const cursor = q.cursor === undefined ? undefined : decodeCursor(q.cursor);
-  if (q.cursor !== undefined && !cursor) throw new Error("invalid cursor");
+  if (q.cursor !== undefined && !cursor) throw new RelayError("invalid cursor");
   const rows = db
     .select({
       id: m.id,

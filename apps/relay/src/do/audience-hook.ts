@@ -3,6 +3,7 @@ import { webhookHeaders } from "../core/mailbox-received";
 import { decryptSecret, encryptSecret, newWebhookSecret, signBody } from "../core/webhook-crypto";
 import { isPublicWebhookUrl } from "../core/webhooks";
 import type { Env } from "../env";
+import { RelayError } from "../shared/errors";
 
 export type AudienceHookInput =
   | { kind: "https"; url: string; secret?: string; enabled?: boolean }
@@ -35,7 +36,7 @@ export async function setAudienceHookRow(
 ): Promise<{ secret: string | null }> {
   const enabled = input.enabled === false ? 0 : 1;
   if (input.kind === "binding") {
-    if (!(AUDIENCE_BINDINGS as readonly string[]).includes(input.binding)) throw new Error("unknown binding");
+    if (!(AUDIENCE_BINDINGS as readonly string[]).includes(input.binding)) throw new RelayError("unknown binding");
     storage.transactionSync(() => upsertHook(storage.sql, appId, "binding", null, input.binding, null, enabled, now));
     return { secret: null };
   }

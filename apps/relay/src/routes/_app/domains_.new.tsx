@@ -11,7 +11,7 @@ import { SettingsCard } from "../../components/page/settings-card";
 import { PageHeader } from "../../components/shell/page-header";
 import { useCan } from "../../components/use-can";
 import { addDomainFn } from "../../console/domains.fns";
-import { SES_REGIONS } from "../../core/ses-regions";
+import { SES_REGIONS } from "../../shared/regions";
 import { looksLikeDomain, normaliseDomainInput } from "../../lib/domain-input";
 
 export const Route = createFileRoute("/_app/domains_/new")({
@@ -71,7 +71,7 @@ function AddDomainPage() {
               label="Sending region"
               value={region}
               onChange={setRegion}
-              options={[{ value: "default", label: "Workspace default" }, ...SES_REGIONS.map((r) => ({ value: r, label: r }))]}
+              options={[{ value: "default", label: "Workspace default" }, ...SES_REGIONS.map((r) => ({ value: r.id, label: r.id }))]}
             />
           ) : null}
           <TextField

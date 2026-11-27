@@ -1,4 +1,4 @@
-import type { ConsentSource } from "../do/lists";
+import { type ConsentSource } from "../shared/views";
 
 export const CONSENT_LABEL: Record<ConsentSource, string> = {
   purchase: "They bought from you",

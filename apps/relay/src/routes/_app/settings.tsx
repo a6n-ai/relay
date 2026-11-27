@@ -12,6 +12,7 @@ import { useCan } from "../../components/use-can";
 import { passwordStatusFn } from "../../console/password.fns";
 import { renameWorkspaceFn } from "../../console/workspaces.fns";
 import { PasswordCard } from "../../components/settings/password-card";
+import { NAME_MAX } from "../../shared/limits";
 
 export const Route = createFileRoute("/_app/settings")({
   loader: () => passwordStatusFn(),
@@ -53,7 +54,7 @@ function WorkspaceNameCard({ name: current, slug }: { name: string; slug: string
       invalidReason={!next ? "Enter a name first." : undefined}
       onSubmit={submit}
     >
-      <TextField id="workspace-name" label="Workspace name" hideLabel required maxLength={80} readOnly={!canRename} value={name} onChange={(e) => setName(e.target.value)} />
+      <TextField id="workspace-name" label="Workspace name" hideLabel required maxLength={NAME_MAX} readOnly={!canRename} value={name} onChange={(e) => setName(e.target.value)} />
       <FixedField label="Short name" value={slug} hint="Create a new workspace to use a different address." />
       <FormError message={error} />
     </SettingsForm>

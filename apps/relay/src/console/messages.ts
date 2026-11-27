@@ -3,12 +3,14 @@ import { sanitizeEmailHtml } from "../core/sanitize-html";
 import { clientFor } from "../core/messages";
 import { downloadResponse, PREVIEW_HEAD_BYTES, previewResponse, previewType } from "../core/download";
 import type { AttachmentView } from "../do/client-do";
-import { decodeCursor, type MessageAccess, type MessageDetail, type MessageQuery, type MessageStatus } from "../do/console-reads";
+import { decodeCursor, type MessageAccess, type MessageDetail, type MessageQuery } from "../do/console-reads";
 import { securityDb } from "../db/security/client";
 import { addressGrant, member, team, teamMember } from "../db/security/schema";
 import type { Env } from "../env";
 import { allows } from "../lib/auth/permissions";
-import { ConsoleError, type ConsoleActor } from "./actor";
+import { type ConsoleActor } from "./actor";
+import { RelayError } from "../shared/errors";
+import { type MessageStatus } from "../shared/mail";
 
 type ConsoleMessage = Omit<
   MessageDetail,
@@ -55,8 +57,8 @@ export async function grantedAddressIds(env: Env, actor: ConsoleActor): Promise<
 export async function listMessagesFor(env: Env, actor: ConsoleActor, q: MessageQuery) {
   const access = await messageAccess(env, actor);
   const inboundAllowed = allows(actor.roles, { mailbox: ["read"] });
-  if (q.direction === "out" ? !access.out : !inboundAllowed) throw new ConsoleError(403, "forbidden");
-  if (q.cursor !== undefined && !decodeCursor(q.cursor)) throw new ConsoleError(400, "invalid cursor");
+  if (q.direction === "out" ? !access.out : !inboundAllowed) throw new RelayError("forbidden");
+  if (q.cursor !== undefined && !decodeCursor(q.cursor)) throw new RelayError("invalid cursor");
   const { rows, nextCursor } = await clientFor(env, actor.workspaceId).listMessages(
     actor.workspaceId,
     { ...q, email: q.email?.trim().toLowerCase() || undefined },
@@ -74,7 +76,7 @@ export async function getMessageFor(
 ): Promise<ConsoleMessage> {
   const access = await messageAccess(env, actor);
   const view = await clientFor(env, actor.workspaceId).getMessageDetail(actor.workspaceId, id, access);
-  if (!view) throw new ConsoleError(404, "not found");
+  if (!view) throw new RelayError("not found");
   const { html, htmlKey, rawKey, claimedUntil, idempotencyKey, ...rest } = view;
   const inlined = html === null || !opts.images ? html : await inlineCidImages(env, actor, access, rest.id, html, rest.attachments);
   const safe = inlined === null ? null : sanitizeEmailHtml(inlined, { remoteImages: opts.images ? "allow" : "block" });
@@ -157,23 +159,23 @@ export async function messageFileFor(
 ): Promise<Response> {
   const access = await messageAccess(env, actor);
   const file = await clientFor(env, actor.workspaceId).getMessageFile(actor.workspaceId, id, part, access);
-  if (!file) throw new ConsoleError(404, "not found");
+  if (!file) throw new RelayError("not found");
   if ("body" in file) {
     const bytes = new TextEncoder().encode(file.body);
     return downloadResponse(new Blob([bytes]).stream(), bytes.byteLength, file.name);
   }
-  if (!file.key.startsWith(`ws/${actor.workspaceId}/`)) throw new ConsoleError(404, "not found");
+  if (!file.key.startsWith(`ws/${actor.workspaceId}/`)) throw new RelayError("not found");
   if (view && file.contentType !== null) {
     // A zero-byte object makes R2 reject the range read; that falls through to the download like any non-preview.
     const head = await env.MAIL.get(file.key, { range: { offset: 0, length: PREVIEW_HEAD_BYTES } }).catch(() => null);
     const type = head && head.size > 0 ? previewType(new Uint8Array(await head.arrayBuffer()), file.contentType) : null;
     if (type) {
       const preview = await env.MAIL.get(file.key);
-      if (!preview) throw new ConsoleError(404, "not found");
+      if (!preview) throw new RelayError("not found");
       return previewResponse(preview.body, preview.size, file.name, type);
     }
   }
   const object = await env.MAIL.get(file.key);
-  if (!object) throw new ConsoleError(404, "not found");
+  if (!object) throw new RelayError("not found");
   return downloadResponse(object.body, object.size, file.name);
 }

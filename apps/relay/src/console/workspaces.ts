@@ -6,7 +6,8 @@ import { securityDb } from "../db/security/client";
 import { app, workspace } from "../db/security/schema";
 import type { Env } from "../env";
 import { createAuth } from "../lib/auth";
-import { assertSameOrigin, ConsoleError, type ConsoleActor } from "./actor";
+import { assertSameOrigin, type ConsoleActor } from "./actor";
+import { RelayError } from "../shared/errors";
 
 // The cap and the self-serve profile are set by the better-auth hooks, so this path cannot skip them.
 export async function createWorkspace(env: Env, headers: Headers, input: { name: string; slug: string }): Promise<{ id: string }> {
@@ -14,12 +15,12 @@ export async function createWorkspace(env: Env, headers: Headers, input: { name:
   const auth = createAuth(env);
   try {
     const org = await auth.api.createOrganization({ headers, body: input });
-    if (!org) throw new ConsoleError(400, "could not create workspace");
+    if (!org) throw new RelayError("could not create workspace");
     await auth.api.setActiveOrganization({ headers, body: { organizationId: org.id } });
     return { id: org.id };
   } catch (err) {
     if (isAPIError(err) && (err.statusCode === 400 || err.statusCode === 401 || err.statusCode === 403)) {
-      throw new ConsoleError(err.statusCode, err.message);
+      throw new RelayError("invalid input", err.statusCode, err.message);
     }
     throw err;
   }
@@ -30,7 +31,7 @@ export async function renameWorkspace(env: Env, actor: ConsoleActor, headers: He
   try {
     await createAuth(env).api.updateOrganization({ headers, body: { organizationId: actor.workspaceId, data: { name } } });
   } catch (err) {
-    if (isAPIError(err) && err.statusCode < 500) throw new ConsoleError(err.statusCode === 403 || err.statusCode === 404 ? err.statusCode : 400, err.message);
+    if (isAPIError(err) && err.statusCode < 500) throw new RelayError("invalid input", err.statusCode === 403 || err.statusCode === 404 ? err.statusCode : 400, err.message);
     throw err;
   }
 }
@@ -40,17 +41,17 @@ const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 // Apps and domains hold Durable Object data, SES identities and sending keys, so they must go first. Only the owner holds organization:delete.
 export async function deleteWorkspace(env: Env, actor: ConsoleActor, headers: Headers, slug: string): Promise<void> {
   const [row] = await securityDb(env).select({ slug: workspace.slug }).from(workspace).where(eq(workspace.id, actor.workspaceId));
-  if (!row || row.slug !== slug) throw new ConsoleError(400, "slug does not match");
+  if (!row || row.slug !== slug) throw new RelayError("slug does not match");
   const [[apps], [domains]] = await Promise.all([
     securityDb(env).select({ n: count() }).from(app).where(eq(app.workspaceId, actor.workspaceId)),
     coreDb(env).select({ n: count() }).from(sendingDomain).where(eq(sendingDomain.workspaceId, actor.workspaceId)),
   ]);
   const left = [apps.n > 0 ? plural(apps.n, "app") : "", domains.n > 0 ? plural(domains.n, "domain") : ""].filter(Boolean);
-  if (left.length > 0) throw new ConsoleError(409, `Remove its ${left.join(" and ")} first.`);
+  if (left.length > 0) throw new RelayError("invalid input", 409, `Remove its ${left.join(" and ")} first.`);
   try {
     await createAuth(env).api.deleteOrganization({ headers, body: { organizationId: actor.workspaceId } });
   } catch (err) {
-    if (isAPIError(err) && err.statusCode < 500) throw new ConsoleError(err.statusCode === 403 || err.statusCode === 404 ? err.statusCode : 400, err.message);
+    if (isAPIError(err) && err.statusCode < 500) throw new RelayError("invalid input", err.statusCode === 403 || err.statusCode === 404 ? err.statusCode : 400, err.message);
     throw err;
   }
   // relay-core has no foreign keys to the workspace, so its rows go here.

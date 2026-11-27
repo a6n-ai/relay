@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import type { OrgRole } from "../src/console/actor";
-import type { Shell } from "../src/console/shell";
 import { findEntries, pushRecent, readRecent } from "../src/components/shell/find";
+import { type OrgRole } from "../src/shared/roles";
+import { type Shell } from "../src/shared/views";
 
 const shell = (roles: OrgRole[], over: Partial<Shell> = {}): Shell => ({
   user: { id: "u", email: "u@x.co", name: "U" },

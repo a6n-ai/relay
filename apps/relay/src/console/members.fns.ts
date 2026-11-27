@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeaders } from "@tanstack/react-start/server";
 import { env } from "cloudflare:workers";
 import { z } from "zod";
-import { ConsoleError, requireActor, toResponseError } from "./actor";
+import { requireActor, toResponseError } from "./actor";
 import {
   acceptInvite,
   cancelInvite,
@@ -17,6 +17,7 @@ import {
   setTeamMember,
 } from "./members";
 import { id, inviteInput, name, role, validate } from "./schemas";
+import { RelayError } from "../shared/errors";
 
 const READ = {};
 const perm = (need: Record<string, string[]>) => ({ permission: need, write: true });
@@ -27,7 +28,7 @@ export const fetchPeople = createServerFn({ method: "GET" }).handler(async () =>
     const actor = await requireActor(env, getRequestHeaders(), READ);
     return await listPeople(env, actor);
   } catch (err) {
-    if (err instanceof ConsoleError && err.status === 403) return null;
+    if (err instanceof RelayError && err.status === 403) return null;
     toResponseError(err);
   }
 });

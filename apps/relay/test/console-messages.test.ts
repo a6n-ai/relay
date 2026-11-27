@@ -8,7 +8,7 @@ import { clientFor } from "../src/core/messages";
 import { securityDb } from "../src/db/security/client";
 import { addressGrant, app, member, team, teamMember, user } from "../src/db/security/schema";
 import { parseMessagesSearch } from "../src/components/messages-search";
-import { newId } from "../src/lib/ids";
+import { newId } from "../src/shared/ids";
 import { addMember, cookieFor, createWorkspace, headersFor, ORIGIN, setActive } from "./console-helpers";
 import { applyMigrations } from "./migrate";
 

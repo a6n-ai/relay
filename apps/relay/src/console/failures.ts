@@ -7,15 +7,16 @@ import { address } from "../db/core/schema";
 import type { Env, InboundJob } from "../env";
 import { writeAudit } from "../lib/auth/audit";
 import { allows } from "../lib/auth/permissions";
-import { ConsoleError, type ConsoleActor } from "./actor";
+import { type ConsoleActor } from "./actor";
 import { messageAccess } from "./messages";
+import { RelayError, codeOf } from "../shared/errors";
 
 const READ = { mailbox: ["read"] };
 const MANAGE = { mailbox: ["manage"] };
 
 function requireWrite(actor: ConsoleActor): void {
-  if (!allows(actor.roles, MANAGE)) throw new ConsoleError(403, "forbidden");
-  if (actor.workspaceStatus === "suspended") throw new ConsoleError(403, "workspace suspended");
+  if (!allows(actor.roles, MANAGE)) throw new RelayError("forbidden");
+  if (actor.workspaceStatus === "suspended") throw new RelayError("workspace suspended");
 }
 
 type ReplayResult =
@@ -24,7 +25,7 @@ type ReplayResult =
   | { outcome: "failed"; error: string };
 
 export async function listFailuresFor(env: Env, actor: ConsoleActor) {
-  if (!allows(actor.roles, READ)) throw new ConsoleError(403, "forbidden");
+  if (!allows(actor.roles, READ)) throw new RelayError("forbidden");
   const { inbound } = await messageAccess(env, actor);
   return clientFor(env, actor.workspaceId).listInboundFailures(actor.workspaceId, inbound);
 }
@@ -33,15 +34,15 @@ export async function replayFailureFor(env: Env, actor: ConsoleActor, id: string
   requireWrite(actor);
   const stub = clientFor(env, actor.workspaceId);
   const failure = await stub.getInboundFailure(actor.workspaceId, id);
-  if (!failure) throw new ConsoleError(404, "not found");
-  if (!failure.appId || !failure.addressId) throw new ConsoleError(409, "cannot replay");
+  if (!failure) throw new RelayError("not found");
+  if (!failure.appId || !failure.addressId) throw new RelayError("cannot replay");
   const [inbox] = await coreDb(env)
     .select({ id: address.id })
     .from(address)
     .where(
       and(eq(address.id, failure.addressId), eq(address.workspaceId, actor.workspaceId), eq(address.appId, failure.appId)),
     );
-  if (!inbox) throw new ConsoleError(409, "address removed");
+  if (!inbox) throw new RelayError("address removed");
   const job: InboundJob = {
     workspaceId: actor.workspaceId,
     appId: failure.appId,
@@ -56,7 +57,7 @@ export async function replayFailureFor(env: Env, actor: ConsoleActor, id: string
   try {
     result = await stub.ingestInbound(actor.workspaceId, job);
   } catch (err) {
-    if (err instanceof Error && err.message === "raw mail missing") throw new ConsoleError(409, "raw letter missing");
+    if (codeOf(err) === "raw mail missing") throw new RelayError("raw letter missing");
     throw err;
   }
   if (result.outcome === "inserted") await bumpUsage(env, actor.workspaceId, utcDay(failure.receivedAt), { inbound: 1 });
@@ -76,7 +77,7 @@ export async function replayFailureFor(env: Env, actor: ConsoleActor, id: string
 export async function deleteFailureFor(env: Env, actor: ConsoleActor, id: string): Promise<void> {
   requireWrite(actor);
   const removed = await clientFor(env, actor.workspaceId).deleteInboundFailure(actor.workspaceId, id);
-  if (!removed) throw new ConsoleError(404, "not found");
+  if (!removed) throw new RelayError("not found");
   await writeAudit(env, {
     action: "inbound_failure.delete",
     actorUserId: actor.userId,

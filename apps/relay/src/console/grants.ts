@@ -7,12 +7,13 @@ import { addressGrant, member, team, user } from "../db/security/schema";
 import type { Env } from "../env";
 import { writeAudit } from "../lib/auth/audit";
 import { allows } from "../lib/auth/permissions";
-import { type ConsoleActor, ConsoleError, parseRoles, uniqueViolation } from "./actor";
+import { type ConsoleActor, parseRoles, uniqueViolation } from "./actor";
+import { RelayError, codeOf } from "../shared/errors";
 
 type GrantView = { id: string; kind: "member" | "team"; targetId: string; label: string };
 
 const requireManage = (actor: ConsoleActor): void => {
-  if (!allows(actor.roles, { mailbox: ["manage"] })) throw new ConsoleError(403, "forbidden");
+  if (!allows(actor.roles, { mailbox: ["manage"] })) throw new RelayError("forbidden");
 };
 
 export async function getAddressAccess(env: Env, actor: ConsoleActor, addressId: string) {
@@ -21,7 +22,7 @@ export async function getAddressAccess(env: Env, actor: ConsoleActor, addressId:
     .select({ id: address.id, email: address.email })
     .from(address)
     .where(and(eq(address.id, addressId), eq(address.workspaceId, actor.workspaceId)));
-  if (!owned) throw new ConsoleError(404, "not found");
+  if (!owned) throw new RelayError("not found");
 
   const db = securityDb(env);
   const [grantRows, memberRows, teamRows] = await Promise.all([
@@ -69,14 +70,11 @@ function grantFailure(err: unknown): unknown {
     uniqueViolation(err, "address_grant.address_id, address_grant.member_id") ||
     uniqueViolation(err, "address_grant.address_id, address_grant.team_id")
   ) {
-    return new ConsoleError(409, "already has access");
+    return new RelayError("already has access");
   }
-  if (err instanceof Error) {
-    if (err.message === "exactly one grantee required") return new ConsoleError(400, "invalid input");
-    if (err.message === "address does not belong to workspace" || err.message === "grantee does not belong to workspace") {
-      return new ConsoleError(404, "not found");
-    }
-  }
+  const code = codeOf(err);
+  if (code === "exactly one grantee required") return new RelayError("invalid input");
+  if (code === "address does not belong to workspace" || code === "grantee does not belong to workspace") return new RelayError("not found");
   return err;
 }
 
@@ -107,7 +105,7 @@ export async function removeGrant(env: Env, actor: ConsoleActor, grantId: string
     .delete(addressGrant)
     .where(and(eq(addressGrant.id, grantId), eq(addressGrant.workspaceId, actor.workspaceId)))
     .returning({ addressId: addressGrant.addressId, memberId: addressGrant.memberId, teamId: addressGrant.teamId });
-  if (rows.length === 0) throw new ConsoleError(404, "not found");
+  if (rows.length === 0) throw new RelayError("not found");
   const [row] = rows;
   await writeAudit(env, {
     action: "address_grant.remove",

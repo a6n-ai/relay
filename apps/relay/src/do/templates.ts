@@ -1,25 +1,13 @@
-import { newId } from "../lib/ids";
+import { newId } from "../shared/ids";
 import { decodeCursor, encodeCursor } from "./console-reads";
+import { RelayError } from "../shared/errors";
+import { type TemplateView } from "../shared/views";
+import { PAGE_SIZE } from "../shared/limits";
 
-export type TemplateView = {
-  id: string;
-  appId: string;
-  name: string;
-  event: string | null;
-  locale: string;
-  subject: string;
-  intro: string | null;
-  html: string;
-  text: string;
-  enabled: boolean;
-  createdAt: number;
-  updatedAt: number;
-};
 export type TemplateInput = Partial<Omit<TemplateView, "id" | "appId" | "createdAt" | "updatedAt">> & { name: string };
 export type TemplateOverride = Pick<TemplateView, "event" | "locale" | "subject" | "intro" | "enabled">;
 export type RenderedTemplate = { subject: string; html: string; text: string; hasUnsubscribe: boolean };
 
-const PAGE = 50;
 const COLUMNS = `id, app_id AS appId, name, event, locale, subject, intro, html, text, enabled,
   created_at AS createdAt, updated_at AS updatedAt`;
 
@@ -61,7 +49,7 @@ export function createTemplateRow(sql: SqlStorage, appId: string, input: Templat
 
 export function listTemplateRows(sql: SqlStorage, cursor?: string, appId?: string): { rows: TemplateView[]; nextCursor: string | null } {
   const after = cursor === undefined ? null : decodeCursor(cursor);
-  if (cursor !== undefined && !after) throw new Error("invalid cursor");
+  if (cursor !== undefined && !after) throw new RelayError("invalid cursor");
   const where: string[] = [];
   const bindings: unknown[] = [];
   if (after) {
@@ -74,11 +62,11 @@ export function listTemplateRows(sql: SqlStorage, cursor?: string, appId?: strin
   }
   const clause = where.length > 0 ? `WHERE ${where.join(" AND ")}` : "";
   const fetched = sql
-    .exec<Raw>(`SELECT ${COLUMNS} FROM template ${clause} ORDER BY created_at DESC, id DESC LIMIT ?`, ...bindings, PAGE + 1)
+    .exec<Raw>(`SELECT ${COLUMNS} FROM template ${clause} ORDER BY created_at DESC, id DESC LIMIT ?`, ...bindings, PAGE_SIZE + 1)
     .toArray();
-  const page = fetched.slice(0, PAGE).map(view);
+  const page = fetched.slice(0, PAGE_SIZE).map(view);
   const last = page[page.length - 1];
-  return { rows: page, nextCursor: fetched.length > PAGE && last ? encodeCursor(last.createdAt, last.id) : null };
+  return { rows: page, nextCursor: fetched.length > PAGE_SIZE && last ? encodeCursor(last.createdAt, last.id) : null };
 }
 
 export function updateTemplateRow(sql: SqlStorage, id: string, patch: Partial<TemplateInput>): TemplateView | "missing" | "event_taken" {

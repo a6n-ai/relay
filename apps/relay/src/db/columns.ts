@@ -1,5 +1,5 @@
 import { integer, text } from "drizzle-orm/sqlite-core";
-import { newId } from "../lib/ids";
+import { newId } from "../shared/ids";
 
 // better-auth writes Date values to *_at columns; timestamp_ms maps them to epoch-ms integers.
 export const id = (prefix: string) => text("id").primaryKey().$defaultFn(() => newId(prefix));

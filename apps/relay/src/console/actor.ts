@@ -6,8 +6,9 @@ import type { Env } from "../env";
 import { createAuth } from "../lib/auth";
 import { allows, orgRoles } from "../lib/auth/permissions";
 import { recordFailure } from "../core/log";
+import { RelayError } from "../shared/errors";
+import { type OrgRole } from "../shared/roles";
 
-export type OrgRole = "owner" | "admin" | "member" | "billing";
 export type ConsoleActor = {
   userId: string;
   platformAdmin: boolean;
@@ -16,22 +17,13 @@ export type ConsoleActor = {
   workspaceStatus: "active" | "suspended";
 };
 
-export class ConsoleError extends Error {
-  constructor(
-    readonly status: 400 | 401 | 403 | 404 | 409 | 422 | 429 | 503,
-    message: string,
-  ) {
-    super(message);
-  }
-}
-
 // The cookie cache can hold a role or suspension decision from before a change, so the session is read from the database.
 export async function requireSession(
   env: Env,
   headers: Headers,
 ): Promise<{ userId: string; platformAdmin: boolean; activeWorkspaceId: string | null }> {
   const session = await createAuth(env).api.getSession({ headers, query: { disableCookieCache: true } });
-  if (!session) throw new ConsoleError(401, "unauthorized");
+  if (!session) throw new RelayError("unauthorized");
   return {
     userId: session.user.id,
     platformAdmin: session.user.role === "admin",
@@ -48,24 +40,24 @@ export async function requireActor(
   need: { permission?: Record<string, string[]>; write?: boolean } = {},
 ): Promise<ConsoleActor> {
   const { userId, platformAdmin, activeWorkspaceId } = await requireSession(env, headers);
-  if (!activeWorkspaceId) throw new ConsoleError(403, "no workspace");
+  if (!activeWorkspaceId) throw new RelayError("no workspace");
 
   const [row] = await securityDb(env)
     .select({ role: member.role, status: workspace.status })
     .from(member)
     .innerJoin(workspace, eq(workspace.id, member.organizationId))
     .where(and(eq(member.userId, userId), eq(member.organizationId, activeWorkspaceId)));
-  if (!row) throw new ConsoleError(403, "not a member");
+  if (!row) throw new RelayError("not a member");
 
   const roles = parseRoles(row.role);
   const permission = need.permission;
   if (permission && !allows(roles, permission)) {
-    throw new ConsoleError(403, "forbidden");
+    throw new RelayError("forbidden");
   }
 
   if (need.write) {
     assertSameOrigin(env, headers);
-    if (row.status === "suspended") throw new ConsoleError(403, "workspace suspended");
+    if (row.status === "suspended") throw new RelayError("workspace suspended");
   }
 
   return { userId, platformAdmin, workspaceId: activeWorkspaceId, roles, workspaceStatus: row.status };
@@ -82,7 +74,7 @@ export function uniqueViolation(err: unknown, column: string): boolean {
 export function assertSameOrigin(env: Env, headers: Headers): void {
   const origin = headers.get("origin");
   if (origin !== null && origin !== new URL(env.BETTER_AUTH_URL).origin) {
-    throw new ConsoleError(403, "cross-origin write");
+    throw new RelayError("cross-origin write");
   }
 }
 
@@ -92,7 +84,7 @@ export async function requirePlatformAdmin(
   { write = false }: { write?: boolean } = {},
 ): Promise<{ userId: string }> {
   const { userId, platformAdmin } = await requireSession(env, headers);
-  if (!platformAdmin) throw new ConsoleError(404, "not found");
+  if (!platformAdmin) throw new RelayError("not found");
   if (write) assertSameOrigin(env, headers);
   return { userId };
 }
@@ -100,7 +92,7 @@ export async function requirePlatformAdmin(
 // Server functions call this from their catch: known errors keep their status and message, anything else is a 500 with no detail.
 // The browser sees only that copy; the log middleware in src/start.ts writes the status and real cause.
 export function toResponseError(err: unknown): never {
-  if (err instanceof ConsoleError) {
+  if (err instanceof RelayError) {
     setResponseStatus(err.status);
     throw recordFailure(new Error(err.message), err.status, err);
   }

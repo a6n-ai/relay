@@ -9,7 +9,7 @@ import { createAuth, pickMailer } from "../src/lib/auth";
 import { writeAudit } from "../src/lib/auth/audit";
 import { consoleInviteMailer, memoryInviteMailer, pickInviteMailer } from "../src/lib/auth/invite-mailer";
 import { memoryOtpMailer } from "../src/lib/auth/otp-mailer";
-import { newId } from "../src/lib/ids";
+import { newId } from "../src/shared/ids";
 import type { Env } from "../src/env";
 import { applyMigrations } from "./migrate";
 import { BASE, cookieFor, createWorkspace, freshIp, insertUser, json, ORIGIN, sendOtp, signIn } from "./console-helpers";

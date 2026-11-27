@@ -14,6 +14,8 @@ import { StatusBadge } from "../../components/status-badge";
 import { fetchApps } from "../../console/apps.fns";
 import { fetchMessages } from "../../console/messages.fns";
 import { formatWhen } from "../../lib/format-date";
+import { MESSAGE_STATUSES } from "../../shared/mail";
+import { PAGE_SIZE } from "../../shared/limits";
 
 export const Route = createFileRoute("/_app/messages")({
   validateSearch: (raw: Record<string, unknown>): MessagesSearch & { offset?: number } => ({
@@ -30,8 +32,6 @@ export const Route = createFileRoute("/_app/messages")({
 });
 
 type Status = NonNullable<MessagesSearch["status"]>;
-const STATUSES: Status[] = ["queued", "sent", "failed", "suppressed"];
-const PAGE = 50;
 
 function MessagesPage() {
   const page = Route.useLoaderData();
@@ -77,7 +77,7 @@ function MessagesPage() {
         filters={
           <FilterMenu
             facets={[
-              { key: "status", label: "Status", options: STATUSES.map((s) => ({ value: s, label: s[0].toUpperCase() + s.slice(1) })) },
+              { key: "status", label: "Status", options: MESSAGE_STATUSES.map((s) => ({ value: s, label: s[0].toUpperCase() + s.slice(1) })) },
               { key: "appId", label: "App", options: page.apps.map((a) => ({ value: a.id, label: a.name })) },
             ]}
             value={search}
@@ -103,7 +103,7 @@ function MessagesPage() {
         hasMore={Boolean(page.nextCursor)}
         to="/messages"
         offset={search.cursor ? search.offset : undefined}
-        pageSize={PAGE}
+        pageSize={PAGE_SIZE}
         search={{ ...search, cursor: page.nextCursor }}
         resetTo={search.cursor ? "/messages" : undefined}
         resetSearch={{ ...search, cursor: undefined }}

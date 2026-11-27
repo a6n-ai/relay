@@ -1,9 +1,10 @@
 import { AwsError, createAwsClient } from "@foundry/cloud";
 import type { Env } from "../env";
+import { type Stream } from "../shared/mail";
+import { isSesRegion, type SesRegion } from "../shared/regions";
 
-export type Stream = "transactional" | "tracked" | "marketing";
-
-export const SES_CONFIG_SETS = {
+// Keyed by SesRegion, so a region added to shared/regions.ts fails the build here until it has config sets.
+export const SES_CONFIG_SETS: Record<SesRegion, Record<Stream, string>> = {
   "ap-south-1": {
     transactional: "relay-prod",
     tracked: "relay-prod-tracked",
@@ -14,11 +15,11 @@ export const SES_CONFIG_SETS = {
     tracked: "tiffin-grab-transactional-tracked",
     marketing: "tiffin-grab-prod",
   },
-} as const;
+};
 
 export function configSetFor(region: string, stream: Stream): string {
-  if (!Object.hasOwn(SES_CONFIG_SETS, region)) throw new Error(`no SES config set for region ${region}`);
-  return SES_CONFIG_SETS[region as keyof typeof SES_CONFIG_SETS][stream];
+  if (!isSesRegion(region)) throw new Error(`no SES config set for region ${region}`);
+  return SES_CONFIG_SETS[region][stream];
 }
 
 export type SesSendRequest = {

@@ -2,9 +2,10 @@ import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeaders } from "@tanstack/react-start/server";
 import { env } from "cloudflare:workers";
 import { z } from "zod";
-import { ConsoleError, requireActor, toResponseError } from "./actor";
+import { requireActor, toResponseError } from "./actor";
 import { createAutomationFor, deleteAutomationFor, enableAutomationFor, getAutomationFor, listAutomationsFor, updateAutomationFor } from "./automations";
 import { automationInput, automationPatch, id, validate } from "./schemas";
+import { RelayError } from "../shared/errors";
 
 const READ = { permission: { campaign: ["read"] } };
 const SEND = { permission: { campaign: ["send"] }, write: true };
@@ -17,8 +18,8 @@ export const fetchAutomations = createServerFn({ method: "GET" })
       const actor = await requireActor(env, getRequestHeaders(), READ);
       return await listAutomationsFor(env, actor, data.appId);
     } catch (err) {
-      if (err instanceof ConsoleError && err.status === 403) return null;
-      if (err instanceof ConsoleError && err.status === 404) return { missing: true as const };
+      if (err instanceof RelayError && err.status === 403) return null;
+      if (err instanceof RelayError && err.status === 404) return { missing: true as const };
       toResponseError(err);
     }
   });
@@ -30,8 +31,8 @@ export const fetchAutomation = createServerFn({ method: "GET" })
       const actor = await requireActor(env, getRequestHeaders(), READ);
       return await getAutomationFor(env, actor, data.id);
     } catch (err) {
-      if (err instanceof ConsoleError && err.status === 403) return null;
-      if (err instanceof ConsoleError && err.status === 404) return { missing: true as const };
+      if (err instanceof RelayError && err.status === 403) return null;
+      if (err instanceof RelayError && err.status === 404) return { missing: true as const };
       toResponseError(err);
     }
   });

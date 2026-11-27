@@ -9,8 +9,9 @@ import { securityDb } from "../db/security/client";
 import { addressGrant } from "../db/security/schema";
 import type { Env } from "../env";
 import { writeAudit } from "../lib/auth/audit";
-import { type ConsoleActor, ConsoleError } from "./actor";
+import { type ConsoleActor } from "./actor";
 import { dkimRecords, domainRow } from "./domains";
+import { RelayError } from "../shared/errors";
 
 // D1 takes at most 100 bound parameters per statement, so id lists go out in chunks.
 const CHUNK = 90;
@@ -43,7 +44,7 @@ async function grantIdsOf(env: Env, workspaceId: string, addressIds: string[]): 
 }
 
 export async function domainDeletePreview(env: Env, actor: ConsoleActor, id: string) {
-  if (!actor.platformAdmin) throw new ConsoleError(403, "forbidden");
+  if (!actor.platformAdmin) throw new RelayError("forbidden");
   const row = await domainRow(env, id);
   const addresses = await addressesOf(env, row.workspaceId, row.domain);
   const [grants, usage, identity] = await Promise.all([
@@ -77,9 +78,9 @@ export async function deleteDomain(
   id: string,
   input: { confirm: string; deleteHistory: boolean },
 ): Promise<{ ownerCommand: string | null }> {
-  if (!actor.platformAdmin) throw new ConsoleError(403, "forbidden");
+  if (!actor.platformAdmin) throw new RelayError("forbidden");
   const row = await domainRow(env, id);
-  if (input.confirm !== row.domain) throw new ConsoleError(400, "domain name does not match");
+  if (input.confirm !== row.domain) throw new RelayError("domain name does not match");
 
   // SES goes first and an error aborts: the row stays so a retry works (a 404 counts as deleted), and no identity is orphaned.
   const sesDelete = deletesSesIdentity(row);

@@ -2,7 +2,6 @@ import { Button } from "@foundry/ui/button";
 import { useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { cancelCampaignFn, pauseCampaignFn, previewAudienceFn, resumeCampaignFn, unscheduleCampaignFn } from "../console/campaigns.fns";
-import type { AudiencePreview, CampaignStats, CampaignView } from "../do/campaigns";
 import { reasonText } from "./error-text";
 import { ConfirmDialog } from "./confirm-dialog";
 import { FormError } from "./page/form-parts";
@@ -13,6 +12,7 @@ import { StatTile } from "./stat-tile";
 import { Toolbar } from "./page/toolbar";
 import { useCan } from "./use-can";
 import { Hint } from "./page/text";
+import { type AudiencePreview, type CampaignStats, type CampaignView } from "../shared/views";
 
 const LIVE = 10_000;
 

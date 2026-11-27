@@ -1,5 +1,5 @@
-import type { Shell } from "../../console/shell";
 import { createItems, visibleNav } from "./nav";
+import { type Shell } from "../../shared/views";
 
 export type FindEntry = {
   id: string;

@@ -6,8 +6,8 @@ import { workspace } from "../db/security/schema";
 import type { Env } from "../env";
 import { clientFor } from "./messages";
 import { ensureWorkspaceProfile } from "./workspace-profile";
+import { DEFAULT_MONTHLY_QUOTA } from "../shared/limits";
 
-export const DEFAULT_MONTHLY_QUOTA = 10_000;
 export const LIMITS_TTL_MS = 300_000;
 // A sender miss refreshes only once the snapshot is older than this, so a bad from cannot force a D1 read per send.
 export const SENDER_RETRY_MS = 60_000;

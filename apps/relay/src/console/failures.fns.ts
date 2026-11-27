@@ -2,9 +2,10 @@ import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeaders } from "@tanstack/react-start/server";
 import { env } from "cloudflare:workers";
 import { z } from "zod";
-import { ConsoleError, requireActor, toResponseError } from "./actor";
+import { requireActor, toResponseError } from "./actor";
 import { deleteFailureFor, listFailuresFor, replayFailureFor } from "./failures";
 import { id, validate } from "./schemas";
+import { RelayError } from "../shared/errors";
 
 const READ = { permission: { mailbox: ["read"] } };
 const MANAGE = { permission: { mailbox: ["manage"] }, write: true };
@@ -15,7 +16,7 @@ export const fetchFailures = createServerFn({ method: "GET" }).handler(async () 
     const actor = await requireActor(env, getRequestHeaders(), READ);
     return { rows: await listFailuresFor(env, actor) };
   } catch (err) {
-    if (err instanceof ConsoleError && err.status === 403) return null;
+    if (err instanceof RelayError && err.status === 403) return null;
     toResponseError(err);
   }
 });

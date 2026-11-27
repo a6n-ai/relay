@@ -1,9 +1,10 @@
 import { getDomain } from "tldts";
+import { DAY_MS } from "../shared/limits";
 
-export { type CampaignProblem, campaignProblems } from "./campaign-problems";
+export { type CampaignProblem, campaignProblems } from "../shared/campaign-problems";
 
 // Purchase-sourced contacts count as consented for this long (CASL implied consent).
-export const IMPLIED_CONSENT_MS = 730 * 86_400_000;
+export const IMPLIED_CONSENT_MS = 730 * DAY_MS;
 
 // Opt-outs are per brand: news.brand.com and shop.brand.co.uk key to their registrable domain.
 export function brandDomain(email: string): string {

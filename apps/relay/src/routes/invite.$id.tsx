@@ -5,7 +5,7 @@ import { acceptInviteFn, getInviteFn } from "../console/members.fns";
 import { AuthButton, AuthCard, AuthText, AuthTitle } from "../components/auth-card";
 import { errorText } from "../components/error-text";
 import { FormError } from "../components/page/form-parts";
-import { ROLE_LABEL, type MemberRole } from "../components/role-select";
+import { ROLE_LABEL, type OrgRole } from "../shared/roles";
 import { useSignOut } from "../components/sign-out-button";
 
 export const Route = createFileRoute("/invite/$id")({
@@ -62,7 +62,7 @@ function InvitePage() {
         <>
           <AuthTitle>Join {invite.workspaceName}</AuthTitle>
           <AuthText>
-            You are invited as {ROLE_LABEL[invite.role as MemberRole] ?? invite.role} for {invite.email}.
+            You are invited as {ROLE_LABEL[invite.role as OrgRole] ?? invite.role} for {invite.email}.
           </AuthText>
           <AuthButton onClick={accept} disabled={pending}>
             Accept invite

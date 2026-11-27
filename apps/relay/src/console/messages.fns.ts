@@ -2,9 +2,11 @@ import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeaders } from "@tanstack/react-start/server";
 import { env } from "cloudflare:workers";
 import { z } from "zod";
-import { ConsoleError, requireActor, toResponseError } from "./actor";
+import { requireActor, toResponseError } from "./actor";
 import { getMessageFor, listMessagesFor } from "./messages";
 import { appId, id, validate } from "./schemas";
+import { RelayError } from "../shared/errors";
+import { MESSAGE_STATUSES } from "../shared/mail";
 
 const LOG_READ = { permission: { log: ["read"] } };
 const MAIL_READ = { permission: { mailbox: ["read"] } };
@@ -16,7 +18,7 @@ export const fetchMessages = createServerFn({ method: "GET" })
       z.object({
         dir: z.enum(["in", "out"]),
         app: appId.optional(),
-        status: z.enum(["queued", "sent", "failed", "suppressed"]).optional(),
+        status: z.enum(MESSAGE_STATUSES).optional(),
         email: z.string().max(254).optional(),
         cursor: z.string().max(64).optional(),
       }),
@@ -33,7 +35,7 @@ export const fetchMessages = createServerFn({ method: "GET" })
         cursor: data.cursor,
       });
     } catch (err) {
-      if (err instanceof ConsoleError && err.status === 403) return null;
+      if (err instanceof RelayError && err.status === 403) return null;
       toResponseError(err);
     }
   });
@@ -46,8 +48,8 @@ export const fetchMessage = createServerFn({ method: "GET" })
       const actor = await requireActor(env, getRequestHeaders(), LOG_READ);
       return { message: await getMessageFor(env, actor, data.id, { images: data.images === true }) };
     } catch (err) {
-      if (err instanceof ConsoleError && err.status === 403) return null;
-      if (err instanceof ConsoleError && err.status === 404) return { missing: true as const };
+      if (err instanceof RelayError && err.status === 403) return null;
+      if (err instanceof RelayError && err.status === 404) return { missing: true as const };
       toResponseError(err);
     }
   });

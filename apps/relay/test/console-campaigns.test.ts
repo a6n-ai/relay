@@ -1,6 +1,6 @@
 import { env, SELF } from "cloudflare:test";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { campaignProblems } from "../src/core/campaign-problems";
+import { campaignProblems } from "../src/shared/campaign-problems";
 import { clientFor } from "../src/core/messages";
 import { requireActor } from "../src/console/actor";
 import { addApp } from "../src/console/apps";
