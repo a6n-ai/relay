@@ -80,7 +80,6 @@ export default defineConfig({
 						{ label: 'Campaigns', slug: 'api/campaigns', attrs: { 'data-icon': 'share' } },
 						{ label: 'Webhooks', slug: 'api/webhooks', attrs: { 'data-icon': 'link' } },
 						{ label: 'Audience hook', slug: 'api/audience-hook', attrs: { 'data-icon': 'filter' } },
-						{ label: 'Import', slug: 'api/import', attrs: { 'data-icon': 'download' } },
 					],
 				},
 				{

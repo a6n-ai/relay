@@ -35,4 +35,4 @@ You cannot remove an Unsubscribed or Complaint suppression. Those people opted o
 
 ## Through the API
 
-You can import suppressions with the [import endpoint](/docs/api/import/). To check the effect, send a message and read its status. See [Messages](/docs/sending/messages/).
+To check a suppression, send a message and read its status. See [Messages](/docs/sending/messages/).

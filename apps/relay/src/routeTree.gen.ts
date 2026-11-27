@@ -63,7 +63,6 @@ import { Route as AppDomainsAddressesAddressIdRouteImport } from './routes/_app/
 import { Route as AppDomainsAddressesNewRouteImport } from './routes/_app/domains_.addresses.new'
 import { Route as AppListsListIdImportRouteImport } from './routes/_app/lists_.$listId_.import'
 import { Route as ApiV1CampaignsIdRouteImport } from './routes/api/v1/campaigns.$id'
-import { Route as ApiV1ImportKindRouteImport } from './routes/api/v1/import.$kind'
 import { Route as ApiV1ListsIdRouteImport } from './routes/api/v1/lists.$id'
 import { Route as ApiV1MessagesIdRouteImport } from './routes/api/v1/messages.$id'
 import { Route as ApiV1TemplatesIdRouteImport } from './routes/api/v1/templates.$id'
@@ -352,11 +351,6 @@ const ApiV1CampaignsIdRoute = ApiV1CampaignsIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => ApiV1CampaignsRoute,
 } as any)
-const ApiV1ImportKindRoute = ApiV1ImportKindRouteImport.update({
-  id: '/api/v1/import/$kind',
-  path: '/api/v1/import/$kind',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiV1ListsIdRoute = ApiV1ListsIdRouteImport.update({
   id: '/$id',
   path: '/$id',
@@ -480,7 +474,6 @@ export interface FileRoutesByFullPath {
   '/domains/addresses/new': typeof AppDomainsAddressesNewRoute
   '/lists/$listId/import': typeof AppListsListIdImportRoute
   '/api/v1/campaigns/$id': typeof ApiV1CampaignsIdRouteWithChildren
-  '/api/v1/import/$kind': typeof ApiV1ImportKindRoute
   '/api/v1/lists/$id': typeof ApiV1ListsIdRouteWithChildren
   '/api/v1/messages/$id': typeof ApiV1MessagesIdRoute
   '/api/v1/templates/$id': typeof ApiV1TemplatesIdRoute
@@ -549,7 +542,6 @@ export interface FileRoutesByTo {
   '/domains/addresses/new': typeof AppDomainsAddressesNewRoute
   '/lists/$listId/import': typeof AppListsListIdImportRoute
   '/api/v1/campaigns/$id': typeof ApiV1CampaignsIdRouteWithChildren
-  '/api/v1/import/$kind': typeof ApiV1ImportKindRoute
   '/api/v1/lists/$id': typeof ApiV1ListsIdRouteWithChildren
   '/api/v1/messages/$id': typeof ApiV1MessagesIdRoute
   '/api/v1/templates/$id': typeof ApiV1TemplatesIdRoute
@@ -620,7 +612,6 @@ export interface FileRoutesById {
   '/_app/domains_/addresses/new': typeof AppDomainsAddressesNewRoute
   '/_app/lists_/$listId_/import': typeof AppListsListIdImportRoute
   '/api/v1/campaigns/$id': typeof ApiV1CampaignsIdRouteWithChildren
-  '/api/v1/import/$kind': typeof ApiV1ImportKindRoute
   '/api/v1/lists/$id': typeof ApiV1ListsIdRouteWithChildren
   '/api/v1/messages/$id': typeof ApiV1MessagesIdRoute
   '/api/v1/templates/$id': typeof ApiV1TemplatesIdRoute
@@ -691,7 +682,6 @@ export interface FileRouteTypes {
     | '/domains/addresses/new'
     | '/lists/$listId/import'
     | '/api/v1/campaigns/$id'
-    | '/api/v1/import/$kind'
     | '/api/v1/lists/$id'
     | '/api/v1/messages/$id'
     | '/api/v1/templates/$id'
@@ -760,7 +750,6 @@ export interface FileRouteTypes {
     | '/domains/addresses/new'
     | '/lists/$listId/import'
     | '/api/v1/campaigns/$id'
-    | '/api/v1/import/$kind'
     | '/api/v1/lists/$id'
     | '/api/v1/messages/$id'
     | '/api/v1/templates/$id'
@@ -830,7 +819,6 @@ export interface FileRouteTypes {
     | '/_app/domains_/addresses/new'
     | '/_app/lists_/$listId_/import'
     | '/api/v1/campaigns/$id'
-    | '/api/v1/import/$kind'
     | '/api/v1/lists/$id'
     | '/api/v1/messages/$id'
     | '/api/v1/templates/$id'
@@ -867,7 +855,6 @@ export interface RootRouteChildren {
   ApiV1WebhooksRoute: typeof ApiV1WebhooksRouteWithChildren
   ApiWebhooksSesRoute: typeof ApiWebhooksSesRoute
   ListsListIdExportRoute: typeof ListsListIdExportRoute
-  ApiV1ImportKindRoute: typeof ApiV1ImportKindRoute
   ApiConsoleMessagesIdPartRoute: typeof ApiConsoleMessagesIdPartRoute
 }
 
@@ -1251,13 +1238,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiV1CampaignsIdRouteImport
       parentRoute: typeof ApiV1CampaignsRoute
     }
-    '/api/v1/import/$kind': {
-      id: '/api/v1/import/$kind'
-      path: '/api/v1/import/$kind'
-      fullPath: '/api/v1/import/$kind'
-      preLoaderRoute: typeof ApiV1ImportKindRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/v1/lists/$id': {
       id: '/api/v1/lists/$id'
       path: '/$id'
@@ -1552,7 +1532,6 @@ const rootRouteChildren: RootRouteChildren = {
   ApiV1WebhooksRoute: ApiV1WebhooksRouteWithChildren,
   ApiWebhooksSesRoute: ApiWebhooksSesRoute,
   ListsListIdExportRoute: ListsListIdExportRoute,
-  ApiV1ImportKindRoute: ApiV1ImportKindRoute,
   ApiConsoleMessagesIdPartRoute: ApiConsoleMessagesIdPartRoute,
 }
 export const routeTree = rootRouteImport

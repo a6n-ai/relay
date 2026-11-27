@@ -33,4 +33,3 @@ Row actions: **Edit contact** changes the name. **Remove contact** takes the per
 ## Endpoints
 
 - [Lists and members](/docs/api/lists/)
-- [Import](/docs/api/import/)

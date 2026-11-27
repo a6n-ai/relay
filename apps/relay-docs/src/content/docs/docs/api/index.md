@@ -53,6 +53,5 @@ Every endpoint can return these two:
 | [Campaigns](/docs/api/campaigns/) | `GET` and `POST /campaigns`, `GET`, `PATCH` and `DELETE /campaigns/{id}`, schedule, pause, resume, cancel and stats |
 | [Webhooks](/docs/api/webhooks/) | `GET` and `POST /webhooks`, `PATCH` and `DELETE /webhooks/{id}` |
 | [Audience hook](/docs/api/audience-hook/) | `GET`, `PUT` and `DELETE /audience-hook` |
-| [Import](/docs/api/import/) | `POST /import/{kind}` for lists, templates, campaigns, messages and suppressions |
 
 From another Cloudflare Worker you can skip HTTP and call Relay through a [Worker binding](/docs/worker-binding/).

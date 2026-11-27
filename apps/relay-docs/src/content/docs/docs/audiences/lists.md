@@ -28,7 +28,3 @@ Through the API, `POST /api/v1/lists/{id}/members` adds one contact and `POST /a
 ## Edit and delete
 
 **Edit list** changes the name, consent source and note. **Delete** removes the list. Its contacts leave it, and campaigns that use it no longer send to it. Mail already sent is unaffected.
-
-## Move data in bulk
-
-To bring existing lists, templates, campaigns, messages and suppressions into Relay, use the [import endpoint](/docs/api/import/).

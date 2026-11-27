@@ -15,7 +15,7 @@ Match on the status first, then on the message. Messages never change between ca
 
 | Message | When |
 | --- | --- |
-| `invalid input` | The body is not valid JSON, a field fails validation, a cursor is not one Relay issued, an import has more than 500 rows, a members import has more than 1,000, or a campaign `at` is outside the allowed window. |
+| `invalid input` | The body is not valid JSON, a field fails validation, a cursor is not one Relay issued, a members import has more than 1,000, or a campaign `at` is outside the allowed window. |
 | `unknown merge field` | A template or campaign uses a merge field Relay does not know. |
 | `unknown list` | A campaign update names a list that is not in your app. |
 | `sender not verified` | A campaign update sets `fromEmail` to an address that is not a verified sender. |
@@ -58,8 +58,7 @@ Match on the status first, then on the message. Messages never change between ca
 | `campaign not cancellable` | The campaign is not scheduled, sending or paused. |
 | `campaign not ready: data_fields_need_hook` | A campaign update would switch a hook campaign to lists while its bodies use data fields. |
 | `campaign not ready: <problems>` | The draft is incomplete. `<problems>` is a comma-separated list of `from_missing`, `subject_missing`, `html_missing`, `text_missing`, `audience_empty`, `audience_hook_missing`, `data_fields_need_hook`, `unsubscribe_missing` and `postal_address_missing`. |
-| `unknown list` | An import names a list that is not in your app. |
-| `import ref taken` | An `importRef` is already used by another app. |
+| `unknown list` | A campaign names a list that is not in your app. |
 
 ## 422 unprocessable
 

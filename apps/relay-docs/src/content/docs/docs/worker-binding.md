@@ -103,15 +103,3 @@ These three methods have no HTTP endpoint.
 | `isSuppressed(apiKey, email, stream, from?)` | Returns `true` when Relay will not send to the address on that stream. `stream` is `transactional`, `tracked` or `marketing`. Pass `from` to include that brand's opt-outs. |
 | `suppressionStatus(apiKey, emails, from?)` | Checks 1 to 100 addresses. Returns `email`, `stream`, `reason` and `brandOptOut` for each suppressed one. |
 | `suppress(apiKey, input)` | Suppresses an address. `input` is `{ email, reason, stream }`, with `reason` of `unsubscribe` or `manual` and `stream` of `"marketing"` or `null`. Returns `{ created }`. |
-
-## Import
-
-Each method takes the `rows` array of the matching [HTTP import](/docs/api/import/), up to 500 rows.
-
-| Method | What it does |
-| --- | --- |
-| `importLists(apiKey, rows)` | Import lists. |
-| `importTemplates(apiKey, rows)` | Import templates. |
-| `importCampaigns(apiKey, rows)` | Import campaigns. |
-| `importMessages(apiKey, rows)` | Import message history. |
-| `importSuppressions(apiKey, rows)` | Import suppressions. |

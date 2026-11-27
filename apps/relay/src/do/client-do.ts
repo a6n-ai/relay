@@ -63,18 +63,6 @@ import {
 } from "./campaigns";
 import { CLIENT_MIGRATIONS, migrate } from "./migrations";
 import {
-  IMPORT_TX_ROWS,
-  importCampaignRow,
-  importInChunks,
-  importListRow,
-  importMessageRow,
-  importTemplateRow,
-  type ImportCampaignInput,
-  type ImportIds,
-  type ImportMessageRow,
-  type ImportRow,
-} from "./imports";
-import {
   addMemberRow,
   createListRow,
   deleteListRow,
@@ -1365,48 +1353,6 @@ export class ClientDO extends DurableObject<Env> {
   async isSuppressed(workspaceId: string, email: string, stream: Stream, from?: string): Promise<boolean> {
     await this.ready(workspaceId);
     return this.suppressed(email.trim().toLowerCase(), stream, from ?? null);
-  }
-
-  async importLists(workspaceId: string, appId: string, rows: ImportRow<ListInput>[]): Promise<ImportIds> {
-    await this.ready(workspaceId);
-    return importInChunks(this.ctx.storage, rows, (row) => importListRow(this.ctx.storage.sql, appId, row));
-  }
-
-  async importTemplates(workspaceId: string, appId: string, rows: ImportRow<TemplateInput>[]): Promise<ImportIds> {
-    await this.ready(workspaceId);
-    return importInChunks(this.ctx.storage, rows, (row) => importTemplateRow(this.ctx.storage.sql, appId, row));
-  }
-
-  async importCampaigns(workspaceId: string, appId: string, rows: ImportRow<ImportCampaignInput>[]): Promise<ImportIds> {
-    await this.ready(workspaceId);
-    return importInChunks(this.ctx.storage, rows, (row) => importCampaignRow(this.ctx.storage.sql, appId, row));
-  }
-
-  // One transaction per call: a failed row rolls back the whole batch, and a repeat import creates nothing.
-  async importMessages(workspaceId: string, appId: string, rows: ImportMessageRow[]): Promise<{ created: number; existing: number }> {
-    await this.ready(workspaceId);
-    return this.ctx.storage.transactionSync(() => {
-      const total = { created: 0, existing: 0 };
-      for (const row of rows) total[importMessageRow(this.ctx.storage.sql, appId, row) ? "created" : "existing"] += 1;
-      return total;
-    });
-  }
-
-  // Each row goes through writeSuppression, so the reason rank holds: a complaint is never narrowed to an unsubscribe.
-  async importSuppressions(workspaceId: string, rows: { email: string; reason: SuppressionReason; stream?: Stream }[]): Promise<ImportIds> {
-    await this.ready(workspaceId);
-    const total: ImportIds = { created: 0, existing: 0, ids: {} };
-    for (let start = 0; start < rows.length; start += IMPORT_TX_ROWS) {
-      this.ctx.storage.transactionSync(() => {
-        for (const row of rows.slice(start, start + IMPORT_TX_ROWS)) {
-          const key = row.email.trim().toLowerCase();
-          const had = this.db.select({ email: schema.suppression.email }).from(schema.suppression).where(eq(schema.suppression.email, key)).get() !== undefined;
-          this.writeSuppression(key, row.reason, row.stream);
-          total[had ? "existing" : "created"] += 1;
-        }
-      });
-    }
-    return total;
   }
 
   // Opts out of marketing mail from the message's sending domain only. The domain comes from the stored message, never the request.

@@ -4,6 +4,7 @@ import { address } from "../db/core/schema";
 import { securityDb } from "../db/security/client";
 import { app } from "../db/security/schema";
 import type { Env } from "../env";
+import type { KeyScope } from "./api-keys";
 import { ApiError } from "./api-error";
 import { loadWorkspaceLimits } from "./limits";
 import { contactValues, hasMergeToken } from "./merge";
@@ -81,4 +82,9 @@ export async function sendTemplateMessage(env: Env, scope: Scope, input: Templat
 export async function getMessageForScope(env: Env, scope: Scope, id: string) {
   const view = await clientFor(env, scope.workspaceId).getMessage(scope.workspaceId, id);
   return view?.appId === scope.appId ? view : null;
+}
+
+// The brand opt-out applies when the sending address is given, so a request names its From to get the brand rule.
+export function isSuppressedForScope(env: Env, scope: KeyScope, email: string, streamName: Stream, from?: string): Promise<boolean> {
+  return clientFor(env, scope.workspaceId).isSuppressed(scope.workspaceId, email, streamName, from);
 }

@@ -3,13 +3,6 @@ import type { ZodType } from "zod";
 import { campaignPatch, listInput, listPatch, templateInput, templatePatch } from "../src/console/schemas";
 import { hookInputSchema } from "../src/core/audience-hook";
 import { campaignCreateInput } from "../src/core/campaign-scope";
-import {
-  importCampaignsBody,
-  importListsBody,
-  importMessagesBody,
-  importSuppressionsBody,
-  importTemplatesBody,
-} from "../src/core/imports";
 import { membersImportInput } from "../src/core/lists";
 import { memberInput } from "../src/core/member-input";
 import { sendBody, templateSendSchema } from "../src/core/send-input";
@@ -34,11 +27,6 @@ const SCHEMAS: Record<string, { route: string; schema: ZodType }> = {
   webhookCreate: { route: "webhooks.ts", schema: webhookInputSchema },
   webhookPatch: { route: "webhooks.$id.ts", schema: webhookPatchSchema },
   audienceHook: { route: "audience-hook.ts", schema: hookInputSchema },
-  importLists: { route: "import.$kind.ts", schema: importListsBody },
-  importTemplates: { route: "import.$kind.ts", schema: importTemplatesBody },
-  importCampaigns: { route: "import.$kind.ts", schema: importCampaignsBody },
-  importMessages: { route: "import.$kind.ts", schema: importMessagesBody },
-  importSuppressions: { route: "import.$kind.ts", schema: importSuppressionsBody },
 };
 
 const files = import.meta.glob<Endpoint[]>("../../relay-docs/src/fixtures/*.json", { eager: true, import: "default" });

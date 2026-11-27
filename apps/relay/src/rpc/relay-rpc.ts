@@ -31,19 +31,11 @@ import {
   updateListForScope,
 } from "../core/lists";
 import {
-  importCampaignsForScope,
-  importCampaignsSchema,
-  importListsForScope,
-  importListsSchema,
-  importSuppressionsForScope,
-  importMessagesForScope,
-  importMessagesSchema,
-  importSuppressionsSchema,
-  importTemplatesForScope,
-  importTemplatesSchema,
+  getMessageForScope,
   isSuppressedForScope,
-} from "../core/imports";
-import { getMessageForScope, sendMessage, sendTemplateMessage } from "../core/messages";
+  sendMessage,
+  sendTemplateMessage,
+} from "../core/messages";
 import { sendBody, templateSendSchema } from "../core/send-input";
 import {
   createTemplateForScope,
@@ -215,23 +207,8 @@ export class RelayRpc extends WorkerEntrypoint<Env> {
     return withScope(this.env, apiKey, (s) => suppressForScope(this.env, s, input));
   }
 
-  async importLists(apiKey: string, rows: unknown) {
-    return withScope(this.env, apiKey, (s) => importListsForScope(this.env, s, importListsSchema.parse(rows)));
-  }
 
-  async importTemplates(apiKey: string, rows: unknown) {
-    return withScope(this.env, apiKey, (s) => importTemplatesForScope(this.env, s, importTemplatesSchema.parse(rows)));
-  }
 
-  async importCampaigns(apiKey: string, rows: unknown) {
-    return withScope(this.env, apiKey, (s) => importCampaignsForScope(this.env, s, importCampaignsSchema.parse(rows)));
-  }
 
-  async importMessages(apiKey: string, rows: unknown) {
-    return withScope(this.env, apiKey, (s) => importMessagesForScope(this.env, s, importMessagesSchema.parse(rows)));
-  }
 
-  async importSuppressions(apiKey: string, rows: unknown) {
-    return withScope(this.env, apiKey, (s) => importSuppressionsForScope(this.env, s, importSuppressionsSchema.parse(rows)));
-  }
 }
