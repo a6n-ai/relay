@@ -139,9 +139,8 @@ describe("campaign live counters", () => {
     if (typeof scheduled !== "object" || !("runSeq" in scheduled)) throw new Error("not scheduled");
     expect(await stub.startCampaign(ws, c.id, scheduled.runSeq)).toBe("go");
     await stub.campaignChunk(ws, c.id, scheduled.runSeq);
-    const msgs = await runInDurableObject(stub, (_instance, state) =>
-      state.storage.sql.exec<{ id: string; email: string }>("SELECT id, to_email AS email FROM message WHERE campaign_id = ? ORDER BY to_email", c.id).toArray(),
-    );
+    const page = await stub.listMessages(ws, { direction: "out" }, { out: true, inbound: "all" });
+    const msgs = page.rows.map((r) => ({ id: r.id, email: r.toEmail! })).sort((a, b) => a.email.localeCompare(b.email));
     return { ws, stub, id: c.id, msgs };
   }
 

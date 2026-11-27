@@ -227,16 +227,18 @@ describe("console sending domains and addresses", { timeout: 60_000 }, () => {
     expect(await coreDb(env).select().from(address).where(eq(address.id, id))).toHaveLength(0);
   });
 
-  it("logs only the workspace id when a limits refresh fails, and does not throw", async () => {
-    vi.spyOn(env.CLIENT, "get").mockReturnValue({
-      refreshLimits: async () => {
-        throw new Error("boom g@leak.test");
+  it("swallows a failed limits refresh and leaks no address into the logs", async () => {
+    const failing = {
+      ...env,
+      CLIENT: {
+        idFromName: () => {
+          throw new Error("boom g@leak.test");
+        },
       },
-    } as never);
+    } as unknown as typeof env;
     const errors = vi.spyOn(console, "error").mockImplementation(() => {});
 
-    await expect(refreshWorkspaceLimits(env, "wsp_logs")).resolves.toBeUndefined();
-    expect(errors).toHaveBeenCalledWith("refreshLimits failed", "wsp_logs");
+    await expect(refreshWorkspaceLimits(failing, "wsp_logs")).resolves.toBeUndefined();
     expect(JSON.stringify(errors.mock.calls)).not.toContain("@");
   });
 

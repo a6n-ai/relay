@@ -124,10 +124,11 @@ describe("better-auth on D1", () => {
     expect(rows).toHaveLength(0);
   });
 
-  it("fails closed when the OTP mailer is unset or unknown", () => {
+  it("fails closed when the OTP mailer is unset or unknown", async () => {
     expect(() => pickMailer(undefined, env as Env)).toThrow("no OTP mailer configured");
     expect(() => pickMailer("smtp" as Env["OTP_MAILER"], env as Env)).toThrow("no OTP mailer configured");
-    expect(pickMailer("memory", env as Env)).toBe(memoryOtpMailer);
+    await pickMailer("memory", env as Env).send("picked@example.com", "654321", "sign-in");
+    expect(memoryOtpMailer.lastOtp("picked@example.com")).toBe("654321");
   });
 
   it("throws when BETTER_AUTH_SECRET is missing", () => {
@@ -348,8 +349,7 @@ describe("admin and organization plugins", () => {
 describe("invite mailer", () => {
   it("fails closed when unset and stores the invite id for memory", async () => {
     expect(() => pickInviteMailer(undefined, env as Env)).toThrow("no invite mailer configured");
-    expect(pickInviteMailer("memory", env as Env)).toBe(memoryInviteMailer);
-    await memoryInviteMailer.send("Memo@Example.com", { id: "inv_abc", role: "member" });
+    await pickInviteMailer("memory", env as Env).send("Memo@Example.com", { id: "inv_abc", role: "member" });
     expect(memoryInviteMailer.lastInvite("memo@example.com")?.id).toBe("inv_abc");
   });
 

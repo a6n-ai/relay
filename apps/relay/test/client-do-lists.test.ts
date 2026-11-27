@@ -55,6 +55,7 @@ describe("contact lists in the workspace DO", () => {
     const inUse = await stub.createList(ws, "app_1", { name: "Busy", consentSource: "purchase" });
     const draft = await stub.createList(ws, "app_1", { name: "Draft", consentSource: "purchase" });
     await stub.addMember(ws, draft.id, { email: "d@x.com" });
+    // A scheduled campaign needs a verified sender and a workflow; raw insert is the only cheap way to get one.
     await runInDurableObject(stub, (_instance, state) => {
       state.storage.sql.exec(
         "INSERT INTO campaign (id, app_id, name, list_ids, status, created_at, updated_at) VALUES ('cmp_scheduled001', 'app_1', 'C', ?, 'scheduled', 1, 1)",
@@ -65,6 +66,7 @@ describe("contact lists in the workspace DO", () => {
     await stub.deleteList(ws, draft.id);
     expect(await refused(stub.deleteList(ws, draft.id))).toBe("not found");
     expect(await stub.listLists(ws)).toMatchObject([{ name: "Busy" }]);
+    // Orphan members are invisible through the RPC surface once the list is gone.
     const orphans = await runInDurableObject(stub, (_instance, state) =>
       state.storage.sql.exec<{ n: number }>("SELECT COUNT(*) AS n FROM contact_list_member WHERE list_id = ?", draft.id).one().n,
     );

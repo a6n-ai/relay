@@ -52,7 +52,6 @@ describe("createAuth google provider", () => {
     // Invites pre-create users with emailVerified false; the default would refuse to link them.
     expect(linking?.requireLocalEmailVerified).toBe(false);
   });
-  it.todo("a mocked Google profile with no user row is refused and creates no user or account row (token exchange needs a Google network mock; covered in the browser pass)");
 });
 
 describe("refusesImplicitLink", () => {

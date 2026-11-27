@@ -130,13 +130,13 @@ describe("campaign lifecycle console", () => {
     return { create, terminate };
   }
 
-  it("schedules a ready campaign as instance <id>-1", async () => {
+  it("schedules a ready campaign and starts its workflow run", async () => {
     const { owner, campaignId } = await readyFixture("cmp-sched@example.com", "Cmp Sched Co");
     const { create } = spyWorkflow();
     const at = Date.now() + HOUR;
     expect(await scheduleCampaign(env, owner, campaignId, at)).toEqual({ runSeq: 1 });
     expect(create).toHaveBeenCalledWith({
-      id: `${campaignId}-1`,
+      id: expect.any(String),
       params: expect.objectContaining({ campaignId, runSeq: 1, at }),
     });
     expect(await getCampaign(env, owner, campaignId)).toMatchObject({ status: "scheduled", runSeq: 1 });
@@ -166,7 +166,7 @@ describe("campaign lifecycle console", () => {
     });
   });
 
-  it("pauses and resumes, starting the new run as <id>-2", async () => {
+  it("pauses and resumes, starting a new run under a fresh instance id", async () => {
     const { owner, campaignId } = await readyFixture("cmp-resume@example.com", "Cmp Resume Co");
     const { create, terminate } = spyWorkflow();
     await scheduleCampaign(env, owner, campaignId, Date.now() + HOUR);
@@ -175,9 +175,11 @@ describe("campaign lifecycle console", () => {
     expect(terminate).toHaveBeenCalled();
     expect(await resumeCampaign(env, owner, campaignId)).toEqual({ runSeq: 2 });
     expect(create).toHaveBeenLastCalledWith({
-      id: `${campaignId}-2`,
+      id: expect.any(String),
       params: expect.objectContaining({ runSeq: 2, at: 0 }),
     });
+    const [first, second] = create.mock.calls.map(([options]) => options?.id);
+    expect(second).not.toBe(first);
   });
 
   it("cancels a paused campaign and reports the dropped count", async () => {

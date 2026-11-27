@@ -1,10 +1,9 @@
-import { env, runInDurableObject, SELF } from "cloudflare:test";
+import { env, SELF } from "cloudflare:test";
 import { and, eq } from "drizzle-orm";
 import { beforeAll, describe, expect, it } from "vitest";
 import { requireActor } from "../src/console/actor";
 import { addApp } from "../src/services/apps";
 import { createWorkspace as createWorkspaceFromConsole } from "../src/services/workspaces";
-import { LIMITS_KEY, type WorkspaceLimits } from "../src/core/limits";
 import { getWorkspaceProfile, recordDoState } from "../src/core/workspace-profile";
 import { coreDb } from "../src/db/core/client";
 import { workspaceProfile } from "../src/db/core/schema";
@@ -23,11 +22,6 @@ beforeAll(async () => {
 
 const profileOf = async (workspaceId: string) =>
   (await coreDb(env).select().from(workspaceProfile).where(eq(workspaceProfile.workspaceId, workspaceId)))[0];
-
-const snapshot = (workspaceId: string) =>
-  runInDurableObject(env.CLIENT.get(env.CLIENT.idFromName(workspaceId)), (_instance, state) =>
-    state.storage.kv.get<WorkspaceLimits>(LIMITS_KEY),
-  );
 
 function postCreate(cookie: string, slug: string) {
   return SELF.fetch(`${BASE}/organization/create`, {

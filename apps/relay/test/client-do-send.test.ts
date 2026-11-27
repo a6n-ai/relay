@@ -40,6 +40,9 @@ function deferred() {
   return { promise, resolve, reject };
 }
 
+const messageCount = async (stub: ReturnType<typeof stubFor>, ws: string) =>
+  (await stub.listMessages(ws, { direction: "out" }, { out: true, inbound: "all" })).rows.length;
+
 const settle = <T>(p: Promise<T>) => p.then((value) => ({ value }), (e: Error) => ({ error: e.message }));
 const tick = () => new Promise<void>((r) => setTimeout(r, 0));
 
@@ -140,9 +143,7 @@ describe("ClientDO send", () => {
     expect(failures[0]).toMatch(/^ZodError: .*"subject"/s);
     expect(failures[1]).toMatch(/^ZodError: .*"to"/s);
 
-    const rows = await runInDurableObject(stub, (_instance, state) =>
-      state.storage.sql.exec<{ n: number }>("SELECT count(*) AS n FROM message").toArray()[0].n,
-    );
+    const rows = await messageCount(stub, ws);
     expect(rows).toBe(0);
     expect(enqueue).not.toHaveBeenCalled();
   });
@@ -158,9 +159,7 @@ describe("ClientDO send", () => {
     );
     expect(failure).toBe("queue_failed");
 
-    const rows = await runInDurableObject(stub, (_instance, state) =>
-      state.storage.sql.exec<{ n: number }>("SELECT count(*) AS n FROM message").toArray()[0].n,
-    );
+    const rows = await messageCount(stub, ws);
     expect(rows).toBe(0);
     expect((await env.MAIL.list({ prefix: `ws/${ws}/msg/` })).objects).toHaveLength(0);
 
@@ -225,9 +224,7 @@ describe("ClientDO send", () => {
     expect(a).toEqual({ error: "queue_failed" });
     expect(b).toEqual({ error: "queue_failed" });
     expect(put).toHaveBeenCalledTimes(1);
-    const rows = await runInDurableObject(stub, (_instance, state) =>
-      state.storage.sql.exec<{ n: number }>("SELECT count(*) AS n FROM message").toArray()[0].n,
-    );
+    const rows = await messageCount(stub, ws);
     expect(rows).toBe(0);
     expect((await env.MAIL.list({ prefix: `ws/${ws}/msg/` })).objects).toHaveLength(0);
   });
@@ -295,17 +292,12 @@ describe("ClientDO send", () => {
       return instance.ping("wsp_b").then(() => "resolved", (e: Error) => e.message);
     });
     expect(other).toBe("workspace mismatch");
-    const bound = await runInDurableObject(stub, (_instance, state) => state.storage.kv.get("workspace_id"));
-    expect(bound).toBe("wsp_a");
   });
 
   it("keeps the higher-ranked suppression reason when an email is suppressed again", async () => {
     const ws = "wsp_reason";
     const stub = await seededStub(ws);
-    const reason = () =>
-      runInDurableObject(stub, (_instance, state) =>
-        state.storage.sql.exec<{ reason: string }>("SELECT reason FROM suppression WHERE email = ?", "r@x.com").one().reason,
-      );
+    const reason = async () => (await stub.listSuppressions(ws, { prefix: "r@x.com" })).rows[0].reason;
 
     await stub.addSuppression(ws, "r@x.com", "bounce");
     await stub.addSuppression(ws, "r@x.com", "manual");

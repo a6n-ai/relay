@@ -158,9 +158,7 @@ describe("ClientDO sweeper alarm", () => {
     expect(result).toEqual({ requeued: 0, expired: 1 });
     expect(sendBatch).not.toHaveBeenCalled();
 
-    const row = await runInDurableObject(stub, (inst) =>
-      inst.db.select().from(schema.message).where(eq(schema.message.id, "msg_old")).get(),
-    );
+    const row = await stub.getMessage(ws, "msg_old");
     expect(row).toMatchObject({ status: "failed", error: "expired after 24h in queue" });
   });
 
@@ -180,16 +178,9 @@ describe("ClientDO sweeper alarm", () => {
     expect(result).toEqual({ requeued: 0, expired: 0 });
     expect(sendBatch).not.toHaveBeenCalled();
 
-    const statuses = await runInDurableObject(stub, (inst) =>
-      inst.db.select({ id: schema.message.id, status: schema.message.status, error: schema.message.error }).from(schema.message).all(),
-    );
-    expect(statuses).toEqual(
-      expect.arrayContaining([
-        { id: "msg_sent", status: "sent", error: null },
-        { id: "msg_failed", status: "failed", error: null },
-        { id: "msg_suppressed", status: "suppressed", error: null },
-      ]),
-    );
+    for (const [id, status] of [["msg_sent", "sent"], ["msg_failed", "failed"], ["msg_suppressed", "suppressed"]]) {
+      expect(await stub.getMessage(ws, id)).toMatchObject({ status, error: null });
+    }
   });
 
   it("enqueues 250 stale rows as sendBatch calls of 100, 100 and 50", async () => {
@@ -286,6 +277,7 @@ describe("attachment sweep", () => {
   async function attachedMessage(stub: ReturnType<typeof stubFor>, ws: string, status: Status, ageDays: number) {
     const { messageId } = await stub.send(ws, { ...base, attachments });
     const old = Date.now() - ageDays * DAY_MS;
+    // Backdating the row and reading the R2 key have no public path.
     const r2Key = await runInDurableObject(stub, (instance) => {
       instance.db.update(schema.message).set({ status, createdAt: old, updatedAt: old }).where(eq(schema.message.id, messageId)).run();
       return instance.db.select({ r2Key: schema.attachment.r2Key }).from(schema.attachment).where(eq(schema.attachment.messageId, messageId)).get()!.r2Key;
@@ -304,7 +296,8 @@ describe("attachment sweep", () => {
 
     expect(await env.MAIL.head(suppressed.r2Key)).toBeNull();
     expect(await env.MAIL.head(failed.r2Key)).toBeNull();
-    expect(await runInDurableObject(stub, (instance) => instance.db.select().from(schema.attachment).all())).toEqual([]);
+    expect((await stub.getMessage(ws, suppressed.messageId))?.attachments).toEqual([]);
+    expect((await stub.getMessage(ws, failed.messageId))?.attachments).toEqual([]);
   });
 
   it("keeps attachments of failed messages under 7 days and of sent messages of any age", async () => {
