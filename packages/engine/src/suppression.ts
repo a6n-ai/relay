@@ -5,8 +5,6 @@ import { normalizeAddress } from "@foundry/commons";
 import type { NotificationTables } from "./schema";
 import type { Channel } from "./types";
 
-export { normalizeAddress };
-
 // Schema generic is loose (matches @foundry/database's Database type): these
 // helpers only use the core query builder, and pinning a concrete schema would
 // reject every app `db` — each app has its own schema shape.

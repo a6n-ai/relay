@@ -4,7 +4,7 @@ import type { AudienceDef, CampaignTables } from "./campaign-schema";
 import type { NotificationTables } from "./schema";
 import type { UsersRef } from "./enqueue";
 import { marketingConsentBlockReason } from "./compliance";
-import { normalizeAddress } from "./suppression";
+import { normalizeAddress } from "@foundry/commons";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Db = PostgresJsDatabase<any>;

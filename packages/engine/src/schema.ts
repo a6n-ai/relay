@@ -18,8 +18,6 @@ import {
 // (`@relay/engine/schema`), which is what drizzle.config resolves.
 export {
   makeCampaignTables,
-  campaignStatus,
-  consentSource,
   type AudienceDef,
   type CampaignTables,
 } from "./campaign-schema";

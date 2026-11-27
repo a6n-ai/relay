@@ -2,7 +2,8 @@ import { inArray } from "drizzle-orm";
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import { resolveChannels, type PrefRow } from "./policy";
 import type { NotificationTables } from "./schema";
-import { normalizeAddress, suppressionRowsFor, type SuppressionScope } from "./suppression";
+import { normalizeAddress } from "@foundry/commons";
+import { suppressionRowsFor, type SuppressionScope } from "./suppression";
 import type { Channel, Kind } from "./types";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

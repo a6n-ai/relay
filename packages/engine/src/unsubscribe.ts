@@ -3,7 +3,8 @@ import { and, eq, isNull } from "drizzle-orm";
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import type { CampaignTables } from "./campaign-schema";
 import type { NotificationTables } from "./schema";
-import { normalizeAddress, suppress } from "./suppression";
+import { normalizeAddress } from "@foundry/commons";
+import { suppress } from "./suppression";
 import type { Channel } from "./types";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
