@@ -110,13 +110,13 @@ export function ChoiceControl(props: ControlProps) {
       aria-labelledby={labelledBy}
       aria-describedby={describedBy}
       type="single"
-      variant="outline"
-      className="w-full"
+      spacing={0.5}
+      className="w-full bg-muted p-0.5"
       value={value}
       onValueChange={(v) => v && onChange(v)}
     >
       {options.map((o, i) => (
-        <ToggleGroupItem key={o.value} value={o.value} disabled={o.disabled} autoFocus={autoFocus && i === 0} className="min-w-0 flex-1 shrink data-pressed:border-foreground data-pressed:bg-muted data-pressed:text-foreground dark:data-pressed:border-foreground dark:data-pressed:bg-muted">
+        <ToggleGroupItem key={o.value} value={o.value} disabled={o.disabled} autoFocus={autoFocus && i === 0} className="min-w-0 flex-1 shrink rounded-[calc(var(--ui-radius-control)-2px)] text-muted-foreground hover:bg-transparent data-pressed:bg-background data-pressed:text-foreground data-pressed:shadow-sm dark:data-pressed:bg-input">
           <span className="truncate">{o.label}</span>
           {o.badge ? <Badge variant="secondary">{o.badge}</Badge> : null}
         </ToggleGroupItem>
