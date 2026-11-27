@@ -84,6 +84,7 @@ export class ClientDO extends DurableObject<Env> {
   private readonly inFlight = new Map<string, Promise<SendResult>>();
   // shortcut: in memory, so an evicted DO forgets it and a run gets one more sender retry; persist on the run row if that matters.
   private readonly senderRetried = new Set<string>();
+  private readonly unknownFailures = new Map<string, number>();
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
@@ -1830,6 +1831,7 @@ export class ClientDO extends DurableObject<Env> {
       this.ctx.storage.sql,
       {
         senderRetried: this.senderRetried,
+        unknownFailures: this.unknownFailures,
         send: (input) => this.send(workspaceId, input),
         render: (appId, templateId, values) => this.renderOrRefuse(appId, templateId, values),
         refreshLimits: () => this.loadLimits(workspaceId),

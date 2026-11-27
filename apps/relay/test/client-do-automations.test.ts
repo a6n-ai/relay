@@ -323,11 +323,37 @@ describe("list automations in the workspace DO", () => {
     vi.spyOn(env.MAIL, "put").mockRejectedValue(new Error("r2 down"));
 
     const outcome = await runInDurableObject(stub, (instance) => instance.runDueAutomations(due));
-    expect(outcome).toMatchObject({ sent: 0, skipped: 0, blocked: true });
+    expect(outcome).toMatchObject({ sent: 0, skipped: 0, blocked: false });
     expect(log).toHaveBeenCalledWith("automation send deferred", expect.stringContaining("r2 down"));
     expect(await runs(stub)).toEqual([expect.objectContaining({ status: "pending", error: null })]);
 
     vi.restoreAllMocks();
     expect(await stub.runDueAutomations(due)).toMatchObject({ sent: 1 });
+  });
+
+  it("does not let one always-failing run block the next, and skips it as send_failed after 3 passes", async () => {
+    const ws = "ws_aut_unknown_3x";
+    const { stub, list, aut } = await setup(ws);
+    await stub.setAutomationEnabled(ws, aut.id, true, "1 Main St");
+    await stub.addMember(ws, list.id, { email: "a@x.com" });
+    await stub.addMember(ws, list.id, { email: "b@x.com" });
+    const rows = await runs(stub);
+    const due = Math.max(...rows.map((r) => r.due_at));
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const put = env.MAIL.put.bind(env.MAIL);
+    let calls = 0;
+    vi.spyOn(env.MAIL, "put").mockImplementation((...args: Parameters<typeof put>) => {
+      calls += 1;
+      if (calls !== 2) return Promise.reject(new Error("r2 down"));
+      return put(...args);
+    });
+
+    const first = await runInDurableObject(stub, (instance) => instance.runDueAutomations(due));
+    expect(first).toMatchObject({ sent: 1, skipped: 0, blocked: false });
+    await runInDurableObject(stub, (instance) => instance.runDueAutomations(due));
+    const third = await runInDurableObject(stub, (instance) => instance.runDueAutomations(due));
+    expect(third).toMatchObject({ skipped: 1 });
+    expect((await runs(stub)).filter((r) => r.error === "send_failed")).toHaveLength(1);
+    vi.restoreAllMocks();
   });
 });

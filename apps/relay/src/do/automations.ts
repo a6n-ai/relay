@@ -20,6 +20,7 @@ export type AutomationDeps = {
   refreshLimits: () => Promise<unknown>;
   // Runs whose sender was refused once after a limits reload. In memory: a DO that restarts retries once more, never skips a run for good on a stale snapshot.
   senderRetried: Set<string>;
+  unknownFailures: Map<string, number>;
   postalAddress: string | null;
 };
 
@@ -207,6 +208,8 @@ export async function sendTemplateForAutomation(
   });
 }
 
+const UNKNOWN_FAILURE_LIMIT = 3;
+
 type Due = { automationId: string; email: string; appId: string; listId: string; templateId: string; fromEmail: string };
 
 // Refusals that clear once the workspace or queue recovers leave the run pending. A refusal about this one run's content or sender skips it
@@ -316,17 +319,31 @@ export async function runDueAutomationRows(
       }
       const refusal = sendRefusal(err);
       if ("defer" in refusal) {
-        // Quota, suspension, queue and unexpected failures leave the run pending. Stop so the rest wait for the retry.
-        blocked = true;
         console.error("automation send deferred", describeError(err));
+        if (code === undefined) {
+          // An unexpected failure says nothing about the workspace: defer only this run, and skip it after UNKNOWN_FAILURE_LIMIT passes so it cannot block the rest.
+          const failures = (deps.unknownFailures.get(retryKey) ?? 0) + 1;
+          if (failures < UNKNOWN_FAILURE_LIMIT) {
+            deps.unknownFailures.set(retryKey, failures);
+            continue;
+          }
+          deps.unknownFailures.delete(retryKey);
+          markRun(sql, run, "skipped", { error: "send_failed" });
+          skipped += 1;
+          continue;
+        }
+        // Quota, suspension and queue refusals leave the run pending. Stop so the rest wait for the retry.
+        blocked = true;
         break;
       }
       deps.senderRetried.delete(retryKey);
+      deps.unknownFailures.delete(retryKey);
       markRun(sql, run, "skipped", { error: refusal.skip });
       skipped += 1;
       continue;
     }
     deps.senderRetried.delete(`${run.automationId}:${run.email}`);
+    deps.unknownFailures.delete(`${run.automationId}:${run.email}`);
     markRun(sql, run, "sent", { messageId: result.messageId, error: result.status === "suppressed" ? "suppressed" : undefined });
     sent += 1;
   }
