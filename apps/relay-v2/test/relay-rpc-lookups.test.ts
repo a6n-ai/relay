@@ -67,6 +67,11 @@ describe("RelayRpc lookups", () => {
     expect(await rpc.suppress(key1, { email: "a@x.test", reason: "manual", stream: "marketing" })).toEqual({ created: false });
   });
 
+  it("looks up a key longer than 200 characters", async () => {
+    const { rpc, key1 } = await seed("lookup-long-key");
+    expect(await rpc.messagesByKeys(key1, ["x".repeat(600)])).toEqual([]);
+  });
+
   it("refuses more than 100 keys as invalid input", async () => {
     const { rpc, key1 } = await seed("lookup-cap");
     const keys = Array.from({ length: 101 }, (_, i) => `k${i}`);
