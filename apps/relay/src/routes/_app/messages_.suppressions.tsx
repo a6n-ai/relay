@@ -29,6 +29,7 @@ const STREAM_LABEL: Record<StreamFilter, string> = { all: "All mail", transactio
 const streamLabel = (s: string) => STREAM_LABEL[s as StreamFilter] ?? s;
 
 export const Route = createFileRoute("/_app/messages_/suppressions")({
+  staticData: { title: "Suppressed", copy: "Addresses Relay will not send to." },
   validateSearch: (search: Record<string, unknown>): SuppressionsSearch => ({
     prefix: typeof search.prefix === "string" && search.prefix.trim() ? search.prefix.trim() : undefined,
     cursor: typeof search.cursor === "string" && search.cursor ? search.cursor : undefined,
@@ -37,7 +38,7 @@ export const Route = createFileRoute("/_app/messages_/suppressions")({
   }),
   loaderDeps: ({ search }) => ({ prefix: search.prefix, cursor: search.cursor }),
   loader: ({ deps }) => fetchSuppressions({ data: deps }),
-  pendingComponent: () => <ListSkeleton crumbs={[{ label: "Messages" }, { label: "Suppressions" }]} columns={4} search filter />,
+  pendingComponent: () => <ListSkeleton columns={4} search filter />,
   component: SuppressionsPage,
 });
 
@@ -57,11 +58,10 @@ function SuppressionsPage() {
   const navigate = useNavigate();
   const canWrite = useCan({ sending: ["write"] });
   const [removing, setRemoving] = useState<string | null>(null);
-  const crumbs = [{ label: "Messages" }, { label: "Suppressions" }];
   if (!page) {
     return (
       <>
-        <PageHeader crumbs={crumbs} />
+        <PageHeader />
         <DeniedState reason={deniedReason(shell)} />
       </>
     );
@@ -76,7 +76,7 @@ function SuppressionsPage() {
   const offset = search.cursor ? (search.offset ?? 0) : 0;
   return (
     <>
-      <PageHeader crumbs={crumbs} />
+      <PageHeader />
       <Toolbar
         search={<PrefixSearch />}
         filters={

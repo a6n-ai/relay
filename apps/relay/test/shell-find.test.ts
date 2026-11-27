@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { pageOf } from "./shell-pages";
 import { findEntries, pushRecent, readRecent } from "../src/components/shell/find";
 import { type OrgRole } from "../src/shared/roles";
 import { type Shell } from "../src/shared/views";
@@ -14,7 +15,7 @@ const shell = (roles: OrgRole[], over: Partial<Shell> = {}): Shell => ({
 
 describe("findEntries", () => {
   it("member: no Admin, no create items the role lacks, one entry per app", () => {
-    const entries = findEntries(shell(["member"]));
+    const entries = findEntries(shell(["member"]), pageOf);
     expect(entries.some((e) => e.label === "Admin")).toBe(false);
     expect(entries.some((e) => e.label === "New Domain")).toBe(false);
     expect(entries.filter((e) => e.group === "Apps").map((e) => e.to)).toEqual(["/apps/a1", "/apps/a2"]);
@@ -22,13 +23,13 @@ describe("findEntries", () => {
   });
 
   it("platform admin sees Admin; owner gets create items", () => {
-    const entries = findEntries(shell(["owner"], { platformAdmin: true }));
+    const entries = findEntries(shell(["owner"], { platformAdmin: true }), pageOf);
     expect(entries.find((e) => e.label === "Admin")?.to).toBe("/admin");
     expect(entries.find((e) => e.label === "New Domain")).toMatchObject({ group: "Actions", to: "/domains/new", search: undefined });
   });
 
   it("suspended workspace has no actions", () => {
-    const entries = findEntries(shell(["owner"], { active: { id: "w", name: "W", slug: "w", status: "suspended", roles: ["owner"] } }));
+    const entries = findEntries(shell(["owner"], { active: { id: "w", name: "W", slug: "w", status: "suspended", roles: ["owner"] } }), pageOf);
     expect(entries.some((e) => e.group === "Actions")).toBe(false);
   });
 });

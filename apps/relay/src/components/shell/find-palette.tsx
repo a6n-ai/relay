@@ -5,6 +5,7 @@ import { localStore } from "@foundry/ui/safe-storage";
 import SearchIcon from "lucide-react/icons/search";
 import { useEffect, useMemo, useState } from "react";
 import { isTypingTarget } from "../page/keys";
+import { usePageOf } from "./page-data";
 import { type FindEntry, findEntries, pushRecent, readRecent } from "./find";
 import { withNew } from "./scope";
 import { type Shell } from "../../shared/views";
@@ -17,7 +18,8 @@ export function FindPalette({ shell }: { shell: Shell }) {
   const [query, setQuery] = useState("");
   const [recent, setRecent] = useState<string[]>([]);
   const navigate = useNavigate();
-  const entries = useMemo(() => findEntries(shell), [shell]);
+  const pageOf = usePageOf();
+  const entries = useMemo(() => findEntries(shell, pageOf), [shell, pageOf]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {

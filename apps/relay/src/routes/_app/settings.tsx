@@ -15,6 +15,7 @@ import { PasswordCard } from "../../components/settings/password-card";
 import { NAME_MAX } from "../../shared/limits";
 
 export const Route = createFileRoute("/_app/settings")({
+  staticData: { title: "Settings", copy: "Your workspace name and who has access." },
   loader: () => passwordStatusFn(),
   component: GeneralPage,
 });
@@ -68,7 +69,7 @@ function GeneralPage() {
   const suspended = active?.status === "suspended";
   return (
     <>
-      <PageHeader crumbs={[{ label: "Settings", to: "/settings" }, { label: "General" }]} />
+      <PageHeader />
       <FormPanel>
         {suspended ? (
           <SettingsCard

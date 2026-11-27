@@ -5,23 +5,29 @@ import { type ReactNode, useEffect } from "react";
 import { PageTitle } from "../page/page-title";
 import { AddNewMenu } from "./add-new";
 import { sectionTabs } from "./nav";
-import { PAGE_COPY } from "./page-copy";
+import { trimSlash } from "../../lib/path";
+import { usePageOf } from "./page-data";
 import { isAppScoped } from "./scope";
 import { ScopeSwitcher } from "./scope-switcher";
 import { SectionTabs } from "./section-tabs";
 
 export type Crumb = { label: string; to?: string; params?: Record<string, string>; search?: Record<string, unknown> };
 
-export function PageHeader({ crumbs, badge, actions, description }: { crumbs: Crumb[]; badge?: ReactNode; actions?: ReactNode; description?: string }) {
+// Static pages pass no crumbs: the route's `staticData.title` is the crumb and `copy` the description. Detail pages pass crumbs with the record's name.
+export function PageHeader({ crumbs, badge, actions, description }: { crumbs?: Crumb[]; badge?: ReactNode; actions?: ReactNode; description?: string }) {
   const { pathname, search } = useLocation();
   const { shell } = useRouteContext({ from: "/_app" });
+  const pageOf = usePageOf();
+  // Looked up by path so a skeleton shown while the page loads reads the same declaration; dynamic routes pass their own description.
+  const page = pageOf(trimSlash(pathname));
   const appId = (search as { appId?: string }).appId;
-  const last = crumbs.length - 1;
-  const label = crumbs[last]?.label;
-  const section = sectionTabs(shell.active?.roles ?? [], pathname, search as Record<string, unknown>);
-  const title = section?.title ?? label;
+  const trail = crumbs ?? [{ label: page?.title ?? "" }];
+  const last = trail.length - 1;
+  const section = sectionTabs(shell.active?.roles ?? [], pathname, search as Record<string, unknown>, pageOf);
   const tab = section?.tabs.find((t) => t.id === section.active)?.label;
-  const parent = section?.title ? undefined : crumbs[last - 1];
+  const label = (section?.title ? tab : undefined) ?? trail[last]?.label;
+  const title = section?.title ?? label;
+  const parent = section?.title ? undefined : trail[last - 1];
 
   useEffect(() => {
     if (label) document.title = `${label} · Relay`;
@@ -44,7 +50,7 @@ export function PageHeader({ crumbs, badge, actions, description }: { crumbs: Cr
                 <ChevronLeft aria-hidden className="size-4" />
                 {parent.label}
               </Link>
-            ) : isAppScoped(pathname) ? (
+            ) : isAppScoped(pathname, pageOf) ? (
               <ScopeSwitcher />
             ) : (
               <span className="truncate px-2 text-base font-medium">{shell.active?.name}</span>
@@ -54,7 +60,7 @@ export function PageHeader({ crumbs, badge, actions, description }: { crumbs: Cr
         </div>
         {section ? <SectionTabs tabs={section.tabs} active={section.active} appId={appId} label={`${title ?? "Page"} sections`} /> : null}
       </header>
-      {title ? <PageTitle title={title} description={description ?? PAGE_COPY[tab ?? title] ?? PAGE_COPY[title]} badge={badge} actions={actions} /> : null}
+      {title ? <PageTitle title={title} description={description ?? page?.copy} badge={badge} actions={actions} /> : null}
     </>
   );
 }

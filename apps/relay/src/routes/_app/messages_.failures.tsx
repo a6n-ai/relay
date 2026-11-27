@@ -22,6 +22,7 @@ type FailuresSearch = { appId?: string; offset?: number };
 const PAGE = 25;
 
 export const Route = createFileRoute("/_app/messages_/failures")({
+  staticData: { title: "Failed", copy: "Messages that reached Relay but could not be accepted." },
   validateSearch: (raw: Record<string, unknown>): FailuresSearch => ({
     appId: typeof raw.appId === "string" && raw.appId ? raw.appId : undefined,
     offset: typeof raw.offset === "number" && raw.offset > 0 ? Math.floor(raw.offset) : undefined,
@@ -30,7 +31,7 @@ export const Route = createFileRoute("/_app/messages_/failures")({
     const [page, apps] = await Promise.all([fetchFailures(), fetchApps()]);
     return page ? { ...page, apps: apps ?? [] } : null;
   },
-  pendingComponent: () => <ListSkeleton crumbs={[{ label: "Messages" }, { label: "Failed to receive" }]} columns={5} filter />,
+  pendingComponent: () => <ListSkeleton columns={5} filter />,
   component: FailuresPage,
 });
 
@@ -42,12 +43,11 @@ function FailuresPage() {
   const navigate = useNavigate({ from: "/messages/failures" });
   const canManage = useCan({ mailbox: ["manage"] });
   const [deleting, setDeleting] = useState<string | null>(null);
-  const crumbs = [{ label: "Messages" }, { label: "Failed to receive" }];
 
   if (!page) {
     return (
       <>
-        <PageHeader crumbs={crumbs} />
+        <PageHeader />
         <DeniedState reason={deniedReason(shell)} />
       </>
     );
@@ -87,7 +87,7 @@ function FailuresPage() {
   const target = page.rows.find((f) => f.id === deleting);
   return (
     <>
-      <PageHeader crumbs={crumbs} />
+      <PageHeader />
       <Toolbar
         filters={
           <FilterMenu

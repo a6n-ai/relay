@@ -37,6 +37,7 @@ const STATUS_FACET: Facet = {
 
 
 export const Route = createFileRoute("/_app/admin")({
+  staticData: { title: "Admin", copy: "Every workspace on this Relay.", allowsNoWorkspace: "platform" },
   validateSearch: (search: Record<string, unknown>): AdminSearch => ({
     ws: typeof search.ws === "string" && search.ws ? search.ws : undefined,
     q: typeof search.q === "string" && search.q ? search.q : undefined,
@@ -50,7 +51,7 @@ export const Route = createFileRoute("/_app/admin")({
       throw err;
     }
   },
-  pendingComponent: () => <ListSkeleton crumbs={[{ label: "Admin" }]} columns={7} search filter />,
+  pendingComponent: () => <ListSkeleton columns={7} search filter />,
   component: AdminPage,
 });
 
@@ -238,7 +239,7 @@ function AdminPage() {
 
   return (
     <>
-      <PageHeader crumbs={[{ label: "Admin" }]} />
+      <PageHeader />
       <Toolbar
         search={<SearchInput value={query} onChange={setQuery} placeholder="Search workspaces" />}
         filters={

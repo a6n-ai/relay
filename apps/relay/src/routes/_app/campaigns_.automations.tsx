@@ -28,12 +28,13 @@ type AutomationsSearch = { appId?: string; status?: "on" | "off" };
 const ROUTE = "/campaigns/automations";
 
 export const Route = createFileRoute("/_app/campaigns_/automations")({
+  staticData: { title: "Automations", copy: "Emails that send themselves when something happens in an app.", scoped: "first" },
   validateSearch: (search: Record<string, unknown>): AutomationsSearch => ({
     appId: typeof search.appId === "string" && search.appId ? search.appId : undefined,
     status: search.status === "on" || search.status === "off" ? search.status : undefined,
   }),
   loaderDeps: ({ search }) => ({ appId: search.appId }),
-  pendingComponent: () => <ListSkeleton crumbs={[{ label: "Campaigns", to: "/campaigns" }, { label: "Automations" }]} columns={7} filter view action />,
+  pendingComponent: () => <ListSkeleton columns={7} filter view action />,
   loader: async ({ deps }) => {
     const apps = await fetchApps();
     if (!apps) return null;
@@ -62,11 +63,10 @@ function AutomationsPage() {
   const navigate = useNavigate({ from: "/campaigns/automations" });
   const [view, setView] = useState<View>(() => viewPref.read(ROUTE));
   const [deleting, setDeleting] = useState<AutomationView | null>(null);
-  const CRUMBS = [{ label: "Campaigns", to: "/campaigns", search: { appId: search.appId } }, { label: "Automations" }];
   if (!page) {
     return (
       <>
-        <PageHeader crumbs={CRUMBS} />
+        <PageHeader />
         <DeniedState reason={deniedReason(shell)} />
       </>
     );
@@ -74,7 +74,7 @@ function AutomationsPage() {
   if ("missing" in page) {
     return (
       <>
-        <PageHeader crumbs={CRUMBS} />
+        <PageHeader />
         <DeniedState reason="not-found" label="App not found" />
       </>
     );
@@ -130,7 +130,7 @@ function AutomationsPage() {
     );
   return (
     <>
-      <PageHeader crumbs={CRUMBS} />
+      <PageHeader />
       <Toolbar
         filters={<FilterMenu facets={facets} value={search} onChange={(next) => navigate({ search: next as never, replace: true })} />}
         view={<ViewToggle route={ROUTE} value={view} onChange={setView} />}

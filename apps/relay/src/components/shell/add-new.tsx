@@ -5,12 +5,10 @@ import ChevronDown from "lucide-react/icons/chevron-down";
 import { createItems } from "./nav";
 import { withNew } from "./scope";
 
-const MENU = ["app", "domain", "address", "campaign", "list", "template", "invite"];
-
 export function AddNewMenu() {
   const { shell } = useRouteContext({ from: "/_app" });
   const allowed = createItems(shell.active?.roles ?? [], shell.active?.status === "suspended");
-  const items = MENU.flatMap((id) => allowed.find((c) => c.id === id) ?? []);
+  const items = allowed.filter((c) => c.menu !== false);
   if (items.length === 0) return null;
   return (
     <DropdownMenu>

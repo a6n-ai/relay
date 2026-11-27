@@ -2,27 +2,16 @@ import { useEffect, useState, type ComponentProps } from 'react'
 import { AppWindow, ChevronRight, Globe, LayoutDashboard, List, Mail, Megaphone, Settings } from 'lucide-react'
 import { Badge } from '../stageshow/controls/Badge'
 import { Stage } from '../stageshow/stage'
+import { STATUS } from '../../status-badge'
 import './relay.css'
 
 type Tone = 'neutral' | 'accent' | 'success' | 'danger' | 'warning'
 
-const STATUS: Record<string, [Tone, string]> = {
-  queued: ['accent', 'Queued'],
-  sent: ['success', 'Sent'],
-  scheduled: ['accent', 'Scheduled'],
-  draft: ['neutral', 'Draft'],
-  pending: ['warning', 'Pending'],
-  failed: ['danger', 'Failed'],
-  subscribed: ['success', 'Subscribed'],
-  received: ['success', 'Received'],
-  suppressed: ['neutral', 'Suppressed'],
-  verified: ['success', 'Verified'],
-}
-
-/** The console's own StatusBadge labels and tones. */
-export function Status({ s }: { s: keyof typeof STATUS | string }) {
-  const [tone, label] = STATUS[s] ?? STATUS.draft
-  return <Badge tone={tone}>{label}</Badge>
+/** The console's own StatusBadge labels and tones; the landing badge calls the console "info" tone "accent". */
+export function Status({ s }: { s: string }) {
+  if (s === 'received') return <Badge tone="success">Received</Badge>
+  const { tone, label } = STATUS[s as keyof typeof STATUS] ?? STATUS.draft
+  return <Badge tone={(tone === 'info' ? 'accent' : tone) as Tone}>{label}</Badge>
 }
 
 /** Follows the page theme: `.dark` on <html>. Light until the page says otherwise. */
@@ -46,10 +35,10 @@ export function RStage<S extends object>({ className, ...props }: StageProps<S>)
   return <Stage<S> theme={theme} fidelity="standard" {...props} className={`rl ${className ?? ''}`} />
 }
 
-// The console's own sidebar (shell/nav.ts): the top-level items, with the active item's children open.
+// The console's own sidebar (shell/nav.ts, page titles on the routes): the top-level items, with the active item's children open. Labels are copied here because the routes' titles cannot load outside the router.
 const NAV = [
   [LayoutDashboard, 'Overview', []],
-  [Mail, 'Messages', ['Sent', 'Received', 'Failed to receive', 'Suppressions']],
+  [Mail, 'Messages', ['Sent', 'Received', 'Failed', 'Suppressed']],
   [Megaphone, 'Campaigns', ['Campaigns', 'Templates', 'Automations']],
   [List, 'Lists', []],
   null,

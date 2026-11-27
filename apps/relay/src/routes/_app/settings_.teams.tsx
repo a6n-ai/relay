@@ -16,11 +16,11 @@ import { PageHeader } from "../../components/shell/page-header";
 import { useCan } from "../../components/use-can";
 import { deleteTeamFn, fetchPeople, renameTeamFn, setTeamMemberFn } from "../../console/members.fns";
 
-const crumbs = [{ label: "Settings", to: "/settings" }, { label: "Teams" }];
 
 export const Route = createFileRoute("/_app/settings_/teams")({
+  staticData: { title: "Teams", copy: "Groups of members you can give access together." },
   loader: () => fetchPeople(),
-  pendingComponent: () => <ListSkeleton crumbs={[{ label: "Settings", to: "/settings" }, { label: "Teams" }]} columns={2} action />,
+  pendingComponent: () => <ListSkeleton columns={2} action />,
   component: TeamsPage,
 });
 
@@ -41,7 +41,7 @@ function TeamsPage() {
   if (!people) {
     return (
       <>
-        <PageHeader crumbs={crumbs} />
+        <PageHeader />
         <DeniedState reason={deniedReason(shell)} />
       </>
     );
@@ -54,7 +54,6 @@ function TeamsPage() {
   return (
     <>
       <PageHeader
-        crumbs={crumbs}
         actions={
           canCreateTeam ? (
             <CreateDialog trigger="New team" title="New team">

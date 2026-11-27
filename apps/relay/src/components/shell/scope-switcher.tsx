@@ -8,7 +8,8 @@ import Check from "lucide-react/icons/check";
 import ChevronsUpDown from "lucide-react/icons/chevrons-up-down";
 import { useState } from "react";
 import { createItems } from "./nav";
-import { effectiveApp, scopeLabel, scopeSearch, showsAllApps } from "./scope";
+import { usePageOf } from "./page-data";
+import { pickApp, scopeLabel, scopeSearch, showsAllApps } from "./scope";
 
 const row =
   "flex h-9 items-center justify-between gap-2 rounded-md px-2 text-sm hover:bg-muted focus-visible:bg-muted outline-none";
@@ -17,11 +18,13 @@ export function ScopeSwitcher() {
   const { shell } = useRouteContext({ from: "/_app" });
   const { appId } = useSearch({ strict: false }) as { appId?: string };
   const pathname = useLocation({ select: (l) => l.pathname });
+  const pageOf = usePageOf();
+  const all = showsAllApps(pathname, pageOf);
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const needle = query.trim().toLowerCase();
   const apps = shell.apps.filter((a) => a.name.toLowerCase().includes(needle));
-  const current = effectiveApp(shell.apps, appId, pathname);
+  const current = pickApp(shell.apps, appId, all);
   const canCreateApp = createItems(shell.active?.roles ?? [], shell.active?.status === "suspended").some((i) => i.id === "app");
   const close = () => {
     setOpen(false);
@@ -53,7 +56,7 @@ export function ScopeSwitcher() {
       <PopoverContent align="start" className="w-64 gap-1.5 p-1.5">
         <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Find app" aria-label="Find app" />
         <div className="flex max-h-64 flex-col overflow-y-auto">
-          {showsAllApps(pathname) && "all apps".includes(needle) ? choice(undefined, "All apps") : null}
+          {all && "all apps".includes(needle) ? choice(undefined, "All apps") : null}
           {apps.map((a) => choice(a.id, a.name))}
         </div>
         {canCreateApp ? (

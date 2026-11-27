@@ -1,6 +1,7 @@
-import { createFileRoute, Link, redirect, useRouter } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { getShell } from "../console/shell.fns";
+import { signInRedirect } from "../lib/sign-in-redirect";
 import { acceptInviteFn, getInviteFn } from "../console/members.fns";
 import { AuthButton, AuthCard, AuthText, AuthTitle } from "../components/auth-card";
 import { errorText } from "../components/error-text";
@@ -11,7 +12,7 @@ import { useSignOut } from "../components/sign-out-button";
 export const Route = createFileRoute("/invite/$id")({
   beforeLoad: async ({ location }) => {
     const shell = await getShell();
-    if (!shell) throw redirect({ to: "/sign-in", search: { redirect: location.href } });
+    if (!shell) throw signInRedirect(location);
   },
   loader: ({ params }) => getInviteFn({ data: { id: params.id } }),
   component: InvitePage,

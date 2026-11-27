@@ -22,6 +22,7 @@ import { fetchLists } from "../../console/lists.fns";
 type ListsSearch = { appId?: string; q?: string };
 
 export const Route = createFileRoute("/_app/lists")({
+  staticData: { title: "Lists", copy: "People you send campaigns to.", scoped: "all" },
   validateSearch: (search: Record<string, unknown>): ListsSearch => ({
     appId: typeof search.appId === "string" && search.appId ? search.appId : undefined,
     q: typeof search.q === "string" && search.q ? search.q : undefined,
@@ -40,7 +41,7 @@ export const Route = createFileRoute("/_app/lists")({
     const lists = results.flatMap((r) => (r && !("missing" in r) ? r : []));
     return { apps, appId: deps.appId, lists };
   },
-  pendingComponent: () => <ListSkeleton crumbs={[{ label: "Lists" }]} columns={4} search filter view action />,
+  pendingComponent: () => <ListSkeleton columns={4} search filter view action />,
   component: ListsPage,
 });
 
@@ -52,11 +53,10 @@ function ListsPage() {
   const [query, setQuery] = useUrlFilter("q");
   const navigate = useNavigate();
   const [view, setView] = useState<View>(() => viewPref.read("/lists"));
-  const crumbs = [{ label: "Lists" }];
   if (!page) {
     return (
       <>
-        <PageHeader crumbs={crumbs} />
+        <PageHeader />
         <DeniedState reason={deniedReason(shell)} />
       </>
     );
@@ -64,7 +64,7 @@ function ListsPage() {
   if ("missing" in page) {
     return (
       <>
-        <PageHeader crumbs={crumbs} />
+        <PageHeader />
         <DeniedState reason="not-found" label="App not found" />
       </>
     );
@@ -92,7 +92,7 @@ function ListsPage() {
   const href = (l: (typeof lists)[number]) => ({ to: "/lists/$listId" as const, params: { listId: l.id }, search: { appId: l.appId } });
   return (
     <>
-      <PageHeader crumbs={crumbs} />
+      <PageHeader />
       <Toolbar
         search={<SearchInput value={query} onChange={setQuery} placeholder="Search lists" />}
         filters={

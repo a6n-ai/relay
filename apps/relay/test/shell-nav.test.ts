@@ -1,20 +1,21 @@
 import { describe, expect, it } from "vitest";
 import { allows } from "../src/lib/auth/permissions";
-import { activeNav, APP_SCOPED, createItems, sectionTabs, visibleNav } from "../src/components/shell/nav";
+import { pageOf } from "./shell-pages";
+import { activeNav, createItems, sectionTabs, visibleNav } from "../src/components/shell/nav";
 
 const ids = (groups: ReturnType<typeof visibleNav>) => groups.map((g) => g.id);
 
 describe("visibleNav", () => {
   it("shows a platform admin with no workspace only Admin", () => {
-    expect(visibleNav([], true, false).flatMap((g) => g.items.map((i) => i.id))).toEqual(["admin"]);
+    expect(visibleNav([], true, false, pageOf).flatMap((g) => g.items.map((i) => i.id))).toEqual(["admin"]);
   });
 
   it("hides the platform group from a member", () => {
-    expect(ids(visibleNav(["member"], false))).not.toContain("platform");
+    expect(ids(visibleNav(["member"], false, true, pageOf))).not.toContain("platform");
   });
 
   it("shows only the platform group and unrestricted items to a platform admin with no roles", () => {
-    const groups = visibleNav([], true);
+    const groups = visibleNav([], true, true, pageOf);
     expect(ids(groups)).toEqual(["work", "setup", "platform"]);
     const work = groups.find((g) => g.id === "work");
     const setup = groups.find((g) => g.id === "setup");
@@ -49,12 +50,6 @@ describe("activeNav", () => {
   });
 });
 
-describe("APP_SCOPED", () => {
-  it("lists the five app-scoped pages", () => {
-    expect([...APP_SCOPED]).toEqual(["/messages", "/campaigns", "/campaigns/templates", "/campaigns/automations", "/lists"]);
-  });
-});
-
 describe("createItems", () => {
   it("is empty when the workspace is suspended", () => {
     expect(createItems(["owner"], true)).toEqual([]);
@@ -84,16 +79,16 @@ describe("createItems", () => {
 
 describe("sectionTabs", () => {
   it("lists Messages tabs and follows the dir search", () => {
-    expect(sectionTabs(["owner"], "/messages", { dir: "in" })).toMatchObject({ title: "Messages", active: "received" });
-    expect(sectionTabs(["owner"], "/messages", {})?.tabs.map((t) => t.label)).toEqual(["Sent", "Received", "Failed", "Suppressed"]);
+    expect(sectionTabs(["owner"], "/messages", { dir: "in" }, pageOf)).toMatchObject({ title: "Messages", active: "received" });
+    expect(sectionTabs(["owner"], "/messages", {}, pageOf)?.tabs.map((t) => t.label)).toEqual(["Sent", "Received", "Failed", "Suppressed"]);
   });
 
   it("has no tabs on a detail page or a page without sections", () => {
-    expect(sectionTabs(["owner"], "/messages/abc", {})).toBeNull();
-    expect(sectionTabs(["owner"], "/domains", {})).toBeNull();
+    expect(sectionTabs(["owner"], "/messages/abc", {}, pageOf)).toBeNull();
+    expect(sectionTabs(["owner"], "/domains", {}, pageOf)).toBeNull();
   });
 
   it("gives an app its Overview and Webhooks tabs", () => {
-    expect(sectionTabs(["owner"], "/apps/a1/webhooks", {})).toMatchObject({ title: null, active: "webhooks" });
+    expect(sectionTabs(["owner"], "/apps/a1/webhooks", {}, pageOf)).toMatchObject({ title: null, active: "webhooks" });
   });
 });

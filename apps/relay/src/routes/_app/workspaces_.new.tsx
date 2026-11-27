@@ -12,6 +12,7 @@ import { createWorkspaceFn } from "../../console/workspaces.fns";
 import { NAME_MAX } from "../../shared/limits";
 
 export const Route = createFileRoute("/_app/workspaces_/new")({
+  staticData: { allowsNoWorkspace: true },
   component: NewWorkspacePage,
 });
 

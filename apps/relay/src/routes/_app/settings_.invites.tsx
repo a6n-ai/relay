@@ -12,21 +12,21 @@ import { type OrgRole, ROLE_LABEL } from "../../shared/roles";
 import { confirmAction } from "../../components/run-action";
 import { InviteForm } from "../../components/settings/invite-form";
 import { SuspendedNotice } from "../../components/settings/suspended-notice";
-import { useNewParam } from "../../components/shell/new-param";
+import { useNewParam } from "../../components/shell/scope";
 import { PageHeader } from "../../components/shell/page-header";
 import { StatusBadge } from "../../components/status-badge";
 import { useCan } from "../../components/use-can";
 import { cancelInviteFn, fetchPeople } from "../../console/members.fns";
 import { formatDate } from "../../lib/format-date";
 
-const crumbs = [{ label: "Settings", to: "/settings" }, { label: "Invites" }];
 
 export const Route = createFileRoute("/_app/settings_/invites")({
+  staticData: { title: "Invites", copy: "People you have asked to join this workspace." },
   validateSearch: (search: Record<string, unknown>): { new?: 1 } => ({
     new: search.new === 1 || search.new === "1" ? 1 : undefined,
   }),
   loader: () => fetchPeople(),
-  pendingComponent: () => <ListSkeleton crumbs={[{ label: "Settings", to: "/settings" }, { label: "Invites" }]} columns={4} action />,
+  pendingComponent: () => <ListSkeleton columns={4} action />,
   component: InvitesPage,
 });
 
@@ -52,7 +52,7 @@ function InvitesPage() {
   if (!people) {
     return (
       <>
-        <PageHeader crumbs={crumbs} />
+        <PageHeader />
         <DeniedState reason={deniedReason(shell)} />
       </>
     );
@@ -67,7 +67,7 @@ function InvitesPage() {
 
   return (
     <>
-      <PageHeader crumbs={crumbs} actions={invite} />
+      <PageHeader actions={invite} />
       {suspended ? <SuspendedNotice /> : null}
       <ResourceTable
         columns={[

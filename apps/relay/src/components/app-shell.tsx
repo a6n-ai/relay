@@ -17,6 +17,7 @@ import {
 import { Link, useLocation, useSearch } from "@tanstack/react-router";
 import { Fragment, type ReactNode, useEffect } from "react";
 import { activeNav, type NavGroup, type NavItem, visibleNav } from "./shell/nav";
+import { usePageOf } from "./shell/page-data";
 import { navSearch } from "./shell/scope";
 import { UserMenu } from "./shell/user-menu";
 import { SuspendedBanner } from "./suspended-banner";
@@ -39,13 +40,14 @@ function CloseOnNavigate() {
 function LeafItem({ item, active }: { item: NavItem; active: Active }) {
   const current = active?.item === item.id;
   const appId = useAppId();
+  const pageOf = usePageOf();
   const first = item.children?.[0] ?? item;
   return (
     <SidebarMenuItem>
       <SidebarMenuButton
         isActive={current}
         tooltip={item.label}
-        render={<Link to={first.to} search={navSearch(first.to, first.search, appId)} aria-current={current ? "page" : undefined} />}
+        render={<Link to={first.to} search={navSearch(first.to, first.search, appId, pageOf)} aria-current={current ? "page" : undefined} />}
       >
         <item.icon />
         <span>{item.label}</span>
@@ -77,7 +79,7 @@ function Groups({ groups, active }: { groups: NavGroup[]; active: Active }) {
 
 export function AppShell({ shell, find, children }: { shell: Shell; find?: ReactNode; children: ReactNode }) {
   const { pathname, search } = useLocation();
-  const groups = visibleNav(shell.active?.roles ?? [], shell.platformAdmin, shell.active !== null);
+  const groups = visibleNav(shell.active?.roles ?? [], shell.platformAdmin, shell.active !== null, usePageOf());
   const active = activeNav(pathname, search as Record<string, unknown>);
   return (
     <SidebarProvider>

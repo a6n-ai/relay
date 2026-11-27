@@ -7,7 +7,7 @@ import { SITE_ORIGIN } from "../../shared/site";
 // Overview and its shell pieces load only when it renders, never on the signed-out landing page.
 const OverviewView = lazy(() => import("../../components/overview"));
 const OverviewSkeleton = lazy(() =>
-  import("../../components/page/page-skeleton").then(({ CardsSkeleton }) => ({ default: () => <CardsSkeleton crumbs={[{ label: "Overview" }]} /> })),
+  import("../../components/page/page-skeleton").then(({ CardsSkeleton }) => ({ default: () => <CardsSkeleton /> })),
 );
 
 const DESCRIPTION = "One API for transactional email, campaigns and inbound mail, with signed webhooks and a console your whole team can read.";
@@ -52,6 +52,7 @@ const landingHead = () => ({
 });
 
 export const Route = createFileRoute("/_app/")({
+  staticData: { title: "Overview", copy: "How your messages are doing this month." },
   // Marketing meta applies only when the landing page renders, not to the signed-in Overview.
   head: ({ match }: { match: { context: { landing?: boolean } } }) => (match.context.landing ? landingHead() : {}),
   // A signed-out visitor sees the landing page, but child loaders still run; skip the fetch for them.

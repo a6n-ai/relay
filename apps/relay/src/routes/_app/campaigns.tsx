@@ -29,6 +29,7 @@ type CampaignsSearch = { appId?: string; cursor?: string; offset?: number; q?: s
 const ROUTE = "/campaigns";
 
 export const Route = createFileRoute("/_app/campaigns")({
+  staticData: { title: "Campaigns", copy: "Emails you send to a list, on a schedule or on demand.", scoped: "first" },
   validateSearch: (search: Record<string, unknown>): CampaignsSearch => ({
     appId: typeof search.appId === "string" && search.appId ? search.appId : undefined,
     cursor: typeof search.cursor === "string" && search.cursor ? search.cursor : undefined,
@@ -37,7 +38,7 @@ export const Route = createFileRoute("/_app/campaigns")({
     status: typeof search.status === "string" && search.status ? search.status : undefined,
   }),
   loaderDeps: ({ search }) => ({ appId: search.appId, cursor: search.cursor }),
-  pendingComponent: () => <ListSkeleton crumbs={[{ label: "Campaigns" }]} columns={5} search filter view action />,
+  pendingComponent: () => <ListSkeleton columns={5} search filter view action />,
   loader: async ({ deps }) => {
     const apps = await fetchApps();
     if (!apps) return null;
@@ -54,7 +55,6 @@ export const Route = createFileRoute("/_app/campaigns")({
   component: CampaignsPage,
 });
 
-const CRUMBS = [{ label: "Campaigns" }];
 
 function CampaignsPage() {
   const page = Route.useLoaderData();
@@ -67,7 +67,7 @@ function CampaignsPage() {
   if (!page) {
     return (
       <>
-        <PageHeader crumbs={CRUMBS} />
+        <PageHeader />
         <DeniedState reason={deniedReason(shell)} />
       </>
     );
@@ -75,7 +75,7 @@ function CampaignsPage() {
   if ("missing" in page) {
     return (
       <>
-        <PageHeader crumbs={CRUMBS} />
+        <PageHeader />
         <DeniedState reason="not-found" label="App not found" />
       </>
     );
@@ -103,7 +103,7 @@ function CampaignsPage() {
   const openRow = (c: (typeof rows)[number]) => ({ to: "/campaigns/$campaignId" as const, params: { campaignId: c.id }, search: { appId: c.appId } });
   return (
     <>
-      <PageHeader crumbs={CRUMBS} />
+      <PageHeader />
       <Toolbar
         search={<SearchInput value={query} onChange={setQuery} placeholder="Search campaigns" />}
         filters={<FilterMenu facets={facets} value={search} onChange={(next) => navigate({ search: next as never, replace: true })} />}

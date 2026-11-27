@@ -30,6 +30,7 @@ const ROUTE = "/campaigns/templates";
 const text = (v: unknown) => (typeof v === "string" && v ? v : undefined);
 
 export const Route = createFileRoute("/_app/campaigns_/templates")({
+  staticData: { title: "Templates", copy: "Reusable layouts for your campaigns and app emails.", scoped: "first" },
   validateSearch: (search: Record<string, unknown>): TemplatesSearch => ({
     appId: typeof search.appId === "string" && search.appId ? search.appId : undefined,
     cursor: typeof search.cursor === "string" && search.cursor ? search.cursor : undefined,
@@ -39,7 +40,7 @@ export const Route = createFileRoute("/_app/campaigns_/templates")({
     q: typeof search.q === "string" && search.q ? search.q : undefined,
   }),
   loaderDeps: ({ search }) => ({ appId: search.appId, cursor: search.cursor }),
-  pendingComponent: () => <ListSkeleton crumbs={[{ label: "Campaigns", to: "/campaigns" }, { label: "Templates" }]} columns={5} search filter view action />,
+  pendingComponent: () => <ListSkeleton columns={5} search filter view action />,
   loader: async ({ deps }) => {
     const apps = await fetchApps();
     if (!apps) return null;
@@ -64,11 +65,10 @@ function TemplatesPage() {
   const [query, setQuery] = useUrlFilter("q");
   const navigate = useNavigate({ from: "/campaigns/templates" });
   const [view, setView] = useState<View>(() => viewPref.read(ROUTE));
-  const CRUMBS = [{ label: "Campaigns", to: "/campaigns", search: { appId: search.appId } }, { label: "Templates" }];
   if (!page) {
     return (
       <>
-        <PageHeader crumbs={CRUMBS} />
+        <PageHeader />
         <DeniedState reason={deniedReason(shell)} />
       </>
     );
@@ -76,7 +76,7 @@ function TemplatesPage() {
   if ("missing" in page) {
     return (
       <>
-        <PageHeader crumbs={CRUMBS} />
+        <PageHeader />
         <DeniedState reason="not-found" label="App not found" />
       </>
     );
@@ -109,7 +109,7 @@ function TemplatesPage() {
     );
   return (
     <>
-      <PageHeader crumbs={CRUMBS} />
+      <PageHeader />
       <Toolbar
         search={<SearchInput value={query} onChange={setQuery} placeholder="Search templates" />}
         filters={<FilterMenu facets={facets} value={search} onChange={(next) => navigate({ search: next as never, replace: true })} />}

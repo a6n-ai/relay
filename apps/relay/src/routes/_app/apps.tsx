@@ -16,11 +16,12 @@ import { useCan } from "../../components/use-can";
 import { fetchApps } from "../../console/apps.fns";
 
 export const Route = createFileRoute("/_app/apps")({
+  staticData: { title: "Apps", copy: "The products that send mail through Relay." },
   validateSearch: (search: Record<string, unknown>): { q?: string } => ({
     q: typeof search.q === "string" && search.q ? search.q : undefined,
   }),
   loader: () => fetchApps(),
-  pendingComponent: () => <ListSkeleton crumbs={[{ label: "Apps" }]} columns={3} search view action />,
+  pendingComponent: () => <ListSkeleton columns={3} search view action />,
   component: AppsPage,
 });
 
@@ -30,11 +31,10 @@ function AppsPage() {
   const canWrite = useCan({ tenant: ["write"] });
   const [query, setQuery] = useUrlFilter("q");
   const [view, setView] = useState<View>(() => viewPref.read(Route.fullPath));
-  const crumbs = [{ label: "Apps" }];
   if (!apps) {
     return (
       <>
-        <PageHeader crumbs={crumbs} />
+        <PageHeader />
         <DeniedState reason={deniedReason(shell)} />
       </>
     );
@@ -59,7 +59,7 @@ function AppsPage() {
     );
   return (
     <>
-      <PageHeader crumbs={crumbs} />
+      <PageHeader />
       <Toolbar
         search={apps.length > 0 ? <SearchInput value={query} onChange={setQuery} placeholder="Search apps" /> : undefined}
         view={apps.length > 0 ? <ViewToggle route={Route.fullPath} value={view} onChange={setView} /> : undefined}

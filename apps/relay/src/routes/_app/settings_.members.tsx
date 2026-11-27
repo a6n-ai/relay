@@ -16,14 +16,14 @@ import { PageHeader } from "../../components/shell/page-header";
 import { useCan } from "../../components/use-can";
 import { fetchPeople, removeMemberFn } from "../../console/members.fns";
 
-const crumbs = [{ label: "Settings", to: "/settings" }, { label: "Members" }];
 
 export const Route = createFileRoute("/_app/settings_/members")({
+  staticData: { title: "Members", copy: "People in this workspace and what they can do." },
   validateSearch: (search: Record<string, unknown>): { q?: string } => ({
     q: typeof search.q === "string" && search.q ? search.q : undefined,
   }),
   loader: () => fetchPeople(),
-  pendingComponent: () => <ListSkeleton crumbs={[{ label: "Settings", to: "/settings" }, { label: "Members" }]} columns={3} search action />,
+  pendingComponent: () => <ListSkeleton columns={3} search action />,
   component: MembersPage,
 });
 
@@ -43,7 +43,7 @@ function MembersPage() {
   if (!people) {
     return (
       <>
-        <PageHeader crumbs={crumbs} />
+        <PageHeader />
         <DeniedState reason={deniedReason(shell)} />
       </>
     );
@@ -56,7 +56,7 @@ function MembersPage() {
 
   return (
     <>
-      <PageHeader crumbs={crumbs} />
+      <PageHeader />
       {suspended ? <SuspendedNotice /> : null}
       <Toolbar
         search={

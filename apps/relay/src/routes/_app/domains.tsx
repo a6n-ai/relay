@@ -35,6 +35,7 @@ import { Hint, Mono } from "../../components/page/text";
 import { KIND_LABEL } from "../../lib/address-kinds";
 
 export const Route = createFileRoute("/_app/domains")({
+  staticData: { title: "Domains", copy: "Domains you send from and receive on, and the addresses on them." },
   validateSearch: (search: Record<string, unknown>) => ({
     q: typeof search.q === "string" && search.q ? search.q : undefined,
     status: search.status === "verified" || search.status === "pending" || search.status === "failed" ? search.status : undefined,
@@ -44,7 +45,7 @@ export const Route = createFileRoute("/_app/domains")({
     if (!domains) return null;
     return { domains, addresses: await fetchAddresses() };
   },
-  pendingComponent: () => <ListSkeleton crumbs={[{ label: "Domains" }]} columns={3} sections={["Domains", "Addresses"]} search filter view action />,
+  pendingComponent: () => <ListSkeleton columns={3} sections={["Domains", "Addresses"]} search filter view action />,
   component: DomainsPage,
 });
 
@@ -72,11 +73,10 @@ function DomainsPage() {
   const [releasing, setReleasing] = useState<{ id: string; domain: string } | null>(null);
   const [deleting, setDeleting] = useState<{ id: string; domain: string } | null>(null);
   const [removing, setRemoving] = useState<{ id: string; email: string } | null>(null);
-  const crumbs = [{ label: "Domains" }];
   if (!data) {
     return (
       <>
-        <PageHeader crumbs={crumbs} />
+        <PageHeader />
         <DeniedState reason={deniedReason(shell)} />
       </>
     );
@@ -153,7 +153,7 @@ function DomainsPage() {
 
   return (
     <>
-      <PageHeader crumbs={crumbs} />
+      <PageHeader />
       <Toolbar
         search={<SearchInput value={q} onChange={setQ} placeholder="Search domains and addresses" />}
         filters={<FilterMenu facets={[STATUS_FACET]} value={search} onChange={(next) => void navigate({ to: ".", search: next as never })} />}

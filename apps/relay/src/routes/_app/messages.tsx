@@ -18,6 +18,7 @@ import { MESSAGE_STATUSES } from "../../shared/mail";
 import { PAGE_SIZE } from "../../shared/limits";
 
 export const Route = createFileRoute("/_app/messages")({
+  staticData: { title: "Messages", copy: "Every email you send and receive, with its delivery status.", scoped: "all" },
   validateSearch: (raw: Record<string, unknown>): MessagesSearch & { offset?: number } => ({
     ...parseMessagesSearch(raw),
     offset: typeof raw.offset === "number" && raw.offset > 0 ? Math.floor(raw.offset) : undefined,
@@ -27,7 +28,7 @@ export const Route = createFileRoute("/_app/messages")({
     const [page, apps] = await Promise.all([fetchMessages({ data: { ...rest, app: appId } }), fetchApps()]);
     return page ? { ...page, apps: apps ?? [] } : null;
   },
-  pendingComponent: () => <ListSkeleton crumbs={[{ label: "Messages" }, { label: "Sent" }]} columns={4} search filter />,
+  pendingComponent: () => <ListSkeleton columns={4} search filter />,
   component: MessagesPage,
 });
 
@@ -38,14 +39,12 @@ function MessagesPage() {
   const search = Route.useSearch();
   const { shell } = Route.useRouteContext();
   const navigate = useNavigate({ from: "/messages" });
-  const label = search.dir === "in" ? "Received" : "Sent";
-  const crumbs = [{ label: "Messages" }, { label }];
   const [email, setEmail] = useUrlFilter("email", { resetCursor: true });
 
   if (!page) {
     return (
       <>
-        <PageHeader crumbs={crumbs} />
+        <PageHeader />
         <DeniedState reason={deniedReason(shell)} />
       </>
     );
@@ -65,7 +64,7 @@ function MessagesPage() {
     );
   return (
     <>
-      <PageHeader crumbs={crumbs} />
+      <PageHeader />
       <Toolbar
         search={
           <SearchInput

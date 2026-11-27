@@ -8,7 +8,7 @@ import { TableInset } from "./table-inset";
 import { Toolbar } from "./toolbar";
 
 // Each skeleton renders the page's own header and mirrors its layout, so nothing moves when data arrives.
-type Props = { crumbs: Crumb[] };
+type Props = { crumbs?: Crumb[] };
 
 const WIDTHS = ["w-2/3", "w-1/2", "w-3/4", "w-1/2", "w-2/3"];
 

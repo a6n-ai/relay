@@ -23,6 +23,8 @@ import { formatDate, formatWhen } from "../../lib/format-date";
 import { FormError, FormBody, FormActions } from "../../components/page/form-parts";
 import { type WebhookEvent } from "../../shared/mail";
 
+const DESCRIPTION = "Where Relay tells your app about message events.";
+
 export const Route = createFileRoute("/_app/apps_/$appId_/webhooks")({
   loader: ({ params }) => fetchWebhooks({ data: { appId: params.appId } }),
   pendingComponent: () => <ListSkeleton crumbs={[{ label: "Apps", to: "/apps" }, { label: "Webhooks" }]} columns={4} action />,
@@ -49,7 +51,7 @@ function WebhooksPage() {
   if (!webhooks) {
     return (
       <>
-        <PageHeader crumbs={crumbs} />
+        <PageHeader crumbs={crumbs} description={DESCRIPTION} />
         <DeniedState reason={deniedReason(shell)} />
       </>
     );
@@ -59,6 +61,7 @@ function WebhooksPage() {
     <>
       <PageHeader
         crumbs={crumbs}
+        description={DESCRIPTION}
         actions={
           canWrite ? (
             <CreateDialog trigger="New webhook" title="New webhook" open={createOpen} onOpenChange={setCreateOpen}>
