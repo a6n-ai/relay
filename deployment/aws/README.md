@@ -8,7 +8,12 @@ Relay itself is the Cloudflare Worker `relay` (`apps/relay`); it signs its AWS c
 | `relay-ses-events.yaml` | `relay-ses-events` (us-east-1) | SNS topic for us-east-1 SES events, delivered to Relay |
 | `worker-iam.yaml` | `relay-workers-iam` | IAM user `relay-workers`; key in Secrets Manager `/relay/workers/aws-access-key` |
 
-Worker secrets are set with `npx wrangler secret put <NAME>` from `apps/relay`.
+Worker secrets are set by hand by an owner, from `apps/relay`, one at a time; no script sets them and no value is ever printed:
+
+- `BETTER_AUTH_SECRET`, `SEED_SECRET`, `INTERNAL_SECRET`, `WEBHOOK_SECRET_KEY`, `UNSUBSCRIBE_SECRET`: `openssl rand -base64 32 | npx wrangler secret put <NAME>`. `INTERNAL_SECRET` is also the GitHub repo secret of the same name, so set both from one value.
+- `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`: the `relay-workers` key from Secrets Manager `/relay/workers/aws-access-key` (ap-south-1), entered at the `npx wrangler secret put <NAME>` prompt.
+
+Replacing `BETTER_AUTH_SECRET` signs every operator out.
 
 ## DNS (zone a6n.ai)
 
