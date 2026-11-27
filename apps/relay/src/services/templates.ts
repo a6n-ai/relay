@@ -1,5 +1,5 @@
 import { decodeCursor } from "../core/cursor";
-import { sanitizeEmailHtml } from "../core/sanitize-html";
+import { sanitizeEmailHtml } from "@relay/email/sanitize";
 import { clientFor } from "../do/client";
 import type { TemplateInput, TemplateOverride } from "../do/templates";
 import type { Env } from "../env";

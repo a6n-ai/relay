@@ -5,7 +5,8 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./events/types": "./src/events/types.ts"
+    "./events/types": "./src/events/types.ts",
+    "./sanitize": "./src/sanitize.ts"
   },
   "types": "./src/index.ts",
   "scripts": {
@@ -15,6 +16,10 @@
   "dependencies": {
     "@foundry/cloud": "github:a6n-ai/foundry#path:packages/cloud",
     "@foundry/commons": "github:a6n-ai/foundry#path:packages/commons",
+    "dom-serializer": "^3.1.1",
+    "domhandler": "^6.0.1",
+    "entities": "^9.0.0",
+    "htmlparser2": "^12.0.0",
     "nodemailer": "^10.4.0",
     "react-email": "^6.11.8",
     "zod": "^4.6.7"

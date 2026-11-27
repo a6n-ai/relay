@@ -1,7 +1,7 @@
 import { toBase64 } from "../core/crypto";
 import { and, eq, inArray, or } from "drizzle-orm";
 import { ownedBy } from "../core/r2-keys";
-import { sanitizeEmailHtml } from "../core/sanitize-html";
+import { sanitizeEmailHtml } from "@relay/email/sanitize";
 import { clientFor } from "../do/client";
 import { downloadResponse, PREVIEW_HEAD_BYTES, previewResponse, previewType } from "../core/download";
 import type { AttachmentView } from "../do/types";

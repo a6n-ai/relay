@@ -1,4 +1,4 @@
-// Copy of packages/engine/src/email-content/sanitize.ts; keep the two in sync. The one divergence is raster-only data: URIs.
+// Server-only: not in the package barrel. One copy for relay and the engine; data: images are raster-only because SVG can carry script.
 import { parseDocument } from "htmlparser2";
 import render from "dom-serializer";
 import { isComment, isTag, isText, type AnyNode, type Element } from "domhandler";

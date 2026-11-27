@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { sanitizeEmailHtml } from "../src/core/sanitize-html";
+import { sanitizeEmailHtml } from "./sanitize";
 
 const LEGIT = `<!DOCTYPE html>
 <html lang="en" xmlns:v="urn:schemas-microsoft-com:vml">

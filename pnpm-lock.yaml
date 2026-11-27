@@ -74,6 +74,9 @@ importers:
       '@foundry/ui':
         specifier: github:a6n-ai/foundry#path:packages/ui
         version: https://codeload.github.com/a6n-ai/foundry/tar.gz/3674cd48fa86abe399e23f61e9805120dc7d5384#path:packages/ui(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+      '@relay/email':
+        specifier: workspace:*
+        version: link:../../packages/email
       '@tanstack/react-router':
         specifier: ^1.170.46
         version: 1.170.46(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
@@ -190,6 +193,18 @@ importers:
       '@foundry/commons':
         specifier: github:a6n-ai/foundry#path:packages/commons
         version: https://codeload.github.com/a6n-ai/foundry/tar.gz/b6335fd7411c4cd369f9da5c9fc23dfbd80dd508#path:packages/commons
+      dom-serializer:
+        specifier: ^3.1.1
+        version: 3.1.1
+      domhandler:
+        specifier: ^6.0.1
+        version: 6.0.1
+      entities:
+        specifier: ^9.0.0
+        version: 9.0.0
+      htmlparser2:
+        specifier: ^12.0.0
+        version: 12.0.0
       nodemailer:
         specifier: ^10.4.0
         version: 10.4.0
@@ -260,6 +275,9 @@ importers:
       '@lezer/highlight':
         specifier: ^1.2.5
         version: 1.2.5
+      '@relay/email':
+        specifier: workspace:*
+        version: link:../email
       '@uiw/react-md-editor':
         specifier: ^4.2.3
         version: 4.2.3(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@10.2.2)

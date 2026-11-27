@@ -2,7 +2,7 @@ import { describeError } from "../core/log";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { decodeCursor } from "../core/cursor";
-import { sanitizeEmailHtml } from "../core/sanitize-html";
+import { sanitizeEmailHtml } from "@relay/email/sanitize";
 import { getWorkspaceProfile, updateWorkspaceProfile } from "../core/workspace-profile";
 import { securityDb } from "../db/security/client";
 import { user as securityUser } from "../db/security/schema";
