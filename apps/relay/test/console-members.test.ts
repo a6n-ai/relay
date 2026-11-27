@@ -1,4 +1,4 @@
-import { env, SELF } from "cloudflare:test";
+import { env, runInDurableObject, SELF } from "cloudflare:test";
 import { and, eq } from "drizzle-orm";
 import { beforeAll, describe, expect, it } from "vitest";
 import { requireActor, requireUser } from "../src/console/actor";
@@ -21,6 +21,10 @@ import { securityDb } from "../src/db/security/client";
 import { app, invitation, member, session, user, workspace } from "../src/db/security/schema";
 import { coreDb } from "../src/db/core/client";
 import { address, sendingDomain } from "../src/db/core/schema";
+import { inboxForRecipient } from "../src/core/addresses";
+import { clientFor } from "../src/do/client";
+import { getMessage } from "../src/services/inbox";
+import { newId } from "../src/shared/ids";
 import { deliveryEmail } from "../src/auth/recovery";
 import { memoryInviteMailer } from "../src/auth/invite-mailer";
 import { addMember, cookieFor, createWorkspace, ORIGIN, setActive, signIn } from "./console-helpers";
@@ -335,6 +339,25 @@ describe("accepting an invite", { timeout: 60_000 }, () => {
     await acceptInvite(env, await requireUser(env, headersFor(cookie), { write: true }), second.id);
     const [u] = await db.select().from(user).where(eq(user.email, mailbox));
     expect(u.recoveryEmail).toBe("b-reinv@gmail.test");
+  });
+
+  it("closed mailbox drops inbound", async () => {
+    const { actor, owner, domain, appId, invite } = await mailboxSetup("close");
+    const mailbox = `ravi@${domain}`;
+    const { id } = await invite(mailbox, "ravi-close@gmail.test");
+    const cookie = await signIn(mailbox, "ravi-close@gmail.test");
+    await acceptInvite(env, await requireUser(env, headersFor(cookie), { write: true }), id);
+    const [before] = await coreDb(env).select().from(address).where(eq(address.email, mailbox));
+    const letter = newId("msg");
+    await runInDurableObject(clientFor(env, owner.workspaceId), (_i, state) => {
+      state.storage.sql.exec("INSERT INTO message (id, app_id, direction, stream, status, address_id, created_at, updated_at) VALUES (?, ?, 'in', 'transactional', 'sent', ?, 1, 1)", letter, appId, before.id);
+    });
+    await removeMember(env, actor, headersFor(owner.cookie), await memberIdOf(owner.workspaceId, mailbox));
+    const [row] = await coreDb(env).select().from(address).where(eq(address.email, mailbox));
+    expect(row.closedAt).toBeInstanceOf(Date);
+    expect(row.canSend).toBe(false);
+    expect(await inboxForRecipient(env, mailbox)).toBeNull();
+    await expect(getMessage(env, actor, letter, { images: false })).resolves.toMatchObject({ id: letter });
   });
 
   it("mailbox taken at accept leaves no member", async () => {

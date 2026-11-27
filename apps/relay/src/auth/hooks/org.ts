@@ -1,4 +1,8 @@
 import { APIError } from "better-auth/api";
+import { and, eq } from "drizzle-orm";
+import { coreDb } from "../../db/core/client";
+import { address } from "../../db/core/schema";
+import { refreshWorkspaceLimits } from "../../services/limits";
 import { countSelfServeCreatedBy, ensureWorkspaceProfile, inviteCap, invitesInWindow, SELF_SERVE_WORKSPACE_CAP } from "../../core/workspace-profile";
 import { workspaceHoldings } from "../../core/workspace-holdings";
 import { maskEmails } from "../../core/mask-emails";
@@ -49,6 +53,11 @@ export const organizationHooks = (env: Env) => ({
     await writeAudit(env, { action: "member.add", workspaceId: organization.id, target: user.id, data: { role: member.role } });
   },
   afterRemoveMember: async ({ user, organization }: { user: { id: string }; organization: { id: string } }) => {
+    await coreDb(env)
+      .update(address)
+      .set({ canSend: false, closedAt: new Date(), updatedAt: new Date() })
+      .where(and(eq(address.workspaceId, organization.id), eq(address.ownerUserId, user.id)));
+    await refreshWorkspaceLimits(env, organization.id);
     await writeAudit(env, { action: "member.remove", workspaceId: organization.id, target: user.id });
   },
 });
