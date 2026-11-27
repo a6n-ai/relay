@@ -1,9 +1,10 @@
 import { inChunks } from "../core/chunks";
-import { and, eq, inArray, like } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { clearDefaultSenders } from "../core/addresses";
 import { refreshWorkspaceLimits } from "./limits";
 import { clientFor } from "../do/client";
 import { sesIdentityApi } from "../core/ses-identity";
+import { onDomain, sesRead } from "../core/sending-domain";
 import { coreDb } from "../db/core/client";
 import { address, sendingDomain } from "../db/core/schema";
 import { securityDb } from "../db/security/client";
@@ -24,7 +25,7 @@ async function addressesOf(env: Env, workspaceId: string, domain: string) {
   return coreDb(env)
     .select({ id: address.id, kind: address.kind })
     .from(address)
-    .where(and(eq(address.workspaceId, workspaceId), like(address.email, `%@${domain}`)));
+    .where(and(eq(address.workspaceId, workspaceId), onDomain(domain)));
 }
 
 // Grants sit in relay-security, so they are looked up by the address ids that core returned.
@@ -45,7 +46,7 @@ export async function domainDeletePreview(env: Env, actor: ConsoleActor, id: str
   const [grants, usage, identity] = await Promise.all([
     grantIdsOf(env, row.workspaceId, addresses.map((a) => a.id)),
     clientFor(env, row.workspaceId).domainUsage(row.workspaceId, row.domain),
-    sesIdentityApi(env).get(row.sesRegion, row.domain).catch(() => null),
+    sesRead.assumeUnknown(env, row.sesRegion, row.domain),
   ]);
   const sesDelete = deletesSesIdentity(row);
   return {

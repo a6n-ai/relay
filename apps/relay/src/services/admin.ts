@@ -4,7 +4,7 @@ import { INBOUND_GRACE_MS } from "../core/addresses";
 import { clientFor } from "../do/client";
 import { refreshWorkspaceLimits } from "./limits";
 import { utcDay } from "../core/usage";
-import { ensureWorkspaceProfile, SELF_SERVE_QUOTA } from "../core/workspace-profile";
+import { ensureWorkspaceProfile, SELF_SERVE_QUOTA, updateWorkspaceProfile } from "../core/workspace-profile";
 import { coreDb } from "../db/core/client";
 import { usageDaily, workspaceProfile } from "../db/core/schema";
 import { securityDb } from "../db/security/client";
@@ -105,11 +105,7 @@ export async function setWorkspaceStatus(
 export async function setWorkspaceInviteCap(env: Env, admin: PlatformAdmin, workspaceId: string, cap: number): Promise<void> {
   if (!Number.isInteger(cap) || cap < 1 || cap > MAX_INVITES_PER_DAY) throw new RelayError("invalid input");
   await requireWorkspace(env, workspaceId);
-  await ensureWorkspaceProfile(env, workspaceId);
-  await coreDb(env)
-    .update(workspaceProfile)
-    .set({ invitesPerDay: cap, updatedAt: new Date() })
-    .where(eq(workspaceProfile.workspaceId, workspaceId));
+  await updateWorkspaceProfile(env, workspaceId, { invitesPerDay: cap });
   await writeAudit(env, { action: "workspace.invite_cap", actorUserId: admin.userId, workspaceId, target: workspaceId, data: { cap } });
 }
 
@@ -117,11 +113,7 @@ export async function setWorkspaceInviteCap(env: Env, admin: PlatformAdmin, work
 export async function setWorkspaceRegion(env: Env, admin: PlatformAdmin, workspaceId: string, region: string): Promise<void> {
   if (!isSesRegion(region)) throw new RelayError("unknown region");
   await requireWorkspace(env, workspaceId);
-  await ensureWorkspaceProfile(env, workspaceId);
-  await coreDb(env)
-    .update(workspaceProfile)
-    .set({ defaultSesRegion: region, updatedAt: new Date() })
-    .where(eq(workspaceProfile.workspaceId, workspaceId));
+  await updateWorkspaceProfile(env, workspaceId, { defaultSesRegion: region });
   await writeAudit(env, { action: "workspace.ses_region", actorUserId: admin.userId, workspaceId, target: workspaceId, data: { region } });
 }
 
@@ -129,11 +121,7 @@ export async function setWorkspaceRegion(env: Env, admin: PlatformAdmin, workspa
 export async function setWorkspaceQuota(env: Env, admin: PlatformAdmin, workspaceId: string, quota: number): Promise<void> {
   if (!Number.isInteger(quota) || quota < 0 || quota > MAX_MONTHLY_QUOTA) throw new RelayError("invalid quota");
   await requireWorkspace(env, workspaceId);
-  await ensureWorkspaceProfile(env, workspaceId);
-  await coreDb(env)
-    .update(workspaceProfile)
-    .set({ monthlyMessageQuota: quota, updatedAt: new Date() })
-    .where(eq(workspaceProfile.workspaceId, workspaceId));
+  await updateWorkspaceProfile(env, workspaceId, { monthlyMessageQuota: quota });
   await writeAudit(env, { action: "workspace.quota", actorUserId: admin.userId, workspaceId, target: workspaceId, data: { quota } });
   await refreshWorkspaceLimits(env, workspaceId);
 }

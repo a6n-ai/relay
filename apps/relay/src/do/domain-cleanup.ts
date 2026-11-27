@@ -1,3 +1,4 @@
+import { domainLikePattern } from "../core/sending-domain";
 // Per-workspace DO work for deleting a sending domain. Domains are validated hostnames, so LIKE needs no escaping.
 // Mail history for a domain: what it sent, plus what arrived at its own addresses. Inbound mail merely sent FROM the domain
 // to someone else's address is not the domain's history.
@@ -5,7 +6,7 @@ const HISTORY = "((direction = 'out' AND from_email LIKE ?) OR (direction = 'in'
 export const HISTORY_BATCH = 100;
 
 export function domainUsage(sql: SqlStorage, domain: string): { messages: number; campaigns: number; automations: number } {
-  const like = `%@${domain}`;
+  const like = domainLikePattern(domain);
   const n = (query: string, ...params: string[]) => sql.exec<{ n: number }>(query, ...params).one().n;
   return {
     messages: n(`SELECT COUNT(*) AS n FROM message WHERE ${HISTORY}`, like, like),
@@ -17,7 +18,7 @@ export function domainUsage(sql: SqlStorage, domain: string): { messages: number
 // Call inside transactionSync. Live campaigns lose their From and pause (a draft just loses it); automations go off with an empty From.
 // An empty From is what campaignProblems reads as from_missing, so the console shows why nothing sends.
 export function detachDomainSenders(sql: SqlStorage, domain: string, now: number): { campaigns: string[]; automations: string[] } {
-  const like = `%@${domain}`;
+  const like = domainLikePattern(domain);
   const campaigns = sql
     .exec<{ id: string }>("SELECT id FROM campaign WHERE from_email LIKE ? AND status IN ('draft', 'scheduled', 'sending', 'paused')", like)
     .toArray()
@@ -37,7 +38,7 @@ export function detachDomainSenders(sql: SqlStorage, domain: string, now: number
 // One batch of history rows with the R2 keys that go with them. Callers loop until it comes back empty.
 // rawKeys are kept apart because an inbound_failure row may still need the same raw letter.
 export function historyBatch(sql: SqlStorage, domain: string): { ids: string[]; keys: string[]; rawKeys: string[] } {
-  const like = `%@${domain}`;
+  const like = domainLikePattern(domain);
   const rows = sql
     .exec<{ id: string; htmlKey: string | null; rawKey: string | null }>(
       `SELECT id, html_key AS htmlKey, raw_key AS rawKey FROM message WHERE ${HISTORY} LIMIT ${HISTORY_BATCH}`,

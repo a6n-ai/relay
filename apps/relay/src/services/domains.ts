@@ -1,6 +1,7 @@
-import { and, asc, count, eq, inArray, isNull, like, lt, ne, or } from "drizzle-orm";
+import { and, asc, count, eq, getTableColumns, inArray, like, ne, or } from "drizzle-orm";
 import { createAddress, deleteAddress as deleteAddressRow, updateAddress as updateAddressRow } from "../core/addresses";
-import { releasePendingRow, statusOf, type DomainStatus } from "./domain-state";
+import { domainStateOf, releasableFlag, sesRead, type DomainStatus } from "../core/sending-domain";
+import { releasePendingRow } from "./domain-state";
 import { refreshWorkspaceLimits } from "./limits";
 import { isSesRegion, SES_REGION_IDS } from "../shared/regions";
 import { type SesIdentity, sesIdentityApi } from "../core/ses-identity";
@@ -39,10 +40,6 @@ function normaliseEmail(raw: string): string {
   return `${email.slice(0, at)}@${normaliseDomain(email.slice(at + 1))}`;
 }
 
-// Only a row Relay created, never seen verified and still pending may be released along with its SES identity.
-const releasable = (d: { status: string; createdByRelay: boolean; verifiedAt: Date | null; protected: boolean }) =>
-  d.status === "pending" && d.createdByRelay && d.verifiedAt === null && !d.protected;
-
 // A domain claims its parents and subdomains too; the label boundary keeps badexample.com apart from example.com.
 async function claimedByAnother(env: Env, workspaceId: string, domain: string): Promise<boolean> {
   const labels = domain.split(".");
@@ -68,17 +65,13 @@ export const dkimRecords = (domain: string, identity: SesIdentity | null) =>
 
 export async function listDomains(env: Env, actor: ConsoleActor) {
   const rows = await coreDb(env)
-    .select()
+    .select({ ...getTableColumns(sendingDomain), releasable: releasableFlag })
     .from(sendingDomain)
     .where(eq(sendingDomain.workspaceId, actor.workspaceId))
     .orderBy(asc(sendingDomain.createdAt));
-  const ses = sesIdentityApi(env);
   return Promise.all(
     rows.map(async (d) => {
-      const identity = await ses.get(d.sesRegion, d.domain).catch(() => {
-        console.error("ses identity read failed", d.id);
-        return null;
-      });
+      const identity = await sesRead.logAndAssumeUnknown(env, d.sesRegion, d.domain, d.id);
       return {
         id: d.id,
         domain: d.domain,
@@ -86,7 +79,7 @@ export async function listDomains(env: Env, actor: ConsoleActor) {
         status: d.status,
         dkimStatus: d.dkimStatus,
         protected: d.protected,
-        releasable: releasable(d),
+        releasable: d.releasable,
         records: dkimRecords(d.domain, identity),
       };
     }),
@@ -110,7 +103,7 @@ export async function addDomain(env: Env, actor: ConsoleActor, input: { domain: 
     if (await claimedByAnother(env, actor.workspaceId, domain)) throw new RelayError("domain claimed");
     // An identity can sit in any region of the shared SES account, so a squat elsewhere is still a claim.
     for (const region of SES_REGION_IDS) {
-      if (await ses.get(region, domain)) throw new RelayError("domain registered");
+      if (await sesRead.failClosed(env, region, domain)) throw new RelayError("domain registered");
     }
   }
 
@@ -130,7 +123,7 @@ export async function addDomain(env: Env, actor: ConsoleActor, input: { domain: 
   let alreadyExists: boolean;
   try {
     // A platform admin adopting an identity needs only read access: Create is behind EnableSelfServeIdentities.
-    const existing = actor.platformAdmin ? await ses.get(sesRegion, domain) : null;
+    const existing = actor.platformAdmin ? await sesRead.failClosed(env, sesRegion, domain) : null;
     ({ alreadyExists } = existing ? { alreadyExists: true } : await ses.create(sesRegion, domain));
   } catch (err) {
     await removeRow();
@@ -157,9 +150,7 @@ export async function checkDomain(env: Env, actor: ConsoleActor, id: string): Pr
     .where(and(eq(sendingDomain.id, id), eq(sendingDomain.workspaceId, actor.workspaceId)));
   if (!row) throw new RelayError("not found");
 
-  const identity = await sesIdentityApi(env).get(row.sesRegion, row.domain);
-  const status = statusOf(identity);
-  const dkimStatus = (identity?.dkimStatus ?? "NOT_STARTED").toLowerCase();
+  const { status, dkimStatus } = domainStateOf(await sesRead.failClosed(env, row.sesRegion, row.domain));
   await coreDb(env)
     .update(sendingDomain)
     .set({ status, dkimStatus, updatedAt: new Date(), ...(status === "verified" && !row.verifiedAt ? { verifiedAt: new Date() } : {}) })
@@ -242,16 +233,13 @@ export async function releaseDomain(env: Env, actor: ConsoleActor, id: string): 
       workspaceId: sendingDomain.workspaceId,
       domain: sendingDomain.domain,
       sesRegion: sendingDomain.sesRegion,
-      status: sendingDomain.status,
-      createdByRelay: sendingDomain.createdByRelay,
-      verifiedAt: sendingDomain.verifiedAt,
       protected: sendingDomain.protected,
     })
     .from(sendingDomain)
     .where(eq(sendingDomain.id, id));
   if (!row) throw new RelayError("not found");
   if (row.protected) throw new RelayError("domain is protected");
-  if (!releasable(row) || !(await releasePendingRow(env, row, actor.userId))) {
+  if (!(await releasePendingRow(env, row, actor.userId))) {
     throw new RelayError("domain cannot be released");
   }
 }

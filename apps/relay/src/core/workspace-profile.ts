@@ -29,6 +29,19 @@ export async function ensureWorkspaceProfile(
     .onConflictDoNothing();
 }
 
+// The one write path for profile settings: repairs a missing row first, then stamps updatedAt.
+export async function updateWorkspaceProfile(
+  env: Env,
+  workspaceId: string,
+  patch: Partial<Omit<typeof workspaceProfile.$inferInsert, "workspaceId" | "updatedAt">>,
+): Promise<void> {
+  await ensureWorkspaceProfile(env, workspaceId);
+  await coreDb(env)
+    .update(workspaceProfile)
+    .set({ ...patch, updatedAt: new Date() })
+    .where(eq(workspaceProfile.workspaceId, workspaceId));
+}
+
 // Counts creations, not current ownership: a user who adds a second owner and leaves cannot create again.
 export async function countSelfServeCreatedBy(env: Env, userId: string): Promise<number> {
   const rows = await coreDb(env)

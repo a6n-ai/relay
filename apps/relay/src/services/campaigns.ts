@@ -1,10 +1,9 @@
+import { describeError } from "../core/log";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { decodeCursor } from "../core/cursor";
 import { sanitizeEmailHtml } from "../core/sanitize-html";
-import { getWorkspaceProfile, ensureWorkspaceProfile } from "../core/workspace-profile";
-import { coreDb } from "../db/core/client";
-import { workspaceProfile } from "../db/core/schema";
+import { getWorkspaceProfile, updateWorkspaceProfile } from "../core/workspace-profile";
 import { securityDb } from "../db/security/client";
 import { user as securityUser } from "../db/security/schema";
 import type { CampaignPatch, CampaignSummary } from "../do/campaigns";
@@ -122,11 +121,7 @@ export async function campaignOptions(
 
 // Settings write: the address reaches every campaign body, so the limits snapshot is refreshed at once.
 export async function setPostalAddress(env: Env, p: Principal, value: string): Promise<void> {
-  await ensureWorkspaceProfile(env, p.workspaceId);
-  await coreDb(env)
-    .update(workspaceProfile)
-    .set({ physicalAddress: value, updatedAt: new Date() })
-    .where(eq(workspaceProfile.workspaceId, p.workspaceId));
+  await updateWorkspaceProfile(env, p.workspaceId, { physicalAddress: value });
   await refreshWorkspaceLimits(env, p.workspaceId);
   await audit(env, p, "workspace.postal_address", p.workspaceId);
 }
@@ -184,7 +179,8 @@ export async function resumeCampaign(env: Env, p: Principal, id: string): Promis
       id: `${id}-${outcome.runSeq}`,
       params: { workspaceId: p.workspaceId, campaignId: id, runSeq: outcome.runSeq, at: 0 },
     });
-  } catch {
+  } catch (err) {
+    console.error("campaign run create failed", id, describeError(err));
     await client.pauseCampaign(p.workspaceId, id);
     throw new RelayError("could not resume");
   }

@@ -1,9 +1,10 @@
-import { and, eq, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { coreDb } from "../db/core/client";
 import { address, sendingDomain, workspaceProfile } from "../db/core/schema";
 import { securityDb } from "../db/security/client";
 import { workspace } from "../db/security/schema";
 import type { Env } from "../env";
+import { senderDomainJoin, verifiedSenderWhere } from "./sending-domain";
 import { ensureWorkspaceProfile } from "./workspace-profile";
 import { DEFAULT_MONTHLY_QUOTA } from "../shared/limits";
 
@@ -29,18 +30,11 @@ export async function loadWorkspaceLimits(env: Env, workspaceId: string): Promis
     .select({ quota: workspaceProfile.monthlyMessageQuota, postalAddress: workspaceProfile.physicalAddress })
     .from(workspaceProfile)
     .where(eq(workspaceProfile.workspaceId, workspaceId));
-  // Same workspace on both sides of the join: a domain in another workspace never verifies this address.
   const rows = await coreDb(env)
     .select({ email: address.email, appId: address.appId, name: address.displayName, replyTo: address.replyTo, sesRegion: sendingDomain.sesRegion })
     .from(address)
-    .innerJoin(
-      sendingDomain,
-      and(
-        eq(sendingDomain.workspaceId, address.workspaceId),
-        eq(sendingDomain.domain, sql`substr(${address.email}, instr(${address.email}, '@') + 1)`),
-      ),
-    )
-    .where(and(eq(address.workspaceId, workspaceId), eq(address.canSend, true), eq(sendingDomain.status, "verified")));
+    .innerJoin(sendingDomain, senderDomainJoin)
+    .where(verifiedSenderWhere(workspaceId));
   return {
     monthlyQuota: profile?.quota ?? DEFAULT_MONTHLY_QUOTA,
     postalAddress: profile?.postalAddress ?? null,

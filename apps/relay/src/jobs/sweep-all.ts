@@ -1,3 +1,4 @@
+import { describeError } from "../core/log";
 import { releaseStalePendingDomains } from "../services/domain-state";
 import type { Env } from "../env";
 import { sweepWorkspaces } from "./do-sweep";
@@ -8,8 +9,8 @@ export async function sweepAll(env: Env) {
   let releasedDomains = 0;
   try {
     releasedDomains = await releaseStalePendingDomains(env);
-  } catch {
-    console.error("stale domain release failed");
+  } catch (err) {
+    console.error("stale domain release failed", describeError(err));
   }
   return { ...swept, releasedDomains };
 }
