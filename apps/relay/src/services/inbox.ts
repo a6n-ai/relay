@@ -7,6 +7,9 @@ import { downloadResponse, PREVIEW_HEAD_BYTES, previewResponse, previewType } fr
 import type { AttachmentView } from "../do/types";
 import { type MessageAccess, type MessageDetail, type MessageQuery } from "../do/console-reads";
 import { decodeCursor } from "../core/cursor";
+import { coreDb } from "../db/core/client";
+import { address } from "../db/core/schema";
+import { getWorkspaceProfile } from "../core/workspace-profile";
 import { securityDb } from "../db/security/client";
 import { addressGrant, member, team, teamMember } from "../db/security/schema";
 import type { Env } from "../env";
@@ -27,7 +30,14 @@ type ConsoleMessage = Omit<
 
 export async function messageAccess(env: Env, p: Principal): Promise<MessageAccess> {
   const out = allows(p.roles ?? [], { log: ["read"] });
-  if (allows(p.roles ?? [], { mailbox: ["manage"] })) return { out, inbound: "all" };
+  if (allows(p.roles ?? [], { mailbox: ["manage"] })) {
+    if ((await getWorkspaceProfile(env, p.workspaceId)).adminsReadPersonal) return { out, inbound: "all" };
+    const others = await coreDb(env)
+      .select({ id: address.id, owner: address.ownerUserId })
+      .from(address)
+      .where(and(eq(address.workspaceId, p.workspaceId), eq(address.kind, "personal")));
+    return { out, inbound: "all", exceptInbound: others.filter((a) => a.owner !== p.userId).map((a) => a.id) };
+  }
   if (!allows(p.roles ?? [], { mailbox: ["read"] })) return { out, inbound: [] };
   return { out, inbound: await grantedAddressIds(env, p) };
 }
@@ -45,8 +55,14 @@ export async function grantedAddressIds(env: Env, p: Principal): Promise<string[
     .from(teamMember)
     .innerJoin(team, eq(team.id, teamMember.teamId))
     .where(and(eq(teamMember.userId, p.userId), eq(team.organizationId, p.workspaceId)));
+  const own = p.userId
+    ? await coreDb(env)
+        .select({ id: address.id })
+        .from(address)
+        .where(and(eq(address.workspaceId, p.workspaceId), eq(address.kind, "personal"), eq(address.ownerUserId, p.userId)))
+    : [];
   // Without a grantee, the workspace filter alone would match every grant in it.
-  if (!self && teams.length === 0) return [];
+  if (!self && teams.length === 0) return own.map((a) => a.id);
   const grantee = or(
     self ? eq(addressGrant.memberId, self.id) : undefined,
     teams.length > 0 ? inArray(addressGrant.teamId, teams.map((t) => t.id)) : undefined,
@@ -55,7 +71,7 @@ export async function grantedAddressIds(env: Env, p: Principal): Promise<string[
     .select({ addressId: addressGrant.addressId })
     .from(addressGrant)
     .where(and(eq(addressGrant.workspaceId, p.workspaceId), grantee));
-  return [...new Set(rows.map((r) => r.addressId))];
+  return [...new Set([...rows.map((r) => r.addressId), ...own.map((a) => a.id)])];
 }
 
 export async function listMessages(env: Env, p: Principal, q: MessageQuery) {

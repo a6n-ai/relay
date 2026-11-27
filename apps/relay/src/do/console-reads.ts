@@ -11,7 +11,10 @@ import { type DeliveryView } from "../shared/views";
 import { type Stream, type SuppressionReason, type MessageStatus } from "../shared/mail";
 import { PAGE_SIZE } from "../shared/limits";
 
-export type MessageAccess = { out: boolean; inbound: "all" | string[] };
+export type MessageAccess = { out: boolean; inbound: "all" | string[]; exceptInbound?: string[] };
+
+const notIn = (col: SQLiteColumn, ids: string[] | undefined): SQL | undefined =>
+  ids?.length ? sql`(${col} IS NULL OR ${col} NOT IN (SELECT value FROM json_each(${JSON.stringify(ids)})))` : undefined;
 
 export type MessageSummary = {
   id: string;
@@ -59,7 +62,7 @@ export function visibleTo(access: MessageAccess): SQL {
   const m = schema.message;
   const inbound =
     access.inbound === "all"
-      ? sql`${m.direction} = 'in'`
+      ? and(sql`${m.direction} = 'in'`, notIn(m.addressId, access.exceptInbound))!
       : sql`${m.direction} = 'in' AND ${m.addressId} IN (SELECT value FROM json_each(${JSON.stringify(access.inbound)}))`;
   return access.out ? sql`(${m.direction} = 'out' OR (${inbound}))` : sql`(${inbound})`;
 }
@@ -143,7 +146,7 @@ export type FailureView = {
 };
 
 // shortcut: 100 newest only, add a cursor if a workspace keeps more failures
-export function listInboundFailureRows(db: Db, inbound: "all" | string[]): FailureView[] {
+export function listInboundFailureRows(db: Db, access: MessageAccess): FailureView[] {
   const f = schema.inboundFailure;
   return db
     .select({
@@ -158,7 +161,7 @@ export function listInboundFailureRows(db: Db, inbound: "all" | string[]): Failu
       updatedAt: f.updatedAt,
     })
     .from(f)
-    .where(inbound === "all" ? undefined : sql`${f.addressId} IN (SELECT value FROM json_each(${JSON.stringify(inbound)}))`)
+    .where(access.inbound === "all" ? notIn(f.addressId, access.exceptInbound) : sql`${f.addressId} IN (SELECT value FROM json_each(${JSON.stringify(access.inbound)}))`)
     .orderBy(desc(f.receivedAt))
     .limit(100)
     .all();

@@ -1,4 +1,4 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 import { coreDb } from "../db/core/client";
 import { address } from "../db/core/schema";
 import { securityDb } from "../db/security/client";
@@ -113,6 +113,6 @@ export async function inboxForRecipient(
   const [row] = await coreDb(env)
     .select({ addressId: address.id, workspaceId: address.workspaceId, appId: address.appId })
     .from(address)
-    .where(and(eq(address.email, email.trim().toLowerCase()), inArray(address.kind, ["inbox", "both"])));
+    .where(and(eq(address.email, email.trim().toLowerCase()), inArray(address.kind, ["inbox", "both", "personal"]), isNull(address.closedAt)));
   return row ?? null;
 }

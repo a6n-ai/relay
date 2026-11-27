@@ -16,8 +16,7 @@ type ReplayResult =
   | { outcome: "failed"; error: string };
 
 export async function listFailures(env: Env, p: Principal) {
-  const { inbound } = await messageAccess(env, p);
-  return clientFor(env, p.workspaceId).listInboundFailures(p.workspaceId, inbound);
+  return clientFor(env, p.workspaceId).listInboundFailures(p.workspaceId, await messageAccess(env, p));
 }
 
 export async function replayFailure(env: Env, p: Principal, id: string): Promise<ReplayResult> {
