@@ -1,7 +1,7 @@
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
 
-// Served by relay-v2 at relay.a6n.ai/docs: its build copies dist into public/docs (apps/relay-v2/scripts/build-docs.ts).
+// Served by apps/relay at relay.a6n.ai/docs: its build copies dist into public/docs (apps/relay/scripts/build-docs.ts).
 export default defineConfig({
 	site: 'https://relay.a6n.ai',
 	base: '/docs',

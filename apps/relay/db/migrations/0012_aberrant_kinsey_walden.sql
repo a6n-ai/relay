@@ -1,1 +1,0 @@
-ALTER TABLE "organization" ADD COLUMN "self_serve" boolean DEFAULT false NOT NULL;

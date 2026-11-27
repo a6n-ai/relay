@@ -1,74 +1,91 @@
-// Relay on Cloudflare Workers (OpenNext). Secrets are never in this file; set them with
-// `wrangler secret put <NAME>`: BETTER_AUTH_SECRET, CRON_SECRET, MAILBOX_INBOUND_SECRET,
-// RELAY_UNSUBSCRIBE_SECRET, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY (IAM user relay-workers),
-// and when used TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, WHATSAPP_ACCESS_TOKEN, WHATSAPP_APP_SECRET,
-// WHATSAPP_VERIFY_TOKEN. No DATABASE_URL: Hyperdrive. Runbook: deployment/cloudflare/README.md.
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  // OpenNext's worker wrapped with the outbox and inbound Queue consumers, RelayWake and the Email Routing handler
-  // (cloudflare/worker.js), bundled and minified by cloudflare/prebundle.mjs (why: see that file).
-  "main": "cloudflare/dist/worker.js",
-  "no_bundle": true,
-  "build": { "command": "node cloudflare/prebundle.mjs" },
-  "rules": [{ "type": "Data", "globs": ["**/*.bin"], "fallthrough": true }],
-  "upload_source_maps": false,
-  "name": "relay-legacy", // retired 2026-11-25: the new Relay (apps/relay-v2) owns the Worker name "relay"
-  "compatibility_date": "2026-09-01",
+  "name": "relay",
+  "compatibility_date": "2026-11-23",
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
-  "assets": { "binding": "ASSETS", "directory": ".open-next/assets", "run_worker_first": false },
+  "main": "src/server.ts",
   "observability": { "enabled": true },
-  // Run next to Neon (aws-ap-southeast-1): pages make many queries, so DB round trips dominate.
-  "placement": { "mode": "targeted", "region": "aws:ap-southeast-1" },
+  // The Vite plugin supplies the directory (dist/client); the binding lets the Worker serve the docs 404 page.
+  "assets": { "binding": "ASSETS" },
+  // The new Relay replaces the old Worker named "relay" in place (owner, 2026-11-25): its first deploy IS the hostname cutover.
   "workers_dev": false,
-  "preview_urls": false,
-  // relay.a6n.ai now belongs to the new Relay; a manual deploy of this retired app must not take it back.
-  // "routes": [{ "pattern": "relay.a6n.ai", "custom_domain": true }],
-  "services": [{ "binding": "WORKER_SELF_REFERENCE", "service": "relay-legacy" }],
-  // Workflows + the Queue drain the outbox. An omitted "triggers" key would keep any old cron.
-  "triggers": { "crons": [] },
-  // Deployment id, read by cloudflare/bootstrap.js so the wake chain restarts once per deploy.
-  "version_metadata": { "binding": "CF_VERSION_METADATA" },
-  // Hyperdrive relay-prod -> Neon relay flat-mud-70723399 (ap-southeast-1, direct endpoint), caching disabled.
-  "hyperdrive": [
+  // enable at 7b step 6 (owner-confirmed cutover): this Worker takes relay.a6n.ai from the old Worker `relay`
+  "routes": [{ "pattern": "relay.a6n.ai", "custom_domain": true }],
+  "triggers": { "crons": ["0 3 * * *"] },
+  "vars": {
+    "BETTER_AUTH_URL": "https://relay.a6n.ai",
+    "OTP_MAILER": "ses",
+    "INVITE_MAILER": "ses",
+    "SES_EVENT_TOPIC_ARNS": "arn:aws:sns:ap-south-1:947042607945:relay-ses-events,arn:aws:sns:us-east-1:947042607945:relay-ses-events",
+    "SYSTEM_FROM_EMAIL": "no-reply@relay.a6n.ai",
+    "SYSTEM_FROM_NAME": "Relay",
+    "SYSTEM_SES_REGION": "ap-south-1",
+  },
+  "d1_databases": [
     {
-      "binding": "HYPERDRIVE",
-      "id": "d3aaf35d88c14dfc9578f0dbb94a9154",
-      "localConnectionString": "postgres://relay:relay@localhost:5432/relay"
-    }
+      "binding": "SECURITY_DB",
+      "database_name": "relay-security",
+      "database_id": "9195732e-2204-4250-a50d-1514aa69f941",
+      "migrations_dir": "drizzle/security",
+    },
+    {
+      "binding": "CORE_DB",
+      "database_name": "relay-core",
+      "database_id": "5d2fdb97-5fcb-4e88-a4c8-312199a32ada",
+      "migrations_dir": "drizzle/core",
+    },
   ],
-  "kv_namespaces": [{ "binding": "CACHE", "id": "be4ce70d6b8a4bac8c958a1a213b7a5f" }], // relay-cache
-  // Private bucket for received and sent mail (mail/in, mail/att, mail/out keys).
+  "workflows": [
+    { "name": "relay-campaign", "binding": "CAMPAIGNS", "class_name": "CampaignWorkflow" },
+    // Operator jobs (seed, sweep): `wrangler workflows trigger relay-ops '{"op":"sweep"}'`.
+    { "name": "relay-ops", "binding": "OPS", "class_name": "OpsWorkflow" },
+  ],
+  "durable_objects": {
+    "bindings": [{ "name": "CLIENT", "class_name": "ClientDO" }],
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["ClientDO"] }],
   "r2_buckets": [{ "binding": "MAIL", "bucket_name": "relay-mail" }],
-  // Public contact form: 5 submissions per 60 s per client IP.
-  "ratelimits": [{ "name": "CONTACT_LIMITER", "namespace_id": "1001", "simple": { "limit": 5, "period": 60 } }],
   "queues": {
     "producers": [
-      { "binding": "OUTBOX", "queue": "relay-outbox" },
-      { "binding": "INBOUND", "queue": "relay-inbound" }
+      { "binding": "SEND", "queue": "relay-send" },
+      { "binding": "SES_EVENTS", "queue": "relay-ses-events" },
+      { "binding": "INBOUND", "queue": "relay-inbound-mail" },
+      { "binding": "WEBHOOKS", "queue": "relay-webhooks" },
     ],
     "consumers": [
-      { "queue": "relay-outbox", "max_batch_size": 10, "max_retries": 5, "dead_letter_queue": "relay-outbox-dlq" },
-      { "queue": "relay-outbox-dlq", "max_batch_size": 10 },
-      // max_retries 6 > INBOUND_MAX_ATTEMPTS (5): the sixth delivery only happens when recording the failure itself failed.
-      { "queue": "relay-inbound", "max_batch_size": 1, "max_retries": 6, "dead_letter_queue": "relay-inbound-dlq" },
-      // Backoff up to 12 h per retry (inbound-consumer.js); 10 retries span about 17 h. Queue retention: deployment/cloudflare/README.md.
-      { "queue": "relay-inbound-dlq", "max_batch_size": 1, "max_retries": 10 }
-    ]
+      {
+        "queue": "relay-send",
+        "max_batch_size": 10,
+        // 0: one email starts the consumer at once; campaign messages still arrive together and batch.
+        "max_batch_timeout": 0,
+        "max_retries": 10,
+        "dead_letter_queue": "relay-send-dlq",
+      },
+      {
+        "queue": "relay-ses-events",
+        "max_batch_size": 100,
+        "max_batch_timeout": 5,
+        "max_retries": 10,
+        "dead_letter_queue": "relay-ses-events-dlq",
+      },
+      // new queue; the old Worker's relay-inbound drains under its own consumer
+      {
+        "queue": "relay-inbound-mail",
+        "max_batch_size": 10,
+        "max_batch_timeout": 5,
+        "max_retries": 10,
+        "dead_letter_queue": "relay-inbound-mail-dlq",
+      },
+      {
+        "queue": "relay-webhooks",
+        "max_batch_size": 20,
+        "max_batch_timeout": 5,
+        "max_retries": 10,
+        "dead_letter_queue": "relay-webhooks-dlq",
+      },
+    ],
   },
-  "workflows": [{ "name": "relay-wake", "binding": "RELAY_WAKE", "class_name": "RelayWake" }],
-  "vars": {
-    "NODE_ENV": "production",
-    "LOG_LEVEL": "info",
-    // SES in ap-south-1 (Mumbai).
-    "AWS_REGION": "ap-south-1",
-    "EMAIL_TRANSPORT": "ses",
-    "SES_CONFIGURATION_SET": "relay-prod",
-    "SES_MARKETING_CONFIGURATION_SET": "relay-marketing",
-    // Only SES events from this topic are accepted (stack relay-ses).
-    "SES_FEEDBACK_TOPIC_ARN": "arn:aws:sns:ap-south-1:947042607945:relay-ses-events",
-    "NOTIFY_FROM_EMAIL": "no-reply@relay.a6n.ai",
-    "NOTIFY_FROM_NAME": "Relay",
-    "BETTER_AUTH_URL": "https://relay.a6n.ai",
-    "CONTACT_INBOX": "hi@a6n.ai"
-  }
+  // TiffinGrab's audience entrypoint. Only a platform admin can point an app's audience hook at it.
+  "services": [{ "binding": "TIFFIN_AUDIENCE", "service": "tiffin-grab", "entrypoint": "RelayAudience" }],
+  "ratelimits": [{ "name": "API_LIMIT", "namespace_id": "1001", "simple": { "limit": 600, "period": 60 } }],
 }

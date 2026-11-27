@@ -8,21 +8,16 @@ pnpm typecheck
 pnpm test
 ```
 
-Local Postgres, seed, and UI smoke: [`TESTING.md`](TESTING.md). Product facts for this repo: [`AGENTS.md`](AGENTS.md). Sequenced mailbox work: [`docs/plans/mailbox/README.md`](docs/plans/mailbox/README.md).
+Local app and manual checks: [`TESTING.md`](TESTING.md). Product facts for this repo: [`AGENTS.md`](AGENTS.md). UI rules: [`DESIGN.md`](DESIGN.md).
 
 ## Pull requests
 
 - Target `main`.
-- Do not commit `.env.local`, API secrets, or `.cursor/`.
-- Operator UI copy stays non-technical (Home, Apps, Mailbox, Tags, Team). Routes and schema may still say tenant, outbox, SMTP.
-- Keep Geist and purple accent. Do not restyle dark theme when changing light.
-- Public HTTP surface is [`apps/relay/lib/v1/openapi.ts`](apps/relay/lib/v1/openapi.ts). If you add a route integrators should call, add it there so Scalar and Swagger stay true.
+- Do not commit `.dev.vars`, `.env*`, API secrets, or `.cursor/`.
+- Operator UI copy stays non-technical. Routes and schema may still say outbox, SMTP.
+- A schema change ships with its D1 migration (`pnpm --filter relay db:generate:core` or `db:generate:security`).
+- If you add or change a route integrators call, update its page in `apps/relay-docs`.
 
 ## License
 
 This repository is AGPL-3.0. Pull requests are accepted under the same license. `@foundry/*` remains Apache 2.0 in [a6n-ai/foundry](https://github.com/a6n-ai/foundry).
-
-## Auth split
-
-- `POST /v1/messages` — hashed app keys (`api_keys`).
-- `/api/notifications/*` — operator session cookie.

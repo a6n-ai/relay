@@ -4,7 +4,7 @@ name: Relay
 description: "Relay's console in the Vercel dashboard style: monochrome, Geist type, 6px controls, pill badges, framed tables. Colour carries meaning only."
 
 colors:
-  # Source of truth for exact values: apps/relay-v2/src/styles.css. These are the Geist-scale values it ships.
+  # Source of truth for exact values: apps/relay/src/styles.css. These are the Geist-scale values it ships.
   background: "#ffffff"        # light page
   card: "#ffffff"              # light cards; muted, secondary and accent fills are #f2f2f2 (sidebar is #fafafa)
   border: "#ebebeb"            # light hairline
@@ -47,11 +47,11 @@ rules:
 
 Relay uses the Vercel dashboard style. It replaced the Linear design language on 2026-11-26 by owner decision.
 
-Foundry ships the shapes. Only `<body>` carries `admin-ui` (`apps/relay-v2/src/routes/__root.tsx`), so the preset also styles portalled menus, popovers and dialogs. Relay sets only colour and font tokens in `apps/relay-v2/src/styles.css`. Do not add per-page colour or radius classes.
+Foundry ships the shapes. Only `<body>` carries `admin-ui` (`apps/relay/src/routes/__root.tsx`), so the preset also styles portalled menus, popovers and dialogs. Relay sets only colour and font tokens in `apps/relay/src/styles.css`. Do not add per-page colour or radius classes.
 
 ## Palette
 
-`apps/relay-v2/src/styles.css` is the source of truth for exact values. The front matter above lists the Geist-scale values for both themes.
+`apps/relay/src/styles.css` is the source of truth for exact values. The front matter above lists the Geist-scale values for both themes.
 
 - Light is the page on `#ffffff` with `#ffffff` cards, `#f2f2f2` muted fills, `#fafafa` sidebar, `#ebebeb` borders, `#171717` ink and `#666666` muted ink.
 - Dark is the page on `#0a0a0a` with `#111111` cards, `#1a1a1a` muted fills, `#2e2e2e` borders, `#ededed` ink and `#a1a1a1` muted ink.
@@ -93,9 +93,9 @@ Foundry ships the shapes. Only `<body>` carries `admin-ui` (`apps/relay-v2/src/r
 
 ## Components (reuse, never restyle ad hoc)
 
-Build screens from these parts and the semantic tokens (`bg-card`, `text-muted-foreground`, `bg-primary`). A pattern used twice becomes a component in `apps/relay-v2/src/components/`. `apps/relay` (v1) is legacy: it still renders Linear lavender and pills and is out of scope for this style.
+Build screens from these parts and the semantic tokens (`bg-card`, `text-muted-foreground`, `bg-primary`). A pattern used twice becomes a component in `apps/relay/src/components/`.
 
-| Role | Component | File (under `apps/relay-v2/src/components/`) |
+| Role | Component | File (under `apps/relay/src/components/`) |
 |---|---|---|
 | page header, title, tabs | `PageHeader`, `PageTitle`, `SectionTabs` | shell/page-header.tsx, page/page-title.tsx, shell/section-tabs.tsx |
 | add new menu, scope switcher | `AddNewMenu`, `ScopeSwitcher` | shell/add-new.tsx, shell/scope-switcher.tsx |

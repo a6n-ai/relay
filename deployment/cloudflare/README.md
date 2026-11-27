@@ -1,4 +1,6 @@
-# Relay on Cloudflare Workers
+# Old Relay on Cloudflare Workers (retired)
+
+The old OpenNext app was deleted on 2026-11-27; its Worker now runs as `relay-legacy`. Today's Relay is `apps/relay` (see the root README). The resources below belong to the old app and are retired after TiffinGrab's cleanup (Phase 6c). Delete them only with the owner's go.
 
 Worker `relay` (OpenNext) at `https://relay.a6n.ai`, Cloudflare account `04244aeac63353bc0ecc1ee64058cd82`.
 

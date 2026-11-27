@@ -1,4 +1,4 @@
-/* Relay docs: Vercel monochrome tokens (same values as relay-v2 src/styles.css), Geist, hairline borders, quiet sidebar with icons. */
+/* Relay docs: Vercel monochrome tokens (same values as apps/relay src/styles.css), Geist, hairline borders, quiet sidebar with icons. */
 @import '@fontsource-variable/geist';
 @import '@fontsource-variable/geist-mono';
 @import './tokens.css';

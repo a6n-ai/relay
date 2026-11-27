@@ -1,4 +1,4 @@
-/* Mirrors apps/relay-v2/src/styles.css and DESIGN.md. Starlight sets data-theme on <html>; dark is the default token set. */
+/* Mirrors apps/relay/src/styles.css and DESIGN.md. Starlight sets data-theme on <html>; dark is the default token set. */
 :root {
 	color-scheme: dark;
 	--background: #0a0a0a;

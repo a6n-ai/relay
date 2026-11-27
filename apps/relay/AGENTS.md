@@ -1,9 +1,12 @@
-<!-- BEGIN:nextjs-agent-rules -->
-
-## This is NOT the Next.js you know
-
-This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
-
-This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
-
-<!-- END:nextjs-agent-rules -->
+<!-- intent-skills:start -->
+# Skill mappings: when working in these areas, load the linked skill file into context.
+skills:
+  - task: "TanStack Start app setup, server entry, and server functions"
+    load: "apps/relay/node_modules/@tanstack/react-start/skills/react-start/SKILL.md"
+  - task: "Server entry, server routes, and start-core request handling"
+    load: "node_modules/.pnpm/@tanstack+start-client-core@*/node_modules/@tanstack/start-client-core/skills/start-core/SKILL.md"
+  - task: "File-based routes, layouts, and route components"
+    load: "apps/relay/node_modules/@tanstack/react-router/skills/react-router/SKILL.md"
+  - task: "Router core: route tree, navigation, and not-found handling"
+    load: "node_modules/.pnpm/@tanstack+router-core@*/node_modules/@tanstack/router-core/skills/router-core/SKILL.md"
+<!-- intent-skills:end -->

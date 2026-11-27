@@ -1,5 +1,5 @@
 {
-  "name": "relay",
+  "name": "relay-workspace",
   "private": true,
   "license": "AGPL-3.0-only",
   "packageManager": "pnpm@11.21.0",

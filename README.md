@@ -1,103 +1,47 @@
 # Relay
 
-Sends email (and later SMS / WhatsApp) for other products, and gives operators a console for apps, campaigns, people, mailbox, tags, and team.
+Sends email for other products and gives operators a console for workspaces, apps, campaigns, lists, templates, automations, messages and team.
 
-Consuming products talk to Relay with API keys. They do not share Relay operator logins.
+Consuming products talk to Relay with API keys or a Cloudflare service binding. They do not share Relay operator logins.
 
 ## Run locally
 
-Needs Node, pnpm 11, and Postgres 16 (`compose.yaml` or any matching `DATABASE_URL`).
+Needs Node 22 and pnpm 11. Relay is one Cloudflare Worker (TanStack Start) with D1, a Durable Object per workspace, Queues, Workflows and R2; `vite dev` runs all of them locally.
 
 ```bash
-docker compose up -d
-cp apps/relay/.env.example apps/relay/.env.local
-# Set BETTER_AUTH_SECRET to a long random string
 pnpm install
-pnpm --filter relay db:migrate
-SEED_ADMIN_PASSWORD=dev SEED_DEMO_APPS=1 pnpm --filter relay db:seed
+cp apps/relay/.dev.vars.example apps/relay/.dev.vars   # fill in the secrets you need
+pnpm --filter relay db:migrate:local
 pnpm dev
 ```
 
-Open [http://localhost:3010](http://localhost:3010). Unauthenticated visits go to `/login`. Sign-up is off; use the seed operator (`ops@relay.local` unless `SEED_ADMIN_EMAIL` is set). Seed prints one-time app secrets once. Copy them; they are not stored in plaintext.
+Checks: `pnpm typecheck` and `pnpm test`. More in [`TESTING.md`](TESTING.md).
 
-Drain the outbox in a second terminal:
+## Deploy
 
-```bash
-pnpm --filter relay worker:drain
-```
+Push to `main` runs [`deploy-relay.yml`](.github/workflows/deploy-relay.yml): typecheck, test, build, D1 migrations, then `wrangler deploy` of the Worker `relay` at `https://relay.a6n.ai`. Set the repo variable `RELAY_DEPLOY` to `0` to pause deploys.
 
-Checks: `pnpm typecheck` and `pnpm test`. Local stack notes and UI smoke: [`TESTING.md`](TESTING.md). Production (EC2 + GHCR, same pattern as Realm): [`deployment/prod/RUNBOOK.md`](deployment/prod/RUNBOOK.md).
-
-## HTTP APIs
-
-Live catalog after `pnpm dev`:
-
-- Docs: [http://localhost:3010/docs](http://localhost:3010/docs)
-- Scalar: [http://localhost:3010/docs/api](http://localhost:3010/docs/api)
-- Swagger UI: [http://localhost:3010/docs/api/swagger](http://localhost:3010/docs/api/swagger)
-- OpenAPI: [http://localhost:3010/v1/openapi.json](http://localhost:3010/v1/openapi.json)
-
-**App key (Bearer)** for `POST /v1/messages`. Mint the secret when you create an app in the console (or via session `POST /api/notifications/apps`). Put it in the consuming app as `RELAY_API_KEY` and the origin as `RELAY_API_URL`.
+Operator jobs (seed, sweep) run through the `relay-ops` Workflow:
 
 ```bash
-curl -sS -D - \
-  -H "Authorization: Bearer $RELAY_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"title":"Hello","body":"World","to":{"email":"dev@example.com"}}' \
-  http://localhost:3010/v1/messages
+npx wrangler workflows trigger relay-ops '{"op":"sweep"}'
 ```
-
-Expect `202` and `{ "accepted": true }`. Missing key is `401`.
-
-**Operator session cookie** (`better-auth.session_token`) for console JSON: apps, mailbox, campaigns, people lists, automations, tags, team, templates, status updates. Sign in at `/login`, then call those routes from the same browser or with the cookie. Language SDKs besides `@relay/sdk` (`messages.create`) are not generated yet; use the OpenAPI document.
-
-## Operator console
-
-Sidebar jobs (not protocol names): Home, Apps, Campaigns, People, Templates, Automations, Sends, Mailbox, Status updates, Email sending, Tags, Team.
-
-| Job | What it is |
-| --- | --- |
-| Apps | Consuming products: quota, channel keys, verified send-as |
-| Mailbox | Conversations in Postgres (sent + received). Reply stays on the thread |
-| Tags | Per-app labels; every message from that app carries them. Mailbox chips reuse them |
-| Email sending | Transport, From, and domains (Settings) |
-| Team | Operator users (list). Sign-up stays disabled |
-
-Inbound mail is a signed provider webhook, not a port-25 listener. Hosted `you@domain` IMAP is not in this Next.js app.
-
-## Send path
-
-1. Save transport under **Email sending** (SMTP or SES via `EMAIL_TRANSPORT` and env in `.env.example`).
-2. Verify the From domain (ownership TXT `_relay-verify`, SPF, DKIM, DMARC).
-3. Create an **app**, copy the key, send with `POST /v1/messages`.
-4. Each app has a mailing country. CA uses CASL, US CAN-SPAM, EU/UK default to express opt-in. Campaigns use that profile.
-
-Queue is Postgres `notification_outbox` (`SKIP LOCKED`, six attempts, 1m→1h backoff). No Redis or RabbitMQ.
 
 ## Packages
 
 | Package | Role |
 | --- | --- |
-| `apps/relay` | Next.js operator app (port 3010) |
-| `@relay/engine` | Outbox, drain, policy, campaigns, suppression |
+| `apps/relay` | The Relay Worker: console, public API, send pipeline |
+| `apps/relay-docs` | Public docs, served at `/docs` |
+| `@relay/engine` | Shared email engine that TiffinGrab and Realm still import |
 | `@relay/email` | Email adapters (SES or SMTP) |
 | `@relay/sms` / `@relay/whatsapp` | Channel adapters |
 | `@relay/sdk` | HTTP client for send |
-| `@relay/ui` | Composer / logs / bell (re-exports engine UI) |
+| `@relay/ui` | Composer / logs / bell |
 
-`@foundry/*` packages are pulled from Git as TypeScript source and stay in Next `transpilePackages`.
+`@foundry/*` packages are pulled from Git as TypeScript source.
 
-## Layout
-
-```
-apps/relay/          operator app, migrations, public /docs
-packages/engine/     outbox and campaigns
-packages/email/      SES / SMTP
-packages/sdk/        send client
-docs/plans/mailbox/  sequenced mailbox plans
-```
-
-Do not commit `.env.local` or `.cursor/`.
+Do not commit `.dev.vars`, `.env*` or `.cursor/`.
 
 ## License
 

@@ -1,5 +1,5 @@
 // After `astro build`: write dist/<page>/index.md from each page's <main>, plus dist/llms.txt listing every page.
-// dist is served at /docs by relay-v2, so a page at dist/api/messages/index.html lives at /docs/api/messages/.
+// dist is served at /docs by apps/relay, so a page at dist/api/messages/index.html lives at /docs/api/messages/.
 import { readFile, readdir, writeFile } from 'node:fs/promises';
 import TurndownService from 'turndown';
 

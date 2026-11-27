@@ -5,8 +5,8 @@ Description: >-
   region with the region set on the deploy command. ap-south-1 is already covered by
   deployment/cloudflare/ses.yaml; this stack serves us-east-1. Event destinations on
   us-east-1 sets are owned by realm (deployment/email/ses-suppression.yaml), so they are not here.
-  Deploy this stack only after relay.a6n.ai points at relay-v2 (7b step 6): the SNS subscription
-  confirmation goes to WebhookEndpoint and must reach relay-v2, and a pending subscription expires after 3 days.
+  Deploy this stack only after relay.a6n.ai points at the new Relay (7b step 6): the SNS subscription
+  confirmation goes to WebhookEndpoint and must reach the new Relay, and a pending subscription expires after 3 days.
 
 Parameters:
   WebhookEndpoint:
@@ -56,5 +56,5 @@ Resources:
 
 Outputs:
   EventTopicArn:
-    Description: Add to SES_EVENT_TOPIC_ARNS in apps/relay-v2 (comma list, one topic per region) and to the realm event destination.
+    Description: Add to SES_EVENT_TOPIC_ARNS in apps/relay (comma list, one topic per region) and to the realm event destination.
     Value: !Ref EventTopic
