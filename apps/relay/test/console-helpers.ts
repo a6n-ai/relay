@@ -24,8 +24,9 @@ export function freshIp(): Record<string, string> {
   return { "cf-connecting-ip": `10.0.${Math.floor(ipSeq / 250)}.${(ipSeq % 250) + 1}` };
 }
 
-export async function sendOtp(email: string): Promise<string> {
-  const before = memoryOtpMailer.lastOtp(email);
+// `to` is where the code is mailed: a mailbox user gets it at the recovery address.
+export async function sendOtp(email: string, to = email): Promise<string> {
+  const before = memoryOtpMailer.lastOtp(to);
   const sent = await SELF.fetch(`${BASE}/email-otp/send-verification-otp`, {
     method: "POST",
     headers: { ...json, ...freshIp() },
@@ -33,13 +34,13 @@ export async function sendOtp(email: string): Promise<string> {
   });
   expect(sent.status).toBe(200);
   // The mail goes out after the response, so wait for a new code, not the previous one.
-  await expect.poll(() => memoryOtpMailer.lastOtp(email)).toMatch(/^\d{6}$/);
-  await expect.poll(() => memoryOtpMailer.lastOtp(email) !== before).toBe(true);
-  return memoryOtpMailer.lastOtp(email) as string;
+  await expect.poll(() => memoryOtpMailer.lastOtp(to)).toMatch(/^\d{6}$/);
+  await expect.poll(() => memoryOtpMailer.lastOtp(to) !== before).toBe(true);
+  return memoryOtpMailer.lastOtp(to) as string;
 }
 
-export async function signIn(email: string): Promise<string> {
-  const otp = await sendOtp(email);
+export async function signIn(email: string, to = email): Promise<string> {
+  const otp = await sendOtp(email, to);
   const res = await SELF.fetch(`${BASE}/sign-in/email-otp`, {
     method: "POST",
     headers: { ...json, ...freshIp() },

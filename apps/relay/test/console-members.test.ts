@@ -21,7 +21,6 @@ import { app, invitation, member, user, workspace } from "../src/db/security/sch
 import { coreDb } from "../src/db/core/client";
 import { address, sendingDomain } from "../src/db/core/schema";
 import { deliveryEmail } from "../src/auth/recovery";
-import { memoryOtpMailer } from "../src/auth/otp-mailer";
 import { memoryInviteMailer } from "../src/auth/invite-mailer";
 import { addMember, cookieFor, createWorkspace, ORIGIN, setActive, signIn } from "./console-helpers";
 import { applyMigrations } from "./migrate";
@@ -308,5 +307,47 @@ describe("accepting an invite", { timeout: 60_000 }, () => {
   it("refuses a mailbox on an unverified domain", async () => {
     const { domain, invite } = await mailboxSetup("unver", "pending");
     await expect(invite(`ravi@${domain}`, "ravi@gmail.test")).rejects.toMatchObject({ status: 400, message: "invalid input" });
+  });
+
+  it("accept creates personal mailbox", async () => {
+    const { owner, domain, appId, invite } = await mailboxSetup("accept");
+    const mailbox = `ravi@${domain}`;
+    const { id } = await invite(mailbox, "ravi-acc@gmail.test");
+    const cookie = await signIn(mailbox, "ravi-acc@gmail.test");
+    await acceptInvite(env, await requireUser(env, headersFor(cookie), { write: true }), id);
+    const [u] = await db.select().from(user).where(eq(user.email, mailbox));
+    const [a] = await coreDb(env).select().from(address).where(eq(address.email, mailbox));
+    expect(a).toMatchObject({ kind: "personal", ownerUserId: u.id, canSend: true, appId, workspaceId: owner.workspaceId });
+    expect(u.recoveryEmail).toBe("ravi-acc@gmail.test");
+    const [m] = await db.select().from(member).where(and(eq(member.userId, u.id), eq(member.organizationId, owner.workspaceId)));
+    expect(m.role).toBe("member");
+  });
+
+  it("reinvite after cancel uses the new recovery email", async () => {
+    const { actor, owner, domain, invite } = await mailboxSetup("reinv");
+    const mailbox = `ravi@${domain}`;
+    const first = await invite(mailbox, "a-reinv@gmail.test");
+    await cancelInvite(env, actor, headersFor(owner.cookie), first.id);
+    const second = await invite(mailbox, "b-reinv@gmail.test");
+    expect(await deliveryEmail(env, mailbox)).toBe("b-reinv@gmail.test");
+    const cookie = await signIn(mailbox, "b-reinv@gmail.test");
+    await acceptInvite(env, await requireUser(env, headersFor(cookie), { write: true }), second.id);
+    const [u] = await db.select().from(user).where(eq(user.email, mailbox));
+    expect(u.recoveryEmail).toBe("b-reinv@gmail.test");
+  });
+
+  it("mailbox taken at accept leaves no member", async () => {
+    const { owner, domain, appId, invite } = await mailboxSetup("late");
+    const mailbox = `ravi@${domain}`;
+    const { id } = await invite(mailbox, "ravi-late@gmail.test");
+    const cookie = await signIn(mailbox, "ravi-late@gmail.test");
+    await coreDb(env).insert(address).values({ workspaceId: owner.workspaceId, appId, email: mailbox, kind: "inbox" });
+    await expect(acceptInvite(env, await requireUser(env, headersFor(cookie), { write: true }), id)).rejects.toMatchObject({
+      status: 409,
+      message: "mailbox taken",
+    });
+    const [u] = await db.select().from(user).where(eq(user.email, mailbox));
+    const rows = await db.select().from(member).where(and(eq(member.userId, u.id), eq(member.organizationId, owner.workspaceId)));
+    expect(rows).toHaveLength(0);
   });
 });

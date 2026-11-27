@@ -24,6 +24,23 @@ export async function createAddress(
   return row;
 }
 
+// A taken email or a second personal mailbox for one owner both read as a taken mailbox. D1 may wrap the error, so the cause chain is walked.
+export async function createPersonalAddress(
+  env: Env,
+  input: { workspaceId: string; appId: string; email: string; ownerUserId: string; displayName: string },
+): Promise<string> {
+  try {
+    const [row] = await coreDb(env)
+      .insert(address)
+      .values({ ...input, email: input.email.trim().toLowerCase(), kind: "personal", canSend: true })
+      .returning({ id: address.id });
+    return row.id;
+  } catch (err) {
+    for (let e: unknown = err; e instanceof Error; e = e.cause) if (e.message.includes("UNIQUE constraint failed")) throw new RelayError("mailbox taken");
+    throw err;
+  }
+}
+
 export async function createAddressGrant(
   env: Env,
   input: { workspaceId: string; addressId: string; memberId?: string; teamId?: string },

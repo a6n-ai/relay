@@ -1,6 +1,8 @@
 import { and, asc, desc, eq } from "drizzle-orm";
 import { coreDb } from "../db/core/client";
-import { sendingDomain } from "../db/core/schema";
+import { address, sendingDomain } from "../db/core/schema";
+import { createPersonalAddress } from "../core/addresses";
+import { refreshWorkspaceLimits } from "./limits";
 import { securityDb } from "../db/security/client";
 import { app, invitation, member, team, teamMember, user, workspace } from "../db/security/schema";
 import type { Env } from "../env";
@@ -236,7 +238,15 @@ export async function getInvite(env: Env, { userId }: Session, id: string) {
 
 export async function acceptInvite(env: Env, { headers, userId }: Session, id: string): Promise<void> {
   const [row] = await securityDb(env)
-    .select({ email: invitation.email, status: invitation.status, expiresAt: invitation.expiresAt })
+    .select({
+      email: invitation.email,
+      status: invitation.status,
+      expiresAt: invitation.expiresAt,
+      workspaceId: invitation.organizationId,
+      recoveryEmail: invitation.recoveryEmail,
+      mailboxName: invitation.mailboxName,
+      appId: invitation.appId,
+    })
     .from(invitation)
     .where(eq(invitation.id, id));
   if (!row) throw new RelayError("not found");
@@ -244,5 +254,19 @@ export async function acceptInvite(env: Env, { headers, userId }: Session, id: s
   if (me?.email !== row.email) throw new RelayError("this invite is for another email");
   const status = effectiveStatus(row);
   if (status !== "pending") throw new RelayError(INVITE_REFUSAL[status]);
-  await authCall(() => createAuth(env).api.acceptInvitation({ headers, body: { invitationId: id } }));
+  const accept = () => authCall(() => createAuth(env).api.acceptInvitation({ headers, body: { invitationId: id } }));
+  if (!row.recoveryEmail) {
+    await accept();
+    return;
+  }
+  const name = row.mailboxName ?? row.email.split("@")[0];
+  const addressId = await createPersonalAddress(env, { workspaceId: row.workspaceId, appId: row.appId ?? "", email: row.email, ownerUserId: userId, displayName: name });
+  try {
+    await accept();
+  } catch (err) {
+    await coreDb(env).delete(address).where(eq(address.id, addressId));
+    throw err;
+  }
+  await securityDb(env).update(user).set({ recoveryEmail: row.recoveryEmail, name }).where(eq(user.id, userId));
+  await refreshWorkspaceLimits(env, row.workspaceId);
 }
