@@ -9,7 +9,9 @@ export const slugSchema = z.string().regex(SLUG_RE);
 
 export const noLineBreak = (s: string) => !/[\r\n]/.test(s);
 // A subject becomes a mail header: a line break would split it.
-export const subjectSchema = z.string().max(SUBJECT_MAX).refine(noLineBreak, "subject must not contain line breaks");
+export const subjectLineSchema = z.string().refine(noLineBreak, "subject must not contain line breaks");
+// Authored subjects (templates, campaigns) are capped; a send's subject is not, since a rendered template subject can be longer.
+export const subjectSchema = subjectLineSchema.max(SUBJECT_MAX);
 
 export const memberInput = z.object({
   email: emailSchema,
@@ -46,7 +48,7 @@ const sendInputSchema = z.object({
   from: emailSchema.optional(),
   to: emailSchema,
   // The subject becomes a mail header: a line break would split it, so it is refused here, not at SES.
-  subject: subjectSchema.min(1),
+  subject: subjectLineSchema.min(1),
   html: z.string(),
   text: z.string(),
   event: z.string().min(1).optional(),
