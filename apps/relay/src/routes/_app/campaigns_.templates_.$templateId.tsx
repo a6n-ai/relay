@@ -7,9 +7,8 @@ import { createFileRoute, useNavigate, useRouter, useSearch } from "@tanstack/re
 import { type FormEvent, useRef, useState } from "react";
 import { DangerCard } from "../../components/page/danger-card";
 import { ContentFields, type ContentValue } from "../../components/campaigns/content-fields";
-import { DeniedState, deniedReason } from "../../components/denied-state";
-import { errorText } from "../../components/error-text";
-import { isNotFound } from "../../components/lib/scoped-load";
+import { PageDenied } from "../../components/page/page-denied";
+import { orMissing } from "../../components/lib/scoped-load";
 import { FixedField } from "../../components/form/fixed-field";
 import { NameField, TextField } from "../../components/form/text-field";
 import { SettingsCard } from "../../components/page/settings-card";
@@ -22,13 +21,10 @@ import { FormError, FormPanel, FormBody } from "../../components/page/form-parts
 import { FormSkeleton } from "../../components/page/page-skeleton";
 import { type TemplateView } from "../../shared/views";
 import { TEMPLATE_NAME_MAX } from "../../shared/limits";
+import { useSubmit } from "../../components/use-submit";
 
 export const Route = createFileRoute("/_app/campaigns_/templates_/$templateId")({
-  loader: ({ params }) =>
-    fetchTemplate({ data: { id: params.templateId } }).catch((err) => {
-      if (isNotFound(err)) return { missing: true as const };
-      throw err;
-    }),
+  loader: ({ params }) => orMissing(fetchTemplate({ data: { id: params.templateId } })),
   pendingComponent: () => <FormSkeleton crumbs={[{ label: "Campaigns", to: "/campaigns" }, { label: "Templates", to: "/campaigns/templates" }, { label: "Template" }]} cards={2} action />,
   component: TemplatePage,
 });
@@ -45,20 +41,10 @@ function TemplatePage() {
   const { shell } = Route.useRouteContext();
   const canWrite = useCan({ template: ["write"] });
   if (!page) {
-    return (
-      <>
-        <PageHeader crumbs={crumbs(appId, "Template")} />
-        <DeniedState reason={deniedReason(shell)} />
-      </>
-    );
+    return <PageDenied crumbs={crumbs(appId, "Template")} />;
   }
   if ("missing" in page) {
-    return (
-      <>
-        <PageHeader crumbs={crumbs(appId, "Template")} />
-        <DeniedState reason="not-found" label="Template not found" />
-      </>
-    );
+    return <PageDenied crumbs={crumbs(appId, "Template")} reason="not-found" label="Template not found" />;
   }
   return (
     <>
@@ -77,8 +63,7 @@ function TemplateForm({ template, canWrite, appName }: { template: TemplateView;
   const [intro, setIntro] = useState(template.intro ?? "");
   const [enabled, setEnabled] = useState(template.enabled);
   const [content, setContent] = useState<ContentValue>({ subject: template.subject, html: template.html, text: template.text });
-  const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
+  const { pending, error, setError, run } = useSubmit();
   const leaving = useRef(false);
 
   // Preview and save both read the saved row, so the form saves first.
@@ -101,16 +86,10 @@ function TemplateForm({ template, canWrite, appName }: { template: TemplateView;
 
   async function save(e: FormEvent) {
     e.preventDefault();
-    setPending(true);
-    setError(null);
-    try {
+    await run(async () => {
       await persist();
       toast.success("Template saved");
-    } catch (err) {
-      setError(errorText(err, "Could not save this template."));
-    } finally {
-      setPending(false);
-    }
+    }, "Could not save this template.");
   }
 
   async function remove() {

@@ -4,7 +4,7 @@ import { Checkbox } from "@foundry/ui/checkbox";
 import { Label } from "@foundry/ui/label";
 import { toast } from "@foundry/ui/toast";
 import { useRouter, useNavigate } from "@tanstack/react-router";
-import { type FormEvent, useEffect, useRef, useState } from "react";
+import { type FormEvent, useRef, useState } from "react";
 import {
   deleteCampaignFn,
   previewAudienceFn,
@@ -30,6 +30,7 @@ import { FormError, FormActions, FormPanel, FormBody } from "../page/form-parts"
 import { Hint } from "../page/text";
 import { FixedField } from "../form/fixed-field";
 import { type CampaignView, type ListView } from "../../shared/views";
+import { useLoad } from "../use-load";
 
 type CampaignOptions = { senders: string[]; lists: ListView[]; postalAddress: string | null };
 
@@ -81,19 +82,14 @@ export function CampaignEditor({
   const leaving = useRef(false);
 
   const savedLists = campaign.listIds.join(",");
-  useEffect(() => {
-    let live = true;
-    previewAudienceFn({ data: { id: campaign.id } })
-      .then((a) => live && setAudience(a ?? null))
-      .catch((err) => {
-        if (!live) return;
-        setAudience(null);
-        setError(errorText(err, "Could not count the audience."));
-      });
-    return () => {
-      live = false;
-    };
-  }, [campaign.id, savedLists]);
+  useLoad(() => previewAudienceFn({ data: { id: campaign.id } }), [campaign.id, savedLists], {
+    onData: (a) => setAudience(a ?? null),
+    onError: (copy) => {
+      setAudience(null);
+      setError(copy);
+    },
+    fallback: "Could not count the audience.",
+  });
 
   const problems = campaignProblems(
     {

@@ -5,7 +5,6 @@ import { type FormEvent, useEffect, useRef, useState } from "react";
 import { createAutomationFn, deleteAutomationFn, updateAutomationFn } from "../../console/automations.fns";
 import { fetchCampaignOptions } from "../../console/campaigns.fns";
 import { fetchTemplates } from "../../console/templates.fns";
-import { errorText } from "../error-text";
 import { AppField, needsAppChoice } from "../form/app-field";
 import { ChoiceControl, ChoiceField } from "../form/choice-field";
 import { EmptyChoice } from "../form/empty-choice";
@@ -19,6 +18,8 @@ import { SettingsCard } from "../page/settings-card";
 import { UnsavedGuard } from "../unsaved-guard";
 import { type AutomationView } from "../../shared/views";
 import { AUTOMATION_DELAY_MAX } from "../../shared/limits";
+import { useSubmit } from "../use-submit";
+import { useLoad } from "../use-load";
 
 const PRESETS = ["0", "1", "24"];
 
@@ -80,27 +81,19 @@ export function AutomationForm({
     templates: { id: string; name: string }[];
     senders: string[];
   } | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const fe = useFieldErrors<"name" | "list" | "template" | "from" | "delay">();
-  const [pending, setPending] = useState(false);
+  const { pending, error, setError, run } = useSubmit();
   const leaving = useRef(false);
 
-  useEffect(() => {
-    let live = true;
-    setChoices(null);
-    Promise.all([fetchCampaignOptions({ data: { appId: app } }), fetchTemplates({ data: { appId: app } })])
-      .then(([options, templates]) => {
-        if (live) setChoices({ lists: options?.lists ?? [], templates: templates?.rows ?? [], senders: options?.senders ?? [] });
-      })
-      .catch((err) => {
-        if (!live) return;
-        setChoices({ lists: [], templates: [], senders: [] });
-        setError(errorText(err, "Could not load the lists and templates."));
-      });
-    return () => {
-      live = false;
-    };
-  }, [app]);
+  useEffect(() => setChoices(null), [app]);
+  useLoad(() => Promise.all([fetchCampaignOptions({ data: { appId: app } }), fetchTemplates({ data: { appId: app } })]), [app], {
+    onData: ([options, templates]) => setChoices({ lists: options?.lists ?? [], templates: templates?.rows ?? [], senders: options?.senders ?? [] }),
+    onError: (copy) => {
+      setChoices({ lists: [], templates: [], senders: [] });
+      setError(copy);
+    },
+    fallback: "Could not load the lists and templates.",
+  });
 
   useEffect(() => {
     if (automation || !choices) return;
@@ -126,9 +119,7 @@ export function AutomationForm({
     };
     fe.set(missing);
     if (Object.keys(missing).length > 0) return;
-    setPending(true);
-    setError(null);
-    try {
+    await run(async () => {
       const delayHours = Number(delay);
       if (automation) {
         await updateAutomationFn({ data: { id: automation.id, patch: { name: name.trim(), templateId, fromEmail, delayHours } } });
@@ -139,11 +130,7 @@ export function AutomationForm({
       }
       leaving.current = true;
       await navigate({ to: "/campaigns/automations", search: { appId: app } });
-    } catch (err) {
-      setError(errorText(err, automation ? "Could not save this automation." : "Could not create this automation."));
-    } finally {
-      setPending(false);
-    }
+    }, automation ? "Could not save this automation." : "Could not create this automation.");
   }
 
   const listOptions = (choices?.lists ?? []).map((l) => ({ value: l.id, label: l.name }));

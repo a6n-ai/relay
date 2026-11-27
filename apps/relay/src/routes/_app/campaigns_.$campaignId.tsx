@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { CampaignEditor } from "../../components/campaigns/campaign-editor";
 import { CampaignReport } from "../../components/campaigns/campaign-report";
-import { DeniedState, deniedReason } from "../../components/denied-state";
-import { isNotFound } from "../../components/lib/scoped-load";
+import { PageDenied } from "../../components/page/page-denied";
+import { orMissing } from "../../components/lib/scoped-load";
 import { PageHeader } from "../../components/shell/page-header";
 import { StatusBadge } from "../../components/status-badge";
 import { fetchAudienceHook } from "../../console/apps.fns";
@@ -17,10 +17,7 @@ export const Route = createFileRoute("/_app/campaigns_/$campaignId")({
     appId: str(search.appId),
   }),
   loader: async ({ params }) => {
-    const campaign = await fetchCampaign({ data: { id: params.campaignId } }).catch((err) => {
-      if (isNotFound(err)) return { missing: true as const };
-      throw err;
-    });
+    const campaign = await orMissing(fetchCampaign({ data: { id: params.campaignId } }));
     if (!campaign) return null;
     if ("missing" in campaign) return campaign;
     if (campaign.status !== "draft") {
@@ -44,20 +41,10 @@ function CampaignPage() {
   const search = Route.useSearch();
   const { shell } = Route.useRouteContext();
   if (!page) {
-    return (
-      <>
-        <PageHeader crumbs={[{ label: "Campaigns", to: "/campaigns", search: { appId: search.appId } }, { label: "Campaign" }]} />
-        <DeniedState reason={deniedReason(shell)} />
-      </>
-    );
+    return <PageDenied crumbs={[{ label: "Campaigns", to: "/campaigns", search: { appId: search.appId } }, { label: "Campaign" }]} />;
   }
   if ("missing" in page) {
-    return (
-      <>
-        <PageHeader crumbs={[{ label: "Campaigns", to: "/campaigns", search: { appId: search.appId } }, { label: "Campaign" }]} />
-        <DeniedState reason="not-found" label="Campaign not found" />
-      </>
-    );
+    return <PageDenied crumbs={[{ label: "Campaigns", to: "/campaigns", search: { appId: search.appId } }, { label: "Campaign" }]} reason="not-found" label="Campaign not found" />;
   }
   const { campaign } = page;
   return (

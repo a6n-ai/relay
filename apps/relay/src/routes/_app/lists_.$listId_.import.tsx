@@ -3,8 +3,7 @@ import { FileUpload, FileUploadDropzone, FileUploadTrigger } from "@foundry/ui/f
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
 import { consentHint } from "../../components/lists/consent-labels";
-import { DeniedState, deniedReason } from "../../components/denied-state";
-import { errorText } from "../../components/error-text";
+import { PageDenied } from "../../components/page/page-denied";
 import { CreatePage } from "../../components/page/create-page";
 import { FormActions, FormError, FormPanel } from "../../components/page/form-parts";
 import { SettingsCard } from "../../components/page/settings-card";
@@ -13,6 +12,7 @@ import { useCan } from "../../components/use-can";
 import { fetchLists, importCsvFn } from "../../console/lists.fns";
 import { str } from "../../components/lib/route-search";
 import { DefinitionList } from "../../components/page/definition-list";
+import { useSubmit } from "../../components/use-submit";
 
 const MAX_CSV_BYTES = 2_000_000;
 
@@ -39,28 +39,17 @@ function ImportPage() {
   const canImport = useCan({ list: ["import"] });
   const navigate = useNavigate();
   const [files, setFiles] = useState<File[]>([]);
-  const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<Result | null>(null);
-  const [pending, setPending] = useState(false);
+  const { pending, error, setError, run } = useSubmit();
   const listsCrumb = { label: "Lists", to: "/lists", search: { appId } };
   const back = () => void navigate({ to: "/lists/$listId", params: { listId }, search: { appId } });
 
   if (!page || !canImport) {
-    return (
-      <>
-        <PageHeader crumbs={[listsCrumb, { label: "Import contacts" }]} />
-        <DeniedState reason={deniedReason(shell)} />
-      </>
-    );
+    return <PageDenied crumbs={[listsCrumb, { label: "Import contacts" }]} />;
   }
   const { list } = page;
   if (!list) {
-    return (
-      <>
-        <PageHeader crumbs={[listsCrumb, { label: "Import contacts" }]} />
-        <DeniedState reason="not-found" label="List not found" />
-      </>
-    );
+    return <PageDenied crumbs={[listsCrumb, { label: "Import contacts" }]} reason="not-found" label="List not found" />;
   }
   const crumbs = [listsCrumb, { label: list.name, to: "/lists/$listId", params: { listId }, search: { appId } }, { label: "Import contacts" }];
 
@@ -68,17 +57,11 @@ function ImportPage() {
     event.preventDefault();
     const file = files[0];
     if (!file) return;
-    setPending(true);
-    setError(null);
-    try {
+    await run(async () => {
       const counts = await importCsvFn({ data: { listId, csv: await file.text() } });
       if (counts) setResult(counts);
       else setError("Could not import this file.");
-    } catch (err) {
-      setError(errorText(err, "Could not import this file."));
-    } finally {
-      setPending(false);
-    }
+    }, "Could not import this file.");
   }
 
   if (result) {

@@ -5,8 +5,8 @@ import { scheduleCampaignFn } from "../../console/campaigns.fns";
 import { ChoiceControl } from "../form/choice-field";
 import { Field } from "../form/field";
 import { CreateDialog } from "../create-dialog";
-import { errorText } from "../error-text";
 import { FormError, FormBody, FormActions } from "../page/form-parts";
+import { useSubmit } from "../use-submit";
 
 export function ScheduleDialog({
   campaignId,
@@ -50,9 +50,8 @@ function ScheduleForm({
 }) {
   const [mode, setMode] = useState<"now" | "at">("now");
   const [when, setWhen] = useState("");
-  const [error, setError] = useState<string | null>(null);
   const [whenError, setWhenError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
+  const { pending, error, setError, run } = useSubmit();
   const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -65,9 +64,7 @@ function ScheduleForm({
       setWhenError("Pick a time in the future.");
       return;
     }
-    setPending(true);
-    setError(null);
-    try {
+    await run(async () => {
       const saveError = await beforeSubmit();
       if (saveError) {
         setError(saveError);
@@ -76,11 +73,7 @@ function ScheduleForm({
       await scheduleCampaignFn({ data: { id: campaignId, at } });
       toast.success(mode === "now" ? "Campaign sending" : "Campaign scheduled");
       done();
-    } catch (err) {
-      setError(errorText(err, mode === "now" ? "Could not send this campaign." : "Could not schedule this campaign."));
-    } finally {
-      setPending(false);
-    }
+    }, mode === "now" ? "Could not send this campaign." : "Could not schedule this campaign.");
   }
   return (
     <FormBody onSubmit={submit}>

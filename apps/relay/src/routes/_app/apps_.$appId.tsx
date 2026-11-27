@@ -12,8 +12,7 @@ import { NameField } from "../../components/form/text-field";
 import { FixedField } from "../../components/form/fixed-field";
 import { ConfirmDialog } from "../../components/confirm-dialog";
 import { CreateDialog } from "../../components/create-dialog";
-import { DeniedState, deniedReason } from "../../components/denied-state";
-import { errorText } from "../../components/error-text";
+import { PageDenied } from "../../components/page/page-denied";
 import { EmptyState } from "../../components/page/empty-state";
 import { SettingsCard, SettingsForm } from "../../components/page/settings-card";
 import { FormSkeleton } from "../../components/page/page-skeleton";
@@ -39,6 +38,7 @@ import { FormError, FormBody, FormActions, FormPanel } from "../../components/pa
 import { RenameForm } from "../../components/form/rename-form";
 import { Hint } from "../../components/page/text";
 import { hostOf } from "../../components/lib/path";
+import { useSubmit } from "../../components/use-submit";
 
 export const Route = createFileRoute("/_app/apps_/$appId")({
   pendingComponent: () => <FormSkeleton crumbs={[{ label: "Apps", to: "/apps" }, { label: "App" }]} cards={3} action />,
@@ -60,12 +60,7 @@ function AppPage() {
   const [renameId, setRenameId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   if (!data) {
-    return (
-      <>
-        <PageHeader crumbs={[{ label: "Apps", to: "/apps" }, { label: "App" }]} />
-        <DeniedState reason={deniedReason(shell)} />
-      </>
-    );
+    return <PageDenied crumbs={[{ label: "Apps", to: "/apps" }, { label: "App" }]} />;
   }
   const { app, keys, hook, senders } = data;
   const revoking = keys.find((k) => k.id === revokeId);
@@ -177,24 +172,17 @@ function AppPage() {
 function AppDetailsPanel({ appId, name, slug, canWrite }: { appId: string; name: string; slug: string; canWrite: boolean }) {
   const router = useRouter();
   const [value, setValue] = useState(name);
-  const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
+  const { pending, error, setError, run } = useSubmit();
   const dirty = value.trim() !== name;
 
   async function save(event: FormEvent) {
     event.preventDefault();
     if (!dirty || !value.trim()) return;
-    setPending(true);
-    setError(null);
-    try {
+    await run(async () => {
       await updateAppFn({ data: { id: appId, name: value.trim() } });
       toast.success("App renamed");
       await router.invalidate();
-    } catch (err) {
-      setError(errorText(err, "Could not rename the app."));
-    } finally {
-      setPending(false);
-    }
+    }, "Could not rename the app.");
   }
 
   return (
@@ -231,26 +219,19 @@ function DefaultSendersPanel({ appId, senders, canWrite }: { appId: string; send
   const savedMarketing = senders.marketingId && known.has(senders.marketingId) ? senders.marketingId : NONE;
   const [transactional, setTransactional] = useState(savedTransactional === NONE ? only : savedTransactional);
   const [marketing, setMarketing] = useState(savedMarketing === NONE ? only : savedMarketing);
-  const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
+  const { pending, error, setError, run } = useSubmit();
   const dirty = transactional !== savedTransactional || marketing !== savedMarketing;
 
   async function save(event: FormEvent) {
     event.preventDefault();
     if (!dirty) return;
-    setPending(true);
-    setError(null);
-    try {
+    await run(async () => {
       await setAppDefaultSendersFn({
         data: { appId, transactionalId: transactional === NONE ? null : transactional, marketingId: marketing === NONE ? null : marketing },
       });
       toast.success("Default senders saved");
       await router.invalidate();
-    } catch (err) {
-      setError(errorText(err, "Could not save the default senders."));
-    } finally {
-      setPending(false);
-    }
+    }, "Could not save the default senders.");
   }
 
   const choices: ChoiceOption[] = [{ value: NONE, label: "None" }, ...senders.options.map((o) => ({ value: o.id, label: o.email }))];
@@ -307,8 +288,7 @@ function AudiencePanel({
   const [url, setUrl] = useState(hook?.url ?? "");
   const [enabled, setEnabled] = useState(hook?.enabled ?? true);
   const [secret, setSecret] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
+  const { pending, error, setError, run } = useSubmit();
   const trimmed = url.trim();
   const urlInvalid = trimmed !== "" && !/^https:\/\/\S+$/i.test(trimmed);
   const dirty = url !== (hook?.url ?? "") || enabled !== (hook?.enabled ?? true);
@@ -316,18 +296,12 @@ function AudiencePanel({
   async function save(event: FormEvent) {
     event.preventDefault();
     if (!dirty || !trimmed || urlInvalid) return;
-    setPending(true);
-    setError(null);
-    try {
+    await run(async () => {
       const result = await setAudienceHookFn({ data: { appId, url: trimmed, enabled } });
       setSecret(result.secret);
       toast.success("App audience saved");
       await router.invalidate();
-    } catch (err) {
-      setError(errorText(err, "Could not save the App audience."));
-    } finally {
-      setPending(false);
-    }
+    }, "Could not save the App audience.");
   }
 
   async function remove() {
@@ -434,24 +408,17 @@ function NewKeyForm({ appId, first, done, lock }: { appId: string; first: boolea
   const router = useRouter();
   const [name, setName] = useState(first ? "Production" : "");
   const [created, setCreated] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
+  const { pending, error, setError, run } = useSubmit();
 
   async function submit(event: FormEvent) {
     event.preventDefault();
-    setPending(true);
-    setError(null);
-    try {
+    await run(async () => {
       const key = await createKeyFn({ data: { appId, name } });
       setCreated(key.secret);
       lock(true);
       toast.success("Key created");
       await router.invalidate();
-    } catch (err) {
-      setError(errorText(err, "Could not create the key."));
-    } finally {
-      setPending(false);
-    }
+    }, "Could not create the key.");
   }
 
   if (created) return <SecretOnce secret={created} label="Your new API key" onDone={done} />;

@@ -57,7 +57,7 @@ function CampaignsPage() {
   const [query, setQuery] = useUrlFilter("q");
   const navigate = useNavigate({ from: "/campaigns" });
   const [view, setView] = useState<View>(() => viewPref.read(ROUTE));
-  if (!loaded(page)) return <ScopedDenied page={page} shell={shell} />;
+  if (!loaded(page)) return <ScopedDenied page={page} />;
   const { apps, appId, campaigns } = page;
   const empty =
     campaigns.rows.length === 0 ? (

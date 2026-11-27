@@ -4,8 +4,7 @@ import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router"
 import { type FormEvent, useState } from "react";
 import { ConfirmDialog } from "../../components/confirm-dialog";
 import { CreateDialog } from "../../components/create-dialog";
-import { DeniedState, deniedReason } from "../../components/denied-state";
-import { errorText } from "../../components/error-text";
+import { PageDenied } from "../../components/page/page-denied";
 import { ChoiceField } from "../../components/form/choice-field";
 import { FilterMenu } from "../../components/page/filter-menu";
 import { LoadMore } from "../../components/page/load-more";
@@ -21,6 +20,7 @@ import { addSuppressionFn, fetchSuppressions, removeSuppressionFn } from "../../
 import { FormError, FormBody, FormActions } from "../../components/page/form-parts";
 import { STREAMS } from "../../shared/mail";
 import { oneOf, posInt, str, untyped } from "../../components/lib/route-search";
+import { useSubmit } from "../../components/use-submit";
 
 type SuppressionsSearch = { prefix?: string; cursor?: string; stream?: StreamFilter; offset?: number };
 
@@ -60,12 +60,7 @@ function SuppressionsPage() {
   const canWrite = useCan({ sending: ["write"] });
   const [removing, setRemoving] = useState<string | null>(null);
   if (!page) {
-    return (
-      <>
-        <PageHeader />
-        <DeniedState reason={deniedReason(shell)} />
-      </>
-    );
+    return <PageDenied />;
   }
   async function remove(email: string) {
     await removeSuppressionFn({ data: { email } });
@@ -155,22 +150,15 @@ function AddForm({ done }: { done: () => void }) {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [stream, setStream] = useState<StreamFilter>("all");
-  const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
+  const { pending, error, setError, run } = useSubmit();
   async function submit(event: FormEvent) {
     event.preventDefault();
-    setPending(true);
-    setError(null);
-    try {
+    await run(async () => {
       await addSuppressionFn({ data: { email, stream: stream === "all" ? undefined : stream } });
       toast.success("Suppression added");
       done();
       await router.invalidate();
-    } catch (err) {
-      setError(errorText(err, "Could not add this suppression."));
-    } finally {
-      setPending(false);
-    }
+    }, "Could not add this suppression.");
   }
   return (
     <FormBody onSubmit={submit}>

@@ -2,7 +2,7 @@ import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { Users } from "lucide-react";
 import { ConfirmDialog } from "../../components/confirm-dialog";
-import { DeniedState, deniedReason } from "../../components/denied-state";
+import { PageDenied } from "../../components/page/page-denied";
 import { EmptyState } from "../../components/page/empty-state";
 import { SearchInput, Toolbar } from "../../components/page/toolbar";
 import { useUrlFilter } from "../../components/page/use-url-filter";
@@ -42,12 +42,7 @@ function MembersPage() {
   const confirm = (action: () => Promise<unknown>, success: string) => confirmAction(action, success, () => router.invalidate());
 
   if (!people) {
-    return (
-      <>
-        <PageHeader />
-        <DeniedState reason={deniedReason(shell)} />
-      </>
-    );
+    return <PageDenied />;
   }
   const needle = q.trim().toLowerCase();
   const rows = needle ? people.members.filter((m) => `${m.name} ${m.email}`.toLowerCase().includes(needle)) : people.members;

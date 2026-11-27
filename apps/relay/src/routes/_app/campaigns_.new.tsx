@@ -1,8 +1,7 @@
 import { toast } from "@foundry/ui/toast";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { type FormEvent, useEffect, useState } from "react";
-import { DeniedState, deniedReason } from "../../components/denied-state";
-import { errorText } from "../../components/error-text";
+import { PageDenied } from "../../components/page/page-denied";
 import { AppField, needsAppChoice } from "../../components/form/app-field";
 import { ChoiceField } from "../../components/form/choice-field";
 import { NameField } from "../../components/form/text-field";
@@ -10,27 +9,26 @@ import { CreatePage } from "../../components/page/create-page";
 import { NoAppState } from "../../components/page/no-app-state";
 import { FormActions, FormError } from "../../components/page/form-parts";
 import { SettingsCard } from "../../components/page/settings-card";
-import { PageHeader } from "../../components/shell/page-header";
 import { useCan } from "../../components/use-can";
-import { fetchApps } from "../../console/apps.fns";
 import { createCampaignFn } from "../../console/campaigns.fns";
 import { fetchTemplates } from "../../console/templates.fns";
 import { str } from "../../components/lib/route-search";
+import { useSubmit } from "../../components/use-submit";
+import { useLoad } from "../../components/use-load";
 
 export const Route = createFileRoute("/_app/campaigns_/new")({
   validateSearch: (search: Record<string, unknown>): { appId?: string } => ({
     appId: str(search.appId),
   }),
-  loader: async () => ({ apps: (await fetchApps()) ?? [] }),
   component: NewCampaignPage,
 });
 
 const crumbs = [{ label: "Campaigns", to: "/campaigns" }, { label: "New campaign" }];
 
 function NewCampaignPage() {
-  const { apps } = Route.useLoaderData();
   const { appId: scopeParam } = Route.useSearch();
   const { shell } = Route.useRouteContext();
+  const { apps } = shell;
   const canWrite = useCan({ campaign: ["write"] });
   const navigate = useNavigate();
   const scopedAppId = apps.some((a) => a.id === scopeParam) ? scopeParam : undefined;
@@ -38,49 +36,31 @@ function NewCampaignPage() {
   const [name, setName] = useState("");
   const [template, setTemplate] = useState("blank");
   const [choices, setChoices] = useState<{ id: string; name: string; subject?: string }[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
+  const { pending, error, setError, run } = useSubmit();
 
-  useEffect(() => {
-    setTemplate("blank");
-    if (!app) return;
-    let live = true;
-    fetchTemplates({ data: { appId: app } })
-      .then((t) => live && setChoices(t?.rows ?? []))
-      .catch((err) => {
-        if (!live) return;
-        setChoices([]);
-        setError(errorText(err, "Could not load the templates."));
-      });
-    return () => {
-      live = false;
-    };
-  }, [app]);
+  useEffect(() => setTemplate("blank"), [app]);
+  useLoad(app ? () => fetchTemplates({ data: { appId: app } }) : null, [app], {
+    onData: (t) => setChoices(t?.rows ?? []),
+    onError: (copy) => {
+      setChoices([]);
+      setError(copy);
+    },
+    fallback: "Could not load the templates.",
+  });
 
   if (!canWrite) {
-    return (
-      <>
-        <PageHeader crumbs={crumbs} />
-        <DeniedState reason={deniedReason(shell)} />
-      </>
-    );
+    return <PageDenied crumbs={crumbs} />;
   }
   if (apps.length === 0) return <NoAppState crumbs={crumbs} what="Campaigns" />;
 
   async function submit(event: FormEvent) {
     event.preventDefault();
-    setPending(true);
-    setError(null);
-    try {
+    await run(async () => {
       const templateId = template !== "blank" ? template : undefined;
       const campaign = await createCampaignFn({ data: { appId: app, name, templateId } });
       toast.success("Campaign created", { description: name });
       await navigate({ to: "/campaigns/$campaignId", params: { campaignId: campaign.id }, search: { appId: app } });
-    } catch (err) {
-      setError(errorText(err, "Could not create this campaign."));
-    } finally {
-      setPending(false);
-    }
+    }, "Could not create this campaign.");
   }
 
   const describe = choices.length <= 2;

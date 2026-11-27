@@ -5,7 +5,7 @@ import { createFileRoute, Link, useRouter, useSearch } from "@tanstack/react-rou
 import { GlobeIcon } from "lucide-react";
 import { useState } from "react";
 import { ConfirmDialog } from "../../components/confirm-dialog";
-import { DeniedState, deniedReason } from "../../components/denied-state";
+import { PageDenied } from "../../components/page/page-denied";
 import { DnsRecords } from "../../components/domains/dns-records";
 import { DomainDeleteDialog } from "../../components/domains/domain-delete-dialog";
 import { errorText } from "../../components/error-text";
@@ -75,12 +75,7 @@ function DomainsPage() {
   const [deleting, setDeleting] = useState<{ id: string; domain: string } | null>(null);
   const [removing, setRemoving] = useState<{ id: string; email: string } | null>(null);
   if (!data) {
-    return (
-      <>
-        <PageHeader />
-        <DeniedState reason={deniedReason(shell)} />
-      </>
-    );
+    return <PageDenied />;
   }
   const needle = q.trim().toLowerCase();
   const domains = data.domains.filter(

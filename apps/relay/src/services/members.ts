@@ -7,7 +7,7 @@ import { inviteCap, invitesInWindow } from "../core/workspace-profile";
 import { createAuth } from "../auth";
 import { assertSameOrigin, parseRoles, requireSession } from "../auth/session";
 import type { Principal } from "./principal";
-import { RelayError } from "../shared/errors";
+import { type ErrorCode, RelayError } from "../shared/errors";
 import { type OrgRole } from "../shared/roles";
 import { DAY_MS } from "../shared/limits";
 
@@ -212,6 +212,6 @@ export async function acceptInvite(env: Env, headers: Headers, id: string): Prom
   const [me] = await securityDb(env).select({ email: user.email }).from(user).where(eq(user.id, userId));
   if (me?.email !== row.email) throw new RelayError("this invite is for another email");
   const status = effectiveStatus(row);
-  if (status !== "pending") throw new RelayError("invalid input", 409, `invite ${status}`);
+  if (status !== "pending") throw new RelayError(`invite ${status}` as ErrorCode);
   await authCall(() => createAuth(env).api.acceptInvitation({ headers, body: { invitationId: id } }));
 }

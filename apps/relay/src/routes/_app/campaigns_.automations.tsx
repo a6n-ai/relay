@@ -60,7 +60,7 @@ function AutomationsPage() {
   const navigate = useNavigate({ from: "/campaigns/automations" });
   const [view, setView] = useState<View>(() => viewPref.read(ROUTE));
   const [deleting, setDeleting] = useState<AutomationView | null>(null);
-  if (!loaded(page)) return <ScopedDenied page={page} shell={shell} />;
+  if (!loaded(page)) return <ScopedDenied page={page} />;
   const { apps, appId, automations, lists, templates } = page;
   const canCreate = canSend && Boolean(appId);
   const newButton = canCreate ? <Button render={<Link to="/campaigns/automations/new" search={{ appId: search.appId }} />}>New automation</Button> : null;

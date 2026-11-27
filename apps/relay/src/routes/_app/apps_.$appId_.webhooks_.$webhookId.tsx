@@ -4,7 +4,7 @@ import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { SendIcon } from "lucide-react";
 import { useState } from "react";
 import { CreateDialog } from "../../components/create-dialog";
-import { DeniedState, deniedReason } from "../../components/denied-state";
+import { PageDenied } from "../../components/page/page-denied";
 import { errorText } from "../../components/error-text";
 import { EmptyState } from "../../components/page/empty-state";
 import { LoadMore } from "../../components/page/load-more";
@@ -48,12 +48,7 @@ function DeliveriesPage() {
   ];
 
   if (!page) {
-    return (
-      <>
-        <PageHeader crumbs={[...base, { label: "Deliveries" }]} />
-        <DeniedState reason={deniedReason(shell)} />
-      </>
-    );
+    return <PageDenied crumbs={[...base, { label: "Deliveries" }]} />;
   }
 
   const rows = [...page.rows, ...(older?.rows ?? [])];

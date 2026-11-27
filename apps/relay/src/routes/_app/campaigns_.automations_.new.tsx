@@ -1,17 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AutomationForm } from "../../components/campaigns/automation-form";
-import { DeniedState, deniedReason } from "../../components/denied-state";
+import { PageDenied } from "../../components/page/page-denied";
 import { NoAppState } from "../../components/page/no-app-state";
 import { PageHeader } from "../../components/shell/page-header";
 import { useCan } from "../../components/use-can";
-import { fetchApps } from "../../console/apps.fns";
 import { str } from "../../components/lib/route-search";
 
 export const Route = createFileRoute("/_app/campaigns_/automations_/new")({
   validateSearch: (search: Record<string, unknown>): { appId?: string } => ({
     appId: str(search.appId),
   }),
-  loader: async () => ({ apps: (await fetchApps()) ?? [] }),
   component: NewAutomationPage,
 });
 
@@ -22,17 +20,12 @@ const crumbs = [
 ];
 
 function NewAutomationPage() {
-  const { apps } = Route.useLoaderData();
   const { appId: scopeParam } = Route.useSearch();
   const { shell } = Route.useRouteContext();
+  const { apps } = shell;
   const canSend = useCan({ campaign: ["send"] });
   if (!canSend) {
-    return (
-      <>
-        <PageHeader crumbs={crumbs} />
-        <DeniedState reason={deniedReason(shell)} />
-      </>
-    );
+    return <PageDenied crumbs={crumbs} />;
   }
   if (apps.length === 0) return <NoAppState crumbs={crumbs} what="Automations" />;
   const scopedAppId = apps.some((a) => a.id === scopeParam) ? scopeParam : undefined;

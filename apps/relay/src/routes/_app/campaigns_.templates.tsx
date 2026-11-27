@@ -59,7 +59,7 @@ function TemplatesPage() {
   const [query, setQuery] = useUrlFilter("q");
   const navigate = useNavigate({ from: "/campaigns/templates" });
   const [view, setView] = useState<View>(() => viewPref.read(ROUTE));
-  if (!loaded(page)) return <ScopedDenied page={page} shell={shell} />;
+  if (!loaded(page)) return <ScopedDenied page={page} />;
   const { apps, appId, templates } = page;
   const canCreate = canWrite && Boolean(appId);
   const newButton = canCreate ? <Button render={<Link to="/campaigns/templates/new" search={{ appId: search.appId }} />}>New template</Button> : null;

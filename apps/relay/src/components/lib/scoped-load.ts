@@ -3,6 +3,13 @@ import { defaultApp } from "../../shared/scope";
 
 export const isNotFound = (err: unknown): boolean => err instanceof Error && err.message === "not found";
 
+// The client twin of the server's orMissing: a thrown "not found" becomes `{ missing: true }` data the page renders as a not-found state.
+export const orMissing = <T>(call: Promise<T>): Promise<T | { missing: true }> =>
+  call.catch((err) => {
+    if (isNotFound(err)) return { missing: true as const };
+    throw err;
+  });
+
 type Apps = NonNullable<Awaited<ReturnType<typeof fetchApps>>>;
 
 // A scoped page's loader data: null is denied (no workspace, suspended, or no permission), `missing` is an app or record that is not there.
@@ -19,10 +26,7 @@ export async function scopedLoad<T extends object>(
   if (!apps) return null;
   const appId = wanted ?? defaultApp(apps, false);
   if (!appId) return { apps, appId, ...none };
-  const data = await fetch(appId).catch((err) => {
-    if (isNotFound(err)) return { missing: true as const };
-    throw err;
-  });
+  const data = await orMissing(fetch(appId));
   if (!data) return null;
   if ("missing" in data) return { missing: true };
   return { apps, appId, ...data };

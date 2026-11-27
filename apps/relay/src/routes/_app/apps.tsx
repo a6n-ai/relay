@@ -2,7 +2,7 @@ import { Button } from "@foundry/ui/button";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { BoxesIcon } from "lucide-react";
 import { useState } from "react";
-import { DeniedState, deniedReason } from "../../components/denied-state";
+import { PageDenied } from "../../components/page/page-denied";
 import { EmptyState } from "../../components/page/empty-state";
 import { ResourceCard, ResourceGrid } from "../../components/page/resource-grid";
 import { SearchInput, Toolbar } from "../../components/page/toolbar";
@@ -33,12 +33,7 @@ function AppsPage() {
   const [query, setQuery] = useUrlFilter("q");
   const [view, setView] = useState<View>(() => viewPref.read(Route.fullPath));
   if (!apps) {
-    return (
-      <>
-        <PageHeader />
-        <DeniedState reason={deniedReason(shell)} />
-      </>
-    );
+    return <PageDenied />;
   }
   const q = query.trim().toLowerCase();
   const rows = q ? apps.filter((a) => a.name.toLowerCase().includes(q)) : apps;

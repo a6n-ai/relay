@@ -1,31 +1,24 @@
 import { toast } from "@foundry/ui/toast";
 import { useRouter } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
-import { errorText } from "../error-text";
 import { NameField } from "../form/text-field";
 import { createTeamFn } from "../../console/members.fns";
 import { FormError, FormBody, FormActions } from "../page/form-parts";
+import { useSubmit } from "../use-submit";
 
 export function NewTeamForm({ done }: { done: () => void }) {
   const router = useRouter();
   const [name, setName] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
+  const { pending, error, setError, run } = useSubmit();
 
   async function submit(event: FormEvent) {
     event.preventDefault();
-    setPending(true);
-    setError(null);
-    try {
+    await run(async () => {
       await createTeamFn({ data: { name } });
       toast.success("Team created", { description: name });
       done();
       await router.invalidate();
-    } catch (err) {
-      setError(errorText(err, "Could not create the team."));
-    } finally {
-      setPending(false);
-    }
+    }, "Could not create the team.");
   }
 
   return (

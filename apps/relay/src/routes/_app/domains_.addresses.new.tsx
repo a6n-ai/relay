@@ -3,7 +3,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { MailIcon } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { Button } from "@foundry/ui/button";
-import { DeniedState, deniedReason } from "../../components/denied-state";
+import { PageDenied } from "../../components/page/page-denied";
 import { errorText } from "../../components/error-text";
 import { codeOf } from "../../shared/errors";
 import { AppField, needsAppChoice } from "../../components/form/app-field";
@@ -16,7 +16,6 @@ import { FormActions, FormError } from "../../components/page/form-parts";
 import { SettingsCard } from "../../components/page/settings-card";
 import { PageHeader } from "../../components/shell/page-header";
 import { useCan } from "../../components/use-can";
-import { fetchApps } from "../../console/apps.fns";
 import { addAddressFn, fetchDomains } from "../../console/domains.fns";
 import { type Kind, KINDS, LOCAL_RE } from "../../components/lib/address-kinds";
 import { EMAIL_MAX, NAME_MAX } from "../../shared/limits";
@@ -26,19 +25,17 @@ export const Route = createFileRoute("/_app/domains_/addresses/new")({
   validateSearch: (search: Record<string, unknown>): { appId?: string } => ({
     appId: str(search.appId),
   }),
-  loader: async () => {
-    const [domains, apps] = await Promise.all([fetchDomains(), fetchApps()]);
-    return { domains: domains ?? [], apps: apps ?? [] };
-  },
+  loader: async () => ({ domains: (await fetchDomains()) ?? [] }),
   component: AddAddressPage,
 });
 
 const crumbs = [{ label: "Domains", to: "/domains" }, { label: "Add address" }];
 
 function AddAddressPage() {
-  const { domains, apps } = Route.useLoaderData();
+  const { domains } = Route.useLoaderData();
   const { appId: scopeParam } = Route.useSearch();
   const { shell } = Route.useRouteContext();
+  const { apps } = shell;
   const canWrite = useCan({ sending: ["write"] });
   const navigate = useNavigate();
   const [address, setAddress] = useState({ local: "", domain: "" });
@@ -52,12 +49,7 @@ function AddAddressPage() {
   const [pending, setPending] = useState(false);
 
   if (!canWrite) {
-    return (
-      <>
-        <PageHeader crumbs={crumbs} />
-        <DeniedState reason={deniedReason(shell)} />
-      </>
-    );
+    return <PageDenied crumbs={crumbs} />;
   }
 
   const blocker =

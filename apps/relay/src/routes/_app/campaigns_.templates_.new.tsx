@@ -1,26 +1,23 @@
 import { toast } from "@foundry/ui/toast";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
-import { DeniedState, deniedReason } from "../../components/denied-state";
-import { errorText } from "../../components/error-text";
+import { PageDenied } from "../../components/page/page-denied";
 import { AppField, needsAppChoice } from "../../components/form/app-field";
 import { NameField } from "../../components/form/text-field";
 import { CreatePage } from "../../components/page/create-page";
 import { FormActions, FormError } from "../../components/page/form-parts";
 import { NoAppState } from "../../components/page/no-app-state";
 import { SettingsCard } from "../../components/page/settings-card";
-import { PageHeader } from "../../components/shell/page-header";
 import { useCan } from "../../components/use-can";
-import { fetchApps } from "../../console/apps.fns";
 import { createTemplateFn } from "../../console/templates.fns";
 import { TEMPLATE_NAME_MAX } from "../../shared/limits";
 import { str } from "../../components/lib/route-search";
+import { useSubmit } from "../../components/use-submit";
 
 export const Route = createFileRoute("/_app/campaigns_/templates_/new")({
   validateSearch: (search: Record<string, unknown>): { appId?: string } => ({
     appId: str(search.appId),
   }),
-  loader: async () => ({ apps: (await fetchApps()) ?? [] }),
   component: NewTemplatePage,
 });
 
@@ -31,40 +28,28 @@ const crumbs = [
 ];
 
 function NewTemplatePage() {
-  const { apps } = Route.useLoaderData();
   const { appId: scopeParam } = Route.useSearch();
   const { shell } = Route.useRouteContext();
+  const { apps } = shell;
   const canWrite = useCan({ template: ["write"] });
   const navigate = useNavigate();
   const scopedAppId = apps.some((a) => a.id === scopeParam) ? scopeParam : undefined;
   const [app, setApp] = useState(scopedAppId ?? apps[0]?.id ?? "");
   const [name, setName] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
+  const { pending, error, setError, run } = useSubmit();
 
   if (!canWrite) {
-    return (
-      <>
-        <PageHeader crumbs={crumbs} />
-        <DeniedState reason={deniedReason(shell)} />
-      </>
-    );
+    return <PageDenied crumbs={crumbs} />;
   }
   if (apps.length === 0) return <NoAppState crumbs={crumbs} what="Templates" />;
 
   async function submit(event: FormEvent) {
     event.preventDefault();
-    setPending(true);
-    setError(null);
-    try {
+    await run(async () => {
       const template = await createTemplateFn({ data: { appId: app, input: { name } } });
       toast.success("Template created", { description: name });
       await navigate({ to: "/campaigns/templates/$templateId", params: { templateId: template.id }, search: { appId: app } });
-    } catch (err) {
-      setError(errorText(err, "Could not create this template."));
-    } finally {
-      setPending(false);
-    }
+    }, "Could not create this template.");
   }
 
   const choose = needsAppChoice(apps, scopedAppId);

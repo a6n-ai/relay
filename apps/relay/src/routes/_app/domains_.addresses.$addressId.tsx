@@ -5,8 +5,7 @@ import { UsersIcon } from "lucide-react";
 import { type FormEvent, type RefObject, useRef, useState } from "react";
 import { ConfirmDialog } from "../../components/confirm-dialog";
 import { CreateDialog } from "../../components/create-dialog";
-import { DeniedState, deniedReason } from "../../components/denied-state";
-import { errorText } from "../../components/error-text";
+import { PageDenied } from "../../components/page/page-denied";
 import { ResourceTable } from "../../components/resource-table";
 import { useCan } from "../../components/use-can";
 import { ChoiceField } from "../../components/form/choice-field";
@@ -24,6 +23,7 @@ import { addGrantFn, fetchAddressAccess, removeGrantFn } from "../../console/gra
 import { FormError, FormBody, FormActions, FormPanel } from "../../components/page/form-parts";
 import { KIND_LABEL, KINDS } from "../../components/lib/address-kinds";
 import { EMAIL_MAX } from "../../shared/limits";
+import { useSubmit } from "../../components/use-submit";
 
 export const Route = createFileRoute("/_app/domains_/addresses/$addressId")({
   loader: async ({ params }) => {
@@ -53,20 +53,10 @@ function AddressPage() {
   const [removing, setRemoving] = useState<{ id: string; label: string } | null>(null);
   const crumbs = [{ label: "Domains", to: "/domains" }, { label: "Address" }];
   if (!data || (!canWrite && !canManage)) {
-    return (
-      <>
-        <PageHeader crumbs={crumbs} />
-        <DeniedState reason={deniedReason(shell)} />
-      </>
-    );
+    return <PageDenied crumbs={crumbs} />;
   }
   if (!data.address) {
-    return (
-      <>
-        <PageHeader crumbs={crumbs} />
-        <DeniedState reason="not-found" />
-      </>
-    );
+    return <PageDenied crumbs={crumbs} reason="not-found" />;
   }
   const { address, access } = data;
 
@@ -156,8 +146,7 @@ function AddressDetailsCard({ address, canWrite, bypass }: { address: Address; c
   const [name, setName] = useState(address.displayName ?? "");
   const [replyTo, setReplyTo] = useState(address.replyTo ?? "");
   const [replyError, setReplyError] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
+  const { pending, error, setError, run } = useSubmit();
   const dirty = name.trim() !== (address.displayName ?? "") || replyTo.trim() !== (address.replyTo ?? "");
 
   async function save(event: FormEvent) {
@@ -167,17 +156,11 @@ function AddressDetailsCard({ address, canWrite, bypass }: { address: Address; c
       setReplyError("Enter a valid email address or leave it blank.");
       return;
     }
-    setPending(true);
-    setError(null);
-    try {
+    await run(async () => {
       await updateAddressFn({ data: { id: address.id, displayName: name.trim() || null, replyTo: reply || null } });
       toast.success("Address updated", { description: address.email });
       await router.invalidate();
-    } catch (err) {
-      setError(errorText(err, "Could not update the address."));
-    } finally {
-      setPending(false);
-    }
+    }, "Could not update the address.");
   }
 
   return (
@@ -221,8 +204,7 @@ function NewGrantForm({
   const router = useRouter();
   const [choice, setChoice] = useState(options.length === 1 ? options[0]!.value : "");
   const fe = useFieldErrors<"who">();
-  const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
+  const { pending, error, setError, run } = useSubmit();
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -230,19 +212,13 @@ function NewGrantForm({
       fe.set({ who: "Choose a person or team." });
       return;
     }
-    setPending(true);
-    setError(null);
     const [kind, targetId] = choice.split(":");
-    try {
+    await run(async () => {
       await addGrantFn({ data: { addressId, ...(kind === "team" ? { teamId: targetId } : { memberId: targetId }) } });
       toast.success("Access added");
       done();
       await router.invalidate();
-    } catch (err) {
-      setError(errorText(err, "Could not add access."));
-    } finally {
-      setPending(false);
-    }
+    }, "Could not add access.");
   }
 
   if (options.length === 0) {

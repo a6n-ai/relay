@@ -4,7 +4,6 @@ import { toast } from "@foundry/ui/toast";
 import { useRouter } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
 import { updateWebhookFn } from "../../console/webhooks.fns";
-import { errorText } from "../error-text";
 import { TextField } from "../form/text-field";
 import { FormActions, FormBody, FormError } from "../page/form-parts";
 import { Hint, SectionTitle } from "../page/text";
@@ -12,6 +11,7 @@ import { webhookUrlForInput, webhookUrlFromInput, WEBHOOK_URL_PREFIX } from "./w
 import { WEBHOOK_EVENT_LABELS, WEBHOOK_EVENT_LIST } from "./webhook-events";
 import { type WebhookEvent } from "../../shared/mail";
 import { URL_MAX } from "../../shared/limits";
+import { useSubmit } from "../use-submit";
 
 export function WebhookUrlField({ value, onChange, hint = "Must be public. Called when a letter arrives." }: { value: string; onChange: (url: string) => void; hint?: string }) {
   return (
@@ -65,28 +65,21 @@ export function EditWebhookForm({
   const router = useRouter();
   const [url, setUrl] = useState(webhook.url);
   const [events, setEvents] = useState<WebhookEvent[]>(webhook.events);
-  const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
+  const { pending, error, setError, run } = useSubmit();
   const same = events.length === webhook.events.length && events.every((e) => webhook.events.includes(e));
   const dirty = url !== webhook.url || !same;
 
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (!dirty || events.length === 0) return;
-    setPending(true);
-    setError(null);
-    try {
+    await run(async () => {
       await updateWebhookFn({
         data: { appId, id: webhook.id, ...(url !== webhook.url ? { url } : {}), ...(same ? {} : { events }) },
       });
       toast.success("Webhook updated");
       done();
       await router.invalidate();
-    } catch (err) {
-      setError(errorText(err, "Could not update the webhook."));
-    } finally {
-      setPending(false);
-    }
+    }, "Could not update the webhook.");
   }
 
   return (

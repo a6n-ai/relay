@@ -1,15 +1,8 @@
-import { DeniedState, deniedReason } from "../denied-state";
-import { PageHeader } from "../shell/page-header";
-import { type Shell } from "../../shared/views";
+import { PageDenied } from "./page-denied";
 
-// The page half of a scoped loader's contract (components/lib/scoped-load.ts): `if (!loaded(page)) return <ScopedDenied page={page} shell={shell} />`.
+// The page half of a scoped loader's contract (components/lib/scoped-load.ts): `if (!loaded(page)) return <ScopedDenied page={page} />`.
 export const loaded = <T extends object>(page: T | null): page is Exclude<T, { missing: true }> => !!page && !("missing" in page);
 
-export function ScopedDenied({ page, shell }: { page: null | { missing: true }; shell: Shell }) {
-  return (
-    <>
-      <PageHeader />
-      {page ? <DeniedState reason="not-found" label="App not found" /> : <DeniedState reason={deniedReason(shell)} />}
-    </>
-  );
+export function ScopedDenied({ page }: { page: null | { missing: true } }) {
+  return page ? <PageDenied reason="not-found" label="App not found" /> : <PageDenied />;
 }

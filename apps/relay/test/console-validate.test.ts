@@ -54,6 +54,8 @@ describe("errorText", () => {
   });
 
   it("falls back for an unknown message or a prototype key, never the raw text", () => {
+    expect(errorText(new Error("invite limit reached"))).toBe("This workspace has reached its daily invite limit. Try again tomorrow.");
+    expect(errorText(new Error("invite expired"))).toBe("This invite is no longer open.");
     expect(errorText(new Error("constructor"))).toBe("Something went wrong. Try again.");
     expect(errorText(new Error("forbidden-ish"), "Could not save.")).toBe("Could not save.");
   });

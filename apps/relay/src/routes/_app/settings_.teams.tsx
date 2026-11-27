@@ -3,7 +3,7 @@ import { UsersRound } from "lucide-react";
 import { useState } from "react";
 import { ConfirmDialog } from "../../components/confirm-dialog";
 import { CreateDialog } from "../../components/create-dialog";
-import { DeniedState, deniedReason } from "../../components/denied-state";
+import { PageDenied } from "../../components/page/page-denied";
 import { EmptyState } from "../../components/page/empty-state";
 import { ListSkeleton } from "../../components/page/page-skeleton";
 import { ResourceTable } from "../../components/resource-table";
@@ -39,12 +39,7 @@ function TeamsPage() {
   const confirm = (action: () => Promise<unknown>, success: string) => confirmAction(action, success, () => router.invalidate());
 
   if (!people) {
-    return (
-      <>
-        <PageHeader />
-        <DeniedState reason={deniedReason(shell)} />
-      </>
-    );
+    return <PageDenied />;
   }
   const namesById = new Map(people.members.map((m) => [m.id, m.name]));
   const editingTeam = people.teams.find((t) => t.id === editing);

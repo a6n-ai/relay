@@ -2,7 +2,7 @@ import { toast } from "@foundry/ui/toast";
 import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { ConfirmDialog } from "../../components/confirm-dialog";
-import { DeniedState, deniedReason } from "../../components/denied-state";
+import { PageDenied } from "../../components/page/page-denied";
 import { errorText } from "../../components/error-text";
 import { FilterMenu } from "../../components/page/filter-menu";
 import { LoadMore } from "../../components/page/load-more";
@@ -13,7 +13,6 @@ import { PageHeader } from "../../components/shell/page-header";
 import { formatWhen } from "../../components/lib/format-date";
 import { ResourceTable } from "../../components/resource-table";
 import { useCan } from "../../components/use-can";
-import { fetchApps } from "../../console/apps.fns";
 import { deleteFailureFn, fetchFailures, replayFailureFn } from "../../console/failures.fns";
 import { posInt, str, untyped } from "../../components/lib/route-search";
 
@@ -28,10 +27,7 @@ export const Route = createFileRoute("/_app/messages_/failures")({
     appId: str(raw.appId),
     offset: posInt(raw.offset),
   }),
-  loader: async () => {
-    const [page, apps] = await Promise.all([fetchFailures(), fetchApps()]);
-    return page ? { ...page, apps: apps ?? [] } : null;
-  },
+  loader: () => fetchFailures(),
   pendingComponent: () => <ListSkeleton columns={5} filter />,
   component: FailuresPage,
 });
@@ -46,12 +42,7 @@ function FailuresPage() {
   const [deleting, setDeleting] = useState<string | null>(null);
 
   if (!page) {
-    return (
-      <>
-        <PageHeader />
-        <DeniedState reason={deniedReason(shell)} />
-      </>
-    );
+    return <PageDenied />;
   }
 
   async function retry(failureId: string) {
@@ -92,7 +83,7 @@ function FailuresPage() {
       <Toolbar
         filters={
           <FilterMenu
-            facets={[{ key: "appId", label: "App", options: page.apps.map((a) => ({ value: a.id, label: a.name })) }]}
+            facets={[{ key: "appId", label: "App", options: shell.apps.map((a) => ({ value: a.id, label: a.name })) }]}
             value={search}
             onChange={(next) => navigate({ search: untyped(next), replace: true })}
           />

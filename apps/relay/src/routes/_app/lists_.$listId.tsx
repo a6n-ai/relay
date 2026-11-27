@@ -10,8 +10,7 @@ import { consentHint } from "../../components/lists/consent-labels";
 import { FixedField } from "../../components/form/fixed-field";
 import { ConfirmDialog } from "../../components/confirm-dialog";
 import { CreateDialog } from "../../components/create-dialog";
-import { DeniedState, deniedReason } from "../../components/denied-state";
-import { errorText } from "../../components/error-text";
+import { PageDenied } from "../../components/page/page-denied";
 import { CellWhen, ResourceTable } from "../../components/resource-table";
 import { StatusBadge } from "../../components/status-badge";
 import { useCan } from "../../components/use-can";
@@ -22,7 +21,6 @@ import { SearchInput, Toolbar } from "../../components/page/toolbar";
 import { useUrlFilter } from "../../components/page/use-url-filter";
 import { ListSkeleton } from "../../components/page/page-skeleton";
 import { PageHeader } from "../../components/shell/page-header";
-import { fetchApps } from "../../console/apps.fns";
 import { formatDate, formatWhen } from "../../components/lib/format-date";
 import {
   addMemberFn,
@@ -36,6 +34,7 @@ import {
 import { FormError, FormBody, FormActions } from "../../components/page/form-parts";
 import { type ConsentSource, type MemberView } from "../../shared/views";
 import { str, posInt } from "../../components/lib/route-search";
+import { useSubmit } from "../../components/use-submit";
 
 type ListSearch = { appId?: string; cursor?: string; q?: string; offset?: number };
 
@@ -49,11 +48,10 @@ export const Route = createFileRoute("/_app/lists_/$listId")({
   loaderDeps: ({ search }) => ({ appId: search.appId, cursor: search.cursor }),
   loader: async ({ deps, params }) => {
     const lists = deps.appId ? await fetchLists({ data: { appId: deps.appId } }) : [];
-    const apps = await fetchApps();
     const members = await fetchListMembers({ data: { listId: params.listId, cursor: deps.cursor } });
     if (!lists || !members) return null;
     if ("missing" in members) return { missing: true as const };
-    return { list: "missing" in lists ? undefined : lists.find((l) => l.id === params.listId), members, appName: apps?.find((a) => a.id === deps.appId)?.name };
+    return { list: "missing" in lists ? undefined : lists.find((l) => l.id === params.listId), members };
   },
   pendingComponent: () => <ListSkeleton crumbs={[{ label: "Lists", to: "/lists" }, { label: "List" }]} columns={5} search action />,
   component: ListDetailPage,
@@ -76,22 +74,13 @@ function ListDetailPage() {
   const [adding, setAdding] = useState(false);
   const listsCrumb = { label: "Lists", to: "/lists", search: { appId: search.appId } };
   if (!page) {
-    return (
-      <>
-        <PageHeader crumbs={[listsCrumb, { label: "List" }]} />
-        <DeniedState reason={deniedReason(shell)} />
-      </>
-    );
+    return <PageDenied crumbs={[listsCrumb, { label: "List" }]} />;
   }
   if ("missing" in page || !page.list) {
-    return (
-      <>
-        <PageHeader crumbs={[listsCrumb, { label: "List" }]} />
-        <DeniedState reason="not-found" label="List not found" />
-      </>
-    );
+    return <PageDenied crumbs={[listsCrumb, { label: "List" }]} reason="not-found" label="List not found" />;
   }
-  const { list, members, appName } = page;
+  const { list, members } = page;
+  const appName = shell.apps.find((a) => a.id === search.appId)?.name;
   const offset = search.cursor ? (search.offset ?? 0) : 0;
   async function remove(memberId: string) {
     await removeMemberFn({ data: { listId, memberId } });
@@ -249,24 +238,17 @@ function EditListForm({
   const [name, setName] = useState(list.name);
   const [consent, setConsent] = useState(list.consentSource);
   const [note, setNote] = useState(list.consentNote ?? "");
-  const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
+  const { pending, error, setError, run } = useSubmit();
   const dirty = name !== list.name || consent !== list.consentSource || note.trim() !== (list.consentNote ?? "");
   async function submit(event: FormEvent) {
     event.preventDefault();
-    setPending(true);
-    setError(null);
-    try {
+    await run(async () => {
       // An empty note clears it: the server keeps the old note only when consentNote is omitted.
       await updateListFn({ data: { id: list.id, patch: { name, consentSource: consent, consentNote: note.trim() } } });
       toast.success("List updated");
       done();
       await router.invalidate();
-    } catch (err) {
-      setError(errorText(err, "Could not update this list."));
-    } finally {
-      setPending(false);
-    }
+    }, "Could not update this list.");
   }
   return (
     <FormBody onSubmit={submit}>
@@ -290,23 +272,16 @@ function EditContactForm({ listId, member, done }: { listId: string; member: Mem
   const router = useRouter();
   const [firstName, setFirstName] = useState(member.firstName ?? "");
   const [lastName, setLastName] = useState(member.lastName ?? "");
-  const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
+  const { pending, error, setError, run } = useSubmit();
   const dirty = firstName.trim() !== (member.firstName ?? "") || lastName.trim() !== (member.lastName ?? "");
   async function submit(event: FormEvent) {
     event.preventDefault();
-    setPending(true);
-    setError(null);
-    try {
+    await run(async () => {
       await updateContactFn({ data: { listId, contactId: member.id, firstName, lastName } });
       toast.success("Contact updated");
       done();
       await router.invalidate();
-    } catch (err) {
-      setError(errorText(err, "Could not update this contact."));
-    } finally {
-      setPending(false);
-    }
+    }, "Could not update this contact.");
   }
   return (
     <FormBody onSubmit={submit}>
@@ -327,18 +302,15 @@ function AddContactForm({ listId, consent, done }: { listId: string; consent: Co
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [named, setNamed] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [emailError, setEmailError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
+  const { pending, error, setError, run } = useSubmit();
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (!/^\S+@\S+\.\S+$/.test(email.trim())) {
       setEmailError("Enter a valid email address.");
       return;
     }
-    setPending(true);
-    setError(null);
-    try {
+    await run(async () => {
       await addMemberFn({
         data: {
           listId,
@@ -348,11 +320,7 @@ function AddContactForm({ listId, consent, done }: { listId: string; consent: Co
       toast.success("Contact added");
       done();
       await router.invalidate();
-    } catch (err) {
-      setError(errorText(err, "Could not add this contact."));
-    } finally {
-      setPending(false);
-    }
+    }, "Could not add this contact.");
   }
   return (
     <FormBody onSubmit={submit}>

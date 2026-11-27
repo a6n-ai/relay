@@ -15,6 +15,7 @@ import { Toolbar } from "../page/toolbar";
 import { useCan } from "../use-can";
 import { Hint } from "../page/text";
 import { type AudiencePreview, type CampaignStats, type CampaignView } from "../../shared/views";
+import { useLoad } from "../use-load";
 
 // A paused campaign stores a code on its row, not an Error.
 export const reasonText = (code: string | null): string | null => (code ? (copyOf(code) ?? errorText(null)) : null);
@@ -28,19 +29,14 @@ export function CampaignReport({ campaign, stats }: { campaign: CampaignView; st
   // The audience is counted once for the meter; the polled loader would re-run the whole audience count every tick.
   const [audience, setAudience] = useState<AudiencePreview | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
-  useEffect(() => {
-    let live = true;
-    previewAudienceFn({ data: { id } })
-      .then((a) => live && setAudience(a ?? null))
-      .catch((err) => {
-        if (!live) return;
-        setAudience(null);
-        setLoadError(errorText(err, "Could not count the audience."));
-      });
-    return () => {
-      live = false;
-    };
-  }, [id]);
+  useLoad(() => previewAudienceFn({ data: { id } }), [id], {
+    onData: (a) => setAudience(a ?? null),
+    onError: (copy) => {
+      setAudience(null);
+      setLoadError(copy);
+    },
+    fallback: "Could not count the audience.",
+  });
 
   // Counters move while a send runs, so the loader re-reads them on an interval until the campaign settles.
   // Queued mail can still be waiting after the status reads sent, so polling continues while anything is queued.

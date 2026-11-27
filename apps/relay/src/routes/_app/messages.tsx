@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { MailIcon } from "lucide-react";
-import { DeniedState, deniedReason } from "../../components/denied-state";
+import { PageDenied } from "../../components/page/page-denied";
 import { type MessagesSearch, parseMessagesSearch } from "../../components/messages/messages-search";
 import { FilterMenu } from "../../components/page/filter-menu";
 import { EmptyState } from "../../components/page/empty-state";
@@ -11,7 +11,6 @@ import { ListSkeleton } from "../../components/page/page-skeleton";
 import { ResourceTable } from "../../components/resource-table";
 import { PageHeader } from "../../components/shell/page-header";
 import { StatusBadge } from "../../components/status-badge";
-import { fetchApps } from "../../console/apps.fns";
 import { fetchMessages } from "../../console/messages.fns";
 import { formatWhen } from "../../components/lib/format-date";
 import { MESSAGE_STATUSES } from "../../shared/mail";
@@ -25,10 +24,7 @@ export const Route = createFileRoute("/_app/messages")({
     offset: posInt(raw.offset),
   }),
   loaderDeps: ({ search }) => search,
-  loader: async ({ deps: { appId, offset: _offset, ...rest } }) => {
-    const [page, apps] = await Promise.all([fetchMessages({ data: { ...rest, app: appId } }), fetchApps()]);
-    return page ? { ...page, apps: apps ?? [] } : null;
-  },
+  loader: ({ deps: { appId, offset: _offset, ...rest } }) => fetchMessages({ data: { ...rest, app: appId } }),
   pendingComponent: () => <ListSkeleton columns={4} search filter />,
   component: MessagesPage,
 });
@@ -43,12 +39,7 @@ function MessagesPage() {
   const [email, setEmail] = useUrlFilter("email", { resetCursor: true });
 
   if (!page) {
-    return (
-      <>
-        <PageHeader />
-        <DeniedState reason={deniedReason(shell)} />
-      </>
-    );
+    return <PageDenied />;
   }
   const filtered = Boolean(search.status || search.email || search.appId);
   const empty =
@@ -78,7 +69,7 @@ function MessagesPage() {
           <FilterMenu
             facets={[
               { key: "status", label: "Status", options: MESSAGE_STATUSES.map((s) => ({ value: s, label: s[0].toUpperCase() + s.slice(1) })) },
-              { key: "appId", label: "App", options: page.apps.map((a) => ({ value: a.id, label: a.name })) },
+              { key: "appId", label: "App", options: shell.apps.map((a) => ({ value: a.id, label: a.name })) },
             ]}
             value={search}
             onChange={(next) => navigate({ search: untyped(next) })}

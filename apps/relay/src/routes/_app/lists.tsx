@@ -54,7 +54,7 @@ function ListsPage() {
   const [query, setQuery] = useUrlFilter("q");
   const navigate = useNavigate();
   const [view, setView] = useState<View>(() => viewPref.read("/lists"));
-  if (!loaded(page)) return <ScopedDenied page={page} shell={shell} />;
+  if (!loaded(page)) return <ScopedDenied page={page} />;
   const { apps, appId, lists } = page;
   const defaultApp = appId ?? apps[0]?.id;
   const canCreate = canWrite && !!defaultApp;

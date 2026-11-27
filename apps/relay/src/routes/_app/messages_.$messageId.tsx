@@ -1,55 +1,45 @@
 import { Button } from "@foundry/ui/button";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { DeniedState, deniedReason } from "../../components/denied-state";
+import { PageDenied } from "../../components/page/page-denied";
 import { EventTimeline, type TimelineItem } from "../../components/messages/event-timeline";
 import { formatWhen } from "../../components/lib/format-date";
 import { LetterView } from "../../components/letter-view";
 import { Toolbar } from "../../components/page/toolbar";
 import { PageHeader } from "../../components/shell/page-header";
 import { StatusBadge } from "../../components/status-badge";
-import { fetchApps } from "../../console/apps.fns";
 import { previewHint } from "../../components/messages/preview-hint";
 import { fetchMessage } from "../../console/messages.fns";
 import { Hint, SectionTitle } from "../../components/page/text";
 import { DetailSkeleton } from "../../components/page/page-skeleton";
 import { DefinitionList } from "../../components/page/definition-list";
 
+const crumbs = [{ label: "Messages", to: "/messages" }, { label: "Message" }];
+
 export const Route = createFileRoute("/_app/messages_/$messageId")({
   validateSearch: (search: Record<string, unknown>): { images?: boolean } => ({
     images: search.images === true || search.images === "true" ? true : undefined,
   }),
   loaderDeps: ({ search }) => ({ images: search.images }),
-  loader: ({ params, deps }) =>
-    Promise.all([fetchMessage({ data: { id: params.messageId, images: deps.images } }), fetchApps()]),
-  pendingComponent: () => <DetailSkeleton crumbs={[{ label: "Messages", to: "/messages" }, { label: "Message" }]} action />,
+  loader: ({ params, deps }) => fetchMessage({ data: { id: params.messageId, images: deps.images } }),
+  pendingComponent: () => <DetailSkeleton crumbs={crumbs} action />,
   component: MessagePage,
 });
 
 const kb = (bytes: number) => `${Math.max(1, Math.round(bytes / 1024))} KB`;
 
 function MessagePage() {
-  const [result, apps] = Route.useLoaderData();
+  const result = Route.useLoaderData();
   const { images } = Route.useSearch();
   const { shell } = Route.useRouteContext();
   const navigate = useNavigate({ from: "/messages/$messageId" });
   if (!result) {
-    return (
-      <>
-        <PageHeader crumbs={[{ label: "Messages", to: "/messages" }, { label: "Message" }]} />
-        <DeniedState reason={deniedReason(shell)} />
-      </>
-    );
+    return <PageDenied crumbs={crumbs} />;
   }
   if ("missing" in result) {
-    return (
-      <>
-        <PageHeader crumbs={[{ label: "Messages", to: "/messages" }, { label: "Message" }]} />
-        <DeniedState reason="not-found" label="Message not found" />
-      </>
-    );
+    return <PageDenied crumbs={crumbs} reason="not-found" label="Message not found" />;
   }
   const m = result.message;
-  const appName = apps?.find((a) => a.id === m.appId)?.name ?? "App";
+  const appName = shell.apps.find((a) => a.id === m.appId)?.name ?? "App";
   const timeline: TimelineItem[] = [
     ...(m.direction === "in"
       ? [{ label: "Received", at: m.createdAt }]

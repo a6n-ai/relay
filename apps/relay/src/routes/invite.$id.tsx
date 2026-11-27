@@ -1,13 +1,12 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
-import { useState } from "react";
 import { getShell } from "../console/shell.fns";
 import { signInRedirect } from "../components/lib/sign-in-redirect";
 import { acceptInviteFn, getInviteFn } from "../console/members.fns";
 import { AuthButton, AuthCard, AuthText, AuthTitle } from "../components/auth-card";
-import { errorText } from "../components/error-text";
 import { FormError } from "../components/page/form-parts";
 import { ROLE_LABEL, type OrgRole } from "../shared/roles";
 import { useSignOut } from "../components/sign-out-button";
+import { useSubmit } from "../components/use-submit";
 
 export const Route = createFileRoute("/invite/$id")({
   beforeLoad: async ({ location }) => {
@@ -23,20 +22,13 @@ function InvitePage() {
   const invite = Route.useLoaderData();
   const router = useRouter();
   const signOut = useSignOut();
-  const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
+  const { pending, error, setError, run } = useSubmit();
 
   async function accept() {
-    setPending(true);
-    setError(null);
-    try {
+    await run(async () => {
       await acceptInviteFn({ data: { id } });
       await router.navigate({ to: "/" });
-    } catch (err) {
-      setError(errorText(err, "Could not accept the invite."));
-    } finally {
-      setPending(false);
-    }
+    }, "Could not accept the invite.");
   }
 
   return (

@@ -2,7 +2,7 @@ import { Button } from "@foundry/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@foundry/ui/card";
 import { Link } from "@tanstack/react-router";
 import type { fetchOverview } from "../console/overview.fns";
-import { DeniedState, deniedReason } from "./denied-state";
+import { PageDenied } from "./page/page-denied";
 import { MeterBar } from "./meter-bar";
 import { Hint, SectionTitle } from "./page/text";
 import { createItems } from "./shell/nav";
@@ -43,12 +43,7 @@ const fmt = (n: number) => n.toLocaleString("en-CA");
 
 export default function Overview({ overview, shell }: { overview: OverviewData | null; shell: Shell }) {
   if (!overview) {
-    return (
-      <>
-        <PageHeader />
-        <DeniedState reason={deniedReason(shell)} />
-      </>
-    );
+    return <PageDenied />;
   }
 
   const { month, quota, sent, delivered, bounced, inbound, days } = overview;

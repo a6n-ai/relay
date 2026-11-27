@@ -3,7 +3,6 @@ import { toast } from "@foundry/ui/toast";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
 import { FixedField } from "../../components/form/fixed-field";
-import { errorText } from "../../components/error-text";
 import { FormError, FormPanel } from "../../components/page/form-parts";
 import { DeleteWorkspaceCard } from "../../components/settings/delete-workspace-card";
 import { SettingsCard, SettingsForm } from "../../components/page/settings-card";
@@ -13,6 +12,7 @@ import { passwordStatusFn } from "../../console/password.fns";
 import { renameWorkspaceFn } from "../../console/workspaces.fns";
 import { PasswordCard } from "../../components/settings/password-card";
 import { NAME_MAX } from "../../shared/limits";
+import { useSubmit } from "../../components/use-submit";
 
 export const Route = createFileRoute("/_app/settings")({
   staticData: { title: "Settings", copy: "Your workspace name and who has access." },
@@ -24,23 +24,16 @@ function WorkspaceNameCard({ name: current, slug }: { name: string; slug: string
   const router = useRouter();
   const canRename = useCan({ organization: ["update"] });
   const [name, setName] = useState(current);
-  const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
+  const { pending, error, setError, run } = useSubmit();
   const next = name.trim();
 
   async function submit(event: FormEvent) {
     event.preventDefault();
-    setPending(true);
-    setError(null);
-    try {
+    await run(async () => {
       await renameWorkspaceFn({ data: { name: next } });
       toast.success("Workspace renamed", { description: next });
       await router.invalidate();
-    } catch (err) {
-      setError(errorText(err, "Could not rename the workspace."));
-    } finally {
-      setPending(false);
-    }
+    }, "Could not rename the workspace.");
   }
 
   return (

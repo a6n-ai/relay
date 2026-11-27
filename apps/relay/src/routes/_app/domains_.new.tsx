@@ -1,18 +1,17 @@
 import { toast } from "@foundry/ui/toast";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
-import { DeniedState, deniedReason } from "../../components/denied-state";
-import { errorText } from "../../components/error-text";
+import { PageDenied } from "../../components/page/page-denied";
 import { ChoiceField } from "../../components/form/choice-field";
 import { TextField } from "../../components/form/text-field";
 import { CreatePage } from "../../components/page/create-page";
 import { FormActions, FormError } from "../../components/page/form-parts";
 import { SettingsCard } from "../../components/page/settings-card";
-import { PageHeader } from "../../components/shell/page-header";
 import { useCan } from "../../components/use-can";
 import { addDomainFn } from "../../console/domains.fns";
 import { SES_REGIONS } from "../../shared/regions";
 import { looksLikeDomain, normaliseDomainInput } from "../../components/lib/domain-input";
+import { useSubmit } from "../../components/use-submit";
 
 export const Route = createFileRoute("/_app/domains_/new")({
   component: AddDomainPage,
@@ -28,16 +27,10 @@ function AddDomainPage() {
   const [domain, setDomain] = useState("");
   const [region, setRegion] = useState("default");
   const [fieldError, setFieldError] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
+  const { pending, error, setError, run } = useSubmit();
 
   if (!canWrite) {
-    return (
-      <>
-        <PageHeader crumbs={crumbs} />
-        <DeniedState reason={deniedReason(shell)} />
-      </>
-    );
+    return <PageDenied crumbs={crumbs} />;
   }
 
   async function submit(event: FormEvent) {
@@ -48,17 +41,11 @@ function AddDomainPage() {
       setFieldError(BAD_DOMAIN);
       return;
     }
-    setPending(true);
-    setError(null);
-    try {
+    await run(async () => {
       await addDomainFn({ data: { domain: clean, ...(region === "default" ? {} : { sesRegion: region }) } });
       toast.success("Domain added", { description: "Add its DNS records to verify it." });
       await navigate({ to: "/domains", search: { q: undefined, status: undefined } });
-    } catch (err) {
-      setError(errorText(err, "Could not add the domain."));
-    } finally {
-      setPending(false);
-    }
+    }, "Could not add the domain.");
   }
 
   return (

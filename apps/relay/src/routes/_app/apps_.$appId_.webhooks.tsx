@@ -7,8 +7,7 @@ import { WebhookIcon } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { ConfirmDialog } from "../../components/confirm-dialog";
 import { CreateDialog } from "../../components/create-dialog";
-import { DeniedState, deniedReason } from "../../components/denied-state";
-import { errorText } from "../../components/error-text";
+import { PageDenied } from "../../components/page/page-denied";
 import { EmptyState } from "../../components/page/empty-state";
 import { ListSkeleton } from "../../components/page/page-skeleton";
 import { CellWhen, ResourceTable } from "../../components/resource-table";
@@ -23,6 +22,7 @@ import { formatDate, formatWhen } from "../../components/lib/format-date";
 import { FormError, FormBody, FormActions } from "../../components/page/form-parts";
 import { type WebhookEvent } from "../../shared/mail";
 import { hostOf } from "../../components/lib/path";
+import { useSubmit } from "../../components/use-submit";
 
 const DESCRIPTION = "Where Relay tells your app about message events.";
 
@@ -50,12 +50,7 @@ function WebhooksPage() {
   const editing = webhooks?.find((w) => w.id === editId);
   const deleting = webhooks?.find((w) => w.id === deleteId);
   if (!webhooks) {
-    return (
-      <>
-        <PageHeader crumbs={crumbs} description={DESCRIPTION} />
-        <DeniedState reason={deniedReason(shell)} />
-      </>
-    );
+    return <PageDenied crumbs={crumbs} description={DESCRIPTION} />;
   }
 
   return (
@@ -145,25 +140,18 @@ function NewWebhookForm({ appId, done, lock }: { appId: string; done: () => void
   const [url, setUrl] = useState("");
   const [events, setEvents] = useState<WebhookEvent[]>(WEBHOOK_EVENT_LIST);
   const [created, setCreated] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
+  const { pending, error, setError, run } = useSubmit();
 
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (events.length === 0) return;
-    setPending(true);
-    setError(null);
-    try {
+    await run(async () => {
       const result = await createWebhookFn({ data: { appId, url, events } });
       setCreated(result.secret);
       lock(true);
       toast.success("Webhook created");
       await router.invalidate();
-    } catch (err) {
-      setError(errorText(err, "Could not create the webhook."));
-    } finally {
-      setPending(false);
-    }
+    }, "Could not create the webhook.");
   }
 
   if (created) return <SecretOnce secret={created} label="Signing secret" onDone={done} />;

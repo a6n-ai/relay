@@ -1,17 +1,16 @@
 import { toast } from "@foundry/ui/toast";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
-import { DeniedState, deniedReason } from "../../components/denied-state";
-import { errorText } from "../../components/error-text";
+import { PageDenied } from "../../components/page/page-denied";
 import { SlugField } from "../../components/form/slug-field";
 import { splitSlugError } from "../../components/form/slugify";
 import { NameField } from "../../components/form/text-field";
 import { CreatePage } from "../../components/page/create-page";
 import { FormActions, FormError } from "../../components/page/form-parts";
 import { SettingsCard } from "../../components/page/settings-card";
-import { PageHeader } from "../../components/shell/page-header";
 import { useCan } from "../../components/use-can";
 import { createAppFn } from "../../console/apps.fns";
+import { useSubmit } from "../../components/use-submit";
 
 export const Route = createFileRoute("/_app/apps_/new")({
   component: NewAppPage,
@@ -20,36 +19,23 @@ export const Route = createFileRoute("/_app/apps_/new")({
 const crumbs = [{ label: "Apps", to: "/apps" }, { label: "New app" }];
 
 function NewAppPage() {
-  const { shell } = Route.useRouteContext();
   const canWrite = useCan({ tenant: ["write"] });
   const navigate = useNavigate();
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
+  const { pending, error, setError, run } = useSubmit();
 
   if (!canWrite) {
-    return (
-      <>
-        <PageHeader crumbs={crumbs} />
-        <DeniedState reason={deniedReason(shell)} />
-      </>
-    );
+    return <PageDenied crumbs={crumbs} />;
   }
 
   async function submit(event: FormEvent) {
     event.preventDefault();
-    setPending(true);
-    setError(null);
-    try {
+    await run(async () => {
       const created = await createAppFn({ data: { name, slug } });
       toast.success("App created", { description: name });
       await navigate({ to: "/apps/$appId", params: { appId: created.id } });
-    } catch (err) {
-      setError(errorText(err, "Could not create the app."));
-    } finally {
-      setPending(false);
-    }
+    }, "Could not create the app.");
   }
 
   const split = splitSlugError(error);
