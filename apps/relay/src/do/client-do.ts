@@ -83,6 +83,7 @@ export class ClientDO extends DurableObject<Env> {
   migrateError: Error | undefined;
   // Same-key sends share one in-flight promise, so a second caller never sees a row that is about to be rolled back.
   private readonly inFlight = new Map<string, Promise<SendResult>>();
+  // shortcut: in memory, so an evicted DO forgets it and a run gets one more sender retry; persist on the run row if that matters.
   private readonly senderRetried = new Set<string>();
 
   constructor(ctx: DurableObjectState, env: Env) {
