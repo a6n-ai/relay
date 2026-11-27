@@ -4,6 +4,8 @@ import { audit, type KeyPrincipal } from "./principal";
 import { removeSuppression } from "./suppressions";
 import { maskEmails } from "../core/mask-emails";
 import { clientFor } from "../do/client";
+import { brandDomain } from "../core/campaigns";
+import { verifiedSenders } from "./campaign-run";
 import { RelayError } from "../shared/errors";
 import { emailSchema } from "../shared/schemas";
 import { EMAIL_MAX } from "../shared/limits";
@@ -87,6 +89,8 @@ export async function removeBlock(env: Env, p: KeyPrincipal, input: unknown) {
 
 export async function resubscribe(env: Env, p: KeyPrincipal, input: unknown) {
   const { email, from } = parseInput(resubscribeSchema, input);
+  const senders = await verifiedSenders(env, p.workspaceId, p.appId);
+  if (!senders.some((s) => brandDomain(s) === brandDomain(from))) throw new RelayError("sender not verified");
   const result = await clientFor(env, p.workspaceId).resubscribe(p.workspaceId, email, from);
   await audit(env, p, "suppression.resubscribe", maskEmails(email), { removed: result.removed });
   return result;

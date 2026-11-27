@@ -6,7 +6,7 @@ import { securityDb } from "../src/db/security/client";
 import { app, member, securityAudit, user, workspace } from "../src/db/security/schema";
 import { RelayRpc } from "../src/rpc/relay-rpc";
 import type { Stream, SuppressionReason } from "../src/shared/mail";
-import { applyMigrations } from "./migrate";
+import { applyMigrations, seedVerifiedSender } from "./migrate";
 
 beforeAll(async () => {
   await applyMigrations();
@@ -19,6 +19,7 @@ async function seed(slug: string) {
   await db.insert(member).values({ organizationId: ws.id, userId: owner.id, role: "owner" });
   const [one] = await db.insert(app).values({ workspaceId: ws.id, name: "one", slug: "one" }).returning();
   const key = (await createApiKey(env, { workspaceId: ws.id, appId: one.id, name: "k" })).secret;
+  await seedVerifiedSender(ws.id, one.id, "x.test");
   const rpc = new RelayRpc(createExecutionContext(), env);
   // Runs the DO migrations before any raw insert.
   await rpc.suppressionStatus(key, ["none@x.test"]);
@@ -116,6 +117,15 @@ describe("RelayRpc block changes", () => {
     await optOut("gone@x.test", "y.test");
     expect(await rpc.resubscribe(key, { email: "gone@x.test", from: "Info@Mail.X.test" })).toEqual({ removed: true });
     expect(await sql("SELECT domain FROM marketing_optout")).toEqual([{ domain: "y.test" }]);
+  });
+
+  it("refuses to re-subscribe for a domain the app does not send from", async () => {
+    const { rpc, key, sql, block, optOut } = await seed("resub-unsent");
+    await block("gone@x.test", "unsubscribe");
+    await optOut("gone@x.test", "x.test");
+    await expect(rpc.resubscribe(key, { email: "gone@x.test", from: "info@z.test" })).rejects.toThrow("sender not verified");
+    expect(await sql("SELECT reason FROM suppression")).toEqual([{ reason: "unsubscribe" }]);
+    expect(await sql("SELECT domain FROM marketing_optout")).toEqual([{ domain: "x.test" }]);
   });
 
   it("re-subscribing an address with nothing to remove says so", async () => {
