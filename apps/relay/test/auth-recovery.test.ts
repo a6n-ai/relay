@@ -3,7 +3,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { deliveryEmail } from "../src/auth/recovery";
 import { memoryOtpMailer } from "../src/auth/otp-mailer";
 import { securityDb } from "../src/db/security/client";
-import { invitation, user, workspace } from "../src/db/security/schema";
+import { account, invitation, member, user, workspace } from "../src/db/security/schema";
 import { applyMigrations } from "./migrate";
 import { BASE, freshIp, json, ORIGIN } from "./console-helpers";
 
@@ -48,6 +48,18 @@ describe("deliveryEmail", () => {
     await seedInvite("exp@a6n.ai", { expiresAt: new Date(Date.now() - 1000) });
     expect(await deliveryEmail(env, "canc@a6n.ai")).toBe("canc@a6n.ai");
     expect(await deliveryEmail(env, "exp@a6n.ai")).toBe("exp@a6n.ai");
+  });
+
+  it("active account ignores a pending invite", async () => {
+    const [ws] = await db().insert(workspace).values({ name: "act", slug: "rec-active" }).returning();
+    const [withMember] = await db().insert(user).values({ name: "M", email: "mem@a6n.ai" }).returning();
+    await db().insert(member).values({ organizationId: ws.id, userId: withMember.id, role: "member" });
+    await seedInvite("mem@a6n.ai");
+    expect(await deliveryEmail(env, "mem@a6n.ai")).toBe("mem@a6n.ai");
+    const [withPassword] = await db().insert(user).values({ name: "C", email: "cred@a6n.ai" }).returning();
+    await db().insert(account).values({ userId: withPassword.id, accountId: withPassword.id, providerId: "credential", password: "x" });
+    await seedInvite("cred@a6n.ai");
+    expect(await deliveryEmail(env, "cred@a6n.ai")).toBe("cred@a6n.ai");
   });
 
   it("plain user unchanged", async () => {
