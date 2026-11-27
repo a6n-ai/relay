@@ -1,4 +1,4 @@
-// Copy of packages/engine/src/email-content/sanitize.ts. Keep in sync until apps/relay retires; the one divergence is raster-only data: URIs.
+// Copy of packages/engine/src/email-content/sanitize.ts; keep the two in sync. The one divergence is raster-only data: URIs.
 import { parseDocument } from "htmlparser2";
 import render from "dom-serializer";
 import { isComment, isTag, isText, type AnyNode, type Element } from "domhandler";

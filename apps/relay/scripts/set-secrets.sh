@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Sets Relay's Worker secrets without printing any value.
 # Generated secrets go straight into `wrangler secret put`; SEED_SECRET and INTERNAL_SECRET are also
-# saved in the macOS Keychain (service "relay-v2", account = the name) because later steps need them.
+# saved in the macOS Keychain (service "relay", account = the name) because later steps need them.
 # AWS keys come from Secrets Manager (/relay/workers/aws-access-key, ap-south-1), the relay-workers user.
 # Re-running replaces every secret; skip a name with SKIP="NAME1 NAME2".
 set -euo pipefail
@@ -12,7 +12,7 @@ need openssl; need aws; need security; need npx; need python3
 
 skip() { [[ " ${SKIP:-} " == *" $1 "* ]]; }
 put() { npx wrangler secret put "$1" >/dev/null; echo "set $1"; }
-keep() { security add-generic-password -U -s relay-v2 -a "$1" -w "$2"; echo "saved $1 in Keychain (relay-v2)"; }
+keep() { security add-generic-password -U -s relay -a "$1" -w "$2"; echo "saved $1 in Keychain (relay)"; }
 
 for name in BETTER_AUTH_SECRET SEED_SECRET INTERNAL_SECRET WEBHOOK_SECRET_KEY UNSUBSCRIBE_SECRET; do
   skip "$name" && { echo "skip $name"; continue; }
@@ -32,4 +32,4 @@ if ! skip AWS; then
   unset json
 fi
 
-echo "done. Read a saved one later with: security find-generic-password -s relay-v2 -a SEED_SECRET -w"
+echo "done. Read a saved one later with: security find-generic-password -s relay -a SEED_SECRET -w"
