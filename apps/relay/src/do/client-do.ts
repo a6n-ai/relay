@@ -554,7 +554,7 @@ export class ClientDO extends DurableObject<Env> {
     });
   }
   // Retries of the start step land here with status already sending, so they return go too.
-  // A hook campaign also returns the page it resumes from; a list campaign returns "go" as before.
+  // A hook campaign also returns the page it resumes from.
   async startCampaign(workspaceId: string, id: string, runSeq: number, now = Date.now()): Promise<"go" | "stale" | { go: "go"; page: number }> {
     await this.ready(workspaceId);
     return this.ctx.storage.transactionSync((): "go" | "stale" | { go: "go"; page: number } => {
@@ -1621,7 +1621,6 @@ export class ClientDO extends DurableObject<Env> {
     );
   }
 
-  // The start shared by list and hook run steps: limits, suspension and sender checks, send rate, sweep alarm.
   // Null means the run was paused here and the caller reports it stopped.
   private async runGate(workspaceId: string, id: string, runSeq: number, campaign: { appId: string; fromEmail: string | null }, now: number) {
     const limits = await this.limits(workspaceId, { forSender: campaign.fromEmail ?? undefined });
@@ -1712,7 +1711,7 @@ export class ClientDO extends DurableObject<Env> {
     if (finished === null) return stopped();
     return finished ? { state: "done", enqueued, paceMs: 0 } : { state: "more", enqueued, paceMs: Math.ceil(enqueued / rate) * 1000 };
   }
-  // The sub-chunk body shared by lists and hooks: inserts the rows, then sends one batch. A row that lapsed is stored as suppressed.
+  // A row that lapsed is stored as suppressed.
   private async enqueueRecipients(
     ctx: EnqueueCtx,
     rows: EnqueueRow[],

@@ -2,7 +2,7 @@ import { sql } from "drizzle-orm";
 import { check, index, integer, primaryKey, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 import { newId } from "../shared/ids";
 
-// The migrations in migrations.ts are what runs; test/do-schema-drift.test.ts fails when a table here differs from them.
+// The migrations in migrations.ts are what runs.
 export const message = sqliteTable(
   "message",
   {
@@ -170,7 +170,7 @@ export const inboundFailure = sqliteTable("inbound_failure", {
   updatedAt: integer("updated_at").notNull(),
 });
 
-// Mirrors migration 6 in migrations.ts; the SQL there is what runs.
+// Mirrors migrations.ts; the SQL there is what runs.
 export const contactList = sqliteTable(
   "contact_list",
   {

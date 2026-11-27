@@ -27,7 +27,6 @@ export const getShell = createServerFn({ method: "GET" }).handler(async (): Prom
   }
 });
 
-// The sign-in page shows the Google button only when both keys are set.
 export const authOptionsFn = createServerFn({ method: "GET" }).handler(
   async (): Promise<{ google: boolean }> => ({ google: googleConfig(env) !== null }),
 );

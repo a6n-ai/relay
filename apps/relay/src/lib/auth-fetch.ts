@@ -4,7 +4,6 @@ const OFFLINE = "Could not reach Relay. Check your connection and try again.";
 // `error` is set only for the failures every auth form words the same way (rate limit, no connection); other failures are the caller's copy.
 export type AuthResult<T> = { ok: boolean; status: number; data: T | null; error: string | null };
 
-// Better Auth endpoint under /api/auth: POST with a JSON body, or GET when there is no body.
 export async function authFetch<T = unknown>(path: string, body?: unknown, tooMany = TOO_MANY): Promise<AuthResult<T>> {
   try {
     const res = await fetch(`/api/auth${path}`, body === undefined ? undefined : { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });

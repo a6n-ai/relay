@@ -18,7 +18,6 @@ export async function stopRun(env: Env, campaignId: string, runSeq: number): Pro
   }
 }
 
-// Same join as the send path's sender snapshot: the address's domain must be verified in this workspace.
 export async function verifiedSenders(env: Env, workspaceId: string, appId: string): Promise<string[]> {
   const rows = await coreDb(env)
     .select({ email: address.email })
@@ -28,7 +27,7 @@ export async function verifiedSenders(env: Env, workspaceId: string, appId: stri
   return rows.map((r) => r.email);
 }
 
-// The one scheduling path: the console and the API both call it. The caller maps each refusal to its own error.
+// The caller maps each refusal to its own error.
 export async function startCampaignRun(env: Env, workspaceId: string, id: string, at: number) {
   const profile = await getWorkspaceProfile(env, workspaceId);
   const client = clientFor(env, workspaceId);

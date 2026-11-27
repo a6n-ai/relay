@@ -37,7 +37,6 @@ export const sesRead = {
 };
 
 // Only a row Relay created, never seen verified and still pending may be released along with its SES identity.
-// One definition: the release and sweep queries filter by it and the domain list selects it as a flag.
 export const releasableWhere = and(
   eq(sendingDomain.status, "pending"),
   eq(sendingDomain.createdByRelay, true),

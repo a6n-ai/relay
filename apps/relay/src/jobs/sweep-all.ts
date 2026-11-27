@@ -3,7 +3,7 @@ import { releaseStalePendingDomains } from "../services/domain-state";
 import type { Env } from "../env";
 import { sweepWorkspaces } from "./do-sweep";
 
-// Shared by the internal sweep route and the daily cron. A release failure is logged, never fatal to the sweep.
+// A release failure is logged, never fatal to the sweep.
 export async function sweepAll(env: Env) {
   const swept = await sweepWorkspaces(env);
   let releasedDomains = 0;

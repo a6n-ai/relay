@@ -23,7 +23,6 @@ async function forEachLimit<T>(items: T[], limit: number, fn: (item: T) => Promi
   );
 }
 
-// Wakes every workspace's ClientDO so it reports its schema version, then lists the ones still behind.
 export async function sweepWorkspaces(env: Env, { concurrency = 10 }: { concurrency?: number } = {}): Promise<SweepResult> {
   const db = securityDb(env);
   const failed: SweepResult["failed"] = [];

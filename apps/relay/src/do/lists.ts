@@ -11,7 +11,6 @@ export type ListInput = { name: string; consentSource: ConsentSource; consentNot
 
 export const EXPORT_PAGE = 1000;
 
-// One query per page: the brand domains each address opted out of, sorted.
 function optedOutByEmail(sql: SqlStorage, emails: string[]): Map<string, string[]> {
   const out = new Map<string, string[]>();
   if (emails.length === 0) return out;
@@ -25,7 +24,6 @@ function optedOutByEmail(sql: SqlStorage, emails: string[]): Map<string, string[
   return out;
 }
 
-// The member count is one LEFT JOIN, so a page of lists costs one query.
 function listViews(sql: SqlStorage, where: string, bindings: unknown[]): ListView[] {
   return sql
     .exec<ListView>(

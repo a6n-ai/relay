@@ -1,6 +1,5 @@
 import { constantTimeEqual } from "./crypto";
 
-// Returns the response to send when the request must not reach an internal route, or null to continue.
 export function guardInternal(request: Request, secret: string | undefined): Response | null {
   if (!secret) return new Response(null, { status: 404 });
   const expected = new TextEncoder().encode(`Bearer ${secret}`);

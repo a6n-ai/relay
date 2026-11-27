@@ -15,7 +15,6 @@ export const PASSWORD_MAX = 128;
 
 export const PAGE_SIZE = 50;
 
-// Matches the column default in db/core/schema.ts; test/limits.test.ts keeps them equal.
 export const DEFAULT_MONTHLY_QUOTA = 10_000;
 export const MAX_MONTHLY_QUOTA = 100_000_000;
 export const MAX_INVITES_PER_DAY = 10_000;

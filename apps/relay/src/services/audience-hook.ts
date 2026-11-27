@@ -11,7 +11,6 @@ async function guardBinding(env: Env, p: Principal, appId: string): Promise<void
   if (hook?.kind === "binding") throw new RelayError("hook managed by platform admin");
 }
 
-// Https only.
 export async function setAudienceHook(env: Env, p: Principal, appId: string, input: unknown): Promise<{ secret: string | null }> {
   await appFor(env, p, appId);
   await guardBinding(env, p, appId);

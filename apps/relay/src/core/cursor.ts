@@ -23,7 +23,6 @@ export function parseCursor(raw: string | undefined): Cursor | null {
   return cursor;
 }
 
-// Newest first: rows strictly after the cursor in (created_at DESC, id DESC) order.
 export function keysetBefore(after: Cursor, createdAt = "created_at", id = "id"): { sql: string; bindings: unknown[] } {
   return {
     sql: `(${createdAt} < ? OR (${createdAt} = ? AND ${id} < ?))`,
