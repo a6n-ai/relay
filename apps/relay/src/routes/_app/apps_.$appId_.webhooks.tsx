@@ -16,12 +16,13 @@ import { PageHeader } from "../../components/shell/page-header";
 import { confirmAction, runAction } from "../../components/run-action";
 import { SecretOnce } from "../../components/secret-once";
 import { useCan } from "../../components/use-can";
-import { WEBHOOK_EVENT_LABELS, WEBHOOK_EVENT_LIST } from "../../components/webhook-events";
-import { EditWebhookForm, WebhookEventsField, WebhookUrlField } from "../../components/webhook-form";
+import { WEBHOOK_EVENT_LABELS, WEBHOOK_EVENT_LIST } from "../../components/webhooks/webhook-events";
+import { EditWebhookForm, WebhookEventsField, WebhookUrlField } from "../../components/webhooks/webhook-form";
 import { createWebhookFn, deleteWebhookFn, fetchWebhooks, updateWebhookFn } from "../../console/webhooks.fns";
 import { formatDate, formatWhen } from "../../lib/format-date";
 import { FormError, FormBody, FormActions } from "../../components/page/form-parts";
 import { type WebhookEvent } from "../../shared/mail";
+import { hostOf } from "../../lib/path";
 
 const DESCRIPTION = "Where Relay tells your app about message events.";
 
@@ -138,13 +139,6 @@ function WebhooksPage() {
   );
 }
 
-function hostOf(url: string) {
-  try {
-    return new URL(url).host;
-  } catch {
-    return url;
-  }
-}
 
 function NewWebhookForm({ appId, done, lock }: { appId: string; done: () => void; lock: (locked: boolean) => void }) {
   const router = useRouter();

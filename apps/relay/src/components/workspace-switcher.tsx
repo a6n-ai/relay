@@ -8,6 +8,7 @@ import Check from "lucide-react/icons/check";
 import ChevronsUpDown from "lucide-react/icons/chevrons-up-down";
 import { useState } from "react";
 import { type OrgRole } from "../shared/roles";
+import { authFetch } from "../lib/auth-fetch";
 
 type Active = { id: string; name: string; status: "active" | "suspended"; roles: OrgRole[] };
 
@@ -19,11 +20,7 @@ export function WorkspaceSwitcher({ active, workspaces }: { active: Active | nul
   const role = active?.roles[0];
 
   async function switchTo(organizationId: string) {
-    const res = await fetch("/api/auth/organization/set-active", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ organizationId }),
-    });
+    const res = await authFetch("/organization/set-active", { organizationId });
     if (!res.ok) {
       setError("Could not switch workspace.");
       return;

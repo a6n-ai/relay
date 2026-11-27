@@ -5,14 +5,13 @@ import { DeniedState, deniedReason } from "../../components/denied-state";
 import { errorText } from "../../components/error-text";
 import { SlugField } from "../../components/form/slug-field";
 import { splitSlugError } from "../../components/form/slugify";
-import { TextField } from "../../components/form/text-field";
+import { NameField } from "../../components/form/text-field";
 import { CreatePage } from "../../components/page/create-page";
 import { FormActions, FormError } from "../../components/page/form-parts";
 import { SettingsCard } from "../../components/page/settings-card";
 import { PageHeader } from "../../components/shell/page-header";
 import { useCan } from "../../components/use-can";
 import { createAppFn } from "../../console/apps.fns";
-import { NAME_MAX } from "../../shared/limits";
 
 export const Route = createFileRoute("/_app/apps_/new")({
   component: NewAppPage,
@@ -58,7 +57,7 @@ function NewAppPage() {
     <CreatePage crumbs={crumbs} description="An app gets its own API keys, senders and messages." onSubmit={submit}>
       <SettingsCard title="Details" description="Name the product that sends mail through Relay.">
         <div className="grid gap-4">
-          <TextField id="app-name" label="Name" required autoFocus maxLength={NAME_MAX} placeholder="Marketing site" value={name} onChange={(e) => setName(e.target.value)} />
+          <NameField id="app-name" autoFocus placeholder="Marketing site" value={name} onChange={(e) => setName(e.target.value)} />
           <SlugField id="app-slug" name={name} value={slug} onChange={setSlug} error={split.slug} />
         </div>
       </SettingsCard>

@@ -3,7 +3,7 @@ import { useRouter } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
 import { errorText } from "../error-text";
 import { TextField } from "../form/text-field";
-import { RoleChoice } from "../role-select";
+import { RoleChoice } from "./role-select";
 import { type OrgRole } from "../../shared/roles";
 import { inviteMemberFn } from "../../console/members.fns";
 import { FormError, FormBody, FormActions } from "../page/form-parts";

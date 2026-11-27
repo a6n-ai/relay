@@ -2,7 +2,7 @@ import { Button } from "@foundry/ui/button";
 import { FileUpload, FileUploadDropzone, FileUploadTrigger } from "@foundry/ui/file-upload";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
-import { consentHint } from "../../components/consent-labels";
+import { consentHint } from "../../components/lists/consent-labels";
 import { DeniedState, deniedReason } from "../../components/denied-state";
 import { errorText } from "../../components/error-text";
 import { CreatePage } from "../../components/page/create-page";
@@ -12,6 +12,7 @@ import { PageHeader } from "../../components/shell/page-header";
 import { useCan } from "../../components/use-can";
 import { fetchLists, importCsvFn } from "../../console/lists.fns";
 import { str } from "../../lib/route-search";
+import { DefinitionList } from "../../components/page/definition-list";
 
 const MAX_CSV_BYTES = 2_000_000;
 
@@ -98,19 +99,10 @@ function ImportPage() {
               <Button render={<Link to="/lists/$listId" params={{ listId }} search={{ appId }} />}>Back to list</Button>
             }
           >
-            <dl className="grid gap-2 text-sm">
-              {rows
-                .filter(([label, n]) => n > 0 || label === "Added")
-                .map(([label, n, note]) => (
-                  <div key={label} className="flex items-baseline justify-between gap-4 border-b py-1.5 last:border-b-0">
-                    <dt>
-                      {label}
-                      {note ? <span className="block text-xs text-muted-foreground">{note}</span> : null}
-                    </dt>
-                    <dd className="tabular-nums">{n}</dd>
-                  </div>
-                ))}
-            </dl>
+            <DefinitionList
+              layout="rows"
+              items={rows.filter(([label, n]) => n > 0 || label === "Added").map(([label, n, note]) => ({ term: label, value: n, note }))}
+            />
           </SettingsCard>
         </FormPanel>
       </>

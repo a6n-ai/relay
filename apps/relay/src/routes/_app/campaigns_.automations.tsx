@@ -5,8 +5,7 @@ import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-r
 import { useState } from "react";
 import { ConfirmDialog } from "../../components/confirm-dialog";
 import { FilterMenu } from "../../components/page/filter-menu";
-import { ResourceGrid } from "../../components/page/resource-grid";
-import { Hint } from "../../components/page/text";
+import { ResourceCard, ResourceGrid } from "../../components/page/resource-grid";
 import { type View, viewPref } from "../../components/page/view-pref";
 import { ViewToggle } from "../../components/page/view-toggle";
 import { EmptyState } from "../../components/page/empty-state";
@@ -137,17 +136,12 @@ function AutomationsPage() {
           menu={menu}
           empty={empty}
           card={(a) => (
-            <div className="grid gap-1.5 pr-8">
-              <span className="font-medium">{a.name}</span>
-              {showApp ? <Hint size="xs">{appName(a.appId)}</Hint> : null}
-              <Hint size="xs">
-                {listName(a.listId)} · {templateName(a.templateId)}
-              </Hint>
-              <Hint size="xs">
-                {delayText(a)} · {a.pending} waiting · {a.sent} sent
-              </Hint>
+            <ResourceCard
+              title={a.name}
+              hints={[showApp && appName(a.appId), `${listName(a.listId)} · ${templateName(a.templateId)}`, `${delayText(a)} · ${a.pending} waiting · ${a.sent} sent`]}
+            >
               <div>{toggle(a)}</div>
-            </div>
+            </ResourceCard>
           )}
         />
       ) : (

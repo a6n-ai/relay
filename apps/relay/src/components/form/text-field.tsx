@@ -1,3 +1,4 @@
+import { NAME_MAX } from "../../shared/limits";
 import type { ComponentProps, ReactNode } from "react";
 import { Input } from "@foundry/ui/input";
 import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from "@foundry/ui/input-group";
@@ -46,4 +47,9 @@ export function TextField({ id, label, hint, error, hideLabel, prefix, suffix, o
       )}
     </Field>
   );
+}
+
+// The "Name" field of every create and rename form: required, capped at the shared limit unless a form has its own.
+export function NameField({ required = true, maxLength = NAME_MAX, ...props }: Omit<TextFieldProps, "label">) {
+  return <TextField label="Name" required={required} maxLength={maxLength} {...props} />;
 }

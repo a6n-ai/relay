@@ -1,8 +1,8 @@
 import { env, runInDurableObject, SELF } from "cloudflare:test";
 import { and, eq } from "drizzle-orm";
 import { beforeAll, describe, expect, it } from "vitest";
-import { PROBLEM_LABEL } from "../src/components/campaign-problems";
-import { reasonText } from "../src/components/error-text";
+import { PROBLEM_LABEL } from "../src/components/campaigns/campaign-problems";
+import { reasonText } from "../src/components/campaigns/campaign-report";
 import { clientFor } from "../src/do/client";
 import { loadShell } from "../src/services/shell";
 import { safeRedirect } from "../src/console/shell.fns";

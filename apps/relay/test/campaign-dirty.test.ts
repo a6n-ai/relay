@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { baselineFrom, type CampaignDraft, isDirty } from "../src/components/campaign-dirty";
+import { baselineFrom, type CampaignDraft, isDirty } from "../src/components/campaigns/campaign-dirty";
 
 const saved: CampaignDraft = { from: "a@x.test", subject: "Hi", html: "<p>1</p>", text: "1" };
 

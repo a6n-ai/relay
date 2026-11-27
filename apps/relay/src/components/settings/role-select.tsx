@@ -1,5 +1,5 @@
-import { ROLE_HINT, ROLE_LABEL, type OrgRole } from "../shared/roles";
-import { ChoiceField, type ChoiceOption } from "./form/choice-field";
+import { ROLE_HINT, ROLE_LABEL, type OrgRole } from "../../shared/roles";
+import { ChoiceField, type ChoiceOption } from "../form/choice-field";
 
 // Owners are offered only to owners, so the picker never shows a role the actor cannot grant.
 function roleOptions(canGrantOwner: boolean): ChoiceOption[] {

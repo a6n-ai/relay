@@ -4,12 +4,11 @@ import { type FormEvent, useState } from "react";
 import { errorText } from "../../components/error-text";
 import { SlugField } from "../../components/form/slug-field";
 import { splitSlugError } from "../../components/form/slugify";
-import { TextField } from "../../components/form/text-field";
+import { NameField } from "../../components/form/text-field";
 import { CreatePage } from "../../components/page/create-page";
 import { FormActions, FormError } from "../../components/page/form-parts";
 import { SettingsCard } from "../../components/page/settings-card";
 import { createWorkspaceFn } from "../../console/workspaces.fns";
-import { NAME_MAX } from "../../shared/limits";
 
 export const Route = createFileRoute("/_app/workspaces_/new")({
   staticData: { allowsNoWorkspace: true },
@@ -48,7 +47,7 @@ function NewWorkspacePage() {
     <CreatePage crumbs={[back, { label: "New workspace" }]} description="A separate space with its own apps and people." onSubmit={submit}>
       <SettingsCard title="Details" description="Name the team or company that will send mail.">
         <div className="grid gap-4">
-          <TextField id="workspace-name" label="Name" required autoFocus maxLength={NAME_MAX} placeholder="Your company" value={name} onChange={(e) => setName(e.target.value)} />
+          <NameField id="workspace-name" autoFocus placeholder="Your company" value={name} onChange={(e) => setName(e.target.value)} />
           <SlugField id="workspace-slug" name={name} value={slug} onChange={setSlug} error={split.slug} />
         </div>
       </SettingsCard>

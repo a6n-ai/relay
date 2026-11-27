@@ -1,12 +1,12 @@
-import { TextField } from "./form/text-field";
+import { TextField } from "../form/text-field";
 import { toast } from "@foundry/ui/toast";
 import { type FormEvent, useState } from "react";
-import { scheduleCampaignFn } from "../console/campaigns.fns";
-import { ChoiceControl } from "./form/choice-field";
-import { Field } from "./form/field";
-import { CreateDialog } from "./create-dialog";
-import { errorText } from "./error-text";
-import { FormError, FormBody, FormActions } from "./page/form-parts";
+import { scheduleCampaignFn } from "../../console/campaigns.fns";
+import { ChoiceControl } from "../form/choice-field";
+import { Field } from "../form/field";
+import { CreateDialog } from "../create-dialog";
+import { errorText } from "../error-text";
+import { FormError, FormBody, FormActions } from "../page/form-parts";
 
 export function ScheduleDialog({
   campaignId,

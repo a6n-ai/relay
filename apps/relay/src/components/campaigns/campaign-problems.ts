@@ -1,4 +1,4 @@
-import type { CampaignProblem } from "../shared/campaign-problems";
+import type { CampaignProblem } from "../../shared/campaign-problems";
 
 export const PROBLEM_LABEL: Record<CampaignProblem, string> = {
   from_missing: "Choose a verified From address",

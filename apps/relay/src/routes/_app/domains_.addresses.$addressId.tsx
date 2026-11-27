@@ -13,7 +13,7 @@ import { ChoiceField } from "../../components/form/choice-field";
 import { EmptyChoice } from "../../components/form/empty-choice";
 import { useFieldErrors } from "../../components/form/field";
 import { FixedField } from "../../components/form/fixed-field";
-import { TextField } from "../../components/form/text-field";
+import { NameField, TextField } from "../../components/form/text-field";
 import { DangerCard } from "../../components/page/danger-card";
 import { EmptyState } from "../../components/page/empty-state";
 import { ListSkeleton } from "../../components/page/page-skeleton";
@@ -23,7 +23,7 @@ import { fetchAddresses, fetchDomains, removeAddressFn, updateAddressFn } from "
 import { addGrantFn, fetchAddressAccess, removeGrantFn } from "../../console/grants.fns";
 import { FormError, FormBody, FormActions, FormPanel } from "../../components/page/form-parts";
 import { KIND_LABEL, KINDS } from "../../lib/address-kinds";
-import { EMAIL_MAX, NAME_MAX } from "../../shared/limits";
+import { EMAIL_MAX } from "../../shared/limits";
 
 export const Route = createFileRoute("/_app/domains_/addresses/$addressId")({
   loader: async ({ params }) => {
@@ -192,7 +192,7 @@ function AddressDetailsCard({ address, canWrite, bypass }: { address: Address; c
       onSubmit={save}
     >
       <FixedField label="Address" value={address.email} hint="Remove it and add a new one to change it." />
-      <TextField id="edit-address-name" label="Name" hint="Shown to recipients as the sender name." maxLength={NAME_MAX} value={name} disabled={!canWrite} onChange={(e) => setName(e.target.value)} />
+      <NameField required={false} id="edit-address-name" hint="Shown to recipients as the sender name." value={name} disabled={!canWrite} onChange={(e) => setName(e.target.value)} />
       <TextField
         id="edit-address-reply-to"
         label="Reply-To"

@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { CampaignEditor } from "../../components/campaign-editor";
-import { CampaignReport } from "../../components/campaign-report";
+import { CampaignEditor } from "../../components/campaigns/campaign-editor";
+import { CampaignReport } from "../../components/campaigns/campaign-report";
 import { DeniedState, deniedReason } from "../../components/denied-state";
 import { isNotFound } from "../../lib/scoped-load";
 import { PageHeader } from "../../components/shell/page-header";

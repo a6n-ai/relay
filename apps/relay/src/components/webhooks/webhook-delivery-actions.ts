@@ -1,4 +1,4 @@
-import type { RowAction } from "./page/row-menu";
+import type { RowAction } from "../page/row-menu";
 
 export function deliveryActions(
   row: { status: string; messageId?: string | null },

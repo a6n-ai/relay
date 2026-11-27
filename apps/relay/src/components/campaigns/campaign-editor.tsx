@@ -1,5 +1,5 @@
 import { Button } from "@foundry/ui/button";
-import { TextField } from "./form/text-field";
+import { NameField, TextField } from "../form/text-field";
 import { Checkbox } from "@foundry/ui/checkbox";
 import { Label } from "@foundry/ui/label";
 import { toast } from "@foundry/ui/toast";
@@ -12,25 +12,24 @@ import {
   setPostalAddressFn,
   testSendCampaignFn,
   updateCampaignFn,
-} from "../console/campaigns.fns";
-import { campaignProblems } from "../shared/campaign-problems";
+} from "../../console/campaigns.fns";
+import { campaignProblems } from "../../shared/campaign-problems";
 import { baselineFrom, isDirty } from "./campaign-dirty";
-import { DangerCard } from "./page/danger-card";
+import { DangerCard } from "../page/danger-card";
 import { PROBLEM_LABEL } from "./campaign-problems";
-import { ChoiceControl } from "./form/choice-field";
-import { SenderField } from "./form/sender-field";
+import { ChoiceControl } from "../form/choice-field";
+import { SenderField } from "../form/sender-field";
 import { ContentFields, type LetterPreview } from "./content-fields";
-import { errorText } from "./error-text";
+import { errorText } from "../error-text";
 import { ScheduleDialog } from "./schedule-dialog";
-import { SettingsCard } from "./page/settings-card";
-import { Toolbar } from "./page/toolbar";
-import { UnsavedGuard } from "./unsaved-guard";
-import { useCan } from "./use-can";
-import { FormError, FormActions, FormPanel, FormBody } from "./page/form-parts";
-import { Hint } from "./page/text";
-import { FixedField } from "./form/fixed-field";
-import { type CampaignView, type ListView } from "../shared/views";
-import { NAME_MAX } from "../shared/limits";
+import { SettingsCard } from "../page/settings-card";
+import { Toolbar } from "../page/toolbar";
+import { UnsavedGuard } from "../unsaved-guard";
+import { useCan } from "../use-can";
+import { FormError, FormActions, FormPanel, FormBody } from "../page/form-parts";
+import { Hint } from "../page/text";
+import { FixedField } from "../form/fixed-field";
+import { type CampaignView, type ListView } from "../../shared/views";
 
 type CampaignOptions = { senders: string[]; lists: ListView[]; postalAddress: string | null };
 
@@ -87,7 +86,11 @@ export function CampaignEditor({
     let live = true;
     previewAudienceFn({ data: { id: campaign.id } })
       .then((a) => live && setAudience(a ?? null))
-      .catch(() => live && setAudience(null));
+      .catch((err) => {
+        if (!live) return;
+        setAudience(null);
+        setError(errorText(err, "Could not count the audience."));
+      });
     return () => {
       live = false;
     };
@@ -209,7 +212,7 @@ export function CampaignEditor({
       <FormPanel as="form" id="campaign-form" onSubmit={save}>
         <SettingsCard title="Content">
           <FormBody as="div">
-            <TextField id="campaign-name" label="Name" required maxLength={NAME_MAX} value={name} disabled={!canWrite} onChange={(e) => setName(e.target.value)} />
+            <NameField id="campaign-name" value={name} disabled={!canWrite} onChange={(e) => setName(e.target.value)} />
             <FixedField label="App" value={appName} hint="To use another app, create a new campaign there." />
             {canWrite ? (
               <SenderField

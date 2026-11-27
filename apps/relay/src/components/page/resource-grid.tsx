@@ -52,3 +52,15 @@ export function ResourceGrid<T>({
     </div>
   );
 }
+
+// The body every ResourceGrid card shares: a title, an optional badge row, hint lines, and any extra control below.
+export function ResourceCard({ title, badge, hints = [], children }: { title: ReactNode; badge?: ReactNode; hints?: ReactNode[]; children?: ReactNode }) {
+  return (
+    <div className="grid gap-1.5 pr-8">
+      <span className="font-medium">{title}</span>
+      {badge ? <div>{badge}</div> : null}
+      {hints.map((hint, i) => (hint ? <Hint key={i} size="xs">{hint}</Hint> : null))}
+      {children}
+    </div>
+  );
+}

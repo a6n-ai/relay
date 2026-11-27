@@ -10,8 +10,8 @@ import { errorText } from "../error-text";
 import { FormError } from "../page/form-parts";
 import { SettingsCard } from "../page/settings-card";
 import { PASSWORD_MAX, PASSWORD_MIN } from "../../shared/limits";
+import { authFetch } from "../../lib/auth-fetch";
 
-const json = { "content-type": "application/json" };
 
 // Setting goes through a server function (setPassword has no HTTP route); changing goes through Better Auth with the current password.
 export function PasswordCard({ hasPassword }: { hasPassword: boolean }) {
@@ -31,12 +31,8 @@ export function PasswordCard({ hasPassword }: { hasPassword: boolean }) {
     setPending(true);
     try {
       if (hasPassword) {
-        const res = await fetch("/api/auth/change-password", {
-          method: "POST",
-          headers: json,
-          body: JSON.stringify({ currentPassword: current, newPassword: next, revokeOtherSessions: others }),
-        });
-        if (res.status === 429) return setError("Too many tries. Try again in a few minutes.");
+        const res = await authFetch("/change-password", { currentPassword: current, newPassword: next, revokeOtherSessions: others });
+        if (res.error) return setError(res.error);
         if (res.status === 403) return setError("Sign in again to set a password.");
         if (!res.ok) return setError(res.status === 400 ? "Your current password is wrong." : "Could not change the password. Try again.");
       } else {

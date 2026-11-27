@@ -2,10 +2,10 @@ import { useState } from "react";
 import { Button } from "@foundry/ui/button";
 import { Textarea } from "@foundry/ui/textarea";
 import { CONSENT_LABEL } from "./consent-labels";
-import { Field } from "./form/field";
-import { ChoiceField } from "./form/choice-field";
-import { type ConsentSource } from "../shared/views";
-import { CONSENT_NOTE_MAX } from "../shared/limits";
+import { Field } from "../form/field";
+import { ChoiceField } from "../form/choice-field";
+import { type ConsentSource } from "../../shared/views";
+import { CONSENT_NOTE_MAX } from "../../shared/limits";
 
 const OPTIONS = (Object.keys(CONSENT_LABEL) as ConsentSource[]).map((s) => ({ value: s, label: CONSENT_LABEL[s] }));
 

@@ -1,6 +1,6 @@
 import { Button } from "@foundry/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@foundry/ui/collapsible";
-import { Hint } from "./page/text";
+import { Hint } from "../page/text";
 
 type DnsRecord = { type: "CNAME"; name: string; value: string };
 

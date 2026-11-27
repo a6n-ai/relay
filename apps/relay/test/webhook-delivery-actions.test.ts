@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { deliveryActions } from "../src/components/webhook-delivery-actions";
+import { deliveryActions } from "../src/components/webhooks/webhook-delivery-actions";
 
 const visible = (a: ReturnType<typeof deliveryActions>) => a.filter((x) => !x.hidden).map((x) => x.label);
 

@@ -1,5 +1,5 @@
 import { createFileRoute, useSearch } from "@tanstack/react-router";
-import { AutomationForm } from "../../components/automation-form";
+import { AutomationForm } from "../../components/campaigns/automation-form";
 import { DeniedState, deniedReason } from "../../components/denied-state";
 import { isNotFound } from "../../lib/scoped-load";
 import { FormSkeleton } from "../../components/page/page-skeleton";

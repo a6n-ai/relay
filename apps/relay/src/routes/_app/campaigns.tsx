@@ -5,10 +5,9 @@ import { useState } from "react";
 import { EmptyState } from "../../components/page/empty-state";
 import { PageLocalHint } from "../../components/page/page-local-hint";
 import { FilterMenu } from "../../components/page/filter-menu";
-import { ResourceGrid } from "../../components/page/resource-grid";
+import { ResourceCard, ResourceGrid } from "../../components/page/resource-grid";
 import { ViewToggle } from "../../components/page/view-toggle";
 import { type View, viewPref } from "../../components/page/view-pref";
-import { Hint } from "../../components/page/text";
 import { LoadMore } from "../../components/page/load-more";
 import { ListSkeleton } from "../../components/page/page-skeleton";
 import { SearchInput, Toolbar } from "../../components/page/toolbar";
@@ -100,16 +99,11 @@ function CampaignsPage() {
           menu={(c) => [{ label: "Open", ...openRow(c) }]}
           empty={empty}
           card={(c) => (
-            <div className="grid gap-1.5 pr-8">
-              <span className="font-medium">{c.name}</span>
-              <span>
-                <StatusBadge status={c.status} />
-              </span>
-              {showApp ? <Hint size="xs">{appName(c.appId)}</Hint> : null}
-              <Hint size="xs">
-                {when(c)} · {c.recipients} recipients
-              </Hint>
-            </div>
+            <ResourceCard
+              title={c.name}
+              badge={<StatusBadge status={c.status} />}
+              hints={[showApp && appName(c.appId), `${when(c)} · ${c.recipients} recipients`]}
+            />
           )}
         />
       ) : (

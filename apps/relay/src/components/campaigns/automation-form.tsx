@@ -2,23 +2,23 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from "@foundry/ui/input-
 import { toast } from "@foundry/ui/toast";
 import { useNavigate } from "@tanstack/react-router";
 import { type FormEvent, useEffect, useRef, useState } from "react";
-import { createAutomationFn, deleteAutomationFn, updateAutomationFn } from "../console/automations.fns";
-import { fetchCampaignOptions } from "../console/campaigns.fns";
-import { fetchTemplates } from "../console/templates.fns";
-import { errorText } from "./error-text";
-import { AppField, needsAppChoice } from "./form/app-field";
-import { ChoiceControl, ChoiceField } from "./form/choice-field";
-import { EmptyChoice } from "./form/empty-choice";
-import { Field, useFieldErrors } from "./form/field";
-import { FixedField } from "./form/fixed-field";
-import { SenderField } from "./form/sender-field";
-import { TextField } from "./form/text-field";
-import { DangerCard } from "./page/danger-card";
-import { FormActions, FormError, FormPanel } from "./page/form-parts";
-import { SettingsCard } from "./page/settings-card";
-import { UnsavedGuard } from "./unsaved-guard";
-import { type AutomationView } from "../shared/views";
-import { AUTOMATION_DELAY_MAX, NAME_MAX } from "../shared/limits";
+import { createAutomationFn, deleteAutomationFn, updateAutomationFn } from "../../console/automations.fns";
+import { fetchCampaignOptions } from "../../console/campaigns.fns";
+import { fetchTemplates } from "../../console/templates.fns";
+import { errorText } from "../error-text";
+import { AppField, needsAppChoice } from "../form/app-field";
+import { ChoiceControl, ChoiceField } from "../form/choice-field";
+import { EmptyChoice } from "../form/empty-choice";
+import { Field, useFieldErrors } from "../form/field";
+import { FixedField } from "../form/fixed-field";
+import { SenderField } from "../form/sender-field";
+import { NameField } from "../form/text-field";
+import { DangerCard } from "../page/danger-card";
+import { FormActions, FormError, FormPanel } from "../page/form-parts";
+import { SettingsCard } from "../page/settings-card";
+import { UnsavedGuard } from "../unsaved-guard";
+import { type AutomationView } from "../../shared/views";
+import { AUTOMATION_DELAY_MAX } from "../../shared/limits";
 
 const PRESETS = ["0", "1", "24"];
 
@@ -94,8 +94,10 @@ export function AutomationForm({
       .then(([options, templates]) => {
         if (live) setChoices({ lists: options?.lists ?? [], templates: templates?.rows ?? [], senders: options?.senders ?? [] });
       })
-      .catch(() => {
-        if (live) setChoices({ lists: [], templates: [], senders: [] });
+      .catch((err) => {
+        if (!live) return;
+        setChoices({ lists: [], templates: [], senders: [] });
+        setError(errorText(err, "Could not load the lists and templates."));
       });
     return () => {
       live = false;
@@ -194,12 +196,9 @@ export function AutomationForm({
       </SettingsCard>
       <SettingsCard title="Message" description="What it sends, and who it comes from.">
         <div className="grid gap-4">
-          <TextField
+          <NameField
             id="automation-name"
-            label="Name"
             autoFocus={!choose}
-            required
-            maxLength={NAME_MAX}
             placeholder="Welcome new subscribers"
             value={name}
             error={fe.errors.name}

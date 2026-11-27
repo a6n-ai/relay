@@ -5,7 +5,7 @@ import { type FormEvent, useState } from "react";
 import { changeRoleFn } from "../../console/members.fns";
 import { errorText } from "../error-text";
 import { FormActions, FormBody, FormError } from "../page/form-parts";
-import { RoleChoice } from "../role-select";
+import { RoleChoice } from "./role-select";
 import { type OrgRole } from "../../shared/roles";
 
 // Opened from a row menu, so the parent owns open state.

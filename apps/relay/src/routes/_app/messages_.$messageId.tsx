@@ -1,17 +1,18 @@
 import { Button } from "@foundry/ui/button";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { DeniedState, deniedReason } from "../../components/denied-state";
-import { EventTimeline, type TimelineItem } from "../../components/event-timeline";
+import { EventTimeline, type TimelineItem } from "../../components/messages/event-timeline";
 import { formatWhen } from "../../lib/format-date";
 import { LetterView } from "../../components/letter-view";
 import { Toolbar } from "../../components/page/toolbar";
 import { PageHeader } from "../../components/shell/page-header";
 import { StatusBadge } from "../../components/status-badge";
 import { fetchApps } from "../../console/apps.fns";
-import { previewHint } from "../../components/preview-hint";
+import { previewHint } from "../../components/messages/preview-hint";
 import { fetchMessage } from "../../console/messages.fns";
 import { Hint, SectionTitle } from "../../components/page/text";
 import { DetailSkeleton } from "../../components/page/page-skeleton";
+import { DefinitionList } from "../../components/page/definition-list";
 
 export const Route = createFileRoute("/_app/messages_/$messageId")({
   validateSearch: (search: Record<string, unknown>): { images?: boolean } => ({
@@ -85,18 +86,14 @@ function MessagePage() {
       ) : null}
       <div className="grid gap-6 p-4 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
         <aside aria-label="Details" className="grid gap-6 lg:col-start-2 lg:row-start-1">
-          <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
-            <dt className="text-muted-foreground">From</dt>
-            <dd className="break-all">{m.fromEmail ?? "—"}</dd>
-            <dt className="text-muted-foreground">To</dt>
-            <dd className="break-all">{m.toEmail ?? "—"}</dd>
-            <dt className="text-muted-foreground">App</dt>
-            <dd>{appName}</dd>
-            <dt className="text-muted-foreground">Status</dt>
-            <dd>
-              <StatusBadge status={m.status} direction={m.direction} />
-            </dd>
-          </dl>
+          <DefinitionList
+            items={[
+              { term: "From", value: m.fromEmail ?? "—", wrap: true },
+              { term: "To", value: m.toEmail ?? "—", wrap: true },
+              { term: "App", value: appName },
+              { term: "Status", value: <StatusBadge status={m.status} direction={m.direction} /> },
+            ]}
+          />
           <section aria-label="Timeline">
             <EventTimeline items={timeline} />
           </section>

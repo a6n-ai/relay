@@ -1,13 +1,13 @@
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@foundry/ui/input-otp";
-import { Label } from "@foundry/ui/label";
-import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { type FormEvent, useEffect, useState } from "react";
-import { AuthButton, AuthCard, AuthInput, AuthText } from "../components/auth-card";
+import { AuthButton, AuthCard, AuthField, AuthForm, AuthLink, AuthText, authLink } from "../components/auth-card";
 import { FormError } from "../components/page/form-parts";
 import { authOptionsFn, safeRedirect } from "../console/shell.fns";
 import { signInErrorText } from "../lib/auth/google";
 import { PASSWORD_MAX } from "../shared/limits";
 import { SITE_ORIGIN } from "../shared/site";
+import { authFetch } from "../lib/auth-fetch";
 
 const TITLE = "Sign in to Relay";
 const DESCRIPTION = "Sign in to Relay with a one-time code sent to your email, a password, or Google.";
@@ -38,11 +38,8 @@ export const Route = createFileRoute("/sign-in")({
   component: SignIn,
 });
 
-const json = { "content-type": "application/json" };
-const TOO_MANY = "Too many codes. Try again in a few minutes.";
-const TOO_MANY_TRIES = "Too many tries. Try again in a few minutes.";
+const TOO_MANY_CODES = "Too many codes. Try again in a few minutes.";
 const RESEND_SECONDS = 30;
-const OFFLINE = "Could not reach Relay. Check your connection and try again.";
 
 function SignIn() {
   const router = useRouter();
@@ -67,25 +64,10 @@ function SignIn() {
   async function requestCode(): Promise<boolean> {
     setPending(true);
     setError(null);
-    let res: Response;
-    try {
-      res = await fetch("/api/auth/email-otp/send-verification-otp", {
-        method: "POST",
-        headers: json,
-        body: JSON.stringify({ email, type: "sign-in" }),
-      });
-    } catch {
-      setError(OFFLINE);
-      return false;
-    } finally {
-      setPending(false);
-    }
-    if (res.status === 429) {
-      setError(TOO_MANY);
-      return false;
-    }
+    const res = await authFetch("/email-otp/send-verification-otp", { email, type: "sign-in" }, TOO_MANY_CODES);
+    setPending(false);
     if (!res.ok) {
-      setError("Could not send a code. Check the address and try again.");
+      setError(res.error ?? "Could not send a code. Check the address and try again.");
       return false;
     }
     setWait(RESEND_SECONDS);
@@ -96,23 +78,17 @@ function SignIn() {
     setPending(true);
     setError(null);
     const target = safeRedirect(redirect);
-    try {
-      const res = await fetch("/api/auth/sign-in/social", {
-        method: "POST",
-        headers: json,
-        body: JSON.stringify({
-          provider: "google",
-          callbackURL: target,
-          errorCallbackURL: `/sign-in?redirect=${encodeURIComponent(target)}`,
-        }),
-      });
-      const data = (await res.json()) as { url?: string };
-      if (!res.ok || !data.url) throw new Error("no url");
-      window.location.assign(data.url);
-    } catch {
+    const res = await authFetch<{ url?: string }>("/sign-in/social", {
+      provider: "google",
+      callbackURL: target,
+      errorCallbackURL: `/sign-in?redirect=${encodeURIComponent(target)}`,
+    });
+    if (!res.ok || !res.data?.url) {
       setError(signInErrorText("google_failed"));
       setPending(false);
+      return;
     }
+    window.location.assign(res.data.url);
   }
 
   async function sendCode(event: FormEvent) {
@@ -124,47 +100,25 @@ function SignIn() {
     event.preventDefault();
     setPending(true);
     setError(null);
-    let res: Response;
-    try {
-      res = await fetch("/api/auth/sign-in/email", {
-        method: "POST",
-        headers: json,
-        body: JSON.stringify({ email, password }),
-      });
-    } catch {
-      return setError(OFFLINE);
-    } finally {
-      setPending(false);
-    }
-    if (res.status === 429) return setError(TOO_MANY_TRIES);
-    if (!res.ok) return setError("Wrong email or password.");
+    const res = await authFetch("/sign-in/email", { email, password });
+    setPending(false);
+    if (!res.ok) return setError(res.error ?? "Wrong email or password.");
     await router.navigate({ href: safeRedirect(redirect) });
   }
 
   async function verify(code: string) {
     setPending(true);
     setError(null);
-    let res: Response;
-    try {
-      res = await fetch("/api/auth/sign-in/email-otp", {
-        method: "POST",
-        headers: json,
-        body: JSON.stringify({ email, otp: code }),
-      });
-    } catch {
-      return setError(OFFLINE);
-    } finally {
-      setPending(false);
-    }
-    if (res.status === 429) return setError(TOO_MANY);
-    if (!res.ok) return setError("That code is not right. Try again.");
+    const res = await authFetch("/sign-in/email-otp", { email, otp: code }, TOO_MANY_CODES);
+    setPending(false);
+    if (!res.ok) return setError(res.error ?? "That code is not right. Try again.");
     await router.navigate({ href: safeRedirect(redirect) });
   }
 
   return (
     <AuthCard title={step === "email" ? "Sign in to Relay" : "Check your email"} footer="Access is by invite. Ask your workspace owner.">
       {step === "email" ? (
-        <form onSubmit={usePassword ? signInWithPassword : sendCode} className="flex flex-col gap-3">
+        <AuthForm onSubmit={usePassword ? signInWithPassword : sendCode}>
           {google ? (
             <>
               <AuthButton type="button" variant="outline" disabled={pending} onClick={() => void signInWithGoogle()}>
@@ -178,42 +132,30 @@ function SignIn() {
               </div>
             </>
           ) : null}
-          <Label htmlFor="email" className="sr-only">
-            Email
-          </Label>
-          <AuthInput
-            id="email"
-            name="email"
+          <AuthField label="Email" id="email" name="email"
             type="email"
             autoComplete="email"
             placeholder="Email address"
             required
             autoFocus
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
+            onChange={(e) => setEmail(e.target.value)} />
           {usePassword ? (
             <>
-              <Label htmlFor="password" className="sr-only">
-                Password
-              </Label>
-              <AuthInput
-                id="password"
-                name="password"
+              <AuthField label="Password" id="password" name="password"
                 type="password"
                 autoComplete="current-password"
                 placeholder="Password"
                 required
                 maxLength={PASSWORD_MAX}
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
+                onChange={(e) => setPassword(e.target.value)} />
               <AuthButton type="submit" disabled={pending}>
                 Continue with password
               </AuthButton>
-              <Link to="/forgot-password" className="text-center text-sm text-muted-foreground hover:text-foreground">
+              <AuthLink to="/forgot-password">
                 Forgot password?
-              </Link>
+              </AuthLink>
             </>
           ) : (
             <AuthButton type="submit" disabled={pending}>
@@ -222,7 +164,7 @@ function SignIn() {
           )}
           <button
             type="button"
-            className="text-center text-sm text-muted-foreground hover:text-foreground"
+            className={authLink}
             onClick={() => {
               setUsePassword(!usePassword);
               setPassword("");
@@ -231,14 +173,13 @@ function SignIn() {
           >
             {usePassword ? "Use an email code instead" : "Sign in with password"}
           </button>
-        </form>
+        </AuthForm>
       ) : (
-        <form
+        <AuthForm
           onSubmit={(event) => {
             event.preventDefault();
             verify(otp);
           }}
-          className="flex flex-col gap-3"
         >
           <AuthText>
             Enter the 6-digit code we sent to <span className="text-foreground">{email}</span>.
@@ -267,7 +208,7 @@ function SignIn() {
           >
             Use another email
           </AuthButton>
-        </form>
+        </AuthForm>
       )}
       <FormError message={error} />
     </AuthCard>

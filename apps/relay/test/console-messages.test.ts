@@ -7,7 +7,7 @@ import { createAddress, createAddressGrant } from "../src/core/addresses";
 import { clientFor } from "../src/do/client";
 import { securityDb } from "../src/db/security/client";
 import { addressGrant, app, member, team, teamMember, user } from "../src/db/security/schema";
-import { parseMessagesSearch } from "../src/components/messages-search";
+import { parseMessagesSearch } from "../src/components/messages/messages-search";
 import { newId } from "../src/shared/ids";
 import { addMember, cookieFor, createWorkspace, headersFor, ORIGIN, setActive } from "./console-helpers";
 import { applyMigrations } from "./migrate";

@@ -1,18 +1,23 @@
 import { Button } from "@foundry/ui/button";
 import { useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { cancelCampaignFn, pauseCampaignFn, previewAudienceFn, resumeCampaignFn, unscheduleCampaignFn } from "../console/campaigns.fns";
-import { reasonText } from "./error-text";
-import { ConfirmDialog } from "./confirm-dialog";
-import { FormError } from "./page/form-parts";
-import { formatWhen } from "../lib/format-date";
-import { MeterBar } from "./meter-bar";
-import { confirmAction, runAction } from "./run-action";
-import { StatTile } from "./stat-tile";
-import { Toolbar } from "./page/toolbar";
-import { useCan } from "./use-can";
-import { Hint } from "./page/text";
-import { type AudiencePreview, type CampaignStats, type CampaignView } from "../shared/views";
+import { cancelCampaignFn, pauseCampaignFn, previewAudienceFn, resumeCampaignFn, unscheduleCampaignFn } from "../../console/campaigns.fns";
+import { copyOf } from "../../shared/errors";
+import { errorText } from "../error-text";
+
+import { ConfirmDialog } from "../confirm-dialog";
+import { FormError } from "../page/form-parts";
+import { formatWhen } from "../../lib/format-date";
+import { MeterBar } from "../meter-bar";
+import { confirmAction, runAction } from "../run-action";
+import { StatTile } from "../stat-tile";
+import { Toolbar } from "../page/toolbar";
+import { useCan } from "../use-can";
+import { Hint } from "../page/text";
+import { type AudiencePreview, type CampaignStats, type CampaignView } from "../../shared/views";
+
+// A paused campaign stores a code on its row, not an Error.
+export const reasonText = (code: string | null): string | null => (code ? (copyOf(code) ?? errorText(null)) : null);
 
 const LIVE = 10_000;
 
@@ -22,11 +27,16 @@ export function CampaignReport({ campaign, stats }: { campaign: CampaignView; st
   const { id, status } = campaign;
   // The audience is counted once for the meter; the polled loader would re-run the whole audience count every tick.
   const [audience, setAudience] = useState<AudiencePreview | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   useEffect(() => {
     let live = true;
     previewAudienceFn({ data: { id } })
       .then((a) => live && setAudience(a ?? null))
-      .catch(() => live && setAudience(null));
+      .catch((err) => {
+        if (!live) return;
+        setAudience(null);
+        setLoadError(errorText(err, "Could not count the audience."));
+      });
     return () => {
       live = false;
     };
@@ -96,7 +106,7 @@ export function CampaignReport({ campaign, stats }: { campaign: CampaignView; st
       </Toolbar>
       <div className="grid gap-4 px-4 pb-4">
         {times.length > 0 && <Hint>{times.join(" · ")}</Hint>}
-        <FormError message={status === "paused" ? reasonText(campaign.error) : null} />
+        <FormError message={loadError ?? (status === "paused" ? reasonText(campaign.error) : null)} />
         {status === "sending" && (
           <div className="flex items-center gap-3">
             <MeterBar percent={percent} />

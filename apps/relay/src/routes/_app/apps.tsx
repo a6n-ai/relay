@@ -4,7 +4,7 @@ import { BoxesIcon } from "lucide-react";
 import { useState } from "react";
 import { DeniedState, deniedReason } from "../../components/denied-state";
 import { EmptyState } from "../../components/page/empty-state";
-import { ResourceGrid } from "../../components/page/resource-grid";
+import { ResourceCard, ResourceGrid } from "../../components/page/resource-grid";
 import { SearchInput, Toolbar } from "../../components/page/toolbar";
 import { ViewToggle } from "../../components/page/view-toggle";
 import { type View, viewPref } from "../../components/page/view-pref";
@@ -75,13 +75,7 @@ function AppsPage() {
           rowLabel={(a) => `Open ${a.name}`}
           menu={menu}
           card={(a) => (
-            <div className="grid gap-1 pr-8">
-              <p className="truncate text-sm font-medium">{a.name}</p>
-              <p className="truncate font-mono text-xs text-muted-foreground">{a.slug}</p>
-              <p className="text-xs text-muted-foreground">
-                {a.keyCount} live {a.keyCount === 1 ? "key" : "keys"}
-              </p>
-            </div>
+            <ResourceCard title={a.name} hints={[<span className="font-mono">{a.slug}</span>, `${a.keyCount} live ${a.keyCount === 1 ? "key" : "keys"}`]} />
           )}
           empty={empty}
         />

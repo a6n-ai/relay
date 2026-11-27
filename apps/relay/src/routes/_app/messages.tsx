@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { MailIcon } from "lucide-react";
 import { DeniedState, deniedReason } from "../../components/denied-state";
-import { type MessagesSearch, parseMessagesSearch } from "../../components/messages-search";
+import { type MessagesSearch, parseMessagesSearch } from "../../components/messages/messages-search";
 import { FilterMenu } from "../../components/page/filter-menu";
 import { EmptyState } from "../../components/page/empty-state";
 import { LoadMore } from "../../components/page/load-more";

@@ -15,12 +15,13 @@ import { PageHeader } from "../../components/shell/page-header";
 import { runAction } from "../../components/run-action";
 import { StatusBadge } from "../../components/status-badge";
 import { useCan } from "../../components/use-can";
-import { deliveryActions } from "../../components/webhook-delivery-actions";
-import { WEBHOOK_EVENT_LABELS } from "../../components/webhook-events";
-import { EditWebhookForm } from "../../components/webhook-form";
+import { deliveryActions } from "../../components/webhooks/webhook-delivery-actions";
+import { WEBHOOK_EVENT_LABELS } from "../../components/webhooks/webhook-events";
+import { EditWebhookForm } from "../../components/webhooks/webhook-form";
 import { fetchDeliveries, retryDeliveryFn } from "../../console/webhooks.fns";
 import { formatDate, formatWhen } from "../../lib/format-date";
 import { type DeliveryView } from "../../shared/views";
+import { hostOf } from "../../lib/path";
 
 export const Route = createFileRoute("/_app/apps_/$appId_/webhooks_/$webhookId")({
   loader: ({ params }) => fetchDeliveries({ data: { appId: params.appId, webhookId: params.webhookId } }),
@@ -57,13 +58,7 @@ function DeliveriesPage() {
 
   const rows = [...page.rows, ...(older?.rows ?? [])];
   const nextCursor = older ? older.nextCursor : page.nextCursor;
-  const host = (() => {
-    try {
-      return new URL(page.webhook.url).host;
-    } catch {
-      return page.webhook.url;
-    }
-  })();
+  const host = hostOf(page.webhook.url);
 
   async function loadOlder() {
     if (!nextCursor) return;

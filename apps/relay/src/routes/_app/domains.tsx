@@ -6,8 +6,8 @@ import { GlobeIcon } from "lucide-react";
 import { useState } from "react";
 import { ConfirmDialog } from "../../components/confirm-dialog";
 import { DeniedState, deniedReason } from "../../components/denied-state";
-import { DnsRecords } from "../../components/dns-records";
-import { DomainDeleteDialog } from "../../components/domain-delete-dialog";
+import { DnsRecords } from "../../components/domains/dns-records";
+import { DomainDeleteDialog } from "../../components/domains/domain-delete-dialog";
 import { errorText } from "../../components/error-text";
 import { ResourceTable } from "../../components/resource-table";
 import { StatusBadge } from "../../components/status-badge";
@@ -16,7 +16,7 @@ import { EmptyState } from "../../components/page/empty-state";
 import { FilterMenu } from "../../components/page/filter-menu";
 import { FormPanel } from "../../components/page/form-parts";
 import { SettingsCard } from "../../components/page/settings-card";
-import { ResourceGrid } from "../../components/page/resource-grid";
+import { ResourceCard, ResourceGrid } from "../../components/page/resource-grid";
 import { ListSkeleton } from "../../components/page/page-skeleton";
 import { SearchInput, Toolbar } from "../../components/page/toolbar";
 import { useUrlFilter } from "../../components/page/use-url-filter";
@@ -179,16 +179,16 @@ function DomainsPage() {
           menu={domainMenu}
           empty={domainsEmpty}
           card={(d) => (
-            <div className="grid gap-2 pr-8">
-              <Mono>{d.domain}</Mono>
-              <div className="flex items-center gap-2">
-                <StatusBadge status={d.status} />
-                {d.protected ? <Badge variant="warning">Protected</Badge> : null}
-              </div>
-              <Hint size="xs">
-                {addressCount.get(d.domain) ?? 0} {addressCount.get(d.domain) === 1 ? "address" : "addresses"} · {d.sesRegion}
-              </Hint>
-            </div>
+            <ResourceCard
+              title={<Mono>{d.domain}</Mono>}
+              badge={
+                <div className="flex items-center gap-2">
+                  <StatusBadge status={d.status} />
+                  {d.protected ? <Badge variant="warning">Protected</Badge> : null}
+                </div>
+              }
+              hints={[`${addressCount.get(d.domain) ?? 0} ${addressCount.get(d.domain) === 1 ? "address" : "addresses"} · ${d.sesRegion}`]}
+            />
           )}
         />
         </section>

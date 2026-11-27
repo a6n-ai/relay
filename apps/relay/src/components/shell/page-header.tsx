@@ -1,3 +1,4 @@
+import { cn } from "@foundry/ui/cn";
 import { SidebarTrigger } from "@foundry/ui/sidebar";
 import { Link, useLocation, useRouteContext } from "@tanstack/react-router";
 import ChevronLeft from "lucide-react/icons/chevron-left";
@@ -5,6 +6,7 @@ import { type ReactNode, useEffect } from "react";
 import { PageTitle } from "../page/page-title";
 import { AddNewMenu } from "./add-new";
 import { sectionTabs } from "./nav";
+import { focusRing } from "../../lib/focus";
 import { trimSlash } from "../../lib/path";
 import { usePageOf } from "./page-data";
 import { isAppScoped } from "./scope";
@@ -46,7 +48,7 @@ export function PageHeader({ crumbs, badge, actions, description }: { crumbs?: C
                 to={parent.to as string}
                 params={untyped(parent.params)}
                 search={untyped(parent.search)}
-                className="inline-flex h-9 items-center gap-1 rounded-md pr-3 pl-1.5 text-sm text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+                className={cn(focusRing, "inline-flex h-9 items-center gap-1 rounded-md pr-3 pl-1.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground")}
               >
                 <ChevronLeft aria-hidden className="size-4" />
                 {parent.label}

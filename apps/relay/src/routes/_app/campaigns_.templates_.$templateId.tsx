@@ -6,12 +6,12 @@ import { toast } from "@foundry/ui/toast";
 import { createFileRoute, useNavigate, useRouter, useSearch } from "@tanstack/react-router";
 import { type FormEvent, useRef, useState } from "react";
 import { DangerCard } from "../../components/page/danger-card";
-import { ContentFields, type ContentValue } from "../../components/content-fields";
+import { ContentFields, type ContentValue } from "../../components/campaigns/content-fields";
 import { DeniedState, deniedReason } from "../../components/denied-state";
 import { errorText } from "../../components/error-text";
 import { isNotFound } from "../../lib/scoped-load";
 import { FixedField } from "../../components/form/fixed-field";
-import { TextField } from "../../components/form/text-field";
+import { NameField, TextField } from "../../components/form/text-field";
 import { SettingsCard } from "../../components/page/settings-card";
 import { Toolbar } from "../../components/page/toolbar";
 import { PageHeader } from "../../components/shell/page-header";
@@ -145,7 +145,7 @@ function TemplateForm({ template, canWrite, appName }: { template: TemplateView;
           <SettingsCard title="Content">
             <FormBody as="div">
               <FixedField label="App" value={appName} hint="To use another app, create a new template there." />
-              <TextField id="template-name-edit" label="Name" maxLength={TEMPLATE_NAME_MAX} value={name} disabled={!canWrite} onChange={(e) => setName(e.target.value)} />
+              <NameField required={false} id="template-name-edit" maxLength={TEMPLATE_NAME_MAX} value={name} disabled={!canWrite} onChange={(e) => setName(e.target.value)} />
               <ContentFields
                 value={content}
                 onChange={setContent}

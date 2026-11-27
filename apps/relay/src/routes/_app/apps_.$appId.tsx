@@ -8,7 +8,7 @@ import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { KeyRoundIcon } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { ChoiceField, type ChoiceOption } from "../../components/form/choice-field";
-import { TextField } from "../../components/form/text-field";
+import { NameField } from "../../components/form/text-field";
 import { FixedField } from "../../components/form/fixed-field";
 import { ConfirmDialog } from "../../components/confirm-dialog";
 import { CreateDialog } from "../../components/create-dialog";
@@ -38,7 +38,7 @@ import { formatDate, formatWhen } from "../../lib/format-date";
 import { FormError, FormBody, FormActions, FormPanel } from "../../components/page/form-parts";
 import { RenameForm } from "../../components/form/rename-form";
 import { Hint } from "../../components/page/text";
-import { NAME_MAX } from "../../shared/limits";
+import { hostOf } from "../../lib/path";
 
 export const Route = createFileRoute("/_app/apps_/$appId")({
   pendingComponent: () => <FormSkeleton crumbs={[{ label: "Apps", to: "/apps" }, { label: "App" }]} cards={3} action />,
@@ -207,7 +207,7 @@ function AppDetailsPanel({ appId, name, slug, canWrite }: { appId: string; name:
       invalidReason={!value.trim() ? "Enter a name first." : undefined}
       onSubmit={save}
     >
-      <TextField id="app-name" label="Name" required maxLength={NAME_MAX} value={value} disabled={!canWrite} onChange={(e) => setValue(e.target.value)} />
+      <NameField id="app-name" value={value} disabled={!canWrite} onChange={(e) => setValue(e.target.value)} />
       <FixedField label="Short name" value={slug} hint="Create a new app to use a different short name." />
       <FormError message={error} />
     </SettingsForm>
@@ -458,13 +458,10 @@ function NewKeyForm({ appId, first, done, lock }: { appId: string; first: boolea
 
   return (
     <FormBody onSubmit={submit}>
-      <TextField
+      <NameField
         id="key-name"
-        label="Name"
         hint="Production, Staging or the service that uses it."
-        required
         autoFocus
-        maxLength={NAME_MAX}
         placeholder="Production"
         value={name}
         onChange={(e) => setName(e.target.value)}
@@ -473,12 +470,4 @@ function NewKeyForm({ appId, first, done, lock }: { appId: string; first: boolea
       <FormActions cancel submitLabel="Create key" pending={pending} pendingLabel="Creating…" disabled={!name.trim()} disabledReason="Enter a name first." />
     </FormBody>
   );
-}
-
-function hostOf(url: string) {
-  try {
-    return new URL(url).host;
-  } catch {
-    return url;
-  }
 }

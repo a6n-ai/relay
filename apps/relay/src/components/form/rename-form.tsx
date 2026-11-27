@@ -3,8 +3,7 @@ import { useRouter } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
 import { errorText } from "../error-text";
 import { FormActions, FormBody, FormError } from "../page/form-parts";
-import { TextField } from "./text-field";
-import { NAME_MAX } from "../../shared/limits";
+import { NameField } from "./text-field";
 
 export function RenameForm({
   id,
@@ -48,7 +47,7 @@ export function RenameForm({
 
   return (
     <FormBody onSubmit={submit}>
-      <TextField id={id} label="Name" hint={hint} required autoFocus maxLength={NAME_MAX} placeholder={placeholder} value={name} onChange={(e) => setName(e.target.value)} />
+      <NameField id={id} hint={hint} autoFocus placeholder={placeholder} value={name} onChange={(e) => setName(e.target.value)} />
       <FormError message={error} />
       <FormActions cancel submitLabel="Save name" pending={pending} pendingLabel="Saving…" disabled={!dirty} disabledReason={name.trim() ? "Change the name to save." : "Enter a name first."} />
     </FormBody>

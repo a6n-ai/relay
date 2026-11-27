@@ -6,8 +6,7 @@ import { useState } from "react";
 import { EmptyState } from "../../components/page/empty-state";
 import { PageLocalHint } from "../../components/page/page-local-hint";
 import { FilterMenu } from "../../components/page/filter-menu";
-import { ResourceGrid } from "../../components/page/resource-grid";
-import { Hint } from "../../components/page/text";
+import { ResourceCard, ResourceGrid } from "../../components/page/resource-grid";
 import { type View, viewPref } from "../../components/page/view-pref";
 import { ViewToggle } from "../../components/page/view-toggle";
 import { LoadMore } from "../../components/page/load-more";
@@ -107,17 +106,11 @@ function TemplatesPage() {
           menu={(t) => [{ label: "Open", ...openRow(t) }]}
           empty={empty}
           card={(t) => (
-            <div className="grid gap-1.5 pr-8">
-              <span className="font-medium">{t.name}</span>
-              <span>
-                <Badge variant={t.enabled ? "secondary" : "outline"}>{t.enabled ? "On" : "Off"}</Badge>
-              </span>
-              {showApp ? <Hint size="xs">{appName(t.appId)}</Hint> : null}
-              <Hint size="xs">
-                {t.event ?? "No event"} · {t.locale}
-              </Hint>
-              <Hint size="xs">Updated {formatWhen(t.updatedAt)}</Hint>
-            </div>
+            <ResourceCard
+              title={t.name}
+              badge={<Badge variant={t.enabled ? "secondary" : "outline"}>{t.enabled ? "On" : "Off"}</Badge>}
+              hints={[showApp && appName(t.appId), `${t.event ?? "No event"} · ${t.locale}`, `Updated ${formatWhen(t.updatedAt)}`]}
+            />
           )}
         />
       ) : (

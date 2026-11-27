@@ -1,12 +1,12 @@
 import { Badge } from "@foundry/ui/badge";
-import { TextField } from "../../components/form/text-field";
+import { NameField, TextField } from "../../components/form/text-field";
 import { Button } from "@foundry/ui/button";
 import { toast } from "@foundry/ui/toast";
 import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { UsersIcon } from "lucide-react";
 import { type FormEvent, useState } from "react";
-import { ConsentFields } from "../../components/consent-fields";
-import { consentHint } from "../../components/consent-labels";
+import { ConsentFields } from "../../components/lists/consent-fields";
+import { consentHint } from "../../components/lists/consent-labels";
 import { FixedField } from "../../components/form/fixed-field";
 import { ConfirmDialog } from "../../components/confirm-dialog";
 import { CreateDialog } from "../../components/create-dialog";
@@ -34,7 +34,6 @@ import {
   updateListFn,
 } from "../../console/lists.fns";
 import { FormError, FormBody, FormActions } from "../../components/page/form-parts";
-import { Hint } from "../../components/page/text";
 import { type ConsentSource, type MemberView } from "../../shared/views";
 import { str, posInt } from "../../lib/route-search";
 
@@ -273,7 +272,7 @@ function EditListForm({
   return (
     <FormBody onSubmit={submit}>
       <FixedField label="App" value={appName ?? "This list's app"} hint="Create a new list in the other app instead." />
-      <TextField id="list-rename" label="Name" autoFocus required value={name} onChange={(e) => setName(e.target.value)} />
+      <NameField id="list-rename" autoFocus value={name} onChange={(e) => setName(e.target.value)} />
       <ConsentFields idPrefix="list-edit" consent={consent} onConsent={setConsent} note={note} onNote={setNote} />
       <FormError message={error} />
       <FormActions

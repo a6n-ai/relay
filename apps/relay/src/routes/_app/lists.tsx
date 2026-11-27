@@ -2,7 +2,7 @@ import { Button } from "@foundry/ui/button";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ListIcon } from "lucide-react";
 import { useState } from "react";
-import { CONSENT_SHORT } from "../../components/consent-labels";
+import { CONSENT_SHORT } from "../../components/lists/consent-labels";
 import { ResourceTable } from "../../components/resource-table";
 import { FilterMenu } from "../../components/page/filter-menu";
 import { ResourceGrid } from "../../components/page/resource-grid";

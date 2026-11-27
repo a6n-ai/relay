@@ -5,7 +5,7 @@ import { DeniedState, deniedReason } from "../../components/denied-state";
 import { errorText } from "../../components/error-text";
 import { AppField, needsAppChoice } from "../../components/form/app-field";
 import { ChoiceField } from "../../components/form/choice-field";
-import { TextField } from "../../components/form/text-field";
+import { NameField } from "../../components/form/text-field";
 import { CreatePage } from "../../components/page/create-page";
 import { NoAppState } from "../../components/page/no-app-state";
 import { FormActions, FormError } from "../../components/page/form-parts";
@@ -15,7 +15,6 @@ import { useCan } from "../../components/use-can";
 import { fetchApps } from "../../console/apps.fns";
 import { createCampaignFn } from "../../console/campaigns.fns";
 import { fetchTemplates } from "../../console/templates.fns";
-import { NAME_MAX } from "../../shared/limits";
 import { str } from "../../lib/route-search";
 
 export const Route = createFileRoute("/_app/campaigns_/new")({
@@ -49,7 +48,11 @@ function NewCampaignPage() {
     let live = true;
     fetchTemplates({ data: { appId: app } })
       .then((t) => live && setChoices(t?.rows ?? []))
-      .catch(() => live && setChoices([]));
+      .catch((err) => {
+        if (!live) return;
+        setChoices([]);
+        setError(errorText(err, "Could not load the templates."));
+      });
     return () => {
       live = false;
     };
@@ -88,7 +91,7 @@ function NewCampaignPage() {
       <SettingsCard title="Details" description="Name the campaign and pick where it starts.">
         <div className="grid gap-4">
           <AppField apps={apps} scopedAppId={scopedAppId} value={app} onChange={setApp} id="campaign-app" autoFocus={choose} />
-          <TextField id="campaign-name" label="Name" autoFocus={!choose} required maxLength={NAME_MAX} placeholder="Product update" value={name} onChange={(e) => setName(e.target.value)} />
+          <NameField id="campaign-name" autoFocus={!choose} placeholder="Product update" value={name} onChange={(e) => setName(e.target.value)} />
           <ChoiceField
             id="campaign-template"
             label="Start from"

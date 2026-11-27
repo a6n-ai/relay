@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { AutomationForm } from "../../components/automation-form";
+import { AutomationForm } from "../../components/campaigns/automation-form";
 import { DeniedState, deniedReason } from "../../components/denied-state";
 import { NoAppState } from "../../components/page/no-app-state";
 import { PageHeader } from "../../components/shell/page-header";

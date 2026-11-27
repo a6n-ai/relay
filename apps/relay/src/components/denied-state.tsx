@@ -1,4 +1,5 @@
 import { useMatch } from "@tanstack/react-router";
+import type { ReactNode } from "react";
 import { isDenied } from "../shared/errors";
 import type { Shell } from "../shared/views";
 import { Hint, Title } from "./page/text";
@@ -30,14 +31,20 @@ export function deniedReason(shell: Shell | undefined, message?: string): Denied
   return "not-allowed";
 }
 
+// The centred title-and-hint panel the denied, not-found and root 404 states share.
+export function StateMessage({ title, body, as: Tag = "div", heading, children, ...rest }: { title: string; body: string; as?: "div" | "main"; heading?: "h2"; children?: ReactNode; role?: "status" }) {
+  return (
+    <Tag className="mx-auto grid max-w-sm gap-2 p-6 text-center" {...rest}>
+      <Title as={heading}>{title}</Title>
+      <Hint>{body}</Hint>
+      {children}
+    </Tag>
+  );
+}
+
 export function DeniedState({ reason, label }: { reason: DeniedReason; label?: string }) {
   const { title, body } = COPY[reason];
-  return (
-    <div role="status" className="mx-auto grid max-w-sm gap-2 p-6 text-center">
-      <Title as="h2">{label ?? title}</Title>
-      <Hint>{body}</Hint>
-    </div>
-  );
+  return <StateMessage role="status" heading="h2" title={label ?? title} body={body} />;
 }
 
 // Route error boundary for everything under _app. A child loader that fails renders the router default on the server, so this is also registered as defaultErrorComponent.
