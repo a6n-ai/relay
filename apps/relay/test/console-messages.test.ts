@@ -4,7 +4,7 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 import { requireActor } from "../src/console/actor";
 import { getMessageFor, listMessagesFor } from "../src/console/messages";
 import { createAddress, createAddressGrant } from "../src/core/addresses";
-import { clientFor } from "../src/core/messages";
+import { clientFor } from "../src/do/client";
 import { securityDb } from "../src/db/security/client";
 import { addressGrant, app, member, team, teamMember, user } from "../src/db/security/schema";
 import { parseMessagesSearch } from "../src/components/messages-search";

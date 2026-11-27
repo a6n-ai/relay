@@ -26,7 +26,7 @@ const attachmentSchema = z.object({
 const sendInputSchema = z.object({
   appId: z.string().min(1),
   stream: streamSchema,
-  // Omitted: the app's default sender for the stream is used (core/messages.ts).
+  // Omitted: the app's default sender for the stream is used (services/messages.ts).
   from: email.optional(),
   to: email,
   // The subject becomes a mail header: a line break would split it, so it is refused here, not at SES.

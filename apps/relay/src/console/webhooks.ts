@@ -1,6 +1,7 @@
-import { clientFor } from "../core/messages";
-import { createWebhookForScope, deleteWebhookForScope, listWebhooksForScope, updateWebhookForScope, type WebhookPatch, type WebhookView } from "../core/webhooks";
-import { decodeCursor } from "../do/console-reads";
+import { clientFor } from "../do/client";
+import { type WebhookPatch, type WebhookView } from "../core/webhooks";
+import { createWebhookForScope, deleteWebhookForScope, listWebhooksForScope, updateWebhookForScope } from "../services/webhooks";
+import { decodeCursor } from "../core/cursor";
 import type { Env } from "../env";
 import { writeAudit } from "../lib/auth/audit";
 import { allows } from "../lib/auth/permissions";

@@ -1,12 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { apiRoute, data, json, readJson } from "../../../core/api-route";
+import { apiRoute, data, json, readJson } from "../../../api/route";
 import {
   cancelCampaignForScope,
   pauseCampaignForScope,
   resumeCampaignForScope,
   scheduleCampaignForScope,
-} from "../../../core/campaign-scope";
+} from "../../../services/campaign-scope";
 
 export const scheduleBody = z.object({ at: z.number().int() });
 

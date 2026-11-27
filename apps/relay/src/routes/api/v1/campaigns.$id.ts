@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { campaignPatch } from "../../../console/schemas";
-import { apiRoute, data, readJson } from "../../../core/api-route";
-import { deleteCampaignForScope, getCampaignForScope, updateCampaignForScope } from "../../../core/campaign-scope";
+import { campaignPatch } from "../../../services/schemas";
+import { apiRoute, data, readJson } from "../../../api/route";
+import { deleteCampaignForScope, getCampaignForScope, updateCampaignForScope } from "../../../services/campaign-scope";
 
 export const Route = createFileRoute("/api/v1/campaigns/$id")({
   server: {

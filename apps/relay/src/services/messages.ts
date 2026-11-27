@@ -4,18 +4,13 @@ import { address } from "../db/core/schema";
 import { securityDb } from "../db/security/client";
 import { app } from "../db/security/schema";
 import type { Env } from "../env";
-import type { KeyScope } from "./api-keys";
-import { loadWorkspaceLimits } from "./limits";
+import type { KeyScope, Scope } from "../shared/scope";
+import { clientFor } from "../do/client";
+import { loadWorkspaceLimits } from "../core/limits";
 import { contactValues, hasMergeToken } from "../shared/merge";
-import { templateSendSchema, type SendInput, type TemplateSendInput } from "./send-input";
+import { templateSendSchema, type SendInput, type TemplateSendInput } from "../core/send-input";
 import { RelayError } from "../shared/errors";
 import { type Stream } from "../shared/mail";
-
-export type Scope = { workspaceId: string; appId: string };
-
-export function clientFor(env: Env, workspaceId: string) {
-  return env.CLIENT.get(env.CLIENT.idFromName(workspaceId));
-}
 
 // The default is an address id in relay-core; whether it can send is checked by the client DO like any explicit from.
 async function defaultSender(env: Env, scope: Scope, stream: Stream): Promise<string> {
@@ -74,4 +69,8 @@ export async function getMessageForScope(env: Env, scope: Scope, id: string) {
 // The brand opt-out applies when the sending address is given, so a request names its From to get the brand rule.
 export function isSuppressedForScope(env: Env, scope: KeyScope, email: string, streamName: Stream, from?: string): Promise<boolean> {
   return clientFor(env, scope.workspaceId).isSuppressed(scope.workspaceId, email, streamName, from);
+}
+
+export function unsubscribeMessage(env: Env, workspaceId: string, messageId: string) {
+  return clientFor(env, workspaceId).unsubscribe(workspaceId, messageId);
 }

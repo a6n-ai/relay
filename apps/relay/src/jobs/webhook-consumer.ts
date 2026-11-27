@@ -1,20 +1,10 @@
-import type { Env, WebhookJob } from "../env";
-import { clientFor } from "./messages";
-import { describeError } from "./log";
+import type { Env } from "../env";
+import type { WebhookJob } from "../core/jobs";
+import { clientFor } from "../do/client";
+import { describeError } from "../core/log";
+import type { WebhookClaim, WebhookOutcome } from "../core/webhook-retry";
 
-export const MAX_WEBHOOK_ATTEMPTS = 6;
 const FETCH_TIMEOUT_MS = 10_000;
-
-export function webhookRetryDelaySeconds(attempt: number): number {
-  return Math.min(60 * 2 ** (attempt - 1), 3600);
-}
-
-export type WebhookClaim =
-  | { kind: "skip" }
-  | { kind: "busy"; retryInSeconds: number }
-  | { kind: "deliver"; attempt: number; url: string; body: string; headers: Record<string, string> };
-
-export type WebhookOutcome = { ok: true; status: number } | { ok: false; status?: number; error: string };
 
 function errorName(err: unknown): string {
   return err instanceof Error ? err.name : "unknown";

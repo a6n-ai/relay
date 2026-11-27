@@ -1,17 +1,18 @@
 import { env } from "cloudflare:workers";
 import handler from "@tanstack/react-start/server-entry";
 import { DOCS_404_PATH, isDocsMiss } from "./docs-404";
-import { receiveEmail } from "./core/email-worker";
-import { handleInboundBatch } from "./core/inbound-consumer";
-import { sweepAll } from "./core/sweep-all";
-import { handleSendBatch } from "./core/send-consumer";
-import { handleSesEventBatch } from "./core/ses-event-consumer";
+import { receiveEmail } from "./jobs/email-worker";
+import { handleInboundBatch } from "./jobs/inbound-consumer";
+import { sweepAll } from "./jobs/sweep-all";
+import { handleSendBatch } from "./jobs/send-consumer";
+import { handleSesEventBatch } from "./jobs/ses-event-consumer";
 import type { SesEventJob } from "./core/ses-events";
-import { handleWebhookBatch } from "./core/webhook-consumer";
-import type { Env, InboundJob, SendJob, WebhookJob } from "./env";
+import { handleWebhookBatch } from "./jobs/webhook-consumer";
+import type { Env } from "./env";
+import type { InboundJob, SendJob, WebhookJob } from "./core/jobs";
 
-export { CampaignWorkflow } from "./core/campaign-workflow";
-export { OpsWorkflow } from "./core/ops-workflow";
+export { CampaignWorkflow } from "./jobs/campaign-workflow";
+export { OpsWorkflow } from "./jobs/ops-workflow";
 export { ClientDO } from "./do/client-do";
 export { RelayRpc } from "./rpc/relay-rpc";
 

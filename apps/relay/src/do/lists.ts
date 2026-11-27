@@ -1,12 +1,12 @@
 import { newId } from "../shared/ids";
-import { decodeCursor, encodeCursor } from "./console-reads";
+import { decodeCursor, encodeCursor } from "../core/cursor";
 import { RelayError } from "../shared/errors";
 import { type ConsentSource, type ListView, type MemberView } from "../shared/views";
+import type { MemberInput } from "../core/member-input";
 import { PAGE_SIZE } from "../shared/limits";
 
 
 export type ListInput = { name: string; consentSource: ConsentSource; consentNote?: string };
-export type MemberInput = { email: string; firstName?: string; lastName?: string; consentAt?: number };
 
 
 

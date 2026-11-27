@@ -1,7 +1,6 @@
 import { AwsError } from "@foundry/cloud";
 import { sesTransport } from "../../core/ses";
 import type { Env } from "../../env";
-import type { InviteMailer } from "./invite-mailer";
 import type { OtpMailer } from "./otp-mailer";
 
 // Never logs the code, the link or the address: the mail itself is the only copy.
@@ -46,6 +45,9 @@ export function sesOtpMailer(env: Env): OtpMailer {
     },
   };
 }
+
+export type InviteMail = { id: string; role: string };
+export type InviteMailer = { send(email: string, invite: InviteMail): Promise<void> };
 
 export function sesInviteMailer(env: Env): InviteMailer {
   return {

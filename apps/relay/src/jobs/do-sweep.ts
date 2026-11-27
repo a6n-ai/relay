@@ -5,7 +5,7 @@ import { workspaceProfile } from "../db/core/schema";
 import { securityDb } from "../db/security/client";
 import { workspace } from "../db/security/schema";
 import type { Env } from "../env";
-import { clientFor } from "./messages";
+import { clientFor } from "../do/client";
 
 export type SweepResult = {
   total: number;

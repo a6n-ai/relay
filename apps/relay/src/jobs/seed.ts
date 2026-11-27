@@ -1,5 +1,4 @@
 import { and, eq, inArray, sql } from "drizzle-orm";
-import { z } from "zod";
 import { coreDb } from "../db/core/client";
 import { sendingDomain } from "../db/core/schema";
 import { securityDb } from "../db/security/client";
@@ -8,27 +7,14 @@ import type { Env } from "../env";
 import { createAuth } from "../lib/auth";
 import { writeAudit } from "../lib/auth/audit";
 import { newId } from "../shared/ids";
-import { readDomainState } from "../console/domains";
-import { createApp } from "./apps";
+import type { SeedInput } from "../core/ops-params";
+import { readDomainState } from "../services/domain-state";
+import { createApp } from "../core/apps";
 
-import { createApiKey } from "./api-keys";
-import { isProtectedDomain } from "./protected-domains";
+import { createApiKey } from "../services/api-keys";
+import { isProtectedDomain } from "../core/protected-domains";
 
-export type SeedInput = {
-  ownerEmails: string[];
-  workspace: { name: string; slug: string };
-  app: { name: string; slug: string };
-  domain?: { domain: string; sesRegion: string };
-};
 export type SeedResult = { workspaceId: string; appId: string; apiKey: string };
-
-const text = z.string().min(1);
-export const seedInputSchema = z.object({
-  ownerEmails: z.array(z.string().trim().toLowerCase().pipe(z.email())).min(1),
-  workspace: z.object({ name: text, slug: text }),
-  app: z.object({ name: text, slug: text }),
-  domain: z.object({ domain: text, sesRegion: text }).optional(),
-});
 
 // Each better-auth call commits on its own, so a failure part-way leaves rows that a rerun completes: every step
 // looks up before it writes. Reads and the domain check come first, so a refused domain writes nothing.

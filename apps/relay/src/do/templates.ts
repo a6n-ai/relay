@@ -1,5 +1,5 @@
 import { newId } from "../shared/ids";
-import { decodeCursor, encodeCursor } from "./console-reads";
+import { decodeCursor, encodeCursor } from "../core/cursor";
 import { RelayError } from "../shared/errors";
 import { type TemplateView } from "../shared/views";
 import { PAGE_SIZE } from "../shared/limits";

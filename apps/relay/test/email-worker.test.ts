@@ -4,7 +4,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi, type MockIn
 import worker from "../src/server";
 import { setWorkspaceStatus } from "../src/console/admin";
 import { createAddress } from "../src/core/addresses";
-import type { InboundJob } from "../src/env";
+import type { InboundJob } from "../src/core/jobs";
 import { coreDb } from "../src/db/core/client";
 import { address } from "../src/db/core/schema";
 import { securityDb } from "../src/db/security/client";

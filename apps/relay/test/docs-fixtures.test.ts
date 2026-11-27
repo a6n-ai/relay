@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { ZodType } from "zod";
-import { campaignPatch, listInput, listPatch, templateInput, templatePatch } from "../src/console/schemas";
+import { campaignPatch, listInput, listPatch, templateInput, templatePatch } from "../src/services/schemas";
 import { hookInputSchema } from "../src/core/audience-hook";
-import { campaignCreateInput } from "../src/core/campaign-scope";
-import { membersImportInput } from "../src/core/lists";
+import { campaignCreateInput } from "../src/services/campaign-scope";
+import { membersImportInput } from "../src/services/lists";
 import { memberInput } from "../src/core/member-input";
 import { sendBody, templateSendSchema } from "../src/core/send-input";
 import { webhookInputSchema, webhookPatchSchema } from "../src/core/webhooks";

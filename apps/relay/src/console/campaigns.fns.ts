@@ -21,7 +21,8 @@ import {
   unscheduleCampaignFor,
   updateCampaignFor,
 } from "./campaigns";
-import { campaignPatch, id, name, postalAddress, validate } from "./schemas";
+import { id, name, postalAddress, validate } from "./schemas";
+import { campaignPatch } from "../services/schemas";
 import { RelayError } from "../shared/errors";
 
 const READ = { permission: { campaign: ["read"] } };

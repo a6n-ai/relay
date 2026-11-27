@@ -1,7 +1,7 @@
 import { env, runInDurableObject } from "cloudflare:test";
 import { eq } from "drizzle-orm";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi, type MockInstance } from "vitest";
-import { runCampaign, type CampaignStep } from "../src/core/campaign-workflow";
+import { runCampaign, type CampaignStep } from "../src/jobs/campaign-workflow";
 import { ensureWorkspaceProfile } from "../src/core/workspace-profile";
 import type { ClientDO } from "../src/do/client-do";
 import { coreDb } from "../src/db/core/client";

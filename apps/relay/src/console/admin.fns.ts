@@ -3,7 +3,7 @@ import { getRequestHeaders } from "@tanstack/react-start/server";
 import { env } from "cloudflare:workers";
 import { z } from "zod";
 import { requirePlatformAdmin, toResponseError } from "./actor";
-import { AUDIENCE_BINDINGS } from "../core/audience-hook";
+import { AUDIENCE_BINDINGS } from "../core/audience-protocol";
 import {
   listWorkspaces,
   setAudienceBindingFor,

@@ -1,9 +1,10 @@
 import { and, eq, or, sql } from "drizzle-orm";
 import type { DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
-import { MAX_INBOUND_BYTES } from "../core/email-worker";
+import { MAX_INBOUND_BYTES } from "../core/inbound-limits";
 import { InboundParseError, parseInboundEml, safeFilename, type ParsedInbound } from "../core/inbound-parse";
 import { mailboxReceivedJson } from "../core/mailbox-received";
-import type { Env, InboundJob } from "../env";
+import type { Env } from "../env";
+import type { InboundJob } from "../core/jobs";
 import { newId } from "../shared/ids";
 import * as schema from "./client-schema";
 import { listWebhookRows, toWebhookView } from "./webhooks";

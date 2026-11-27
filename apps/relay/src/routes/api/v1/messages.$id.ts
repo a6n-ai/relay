@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { env } from "cloudflare:workers";
-import { resolveBearer, withinRateLimit } from "../../../core/api-keys";
-import { getMessageForScope } from "../../../core/messages";
+import { resolveBearer, withinRateLimit } from "../../../services/api-keys";
+import { getMessageForScope } from "../../../services/messages";
 
 export const Route = createFileRoute("/api/v1/messages/$id")({
   server: {

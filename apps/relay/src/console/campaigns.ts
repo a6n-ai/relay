@@ -1,7 +1,8 @@
 import { and, eq, sql } from "drizzle-orm";
 import { hasDataToken } from "../shared/campaign-problems";
-import { refreshWorkspaceLimits } from "../core/limits";
-import { clientFor } from "../core/messages";
+import { startCampaignRun, stopRun, verifiedSenders } from "../services/campaign-run";
+import { refreshWorkspaceLimits } from "../services/limits";
+import { clientFor } from "../do/client";
 import { fillUnsubscribe, MERGE_SAMPLES, renderMerge, unknownMergeFields } from "../shared/merge";
 import { sanitizeEmailHtml } from "../core/sanitize-html";
 import { ensureWorkspaceProfile, getWorkspaceProfile } from "../core/workspace-profile";
@@ -9,9 +10,9 @@ import { coreDb } from "../db/core/client";
 import { address, sendingDomain, workspaceProfile } from "../db/core/schema";
 import { securityDb } from "../db/security/client";
 import { user as securityUser } from "../db/security/schema";
-import { decodeCursor } from "../do/console-reads";
+import { decodeCursor } from "../core/cursor";
 import type { CampaignPatch, CampaignSummary } from "../do/campaigns";
-import type { SendResult } from "../do/client-do";
+import type { SendResult } from "../do/types";
 import type { Env } from "../env";
 import { writeAudit } from "../lib/auth/audit";
 import { allows } from "../lib/auth/permissions";
@@ -36,39 +37,6 @@ function requireWrite(actor: ConsoleActor): void {
 function requireSend(actor: ConsoleActor): void {
   if (!allows(actor.roles, SEND)) throw new RelayError("forbidden");
   if (actor.workspaceStatus === "suspended") throw new RelayError("workspace suspended");
-}
-
-// Instance ids carry the run, so a re-scheduled campaign never collides with a terminated instance.
-export async function stopRun(env: Env, campaignId: string, runSeq: number): Promise<void> {
-  try {
-    const instance = await env.CAMPAIGNS.get(`${campaignId}-${runSeq}`);
-    await instance.terminate();
-  } catch {
-    // The run already finished, or was never created; the DO state is authoritative either way.
-  }
-}
-
-// Same join as the send path's sender snapshot: the address's domain must be verified in this workspace.
-export async function verifiedSenders(env: Env, workspaceId: string, appId: string): Promise<string[]> {
-  const rows = await coreDb(env)
-    .select({ email: address.email })
-    .from(address)
-    .innerJoin(
-      sendingDomain,
-      and(
-        eq(sendingDomain.workspaceId, address.workspaceId),
-        eq(sendingDomain.domain, sql`substr(${address.email}, instr(${address.email}, '@') + 1)`),
-      ),
-    )
-    .where(
-      and(
-        eq(address.workspaceId, workspaceId),
-        eq(address.appId, appId),
-        eq(address.canSend, true),
-        eq(sendingDomain.status, "verified"),
-      ),
-    );
-  return rows.map((r) => r.email);
 }
 
 async function campaignOr404(env: Env, actor: ConsoleActor, id: string): Promise<CampaignView> {
@@ -203,24 +171,6 @@ export async function previewHtmlFor(
     text: fillUnsubscribe(renderMerge(campaign.text, MERGE_SAMPLES, "text"), "#"),
     subject: renderMerge(campaign.subject, MERGE_SAMPLES, "subject"),
   };
-}
-
-// The one scheduling path: the console and the API both call it. The caller maps each refusal to its own error.
-export async function startCampaignRun(env: Env, workspaceId: string, id: string, at: number) {
-  const profile = await getWorkspaceProfile(env, workspaceId);
-  const client = clientFor(env, workspaceId);
-  const outcome = await client.scheduleCampaign(workspaceId, id, at, profile.physicalAddress ?? null);
-  if (outcome === "missing" || outcome === "not_draft" || "problems" in outcome) return outcome;
-  try {
-    await env.CAMPAIGNS.create({
-      id: `${id}-${outcome.runSeq}`,
-      params: { workspaceId, campaignId: id, runSeq: outcome.runSeq, at },
-    });
-  } catch {
-    await client.unscheduleCampaign(workspaceId, id);
-    return "could_not_schedule" as const;
-  }
-  return outcome;
 }
 
 export async function scheduleCampaignFor(env: Env, actor: ConsoleActor, id: string, at: number): Promise<{ runSeq: number }> {

@@ -1,8 +1,8 @@
 import { isSesRegion } from "../shared/regions";
 import { and, asc, count, eq, gte, sql } from "drizzle-orm";
 import { INBOUND_GRACE_MS } from "../core/addresses";
-import { clientFor } from "../core/messages";
-import { refreshWorkspaceLimits } from "../core/limits";
+import { clientFor } from "../do/client";
+import { refreshWorkspaceLimits } from "../services/limits";
 import { utcDay } from "../core/usage";
 import { ensureWorkspaceProfile, SELF_SERVE_QUOTA } from "../core/workspace-profile";
 import { coreDb } from "../db/core/client";

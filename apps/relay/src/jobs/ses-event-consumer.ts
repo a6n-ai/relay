@@ -1,7 +1,7 @@
 import type { Env } from "../env";
-import { clientFor } from "./messages";
-import type { SesEventJob } from "./ses-events";
-import { bumpUsage } from "./usage";
+import { clientFor } from "../do/client";
+import type { SesEventJob } from "../core/ses-events";
+import { bumpUsage } from "../core/usage";
 
 function errorText(err: unknown): string {
   return err instanceof Error ? err.message : String(err);

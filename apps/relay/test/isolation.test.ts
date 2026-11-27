@@ -1,6 +1,6 @@
 import { createExecutionContext, env, SELF } from "cloudflare:test";
 import { beforeAll, describe, expect, it } from "vitest";
-import { createApiKey } from "../src/core/api-keys";
+import { createApiKey } from "../src/services/api-keys";
 import { securityDb } from "../src/db/security/client";
 import { app, member, user, workspace } from "../src/db/security/schema";
 import { RelayRpc } from "../src/rpc/relay-rpc";

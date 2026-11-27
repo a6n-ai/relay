@@ -1,8 +1,9 @@
 import { WorkerEntrypoint } from "cloudflare:workers";
 import { z } from "zod";
-import { resolveApiKey, withinRateLimit, type KeyScope } from "../core/api-keys";
+import { resolveApiKey, withinRateLimit } from "../services/api-keys";
+import { type KeyScope } from "../shared/scope";
 import { logFailure } from "../core/log";
-import { deleteAudienceHookForScope, getAudienceHookForScope, setAudienceHookForScope } from "../core/audience-hook";
+import { deleteAudienceHookForScope, getAudienceHookForScope, setAudienceHookForScope } from "../services/audience-hook";
 import {
   campaignCreateInput,
   cancelCampaignForScope,
@@ -15,9 +16,9 @@ import {
   resumeCampaignForScope,
   scheduleCampaignForScope,
   updateCampaignForScope,
-} from "../core/campaign-scope";
+} from "../services/campaign-scope";
 import { memberInput } from "../core/member-input";
-import { messagesByKeysForScope, suppressForScope, suppressionStatusForScope } from "../core/lookups";
+import { messagesByKeysForScope, suppressForScope, suppressionStatusForScope } from "../services/lookups";
 import {
   addMemberForScope,
   createListForScope,
@@ -28,13 +29,13 @@ import {
   listMembersForScope,
   removeMemberForScope,
   updateListForScope,
-} from "../core/lists";
+} from "../services/lists";
 import {
   getMessageForScope,
   isSuppressedForScope,
   sendMessage,
   sendTemplateMessage,
-} from "../core/messages";
+} from "../services/messages";
 import { sendBody, templateSendSchema } from "../core/send-input";
 import {
   createTemplateForScope,
@@ -43,8 +44,8 @@ import {
   listTemplatesForScope,
   templateOverridesForScope,
   updateTemplateForScope,
-} from "../core/templates";
-import { campaignPatch, listInput, listPatch, templateInput, templatePatch } from "../console/schemas";
+} from "../services/templates";
+import { campaignPatch, listInput, listPatch, templateInput, templatePatch } from "../services/schemas";
 import type { Env } from "../env";
 import { RelayError } from "../shared/errors";
 import { STREAMS } from "../shared/mail";

@@ -3,7 +3,7 @@ import { IMPLIED_CONSENT_MS } from "../core/campaigns";
 import { contactValues } from "../shared/merge";
 import type { ResolvedSendInput } from "../core/send-input";
 import { newId } from "../shared/ids";
-import type { SendResult } from "./client-do";
+import type { SendResult } from "./types";
 import { getTemplateRow, type RenderedTemplate } from "./templates";
 import { RelayError } from "../shared/errors";
 import { type TemplateView, type AutomationView } from "../shared/views";

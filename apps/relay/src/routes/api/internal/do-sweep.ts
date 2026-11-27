@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { env } from "cloudflare:workers";
 import { guardInternal } from "../../../core/internal-guard";
-import { sweepAll } from "../../../core/sweep-all";
+import { sweepAll } from "../../../jobs/sweep-all";
 
 export const Route = createFileRoute("/api/internal/do-sweep")({
   server: {

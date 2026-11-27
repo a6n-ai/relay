@@ -1,8 +1,8 @@
 import { z } from "zod";
 import type { Env } from "../env";
 import { writeAudit } from "../lib/auth/audit";
-import type { KeyScope } from "./api-keys";
-import { clientFor } from "./messages";
+import type { KeyScope } from "../shared/scope";
+import { clientFor } from "../do/client";
 import { RelayError } from "../shared/errors";
 import { emailSchema } from "../shared/schemas";
 

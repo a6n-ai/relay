@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { deleteAudienceHookForScope, getAudienceHookForScope, setAudienceHookForScope } from "../../../core/audience-hook";
-import { apiRoute, data, json, readJson } from "../../../core/api-route";
+import { deleteAudienceHookForScope, getAudienceHookForScope, setAudienceHookForScope } from "../../../services/audience-hook";
+import { apiRoute, data, json, readJson } from "../../../api/route";
 
 // The secret is returned once, by PUT. GET never carries it.
 export const Route = createFileRoute("/api/v1/audience-hook")({

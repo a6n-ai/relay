@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { env } from "cloudflare:workers";
-import { resolveBearer, withinRateLimit } from "../../../core/api-keys";
-import { createWebhookForScope, listWebhooksForScope, webhookInputSchema } from "../../../core/webhooks";
+import { resolveBearer, withinRateLimit } from "../../../services/api-keys";
+import { webhookInputSchema } from "../../../core/webhooks";
+import { createWebhookForScope, listWebhooksForScope } from "../../../services/webhooks";
 import { codeOf } from "../../../shared/errors";
 
 export const Route = createFileRoute("/api/v1/webhooks")({

@@ -1,11 +1,11 @@
 import { eq } from "drizzle-orm";
-import { INBOUND_GRACE_MS, inboxForRecipient } from "./addresses";
+import { INBOUND_GRACE_MS, inboxForRecipient } from "../core/addresses";
 import { securityDb } from "../db/security/client";
 import { workspace } from "../db/security/schema";
-import type { Env, InboundJob } from "../env";
-import { describeError } from "./log";
-
-export const MAX_INBOUND_BYTES = 26_214_400;
+import type { Env } from "../env";
+import type { InboundJob } from "../core/jobs";
+import { describeError } from "../core/log";
+import { MAX_INBOUND_BYTES } from "../core/inbound-limits";
 
 // Fails closed: a missing workspace row is treated as not accepting mail.
 async function acceptsInbound(env: Env, workspaceId: string, now: number): Promise<boolean> {

@@ -1,4 +1,4 @@
-import { AUDIENCE_BINDINGS, HOOK_PAGE_LIMIT, type AudienceRequest, type HookCall } from "../core/audience-hook";
+import { AUDIENCE_BINDINGS, HOOK_PAGE_LIMIT, type AudienceRequest, type HookCall } from "../core/audience-protocol";
 import { webhookHeaders } from "../core/mailbox-received";
 import { decryptSecret, encryptSecret, newWebhookSecret, signBody } from "../core/webhook-crypto";
 import { isPublicWebhookUrl } from "../core/webhooks";

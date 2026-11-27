@@ -1,8 +1,5 @@
 import type { Env } from "../../env";
-import { sesInviteMailer } from "./system-mail";
-
-type InviteMail = { id: string; role: string };
-export type InviteMailer = { send(email: string, invite: InviteMail): Promise<void> };
+import { sesInviteMailer, type InviteMail, type InviteMailer } from "./system-mail";
 
 // The link is never logged: it carries the invitation id, which accepts the invite.
 export const consoleInviteMailer: InviteMailer = {

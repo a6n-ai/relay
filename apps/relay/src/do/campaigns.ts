@@ -1,6 +1,6 @@
 import { brandDomain, IMPLIED_CONSENT_MS } from "../core/campaigns";
 import { newId } from "../shared/ids";
-import { decodeCursor, encodeCursor } from "./console-reads";
+import { decodeCursor, encodeCursor } from "../core/cursor";
 import { getTemplateRow } from "./templates";
 import { RelayError } from "../shared/errors";
 import { type CampaignView, type AudiencePreview, type CampaignStats } from "../shared/views";

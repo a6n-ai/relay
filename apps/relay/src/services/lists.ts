@@ -1,9 +1,10 @@
 import { writeAudit } from "../lib/auth/audit";
-import type { KeyScope } from "./api-keys";
-import { csvCell, membersCsvHeader } from "./csv";
-import { memberInput } from "./member-input";
-import { clientFor } from "./messages";
-import type { ListInput, MemberInput } from "../do/lists";
+import type { KeyScope } from "../shared/scope";
+import { csvCell, membersCsvHeader } from "../core/csv";
+import { memberInput } from "../core/member-input";
+import { clientFor } from "../do/client";
+import type { ListInput } from "../do/lists";
+import type { MemberInput } from "../core/member-input";
 import type { Env } from "../env";
 import { z } from "zod";
 import { RelayError } from "../shared/errors";

@@ -1,4 +1,4 @@
-import { clientFor } from "../core/messages";
+import { clientFor } from "../do/client";
 import { getWorkspaceProfile } from "../core/workspace-profile";
 import type { AutomationInput, AutomationPatch } from "../do/automations";
 import type { Env } from "../env";
@@ -6,7 +6,7 @@ import { writeAudit } from "../lib/auth/audit";
 import { allows } from "../lib/auth/permissions";
 import { type ConsoleActor } from "./actor";
 import { getApp } from "./apps";
-import { verifiedSenders } from "./campaigns";
+import { verifiedSenders } from "../services/campaign-run";
 import { RelayError } from "../shared/errors";
 import { type AutomationView } from "../shared/views";
 

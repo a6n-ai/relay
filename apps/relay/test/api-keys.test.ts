@@ -1,7 +1,7 @@
 import { createExecutionContext, env, runInDurableObject, SELF } from "cloudflare:test";
 import { eq } from "drizzle-orm";
 import { beforeAll, describe, expect, it, vi } from "vitest";
-import { createApiKey, resolveApiKey, revokeApiKey } from "../src/core/api-keys";
+import { createApiKey, resolveApiKey, revokeApiKey } from "../src/services/api-keys";
 import { ensureWorkspaceProfile } from "../src/core/workspace-profile";
 import { coreDb } from "../src/db/core/client";
 import { address, sendingDomain } from "../src/db/core/schema";

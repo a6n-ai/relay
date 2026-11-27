@@ -4,7 +4,6 @@ import { address, sendingDomain, workspaceProfile } from "../db/core/schema";
 import { securityDb } from "../db/security/client";
 import { workspace } from "../db/security/schema";
 import type { Env } from "../env";
-import { clientFor } from "./messages";
 import { ensureWorkspaceProfile } from "./workspace-profile";
 import { DEFAULT_MONTHLY_QUOTA } from "../shared/limits";
 
@@ -47,13 +46,4 @@ export async function loadWorkspaceLimits(env: Env, workspaceId: string): Promis
     senders: Object.fromEntries(rows.map((r) => [r.email, { name: r.name, replyTo: r.replyTo, sesRegion: r.sesRegion }])),
     fetchedAt: Date.now(),
   };
-}
-
-// A failed refresh is not fatal: the DO's 5-minute TTL is the backstop. Logs carry ids only.
-export async function refreshWorkspaceLimits(env: Env, workspaceId: string): Promise<void> {
-  try {
-    await clientFor(env, workspaceId).refreshLimits(workspaceId);
-  } catch {
-    console.error("refreshLimits failed", workspaceId);
-  }
 }

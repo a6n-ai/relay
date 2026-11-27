@@ -1,6 +1,6 @@
 import { writeAudit } from "../lib/auth/audit";
-import type { KeyScope } from "./api-keys";
-import { clientFor } from "./messages";
+import type { KeyScope } from "../shared/scope";
+import { clientFor } from "../do/client";
 import { unknownMergeFields } from "../shared/merge";
 import type { TemplateInput, TemplateOverride } from "../do/templates";
 import type { Env } from "../env";

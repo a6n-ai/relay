@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { listPatch } from "../../../console/schemas";
-import { apiRoute, data, readJson } from "../../../core/api-route";
-import { deleteListForScope, getListForScope, updateListForScope } from "../../../core/lists";
+import { listPatch } from "../../../services/schemas";
+import { apiRoute, data, readJson } from "../../../api/route";
+import { deleteListForScope, getListForScope, updateListForScope } from "../../../services/lists";
 
 export const Route = createFileRoute("/api/v1/lists/$id")({
   server: {

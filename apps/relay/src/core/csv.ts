@@ -1,5 +1,5 @@
 import { memberInput } from "./member-input";
-import type { MemberInput } from "../do/lists";
+import type { MemberInput } from "./member-input";
 import { RelayError } from "../shared/errors";
 
 export type ParsedContacts = { rows: MemberInput[]; invalid: number; duplicates: number };

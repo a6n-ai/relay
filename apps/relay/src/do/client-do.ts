@@ -2,7 +2,7 @@ import { DurableObject } from "cloudflare:workers";
 import { and, eq, gte, inArray, isNotNull, isNull, lt, ne, or, sql, type SQLWrapper } from "drizzle-orm";
 import { drizzle, type DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
 import { brandDomain, campaignProblems, IMPLIED_CONSENT_MS, type CampaignProblem } from "../core/campaigns";
-import { CHUNK_SIZE, ENQUEUE_BATCH } from "../core/campaign-workflow";
+import { CHUNK_SIZE, ENQUEUE_BATCH } from "../core/campaign-run";
 import { contactValues, fillUnsubscribe, hasMergeToken, MERGE_SAMPLES, renderMerge, type MergeData } from "../shared/merge";
 import { sesSendRate } from "../core/send-rate";
 import type { SesAttachment, SesSendRequest } from "../core/ses";
@@ -15,9 +15,10 @@ import { utcDay } from "../core/usage";
 import { decryptSecret, encryptSecret, newWebhookSecret, signBody } from "../core/webhook-crypto";
 import { webhookBody, webhookHeaders } from "../core/mailbox-received";
 import { deleteFailureRows, deleteHistoryRows, detachDomainSenders, domainUsage, failureBatch, historyBatch, rawKeyInUse } from "./domain-cleanup";
-import { MAX_WEBHOOK_ATTEMPTS, webhookRetryDelaySeconds, type WebhookClaim, type WebhookOutcome } from "../core/webhook-consumer";
+import { MAX_WEBHOOK_ATTEMPTS, webhookRetryDelaySeconds, type WebhookClaim, type WebhookOutcome } from "../core/webhook-retry";
 import { isPublicWebhookUrl, type WebhookInput, type WebhookPatch, type WebhookView } from "../core/webhooks";
-import type { Env, InboundJob } from "../env";
+import type { Env } from "../env";
+import type { InboundJob } from "../core/jobs";
 import { newId } from "../shared/ids";
 import { attachmentViews, getInboundFailureRow, listDeliveryRows, listInboundFailureRows, listMessageRows, listSuppressionRows, messagesByKeyRows, type MessageByKey, type FailureView, type SuppressionView, messageBody, readMessageDetail, readMessageFile, type MessageAccess, type MessageBody, type MessageFile, type MessageDetail, type MessageQuery, type MessageSummary } from "./console-reads";
 import { storeInbound, writeInboundFailure, type InboundDeps, type InboundResult } from "./inbound";
@@ -25,7 +26,8 @@ import * as schema from "./client-schema";
 import { describeError } from "../core/log";
 import { bumpCampaign, campaignStatsRow, statsOf, createCampaignRow, deleteCampaignRow, getCampaignRow, listCampaignRows, previewAudienceRows, recipientQuery, updateCampaignRow, type CampaignPatch, type CampaignSummary } from "./campaigns";
 import { CLIENT_MIGRATIONS, migrate } from "./migrations";
-import { addMemberRow, createListRow, deleteListRow, listListRows, listMemberRows, exportMemberRows, IMPORT_CHUNK, importMemberRow, removeMemberRow, updateMemberRow, updateListRow, type ImportResult, type ListInput, type MemberInput } from "./lists";
+import { addMemberRow, createListRow, deleteListRow, listListRows, listMemberRows, exportMemberRows, IMPORT_CHUNK, importMemberRow, removeMemberRow, updateMemberRow, updateListRow, type ImportResult, type ListInput } from "./lists";
+import { type MemberInput } from "../core/member-input";
 import { maskEmails } from "../core/mask-emails";
 import { createTemplateRow, deleteTemplateRow, getTemplateRow, listTemplateRows, templateOverrideRows, updateTemplateRow, type TemplateInput, type RenderedTemplate, type TemplateOverride } from "./templates";
 import { deleteWebhookRow, failDeliveryRow, listWebhookRows, toWebhookView, updateWebhookRow, type WebhookRow } from "./webhooks";
@@ -38,25 +40,13 @@ import {
   type AudienceHookInput,
   type AudienceHookView,
 } from "./audience-hook";
-import type { AudiencePage, HookCall } from "../core/audience-hook";
+import type { AttachmentView, MessageView, SendResult } from "./types";
+import type { AudiencePage, HookCall } from "../core/audience-protocol";
 import { createAutomationRow, deleteAutomationRow, earliestDue, enrolAutomations, listAutomationRows, nextAutomationAlarm, runDueAutomationRows, setAutomationEnabledRow, updateAutomationRow, type AutomationInput, type AutomationPatch } from "./automations";
 import { RelayError, codeOf } from "../shared/errors";
 import { type DeliveryView, type CampaignStats, type AudiencePreview, type CampaignView, type ListView, type MemberView, type TemplateView, type AutomationView } from "../shared/views";
 import { type Stream, type SuppressionReason } from "../shared/mail";
 import { DAY_MS, DEFAULT_MONTHLY_QUOTA } from "../shared/limits";
-
-export type AttachmentView = {
-  id: string;
-  filename: string;
-  contentType: string;
-  sizeBytes: number;
-  contentId: string | null;
-  position: number;
-};
-
-export type MessageView = typeof schema.message.$inferSelect & { html: string | null; attachments: AttachmentView[] };
-
-export type SendResult = { messageId: string; status: "queued" | "sent" | "failed" | "suppressed"; duplicate: boolean };
 
 // failed: indexes into the input whose transaction threw. They rolled back alone and must be retried.
 export type SesEventResult = {

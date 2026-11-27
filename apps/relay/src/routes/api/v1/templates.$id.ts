@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { templatePatch } from "../../../console/schemas";
-import { apiRoute, data, readJson } from "../../../core/api-route";
-import { deleteTemplateForScope, getTemplateForScope, updateTemplateForScope } from "../../../core/templates";
+import { templatePatch } from "../../../services/schemas";
+import { apiRoute, data, readJson } from "../../../api/route";
+import { deleteTemplateForScope, getTemplateForScope, updateTemplateForScope } from "../../../services/templates";
 
 export const Route = createFileRoute("/api/v1/templates/$id")({
   server: {

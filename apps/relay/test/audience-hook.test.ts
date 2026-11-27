@@ -1,7 +1,8 @@
 import { env, runInDurableObject } from "cloudflare:test";
 import { NonRetryableError } from "cloudflare:workflows";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { fetchAudiencePage, parseAudiencePage, type HookCall } from "../src/core/audience-hook";
+import { fetchAudiencePage, parseAudiencePage } from "../src/core/audience-hook";
+import { type HookCall } from "../src/core/audience-protocol";
 import { signBody } from "../src/core/webhook-crypto";
 import type { Env } from "../src/env";
 import { applyMigrations, seedVerifiedSender } from "./migrate";

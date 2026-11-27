@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { apiRoute, data, readJson } from "../../../core/api-route";
-import { importMembersForScope, membersImportInput } from "../../../core/lists";
+import { apiRoute, data, readJson } from "../../../api/route";
+import { importMembersForScope, membersImportInput } from "../../../services/lists";
 
 export const Route = createFileRoute("/api/v1/lists/$id/import")({
   server: {

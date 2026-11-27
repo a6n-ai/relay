@@ -3,8 +3,8 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { requireActor, uniqueViolation } from "../src/console/actor";
 import { addApp, createKey, deleteAudienceHookFor, deleteKey, getApp, listApps, listKeys, renameApp, renameKey, revokeKey, setAudienceHookFor } from "../src/console/apps";
 import { createApp } from "../src/core/apps";
-import { clientFor } from "../src/core/messages";
-import { resolveApiKey } from "../src/core/api-keys";
+import { clientFor } from "../src/do/client";
+import { resolveApiKey } from "../src/services/api-keys";
 import { addMember, cookieFor, createWorkspace, ORIGIN, setActive } from "./console-helpers";
 import { applyMigrations } from "./migrate";
 

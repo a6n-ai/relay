@@ -1,4 +1,4 @@
-import { releaseStalePendingDomains } from "../console/domains";
+import { releaseStalePendingDomains } from "../services/domain-state";
 import type { Env } from "../env";
 import { sweepWorkspaces } from "./do-sweep";
 

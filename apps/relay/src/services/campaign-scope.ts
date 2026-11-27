@@ -1,9 +1,9 @@
 import { writeAudit } from "../lib/auth/audit";
-import type { KeyScope } from "./api-keys";
+import type { KeyScope } from "../shared/scope";
 import { hasDataToken } from "../shared/campaign-problems";
-import { clientFor } from "./messages";
+import { clientFor } from "../do/client";
 import { unknownMergeFields } from "../shared/merge";
-import { startCampaignRun, stopRun, verifiedSenders } from "../console/campaigns";
+import { startCampaignRun, stopRun, verifiedSenders } from "./campaign-run";
 import type { CampaignPatch, CampaignSummary } from "../do/campaigns";
 import type { Env } from "../env";
 import { z } from "zod";

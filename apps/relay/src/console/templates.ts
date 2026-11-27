@@ -1,7 +1,7 @@
-import { clientFor } from "../core/messages";
+import { clientFor } from "../do/client";
 import { fillUnsubscribe, MERGE_SAMPLES, renderMerge, unknownMergeFields } from "../shared/merge";
 import { sanitizeEmailHtml } from "../core/sanitize-html";
-import { decodeCursor } from "../do/console-reads";
+import { decodeCursor } from "../core/cursor";
 import type { TemplateInput } from "../do/templates";
 import type { Env } from "../env";
 import { writeAudit } from "../lib/auth/audit";

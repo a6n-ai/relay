@@ -1,6 +1,6 @@
 import { env, runInDurableObject } from "cloudflare:test";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import type { InboundJob } from "../src/env";
+import type { InboundJob } from "../src/core/jobs";
 import { applyMigrations } from "./migrate";
 
 beforeAll(async () => {

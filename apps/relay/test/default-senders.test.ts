@@ -4,7 +4,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 import { requireActor } from "../src/console/actor";
 import { addApp, getDefaultSenders, setDefaultSendersFor } from "../src/console/apps";
 import { removeAddress, updateAddress } from "../src/console/domains";
-import { createApiKey } from "../src/core/api-keys";
+import { createApiKey } from "../src/services/api-keys";
 import { createAddress } from "../src/core/addresses";
 import { coreDb } from "../src/db/core/client";
 import { address, sendingDomain } from "../src/db/core/schema";

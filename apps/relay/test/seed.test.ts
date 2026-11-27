@@ -1,9 +1,9 @@
 import { env, SELF } from "cloudflare:test";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { beforeAll, describe, expect, it } from "vitest";
-import { resolveApiKey } from "../src/core/api-keys";
+import { resolveApiKey } from "../src/services/api-keys";
 import { guardInternal } from "../src/core/internal-guard";
-import { seed } from "../src/core/seed";
+import { seed } from "../src/jobs/seed";
 import { memorySesIdentity } from "../src/core/ses-identity";
 import { securityDb } from "../src/db/security/client";
 import { coreDb } from "../src/db/core/client";

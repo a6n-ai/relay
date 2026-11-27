@@ -3,9 +3,9 @@ import type { DrizzleSqliteDODatabase } from "drizzle-orm/durable-sqlite";
 import { safeDownloadName } from "../core/download";
 import { contactValues, parseMergeData, renderMerge } from "../shared/merge";
 import type { Env } from "../env";
-import type { AttachmentView, MessageView } from "./client-do";
+import type { AttachmentView, MessageView } from "./types";
 import * as schema from "./client-schema";
-import { ID_SHAPE } from "../shared/ids";
+import { decodeCursor, encodeCursor } from "../core/cursor";
 import { RelayError } from "../shared/errors";
 import { type DeliveryView } from "../shared/views";
 import { type Stream, type SuppressionReason, type MessageStatus } from "../shared/mail";
@@ -50,19 +50,6 @@ export type MessageDetail = MessageView & { events: EventView[]; thread: ThreadI
 type Db = DrizzleSqliteDODatabase<typeof schema>;
 
 const THREAD_LIMIT = 20;
-
-export function encodeCursor(createdAt: number, id: string): string {
-  return `${createdAt}.${id}`;
-}
-
-export function decodeCursor(raw: string): { createdAt: number; id: string } | null {
-  const dot = raw.indexOf(".");
-  if (dot < 1) return null;
-  const ts = raw.slice(0, dot);
-  const id = raw.slice(dot + 1);
-  if (!/^\d{1,15}$/.test(ts) || !ID_SHAPE.test(id)) return null;
-  return { createdAt: Number(ts), id };
-}
 
 // Non-correlated: the granted ids reach SQL as one bound JSON array, so the bound-parameter limit never applies.
 export function visibleTo(access: MessageAccess): SQL {

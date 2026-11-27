@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { templateInput } from "../../../console/schemas";
-import { apiRoute, data, json, readJson } from "../../../core/api-route";
-import { createTemplateForScope, listTemplatesForScope } from "../../../core/templates";
-import { decodeCursor } from "../../../do/console-reads";
+import { templateInput } from "../../../services/schemas";
+import { apiRoute, data, json, readJson } from "../../../api/route";
+import { createTemplateForScope, listTemplatesForScope } from "../../../services/templates";
+import { decodeCursor } from "../../../core/cursor";
 
 export const Route = createFileRoute("/api/v1/templates")({
   server: {

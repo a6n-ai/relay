@@ -11,7 +11,8 @@ import {
   previewTemplateFor,
   updateTemplateFor,
 } from "./templates";
-import { id, templateInput, templatePatch, validate } from "./schemas";
+import { id, validate } from "./schemas";
+import { templateInput, templatePatch } from "../services/schemas";
 import { RelayError } from "../shared/errors";
 
 const READ = { permission: { template: ["read"] } };

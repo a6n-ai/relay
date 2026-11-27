@@ -1,10 +1,11 @@
 import { and, eq } from "drizzle-orm";
 import type { InboundResult } from "../do/inbound";
-import { clientFor } from "../core/messages";
+import { clientFor } from "../do/client";
 import { bumpUsage, utcDay } from "../core/usage";
 import { coreDb } from "../db/core/client";
 import { address } from "../db/core/schema";
-import type { Env, InboundJob } from "../env";
+import type { Env } from "../env";
+import type { InboundJob } from "../core/jobs";
 import { writeAudit } from "../lib/auth/audit";
 import { allows } from "../lib/auth/permissions";
 import { type ConsoleActor } from "./actor";

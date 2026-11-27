@@ -1,5 +1,5 @@
 import { maskEmails } from "../core/mask-emails";
-import { clientFor } from "../core/messages";
+import { clientFor } from "../do/client";
 import type { Env } from "../env";
 import { writeAudit } from "../lib/auth/audit";
 import { allows } from "../lib/auth/permissions";

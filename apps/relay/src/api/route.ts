@@ -1,7 +1,8 @@
 import { env } from "cloudflare:workers";
 import { ZodError } from "zod";
-import { resolveBearer, withinRateLimit, type KeyScope } from "./api-keys";
-import { logFailure } from "./log";
+import { resolveBearer, withinRateLimit } from "../services/api-keys";
+import { type KeyScope } from "../shared/scope";
+import { logFailure } from "../core/log";
 import { codeOf, ERRORS, RelayError } from "../shared/errors";
 import type { Env } from "../env";
 

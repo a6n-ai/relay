@@ -1,6 +1,6 @@
 import { env, runInDurableObject } from "cloudflare:test";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi, type MockInstance } from "vitest";
-import { sendTemplateMessage } from "../src/core/messages";
+import { sendTemplateMessage } from "../src/services/messages";
 import { securityDb } from "../src/db/security/client";
 import { workspace } from "../src/db/security/schema";
 import { applyMigrations, seedVerifiedSender } from "./migrate";

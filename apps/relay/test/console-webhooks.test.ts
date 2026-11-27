@@ -13,13 +13,13 @@ import {
 } from "../src/console/webhooks";
 import { createAddress, createAddressGrant } from "../src/core/addresses";
 import { createApp } from "../src/core/apps";
-import { clientFor } from "../src/core/messages";
+import { clientFor } from "../src/do/client";
 import { webhookInputSchema, webhookPatchSchema } from "../src/core/webhooks";
 import { coreDb } from "../src/db/core/client";
 import { address } from "../src/db/core/schema";
 import { securityDb } from "../src/db/security/client";
 import { member, user, workspace } from "../src/db/security/schema";
-import type { InboundJob } from "../src/env";
+import type { InboundJob } from "../src/core/jobs";
 import { addMember, cookieFor, createWorkspace, headersFor, ORIGIN, setActive } from "./console-helpers";
 import { applyMigrations } from "./migrate";
 

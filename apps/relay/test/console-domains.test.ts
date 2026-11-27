@@ -13,7 +13,8 @@ import {
   updateAddress,
 } from "../src/console/domains";
 import { createAddressGrant } from "../src/core/addresses";
-import { refreshWorkspaceLimits, type WorkspaceLimits } from "../src/core/limits";
+import { type WorkspaceLimits } from "../src/core/limits";
+import { refreshWorkspaceLimits } from "../src/services/limits";
 import { memorySesIdentity } from "../src/core/ses-identity";
 import { coreDb } from "../src/db/core/client";
 import { address, sendingDomain } from "../src/db/core/schema";

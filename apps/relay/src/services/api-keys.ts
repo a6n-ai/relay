@@ -3,8 +3,8 @@ import { securityDb } from "../db/security/client";
 import { apiKey, app, member, workspace } from "../db/security/schema";
 import type { Env } from "../env";
 import { createAuth } from "../lib/auth";
+import type { KeyScope } from "../shared/scope";
 
-export type KeyScope = { workspaceId: string; appId: string; keyId: string };
 
 // Keys are created as the workspace owner, who holds the organization's apiKey create permission.
 export async function createApiKey(

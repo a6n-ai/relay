@@ -1,14 +1,13 @@
 import { WorkflowEntrypoint, type WorkflowEvent, type WorkflowStep } from "cloudflare:workers";
 import { NonRetryableError } from "cloudflare:workflows";
 import type { Env } from "../env";
-import { AUDIENCE_FAILED, fetchAudiencePage, type AudiencePage } from "./audience-hook";
-import { clientFor } from "./messages";
+import type { CampaignRunParams } from "../core/campaign-run";
+import { AUDIENCE_FAILED, fetchAudiencePage } from "../core/audience-hook";
+import { type AudiencePage } from "../core/audience-protocol";
+import { clientFor } from "../do/client";
 
-export type CampaignRunParams = { workspaceId: string; campaignId: string; runSeq: number; at: number };
 export type CampaignStep = Pick<WorkflowStep, "do" | "sleep" | "sleepUntil">;
 
-export const CHUNK_SIZE = 500;
-export const ENQUEUE_BATCH = 100;
 // Workflows allow 1,024 steps on Free and 10,000 on Paid (sleeps do not count). 1 start + 400 chunks fits both.
 const MAX_CHUNKS = 400;
 // A hook page is three steps (page, ingest, pace), so 300 pages plus the start step stays under the Free limit of 1,024.

@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import { beforeAll, describe, expect, it } from "vitest";
 import { requireActor } from "../src/console/actor";
 import { addSuppressionFor, listSuppressionsFor, removeSuppressionFor } from "../src/console/suppressions";
-import { clientFor } from "../src/core/messages";
+import { clientFor } from "../src/do/client";
 import { securityDb } from "../src/db/security/client";
 import { securityAudit, workspace } from "../src/db/security/schema";
 import { addMember, cookieFor, createWorkspace, headersFor, ORIGIN, setActive } from "./console-helpers";

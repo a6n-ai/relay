@@ -1,7 +1,7 @@
 import { and, eq, inArray, like } from "drizzle-orm";
 import { clearDefaultSenders } from "../core/addresses";
-import { refreshWorkspaceLimits } from "../core/limits";
-import { clientFor } from "../core/messages";
+import { refreshWorkspaceLimits } from "../services/limits";
+import { clientFor } from "../do/client";
 import { sesIdentityApi } from "../core/ses-identity";
 import { coreDb } from "../db/core/client";
 import { address, sendingDomain } from "../db/core/schema";

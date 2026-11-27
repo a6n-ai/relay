@@ -1,9 +1,10 @@
 import { and, eq, inArray, or } from "drizzle-orm";
 import { sanitizeEmailHtml } from "../core/sanitize-html";
-import { clientFor } from "../core/messages";
+import { clientFor } from "../do/client";
 import { downloadResponse, PREVIEW_HEAD_BYTES, previewResponse, previewType } from "../core/download";
-import type { AttachmentView } from "../do/client-do";
-import { decodeCursor, type MessageAccess, type MessageDetail, type MessageQuery } from "../do/console-reads";
+import type { AttachmentView } from "../do/types";
+import { type MessageAccess, type MessageDetail, type MessageQuery } from "../do/console-reads";
+import { decodeCursor } from "../core/cursor";
 import { securityDb } from "../db/security/client";
 import { addressGrant, member, team, teamMember } from "../db/security/schema";
 import type { Env } from "../env";
