@@ -220,6 +220,7 @@ function NewGrantForm({
         label="Member or team"
         message="Everyone in this workspace already has access."
         to="/settings/members"
+        search={{ new: 1 }}
         linkLabel="Invite a member"
         onNavigate={done}
       />

@@ -16,10 +16,8 @@ export function InviteForm({
   canGrantOwner,
   domains,
   apps,
-  inline = false,
 }: {
   done: () => void;
-  inline?: boolean; // on the Members page: no Cancel, no autofocus
   canGrantOwner: boolean;
   domains: { domain: string; status: string }[];
   apps: { id: string; name: string }[];
@@ -71,7 +69,7 @@ export function InviteForm({
         label={withMailbox ? "Personal email" : "Email"}
         type="email"
         required
-        autoFocus={!inline && !withMailbox}
+        autoFocus={!withMailbox}
         placeholder="name@company.com"
         value={email}
         onChange={(e) => setEmail(e.target.value)}
@@ -85,7 +83,7 @@ export function InviteForm({
       <RoleChoice id="invite-role" value={role} onChange={setRole} canGrantOwner={canGrantOwner} />
       <FormError message={error} />
       <FormActions
-        cancel={!inline}
+        cancel
         submitLabel="Send invite"
         pending={pending}
         pendingLabel="Sending…"

@@ -8,7 +8,7 @@ import { SearchInput, Toolbar } from "../../components/page/toolbar";
 import { useUrlFilter } from "../../components/page/use-url-filter";
 import { ListSkeleton } from "../../components/page/page-skeleton";
 import { ResourceTable } from "../../components/page/resource-table";
-import { SettingsCard } from "../../components/page/settings-card";
+import { CreateDialog } from "../../components/page/create-dialog";
 import { StatusBadge } from "../../components/page/status-badge";
 import { type OrgRole, ROLE_LABEL } from "../../shared/roles";
 import { confirmAction } from "../../components/lib/run-action";
@@ -19,16 +19,18 @@ import { PageHeader } from "../../components/shell/page-header";
 import { useCan } from "../../components/lib/use-can";
 import { cancelInviteFn, fetchPeople, removeMemberFn } from "../../console/members.fns";
 import { fetchDomains } from "../../console/domains.fns";
-import { str } from "../../components/lib/route-search";
+import { flag, str } from "../../components/lib/route-search";
+import { useNewParam } from "../../components/shell/scope";
 import { isSuspended } from "../../shared/limits";
 
 export const Route = createFileRoute("/_app/settings_/members")({
   staticData: { title: "Members", copy: "People in this workspace, and people you have invited." },
-  validateSearch: (search: Record<string, unknown>): { q?: string } => ({
+  validateSearch: (search: Record<string, unknown>): { q?: string; new?: 1 } => ({
     q: str(search.q),
+    new: flag(search.new, 1, "1") && 1,
   }),
   loader: async () => ({ people: await fetchPeople(), domains: (await fetchDomains()) ?? [] }),
-  pendingComponent: () => <ListSkeleton columns={4} search />,
+  pendingComponent: () => <ListSkeleton columns={4} search action />,
   component: MembersPage,
 });
 
@@ -48,7 +50,7 @@ function MembersPage() {
   const canRemove = useCan({ member: ["delete"] });
   const canInvite = useCan({ invitation: ["create"] });
   const canCancel = useCan({ invitation: ["cancel"] });
-  const [round, setRound] = useState(0);
+  const [open, setOpen] = useNewParam();
   const [removing, setRemoving] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState<string | null>(null);
   const [changing, setChanging] = useState<string | null>(null);
@@ -72,23 +74,16 @@ function MembersPage() {
 
   return (
     <>
-      <PageHeader />
+      <PageHeader
+        actions={
+          canInvite && !suspended ? (
+            <CreateDialog trigger="Invite member" title="Invite member" open={open} onOpenChange={setOpen}>
+              {(done) => <InviteForm done={done} canGrantOwner={ownerActor} domains={domains} apps={shell.apps} />}
+            </CreateDialog>
+          ) : null
+        }
+      />
       {suspended ? <SuspendedNotice /> : null}
-      {canInvite && !suspended ? (
-        <SettingsCard title="Invite member" description="They get an email with a link to join.">
-          <InviteForm
-            key={round}
-            inline
-            canGrantOwner={ownerActor}
-            domains={domains}
-            apps={shell.apps}
-            done={() => {
-              setRound((n) => n + 1);
-              void router.invalidate();
-            }}
-          />
-        </SettingsCard>
-      ) : null}
       <Toolbar search={<SearchInput value={q} placeholder="Search name or email" onChange={setQ} />} />
       <ResourceTable
         columns={[
