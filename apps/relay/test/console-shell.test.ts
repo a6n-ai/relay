@@ -140,7 +140,6 @@ describe("console shell", { timeout: 60_000 }, () => {
       ["/apps/app_missing", "This workspace is suspended"],
       ["/settings", "Workspace suspended"],
       ["/settings/members", "Workspace suspended"],
-      ["/settings/invites", "Workspace suspended"],
       ["/settings/teams", "Workspace suspended"],
     ];
     for (const [path, copy] of cases) {

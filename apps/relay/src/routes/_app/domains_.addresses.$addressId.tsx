@@ -219,8 +219,7 @@ function NewGrantForm({
         id="grant-who"
         label="Member or team"
         message="Everyone in this workspace already has access."
-        to="/settings/invites"
-        search={{ new: 1 }}
+        to="/settings/members"
         linkLabel="Invite a member"
         onNavigate={done}
       />

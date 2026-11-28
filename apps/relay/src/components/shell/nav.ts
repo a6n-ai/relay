@@ -82,7 +82,6 @@ const NAV: RawGroup[] = [
         children: [
           { id: "general", label: "General", to: "/settings" },
           { id: "members", to: "/settings/members" },
-          { id: "invites", to: "/settings/invites" },
           { id: "teams", to: "/settings/teams" },
         ],
       },
@@ -110,7 +109,7 @@ const CREATE: CreateItem[] = [
   { id: "template", label: "Template", to: "/campaigns/templates/new", need: { template: ["write"] } },
   { id: "automation", label: "Automation", to: "/campaigns/automations/new", need: { campaign: ["send"] }, menu: false },
   {
-    id: "invite", label: "Invite member", find: "Invite a member", to: "/settings/invites", new: 1, need: { invitation: ["create"] },
+    id: "invite", label: "Invite member", find: "Invite a member", to: "/settings/members", need: { invitation: ["create"] },
     start: { icon: UserPlus, title: "Invite your team", line: "Give teammates access to this workspace.", cta: "Invite member" },
   },
 ];

@@ -24,7 +24,6 @@ describe("visibleNav", () => {
     expect(setup?.items.find((i) => i.id === "settings")?.children?.map((c) => c.id)).toEqual([
       "general",
       "members",
-      "invites",
       "teams",
     ]);
     expect(groups.find((g) => g.id === "platform")?.items.map((i) => i.id)).toEqual(["admin"]);

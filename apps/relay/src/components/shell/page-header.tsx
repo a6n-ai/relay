@@ -53,6 +53,14 @@ export function PageHeader({ crumbs, badge, actions, description }: { crumbs?: C
                 <ChevronLeft aria-hidden className="size-4" />
                 {parent.label}
               </Link>
+            ) : section?.title && !isAppScoped(pathname, pageOf) ? (
+              <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1.5 px-2 text-base">
+                <Link to={section.tabs[0].to as string} className={cn(focusRing, "rounded-sm text-muted-foreground hover:text-foreground")}>
+                  {section.title}
+                </Link>
+                <span aria-hidden className="text-muted-foreground">/</span>
+                <span aria-current="page" className="truncate font-medium">{tab}</span>
+              </nav>
             ) : isAppScoped(pathname, pageOf) ? (
               <ScopeSwitcher />
             ) : (

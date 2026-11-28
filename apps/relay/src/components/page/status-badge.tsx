@@ -15,6 +15,7 @@ export const STATUS = {
   cancelled: { tone: "neutral", label: "Cancelled" },
   accepted: { tone: "success", label: "Accepted" },
   expired: { tone: "neutral", label: "Expired" },
+  invited: { tone: "info", label: "Invited" },
   active: { tone: "success", label: "Active" },
   suspended: { tone: "danger", label: "Suspended" },
 } as const;
