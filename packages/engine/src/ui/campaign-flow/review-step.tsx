@@ -7,7 +7,7 @@ import { ResponsiveDialog } from "@foundry/design-system";
 import type { CampaignReview } from "../../campaign-routes";
 import { CAMPAIGN_VARIABLE_SAMPLES } from "../../email-content/variables";
 import { appendUnsubscribeFooter, missingFooterPreview, type FooterInfo } from "../../template";
-import { apiAction, apiFetch } from "../api-fetch";
+import { apiAction, apiFetch } from "@foundry/ui/api-fetch";
 import { openEmailPreview } from "../email-content-editor";
 import { fillSamples } from "../email-editor/samples";
 

@@ -8,7 +8,7 @@ import { Button } from "@foundry/ui/button";
 import { ResponsiveDialog } from "@foundry/design-system";
 import { Switch } from "@foundry/ui/switch";
 import { Label } from "@foundry/ui/label";
-import { apiAction, apiFetch } from "./api-fetch";
+import { apiAction, apiFetch } from "@foundry/ui/api-fetch";
 import type { ContactListOption } from "./audience-builder";
 
 /**

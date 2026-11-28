@@ -1,4 +1,4 @@
-import { apiFetch } from "./api-fetch";
+import { apiFetch } from "@foundry/ui/api-fetch";
 import type { ListMeta } from "./contact-list-meta-fields";
 
 export interface ManualContactInput {

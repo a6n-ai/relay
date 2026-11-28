@@ -1,6 +1,6 @@
 import { withPreheader } from "./preheader";
 import { lintEmailHtml, type CompatWarning } from "./email-compat";
-import { sanitizeEmailHtml } from "./sanitize";
+import { sanitizeEmailHtml } from "@relay/email/sanitize";
 import { htmlToText } from "./text";
 import { findUnknownVariables } from "./variables";
 

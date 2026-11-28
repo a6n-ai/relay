@@ -6,7 +6,7 @@ import { toast } from "@foundry/ui/toast";
 import { Button } from "@foundry/ui/button";
 import { Input } from "@foundry/ui/input";
 import { Label } from "@foundry/ui/label";
-import { apiAction, apiFetch } from "./api-fetch";
+import { apiAction, apiFetch } from "@foundry/ui/api-fetch";
 
 /** Add one contact to an existing list. For the whole-new-list case, see ContactListManualAdd. */
 export function ContactListAddMember({ listPublicId }: { listPublicId: string }) {

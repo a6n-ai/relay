@@ -6,7 +6,7 @@ import { toast } from "@foundry/ui/toast";
 import { Trash2Icon } from "lucide-react";
 import { Button } from "@foundry/ui/button";
 import { ResponsiveDialog } from "@foundry/design-system";
-import { apiAction, apiFetch } from "./api-fetch";
+import { apiAction, apiFetch } from "@foundry/ui/api-fetch";
 
 /**
  * Delete a draft/scheduled campaign that never sent. The route itself refuses

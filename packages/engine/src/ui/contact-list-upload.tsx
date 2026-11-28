@@ -17,7 +17,7 @@ import {
 } from "@foundry/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@foundry/ui/table";
 import { ContactListMetaFields, type ListMeta } from "./contact-list-meta-fields";
-import { apiAction } from "./api-fetch";
+import { apiAction } from "@foundry/ui/api-fetch";
 import { createListWithContacts } from "./create-list-with-contacts";
 
 const NONE = "__none__";

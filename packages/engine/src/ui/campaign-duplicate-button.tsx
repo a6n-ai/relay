@@ -8,7 +8,7 @@ import { Button } from "@foundry/ui/button";
 import { Input } from "@foundry/ui/input";
 import { Label } from "@foundry/ui/label";
 import { ResponsiveDialog } from "@foundry/design-system";
-import { apiAction, apiFetch } from "./api-fetch";
+import { apiAction, apiFetch } from "@foundry/ui/api-fetch";
 import { AudienceBuilder, type AudienceValue, type ContactListOption } from "./audience-builder";
 
 export function CampaignDuplicateButton({

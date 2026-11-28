@@ -5,7 +5,7 @@ import { PaperclipIcon, XIcon } from "lucide-react";
 import { toast } from "@foundry/ui/toast";
 import { Button, buttonVariants } from "@foundry/ui/button";
 import { FileUpload, FileUploadDropzone, FileUploadTrigger } from "@foundry/ui/file-upload";
-import { apiAction, apiFetch } from "./api-fetch";
+import { apiAction, apiFetch } from "@foundry/ui/api-fetch";
 
 export interface CampaignAttachment {
   filename: string;

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "@foundry/ui/toast";
 import { RefreshCwIcon } from "lucide-react";
-import { apiAction, apiFetch } from "./api-fetch";
+import { apiAction, apiFetch } from "@foundry/ui/api-fetch";
 import { Button } from "@foundry/ui/button";
 
 export function ContactListResyncButton({ publicId }: { publicId: string }) {

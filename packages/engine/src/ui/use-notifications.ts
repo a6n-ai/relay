@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { apiFetch } from "./api-fetch";
+import { apiFetch } from "@foundry/ui/api-fetch";
 
 export interface FeedItem {
   publicId: string;

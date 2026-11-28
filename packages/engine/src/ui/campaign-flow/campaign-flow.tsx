@@ -8,7 +8,7 @@ import { Button } from "@foundry/ui/button";
 import type { CampaignReview } from "../../campaign-routes";
 import { htmlToText } from "../../email-content/text";
 import type { FooterInfo } from "../../template";
-import { apiAction, apiFetch } from "../api-fetch";
+import { apiAction, apiFetch } from "@foundry/ui/api-fetch";
 import type { AudienceValue, ContactListOption } from "../audience-builder";
 import { TextRow, type CampaignContentRow } from "../campaign-content-section";
 import type { SaveState } from "../email-editor/autosave";

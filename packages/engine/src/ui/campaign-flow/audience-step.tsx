@@ -4,7 +4,7 @@ import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "re
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { AudienceBreakdown } from "../../audience";
-import { apiFetch } from "../api-fetch";
+import { apiFetch } from "@foundry/ui/api-fetch";
 import { AudienceBuilder, type AudienceValue, type ContactListOption } from "../audience-builder";
 
 const EXCLUDED: { key: keyof AudienceBreakdown["excluded"]; label: string; filter?: string }[] = [
