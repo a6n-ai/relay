@@ -8,6 +8,7 @@ import {
   pgTable,
   text,
   uniqueIndex,
+  type PgColumn,
   type PgEnum,
 } from "drizzle-orm/pg-core";
 import { notificationChannel } from "./enums";
@@ -39,10 +40,10 @@ export interface AudienceDef {
   listIds?: string[];
 }
 
-export function makeCampaignTables<L extends [string, ...string[]]>(deps: { locale: PgEnum<L> }) {
+export function makeCampaignTables<L extends [string, ...string[]]>(deps: { locale: PgEnum<L>; brand?: boolean }) {
   const { locale } = deps;
 
-  const campaign = pgTable("campaign", {
+  const campaignColumns = {
     ...updatableColumns("cmp"),
     name: text("name").notNull(),
     /** Channels this campaign targets; each recipient still passes through prefs. */
@@ -60,9 +61,10 @@ export function makeCampaignTables<L extends [string, ...string[]]>(deps: { loca
      * existing customers about their own subscription.
      */
     systemKey: text("system_key"),
-    /** Consumer-defined sender brand; `senderFor` maps it to a From address. Null = default sender. */
-    brand: text("brand"),
-  }, (t) => [
+  };
+  // Opt-in `brand: true` adds a sender-brand column (null = default sender). It is left out of the
+  // type on purpose: read it through `campaignBrandColumn`.
+  const campaign = pgTable("campaign", (deps.brand ? { ...campaignColumns, brand: text("brand") } : campaignColumns) as typeof campaignColumns, (t) => [
     // Scheduler poll: due campaigns are (status, scheduled_at) lookups.
     index("campaign_status_scheduled_idx").on(t.status, t.scheduledAt),
     uniqueIndex("campaign_system_key_idx").on(t.systemKey),
@@ -125,3 +127,8 @@ export function makeCampaignTables<L extends [string, ...string[]]>(deps: { loca
 }
 
 export type CampaignTables = ReturnType<typeof makeCampaignTables>;
+
+/** The brand column, or undefined when the tables were built without `brand: true`. */
+export function campaignBrandColumn(tables: CampaignTables) {
+  return (tables.campaign as unknown as { brand?: PgColumn }).brand;
+}

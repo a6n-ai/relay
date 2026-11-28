@@ -83,7 +83,7 @@ export function CampaignFlow(props: {
     if (await apiAction(apiFetch(api, json("PATCH", { name })))) router.refresh();
   }
 
-  async function setBrand(brand: string) {
+  async function setBrand(brand: string | null) {
     if (await apiAction(apiFetch(api, json("PATCH", { brand })))) router.refresh();
   }
 

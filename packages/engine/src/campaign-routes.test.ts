@@ -1,7 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
+import { QueryBuilder, pgEnum } from "drizzle-orm/pg-core";
+import { makeCampaignTables } from "./campaign-schema";
 import {
   claimForSend,
   createCampaign,
+  listCampaigns,
   setCampaignBrand,
   duplicateCampaign,
   retriggerCampaign,
@@ -236,7 +239,7 @@ describe("sendScheduledCampaign", () => {
 describe("campaign brand", () => {
   it("createCampaign stores the brand, defaulting to null", async () => {
     const values = vi.fn().mockReturnValue({ returning: vi.fn().mockResolvedValue([{ publicId: "cmp_1" }]) });
-    const deps = { db: { insert: vi.fn().mockReturnValue({ values }) }, tables: { campaign: {} } } as any;
+    const deps = { db: { insert: vi.fn().mockReturnValue({ values }) }, tables: { campaign: { brand: {} } } } as any;
     const input = { name: "n", channels: ["email"], audience: {} };
     await createCampaign(deps, { ...input, brand: "b1" });
     await createCampaign(deps, input);
@@ -248,9 +251,44 @@ describe("campaign brand", () => {
     const set = vi.fn();
     const returning = vi.fn().mockResolvedValueOnce([{ id: 1n }]).mockResolvedValueOnce([]);
     set.mockReturnValue({ where: vi.fn().mockReturnValue({ returning }) });
-    const deps = { db: { update: vi.fn().mockReturnValue({ set }) }, tables: { campaign: {} } } as any;
+    const deps = { db: { update: vi.fn().mockReturnValue({ set }) }, tables: { campaign: { brand: {} } } } as any;
     expect(await setCampaignBrand(deps, "cmp_1", "b2")).toEqual({ ok: true });
     expect(set).toHaveBeenCalledWith({ brand: "b2" });
     expect(await setCampaignBrand(deps, "cmp_2", null)).toMatchObject({ status: 409 });
+  });
+
+  it("brand off: no brand in list select, SQL, insert or setCampaignBrand", async () => {
+    const plain = makeCampaignTables({ locale: pgEnum("locale", ["en"]) });
+    let fields: Record<string, unknown> = {};
+    const db = {
+      select: vi.fn((f) => {
+        fields = f;
+        return { from: () => ({ orderBy: async () => [] }) };
+      }),
+      insert: vi.fn(),
+    };
+    await listCampaigns({ db, tables: plain } as any);
+    expect(Object.keys(fields)).not.toContain("brand");
+    expect(new QueryBuilder().select(fields as never).from(plain.campaign).toSQL().sql).not.toMatch(/brand/);
+
+    const values = vi.fn().mockReturnValue({ returning: vi.fn().mockResolvedValue([{ publicId: "cmp_1" }]) });
+    db.insert.mockReturnValue({ values });
+    await createCampaign({ db, tables: plain } as any, { name: "n", channels: ["email"], audience: {} as never, brand: "b1" });
+    expect(Object.keys(values.mock.calls[0][0])).not.toContain("brand");
+
+    await expect(setCampaignBrand({ db, tables: plain } as any, "cmp_1", "b")).rejects.toThrow(/brand: true/);
+  });
+
+  it("brand on: list select and SQL name brand", async () => {
+    const withBrand = makeCampaignTables({ locale: pgEnum("locale", ["en"]), brand: true });
+    let fields: Record<string, unknown> = {};
+    const db = {
+      select: vi.fn((f) => {
+        fields = f;
+        return { from: () => ({ orderBy: async () => [] }) };
+      }),
+    };
+    await listCampaigns({ db, tables: withBrand } as any);
+    expect(new QueryBuilder().select(fields as never).from(withBrand.campaign).toSQL().sql).toMatch(/"brand"/);
   });
 });

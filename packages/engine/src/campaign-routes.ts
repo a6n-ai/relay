@@ -1,7 +1,7 @@
-import { and, desc, eq, inArray, lte, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, lte, sql, type SQL } from "drizzle-orm";
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import { z } from "zod";
-import type { AudienceDef, CampaignTables } from "./campaign-schema";
+import { campaignBrandColumn, type AudienceDef, type CampaignTables } from "./campaign-schema";
 import type { NotificationTables } from "./schema";
 import type { UsersRef } from "./enqueue";
 import { resolveAudienceDetailed, type AudienceBreakdown, type AudienceDeps } from "./audience";
@@ -40,7 +40,7 @@ export function createCampaignSchema(channels: [string, ...string[]]) {
     channels: z.array(z.enum(channels)).min(1),
     audience: audienceSchema,
     scheduledAt: z.number().int().positive().nullable().optional(),
-    brand: z.string().trim().min(1).nullable().optional(),
+    brand: z.string().trim().min(1).max(64).nullable().optional(),
   });
 }
 
@@ -53,7 +53,8 @@ interface CampaignListRow {
   sentAt: number | null;
   counts: Record<string, number>;
   createdAt: number;
-  brand: string | null;
+  /** Present (null or a brand) only when the tables were built with `brand: true`. */
+  brand?: string | null;
 }
 
 export async function listCampaigns(deps: CampaignRouteDeps): Promise<CampaignListRow[]> {
@@ -68,11 +69,11 @@ export async function listCampaigns(deps: CampaignRouteDeps): Promise<CampaignLi
       sentAt: tables.campaign.sentAt,
       counts: tables.campaign.counts,
       createdAt: tables.campaign.createdAt,
-      brand: tables.campaign.brand,
+      ...brandSelect(tables),
     })
     .from(tables.campaign)
     .orderBy(desc(tables.campaign.createdAt));
-  return rows as CampaignListRow[];
+  return rows as unknown as CampaignListRow[];
 }
 
 interface CreateCampaignInput {
@@ -82,6 +83,11 @@ interface CreateCampaignInput {
   scheduledAt?: number | null;
   brand?: string | null;
 }
+
+const brandSelect = (tables: CampaignTables) => {
+  const brand = campaignBrandColumn(tables);
+  return (brand ? { brand } : {}) as unknown as { brand: SQL<string | null> };
+};
 
 export async function createCampaign(
   deps: CampaignRouteDeps,
@@ -100,7 +106,7 @@ export async function createCampaign(
       // someone presses Send.
       status: input.scheduledAt ? "scheduled" : "draft",
       scheduledAt: input.scheduledAt ?? null,
-      brand: input.brand ?? null,
+      ...(campaignBrandColumn(tables) ? { brand: input.brand ?? null } : {}),
     })
     .returning({ publicId: tables.campaign.publicId });
   return { publicId: row.publicId as string };
@@ -259,7 +265,7 @@ export async function renameCampaign(
     : ({ error: "Only a draft or scheduled campaign can be renamed", status: 409 } as const);
 }
 
-export const setCampaignBrandSchema = z.object({ brand: z.string().trim().min(1).nullable() });
+export const setCampaignBrandSchema = z.object({ brand: z.string().trim().min(1).max(64).nullable() });
 
 export async function setCampaignBrand(
   deps: CampaignRouteDeps,
@@ -267,9 +273,10 @@ export async function setCampaignBrand(
   brand: string | null,
 ): Promise<{ ok: true } | RouteError> {
   const { db, tables } = deps;
+  if (!campaignBrandColumn(tables)) throw new Error("setCampaignBrand needs campaign tables built with { brand: true }");
   const rows = await db
     .update(tables.campaign)
-    .set({ brand })
+    .set({ brand } as never)
     .where(and(eq(tables.campaign.publicId, campaignPublicId), inArray(tables.campaign.status, ["draft", "scheduled"])))
     .returning({ id: tables.campaign.id });
   return rows.length
@@ -490,7 +497,7 @@ export async function duplicateCampaign(
       name: tables.campaign.name,
       channels: tables.campaign.channels,
       audience: tables.campaign.audience,
-      brand: tables.campaign.brand,
+      ...brandSelect(tables),
     })
     .from(tables.campaign)
     .where(eq(tables.campaign.publicId, campaignPublicId));
@@ -516,7 +523,7 @@ export async function duplicateCampaign(
       name: input.name ?? `${source.name} (copy)`,
       channels: source.channels,
       audience: input.audience ?? (source.audience as AudienceDef),
-      brand: source.brand,
+      ...(campaignBrandColumn(tables) ? { brand: (source as { brand?: string | null }).brand ?? null } : {}),
       status: "draft",
     })
     .returning({ id: tables.campaign.id, publicId: tables.campaign.publicId });

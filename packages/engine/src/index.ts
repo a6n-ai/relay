@@ -12,7 +12,7 @@ export * from "./system-campaign";
 export { updateCampaignAudienceSchema, createCampaignSchema, listCampaigns, createCampaign, setCampaignContentSchema, setCampaignContent, updateCampaignAudience, renameCampaign, setCampaignBrand, setCampaignBrandSchema, reviewCampaign, scheduleCampaign, sendScheduledCampaign, sendCampaign, getAudienceCount, duplicateCampaign, deleteCampaign, completeCampaign, retriggerCampaign, retryFailedCampaign, type CampaignRouteDeps, type CampaignReview } from "./campaign-routes";
 export * from "./contact-list-routes";
 export * from "./enqueue";
-export { buildHandlers, type OutboxRow, type ChannelHandler, type HandlerDeps } from "./handlers";
+export { buildHandlers, type OutboxRow, type ChannelHandler, type HandlerDeps, type SenderTarget, type CampaignRow } from "./handlers";
 export * from "./campaign-config";
 export * from "./campaign-stats";
 export { createRateLimiter, CLAIM_LEASE_MS, drainPending } from "./drain";

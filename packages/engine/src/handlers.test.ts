@@ -284,10 +284,10 @@ describe("buildHandlers — email — senderFor override", () => {
   const usersTable = { locale: "locale-col" };
   const templateTable = {};
   const campaignContentTable = {};
-  const campaignTable = { systemKey: "sk-col" };
+  const campaignTable: Record<string, string> = { systemKey: "sk-col", brand: "brand-col" };
   const brandSender = { email: "hello@brand.test", name: "Brand Co" };
 
-  function setup(senderFor?: HandlerDeps["senderFor"]) {
+  function setup(senderFor?: HandlerDeps["senderFor"], campaignData: object = { systemKey: null, brand: "b1" }) {
     const db = fakeDb(
       new Map<object, unknown[]>([
         [usersTable, [{ email: "customer@example.test", phone: null, locale: "en" }]],
@@ -299,7 +299,7 @@ describe("buildHandlers — email — senderFor override", () => {
           campaignContentTable,
           [{ channel: "email", locale: "en", subject: "S", body: null, html: "<p>hi</p>", text: "hi", providerTemplateId: null, attachments: [] }],
         ],
-        [campaignTable, [{ systemKey: null, brand: "b1" }]],
+        [campaignTable, [campaignData]],
       ]),
     );
     const send = vi.fn().mockResolvedValue({ providerMessageId: "pid" });
@@ -331,7 +331,7 @@ describe("buildHandlers — email — senderFor override", () => {
     const { handlers, send } = setup(senderFor);
     const row = outbox("marketing", { href: null, vars: {}, brand: "b1" });
     await handlers.email!(row);
-    expect(senderFor).toHaveBeenCalledWith(row);
+    expect(senderFor).toHaveBeenCalledWith({ kind: "event", row });
     expect(send.mock.calls[0][0].from).toEqual(brandSender);
     expect(send.mock.calls[0][0].html).toContain("Brand Co");
   });
@@ -346,9 +346,21 @@ describe("buildHandlers — email — senderFor override", () => {
     const senderFor = vi.fn().mockReturnValue(brandSender);
     const { handlers, send } = setup(senderFor);
     await handlers.email!(campaignRow);
-    expect(senderFor).toHaveBeenCalledWith(expect.objectContaining({ brand: "b1" }));
+    expect(senderFor).toHaveBeenCalledWith({ kind: "campaign", campaign: expect.objectContaining({ brand: "b1" }) });
     expect(send.mock.calls[0][0].from).toEqual(brandSender);
     expect(send.mock.calls[0][0].html).toContain("Brand Co");
+  });
+
+  it("brand column off: campaign target has brand null and the row lookup never names brand", async () => {
+    delete campaignTable.brand;
+    try {
+      const senderFor = vi.fn().mockReturnValue(undefined);
+      const { handlers } = setup(senderFor, { systemKey: null });
+      await handlers.email!(campaignRow);
+      expect(senderFor.mock.calls[0][0].campaign.brand).toBeNull();
+    } finally {
+      campaignTable.brand = "brand-col";
+    }
   });
 
   it("keeps the old sender when senderFor returns undefined or is absent", async () => {

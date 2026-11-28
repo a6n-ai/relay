@@ -9,6 +9,8 @@ import { cn } from "@foundry/ui/cn";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@foundry/ui/select";
 import { FLOW_STEPS, type FlowStep } from "./steps";
 
+const DEFAULT_SENDER = "__default";
+
 /** Header + step indicator + fixed bottom bar shared by the three campaign steps. */
 export function FlowShell({
   campaignPublicId,
@@ -36,10 +38,10 @@ export function FlowShell({
   /** Buttons on the right of the title row. */
   actions?: ReactNode;
   onRename: (name: string) => Promise<void>;
-  /** Sender picker; hidden when absent or empty. */
+  /** Sender picker; hidden when absent, empty, `brand` is undefined (tables without a brand column) or the campaign is sent. */
   senders?: { value: string; label: string }[];
   brand?: string | null;
-  onBrand?: (brand: string) => Promise<void>;
+  onBrand?: (brand: string | null) => Promise<void>;
   /** Runs before leaving for the list, e.g. to flush a pending save. */
   onBack?: () => Promise<void>;
   bottom: ReactNode;
@@ -84,12 +86,13 @@ export function FlowShell({
             <Badge variant="outline" className="capitalize">
               {status}
             </Badge>
-            {senders?.length ? (
-              <Select value={brand ?? senders[0].value} onValueChange={(v) => void onBrand?.(v)}>
+            {senders?.length && brand !== undefined && (status === "draft" || status === "scheduled") ? (
+              <Select value={brand ?? DEFAULT_SENDER} onValueChange={(v) => void onBrand?.(v === DEFAULT_SENDER ? null : v)}>
                 <SelectTrigger aria-label="Sender" className="w-auto">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value={DEFAULT_SENDER}>Default sender</SelectItem>
                   {senders.map((s) => (
                     <SelectItem key={s.value} value={s.value}>
                       {s.label}

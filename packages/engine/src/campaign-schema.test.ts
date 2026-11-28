@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { getTableConfig, pgEnum } from "drizzle-orm/pg-core";
-import { makeCampaignTables } from "./campaign-schema";
+import { campaignBrandColumn, makeCampaignTables } from "./campaign-schema";
 
 const locale = pgEnum("locale", ["en", "fr"]);
-const t = makeCampaignTables({ locale });
+const t = makeCampaignTables({ locale, brand: true });
+const plain = makeCampaignTables({ locale });
 
 function columns(table: Parameters<typeof getTableConfig>[0]): string[] {
   return getTableConfig(table).columns.map((c) => c.name).sort();
@@ -21,6 +22,12 @@ describe("makeCampaignTables", () => {
     expect(columns(t.campaign)).toEqual(
       expect.arrayContaining(["audience", "channels", "status", "scheduled_at", "counts", "brand"]),
     );
+  });
+
+  it("has no brand column unless asked for", () => {
+    expect(columns(plain.campaign)).not.toContain("brand");
+    expect(campaignBrandColumn(plain)).toBeUndefined();
+    expect(campaignBrandColumn(t)).toBeDefined();
   });
 
   it("keeps brand nullable so existing campaigns need no value", () => {

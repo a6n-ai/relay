@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
-import type { CampaignTables } from "./campaign-schema";
+import { campaignBrandColumn, type CampaignTables } from "./campaign-schema";
 import type { NotificationTables } from "./schema";
 import {
   appendUnsubscribeFooter,
@@ -37,6 +37,17 @@ type BroadcastFn = (input: BroadcastInput) => Promise<void>;
  * single source of truth, so an absent template means the channel is silently
  * not delivered (the drainer records the skip).
  */
+/** `brand` is null unless the campaign tables were built with `brand: true`. */
+export interface CampaignRow {
+  id: bigint;
+  publicId: string;
+  name: string;
+  systemKey: string | null;
+  brand: string | null;
+}
+
+export type SenderTarget = { kind: "event"; row: OutboxRow } | { kind: "campaign"; campaign: CampaignRow };
+
 export type ChannelHandler = (row: OutboxRow) => Promise<{ providerMessageId: string } | null>;
 
 type LoadUser = (
@@ -75,11 +86,14 @@ export interface HandlerDeps {
   emailProviderFor?: (event: string) => ChannelProvider | undefined | Promise<ChannelProvider | undefined>;
   broadcast: BroadcastFn;
   /**
-   * Per-send sender override. Gets the outbox row (payload included) for event
-   * sends, or the campaign row for campaign sends. A value sets From and the
-   * unsubscribe footer's sender name; undefined keeps `campaigns.sender`.
+   * Per-send sender override. `kind: "event"` carries the outbox row (payload
+   * included); `kind: "campaign"` carries the campaign row (no payload). A value
+   * sets From and the unsubscribe footer's sender name; undefined keeps
+   * `campaigns.sender`. Return undefined for a null brand and for system
+   * campaigns, and only return addresses verified on whichever provider sends
+   * (`emailProviderFor` included), or the provider rejects the send.
    */
-  senderFor?: (row: OutboxRow) => { email: string; name: string } | undefined;
+  senderFor?: (target: SenderTarget) => { email: string; name: string } | undefined;
   /**
    * Campaign tables + the footer every commercial message must carry. Omitted,
    * campaign rows are skipped rather than sent without an unsubscribe link.
@@ -148,10 +162,20 @@ export function buildHandlers(deps: HandlerDeps): Record<Channel, ChannelHandler
   const campaignContent: CampaignContentLoader = (db, tables, campaignId) =>
     once(`content:${campaignId}`, () => loadCampaignContent(db, tables, campaignId));
   const campaignRow = (campaignId: bigint) =>
-    once(`campaign:${campaignId}`, async () => {
+    once(`campaign:${campaignId}`, async (): Promise<CampaignRow | undefined> => {
       const t = deps.campaigns!.tables.campaign;
-      const [c] = await deps.db.select().from(t).where(eq(t.id, campaignId));
-      return c;
+      const brandCol = campaignBrandColumn(deps.campaigns!.tables);
+      const [c] = await deps.db
+        .select({
+          id: t.id,
+          publicId: t.publicId,
+          name: t.name,
+          systemKey: t.systemKey,
+          ...(brandCol ? { brand: brandCol } : {}),
+        })
+        .from(t)
+        .where(eq(t.id, campaignId));
+      return c && ({ brand: null, ...c } as CampaignRow);
     });
   const campaignSystemKey = async (campaignId: bigint) => (await campaignRow(campaignId))?.systemKey ?? null;
 
@@ -229,12 +253,14 @@ export function buildHandlers(deps: HandlerDeps): Record<Channel, ChannelHandler
         let marketing = false;
         let headers: Record<string, string> | undefined;
         let attachmentRefs: { filename: string; url: string; contentType: string }[] = rowAttachments;
-        const senderSource = deps.senderFor
-          ? row.campaignId && deps.campaigns
-            ? await campaignRow(row.campaignId)
-            : row
-          : undefined;
-        const override = senderSource ? deps.senderFor!(senderSource) : undefined;
+        let senderTarget: SenderTarget | undefined;
+        if (deps.senderFor) {
+          if (row.campaignId && deps.campaigns) {
+            const campaign = await campaignRow(row.campaignId);
+            if (campaign) senderTarget = { kind: "campaign", campaign };
+          } else senderTarget = { kind: "event", row };
+        }
+        const override = senderTarget ? deps.senderFor!(senderTarget) : undefined;
         if (row.campaignId && deps.campaigns) {
           const base = await renderCampaignEmail(
             db,
