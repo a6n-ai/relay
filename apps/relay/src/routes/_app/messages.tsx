@@ -15,7 +15,7 @@ import { fetchMessages } from "../../console/messages.fns";
 import { formatWhen } from "../../components/lib/format-date";
 import { MESSAGE_STATUSES } from "../../shared/mail";
 import { PAGE_SIZE } from "../../shared/limits";
-import { posInt, untyped } from "../../components/lib/route-search";
+import { posInt, status, str } from "../../components/lib/route-search";
 
 export const Route = createFileRoute("/_app/messages")({
   staticData: { title: "Messages", copy: "Every email you send and receive, with its delivery status.", scoped: "all" },
@@ -71,7 +71,7 @@ function MessagesPage() {
               { key: "appId", label: "App", options: shell.apps.map((a) => ({ value: a.id, label: a.name })) },
             ]}
             value={search}
-            onChange={(next) => navigate({ search: untyped(next) })}
+            onChange={(next) => navigate({ search: (prev) => ({ ...prev, appId: str(next.appId), status: status(next.status) }) })}
           />
         }
       />

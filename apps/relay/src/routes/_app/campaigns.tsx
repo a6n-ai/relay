@@ -20,7 +20,7 @@ import { fetchCampaigns } from "../../console/campaigns.fns";
 import { formatWhen } from "../../components/lib/format-date";
 import { PAGE_SIZE } from "../../shared/limits";
 import { appName } from "../../shared/scope";
-import { posInt, str, untyped } from "../../components/lib/route-search";
+import { posInt, str } from "../../components/lib/route-search";
 import { loaded, ScopedDenied } from "../../components/page/scoped-page";
 import { scopedLoad } from "../../components/lib/scoped-load";
 
@@ -83,7 +83,7 @@ function CampaignsPage() {
       <PageHeader />
       <Toolbar
         search={<SearchInput value={query} onChange={setQuery} placeholder="Search campaigns" />}
-        filters={<FilterMenu facets={facets} value={search} onChange={(next) => navigate({ search: untyped(next), replace: true })} />}
+        filters={<FilterMenu facets={facets} value={search} onChange={(next) => navigate({ search: (prev) => ({ ...prev, appId: str(next.appId), status: str(next.status) }), replace: true })} />}
         view={<ViewToggle route={ROUTE} value={view} onChange={setView} />}
       >
         {newButton}

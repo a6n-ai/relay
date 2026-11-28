@@ -20,7 +20,7 @@ import { fetchTemplates } from "../../console/templates.fns";
 import { formatWhen } from "../../components/lib/format-date";
 import { PAGE_SIZE } from "../../shared/limits";
 import { appName } from "../../shared/scope";
-import { posInt, str, untyped } from "../../components/lib/route-search";
+import { posInt, str } from "../../components/lib/route-search";
 import { loaded, ScopedDenied } from "../../components/page/scoped-page";
 import { scopedLoad } from "../../components/lib/scoped-load";
 
@@ -89,7 +89,7 @@ function TemplatesPage() {
       <PageHeader />
       <Toolbar
         search={<SearchInput value={query} onChange={setQuery} placeholder="Search templates" />}
-        filters={<FilterMenu facets={facets} value={search} onChange={(next) => navigate({ search: untyped(next), replace: true })} />}
+        filters={<FilterMenu facets={facets} value={search} onChange={(next) => navigate({ search: (prev) => ({ ...prev, event: str(next.event), locale: str(next.locale) }), replace: true })} />}
         view={<ViewToggle route={ROUTE} value={view} onChange={setView} />}
       >
         {newButton}

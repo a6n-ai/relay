@@ -11,9 +11,14 @@ const VIEW = READ("mailbox", "read");
 const MANAGE = WRITE("mailbox", "manage");
 
 // Null means the role cannot read inbound mail: the page shows a denied state instead of an error.
-export const fetchFailures = createServerFn({ method: "GET" }).handler(() =>
-  read(VIEW, async (p) => ({ rows: await listFailures(env, p) })),
-);
+export const fetchFailures = createServerFn({ method: "GET" })
+  .validator(validate(z.object({ appId: id.optional(), cursor: z.string().max(64).optional() })))
+  .handler(({ data }) =>
+    read(VIEW, async (p) => {
+      const { rows, nextCursor } = await listFailures(env, p, data);
+      return { rows, nextCursor };
+    }),
+  );
 
 export const replayFailureFn = createServerFn({ method: "POST" })
   .validator(validate(z.object({ id })))

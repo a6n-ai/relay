@@ -91,7 +91,7 @@ describe("personal mailbox read access", () => {
           addressId,
         );
       });
-    expect((await listFailures(env, t.admin.actor)).map((f) => f.addressId)).toEqual([shared]);
+    expect((await listFailures(env, t.admin.actor)).rows.map((f) => f.addressId)).toEqual([shared]);
   });
 
   it("inbound to personal mailbox is accepted", async () => {

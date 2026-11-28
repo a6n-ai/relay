@@ -19,7 +19,7 @@ import { formatWhen } from "../../components/lib/format-date";
 import { addSuppressionFn, fetchSuppressions, removeSuppressionFn } from "../../console/suppressions.fns";
 import { FormError, FormBody, FormActions } from "../../components/form/form-parts";
 import { STREAMS, type SuppressionReason } from "../../shared/mail";
-import { oneOf, posInt, str, trimmed, untyped } from "../../components/lib/route-search";
+import { oneOf, posInt, str, trimmed } from "../../components/lib/route-search";
 import { useSubmit } from "../../components/lib/use-submit";
 
 type Blocked = { email: string; reason: SuppressionReason };
@@ -77,7 +77,7 @@ function SuppressionsPage() {
           <FilterMenu
             facets={[{ key: "stream", label: "Applies to", options: STREAM_FILTERS.map((s) => ({ value: s, label: streamLabel(s) })) }]}
             value={search}
-            onChange={(next) => void navigate({ to: ".", search: untyped(next) })}
+            onChange={(next) => void navigate({ to: ".", search: (prev) => ({ ...prev, stream: oneOf(STREAM_FILTERS, next.stream) }) })}
           />
         }
       >

@@ -156,10 +156,14 @@ export type FailureView = {
   updatedAt: number;
 };
 
-// shortcut: 100 newest only, add a cursor if a workspace keeps more failures
-export function listInboundFailureRows(db: Db, access: MessageAccess): FailureView[] {
+export function listInboundFailureRows(
+  db: Db,
+  access: MessageAccess,
+  q: { cursor?: string; appId?: string } = {},
+): { rows: FailureView[]; nextCursor: string | null } {
   const f = schema.inboundFailure;
-  return db
+  const cursor = parseCursor(q.cursor);
+  const rows = db
     .select({
       id: f.id,
       appId: f.appId,
@@ -172,10 +176,18 @@ export function listInboundFailureRows(db: Db, access: MessageAccess): FailureVi
       updatedAt: f.updatedAt,
     })
     .from(f)
-    .where(access.inbound === "all" ? notIn(f.addressId, access.exceptInbound) : sql`${f.addressId} IN (SELECT value FROM json_each(${JSON.stringify(access.inbound)}))`)
-    .orderBy(desc(f.receivedAt))
-    .limit(100)
+    .where(
+      and(
+        access.inbound === "all" ? notIn(f.addressId, access.exceptInbound) : sql`${f.addressId} IN (SELECT value FROM json_each(${JSON.stringify(access.inbound)}))`,
+        q.appId ? eq(f.appId, q.appId) : undefined,
+        cursor ? olderThan(f.receivedAt, f.id, cursor) : undefined,
+      ),
+    )
+    .orderBy(desc(f.receivedAt), desc(f.id))
+    .limit(PAGE_SIZE + 1)
     .all();
+  const { page, nextCursor } = keysetSlice(rows.map((r) => ({ ...r, createdAt: r.receivedAt })), PAGE_SIZE);
+  return { rows: page.map(({ createdAt: _createdAt, ...r }) => r), nextCursor };
 }
 
 export function getInboundFailureRow(db: Db, id: string): (FailureView & { rawKey: string; authResults: string | null }) | null {

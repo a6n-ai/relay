@@ -7,7 +7,6 @@ import { PageDenied } from "../../components/page/page-denied";
 import { errorText } from "../../components/lib/error-text";
 import { FilterMenu } from "../../components/page/filter-menu";
 import { LoadMore } from "../../components/page/load-more";
-import { Hint } from "../../components/form/text";
 import { Toolbar } from "../../components/page/toolbar";
 import { ListSkeleton } from "../../components/page/page-skeleton";
 import { PageHeader } from "../../components/shell/page-header";
@@ -15,20 +14,20 @@ import { formatWhen } from "../../components/lib/format-date";
 import { ResourceTable } from "../../components/page/resource-table";
 import { useCan } from "../../components/lib/use-can";
 import { deleteFailureFn, fetchFailures, replayFailureFn } from "../../console/failures.fns";
-import { posInt, str, untyped } from "../../components/lib/route-search";
+import { PAGE_SIZE } from "../../shared/limits";
+import { posInt, str } from "../../components/lib/route-search";
 
-type FailuresSearch = { appId?: string; offset?: number };
-
-// shortcut: the server returns the newest 100 failures at once, so paging is over the loaded rows. Add a cursor if it grows.
-const PAGE = 25;
+type FailuresSearch = { appId?: string; cursor?: string; offset?: number };
 
 export const Route = createFileRoute("/_app/messages_/failures")({
   staticData: { title: "Failed", copy: "Messages that reached Relay but could not be accepted." },
   validateSearch: (raw: Record<string, unknown>): FailuresSearch => ({
     appId: str(raw.appId),
+    cursor: str(raw.cursor),
     offset: posInt(raw.offset),
   }),
-  loader: () => fetchFailures(),
+  loaderDeps: ({ search }) => ({ appId: search.appId, cursor: search.cursor }),
+  loader: ({ deps }) => fetchFailures({ data: deps }),
   pendingComponent: () => <ListSkeleton columns={5} filter />,
   component: FailuresPage,
 });
@@ -72,9 +71,7 @@ function FailuresPage() {
     await confirmAction(() => deleteFailureFn({ data: { id: failureId } }), "Message deleted", () => router.invalidate());
   }
 
-  const offset = search.offset ?? 0;
-  const matching = page.rows.filter((f) => !search.appId || f.appId === search.appId);
-  const rows = matching.slice(offset, offset + PAGE);
+  const offset = search.cursor ? (search.offset ?? 0) : 0;
   const target = page.rows.find((f) => f.id === deleting);
   return (
     <>
@@ -84,13 +81,10 @@ function FailuresPage() {
           <FilterMenu
             facets={[{ key: "appId", label: "App", options: shell.apps.map((a) => ({ value: a.id, label: a.name })) }]}
             value={search}
-            onChange={(next) => navigate({ search: untyped(next), replace: true })}
+            onChange={(next) => navigate({ search: (prev) => ({ ...prev, appId: str(next.appId), cursor: undefined, offset: undefined }), replace: true })}
           />
         }
       />
-      {page.rows.length >= 100 ? (
-        <Hint>Showing the newest 100 failed messages. The App filter applies to those.</Hint>
-      ) : null}
       <ResourceTable
         offset={offset}
         columns={[
@@ -100,9 +94,9 @@ function FailuresPage() {
           { header: "Error", cell: (f) => f.error },
           { header: "Attempts", secondary: true, numeric: true, cell: (f) => f.attempts },
         ]}
-        rows={rows}
+        rows={page.rows}
         rowKey={(f) => f.id}
-        empty={page.rows.length === 0 ? "Nothing failed to arrive." : "No failed messages match."}
+        empty={search.appId ? "No failed messages match." : "Nothing failed to arrive."}
         menu={(f) => [
           { label: "Retry", onSelect: () => retry(f.id), hidden: !canManage },
           { label: "Delete", onSelect: () => setDeleting(f.id), destructive: true, hidden: !canManage },
@@ -121,12 +115,12 @@ function FailuresPage() {
         }}
       />
       <LoadMore
-        hasMore={matching.length > offset + PAGE}
+        hasMore={Boolean(page.nextCursor)}
         to="/messages/failures"
         offset={offset}
-        pageSize={PAGE}
-        search={{ appId: search.appId }}
-        resetTo={offset > 0 ? "/messages/failures" : undefined}
+        pageSize={PAGE_SIZE}
+        search={{ appId: search.appId, cursor: page.nextCursor }}
+        resetTo={search.cursor ? "/messages/failures" : undefined}
         resetSearch={{ appId: search.appId }}
       />
     </>
