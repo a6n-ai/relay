@@ -37,6 +37,7 @@ import { str, posInt } from "../../components/lib/route-search";
 import { appName } from "../../shared/scope";
 import { useSubmit } from "../../components/lib/use-submit";
 import { emailSchema } from "../../shared/schemas";
+import type { Crumb } from "../../components/shell/page-header";
 
 type ListSearch = { appId?: string; cursor?: string; q?: string; offset?: number };
 
@@ -74,7 +75,7 @@ function ListDetailPage() {
   const [deleting, setDeleting] = useState(false);
   const [removing, setRemoving] = useState<{ id: string; email: string } | null>(null);
   const [adding, setAdding] = useState(false);
-  const listsCrumb = { label: "Lists", to: "/lists", search: { appId: search.appId } };
+  const listsCrumb: Crumb = { label: "Lists", to: "/lists", search: { appId: search.appId } };
   if (!page) {
     return <PageDenied crumbs={[listsCrumb, { label: "List" }]} />;
   }
@@ -212,9 +213,10 @@ function ListDetailPage() {
       />
       <LoadMore
         hasMore={!!members.nextCursor}
-        to={`/lists/${listId}`}
+        to="/lists/$listId"
+        params={{ listId }}
         search={{ appId: search.appId, q: search.q, cursor: members.nextCursor }}
-        resetTo={search.cursor ? `/lists/${listId}` : undefined}
+        resetTo={search.cursor ? "/lists/$listId" : undefined}
         resetSearch={{ appId: search.appId, q: search.q }}
         offset={offset}
         pageSize={members.rows.length}

@@ -15,6 +15,7 @@ import { PageHeader } from "../../components/shell/page-header";
 import { useCan } from "../../components/lib/use-can";
 import { fetchApps } from "../../console/apps.fns";
 import { str } from "../../components/lib/route-search";
+import type { RowAction } from "../../components/page/row-menu";
 
 export const Route = createFileRoute("/_app/apps")({
   staticData: { title: "Apps", copy: "The products that send mail through Relay." },
@@ -37,7 +38,7 @@ function AppsPage() {
   const q = query.trim().toLowerCase();
   const rows = q ? apps.filter((a) => a.name.toLowerCase().includes(q)) : apps;
   const create = canWrite ? <Button render={<Link to="/apps/new" />}>New app</Button> : undefined;
-  const menu = (a: (typeof apps)[number]) => [
+  const menu = (a: (typeof apps)[number]): RowAction[] => [
     { label: "Open", to: "/apps/$appId", params: { appId: a.id } },
     { label: "Webhooks", to: "/apps/$appId/webhooks", params: { appId: a.id } },
   ];

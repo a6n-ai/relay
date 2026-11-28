@@ -14,6 +14,7 @@ import { type ConsentSource } from "../../shared/views";
 import { str } from "../../components/lib/route-search";
 import { startApp } from "../../shared/scope";
 import { useSubmit } from "../../components/lib/use-submit";
+import type { Crumb } from "../../components/shell/page-header";
 
 export const Route = createFileRoute("/_app/lists_/new")({
   validateSearch: (search: Record<string, unknown>): { appId?: string } => ({
@@ -22,7 +23,7 @@ export const Route = createFileRoute("/_app/lists_/new")({
   component: NewListPage,
 });
 
-const crumbs = [{ label: "Lists", to: "/lists" }, { label: "New list" }];
+const crumbs: Crumb[] = [{ label: "Lists", to: "/lists" }, { label: "New list" }];
 
 function NewListPage() {
   const { appId: scopeParam } = Route.useSearch();

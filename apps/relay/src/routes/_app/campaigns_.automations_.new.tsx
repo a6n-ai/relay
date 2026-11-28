@@ -6,6 +6,7 @@ import { PageHeader } from "../../components/shell/page-header";
 import { useCan } from "../../components/lib/use-can";
 import { startApp } from "../../shared/scope";
 import { str } from "../../components/lib/route-search";
+import type { Crumb } from "../../components/shell/page-header";
 
 export const Route = createFileRoute("/_app/campaigns_/automations_/new")({
   validateSearch: (search: Record<string, unknown>): { appId?: string } => ({
@@ -14,7 +15,7 @@ export const Route = createFileRoute("/_app/campaigns_/automations_/new")({
   component: NewAutomationPage,
 });
 
-const crumbs = [
+const crumbs: Crumb[] = [
   { label: "Campaigns", to: "/campaigns" },
   { label: "Automations", to: "/campaigns/automations" },
   { label: "New automation" },

@@ -1,3 +1,4 @@
+import type { FileRouteTypes } from "../../routeTree.gen";
 import { createItems, visibleNav } from "./nav";
 import type { PageOf } from "./page-data";
 import { type Shell } from "../../shared/views";
@@ -7,7 +8,8 @@ export type FindEntry = {
   id: string;
   group: "Pages" | "Apps" | "Actions";
   label: string;
-  to: string;
+  to: FileRouteTypes["to"];
+  params?: Record<string, string>;
   search?: Record<string, string>;
 };
 
@@ -26,7 +28,7 @@ export function findEntries(shell: Shell, pageOf: PageOf): FindEntry[] {
         : [{ id: `page:${item.id}`, group: "Pages", label: item.label, to: item.to, search: item.search }],
     ),
   );
-  const apps = shell.apps.map((a): FindEntry => ({ id: `app:${a.id}`, group: "Apps", label: a.name, to: `/apps/${a.id}` }));
+  const apps = shell.apps.map((a): FindEntry => ({ id: `app:${a.id}`, group: "Apps", label: a.name, to: "/apps/$appId", params: { appId: a.id } }));
   const actions = createItems(roles, isSuspended(shell.active?.status)).map(
     (c): FindEntry => ({ id: `new:${c.id}`, group: "Actions", label: c.find ?? `New ${c.label}`, to: c.to, search: c.new ? { new: String(c.new) } : undefined }),
   );

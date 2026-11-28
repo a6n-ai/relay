@@ -1,12 +1,13 @@
 import { Button } from "@foundry/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@foundry/ui/dropdown-menu";
 import { Link } from "@tanstack/react-router";
+import type { FileRouteTypes } from "../../routeTree.gen";
 import { MoreHorizontalIcon } from "lucide-react";
 
 export type RowAction = {
   label: string;
   onSelect?: () => void;
-  to?: string;
+  to?: FileRouteTypes["to"];
   params?: Record<string, string>;
   search?: Record<string, unknown>;
   destructive?: boolean;

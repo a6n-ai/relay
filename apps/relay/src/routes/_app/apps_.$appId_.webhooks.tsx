@@ -23,6 +23,7 @@ import { type WebhookEvent } from "../../shared/mail";
 import { hostOf } from "../../components/lib/path";
 import { appName } from "../../shared/scope";
 import { useSubmit } from "../../components/lib/use-submit";
+import type { Crumb } from "../../components/shell/page-header";
 
 const DESCRIPTION = "Where Relay tells your app about message events.";
 
@@ -42,7 +43,7 @@ function WebhooksPage() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [editId, setEditId] = useState<string | null>(null);
   const appLabel = appName(shell.apps, appId, "App");
-  const crumbs = [
+  const crumbs: Crumb[] = [
     { label: "Apps", to: "/apps" },
     { label: appLabel, to: "/apps/$appId", params: { appId } },
     { label: "Webhooks" },

@@ -10,12 +10,13 @@ import { SettingsCard } from "../../components/page/settings-card";
 import { useCan } from "../../components/lib/use-can";
 import { createAppFn } from "../../console/apps.fns";
 import { useSubmit } from "../../components/lib/use-submit";
+import type { Crumb } from "../../components/shell/page-header";
 
 export const Route = createFileRoute("/_app/apps_/new")({
   component: NewAppPage,
 });
 
-const crumbs = [{ label: "Apps", to: "/apps" }, { label: "New app" }];
+const crumbs: Crumb[] = [{ label: "Apps", to: "/apps" }, { label: "New app" }];
 
 function NewAppPage() {
   const canWrite = useCan({ tenant: ["write"] });

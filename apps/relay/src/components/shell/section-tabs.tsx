@@ -13,6 +13,7 @@ export function SectionTabs({ tabs, active, appId, label = "Sections" }: { tabs:
         <Link
           key={tab.id}
           to={tab.to}
+          params={tab.params}
           search={navSearch(tab.to, tab.search, appId, pageOf)}
           aria-current={tab.id === active ? "page" : undefined}
           data-active={tab.id === active}
