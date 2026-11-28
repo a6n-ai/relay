@@ -5,7 +5,7 @@ export * from "./schema";
 export * from "./campaign-schema";
 export { renderEmailForEvent, renderInAppForEvent, appendUnsubscribeFooter, missingFooterPreview, withPreviewFooter, loadCampaignContent, renderCampaignEmail, renderCampaignText, type FooterInfo, type CampaignContentLoader } from "./template";
 export { suppress, suppressionRowsFor, suppressionKind, suppressManually, type SuppressionScope } from "./suppression";
-export * from "./unsubscribe";
+export { verifyUnsubscribeToken, buildUnsubscribeUrl, buildOneClickUnsubscribeUrl, listUnsubscribeHeaders, handleUnsubscribe, verifyResubscribeToken, buildResubscribeUrl, handleResubscribe } from "./unsubscribe";
 export { resolveAudienceDetailed, resolveAudience, countAudience, type Recipient, type AudienceBreakdown, type AudienceDeps } from "./audience";
 export { materializeCampaign, dueCampaigns } from "./campaign";
 export * from "./system-campaign";
