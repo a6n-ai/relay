@@ -1,8 +1,10 @@
 import { useEffect, useState, type ComponentProps } from 'react'
-import { AppWindow, ChevronRight, Globe, LayoutDashboard, List, Mail, Megaphone, Settings } from 'lucide-react'
+import { ChevronRight } from 'lucide-react'
 import { Badge } from '../stageshow/controls/Badge'
 import { Stage } from '../stageshow/stage'
 import { STATUS } from '../../page/status-badge'
+import { visibleNav } from '../../shell/nav'
+import { usePageOf } from '../../shell/page-data'
 import './relay.css'
 
 type Tone = 'neutral' | 'accent' | 'success' | 'danger' | 'warning'
@@ -35,37 +37,31 @@ export function RStage<S extends object>({ className, ...props }: StageProps<S>)
   return <Stage<S> theme={theme} fidelity="standard" {...props} className={`rl ${className ?? ''}`} />
 }
 
-// The console's own sidebar (shell/nav.ts, page titles on the routes): the top-level items, with the active item's children open. Labels are copied here because the routes' titles cannot load outside the router.
-const NAV = [
-  [LayoutDashboard, 'Overview', []],
-  [Mail, 'Messages', ['Sent', 'Received', 'Failed', 'Suppressed']],
-  [Megaphone, 'Campaigns', ['Campaigns', 'Templates', 'Automations']],
-  [List, 'Lists', []],
-  null,
-  [AppWindow, 'Apps', []],
-  [Globe, 'Domains', []],
-  [Settings, 'Settings', ['General', 'Members', 'Invites', 'Teams']],
-] as const
-
+// The console's own sidebar: the owner's work and setup groups from shell/nav.ts, labelled by the routes' titles, with the active item's children open.
 export function Side({ on, child }: { on: string; child?: string }) {
+  const groups = visibleNav(['owner'], false, true, usePageOf()).filter((g) => g.id !== 'platform')
   return (
     <aside className="rl-side">
-      {NAV.map((n, i) => {
-        if (!n) return <div key={i} className="rl-nav-gap" />
-        const NavIcon = n[0]
-        const open = n[1] === on
-        return (
-          <div key={n[1]} style={{ display: 'contents' }}>
-            <div className="rl-nav" data-on={(open && !child) || undefined}>
-              <NavIcon size={15} strokeWidth={1.75} />
-              {n[1]}
-            </div>
-            {open && child ? n[2].map((c) => (
-              <div key={c} className="rl-nav rl-sub" data-on={c === child || undefined} data-target={`nav-${c}`}>{c}</div>
-            )) : null}
-          </div>
-        )
-      })}
+      {groups.map((g, gi) => (
+        <div key={g.id} style={{ display: 'contents' }}>
+          {gi > 0 ? <div className="rl-nav-gap" /> : null}
+          {g.items.map((n) => {
+            const NavIcon = n.icon
+            const open = n.id === on
+            return (
+              <div key={n.id} style={{ display: 'contents' }}>
+                <div className="rl-nav" data-on={(open && !child) || undefined}>
+                  <NavIcon size={15} strokeWidth={1.75} />
+                  {n.label}
+                </div>
+                {open && child ? n.children?.map((c) => (
+                  <div key={c.id} className="rl-nav rl-sub" data-on={c.id === child || undefined} data-target={`nav-${c.label}`}>{c.label}</div>
+                )) : null}
+              </div>
+            )
+          })}
+        </div>
+      ))}
     </aside>
   )
 }

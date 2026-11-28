@@ -59,7 +59,7 @@ function HeroStage({ script }: { script?: Script }) {
           <>
             <Window url="relay.a6n.ai/messages" className="rlh-win" receded={false}>
               <div className="rl-app rlh-app">
-                {layout === 'wide' ? <Side on="Messages" /> : null}
+                {layout === 'wide' ? <Side on="messages" /> : null}
                 <div className="rl-main">
                   <Crumbs items={['Messages', 'Sent']} />
                   <div className="rl-grid" data-head>
