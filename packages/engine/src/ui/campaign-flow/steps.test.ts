@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { FLOW_STEPS, parseStep, stepGate } from "./steps";
+import { FLOW_STEPS, parseStep, stepGate, testSource } from "./steps";
 
 describe("flow steps", () => {
   it("has three steps in order", () => {
@@ -33,5 +33,16 @@ describe("stepGate", () => {
 describe("stepGate — review minors", () => {
   it("words the content hint for a text channel", () => {
     expect(stepGate({ hasSubject: true, hasContent: false, eligible: 1, email: false }).reason).toBe("Add the message to continue.");
+  });
+});
+
+describe("testSource", () => {
+  it("sends the open editor on Content and the stored email on Review", () => {
+    expect(testSource("content", true)).toBe("editor");
+    expect(testSource("review", true, "<p>hi</p>")).toBe("review");
+  });
+  it("hides Send test on Audience, without stored html, and for non-email campaigns", () => {
+    expect([testSource("audience", true, "<p>hi</p>"), testSource("review", true, null)]).toEqual([null, null]);
+    expect([testSource("content", false), testSource("review", false, "<p>hi</p>")]).toEqual([null, null]);
   });
 });

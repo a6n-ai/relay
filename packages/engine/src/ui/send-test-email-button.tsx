@@ -1,13 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { toast } from "@foundry/ui/toast";
 import { Button } from "@foundry/ui/button";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@foundry/ui/dialog";
 import { Input } from "@foundry/ui/input";
+import { Label } from "@foundry/ui/label";
 import { apiAction, apiFetch } from "./api-fetch";
 
 /**
- * "Send test" affordance shared by every place an admin edits an email —
+ * "Send test" button and dialog shared by every place an admin edits an email —
  * event templates and campaigns alike — instead of each screen wiring its
  * own copy. Defaults to the acting admin's own address; an explicit
  * recipient lets them test across clients.
@@ -29,6 +31,8 @@ export function SendTestEmailButton({
 }) {
   const [testEmail, setTestEmail] = useState("");
   const [busy, setBusy] = useState(false);
+  const [open, setOpen] = useState(false);
+  const inputId = useId();
 
   async function sendTest() {
     if (!subject.trim()) return toast.error("Add a subject first");
@@ -44,6 +48,7 @@ export function SendTestEmailButton({
     );
     setBusy(false);
     if (!res) return;
+    setOpen(false);
     const dest = testEmail.trim() ? ` to ${testEmail.trim()}` : "";
     if (!marketing || res.data.footerIncluded) {
       toast.success(`Test sent${dest}`);
@@ -53,17 +58,36 @@ export function SendTestEmailButton({
   }
 
   return (
-    <>
-      <Input
-        type="email"
-        value={testEmail}
-        onChange={(e) => setTestEmail(e.target.value)}
-        placeholder="test recipient (defaults to you)"
-        className="max-w-64"
-      />
-      <Button type="button" variant="outline" onClick={sendTest} disabled={disabled || busy}>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger render={<Button type="button" variant="outline" disabled={disabled || busy} />}>
         Send test
-      </Button>
-    </>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Send a test email</DialogTitle>
+        </DialogHeader>
+        <div className="grid gap-2">
+          <Label htmlFor={inputId}>Recipient</Label>
+          <Input
+            id={inputId}
+            type="email"
+            value={testEmail}
+            onChange={(e) => setTestEmail(e.target.value)}
+            // Not a <form>: this can sit inside a caller's form.
+            onKeyDown={(e) => {
+              if (e.key !== "Enter") return;
+              e.preventDefault();
+              if (!disabled && !busy) void sendTest();
+            }}
+            placeholder="test recipient (defaults to you)"
+          />
+        </div>
+        <DialogFooter>
+          <Button type="button" onClick={sendTest} disabled={disabled || busy}>
+            Send test
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

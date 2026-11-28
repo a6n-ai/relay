@@ -16,6 +16,7 @@ export function FlowShell({
   step,
   backHref,
   saveStatus,
+  actions,
   onRename,
   onBack,
   bottom,
@@ -28,6 +29,8 @@ export function FlowShell({
   step: FlowStep;
   backHref: string;
   saveStatus?: ReactNode;
+  /** Buttons on the right of the title row. */
+  actions?: ReactNode;
   onRename: (name: string) => Promise<void>;
   /** Runs before leaving for the list, e.g. to flush a pending save. */
   onBack?: () => Promise<void>;
@@ -42,7 +45,7 @@ export function FlowShell({
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="space-y-2">
         <Link
           href={backHref}
           onClick={(e) => {
@@ -50,31 +53,36 @@ export function FlowShell({
             e.preventDefault();
             void onBack().then(() => router.push(backHref));
           }}
-          className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-sm"
+          className="text-muted-foreground hover:text-foreground flex w-fit items-center gap-1 text-sm"
         >
           <ArrowLeftIcon className="size-4" /> All campaigns
         </Link>
-        <input
-          aria-label="Campaign name (internal)"
-          value={draftName}
-          onChange={(e) => setDraftName(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") e.currentTarget.blur();
-          }}
-          onBlur={() => {
-            const next = draftName.trim();
-            if (!next) setDraftName(name);
-            else if (next !== name) void onRename(next);
-          }}
-          className="hover:bg-muted/50 focus-visible:ring-ring min-w-0 flex-1 rounded-md bg-transparent px-2 py-1 text-xl font-semibold outline-none focus-visible:ring-2"
-        />
-        <Badge variant="outline" className="capitalize">
-          {status}
-        </Badge>
-        {saveStatus}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex min-w-0 flex-1 basis-72 flex-wrap items-center gap-3">
+            <input
+              aria-label="Campaign name (internal)"
+              value={draftName}
+              onChange={(e) => setDraftName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") e.currentTarget.blur();
+              }}
+              onBlur={() => {
+                const next = draftName.trim();
+                if (!next) setDraftName(name);
+                else if (next !== name) void onRename(next);
+              }}
+              className="hover:bg-muted/50 focus-visible:ring-ring -ml-2 field-sizing-content max-w-full min-w-0 rounded-md bg-transparent px-2 py-1 text-xl font-semibold outline-none focus-visible:ring-2"
+            />
+            <Badge variant="outline" className="capitalize">
+              {status}
+            </Badge>
+            {saveStatus}
+          </div>
+          {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
+        </div>
       </div>
 
-      <ol className="flex items-center gap-2 text-sm" aria-label="Campaign steps">
+      <ol className="flex flex-wrap items-center gap-2 text-sm" aria-label="Campaign steps">
         {FLOW_STEPS.map((s, i) => {
           const done = i < current;
           const active = i === current;
@@ -104,7 +112,7 @@ export function FlowShell({
               ) : (
                 body
               )}
-              {i < FLOW_STEPS.length - 1 && <span className="bg-border h-px w-6" aria-hidden />}
+              {i < FLOW_STEPS.length - 1 && <span className="bg-border hidden h-px w-6 sm:block" aria-hidden />}
             </li>
           );
         })}
@@ -113,7 +121,7 @@ export function FlowShell({
       {children}
 
       {/* Sticky, not fixed: it stays inside the content column instead of sliding under the app sidebar. */}
-      <div className="bg-background/95 sticky bottom-0 z-30 flex items-center justify-end gap-2 border-t py-3 backdrop-blur">
+      <div className="bg-background/95 sticky bottom-0 z-30 flex flex-wrap items-center justify-end gap-2 border-t py-3 backdrop-blur">
         {bottom}
       </div>
     </div>

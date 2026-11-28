@@ -23,3 +23,10 @@ export function stepGate(input: { hasSubject: boolean; hasContent: boolean; elig
   }
   return { canLeaveContent, canLeaveAudience, reason };
 }
+
+/** Where the header's "Send test" takes its email from on this step; null hides the button. */
+export function testSource(step: FlowStep, email: boolean, reviewHtml?: string | null): "editor" | "review" | null {
+  if (!email) return null;
+  if (step === "content") return "editor";
+  return step === "review" && reviewHtml ? "review" : null;
+}

@@ -13,6 +13,8 @@ import { EmailTemplateBuilder, type EmailTemplateBuilderHandle } from "../email-
 export interface ContentStepHandle {
   /** Force a save; resolves true when the server has the latest content. */
   save: () => Promise<boolean>;
+  /** The editor's current email, finished for a test send. */
+  exportTest: () => Promise<{ html: string; text: string }>;
 }
 
 /** Step 1 for an email campaign: the code editor, always open, autosaving while the campaign is a draft. */
@@ -24,7 +26,7 @@ export const ContentStep = forwardRef<
     autosaveDraft: boolean;
     footer?: FooterInfo;
     from?: string;
-    onState: (s: { hasSubject: boolean; hasContent: boolean; save: SaveState }) => void;
+    onState: (s: { subject: string; hasContent: boolean; save: SaveState }) => void;
   }
 >(function ContentStep({ campaignPublicId, content, autosaveDraft, footer, from, onState }, ref) {
   const [subject, setSubject] = useState(content?.subject ?? "");
@@ -64,13 +66,18 @@ export const ContentStep = forwardRef<
   const saveable = !!subject.trim() && hasContent;
   const autosave = useAutosave({ enabled: autosaveDraft && saveable, save: persist });
 
-  const hasSubject = !!subject.trim();
   useEffect(() => {
-    onState({ hasSubject, hasContent, save: autosave.state });
+    onState({ subject, hasContent, save: autosave.state });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- report on change only
-  }, [hasSubject, hasContent, autosave.state]);
+  }, [subject, hasContent, autosave.state]);
 
-  useImperativeHandle(ref, () => ({ save: async () => (await autosave.saveNow()) === "ok" }));
+  useImperativeHandle(ref, () => ({
+    save: async () => (await autosave.saveNow()) === "ok",
+    exportTest: async () => {
+      if (!editor.current) throw new Error("editor not ready");
+      return editor.current.exportTest();
+    },
+  }));
 
   return (
     <EmailTemplateBuilder
@@ -96,6 +103,7 @@ export const ContentStep = forwardRef<
       variables={CAMPAIGN_VARIABLES}
       samples={CAMPAIGN_VARIABLE_SAMPLES}
       marketing
+      hideSendTest
       footer={footer}
       from={from}
       extra={

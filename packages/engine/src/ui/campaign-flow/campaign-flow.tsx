@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { CircleAlertIcon } from "lucide-react";
 import { toast } from "@foundry/ui/toast";
@@ -18,7 +18,7 @@ import { AudienceStep, type AudienceStepHandle } from "./audience-step";
 import { ContentStep, type ContentStepHandle } from "./content-step";
 import { FlowShell } from "./flow-shell";
 import { ReviewStep, ScheduleDialog, SendDialog } from "./review-step";
-import { stepGate, type FlowStep } from "./steps";
+import { stepGate, testSource, type FlowStep } from "./steps";
 
 const json = (method: string, body: unknown): RequestInit => ({
   method,
@@ -42,6 +42,8 @@ export function CampaignFlow(props: {
   footer?: FooterInfo;
   from?: string;
   unsubscribedHref: string;
+  /** Page-level buttons for the header, e.g. Duplicate and Delete. */
+  actions?: ReactNode;
 }) {
   const { campaignPublicId, step, channel } = props;
   const email = channel === "email";
@@ -51,8 +53,8 @@ export function CampaignFlow(props: {
   const contentRef = useRef<ContentStepHandle>(null);
   const audienceRef = useRef<AudienceStepHandle>(null);
   const [reviewNonce, setReviewNonce] = useState(0);
-  const [editor, setEditor] = useState<{ hasSubject: boolean; hasContent: boolean; save: SaveState }>({
-    hasSubject: !!props.content?.subject?.trim(),
+  const [editor, setEditor] = useState<{ subject: string; hasContent: boolean; save: SaveState }>({
+    subject: props.content?.subject ?? "",
     hasContent: !!props.content?.html?.trim(),
     save: { status: "idle", attempt: 0 },
   });
@@ -63,7 +65,7 @@ export function CampaignFlow(props: {
   const [busy, setBusy] = useState(false);
 
   // Text channels save through TextRow + router.refresh, so their state is just the props.
-  const hasSubject = email ? editor.hasSubject : !!props.content?.subject?.trim();
+  const hasSubject = !!(email ? editor.subject : props.content?.subject)?.trim();
   // A provider template (WhatsApp) is content on its own.
   const hasContent = email ? editor.hasContent : !!(props.content?.body?.trim() || props.content?.providerTemplateId);
   const gate = stepGate({ hasSubject, hasContent, eligible: step === "audience" ? eligible : 1, email });
@@ -113,9 +115,10 @@ export function CampaignFlow(props: {
 
   const reviewEmail = review?.content.find((c) => c.channel === "email");
   const blocked = !review || review.blocking.length > 0;
+  const test = testSource(step, email, reviewEmail?.html);
   // While an audience edit is still saving, leaving would drop it.
   const audienceSettled = eligible !== null;
-  const hint = gate.reason && <span className="text-muted-foreground mr-auto text-sm">{gate.reason}</span>;
+  const hint = gate.reason && <span className="text-muted-foreground mr-auto w-full text-sm sm:w-auto">{gate.reason}</span>;
   const bottom =
     step === "content" ? (
       <>
@@ -173,6 +176,28 @@ export function CampaignFlow(props: {
       step={step}
       backHref="/dashboard/notifications/campaigns"
       onRename={rename}
+      actions={
+        <>
+          {test === "editor" && (
+            <SendTestEmailButton
+              subject={editor.subject}
+              marketing
+              exportEmail={async () => {
+                if (!contentRef.current) throw new Error("editor not ready");
+                return contentRef.current.exportTest();
+              }}
+            />
+          )}
+          {test === "review" && (
+            <SendTestEmailButton
+              subject={reviewEmail!.subject}
+              marketing
+              exportEmail={async () => ({ html: reviewEmail!.html!, text: htmlToText(reviewEmail!.html!) })}
+            />
+          )}
+          {props.actions}
+        </>
+      }
       onBack={async () => {
         if (step === "content" && email && gate.canLeaveContent) await contentRef.current?.save();
         if (step === "audience") await audienceRef.current?.settle();
@@ -246,15 +271,6 @@ export function CampaignFlow(props: {
             timeZone={props.timeZone}
             onReview={setReview}
           />
-          {reviewEmail?.html && (
-            <div className="flex justify-end">
-              <SendTestEmailButton
-                subject={reviewEmail.subject}
-                marketing
-                exportEmail={async () => ({ html: reviewEmail.html!, text: htmlToText(reviewEmail.html!) })}
-              />
-            </div>
-          )}
           {review && <SendDialog open={sendOpen} onOpenChange={setSendOpen} review={review} sending={busy} onConfirm={send} />}
           <ScheduleDialog
             open={scheduleOpen}

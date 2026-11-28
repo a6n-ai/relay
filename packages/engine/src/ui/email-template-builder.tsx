@@ -11,6 +11,8 @@ import type { FooterInfo } from "../template";
 export interface EmailTemplateBuilderHandle {
   /** Source + html for the server; the server sanitizes and adds `preheader` (prepareEmailContent). */
   exportEmail: () => Promise<{ format: EmailMode; body: string; html: string; preheader: string }>;
+  /** Finished html + text for the test-send route. */
+  exportTest: () => Promise<{ html: string; text: string }>;
 }
 
 /**
@@ -39,6 +41,8 @@ export const EmailTemplateBuilder = forwardRef<
     /** Save/Cancel buttons — caller-specific save flow. Omit when Save lives outside this block. */
     actions?: ReactNode;
     disabled?: boolean;
+    /** The caller renders "Send test" itself, e.g. in a page header. */
+    hideSendTest?: boolean;
     /** Stamped onto the live preview only — see EmailContentEditor's `footer` prop. */
     footer?: FooterInfo;
     /** Campaign mail: "Send test" uses the campaign sender and CASL footer. */
@@ -59,6 +63,7 @@ export const EmailTemplateBuilder = forwardRef<
     extra,
     actions,
     disabled,
+    hideSendTest,
     footer,
     marketing,
     from,
@@ -78,7 +83,14 @@ export const EmailTemplateBuilder = forwardRef<
     return { ...out, preheader: previewText };
   }
 
-  useImperativeHandle(ref, () => ({ exportEmail: exportForSave }));
+  // The test route takes finished html + text, so mirror the server's preheader pass here.
+  async function exportTest() {
+    const out = await exportForSave();
+    const html = withPreheader(out.html, out.preheader);
+    return { html, text: htmlToText(html) };
+  }
+
+  useImperativeHandle(ref, () => ({ exportEmail: exportForSave, exportTest }));
 
   const row = "grid grid-cols-[7rem_minmax(0,1fr)] items-center gap-3 border-b px-4 py-2.5 text-sm";
   const field = "w-full bg-transparent outline-none placeholder:text-muted-foreground/60";
@@ -144,22 +156,14 @@ export const EmailTemplateBuilder = forwardRef<
 
       {extra}
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-2">{actions}</div>
-        <div className="flex flex-wrap items-center gap-2">
-          <SendTestEmailButton
-            subject={subject}
-            disabled={disabled}
-            marketing={marketing}
-            exportEmail={async () => {
-              // The test route takes finished html + text, so mirror the server's preheader pass here.
-              const out = await exportForSave();
-              const html = withPreheader(out.html, out.preheader);
-              return { html, text: htmlToText(html) };
-            }}
-          />
+      {(actions || !hideSendTest) && (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">{actions}</div>
+          {!hideSendTest && (
+            <SendTestEmailButton subject={subject} disabled={disabled} marketing={marketing} exportEmail={exportTest} />
+          )}
         </div>
-      </div>
+      )}
     </div>
   );
 });
