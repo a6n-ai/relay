@@ -207,12 +207,15 @@ describe("applySesEvents", () => {
     ]);
   });
 
-  it("upgrades a bounce suppression to complaint when a complaint arrives later", async () => {
+  it("keeps the bounce and adds a complaint when a complaint arrives later", async () => {
     const ws = "wsp_complaint";
     const { stub, messageId } = await sentMessage(ws);
     await stub.applySesEvents(ws, [event(ws, messageId, { type: "Bounce", bounceType: "Permanent", recipients: ["a@x.com"] })]);
     await stub.applySesEvents(ws, [event(ws, messageId, { type: "Complaint", recipients: ["a@x.com"] })]);
-    expect(await rows(stub, "SELECT reason FROM suppression")).toEqual([{ reason: "complaint" }]);
+    expect(await rows(stub, "SELECT reason, stream FROM suppression ORDER BY reason")).toEqual([
+      { reason: "bounce", stream: null },
+      { reason: "complaint", stream: null },
+    ]);
   });
 
   it("records a transient bounce and counts it, without suppressing", async () => {
