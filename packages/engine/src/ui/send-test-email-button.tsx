@@ -6,7 +6,7 @@ import { Button } from "@foundry/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@foundry/ui/dialog";
 import { Input } from "@foundry/ui/input";
 import { Label } from "@foundry/ui/label";
-import { apiAction, apiFetch } from "./api-fetch";
+import { apiAction, apiFetch } from "@foundry/ui/api-fetch";
 
 /**
  * "Send test" button and dialog shared by every place an admin edits an email —

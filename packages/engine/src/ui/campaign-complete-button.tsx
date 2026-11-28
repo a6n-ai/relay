@@ -6,7 +6,7 @@ import { toast } from "@foundry/ui/toast";
 import { CheckCircleIcon } from "lucide-react";
 import { Button } from "@foundry/ui/button";
 import { ResponsiveDialog } from "@foundry/design-system";
-import { apiAction, apiFetch } from "./api-fetch";
+import { apiAction, apiFetch } from "@foundry/ui/api-fetch";
 
 /**
  * Manually close out a "sent" campaign as "completed" — nothing watches

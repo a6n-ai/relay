@@ -282,9 +282,13 @@ export class ClientDO extends DurableObject<Env> {
     await this.ready(workspaceId);
     writeInboundFailure(this.inboundDeps(), workspaceId, job, error);
   }
-  async listInboundFailures(workspaceId: string, access: MessageAccess): Promise<FailureView[]> {
+  async listInboundFailures(
+    workspaceId: string,
+    access: MessageAccess,
+    q: { cursor?: string; appId?: string } = {},
+  ): Promise<{ rows: FailureView[]; nextCursor: string | null }> {
     await this.ready(workspaceId);
-    return listInboundFailureRows(this.db, access);
+    return listInboundFailureRows(this.db, access, q);
   }
   // Server only: the console never returns rawKey or authResults.
   async getInboundFailure(workspaceId: string, id: string) {

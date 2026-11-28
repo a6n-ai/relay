@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "@foundry/ui/toast";
-import { apiAction, apiFetch } from "./api-fetch";
+import { apiAction, apiFetch } from "@foundry/ui/api-fetch";
 import { Button } from "@foundry/ui/button";
 import { Input } from "@foundry/ui/input";
 import { Label } from "@foundry/ui/label";

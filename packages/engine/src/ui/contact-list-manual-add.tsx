@@ -8,7 +8,7 @@ import { Button } from "@foundry/ui/button";
 import { Input } from "@foundry/ui/input";
 import { Label } from "@foundry/ui/label";
 import { ContactListMetaFields, type ListMeta } from "./contact-list-meta-fields";
-import { apiAction } from "./api-fetch";
+import { apiAction } from "@foundry/ui/api-fetch";
 import { createListWithContacts, type ManualContactInput } from "./create-list-with-contacts";
 
 const emptyRow = (): ManualContactInput => ({ name: "", email: "", phone: "" });

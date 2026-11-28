@@ -1,6 +1,5 @@
 export * from "./preheader";
-export * from "./sanitize";
 export * from "./text";
 export * from "./variables";
 export * from "./prepare";
-export * from "./checklist";
+export { campaignChecklist, type ChecklistItem } from "./checklist";

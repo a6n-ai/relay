@@ -38,7 +38,7 @@ import {
 import { Hint, Mono } from "../../components/form/text";
 import { KIND_LABEL } from "../../components/lib/address-kinds";
 import { formatWhen } from "../../components/lib/format-date";
-import { oneOf, str, untyped } from "../../components/lib/route-search";
+import { oneOf, str } from "../../components/lib/route-search";
 
 export const Route = createFileRoute("/_app/domains")({
   staticData: { title: "Domains", copy: "Domains you send from and receive on, and the addresses on them." },
@@ -145,7 +145,7 @@ function DomainsPage() {
       <PageHeader />
       <Toolbar
         search={<SearchInput value={q} onChange={setQ} placeholder="Search domains and addresses" />}
-        filters={<FilterMenu facets={[STATUS_FACET]} value={search} onChange={(next) => void navigate({ to: ".", search: untyped(next) })} />}
+        filters={<FilterMenu facets={[STATUS_FACET]} value={search} onChange={(next) => void navigate({ to: ".", search: (prev) => ({ ...prev, status: oneOf(["verified", "pending", "failed"] as const, next.status) }) })} />}
         view={<ViewToggle route="/domains" value={view} onChange={setView} />}
       >
         {canWrite ? (

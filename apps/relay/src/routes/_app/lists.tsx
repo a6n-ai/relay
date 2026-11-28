@@ -17,7 +17,7 @@ import { useUrlFilter } from "../../components/page/use-url-filter";
 import { ListSkeleton } from "../../components/page/page-skeleton";
 import { PageHeader } from "../../components/shell/page-header";
 import { fetchLists } from "../../console/lists.fns";
-import { str, untyped } from "../../components/lib/route-search";
+import { str } from "../../components/lib/route-search";
 import { appName, startApp } from "../../shared/scope";
 import { loaded, ScopedDenied } from "../../components/page/scoped-page";
 
@@ -84,7 +84,7 @@ function ListsPage() {
             <FilterMenu
               facets={[{ key: "appId", label: "App", options: apps.map((a) => ({ value: a.id, label: a.name })) }]}
               value={search}
-              onChange={(next) => void navigate({ to: ".", search: untyped(next) })}
+              onChange={(next) => void navigate({ to: ".", search: (prev) => ({ ...prev, appId: str(next.appId) }) })}
             />
           ) : undefined
         }

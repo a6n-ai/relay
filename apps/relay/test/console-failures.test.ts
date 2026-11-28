@@ -15,6 +15,7 @@ import { securityDb } from "../src/db/security/client";
 import { member, user, workspace } from "../src/db/security/schema";
 import type { InboundJob } from "../src/core/jobs";
 import { utcDay } from "../src/core/usage";
+import { PAGE_SIZE } from "../src/shared/limits";
 import { addMember, cookieFor, createWorkspace, headersFor, ORIGIN, setActive } from "./console-helpers";
 import { applyMigrations } from "./migrate";
 
@@ -90,10 +91,10 @@ describe("inbound failures console", () => {
     const inbox = await inboxFor(owner, "failures-retry.test");
     const job = await stage(workspaceId, inbox, letter({ messageId: false }));
     await stub(workspaceId).recordInboundFailure(workspaceId, job, "Missing Message-ID");
-    const [before] = await listFailures(env, owner);
+    const [before] = (await listFailures(env, owner)).rows;
     expect(before.attempts).toBe(1);
     expect(await replayFailure(env, owner, before.id)).toEqual({ outcome: "failed", error: "Missing Message-ID" });
-    const [after] = await listFailures(env, owner);
+    const [after] = (await listFailures(env, owner)).rows;
     expect(after.attempts).toBe(2);
   });
 
@@ -107,7 +108,7 @@ describe("inbound failures console", () => {
     const result = await replayFailure(env, owner, id);
     expect(result).toEqual({ outcome: "inserted", messageId: expect.stringMatching(/^msg_/) });
     const { messageId } = result as { messageId: string };
-    expect(await listFailures(env, owner)).toEqual([]);
+    expect((await listFailures(env, owner)).rows).toEqual([]);
     expect(await getMessage(env, owner, messageId, { images: false })).toMatchObject({ id: messageId });
     const [usage] = await coreDb(env)
       .select({ inbound: usageDaily.inbound })
@@ -132,7 +133,7 @@ describe("inbound failures console", () => {
       );
     });
     expect(await replayFailure(env, owner, "ibf_dup00000000001")).toMatchObject({ outcome: "duplicate" });
-    expect(await listFailures(env, owner)).toEqual([]);
+    expect((await listFailures(env, owner)).rows).toEqual([]);
     expect(await env.MAIL.get(first.rawKey)).not.toBeNull();
   });
 
@@ -144,9 +145,9 @@ describe("inbound failures console", () => {
     const id = await failureIdOf(workspaceId, job.rawKey);
     await env.MAIL.delete(job.rawKey);
     await expect(replayFailure(env, owner, id)).rejects.toMatchObject({ status: 409, message: "raw letter missing" });
-    expect(await listFailures(env, owner)).toHaveLength(1);
+    expect((await listFailures(env, owner)).rows).toHaveLength(1);
     await expect(deleteFailure(env, owner, id)).resolves.toBeUndefined();
-    expect(await listFailures(env, owner)).toEqual([]);
+    expect((await listFailures(env, owner)).rows).toEqual([]);
   });
 
   it("delete removes the row and its raw letter", async () => {
@@ -190,19 +191,36 @@ describe("inbound failures console", () => {
     const id = await failureIdOf(workspaceId, job.rawKey);
     const memberCookie = await addMember(workspaceId, "fail-grant-m@example.com", "member");
     const memberActor = await requireActor(env, headersFor(memberCookie), { permission: { mailbox: ["read"] } });
-    expect(await listFailures(env, memberActor)).toEqual([]);
+    expect((await listFailures(env, memberActor)).rows).toEqual([]);
     const [row] = await securityDb(env)
       .select({ id: member.id })
       .from(member)
       .innerJoin(user, eq(user.id, member.userId))
       .where(and(eq(member.organizationId, workspaceId), eq(user.email, "fail-grant-m@example.com")));
     await addGrant(env, owner, { addressId: inbox.addressId, memberId: row.id });
-    const rows = await listFailures(env, memberActor);
+    const { rows } = await listFailures(env, memberActor);
     expect(rows.map((r) => r.id)).toEqual([id]);
     expect(Object.keys(rows[0])).not.toContain("rawKey");
     await expect(requireActor(env, headersFor(memberCookie), { permission: { mailbox: ["manage"] }, write: true })).rejects.toMatchObject({ status: 403 });
   });
 
+  it("pages failures newest first by cursor and filters by app", async () => {
+    const { owner, workspaceId } = await workspaceFor("fail-page@example.com", "Fail Page Co");
+    const inbox = await inboxFor(owner, "failures-page.test");
+    for (let i = 0; i < PAGE_SIZE + 5; i++) {
+      const job = { ...(await stage(workspaceId, inbox)), receivedAt: 1_700_000_000_000 + i };
+      await stub(workspaceId).recordInboundFailure(workspaceId, job, "Processing failed");
+    }
+    const first = await listFailures(env, owner);
+    expect(first.rows).toHaveLength(PAGE_SIZE);
+    expect(first.nextCursor).not.toBeNull();
+    const second = await listFailures(env, owner, { cursor: first.nextCursor! });
+    expect(second.rows).toHaveLength(5);
+    expect(second.nextCursor).toBeNull();
+    expect(second.rows[0].receivedAt).toBeLessThan(first.rows[PAGE_SIZE - 1].receivedAt);
+    expect((await listFailures(env, owner, { appId: "app_other" })).rows).toEqual([]);
+    expect((await listFailures(env, owner, { appId: inbox.appId })).rows).toHaveLength(PAGE_SIZE);
+  });
   it("an id from another workspace is 404", async () => {
     const a = await workspaceFor("fail-scope-a@example.com", "Fail Scope A");
     const b = await workspaceFor("fail-scope-b@example.com", "Fail Scope B");
@@ -212,7 +230,7 @@ describe("inbound failures console", () => {
     const id = await failureIdOf(a.workspaceId, job.rawKey);
     await expect(replayFailure(env, b.owner, id)).rejects.toMatchObject({ status: 404 });
     await expect(deleteFailure(env, b.owner, id)).rejects.toMatchObject({ status: 404 });
-    expect(await listFailures(env, a.owner)).toHaveLength(1);
+    expect((await listFailures(env, a.owner)).rows).toHaveLength(1);
   });
 
   it("a suspended workspace lists failures but refuses replay", async () => {
@@ -223,7 +241,7 @@ describe("inbound failures console", () => {
     await failureIdOf(workspaceId, job.rawKey);
     await securityDb(env).update(workspace).set({ status: "suspended" }).where(eq(workspace.id, workspaceId));
     const suspended = await requireActor(env, headersFor(cookie), { permission: { mailbox: ["read"] } });
-    expect(await listFailures(env, suspended)).toHaveLength(1);
+    expect((await listFailures(env, suspended)).rows).toHaveLength(1);
     await expect(requireActor(env, headersFor(cookie), { permission: { mailbox: ["manage"] }, write: true })).rejects.toMatchObject({
       status: 403,
       message: "workspace suspended",

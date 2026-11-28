@@ -14,7 +14,7 @@ import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { BellIcon, TriangleAlertIcon } from "lucide-react";
 import { toast } from "@foundry/ui/toast";
-import { apiAction, apiFetch } from "./api-fetch";
+import { apiAction, apiFetch } from "@foundry/ui/api-fetch";
 import "@uiw/react-md-editor/markdown-editor.css";
 import { Button } from "@foundry/ui/button";
 import { Input } from "@foundry/ui/input";
