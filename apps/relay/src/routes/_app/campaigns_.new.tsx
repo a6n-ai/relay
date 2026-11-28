@@ -15,6 +15,7 @@ import { str } from "../../components/lib/route-search";
 import { useSubmit } from "../../components/lib/use-submit";
 import { startApp } from "../../shared/scope";
 import { useLoad } from "../../components/lib/use-load";
+import type { Crumb } from "../../components/shell/page-header";
 
 export const Route = createFileRoute("/_app/campaigns_/new")({
   validateSearch: (search: Record<string, unknown>): { appId?: string } => ({
@@ -23,7 +24,7 @@ export const Route = createFileRoute("/_app/campaigns_/new")({
   component: NewCampaignPage,
 });
 
-const crumbs = [{ label: "Campaigns", to: "/campaigns" }, { label: "New campaign" }];
+const crumbs: Crumb[] = [{ label: "Campaigns", to: "/campaigns" }, { label: "New campaign" }];
 
 function NewCampaignPage() {
   const { appId: scopeParam } = Route.useSearch();

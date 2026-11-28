@@ -1,7 +1,6 @@
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { trimSlash } from "../lib/path";
 import type { PageOf } from "./page-data";
-import { untyped } from "../lib/route-search";
 import { defaultApp } from "../../shared/scope";
 
 export const isAppScoped = (pathname: string, pageOf: PageOf) => Boolean(pageOf(trimSlash(pathname))?.scoped);
@@ -34,10 +33,10 @@ export function useNewParam(): [open: boolean, setOpen: (v: boolean) => void] {
   const setOpen = (v: boolean) => {
     void navigate({
       to: ".",
-      search: untyped((prev: Record<string, unknown>) => {
-        const { new: _n, ...rest } = prev;
+      search: (prev) => {
+        const { new: _n, ...rest }: Record<string, unknown> = prev;
         return v ? { ...rest, new: 1 } : rest;
-      }),
+      },
       replace: true,
     });
   };

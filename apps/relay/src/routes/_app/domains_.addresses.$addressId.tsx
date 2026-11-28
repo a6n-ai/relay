@@ -26,6 +26,7 @@ import { KIND_LABEL, KINDS } from "../../components/lib/address-kinds";
 import { EMAIL_MAX } from "../../shared/limits";
 import { emailSchema } from "../../shared/schemas";
 import { useSubmit } from "../../components/lib/use-submit";
+import type { Crumb } from "../../components/shell/page-header";
 
 export const Route = createFileRoute("/_app/domains_/addresses/$addressId")({
   loader: async ({ params }) => {
@@ -52,7 +53,7 @@ function AddressPage() {
   const [adding, setAdding] = useState(false);
   const leaving = useRef(false);
   const [removing, setRemoving] = useState<{ id: string; label: string } | null>(null);
-  const crumbs = [{ label: "Domains", to: "/domains" }, { label: "Address" }];
+  const crumbs: Crumb[] = [{ label: "Domains", to: "/domains" }, { label: "Address" }];
   if (!data || (!canWrite && !canManage)) {
     return <PageDenied crumbs={crumbs} />;
   }
@@ -219,8 +220,7 @@ function NewGrantForm({
         id="grant-who"
         label="Member or team"
         message="Everyone in this workspace already has access."
-        to="/settings/members"
-        search={{ new: 1 }}
+        link={{ to: "/settings/members", search: { new: 1 } }}
         linkLabel="Invite a member"
         onNavigate={done}
       />

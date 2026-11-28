@@ -23,6 +23,7 @@ import { formatDate, formatWhen } from "../../components/lib/format-date";
 import { type DeliveryView } from "../../shared/views";
 import { appName } from "../../shared/scope";
 import { hostOf } from "../../components/lib/path";
+import type { Crumb } from "../../components/shell/page-header";
 
 export const Route = createFileRoute("/_app/apps_/$appId_/webhooks_/$webhookId")({
   loader: ({ params }) => fetchDeliveries({ data: { appId: params.appId, webhookId: params.webhookId } }),
@@ -42,7 +43,7 @@ function DeliveriesPage() {
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const appLabel = appName(shell.apps, appId, "App");
-  const base = [
+  const base: Crumb[] = [
     { label: "Apps", to: "/apps" },
     { label: appLabel, to: "/apps/$appId", params: { appId } },
     { label: "Webhooks", to: "/apps/$appId/webhooks", params: { appId } },

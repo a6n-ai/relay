@@ -13,6 +13,7 @@ import { TEMPLATE_NAME_MAX } from "../../shared/limits";
 import { str } from "../../components/lib/route-search";
 import { startApp } from "../../shared/scope";
 import { useSubmit } from "../../components/lib/use-submit";
+import type { Crumb } from "../../components/shell/page-header";
 
 export const Route = createFileRoute("/_app/campaigns_/templates_/new")({
   validateSearch: (search: Record<string, unknown>): { appId?: string } => ({
@@ -21,7 +22,7 @@ export const Route = createFileRoute("/_app/campaigns_/templates_/new")({
   component: NewTemplatePage,
 });
 
-const crumbs = [
+const crumbs: Crumb[] = [
   { label: "Campaigns", to: "/campaigns" },
   { label: "Templates", to: "/campaigns/templates" },
   { label: "New template" },

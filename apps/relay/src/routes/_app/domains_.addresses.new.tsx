@@ -20,6 +20,7 @@ import { addAddressFn, fetchDomains } from "../../console/domains.fns";
 import { type Kind, KINDS, LOCAL_RE } from "../../components/lib/address-kinds";
 import { EMAIL_MAX, NAME_MAX } from "../../shared/limits";
 import { str } from "../../components/lib/route-search";
+import type { Crumb } from "../../components/shell/page-header";
 
 export const Route = createFileRoute("/_app/domains_/addresses/new")({
   validateSearch: (search: Record<string, unknown>): { appId?: string } => ({
@@ -29,7 +30,7 @@ export const Route = createFileRoute("/_app/domains_/addresses/new")({
   component: AddAddressPage,
 });
 
-const crumbs = [{ label: "Domains", to: "/domains" }, { label: "Add address" }];
+const crumbs: Crumb[] = [{ label: "Domains", to: "/domains" }, { label: "Add address" }];
 
 function AddAddressPage() {
   const { domains } = Route.useLoaderData();

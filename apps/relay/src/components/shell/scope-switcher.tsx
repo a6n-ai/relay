@@ -10,7 +10,6 @@ import { useState } from "react";
 import { createItems } from "./nav";
 import { usePageOf } from "./page-data";
 import { pickApp, scopeLabel, scopeSearch, showsAllApps } from "./scope";
-import { untyped } from "../lib/route-search";
 import { isSuspended } from "../../shared/limits";
 
 const row =
@@ -36,8 +35,8 @@ export function ScopeSwitcher() {
   const choice = (id: string | undefined, label: string) => (
     <Link
       key={id ?? "all"}
-      to={pathname as string}
-      search={untyped((prev: Record<string, unknown>) => scopeSearch(prev, id))}
+      to="."
+      search={(prev) => scopeSearch(prev, id)}
       className={row}
       onClick={close}
     >

@@ -8,6 +8,7 @@ import { useCan } from "../../components/lib/use-can";
 import { fetchAutomation } from "../../console/automations.fns";
 import { fetchCampaignOptions } from "../../console/campaigns.fns";
 import { str } from "../../components/lib/route-search";
+import type { Crumb } from "../../components/shell/page-header";
 
 export const Route = createFileRoute("/_app/campaigns_/automations_/$automationId")({
   validateSearch: (search: Record<string, unknown>): { appId?: string } => ({
@@ -33,7 +34,7 @@ function AutomationPage() {
   const appId = search.appId ?? (page && "automation" in page ? page.automation.appId : undefined);
   const { shell } = Route.useRouteContext();
   const canSend = useCan({ campaign: ["send"] });
-  const crumbs = (label: string) => [
+  const crumbs = (label: string): Crumb[] => [
     { label: "Campaigns", to: "/campaigns", search: { appId } },
     { label: "Automations", to: "/campaigns/automations", search: { appId } },
     { label },

@@ -19,7 +19,7 @@ import { trimSlash } from "../lib/path";
 type NavLeaf = {
   id: string;
   label?: string;
-  to: string;
+  to: FileRouteTypes["to"];
   search?: Record<string, string>;
   need?: Permission;
 };
@@ -159,7 +159,7 @@ export function createItems(roles: OrgRole[], suspended: boolean): CreateItem[] 
   return CREATE.filter((c) => allows(roles, c.need));
 }
 
-export type SectionTab = { id: string; label: string; to: string; search?: Record<string, string> };
+export type SectionTab = { id: string; label: string; to: FileRouteTypes["to"]; params?: Record<string, string>; search?: Record<string, string> };
 
 // Section tabs show on a section's own pages (the children of a nav item); detail pages get a back link instead.
 export function sectionTabs(
@@ -171,12 +171,12 @@ export function sectionTabs(
   const path = trimSlash(pathname);
   const appTabs = /^\/apps\/([^/]+)(\/webhooks)?$/.exec(path);
   if (appTabs && appTabs[1] !== "new") {
-    const base = `/apps/${appTabs[1]}`;
+    const params = { appId: appTabs[1] };
     return {
       title: null,
       tabs: [
-        { id: "overview", label: "Overview", to: base },
-        { id: "webhooks", label: "Webhooks", to: `${base}/webhooks` },
+        { id: "overview", label: "Overview", to: "/apps/$appId", params },
+        { id: "webhooks", label: "Webhooks", to: "/apps/$appId/webhooks", params },
       ],
       active: appTabs[2] ? "webhooks" : "overview",
     };

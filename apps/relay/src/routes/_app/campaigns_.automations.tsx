@@ -23,6 +23,7 @@ import { type AutomationView } from "../../shared/views";
 import { oneOf, str } from "../../components/lib/route-search";
 import { loaded, ScopedDenied } from "../../components/page/scoped-page";
 import { scopedLoad } from "../../components/lib/scoped-load";
+import type { RowAction } from "../../components/page/row-menu";
 
 type AutomationsSearch = { appId?: string; status?: "on" | "off" };
 
@@ -81,7 +82,7 @@ function AutomationsPage() {
   const templateName = (id: string) => templates.find((t) => t.id === id)?.name ?? "—";
   const delayText = (a: AutomationView) => (a.delayHours === 0 ? "Right away" : `After ${a.delayHours} ${a.delayHours === 1 ? "hour" : "hours"}`);
   const openRow = (a: AutomationView) => ({ to: "/campaigns/automations/$automationId" as const, params: { automationId: a.id }, search: { appId: a.appId } });
-  const menu = (a: AutomationView) => [
+  const menu = (a: AutomationView): RowAction[] => [
     { label: "Edit", ...openRow(a), hidden: !canSend },
     { label: "Delete", onSelect: () => setDeleting(a), destructive: true, hidden: !canSend },
   ];

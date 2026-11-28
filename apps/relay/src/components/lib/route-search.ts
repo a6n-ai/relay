@@ -9,6 +9,3 @@ export const flag = (v: unknown, ...accepted: unknown[]): true | undefined => (a
 export const posInt = (v: unknown): number | undefined => (typeof v === "number" && v > 0 ? Math.floor(v) : undefined);
 export const oneOf = <T extends string>(allowed: readonly T[], v: unknown): T | undefined => allowed.find((a) => a === v);
 export const status = (v: unknown): MessageStatus | undefined => oneOf(MESSAGE_STATUSES, v);
-
-// TanStack types `search`, `params` and `to` per route; links built from data (a row action, a filter's next search, a switcher) cannot name the route, so the one cast lives here.
-export const untyped = (value: unknown): never => value as never;

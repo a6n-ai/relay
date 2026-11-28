@@ -2,7 +2,6 @@ import { Link } from "@tanstack/react-router";
 import type { SectionTab } from "./nav";
 import { usePageOf } from "./page-data";
 import { navSearch } from "./scope";
-import { untyped } from "../lib/route-search";
 import { cn } from "@foundry/ui/cn";
 import { focusRing } from "../lib/focus";
 
@@ -13,8 +12,9 @@ export function SectionTabs({ tabs, active, appId, label = "Sections" }: { tabs:
       {tabs.map((tab) => (
         <Link
           key={tab.id}
-          to={tab.to as string}
-          search={untyped(navSearch(tab.to, tab.search, appId, pageOf))}
+          to={tab.to}
+          params={tab.params}
+          search={navSearch(tab.to, tab.search, appId, pageOf)}
           aria-current={tab.id === active ? "page" : undefined}
           data-active={tab.id === active}
           className={cn(focusRing, "inline-flex h-9 shrink-0 items-center rounded-md px-3 text-sm text-muted-foreground hover:bg-muted hover:text-foreground data-[active=true]:bg-muted data-[active=true]:font-medium data-[active=true]:text-foreground")}

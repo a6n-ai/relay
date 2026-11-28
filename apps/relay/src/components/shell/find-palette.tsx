@@ -9,7 +9,6 @@ import { usePageOf } from "./page-data";
 import { type FindEntry, findEntries, pushRecent, readRecent } from "./find";
 import { withNew } from "./scope";
 import { type Shell } from "../../shared/views";
-import { untyped } from "../lib/route-search";
 import { cn } from "@foundry/ui/cn";
 import { focusRing } from "../lib/focus";
 
@@ -48,7 +47,7 @@ export function FindPalette({ shell }: { shell: Shell }) {
   const pick = (entry: FindEntry) => {
     localStore.setJson(RECENT_KEY, pushRecent(readRecent(localStore.getJson<unknown>(RECENT_KEY, [])), entry.id));
     setOpen(false);
-    void navigate(untyped({ to: entry.to, search: entry.id.startsWith("new:") ? (prev: Record<string, unknown>) => withNew(prev, entry.search?.new ? 1 : undefined) : entry.search }));
+    void navigate({ to: entry.to, params: entry.params, search: entry.id.startsWith("new:") ? (prev) => withNew(prev, entry.search?.new ? 1 : undefined) : entry.search });
   };
 
   const recentEntries = recent.flatMap((id) => entries.find((e) => e.id === id) ?? []);

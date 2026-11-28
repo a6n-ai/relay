@@ -1,7 +1,7 @@
 import { Button } from "@foundry/ui/button";
 import { Link } from "@tanstack/react-router";
 import { Loader2Icon } from "lucide-react";
-import { untyped } from "../lib/route-search";
+import type { FileRouteTypes } from "../../routeTree.gen";
 
 const withoutOffset = (s?: Record<string, unknown>) => {
   if (!s) return s;
@@ -14,6 +14,7 @@ export function LoadMore({
   loading = false,
   onMore,
   to,
+  params,
   search,
   resetTo,
   resetSearch,
@@ -23,9 +24,10 @@ export function LoadMore({
   hasMore: boolean;
   loading?: boolean;
   onMore?: () => void;
-  to?: string;
+  to?: FileRouteTypes["to"];
+  params?: Record<string, string>;
   search?: Record<string, unknown>;
-  resetTo?: string;
+  resetTo?: FileRouteTypes["to"];
   resetSearch?: Record<string, unknown>;
   offset?: number;
   pageSize?: number;
@@ -36,7 +38,7 @@ export function LoadMore({
     <div className="flex items-center justify-center gap-2 p-4">
       {hasMore ? (
         to ? (
-          <Button variant="outline" render={<Link to={untyped(to)} search={untyped(pageSize === undefined ? search : { ...search, offset: (offset ?? 0) + pageSize })} />}>
+          <Button variant="outline" render={<Link to={to} params={params} search={pageSize === undefined ? search : { ...search, offset: (offset ?? 0) + pageSize }} />}>
             {spinner}Show older
           </Button>
         ) : (
@@ -46,7 +48,7 @@ export function LoadMore({
         )
       ) : null}
       {resetTo ? (
-        <Button variant="ghost" render={<Link to={untyped(resetTo)} search={untyped(withoutOffset(resetSearch))} />}>
+        <Button variant="ghost" render={<Link to={resetTo} params={params} search={withoutOffset(resetSearch)} />}>
           Back to newest
         </Button>
       ) : null}

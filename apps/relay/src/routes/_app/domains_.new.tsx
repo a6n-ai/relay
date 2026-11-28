@@ -11,12 +11,13 @@ import { addDomainFn } from "../../console/domains.fns";
 import { SES_REGIONS } from "../../shared/regions";
 import { looksLikeDomain, normaliseDomainInput } from "../../components/lib/domain-input";
 import { useSubmit } from "../../components/lib/use-submit";
+import type { Crumb } from "../../components/shell/page-header";
 
 export const Route = createFileRoute("/_app/domains_/new")({
   component: AddDomainPage,
 });
 
-const crumbs = [{ label: "Domains", to: "/domains" }, { label: "Add domain" }];
+const crumbs: Crumb[] = [{ label: "Domains", to: "/domains" }, { label: "Add domain" }];
 const BAD_DOMAIN = "Enter a domain like example.com, without https:// or a path.";
 
 function AddDomainPage() {

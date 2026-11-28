@@ -23,6 +23,7 @@ import { TEMPLATE_NAME_MAX } from "../../shared/limits";
 import { appName } from "../../shared/scope";
 import { useSubmit } from "../../components/lib/use-submit";
 import { confirmAction } from "../../components/lib/run-action";
+import type { Crumb } from "../../components/shell/page-header";
 
 export const Route = createFileRoute("/_app/campaigns_/templates_/$templateId")({
   loader: ({ params }) => orMissing(fetchTemplate({ data: { id: params.templateId } })),
@@ -30,7 +31,7 @@ export const Route = createFileRoute("/_app/campaigns_/templates_/$templateId")(
   component: TemplatePage,
 });
 
-const crumbs = (appId: string | undefined, label: string) => [
+const crumbs = (appId: string | undefined, label: string): Crumb[] => [
   { label: "Campaigns", to: "/campaigns", search: { appId } },
   { label: "Templates", to: "/campaigns/templates", search: { appId } },
   { label },

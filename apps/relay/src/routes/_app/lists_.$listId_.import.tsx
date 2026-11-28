@@ -14,6 +14,7 @@ import { CSV_IMPORT_MAX_BYTES } from "../../shared/limits";
 import { str } from "../../components/lib/route-search";
 import { DefinitionList } from "../../components/page/definition-list";
 import { useSubmit } from "../../components/lib/use-submit";
+import type { Crumb } from "../../components/shell/page-header";
 
 
 export const Route = createFileRoute("/_app/lists_/$listId_/import")({
@@ -40,7 +41,7 @@ function ImportPage() {
   const [files, setFiles] = useState<File[]>([]);
   const [result, setResult] = useState<Result | null>(null);
   const { pending, error, setError, run } = useSubmit();
-  const listsCrumb = { label: "Lists", to: "/lists", search: { appId } };
+  const listsCrumb: Crumb = { label: "Lists", to: "/lists", search: { appId } };
   const back = () => void navigate({ to: "/lists/$listId", params: { listId }, search: { appId } });
 
   if (!page || !canImport) {
@@ -50,7 +51,7 @@ function ImportPage() {
   if (!list) {
     return <PageDenied crumbs={[listsCrumb, { label: "Import contacts" }]} reason="not-found" label="List not found" />;
   }
-  const crumbs = [listsCrumb, { label: list.name, to: "/lists/$listId", params: { listId }, search: { appId } }, { label: "Import contacts" }];
+  const crumbs: Crumb[] = [listsCrumb, { label: list.name, to: "/lists/$listId", params: { listId }, search: { appId } }, { label: "Import contacts" }];
 
   async function submit(event: FormEvent) {
     event.preventDefault();

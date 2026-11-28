@@ -39,6 +39,7 @@ import { Hint, Mono } from "../../components/form/text";
 import { KIND_LABEL } from "../../components/lib/address-kinds";
 import { formatWhen } from "../../components/lib/format-date";
 import { oneOf, str } from "../../components/lib/route-search";
+import type { RowAction } from "../../components/page/row-menu";
 
 export const Route = createFileRoute("/_app/domains")({
   staticData: { title: "Domains", copy: "Domains you send from and receive on, and the addresses on them." },
@@ -116,7 +117,7 @@ function DomainsPage() {
   const reopenMailbox = (id: string) =>
     runAction(() => reopenPersonalMailboxFn({ data: { id } }), "Mailbox reopened", () => router.invalidate(), "Could not reopen the mailbox");
 
-  const domainMenu = (d: (typeof domains)[number]) => [
+  const domainMenu = (d: (typeof domains)[number]): RowAction[] => [
     { label: "Check now", hidden: !canWrite, onSelect: () => void check(d.id) },
     { label: d.protected ? "Unprotect" : "Protect", hidden: !shell.platformAdmin, onSelect: () => void setProtected(d.id, !d.protected) },
     { label: "Release", hidden: !(shell.platformAdmin && d.releasable), onSelect: () => setReleasing({ id: d.id, domain: d.domain }) },

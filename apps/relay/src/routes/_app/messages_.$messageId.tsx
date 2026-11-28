@@ -14,8 +14,9 @@ import { DetailSkeleton } from "../../components/page/page-skeleton";
 import { appName } from "../../shared/scope";
 import { flag } from "../../components/lib/route-search";
 import { DefinitionList } from "../../components/page/definition-list";
+import type { Crumb } from "../../components/shell/page-header";
 
-const crumbs = [{ label: "Messages", to: "/messages" }, { label: "Message" }];
+const crumbs: Crumb[] = [{ label: "Messages", to: "/messages" }, { label: "Message" }];
 
 export const Route = createFileRoute("/_app/messages_/$messageId")({
   validateSearch: (search: Record<string, unknown>): { images?: boolean } => ({

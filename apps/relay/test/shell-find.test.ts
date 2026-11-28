@@ -18,7 +18,7 @@ describe("findEntries", () => {
     const entries = findEntries(shell(["member"]), pageOf);
     expect(entries.some((e) => e.label === "Admin")).toBe(false);
     expect(entries.some((e) => e.label === "New Domain")).toBe(false);
-    expect(entries.filter((e) => e.group === "Apps").map((e) => e.to)).toEqual(["/apps/a1", "/apps/a2"]);
+    expect(entries.filter((e) => e.group === "Apps").map((e) => [e.to, e.params])).toEqual([["/apps/$appId", { appId: "a1" }], ["/apps/$appId", { appId: "a2" }]]);
     expect(entries.find((e) => e.label === "Campaigns › Templates")).toMatchObject({ group: "Pages", to: "/campaigns/templates" });
   });
 

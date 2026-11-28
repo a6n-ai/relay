@@ -173,7 +173,7 @@ export function AutomationForm({
           {automation ? (
             <FixedField label="List" value={listName ?? "—"} hint="To use another list, create a new automation." />
           ) : noLists ? (
-            <EmptyChoice id="automation-list" label="List" message="No lists yet." to="/lists/new" search={{ appId: app }} linkLabel="Create a list" error={fe.errors.list} />
+            <EmptyChoice id="automation-list" label="List" message="No lists yet." link={{ to: "/lists/new", search: { appId: app } }} linkLabel="Create a list" error={fe.errors.list} />
           ) : (
             <ChoiceField id="automation-list" label="List" value={listId} onChange={setListId} options={listOptions} error={fe.errors.list} onClearError={() => fe.clear("list")} />
           )}
@@ -191,7 +191,7 @@ export function AutomationForm({
             onChange={(e) => setName(e.target.value)}
           />
           {noTemplates ? (
-            <EmptyChoice id="automation-template" label="Template" message="No templates yet." to="/campaigns/templates/new" search={{ appId: app }} linkLabel="Create a template" error={fe.errors.template} />
+            <EmptyChoice id="automation-template" label="Template" message="No templates yet." link={{ to: "/campaigns/templates/new", search: { appId: app } }} linkLabel="Create a template" error={fe.errors.template} />
           ) : (
             <ChoiceField id="automation-template" label="Template" value={templateId} onChange={setTemplateId} options={templateOptions} error={fe.errors.template} onClearError={() => fe.clear("template")} />
           )}
