@@ -24,7 +24,7 @@ import { formatDate } from "../../components/lib/format-date";
 import { Hint } from "../../components/form/text";
 import { StatusBadge } from "../../components/page/status-badge";
 import { isSuspended, MAX_INVITES_PER_DAY, WORKSPACE_STATUSES, type WorkspaceStatus } from "../../shared/limits";
-import { oneOf, str, untyped } from "../../components/lib/route-search";
+import { oneOf, str } from "../../components/lib/route-search";
 
 type AdminSearch = { ws?: string; q?: string; status?: WorkspaceStatus };
 
@@ -262,7 +262,7 @@ function AdminPage() {
       <ResourceTable
         rows={rows}
         rowKey={(w) => w.id}
-        rowHref={(w) => ({ to: "/admin", search: (prev: Record<string, unknown>) => untyped({ ...prev, ws: w.id }) })}
+        rowHref={(w) => ({ to: "/admin", search: (prev) => ({ ...prev, ws: w.id }) })}
         rowLabel={(w) => `Manage ${w.name}`}
         empty={
           <EmptyState

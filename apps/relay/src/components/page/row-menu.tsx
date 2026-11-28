@@ -2,7 +2,6 @@ import { Button } from "@foundry/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@foundry/ui/dropdown-menu";
 import { Link } from "@tanstack/react-router";
 import { MoreHorizontalIcon } from "lucide-react";
-import { untyped } from "../lib/route-search";
 
 export type RowAction = {
   label: string;
@@ -24,7 +23,7 @@ export function RowMenu({ actions, label }: { actions: RowAction[]; label: strin
       key={a.label}
       variant={a.destructive ? "destructive" : "default"}
       onClick={a.onSelect}
-      render={a.to ? <Link to={untyped(a.to)} params={untyped(a.params)} search={untyped(a.search)} /> : undefined}
+      render={a.to ? <Link to={a.to} params={a.params} search={a.search} /> : undefined}
     >
       {a.label}
     </DropdownMenuItem>

@@ -9,7 +9,6 @@ import { createItems } from "./shell/nav";
 import { PageHeader } from "./shell/page-header";
 import { StatTile } from "./page/stat-tile";
 import { type Shell } from "../shared/views";
-import { untyped } from "./lib/route-search";
 import { isSuspended } from "../shared/limits";
 
 type OverviewData = NonNullable<Awaited<ReturnType<typeof fetchOverview>>>;
@@ -30,7 +29,7 @@ function GetStarted({ shell }: { shell: Shell }) {
               <SectionTitle as="p">{r.title}</SectionTitle>
               <Hint>{r.line}</Hint>
             </div>
-            <Button variant="outline" render={<Link to={r.to} search={untyped(r.new ? { new: r.new } : undefined)} />}>
+            <Button variant="outline" render={<Link to={r.to} search={r.new ? { new: r.new } : undefined} />}>
               {r.cta}
             </Button>
           </div>
