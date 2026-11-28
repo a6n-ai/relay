@@ -19,8 +19,13 @@ describe("makeCampaignTables", () => {
 
   it("stores the audience as a definition and the channels as a set", () => {
     expect(columns(t.campaign)).toEqual(
-      expect.arrayContaining(["audience", "channels", "status", "scheduled_at", "counts"]),
+      expect.arrayContaining(["audience", "channels", "status", "scheduled_at", "counts", "brand"]),
     );
+  });
+
+  it("keeps brand nullable so existing campaigns need no value", () => {
+    const brand = getTableConfig(t.campaign).columns.find((c) => c.name === "brand")!;
+    expect(brand.notNull).toBe(false);
   });
 
   it("requires consent provenance on a contact list", () => {

@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   claimForSend,
+  createCampaign,
+  setCampaignBrand,
   duplicateCampaign,
   retriggerCampaign,
   retryFailedCampaign,
@@ -228,5 +230,27 @@ describe("sendScheduledCampaign", () => {
     expect(await sendScheduledCampaign(deps, "cmp_1", { footerConfigured: true })).toEqual({ queued: 0 });
     expect(db.update).toHaveBeenCalledTimes(1);
     expect(db.select).not.toHaveBeenCalled();
+  });
+});
+
+describe("campaign brand", () => {
+  it("createCampaign stores the brand, defaulting to null", async () => {
+    const values = vi.fn().mockReturnValue({ returning: vi.fn().mockResolvedValue([{ publicId: "cmp_1" }]) });
+    const deps = { db: { insert: vi.fn().mockReturnValue({ values }) }, tables: { campaign: {} } } as any;
+    const input = { name: "n", channels: ["email"], audience: {} };
+    await createCampaign(deps, { ...input, brand: "b1" });
+    await createCampaign(deps, input);
+    expect(values.mock.calls[0][0].brand).toBe("b1");
+    expect(values.mock.calls[1][0].brand).toBeNull();
+  });
+
+  it("setCampaignBrand writes the brand on a draft and 409s otherwise", async () => {
+    const set = vi.fn();
+    const returning = vi.fn().mockResolvedValueOnce([{ id: 1n }]).mockResolvedValueOnce([]);
+    set.mockReturnValue({ where: vi.fn().mockReturnValue({ returning }) });
+    const deps = { db: { update: vi.fn().mockReturnValue({ set }) }, tables: { campaign: {} } } as any;
+    expect(await setCampaignBrand(deps, "cmp_1", "b2")).toEqual({ ok: true });
+    expect(set).toHaveBeenCalledWith({ brand: "b2" });
+    expect(await setCampaignBrand(deps, "cmp_2", null)).toMatchObject({ status: 409 });
   });
 });

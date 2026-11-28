@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeftIcon, CheckIcon } from "lucide-react";
 import { Badge } from "@foundry/ui/badge";
 import { cn } from "@foundry/ui/cn";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@foundry/ui/select";
 import { FLOW_STEPS, type FlowStep } from "./steps";
 
 /** Header + step indicator + fixed bottom bar shared by the three campaign steps. */
@@ -18,6 +19,9 @@ export function FlowShell({
   saveStatus,
   actions,
   onRename,
+  senders,
+  brand,
+  onBrand,
   onBack,
   bottom,
   reachable,
@@ -32,6 +36,10 @@ export function FlowShell({
   /** Buttons on the right of the title row. */
   actions?: ReactNode;
   onRename: (name: string) => Promise<void>;
+  /** Sender picker; hidden when absent or empty. */
+  senders?: { value: string; label: string }[];
+  brand?: string | null;
+  onBrand?: (brand: string) => Promise<void>;
   /** Runs before leaving for the list, e.g. to flush a pending save. */
   onBack?: () => Promise<void>;
   bottom: ReactNode;
@@ -76,6 +84,20 @@ export function FlowShell({
             <Badge variant="outline" className="capitalize">
               {status}
             </Badge>
+            {senders?.length ? (
+              <Select value={brand ?? senders[0].value} onValueChange={(v) => void onBrand?.(v)}>
+                <SelectTrigger aria-label="Sender" className="w-auto">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {senders.map((s) => (
+                    <SelectItem key={s.value} value={s.value}>
+                      {s.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : null}
             {saveStatus}
           </div>
           {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}

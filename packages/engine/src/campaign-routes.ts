@@ -40,6 +40,7 @@ export function createCampaignSchema(channels: [string, ...string[]]) {
     channels: z.array(z.enum(channels)).min(1),
     audience: audienceSchema,
     scheduledAt: z.number().int().positive().nullable().optional(),
+    brand: z.string().trim().min(1).nullable().optional(),
   });
 }
 
@@ -52,6 +53,7 @@ interface CampaignListRow {
   sentAt: number | null;
   counts: Record<string, number>;
   createdAt: number;
+  brand: string | null;
 }
 
 export async function listCampaigns(deps: CampaignRouteDeps): Promise<CampaignListRow[]> {
@@ -66,6 +68,7 @@ export async function listCampaigns(deps: CampaignRouteDeps): Promise<CampaignLi
       sentAt: tables.campaign.sentAt,
       counts: tables.campaign.counts,
       createdAt: tables.campaign.createdAt,
+      brand: tables.campaign.brand,
     })
     .from(tables.campaign)
     .orderBy(desc(tables.campaign.createdAt));
@@ -77,6 +80,7 @@ interface CreateCampaignInput {
   channels: string[];
   audience: AudienceDef;
   scheduledAt?: number | null;
+  brand?: string | null;
 }
 
 export async function createCampaign(
@@ -96,6 +100,7 @@ export async function createCampaign(
       // someone presses Send.
       status: input.scheduledAt ? "scheduled" : "draft",
       scheduledAt: input.scheduledAt ?? null,
+      brand: input.brand ?? null,
     })
     .returning({ publicId: tables.campaign.publicId });
   return { publicId: row.publicId as string };
@@ -252,6 +257,24 @@ export async function renameCampaign(
   return rows.length
     ? ({ ok: true } as const)
     : ({ error: "Only a draft or scheduled campaign can be renamed", status: 409 } as const);
+}
+
+export const setCampaignBrandSchema = z.object({ brand: z.string().trim().min(1).nullable() });
+
+export async function setCampaignBrand(
+  deps: CampaignRouteDeps,
+  campaignPublicId: string,
+  brand: string | null,
+): Promise<{ ok: true } | RouteError> {
+  const { db, tables } = deps;
+  const rows = await db
+    .update(tables.campaign)
+    .set({ brand })
+    .where(and(eq(tables.campaign.publicId, campaignPublicId), inArray(tables.campaign.status, ["draft", "scheduled"])))
+    .returning({ id: tables.campaign.id });
+  return rows.length
+    ? ({ ok: true } as const)
+    : ({ error: "Only a draft or scheduled campaign can change its sender", status: 409 } as const);
 }
 
 /** Pure schedule rule: a future time schedules, null unschedules, and only draft/scheduled may change. */
@@ -467,6 +490,7 @@ export async function duplicateCampaign(
       name: tables.campaign.name,
       channels: tables.campaign.channels,
       audience: tables.campaign.audience,
+      brand: tables.campaign.brand,
     })
     .from(tables.campaign)
     .where(eq(tables.campaign.publicId, campaignPublicId));
@@ -492,6 +516,7 @@ export async function duplicateCampaign(
       name: input.name ?? `${source.name} (copy)`,
       channels: source.channels,
       audience: input.audience ?? (source.audience as AudienceDef),
+      brand: source.brand,
       status: "draft",
     })
     .returning({ id: tables.campaign.id, publicId: tables.campaign.publicId });

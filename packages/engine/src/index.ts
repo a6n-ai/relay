@@ -9,7 +9,7 @@ export { verifyUnsubscribeToken, buildUnsubscribeUrl, listUnsubscribeHeaders, ha
 export { resolveAudienceDetailed, resolveAudience, countAudience, type Recipient, type AudienceBreakdown, type AudienceDeps } from "./audience";
 export { materializeCampaign, dueCampaigns } from "./campaign";
 export * from "./system-campaign";
-export { updateCampaignAudienceSchema, createCampaignSchema, listCampaigns, createCampaign, setCampaignContentSchema, setCampaignContent, updateCampaignAudience, renameCampaign, reviewCampaign, scheduleCampaign, sendScheduledCampaign, sendCampaign, getAudienceCount, duplicateCampaign, deleteCampaign, completeCampaign, retriggerCampaign, retryFailedCampaign, type CampaignRouteDeps, type CampaignReview } from "./campaign-routes";
+export { updateCampaignAudienceSchema, createCampaignSchema, listCampaigns, createCampaign, setCampaignContentSchema, setCampaignContent, updateCampaignAudience, renameCampaign, setCampaignBrand, setCampaignBrandSchema, reviewCampaign, scheduleCampaign, sendScheduledCampaign, sendCampaign, getAudienceCount, duplicateCampaign, deleteCampaign, completeCampaign, retriggerCampaign, retryFailedCampaign, type CampaignRouteDeps, type CampaignReview } from "./campaign-routes";
 export * from "./contact-list-routes";
 export * from "./enqueue";
 export { buildHandlers, type OutboxRow, type ChannelHandler, type HandlerDeps } from "./handlers";

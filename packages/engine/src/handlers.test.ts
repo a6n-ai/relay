@@ -280,6 +280,89 @@ describe("buildHandlers — email — system campaign sender", () => {
   });
 });
 
+describe("buildHandlers — email — senderFor override", () => {
+  const usersTable = { locale: "locale-col" };
+  const templateTable = {};
+  const campaignContentTable = {};
+  const campaignTable = { systemKey: "sk-col" };
+  const brandSender = { email: "hello@brand.test", name: "Brand Co" };
+
+  function setup(senderFor?: HandlerDeps["senderFor"]) {
+    const db = fakeDb(
+      new Map<object, unknown[]>([
+        [usersTable, [{ email: "customer@example.test", phone: null, locale: "en" }]],
+        [
+          templateTable,
+          [{ channel: "email", locale: "en", subject: "S", body: null, html: "<p>hi</p>", text: "hi", providerTemplateId: null, enabled: true }],
+        ],
+        [
+          campaignContentTable,
+          [{ channel: "email", locale: "en", subject: "S", body: null, html: "<p>hi</p>", text: "hi", providerTemplateId: null, attachments: [] }],
+        ],
+        [campaignTable, [{ systemKey: null, brand: "b1" }]],
+      ]),
+    );
+    const send = vi.fn().mockResolvedValue({ providerMessageId: "pid" });
+    const handlers = buildHandlers({
+      db,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      tables: { notificationTemplate: templateTable } as any,
+      users: { table: usersTable, columns: { id: "id-col", email: "email-col" } },
+      providers: { email: { send } },
+      broadcast: vi.fn(),
+      senderFor,
+      campaigns: {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        tables: { campaignContent: campaignContentTable, campaign: campaignTable } as any,
+        unsubscribe: { baseUrl: "https://recover.test", secret: "shh" },
+        sender: { name: "Default", postalAddress: "123 Main St", email: "info@example.test" },
+      },
+    });
+    return { handlers, send };
+  }
+
+  const outbox = (kind: string, payload: object = { href: null, vars: {} }) => ({
+    recipientId: 7n, recipientEmail: null, recipientPhone: null, campaignId: null, event: "ev", kind, payload,
+  });
+  const campaignRow = { ...outbox("marketing"), campaignId: 42n, event: null };
+
+  it("overrides From and the footer sender for a marketing outbox row, passing it the row", async () => {
+    const senderFor = vi.fn().mockReturnValue(brandSender);
+    const { handlers, send } = setup(senderFor);
+    const row = outbox("marketing", { href: null, vars: {}, brand: "b1" });
+    await handlers.email!(row);
+    expect(senderFor).toHaveBeenCalledWith(row);
+    expect(send.mock.calls[0][0].from).toEqual(brandSender);
+    expect(send.mock.calls[0][0].html).toContain("Brand Co");
+  });
+
+  it("overrides From on a transactional outbox row", async () => {
+    const { handlers, send } = setup(() => brandSender);
+    await handlers.email!(outbox("transactional"));
+    expect(send.mock.calls[0][0].from).toEqual(brandSender);
+  });
+
+  it("passes the campaign row, not the outbox row, for a campaign send", async () => {
+    const senderFor = vi.fn().mockReturnValue(brandSender);
+    const { handlers, send } = setup(senderFor);
+    await handlers.email!(campaignRow);
+    expect(senderFor).toHaveBeenCalledWith(expect.objectContaining({ brand: "b1" }));
+    expect(send.mock.calls[0][0].from).toEqual(brandSender);
+    expect(send.mock.calls[0][0].html).toContain("Brand Co");
+  });
+
+  it("keeps the old sender when senderFor returns undefined or is absent", async () => {
+    for (const senderFor of [() => undefined, undefined]) {
+      const { handlers, send } = setup(senderFor);
+      await handlers.email!(campaignRow);
+      await handlers.email!(outbox("transactional"));
+      expect(send.mock.calls[0][0].from).toEqual({ email: "info@example.test", name: "Default" });
+      expect(send.mock.calls[0][0].html).toContain("Default");
+      expect(send.mock.calls[1][0].from).toBeUndefined();
+    }
+  });
+});
+
 describe("buildHandlers — email — per-event provider selector", () => {
   const usersTable = { locale: "locale-col" };
   const templateTable = {};

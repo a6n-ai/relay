@@ -41,6 +41,9 @@ export function CampaignFlow(props: {
   timeZone: string;
   footer?: FooterInfo;
   from?: string;
+  /** Sender options for the picker (consumer-supplied); omit to hide it. */
+  senders?: { value: string; label: string }[];
+  brand?: string | null;
   unsubscribedHref: string;
   /** Page-level buttons for the header, e.g. Duplicate and Delete. */
   actions?: ReactNode;
@@ -78,6 +81,10 @@ export function CampaignFlow(props: {
 
   async function rename(name: string) {
     if (await apiAction(apiFetch(api, json("PATCH", { name })))) router.refresh();
+  }
+
+  async function setBrand(brand: string) {
+    if (await apiAction(apiFetch(api, json("PATCH", { brand })))) router.refresh();
   }
 
   async function leaveContent() {
@@ -176,6 +183,9 @@ export function CampaignFlow(props: {
       step={step}
       backHref="/dashboard/notifications/campaigns"
       onRename={rename}
+      senders={props.senders}
+      brand={props.brand}
+      onBrand={setBrand}
       actions={
         <>
           {test === "editor" && (

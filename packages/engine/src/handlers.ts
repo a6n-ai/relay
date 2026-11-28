@@ -75,6 +75,12 @@ export interface HandlerDeps {
   emailProviderFor?: (event: string) => ChannelProvider | undefined | Promise<ChannelProvider | undefined>;
   broadcast: BroadcastFn;
   /**
+   * Per-send sender override. Gets the outbox row (payload included) for event
+   * sends, or the campaign row for campaign sends. A value sets From and the
+   * unsubscribe footer's sender name; undefined keeps `campaigns.sender`.
+   */
+  senderFor?: (row: OutboxRow) => { email: string; name: string } | undefined;
+  /**
    * Campaign tables + the footer every commercial message must carry. Omitted,
    * campaign rows are skipped rather than sent without an unsubscribe link.
    */
@@ -141,12 +147,13 @@ export function buildHandlers(deps: HandlerDeps): Record<Channel, ChannelHandler
   const once = memoFor(60_000);
   const campaignContent: CampaignContentLoader = (db, tables, campaignId) =>
     once(`content:${campaignId}`, () => loadCampaignContent(db, tables, campaignId));
-  const campaignSystemKey = (campaignId: bigint) =>
-    once(`system:${campaignId}`, async () => {
+  const campaignRow = (campaignId: bigint) =>
+    once(`campaign:${campaignId}`, async () => {
       const t = deps.campaigns!.tables.campaign;
-      const [c] = await deps.db.select({ systemKey: t.systemKey }).from(t).where(eq(t.id, campaignId));
-      return c?.systemKey ?? null;
+      const [c] = await deps.db.select().from(t).where(eq(t.id, campaignId));
+      return c;
     });
+  const campaignSystemKey = async (campaignId: bigint) => (await campaignRow(campaignId))?.systemKey ?? null;
 
   const { db, tables, users, providers, broadcast } = deps;
 
@@ -222,6 +229,12 @@ export function buildHandlers(deps: HandlerDeps): Record<Channel, ChannelHandler
         let marketing = false;
         let headers: Record<string, string> | undefined;
         let attachmentRefs: { filename: string; url: string; contentType: string }[] = rowAttachments;
+        const senderSource = deps.senderFor
+          ? row.campaignId && deps.campaigns
+            ? await campaignRow(row.campaignId)
+            : row
+          : undefined;
+        const override = senderSource ? deps.senderFor!(senderSource) : undefined;
         if (row.campaignId && deps.campaigns) {
           const base = await renderCampaignEmail(
             db,
@@ -243,7 +256,7 @@ export function buildHandlers(deps: HandlerDeps): Record<Channel, ChannelHandler
               subject: base.subject,
               ...appendUnsubscribeFooter(base, {
                 url: buildUnsubscribeUrl(unsubscribe.baseUrl, unsubscribe.secret, target.address, row.campaignId),
-                sender: sender.name,
+                sender: override?.name ?? sender.name,
                 address: sender.postalAddress,
               }),
             };
@@ -263,7 +276,7 @@ export function buildHandlers(deps: HandlerDeps): Record<Channel, ChannelHandler
               subject: base.subject,
               ...appendUnsubscribeFooter(base, {
                 url: buildUnsubscribeUrl(unsubscribe.baseUrl, unsubscribe.secret, target.address),
-                sender: sender.name,
+                sender: override?.name ?? sender.name,
                 address: sender.postalAddress,
               }),
             };
@@ -278,7 +291,7 @@ export function buildHandlers(deps: HandlerDeps): Record<Channel, ChannelHandler
           : ((await deps.emailProviderFor?.(row.event)) ?? provider);
         return emailSender.send({
           to: { email: target.address },
-          from: marketingEmail ? { email: marketingEmail, name: deps.campaigns!.sender.name } : undefined,
+          from: override ?? (marketingEmail ? { email: marketingEmail, name: deps.campaigns!.sender.name } : undefined),
           subject: rendered.subject,
           html: rendered.html,
           text: rendered.text,

@@ -60,6 +60,8 @@ export function makeCampaignTables<L extends [string, ...string[]]>(deps: { loca
      * existing customers about their own subscription.
      */
     systemKey: text("system_key"),
+    /** Consumer-defined sender brand; `senderFor` maps it to a From address. Null = default sender. */
+    brand: text("brand"),
   }, (t) => [
     // Scheduler poll: due campaigns are (status, scheduled_at) lookups.
     index("campaign_status_scheduled_idx").on(t.status, t.scheduledAt),
